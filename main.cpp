@@ -36,12 +36,13 @@ int main(int argc, char *argv[])
     // Qt::AA_EnableHighDpiScaling is now the default in Qt6 — removed
     /////////////////////////////// opengl
 
-#ifdef OPEN_GL
-    QQuickWindow::setGraphicsApi(QSGRendererInterface::Software);
-    // Qt::AA_X11InitThreads removed in Qt6 (Linux-only, no-op on Windows)
-    qputenv("QSG_RENDER_LOOP", "threaded");
-    qputenv("QMLSCENE_DEVICE", "softwarecontext");
-#endif
+    // OPEN_GL block: software-renderer mode for embedded target hardware without GPU.
+    // On development machines with a real GPU, this block should be disabled —
+    // uncomment to force software rendering on the target device:
+//#ifdef OPEN_GL
+//    QQuickWindow::setGraphicsApi(QSGRendererInterface::Software);
+//    qputenv("QSG_RENDER_LOOP", "basic");
+//#endif
 
     ///////////////////////////////
     QApplication app(argc, argv);

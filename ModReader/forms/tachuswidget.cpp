@@ -1067,6 +1067,8 @@ void TachusWidget::intiateAutoMovementSetup()
     //return; // for manual motor movement && change autoMotorMovementMode in centerPane.qml to false
     LogFile::instance().appendToLogFile(QString("intiateAutoMovementSetup"), LogType::interfaceLevel);
 
+    if (m_hardwareCheckDisabled) return; // no physical target attached — skip motor setup writes
+
     //    1-String to Activate Auto Paper Mode:
     //    01 06 2004 0100 01  // 2004 hex to decimal is 8196 and 0100 hex to deci is 256
     //    2-String to Set up Timer:
@@ -1090,6 +1092,8 @@ void TachusWidget::intiateAutoMovementSighterSetup()
 {
     //return; // for manual motor movement && change autoMotorMovementMode in centerPane.qml to false
     LogFile::instance().appendToLogFile(QString("intiateAutoMovementSetup"), LogType::interfaceLevel);
+
+    if (m_hardwareCheckDisabled) return; // no physical target attached — skip motor setup writes
 
     //    1-String to Activate Auto Paper Mode:
     //    01 06 2004 0100 01  // 2004 hex to decimal is 8196 and 0100 hex to deci is 256
@@ -1451,9 +1455,10 @@ void TachusWidget::clearShootCount()
     LogFile::instance().appendToLogFile(QString("Reset shoot is called, old totol shoot count %1").arg(m_oldResetCount), LogType::interfaceLevel);
     m_oldResetCount = m_oldResetCount + m_currentShootsCount;
     LogFile::instance().appendToLogFile(QString("Reset shoot is called, Current shoot count %1").arg(m_currentShootsCount), LogType::interfaceLevel);
-    // reset the hardware
-    // register 2001 Hex = 8193 decimal
-    m_mainWindow->modbusWriteSingleRegister(8193, 0);
+    // reset the hardware counter register (2001 Hex = 8193 decimal)
+    // skip if hardware check is disabled (no physical target attached)
+    if (!m_hardwareCheckDisabled)
+        m_mainWindow->modbusWriteSingleRegister(8193, 0);
     //checkForNewShots();
     m_currentShootsCount = 0;
     LogFile::instance().appendToLogFile(QString("Reset done, Current shoot count %1").arg(m_currentShootsCount), LogType::interfaceLevel);
