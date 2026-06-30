@@ -382,27 +382,28 @@ Item {
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
-        height: 128
-        color: theme.bgSurface
+        height: 118
+        color: "#0f0d0e"
 
         // Left crimson edge stripe
         Rectangle {
             anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom
             width: 4; color: theme.brandPrimary
         }
-        // Bottom divider
+        // Bottom crimson accent line
         Rectangle {
             anchors.bottom: parent.bottom; anchors.left: parent.left; anchors.right: parent.right
-            height: 1; color: theme.borderColor
+            height: 2; color: theme.brandPrimary; opacity: 0.5
         }
         // Dark accent band on the right third (decorative)
         Rectangle {
             anchors.right: parent.right; anchors.top: parent.top; anchors.bottom: parent.bottom
-            width: parent.width * 0.34; color: theme.bgSurfaceAlt
+            width: parent.width * 0.34; color: "#141012"
         }
+        // Crimson divider at the band edge
         Rectangle {
-            x: parent.width * 0.66 - 3; anchors.top: parent.top; anchors.bottom: parent.bottom
-            width: 3; color: theme.brandPrimary; opacity: 0.25
+            x: parent.width * 0.66 - 2; anchors.top: parent.top; anchors.bottom: parent.bottom
+            width: 2; color: theme.brandPrimary; opacity: 0.20
         }
 
         // App identity row
@@ -487,7 +488,7 @@ Item {
         anchors.top: headerBar.bottom; anchors.topMargin: 10
         anchors.left: parent.left;     anchors.leftMargin: 12
         anchors.right: parent.right;   anchors.rightMargin: 12
-        anchors.bottom: statusBar.top; anchors.bottomMargin: 10
+        anchors.bottom: parent.bottom; anchors.bottomMargin: 10
 
         // ── LEFT PANEL: Session details ───────────────────────────────────────
         Rectangle {
@@ -718,9 +719,51 @@ Item {
                 }
             }
 
+            // Status footer strip (connection + mode indicator)
+            Rectangle {
+                id: panelFooter
+                anchors.bottom: parent.bottom
+                anchors.left: parent.left; anchors.right: parent.right
+                height: 32
+                color: "#111013"
+                Rectangle {
+                    anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right
+                    height: 1; color: theme.borderColor
+                }
+                Row {
+                    anchors.left: parent.left; anchors.leftMargin: 14
+                    anchors.right: parent.right; anchors.rightMargin: 14
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 0
+                    Text {
+                        text: "Contact us"
+                        color: theme.textSecondary; font.family: theme.fontFamily; font.pixelSize: 10
+                        MouseArea {
+                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                            onClicked: { contactUsDia.visible = true }
+                        }
+                    }
+                    Item { width: 10; height: 1 }
+                    Rectangle { width: 1; height: 12; color: theme.borderColor; anchors.verticalCenter: parent.verticalCenter }
+                    Item { width: 10; height: 1 }
+                    Text {
+                        text: appMode ? "LIVE MODE" : "DEMO MODE"
+                        color: appMode ? theme.statusConnected : theme.brandAccent
+                        font.family: theme.fontFamily; font.pixelSize: 10; font.bold: true; font.letterSpacing: 1
+                    }
+                    Item { width: 1; height: 1; Layout.fillWidth: true }
+                    Text {
+                        text: mod_connected ? "• Connected" : "• Offline"
+                        color: mod_connected ? theme.statusConnected : theme.textSecondary
+                        font.family: theme.fontFamily; font.pixelSize: 10
+                        anchors.right: undefined
+                    }
+                }
+            }
+
             // Bottom action buttons
             Row {
-                anchors.bottom: parent.bottom; anchors.bottomMargin: 22
+                anchors.bottom: panelFooter.top; anchors.bottomMargin: 16
                 anchors.left: parent.left;   anchors.leftMargin: 26
                 anchors.right: parent.right; anchors.rightMargin: 26
                 height: 50; spacing: 12
@@ -755,14 +798,25 @@ Item {
                     }
                 }
 
-                // Start session (crimson)
+                // Start session (crimson gradient)
                 Rectangle {
                     id: startSessionRect
                     width: (parent.width - 12) * 0.58; height: 50
-                    color: theme.brandPrimary; radius: theme.radiusMedium
+                    color: "#8c002e"; radius: theme.radiusMedium
                     opacity: startMouse.visible ? 1.0 : 0.4
+                    // Gradient highlight layer
+                    Rectangle {
+                        anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right
+                        height: parent.height / 2; radius: theme.radiusMedium
+                        color: "#ffffff"; opacity: 0.06
+                    }
+                    // Top highlight stripe
+                    Rectangle {
+                        anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right
+                        height: 1; color: "#ffffff"; opacity: 0.18; radius: theme.radiusMedium
+                    }
                     Text {
-                        text: "Start session"
+                        text: "Start session  →"
                         color: theme.textOnBrand; font.family: theme.fontFamily
                         font.pixelSize: 14; font.bold: true
                         anchors.centerIn: parent
@@ -770,8 +824,8 @@ Item {
                     MouseArea {
                         id: startMouse
                         anchors.fill: parent; hoverEnabled: true
-                        onEntered: startSessionRect.opacity = startMouse.visible ? 0.82 : 0.4
-                        onExited:  startSessionRect.opacity = startMouse.visible ? 1.0  : 0.4
+                        onEntered: startSessionRect.color = startMouse.visible ? "#a80038" : "#8c002e"
+                        onExited:  startSessionRect.color = "#8c002e"
                         onClicked: {
                             if (!appMode) {
                                 MODREADER.appendToLogFile("Application running in demo mode")
@@ -1002,52 +1056,6 @@ Item {
             }
         } // rightPanel
     } // contentArea
-
-    // ── Status bar ─────────────────────────────────────────────────────────────
-    Rectangle {
-        id: statusBar
-        anchors.bottom: parent.bottom
-        anchors.left: parent.left; anchors.right: parent.right
-        height: 34; color: theme.bgSurface
-
-        Rectangle {
-            anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right
-            height: 1; color: theme.borderColor
-        }
-        Rectangle {
-            anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom
-            width: 4; color: theme.brandPrimary
-        }
-
-        Text {
-            anchors.left: parent.left; anchors.leftMargin: 16
-            anchors.verticalCenter: parent.verticalCenter
-            text: "TechAim • Electronic target control"
-            color: theme.textSecondary; font.family: theme.fontFamily; font.pixelSize: 11
-        }
-
-        Row {
-            anchors.right: parent.right; anchors.rightMargin: 16
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: 16
-
-            Text {
-                text: "Contact us"
-                color: theme.textSecondary; font.family: theme.fontFamily; font.pixelSize: 11
-                MouseArea {
-                    anchors.fill: parent
-                    onClicked: { contactUsDia.visible = true }
-                    cursorShape: Qt.PointingHandCursor
-                }
-            }
-            Rectangle { width: 1; height: 14; color: theme.borderColor; anchors.verticalCenter: parent.verticalCenter }
-            Text {
-                text: appMode ? "LIVE MODE" : "DEMO MODE"
-                color: appMode ? theme.statusConnected : theme.brandAccent
-                font.family: theme.fontFamily; font.pixelSize: 11; font.bold: true; font.letterSpacing: 1
-            }
-        }
-    }
 
     // ── EULA overlay ────────────────────────────────────────────────────────────
     Rectangle {
