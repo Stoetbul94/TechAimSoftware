@@ -1,6 +1,6 @@
 QT += charts qml quick printsupport widgets xml
 
-CONFIG += c++11
+CONFIG += c++17
 #QMAKE_CXXFLAGS += /std:c++17
 
 VERSION = 4.0

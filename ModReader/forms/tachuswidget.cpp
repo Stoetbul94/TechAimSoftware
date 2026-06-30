@@ -5,6 +5,7 @@
 #include <QThread>
 #include <QDate>
 #include <cmath>
+#include <cfloat>
 #include <QHostInfo>
 #include <QNetworkInterface>
 #include <QFile>
@@ -398,14 +399,14 @@ double TachusWidget::getTime(int index)
 QString TachusWidget::getTimeStamp(int index)
 {
     if (m_timeStampList.isEmpty() || index == 0)
-        return -1;
+        return QString();
 
     if (m_timeStampList.count()>= index) {
         return m_timeStampList.at(index-1);
     }
 
     qDebug() << __FUNCTION__ << index;
-    return -1;
+    return QString();
 }
 
 double TachusWidget::getXCord(int index)
@@ -868,7 +869,7 @@ pair<double, double> TachusWidget::findCircumCenter(pdd P, pdd Q, pdd R)
         circumcenter.second == FLT_MAX)
     {
         qDebug() << "The two perpendicular bisectors "
-                "found come parallel" << endl;
+                "found come parallel";
         qDebug() << "Thus, the given points do not form "
                 "a triangle and are collinear";
     }
@@ -1313,11 +1314,11 @@ int TachusWidget::getRealValue(int value)
     QString binaryRightEight = binary.right(8);
     //qDebug() << "-----------------------***" << binaryRightEight;
     QString binary2C;
-    if (binary.at(0) == "1" && binary.length() == 16)
+    if (binary.at(0) == QChar('1') && binary.length() == 16)
     {
         for (int i=0; i<16; i++)
         {
-            if (binary.at(i) == "1")
+            if (binary.at(i) == QChar('1'))
                 binary2C.append("0");
             else
                 binary2C.append("1");
@@ -1465,7 +1466,7 @@ QString TachusWidget::getEncryptedText(QString data, bool onlyDefault)
     if (onlyDefault) {
         //result.append(data.toUtf8());
         for (int i=0; i<data.size(); ++i) {
-            result.append(data.at(i).unicode()+ENCRYPTION_DEFAULT);
+            result.append(QChar(data.at(i).unicode()+ENCRYPTION_DEFAULT));
         }
     } else {
 //        for (int i=0; i<data.size(); ++i) {
@@ -1483,7 +1484,7 @@ QString TachusWidget::getDencryptedText(QString data, QString encryptionText, bo
 
     //if (onlyDefault) {
         for (int i=0; i<data.size(); ++i) {
-            result.append(((data.at(i).unicode()-ENCRYPTION_DEFAULT)));
+            result.append(QChar(data.at(i).unicode()-ENCRYPTION_DEFAULT));
         }
 //    } else {
 //        for (int i=0; i<data.size(); ++i) {
@@ -1504,7 +1505,7 @@ void TachusWidget::licValidated()
         return;
 
     QTextStream stream(&file);
-    stream << endl;
+    stream << Qt::endl;
     stream << getEncryptedText("valid", true);
     file.close();
 }

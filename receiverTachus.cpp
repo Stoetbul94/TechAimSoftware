@@ -164,7 +164,7 @@ void ReceiverTachus::processPendingDatagrams()
             }
             emit m_tachus->matchDetails(gametype,matchModeIndex,sighterTime,matchTimer,sighterPf,matchPf);
 
-            qDebug() << "Gametype is" << gametype << matchModeIndex << sighterTime << matchTimer << matchPf << sighterPf << matchPf << endl;
+            qDebug() << "Gametype is" << gametype << matchModeIndex << sighterTime << matchTimer << matchPf << sighterPf << matchPf ;
             return;
 
         }
@@ -229,7 +229,7 @@ void ReceiverTachus::processPendingDatagrams()
 //                }
 //                emit m_tachus->matchDetails(gametype,matchModeIndex,sighterTime,matchTimer,sighterPf,matchPf);
 
-//                qDebug() << "Gametype is" << gametype << matchModeIndex << sighterTime << matchTimer << matchPf << sighterPf << matchPf << endl;
+//                qDebug() << "Gametype is" << gametype << matchModeIndex << sighterTime << matchTimer << matchPf << sighterPf << matchPf ;
 //                return;
 //            }
 

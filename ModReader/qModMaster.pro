@@ -69,7 +69,7 @@ unix:DEFINES += _TTY_POSIX_
 
 win32:SOURCES +=
 
-win32:DEFINES += _TTY_WIN_  WINVER=0x0501
+win32:DEFINES += _TTY_WIN_  WINVER=0x0A00 _WIN32_WINNT=0x0A00
 
 win32:LIBS += -lsetupapi -lwsock32 -lws2_32
 

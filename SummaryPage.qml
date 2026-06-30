@@ -1,14 +1,15 @@
-import QtQuick 2.3
-import QtQuick.Controls 1.2
-import QtQuick.Dialogs 1.2
-import QtCharts 2.2
+import QtQuick 2.15
+import QtQuick.Controls 2.15
+import QtCharts 2.15
 
 Dialog {
     id:screenPresence
     title: "Match Summary"
+    header: null
+    footer: null
 
-    property double contentWidth: 0
-    property double contentHeight: 0
+    property double screenContentWidth: 0
+    property double screenContentHeight: 0
 
     property int fontSize: 12
 
@@ -30,8 +31,8 @@ Dialog {
         Rectangle
         {
             id:print_region
-            width:contentWidth
-            height: contentHeight*0.9
+            width:screenContentWidth
+            height: screenContentHeight*0.9
             color: "white"
             border.width: 20
             border.color: "transparent"

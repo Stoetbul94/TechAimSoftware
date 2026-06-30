@@ -306,12 +306,10 @@ QString AppSettings::getLoadFileLocation()
     if (getBrandName() == "tachus")
     {
         QSettings regSettings("Tachus", "shootingApp");
-        bool isEulaAccepted = regSettings.value("loadFilePath").toBool();
-        return isEulaAccepted;
+        return regSettings.value("loadFilePath").toString();
     } else {
         QSettings regSettings("Seta", "shootingApp");
-        bool isEulaAccepted = regSettings.value("loadFilePath").toBool();
-        return isEulaAccepted;
+        return regSettings.value("loadFilePath").toString();
     }
 }
 
@@ -659,7 +657,7 @@ void AppSettings::readServerSettings(const QString &path)
             isApply = true;
         }
 
-        qDebug() <<__LINE__<< "Gametype is" << gametype << matchModeIndex << sighterTime << matchTimer << matchPf << sighterPf << matchPf << endl;
+        qDebug() <<__LINE__<< "Gametype is" << gametype << matchModeIndex << sighterTime << matchTimer << matchPf << sighterPf << matchPf ;
     }
 
     qDebug() <<__LINE__<<__FUNCTION__<<isApply;
@@ -731,7 +729,7 @@ void AppSettings::readControlFile(const QString &path)
 //            3= Match
 
             line = line.trimmed();
-            QStringList dataset = line.split(";", QString::SkipEmptyParts);
+            QStringList dataset = line.split(";", Qt::SkipEmptyParts);
             if (dataset.contains("print")) {
                 m_internalStatusFileModification = true;
                 QFile file(path);
@@ -996,7 +994,7 @@ void AppSettings::addSetaServerPathToWatcher()
         if ( file.open(QIODevice::WriteOnly | QIODevice::Truncate) )
         {
             QTextStream stream( &file );
-            stream << "";// << endl;
+            stream << "";// ;
         }
     }
     m_watcher->addPath(controlFilePath);
@@ -1081,7 +1079,7 @@ void AppSettings::updateStatusFeedbackFile(int flag)
         if ( file.open(QIODevice::WriteOnly | QIODevice::Truncate) )
         {
             QTextStream stream( &file );
-            stream << "Act_mode;"<<flag<<";" << endl;
+            stream << "Act_mode;"<<flag<<";" ;
             file.close();
         }
     //}
