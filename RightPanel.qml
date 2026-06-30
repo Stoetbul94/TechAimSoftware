@@ -1,6 +1,4 @@
 import QtQuick 2.2
-import QtQuick.Dialogs 1.2
-
 Item {
     property int rootItemWidth:1674
     property int rootItemHeight:3092

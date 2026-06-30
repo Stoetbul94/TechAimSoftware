@@ -1,4 +1,6 @@
 #include "registersdatadelegate.h"
+#include <QRegularExpression>
+#include <QRegularExpressionValidator>
 #include "mainwindow.h"
 #include "ModReader/3rdparty/QsLog/QsLog.h"
 #include <QtDebug>
@@ -36,8 +38,8 @@ QWidget *RegistersDataDelegate::createEditor(QWidget *parent,
     }
     else if (m_base == 10) {//Dec
             QLineEdit *editor = new QLineEdit(parent);
-            QRegExp rx("-{0,1}[0-9]{1,5}");
-            QValidator *validator = new QRegExpValidator(rx);
+            QRegularExpression rx("-{0,1}[0-9]{1,5}");
+            QValidator *validator = new QRegularExpressionValidator(rx);
             editor->setValidator(validator);
             return editor;
     }
@@ -48,8 +50,8 @@ QWidget *RegistersDataDelegate::createEditor(QWidget *parent,
     }
     else {//Default = Dec
             QLineEdit *editor = new QLineEdit(parent);
-            QRegExp rx("-{0,1}[0-9]{1,5}");
-            QValidator *validator = new QRegExpValidator(rx);
+            QRegularExpression rx("-{0,1}[0-9]{1,5}");
+            QValidator *validator = new QRegularExpressionValidator(rx);
             editor->setValidator(validator);
             return editor;
     }

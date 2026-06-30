@@ -1,10 +1,12 @@
-import QtQuick 2.3
-import QtQuick.Controls 1.2
-import QtQuick.Dialogs 1.2
+import QtQuick 2.15
+import QtQuick.Controls 2.15
+import QtQuick.Dialogs
 
 Dialog {
     id: closeDia
     title: "Confirm"
+    header: null
+    footer: null
 
     signal cancel()
     signal discard()
@@ -77,18 +79,15 @@ Dialog {
     FileDialog {
         id: fileDialog
         title: "Please provide a file name"
-        folder: shortcuts.home
-        visible: false
-        selectExisting: false
+        fileMode: FileDialog.SaveFile
+        currentFolder: Qt.resolvedUrl(".")
 
         onAccepted: {
-            console.log("You chose: " + fileDialog.fileUrls)
-            save(fileDialog.fileUrls)
-            fileDialog.visible = false
+            console.log("You chose: " + fileDialog.selectedFiles)
+            save(fileDialog.selectedFiles)
         }
         onRejected: {
             console.log("Canceled")
-            fileDialog.visible = false
         }
     }
 }

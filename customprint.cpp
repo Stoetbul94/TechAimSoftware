@@ -29,7 +29,7 @@ void CustomPrint::printPNG(QVariant data)
     QImage img = qvariant_cast<QImage>(data);
     if(img.isNull())
     {
-        qDebug() << "In valid image" << endl;
+        qDebug() << "In valid image" ;
     }
     img.save(fileName);
     emit saveComplete();
@@ -94,7 +94,7 @@ void CustomPrint::createPdf()
                                                     tr("*.pdf"));
     qDebug() << __FUNCTION__ << fileName;
     QPdfWriter pdfWriter(fileName);
-    pdfWriter.setPageSize(QPagedPaintDevice::A4);
+    pdfWriter.setPageSize(QPageSize(QPageSize::A4));
     pdfWriter.setPageMargins(QMargins(30, 30, 30, 30));
     QPainter painter(&pdfWriter);
     quint32 iWidth = pdfWriter.width();
@@ -167,7 +167,7 @@ void CustomPrint::createTablePdf()
     pTableView->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
     QPdfWriter pdfWriter(fileName);
-    pdfWriter.setPageSize(QPagedPaintDevice::A4);
+    pdfWriter.setPageSize(QPageSize(QPageSize::A4));
     pdfWriter.setPageMargins(QMargins(30, 30, 30, 30));
     QPainter painter(&pdfWriter);
 
@@ -189,7 +189,7 @@ void CustomPrint::createSummryPdf()
                                                     tr("*.pdf"));
     qDebug() << __FUNCTION__ << fileName;
     QPdfWriter pdfWriter(fileName);
-    pdfWriter.setPageSize(QPagedPaintDevice::A4);
+    pdfWriter.setPageSize(QPageSize(QPageSize::A4));
     pdfWriter.setPageMargins(QMargins(30, 30, 30, 30));
     QPainter painter(&pdfWriter);
     quint32 iWidth = pdfWriter.width();
@@ -300,7 +300,7 @@ void CustomPrint::createSummryPdf()
 //                    image.scaledToHeight(2*heightOffsetFor8Font - 10);
 
                     QPoint center = image.rect().center();
-                    QMatrix matrix;
+                    QTransform matrix;
                     matrix.translate(center.x(), center.y());
                     matrix.rotate(direction);
                     QImage dstImg = image.transformed(matrix);
@@ -418,7 +418,7 @@ void CustomPrint::createSummryPdf()
                         //                    image.scaledToHeight(2*heightOffsetFor8Font - 10);
 
                         QPoint center = image.rect().center();
-                        QMatrix matrix;
+                        QTransform matrix;
                         matrix.translate(center.x(), center.y());
                         matrix.rotate(direction);
                         QImage dstImg = image.transformed(matrix);
@@ -655,7 +655,7 @@ void CustomPrint::createPdf(QString filePath)
 
 
     QPdfWriter pdfWriter(filePath);
-    pdfWriter.setPageSize(QPagedPaintDevice::A4);
+    pdfWriter.setPageSize(QPageSize(QPageSize::A4));
     pdfWriter.setPageMargins(QMargins(30, 30, 30, 30));
     QPainter painter(&pdfWriter);
     quint32 iWidth = pdfWriter.width();
@@ -688,7 +688,7 @@ void CustomPrint::print(QVariant data)
                                                     "untitled.pdf",
                                                     tr("*.pdf"));
     QPdfWriter pdfWriter(fileName);
-    pdfWriter.setPageSize(QPagedPaintDevice::A4);
+    pdfWriter.setPageSize(QPageSize(QPageSize::A4));
     pdfWriter.setPageMargins(QMargins(30, 30, 30, 30));
     QPainter painter(&pdfWriter);
     quint32 iWidth = pdfWriter.width();

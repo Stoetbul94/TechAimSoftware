@@ -1,0 +1,14 @@
+# Build output
+/debug/
+/release/
+Makefile
+Makefile.Debug
+Makefile.Release
+.qmake.stash
+ui_*.h
+moc_*.cpp
+moc_*.h
+qrc_*.cpp
+*.o
+*.obj
+Seta_resource.rc

@@ -391,7 +391,7 @@ void ModbusAdapter::busMonitorRequestData(uint8_t * data, uint8_t dataLen)
     QString line;
 
     for(int i = 0; i < dataLen; ++i ) {
-        line += QString().sprintf( "%.2x  ", data[i] );
+        line += QString::asprintf( "%.2x  ", data[i] );
     }
 
     QLOG_INFO() << "Tx Data : " << line;
@@ -410,7 +410,7 @@ void ModbusAdapter::busMonitorResponseData(uint8_t * data, uint8_t dataLen)
     QString line;
 
     for(int i = 0; i < dataLen; ++i ) {
-        line += QString().sprintf( "%.2x  ", data[i] );
+        line += QString::asprintf( "%.2x  ", data[i] );
     }
 
     QLOG_INFO() << "Rx Data : " << line;

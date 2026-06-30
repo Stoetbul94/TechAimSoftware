@@ -28,16 +28,17 @@
 #include <QDir>
 #include <QMessageBox>
 #include <QQuickWindow>
+#include <QSGRendererInterface>
 
 QTranslator *Translator;
 int main(int argc, char *argv[])
 {
-    QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+    // Qt::AA_EnableHighDpiScaling is now the default in Qt6 — removed
     /////////////////////////////// opengl
 
 #ifdef OPEN_GL
-    QQuickWindow::setSceneGraphBackend(QSGRendererInterface::Software);
-    QCoreApplication::setAttribute(Qt::AA_X11InitThreads);
+    QQuickWindow::setGraphicsApi(QSGRendererInterface::Software);
+    // Qt::AA_X11InitThreads removed in Qt6 (Linux-only, no-op on Windows)
     qputenv("QSG_RENDER_LOOP", "threaded");
     qputenv("QMLSCENE_DEVICE", "softwarecontext");
 #endif
