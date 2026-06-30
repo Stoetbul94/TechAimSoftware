@@ -513,11 +513,11 @@ ApplicationWindow {
         id: loginPage
 
 //        visible: false
-        height: parent.height - header.height
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: header.bottom
         anchors.topMargin: 20
+        anchors.bottom: parent.bottom
 
         onUsername_loginPageChanged: {
             window.userName = loginPage.username_loginPage
