@@ -34,6 +34,7 @@ public:
         if (m_busMonitor)
             return m_busMonitor->getPlaintTextEdit();
     }
+    void tachusReconfigurePortNumber();
 
 private:
     Ui::MainWindow *ui;

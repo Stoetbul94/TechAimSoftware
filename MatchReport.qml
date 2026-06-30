@@ -5,8 +5,10 @@ import QtQuick.Dialogs 1.2
 Dialog {
     id:screenPresence
     title: "Match Report"
+    property bool isPrintFromBackend: false
+    property bool isAutoPrintOn: false
 
-    property int repeaterModelCount: globalModelOfData.count <= 10 ? 0 : (globalModelOfData.count - 10)/30 + 1
+    property int repeaterModelCount: globalModelOfData.count <= 10 ? 0 : (globalModelOfData.count - 10)/20 + 1
 
     Connections{
         target: CUSTOMPRINT
@@ -17,16 +19,32 @@ Dialog {
     }
 
     onAccepted: {
-        console.log("888888888888888888888888888888888888888888888888 accespted")
     }
 
     onRejected: {
-        console.log("9999999999999999999999999999999999999999999999999 rejected")
+    }
+
+    Timer {
+        id: printTimer
+        repeat: false
+        interval: isAutoPrintOn ? 2000 : 0
+        onTriggered: {
+            printImageInNetworkPath()
+            printTimer.stop()
+            isAutoPrintOn = false
+        }
+    }
+
+    onIsAutoPrintOnChanged: {
+        if (!isAutoPrintOn)
+            printTimer.stop()
     }
 
     onVisibleChanged: {
-        console.log("Sriiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiissssssssss", visible)
         contentRect.visible = visible
+
+        if (visible && isAutoPrintOn)
+            printTimer.start() //printImageInNetworkPath()
     }
 
     contentItem:Rectangle {
@@ -35,7 +53,6 @@ Dialog {
         color: "transparent"
 
         onVisibleChanged: {
-            console.log("aaaaaaaaaaaaaaaaaaaaaaaaaSriiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii", visible)
         }
         ScrollView {
             id: scrollView
@@ -48,8 +65,10 @@ Dialog {
                 PdfPage {
                     id: print_region
                     pageIndex: 1
-                    width: parent.width
-                    height: 700
+//                    width: parent.width
+//                    height: 800
+                    width: 595 // A4 size for 72 dpi
+                    height: 842 // A4 sixe for 72 dpi
                     sourceComp: tempComp
                     anchors.horizontalCenter: parent.horizontalCenter
                 }
@@ -120,7 +139,7 @@ Dialog {
                         anchors.top: parent.top
                         anchors.left: parent.left
                         anchors.leftMargin: 75
-                        text: "Match Summary"
+                        text: qsTr("Match Summary")
                         font.pixelSize: 20
                     }
                 }
@@ -131,8 +150,12 @@ Dialog {
                     spacing: 30
                     Image {
                         id: shootingcanvas
-                        source: centerPanel.gameMode ? (shootingPage.isBackgroudBlack ? "qrc:/images/centerPanel/pistol.png" : "qrc:/images/centerPanel/pistol_blue.png")
-                                                     : (shootingPage.isBackgroudBlack ? "qrc:/images/centerPanel/rifle.png" : "qrc:/images/centerPanel/rifle_blue.png")
+//                        source: centerPanel.gameMode ? (shootingPage.isBackgroudBlack ? "qrc:/images/centerPanel/pistol.png" : "qrc:/images/centerPanel/pistol_blue.png")
+//                                                     : (shootingPage.isBackgroudBlack ? "qrc:/images/centerPanel/rifle.png" : "qrc:/images/centerPanel/rifle_blue.png")
+                        source: gameRange == 10 ? (centerPanel.gameMode ? (shootingPage.isBackgroudBlack ? "qrc:/images/centerPanel/pistol.png" : "qrc:/images/centerPanel/pistol_blue.png")
+                                         : (shootingPage.isBackgroudBlack ? "qrc:/images/centerPanel/rifle.png" : "qrc:/images/centerPanel/rifle_blue.png"))
+                                                : (centerPanel.gameMode ? (shootingPage.isBackgroudBlack ? "qrc:/images/centerPanel/50_meter.png" : "qrc:/images/centerPanel/50_meter_blue.png")
+                                                            : (shootingPage.isBackgroudBlack ? "qrc:/images/centerPanel/black_50_Rifle.png" : "qrc:/images/centerPanel/blue_50_Rifle.png"))
                         width: 300 //parent.width < parent.height ? parent.width*0.45 : parent.height*0.45
                         height: width
                         opacity: 1
@@ -155,7 +178,17 @@ Dialog {
                             Item {
                                 id:mainItem
                                 // 34.55 and 10.11 was given by abins (tachus)
-                                width: centerPanel.gameMode ? shootingcanvas.height/34.55 : shootingcanvas.height/10
+                                //10 Meter Pistol Ratio=155.5÷4.5=34.55
+                                //10 Meter Rifle Ratio=45.5÷4.5=10.11
+                                //50 Meter Pistol Ratio=500/5.6=89.29
+                                //50 Meter Rifle Ratio=154.4/5.6=27.57
+
+                                property double gameRatio: gameRange == 10 ? (centerPanel.gameMode ? 155.5/APPSETTINGS.bullet_diameter() : 45.5/APPSETTINGS.bullet_diameter())
+                                                                           : (centerPanel.gameMode ? 500/APPSETTINGS.bullet_diameter() : 154.4/APPSETTINGS.bullet_diameter())
+                                //width: gameRange == 10 ? (centerPanel.gameMode ? shootingcanvas.height/34.55 : shootingcanvas.height/10.11 )
+                                //                       : (centerPanel.gameMode ? shootingcanvas.height/89.29 /*size 500 pallet 5.6*/
+                                //                                   : shootingcanvas.height/27.57 /*size 154.4 pallet 5.6*/)
+                                width: shootingcanvas.height/gameRatio
                                 height: width
                                 Rectangle
                                 {
@@ -164,8 +197,8 @@ Dialog {
                                         var xCor = MODREADER.getXCord(index+1)
                                         var yCor = MODREADER.getYCord(index+1)
 
-                                        var pistalWidthHeight = 155.5
-                                        var rifleWidthHeight = 45.5
+                                        var pistalWidthHeight = gameRange == 10 ? 155.5 : 500
+                                        var rifleWidthHeight = gameRange == 10 ? 45.5 : 154.4
                                         var shootingWidth = centerPanel.gameMode ? pistalWidthHeight : rifleWidthHeight
                                         var shootingHeight = centerPanel.gameMode ? pistalWidthHeight : rifleWidthHeight
 
@@ -182,12 +215,13 @@ Dialog {
                                     }
                                     anchors.fill: parent
                                     radius:parent.width/2
-                                    color: shootingPage.isPalletRed ? "red" : "white"
+                                    color: greenColor//shootingPage.isPalletRed ? "red" : "white"
                                     Text{
                                         anchors.centerIn: parent
                                         text: index+1
+                                        visible: false
                                     }
-                                    border.color: "red"
+//                                    border.color: "red"
                                 }
                             }
                         }
@@ -195,6 +229,7 @@ Dialog {
                     }
 
                     MatchReportInfo {
+                        id: matchReportInfo
                         width: parent.width - shootingcanvas.width
                         height: parent.height
                     }
@@ -209,15 +244,22 @@ Dialog {
                     Text {
                         anchors.bottom: parent.bottom
                         anchors.horizontalCenter: parent.horizontalCenter
-                        text: "REPORTS"
+                        text: qsTr("SERIES WISE RESULTS")
                         font.pixelSize: 20
                     }
                 }
 
+//                Rectangle {
+//                    id: emptySpaceRect
+//                    width: 20
+//                    height: 40
+//                    color: "transparent"
+//                }
+
                 SeriesComponent {
                     seriesIndex: 1
-                    width: parent.width
-                    height: 200
+                    width: parent.width - 50
+                    height: 500
                 }
             }
         }
@@ -254,15 +296,29 @@ Dialog {
         CUSTOMPRINT.clearImagesList()
         var stat = print_region.grabToImage(function(result) {
             CUSTOMPRINT.addImage(result.image);
-            //CUSTOMPRINT.print(result.image); //result.image holds the QVariant
-            //CUSTOMPRINT.printPNG(result.image); //result.image holds the QVariant
-        }/*, Qt.size(595, 842)*/); //2229, 3258
+        }, Qt.size(8917/4, 13033/4)); //2229, 3258
         for (var i=0; i < reportRepeater.count; ++i)
         {
             reportRepeater.itemAt(i).grabToImage(function(result) {
                 CUSTOMPRINT.addImage(result.image);
             }, Qt.size(8917/4, 13033/4));
         }
+        CUSTOMPRINT.setServerPath(APPSETTINGS.getPrintPDFFilePath());
         CUSTOMPRINT.createPdf();
+    }
+
+    function printImageInNetworkPath()
+    {
+        CUSTOMPRINT.clearImagesList()
+        var stat = print_region.grabToImage(function(result) {
+            CUSTOMPRINT.addImage(result.image);
+        }, Qt.size(8917/4, 13033/4)); //2229, 3258
+        for (var i=0; i < reportRepeater.count; ++i)
+        {
+            reportRepeater.itemAt(i).grabToImage(function(result) {
+                CUSTOMPRINT.addImage(result.image);
+            }, Qt.size(8917/4, 13033/4));
+        }
+        CUSTOMPRINT.createPdf(APPSETTINGS.getPrintPDFFilePath());
     }
 }

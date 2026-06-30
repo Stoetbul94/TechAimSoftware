@@ -11,15 +11,32 @@ Item {
     property alias settingsY:settings_unclicked.y
     property alias settingsWidth:settings_unclicked.width
 
+
+    property bool isShowMPI: APPSETTINGS.getShowGroupAndMPI()
+    property alias playVisible: play.visible
+    property alias abhi: rectangle_1.scale
+
+    property int offsetDisplacement: 100
+
     signal homeButtonClicked()
     signal settingsClicked()
 
-    MouseArea
-    {
-        anchors.fill: parent
-        onClicked:
-        {
-            console.log("I am here as well .............")
+//    MouseArea
+//    {
+//        anchors.fill: parent
+//        onClicked:
+//        {
+//            console.log("I am here as well .............")
+//        }
+//    }
+
+    Connections {
+        target: loginPage
+
+        onBackHomeFromServer : {
+            console.log("*************************************************************************************")
+
+            homeButtonClicked()
         }
     }
 
@@ -47,14 +64,40 @@ Item {
         visible: true
         source: "qrc:/images/leftPanel/white_tile.png"
         x: ((parent.width/rootItemWidth)*34)
-        y: ((parent.height/rootItemHeight)*268)
+//        y: ((parent.height/rootItemHeight)*268)
+        y: ((parent.height/rootItemHeight)*(268-offsetDisplacement))
         opacity: 1
         width: ((parent.width/rootItemWidth)*sourceSize.width)
         height: ((parent.height/rootItemHeight)*sourceSize.height)
     }
+
+
+    Image {
+        id: play
+        visible: true
+        source: "qrc:/images/leftPanel/play.png"
+        //anchors.horizontalCenter: parent.horizontalCenter
+        anchors.left: white_tile.left
+        anchors.leftMargin: 3
+        anchors.top: white_tile.bottom
+        anchors.topMargin: 20
+        opacity: 1
+        width: ((rightPanel.width/rightPanel.rootItemWidth)*sourceSize.width)
+        height: ((rightPanel.height/rightPanel.rootItemHeight)*sourceSize.height)
+
+        MouseArea
+        {
+            anchors.fill: parent
+            onClicked:
+            {
+                rightPanel.startClicked()
+            }
+        }
+    }
+
     Image {
         id: device_not_connected
-        visible: true
+        visible: false
         source: "qrc:/images/leftPanel/device_not_connected.png"
         x: ((parent.width/rootItemWidth)*14)
         y: ((parent.height/rootItemHeight)*653)
@@ -64,7 +107,7 @@ Item {
     }
     Image {
         id: device_connected
-        visible: true
+        visible: false
         source: "qrc:/images/leftPanel/device_connected.png"
         x: ((parent.width/rootItemWidth)*14)
         y: ((parent.height/rootItemHeight)*653)
@@ -75,9 +118,10 @@ Item {
     Image {
         id: home_hover
         visible: false
-        source: "qrc:/images/leftPanel/home_hover.png"
+        source: "qrc:/images/leftPanel/home.png"
         x: ((parent.width/rootItemWidth)*38)
-        y: ((parent.height/rootItemHeight)*549)
+//        y: ((parent.height/rootItemHeight)*549)
+        y: ((parent.height/rootItemHeight)*(549-offsetDisplacement))
         opacity: 1
         width: ((parent.width/rootItemWidth)*sourceSize.width)
         height: ((parent.height/rootItemHeight)*sourceSize.height)
@@ -85,52 +129,92 @@ Item {
     Image {
         id: home_clicked
         visible: false
-        source: "qrc:/images/leftPanel/home_clicked.png"
+        source: "qrc:/images/leftPanel/home.png"
         x: ((parent.width/rootItemWidth)*38)
-        y: ((parent.height/rootItemHeight)*549)
+//        y: ((parent.height/rootItemHeight)*549)
+        y: ((parent.height/rootItemHeight)*(549-offsetDisplacement))
         opacity: 1
         width: ((parent.width/rootItemWidth)*sourceSize.width)
         height: ((parent.height/rootItemHeight)*sourceSize.height)
     }
+
+//    Rectangle {
+//        color: "black"//isShowMPI ? "lightblue" : "red"
+//        width: home_clicked.width
+//        x: home_clicked.x
+//        y: home_clicked.y + 2.5*home_clicked.height
+//        height: home_clicked.height - 10
+////        visible: false
+
+//        Text {
+//            text: isShowMPI ? "Hide MPI" : "Show MPI"
+//            width: implicitWidth
+//            height: implicitHeight
+//            anchors.centerIn: parent
+//        }
+//        Image {
+//            id: mpiTarget
+//            visible: true
+//    //        visible: false
+//            source: "qrc:/images/leftPanel/target.png"
+//            width: ((parent.width/rootItemWidth)*sourceSize.width)
+//            height: ((parent.height/rootItemHeight)*sourceSize.height)
+//            opacity: 1
+//        }
+
+//        MouseArea {
+//            anchors.fill: parent
+//            onClicked: {
+//                isShowMPI = !isShowMPI
+//            }
+//        }
+//    }
+
     Image {
-        id: home_unclicked
+        id: mpi_unclicked
         visible: true
-        source: "qrc:/images/leftPanel/home_unclicked.png"
+//        visible: false
+        source: "qrc:/images/leftPanel/target.png"
         x: ((parent.width/rootItemWidth)*38)
-        y: ((parent.height/rootItemHeight)*549)
+//        y: ((parent.height/rootItemHeight)*549)
+        y: ((parent.height/rootItemHeight)*(617-offsetDisplacement))
         opacity: 1
         width: ((parent.width/rootItemWidth)*sourceSize.width)
         height: ((parent.height/rootItemHeight)*sourceSize.height)
         MouseArea {
             anchors.fill: parent
-            hoverEnabled: false
-            onEntered: {
-                home_hover.visible = true
-                home_clicked.visible = false
-                visible = false
+            onClicked: {
+                isShowMPI = !isShowMPI
             }
+        }
+    }
 
-            onExited: {
-                home_clicked.visible = false
-                home_hover.visible = false
-                visible = true
+    Image {
+        id: home_unclicked
+        visible: true
+//        visible: false
+        source: "qrc:/images/leftPanel/home.png"
+        x: ((parent.width/rootItemWidth)*38)
+//        y: ((parent.height/rootItemHeight)*549)
+        y: ((parent.height/rootItemHeight)*(549-offsetDisplacement))
+        opacity: 1
+        width: ((parent.width/rootItemWidth)*sourceSize.width)
+        height: ((parent.height/rootItemHeight)*sourceSize.height)
+        MouseArea {
+            anchors.fill: parent
+            onClicked: {
+                console.log("testing ----------------- Home inactive")
+                homeButtonClicked()
             }
-
-            onPressed: {
-                home_clicked.visible = true
-                home_hover.visible = false
-                visible = false
-            }
-
-//            onClicked: homeButtonClicked()
         }
     }
     Image {
         id: settings_clicked
         visible: true
-        source: "qrc:/images/leftPanel/settings_clicked.png"
+        source: "qrc:/images/leftPanel/settings.png"
         x: ((parent.width/rootItemWidth)*38)
-        y: ((parent.height/rootItemHeight)*481)
+//        y: ((parent.height/rootItemHeight)*481)
+        y: ((parent.height/rootItemHeight)*(481-offsetDisplacement))
         opacity: 1
         width: ((parent.width/rootItemWidth)*sourceSize.width)
         height: ((parent.height/rootItemHeight)*sourceSize.height)
@@ -138,9 +222,10 @@ Item {
     Image {
         id: settings_hover
         visible: true
-        source: "qrc:/images/leftPanel/settings_hover.png"
+        source: "qrc:/images/leftPanel/settings.png"
         x: ((parent.width/rootItemWidth)*38)
-        y: ((parent.height/rootItemHeight)*481)
+//        y: ((parent.height/rootItemHeight)*481)
+        y: ((parent.height/rootItemHeight)*(481-offsetDisplacement))
         opacity: 1
         width: ((parent.width/rootItemWidth)*sourceSize.width)
         height: ((parent.height/rootItemHeight)*sourceSize.height)
@@ -148,9 +233,10 @@ Item {
     Image {
         id: settings_unclicked
         visible: true
-        source: "qrc:/images/leftPanel/settings_unclicked.png"
+        source: "qrc:/images/leftPanel/settings.png"
         x: ((parent.width/rootItemWidth)*38)
-        y: ((parent.height/rootItemHeight)*481)
+//        y: ((parent.height/rootItemHeight)*481)
+        y: ((parent.height/rootItemHeight)*(481-offsetDisplacement))
         opacity: 1
         width: ((parent.width/rootItemWidth)*sourceSize.width)
         height: ((parent.height/rootItemHeight)*sourceSize.height)
@@ -167,9 +253,10 @@ Item {
     Image {
         id: match_report_clicked
         visible: false
-        source: "qrc:/images/leftPanel/match_report_clicked.png"
+        source: "qrc:/images/leftPanel/match.png"
         x: ((parent.width/rootItemWidth)*38)
-        y: ((parent.height/rootItemHeight)*415)
+//        y: ((parent.height/rootItemHeight)*415)
+        y: ((parent.height/rootItemHeight)*(415-offsetDisplacement))
         opacity: 1
         width: ((parent.width/rootItemWidth)*sourceSize.width)
         height: ((parent.height/rootItemHeight)*sourceSize.height)
@@ -177,9 +264,10 @@ Item {
     Image {
         id: match_report_hover
         visible: false
-        source: "qrc:/images/leftPanel/match_report_hover.png"
+        source: "qrc:/images/leftPanel/match.png"
         x: ((parent.width/rootItemWidth)*38)
-        y: ((parent.height/rootItemHeight)*415)
+//        y: ((parent.height/rootItemHeight)*415)
+        y: ((parent.height/rootItemHeight)*(415-offsetDisplacement))
         opacity: 1
         width: ((parent.width/rootItemWidth)*sourceSize.width)
         height: ((parent.height/rootItemHeight)*sourceSize.height)
@@ -187,33 +275,16 @@ Item {
     Image {
         id: match_report_unclicked
         visible: true
-        source: "qrc:/images/leftPanel/match_report_unclicked.png"
+        source: "qrc:/images/leftPanel/match.png"
         x: ((parent.width/rootItemWidth)*38)
-        y: ((parent.height/rootItemHeight)*415)
+//        y: ((parent.height/rootItemHeight)*415)
+        y: ((parent.height/rootItemHeight)*(415-offsetDisplacement))
         opacity: 1
         width: ((parent.width/rootItemWidth)*sourceSize.width)
         height: ((parent.height/rootItemHeight)*sourceSize.height)
         MouseArea
         {
             anchors.fill: parent
-            hoverEnabled: false
-            onEntered: {
-                match_report_hover.visible = true
-                match_report_clicked.visible = false
-                visible = false
-            }
-
-            onExited: {
-                match_report_clicked.visible = false
-                match_report_hover.visible = false
-                visible = true
-            }
-
-            onPressed: {
-                match_report_clicked.visible = true
-                match_report_hover.visible = false
-                visible = false
-            }
             onClicked:
             {
                 if(sligterMode)
@@ -225,7 +296,8 @@ Item {
                 {
                     if(1/*globalModelOfData.count >= 10*/)
                     {
-                        showMatchReport()
+                        //if (!isSaveGame)
+                            showMatchReport()
                         // only show summary for now
                         //showSummary()
                     }
@@ -241,9 +313,10 @@ Item {
     Image {
         id: summery_clicked
         visible: true
-        source: "qrc:/images/leftPanel/summery_clicked.png"
+        source: "qrc:/images/leftPanel/summary.png"
         x: ((parent.width/rootItemWidth)*38)
-        y: ((parent.height/rootItemHeight)*348)
+//        y: ((parent.height/rootItemHeight)*348)
+        y: ((parent.height/rootItemHeight)*(348-offsetDisplacement))
         opacity: 1
         width: ((parent.width/rootItemWidth)*sourceSize.width)
         height: ((parent.height/rootItemHeight)*sourceSize.height)
@@ -251,9 +324,10 @@ Item {
     Image {
         id: summery_mouse_hover
         visible: false
-        source: "qrc:/images/leftPanel/summery_mouse_hover.png"
+        source: "qrc:/images/leftPanel/summary.png"
         x: ((parent.width/rootItemWidth)*38)
-        y: ((parent.height/rootItemHeight)*348)
+//        y: ((parent.height/rootItemHeight)*348)
+        y: ((parent.height/rootItemHeight)*(348-offsetDisplacement))
         opacity: 1
         width: ((parent.width/rootItemWidth)*sourceSize.width)
         height: ((parent.height/rootItemHeight)*sourceSize.height)
@@ -261,32 +335,15 @@ Item {
     Image {
         id: summery_unclicked
         visible: true
-        source: "qrc:/images/leftPanel/summery_unclicked.png"
+        source: "qrc:/images/leftPanel/summary.png"
         x: ((parent.width/rootItemWidth)*38)
-        y: ((parent.height/rootItemHeight)*348)
+//        y: ((parent.height/rootItemHeight)*348)
+        y: ((parent.height/rootItemHeight)*(348-offsetDisplacement))
         opacity: 1
         width: ((parent.width/rootItemWidth)*sourceSize.width)
         height: ((parent.height/rootItemHeight)*sourceSize.height)
         MouseArea{
             anchors.fill: parent
-            hoverEnabled: false
-            onEntered: {
-                summery_mouse_hover.visible = true
-                summery_clicked.visible = false
-                visible = false
-            }
-
-            onExited: {
-                summery_clicked.visible = false
-                summery_mouse_hover.visible = false
-                visible = true
-            }
-
-            onPressed: {
-                summery_clicked.visible = true
-                summery_mouse_hover.visible = false
-                visible = false
-            }
             onClicked:
             {
                 if(sligterMode)
@@ -296,6 +353,8 @@ Item {
                 }
                 else
                 {
+                    if (isSaveGame)
+                        return
 //                    if(globalModelOfData.count >= 10)
 //                    {
                         showSummary()
@@ -315,7 +374,7 @@ Item {
         source: "qrc:/images/leftPanel/sighter_selected.png"
         x: ((parent.width/rootItemWidth)*14)
         y: ((parent.height/rootItemHeight)*120)
-        opacity: 1
+        opacity: 0
         width: ((parent.width/rootItemWidth)*sourceSize.width)
         height: ((parent.height/rootItemHeight)*sourceSize.height)
     }
@@ -324,8 +383,8 @@ Item {
         visible: !sighter_selected.visible
         source: "qrc:/images/leftPanel/match_selected.png"
         x: ((parent.width/rootItemWidth)*14)
-        y: ((parent.height/rootItemHeight)*120)
-        opacity: 1
+        y: ((parent.height/rootItemHeight)*120)-offsetDisplacement/2
+        opacity: 0
         width: ((parent.width/rootItemWidth)*sourceSize.width)
         height: ((parent.height/rootItemHeight)*sourceSize.height)
     }
@@ -334,8 +393,10 @@ Item {
         visible: true
         source: "qrc:/images/leftPanel/user_picture_circle_with_black_border.png"
         x: ((parent.width/rootItemWidth)*54)
-        y: ((parent.height/rootItemHeight)*240)
-        opacity: 1
+//        y: ((parent.height/rootItemHeight)*240)
+//        x: ((parent.width/rootItemWidth)*14)
+        y: ((parent.height/rootItemHeight)*120)
+        opacity: 0
         width: ((parent.width/rootItemWidth)*sourceSize.width)
         height: ((parent.height/rootItemHeight)*sourceSize.height)
     }
@@ -344,7 +405,8 @@ Item {
         visible: true
         source: "qrc:/images/leftPanel/name.png"
         x: ((parent.width/rootItemWidth)*42)
-        y: ((parent.height/rootItemHeight)*308)
+        //y: ((parent.height/rootItemHeight)*308)
+        y: ((parent.height/rootItemHeight)*(308-offsetDisplacement))
         opacity: 0
         width: ((parent.width/rootItemWidth)*sourceSize.width)
         height: ((parent.height/rootItemHeight)*sourceSize.height)
@@ -359,19 +421,31 @@ Item {
         verticalAlignment: Text.AlignVCenter
         font.pixelSize: (height)
 
+
         text: "Dummy"
-        color: "grey"
+        color: "black"
+        font.bold: true
+//        Rectangle {
+//            anchors.fill: parent
+//            color: "red"
+//            opacity: 0.5
+//        }
     }
 
     Image {
         id: match_60_40_box
         visible: true
         source: "qrc:/images/leftPanel/match_60_40_box.png"
-        x: ((parent.width/rootItemWidth)*24)
-        y: ((parent.height/rootItemHeight)*181)
-        opacity: 0
-        width: ((parent.width/rootItemWidth)*sourceSize.width)
-        height: ((parent.height/rootItemHeight)*sourceSize.height)
+        x: ((parent.width/rootItemWidth)*24) - height/2
+        y: ((parent.height/rootItemHeight)*181)-offsetDisplacement/2
+        opacity: 1
+        width: parent.width - (2*x) //((parent.width/rootItemWidth)*sourceSize.width)
+        height: ((parent.height/rootItemHeight)*sourceSize.height)*2
+
+        Rectangle {
+            anchors.fill: parent
+            color: "#0072BC"
+        }
     }
     Text {
         id: matchText
@@ -379,11 +453,12 @@ Item {
         height: ((parent.height/rootItemHeight)*match_60_40_box.sourceSize.height)
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
-        font.pixelSize: (height)
+        font.pixelSize: (height*1.2)
 
         text: "Dummy"
         color: "white"
         anchors.centerIn: match_60_40_box
+        opacity: 1
     }
 
     Image {
@@ -423,6 +498,17 @@ Item {
         font.pixelSize: (height)
 
         text: "Dummy"
+        color: "white"
+    }
+    Image {
+        id: gameDisplayImage
+        source: gameDisplayText2.text == "PISTOL" ? "qrc:/images/loginPage/iconPistol.png" : "qrc:/images/loginPage/iconRifle.png"
+        anchors.top: pistol_box.top
+        anchors.left: pistol_box.left
+        width: ((parent.height/rootItemHeight)*pistol_box.sourceSize.width)
+        height: ((parent.height/rootItemHeight)*pistol_box.sourceSize.height)
+        horizontalAlignment: Text.AlignHCenter
+        verticalAlignment: Text.AlignVCenter
     }
     Text {
         id: gameDisplayText2
@@ -435,6 +521,7 @@ Item {
         font.pixelSize: (height)
         text: "Dummy"
         color: "white"
+        opacity: 0
     }
 
     function showSummary()
@@ -461,5 +548,86 @@ Item {
     function enableSighterMode(enableFlag)
     {
         sighter_selected.visible = enableFlag
+    }
+
+    // png text
+    Text {
+        id: dConnectionText
+        x: device_connected.x + (device_connected.width/2) - (width/2) - 10
+        y: device_connected.y + (device_connected.height/2) - (height/2) - 2
+        text : device_connected.opacity == 1 ? qsTr("Device connected") : qsTr("Device not connected")
+        width: implicitWidth
+        height: implicitHeight
+        color: "white"
+        font.pointSize: 8
+        visible: device_connected.visible
+    }
+    Text {
+        id: homeText
+        x: home_clicked.x + (home_clicked.width/2) - (width/2) - 15
+        y: home_clicked.y + (home_clicked.height/2) - (height/2)
+        text : qsTr("Home")
+        width: implicitWidth
+        height: implicitHeight
+        color: "white"
+        font.pointSize: 10
+
+        visible: home_unclicked.visible
+        opacity: 0
+    }
+    Text {
+        id: matchReportText
+        x: match_report_clicked.x + (match_report_clicked.width/2) - (width/2) - 15
+        y: match_report_clicked.y + (match_report_clicked.height/2) - (height/2)
+        text : qsTr("Match report")
+        width: implicitWidth
+        height: implicitHeight
+        color: "white"
+        font.pointSize: 10
+        opacity: 0
+    }
+    Text {
+        id: settingText
+        x: settings_clicked.x + (settings_clicked.width/2) - (width/2) - 15
+        y: settings_clicked.y + (settings_clicked.height/2) - (height/2)
+        text : qsTr("Settings")
+        width: implicitWidth
+        height: implicitHeight
+        color: "white"
+        font.pointSize: 10
+        opacity: 0
+    }
+    Text {
+        id: summaryText
+        x: summery_clicked.x + (summery_clicked.width/2) - (width/2) - 15
+        y: summery_clicked.y + (summery_clicked.height/2) - (height/2)
+        text : qsTr("Summary")
+        width: implicitWidth
+        height: implicitHeight
+        color: "white"
+        font.pointSize: 10
+        opacity: 0
+    }
+    Text {
+        id: sighterText
+        width: ((parent.width/rootItemWidth)*sighter_selected.sourceSize.width)
+        height: ((parent.height/rootItemHeight)*sighter_selected.sourceSize.height) / 2
+        x: sighter_selected.x - 5
+        y: sighter_selected.y + (height/8) - 5
+        horizontalAlignment: Text.AlignHCenter
+        verticalAlignment: Text.AlignVCenter
+        font.pixelSize: (matchText.height) + 5
+        text : qsTr("SIGHTER")
+        color: "white"
+        opacity: 0
+    }
+
+    function startFromServer()
+    {
+        home_clicked.enabled = false;
+        home_unclicked.enabled = false;
+        settings_clicked.enabled = false;
+        settings_unclicked.enabled = false;
+//        homeButtonClicked().visible = false;
     }
 }

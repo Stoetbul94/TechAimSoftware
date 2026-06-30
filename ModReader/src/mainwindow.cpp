@@ -6,6 +6,7 @@
 #include <QMessageBox>
 #include <QFileDialog>
 #include <QSerialPortInfo>
+#include <logfile.h>
 
 #include "../3rdparty/QsLog/QsLog.h"
 #include "mainwindow.h"
@@ -180,7 +181,11 @@ void MainWindow::showSettings()
 
     if (m_dlgSettings->exec()==QDialog::Accepted) {
         QLOG_TRACE()<<  "Settings changes accepted ";
+        LogFile::instance().appendToLogFile(QString("Srinivas - m_modbus->rawModel->setMaxNoOfLines %1").arg(m_modbusCommSettings->maxNoOfLines()),
+                                            LogType::BackendLevel);
         m_modbus->rawModel->setMaxNoOfLines(m_modbusCommSettings->maxNoOfLines().toInt());
+        LogFile::instance().appendToLogFile(QString("Srinivas - m_modbusCommSettings->timeOut() %1").arg(m_modbusCommSettings->timeOut()),
+                                            LogType::BackendLevel);
         m_modbus->setTimeOut(m_modbusCommSettings->timeOut().toInt());
         m_modbusCommSettings->saveSettings();
     }
@@ -196,10 +201,11 @@ void MainWindow::showBusMonitor()
 
     //Show Bus Monitor
 
+    LogFile::instance().appendToLogFile(QString("Srinivas - m_modbus->rawModel->setMaxNoOfLines %1").arg(m_modbusCommSettings->maxNoOfLines()),
+                                        LogType::BackendLevel);
     m_modbus->rawModel->setMaxNoOfLines(m_modbusCommSettings->maxNoOfLines().toInt());
     m_busMonitor->move(this->x() + this->width() + 20, this->y());
     m_busMonitor->show();
-
 }
 
 void MainWindow::changedModbusMode(int currIndex)
@@ -235,6 +241,9 @@ void MainWindow::changedFunctionCode(int currIndex)
     QString String_number_of_coils(tr("Number of Coils"));
     QString String_number_of_inputs(tr("Number of Inputs"));
     QString String_number_of_registers(tr("Number of Registers"));
+    LogFile::instance().appendToLogFile(QString("Srinivas - functionCode %1").arg(functionCode),
+                                        LogType::BackendLevel);
+
     switch(functionCode)//Label = Read Request, Write Request
     {
         case MODBUS_FC_READ_COILS:
@@ -291,6 +300,8 @@ void MainWindow::changedFunctionCode(int currIndex)
                 break;
      }
 
+    LogFile::instance().appendToLogFile(QString("Srinivas - setNumOfRegs %1").arg(ui->sbNoOfRegs->value()),
+                                        LogType::BackendLevel);
     m_modbus->setNumOfRegs(ui->sbNoOfRegs->value());
     addItems();
 
@@ -305,6 +316,8 @@ void MainWindow::changedBase(int currIndex)
     m_modbusCommSettings->setBase(currIndex);
     m_modbusCommSettings->saveSettings();
 
+    LogFile::instance().appendToLogFile(QString("Srinivas - changedBase %1").arg(currIndex),
+                                        LogType::BackendLevel);
     switch(currIndex)
     {
         case 0:
@@ -332,6 +345,8 @@ void MainWindow::changedScanRate(int value)
     m_modbusCommSettings->setScanRate(value);
     m_modbusCommSettings->saveSettings();
 
+    LogFile::instance().appendToLogFile(QString("Srinivas - setscanrate %1").arg(value),
+                                        LogType::BackendLevel);
     m_modbus->setScanRate(value);
 
 }
@@ -348,6 +363,9 @@ void MainWindow::changedConnect(bool value, QString portName)
         modbusConnect(false);
         QLOG_INFO()<<  "Disconnected ";
     }
+
+    LogFile::instance().appendToLogFile(QString("Srinivas - resetcounter"),
+                                        LogType::BackendLevel);
 
     m_modbus->resetCounters();
     refreshView();
@@ -399,6 +417,8 @@ void MainWindow::changedStartAddrBase(int currIndex)
     QLOG_TRACE()<<  "Start Addr Base changed. Index = " << currIndex;
     QLOG_ERROR()<<  "Start Addr Base changed. Index = " << currIndex;
 
+    LogFile::instance().appendToLogFile(QString("Srinivas - changedStartAddrBase %1").arg(currIndex),
+                                        LogType::BackendLevel);
     switch(currIndex)
     {
         case 0:
@@ -426,6 +446,8 @@ void MainWindow::changedStartAddress(int value)
     m_modbusCommSettings->setStartAddr(value);
     m_modbusCommSettings->saveSettings();
 
+    LogFile::instance().appendToLogFile(QString("Srinivas - setStartAddr %1").arg(value),
+                                        LogType::BackendLevel);
     m_modbus->setStartAddr(value);
     addItems();
 
@@ -442,6 +464,9 @@ QStringList MainWindow::getData()
     if (m_modbus)
     {
         QLOG_ERROR() << m_modbus->rawModel->getMaxNoOfLine();
+        LogFile::instance().appendToLogFile(QString("Srinivas - model stringlist %1").arg(m_modbus->rawModel->model->stringList().join(" ")),
+                                            LogType::BackendLevel);
+
         return m_modbus->rawModel->model->stringList();
     }
 }
@@ -474,6 +499,8 @@ void MainWindow::changedNoOfRegs(int value)
     m_modbusCommSettings->setNoOfRegs(value);
     m_modbusCommSettings->saveSettings();
 
+    LogFile::instance().appendToLogFile(QString("Srinivas - setNumOfRegs %1").arg(value),
+                                        LogType::BackendLevel);
     m_modbus->setNumOfRegs(value);
     addItems();
 
@@ -521,6 +548,14 @@ void MainWindow::addItems()
 
     //add items
 
+    LogFile::instance().appendToLogFile(QString("Srinivas - setSlave %1").arg(ui->sbSlaveID->value()),
+                                        LogType::BackendLevel);
+    LogFile::instance().appendToLogFile(QString("Srinivas - setFunctionCode %1").arg(ui->cmbFunctionCode->currentIndex()),
+                                        LogType::BackendLevel);
+    LogFile::instance().appendToLogFile(QString("Srinivas - setStartAddr %1").arg(ui->sbStartAddress->value()),
+                                        LogType::BackendLevel);
+    LogFile::instance().appendToLogFile(QString("Srinivas - setNumOfRegs %1").arg(ui->sbNoOfRegs->value()),
+                                        LogType::BackendLevel);
     m_modbus->setSlave(ui->sbSlaveID->value());
     m_modbus->setFunctionCode(EUtils::ModbusFunctionCode(ui->cmbFunctionCode->currentIndex()));
     m_modbus->setStartAddr(ui->sbStartAddress->value());
@@ -565,6 +600,14 @@ void MainWindow::request()
     //get base address
     baseAddr = m_modbusCommSettings->baseAddr().toInt();
 
+    LogFile::instance().appendToLogFile(QString("Srinivas -- setSlave %1").arg(ui->sbSlaveID->value()),
+                                        LogType::BackendLevel);
+    LogFile::instance().appendToLogFile(QString("Srinivas -- setFunctionCode %1").arg(ui->cmbFunctionCode->currentIndex()),
+                                        LogType::BackendLevel);
+    LogFile::instance().appendToLogFile(QString("Srinivas -- setStartAddr %1").arg(ui->sbStartAddress->value()),
+                                        LogType::BackendLevel);
+    LogFile::instance().appendToLogFile(QString("Srinivas -- setNumOfRegs %1").arg(ui->sbNoOfRegs->value()),
+                                        LogType::BackendLevel);
     m_modbus->setSlave(ui->sbSlaveID->value());
     m_modbus->setFunctionCode(EUtils::ModbusFunctionCode(ui->cmbFunctionCode->currentIndex()));
     m_modbus->setStartAddr(ui->sbStartAddress->value() + baseAddr);
@@ -595,6 +638,14 @@ void MainWindow::scan(bool value)
    //get base address
    baseAddr = m_modbusCommSettings->baseAddr().toInt();
 
+   LogFile::instance().appendToLogFile(QString("Srinivas !- setSlave %1").arg(ui->sbSlaveID->value()),
+                                       LogType::BackendLevel);
+   LogFile::instance().appendToLogFile(QString("Srinivas !- setFunctionCode %1").arg(ui->cmbFunctionCode->currentIndex()),
+                                       LogType::BackendLevel);
+   LogFile::instance().appendToLogFile(QString("Srinivas !- setStartAddr %1").arg(ui->sbStartAddress->value()),
+                                       LogType::BackendLevel);
+   LogFile::instance().appendToLogFile(QString("Srinivas !- setNumOfRegs %1").arg(ui->sbNoOfRegs->value()),
+                                       LogType::BackendLevel);
    m_modbus->setSlave(ui->sbSlaveID->value());
    m_modbus->setFunctionCode(EUtils::ModbusFunctionCode(ui->cmbFunctionCode->currentIndex()));
    m_modbus->setStartAddr(ui->sbStartAddress->value() + baseAddr);
@@ -642,8 +693,24 @@ void MainWindow::modbusConnect(bool connect, QString portName)
     QLOG_ERROR()<<  "Port Name = " << portName;
     //ui->listWidget->addItem(QString("Port Name %3").arg(portName));
 
+    LogFile::instance().appendToLogFile(QString("Auto connecting to port number -> %1").arg(portName), LogType::interfaceLevel);
+
     if (connect) { //RTU
         if (ui->cmbModbusMode->currentIndex() == EUtils::RTU) {
+            LogFile::instance().appendToLogFile(QString("Srinivas - RTU "),
+                                                LogType::BackendLevel);
+            LogFile::instance().appendToLogFile(QString("Srinivas - setSlave %1").arg(ui->sbSlaveID->value()),
+                                                LogType::BackendLevel);
+            LogFile::instance().appendToLogFile(QString("Srinivas - portname %1 %2 %3 %4 %5 %6 %7")
+                                                .arg(portName)
+                                                .arg(m_modbusCommSettings->baud())
+                                                .arg(m_modbusCommSettings->parity())
+                                                .arg(m_modbusCommSettings->dataBits())
+                                                .arg(m_modbusCommSettings->stopBits())
+                                                .arg(m_modbusCommSettings->RTS())
+                                                .arg(m_modbusCommSettings->timeOut()),
+                                                LogType::BackendLevel);
+
             m_modbus->setSlave(ui->sbSlaveID->value());
             m_modbus->modbusConnectRTU(portName,
                                         m_modbusCommSettings->baud().toInt(),
@@ -655,6 +722,11 @@ void MainWindow::modbusConnect(bool connect, QString portName)
                                         );
         }
         else { //TCP
+            LogFile::instance().appendToLogFile(QString("Srinivas - tcp %1 %2 %3")
+                                                .arg(m_modbusCommSettings->slaveIP())
+                                                .arg(m_modbusCommSettings->TCPPort())
+                                                .arg(m_modbusCommSettings->timeOut()),
+                                                LogType::BackendLevel);
             m_modbus->modbusConnectTCP(m_modbusCommSettings->slaveIP(),
                                        m_modbusCommSettings->TCPPort().toInt(),
                                        m_modbusCommSettings->timeOut().toInt());
@@ -690,6 +762,8 @@ void MainWindow::modbusConnect(bool connect, QString portName)
 
 void MainWindow::loadSession()
 {
+
+    LogFile::instance().appendToLogFile("Srinivas Load session", LogType::BackendLevel);
 QString fName;
 
      QLOG_TRACE()<<  "load session";
@@ -720,6 +794,7 @@ QString fName;
 
 void MainWindow::saveSession()
 {
+    LogFile::instance().appendToLogFile("Srinivas save session", LogType::BackendLevel);
 QString fName;
 
      QLOG_TRACE()<<  "save session";
@@ -750,6 +825,22 @@ void MainWindow::showUpInfoBar(QString message, InfoBar::InfoType type)
 void MainWindow::hideInfoBar()
 {
     ui->infobar->hide();
+}
+
+void MainWindow::tachusReconfigurePortNumber()
+{
+    QLOG_ERROR()<<"Srinivas ->" << QSerialPortInfo::availablePorts().count();
+    foreach (auto currentSerialInfo, QSerialPortInfo::availablePorts() )
+    {
+        QString port = currentSerialInfo.portName();
+        if (port.isEmpty())
+            continue;
+
+        QLOG_ERROR()<<"Srinivas ->" << currentSerialInfo.portName();
+        port.remove("COM");
+        QLOG_ERROR() << "Srinivas -> " << port;
+        m_dlgModbusRTU->tachusChanges(port);
+    }
 }
 
 void MainWindow::changeEvent(QEvent* event)

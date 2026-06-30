@@ -15,11 +15,11 @@ Item {
     property alias currentGameDisplay2: leftPanel.gameDisplay2
     property alias currentmatchDisplay: leftPanel.matchDisplay
     property alias totalScore : rightPanel.grandTotal
+    property alias totalScoreWithoutDecimal: rightPanel.grandTotalExculdeDec
     property alias totalTime: rightPanel.totalTimeConsume
 
     property alias isBackgroudBlack: settingsPage.isBackGroundBlack
     property alias isPalletRed: settingsPage.isPalletRedColor
-
     property alias currentPageIndexOfSer: rightPanel.currentPageIndex
 
     property bool sligterMode: true
@@ -32,6 +32,10 @@ Item {
     property string minimumShotsSummary: "Minimum 10 shots required to generate Summary"
     property string minimumShotsMatchReport: "Minimum 10 shots required to generate Match Report"
 
+    onTotalScoreChanged: {
+        console.log("Total score changed ............................"+ totalScore)
+
+    }
 
     MessageDialog
     {
@@ -113,39 +117,92 @@ Item {
         onCountChanged: {
             centerPanel.disableMotorMovement = false
             centerPanel.currentPageIndexChanged()
+            console.log("globalModelOfData count changes ", count)
         }
     }
 
     ListModel
     {
         id:globalSlighterModel
+        onCountChanged: {
+            console.log("******globalSlighterModel****"+count)
+        }
     }
 
     ListModel
     {
         id:globalMatchModel
+        onCountChanged: {
+            console.log("******globalMatchModel****"+count)
+        }
+    }
+
+    function loadGameInMatchMode() {
+        rightPanel.startClickedThroughLoad()
+        sligterMode = false
+        centerPanel.showSlighter(false)
     }
 
     function setCurrentGameType(index)
     {
-        if (index >= gameEventModel.count)
-            return
+        console.log("setCurrentGameType  ", index)
+        if (gameRange === 10)
+        {
+            // if 15 shoots
+            if (APPSETTINGS.getIs15Shoot()) {
+                if (index >= game10RangeEventModel_15.count)
+                    return
 
-        matchShootCount = gameEventModel.get(index).count
-        currentGameDisplay1 = gameEventModel.get(index).gameDisplay1
-        currentGameDisplay2 = gameEventModel.get(index).gameDisplay2
-        currentmatchDisplay = gameEventModel.get(index).matchDisplay
+                matchShootCount = game10RangeEventModel_15.get(index).count
+                currentGameDisplay1 = game10RangeEventModel_15.get(index).gameDisplay1
+                currentGameDisplay2 = game10RangeEventModel_15.get(index).gameDisplay2
+                currentmatchDisplay = game10RangeEventModel_15.get(index).matchDisplay
+            } else {
+                if (index >= game10RangeEventModel.count)
+                    return
+
+                matchShootCount = game10RangeEventModel.get(index).count
+                currentGameDisplay1 = game10RangeEventModel.get(index).gameDisplay1
+                currentGameDisplay2 = game10RangeEventModel.get(index).gameDisplay2
+                currentmatchDisplay = game10RangeEventModel.get(index).matchDisplay
+            }
+        } else if (gameRange === 50) {
+            // if 15 shoots
+            if (APPSETTINGS.getIs15Shoot()) {
+                if (index >= game50RangeEventModel_15.count)
+                    return
+
+                matchShootCount = game50RangeEventModel_15.get(index).count
+                currentGameDisplay1 = game50RangeEventModel_15.get(index).gameDisplay1
+                currentGameDisplay2 = game50RangeEventModel_15.get(index).gameDisplay2
+                currentmatchDisplay = game50RangeEventModel_15.get(index).matchDisplay
+            } else {
+                if (index >= game50RangeEventModel.count)
+                    return
+
+                matchShootCount = game50RangeEventModel.get(index).count
+                currentGameDisplay1 = game50RangeEventModel.get(index).gameDisplay1
+                currentGameDisplay2 = game50RangeEventModel.get(index).gameDisplay2
+                currentmatchDisplay = game50RangeEventModel.get(index).matchDisplay
+            }
+
+    }
     }
 
     onVisibleChanged: {
-        if (visible)
+        if (visible) {
             centerPanel.circleCordinates()
+            rightPanel.resetTimer()
+        }
+        if (!isSaveGame)
+            MODREADER.removeSetaLaneShootDataFile()
     }
 
     onMatchShootCountChanged: {
         centerPanel.shotCount = matchShootCount
 //        console.log(APPSETTINGS.getTimeCount(matchShootCount)," Match Shoot count is ",matchShootCount)
         centerPanel.totalGameTime = APPSETTINGS.getTimeCount(matchShootCount)
+        MODREADER.setCurrentMatchTotalShotsCount(matchShootCount)
     }
 
     LeftPanel {
@@ -199,9 +256,32 @@ Item {
         anchors.right: rightPanel.left
         anchors.top: parent.top
 
+        property alias showMesures: leftPanel.isShowMPI
+
+
         onPointAddedToSeries: {
             rightPanel.addToSeries(xPosition,yPosition,currentCalculatedScore)
             console.log("x ", xPosition, " y ", yPosition, " score ", currentCalculatedScore, " matchShootCount ", matchShootCount)
+
+        }
+
+        onSighterModeTimerEnds: {
+            changedToMatchMode()
+
+        }
+
+        onShowMesuresChanged: {
+            refreshShowMesureStatus(showMesures)
+        }
+
+        Text {
+            anchors.bottom: parent.bottom
+            anchors.horizontalCenter: parent.horizontalCenter
+            text: window.userName
+            font.pixelSize: 32
+            font.capitalization: Font.AllUppercase
+            font.bold: true
+            color: "red"
         }
     }
 
@@ -211,6 +291,9 @@ Item {
         visible: false
         width:parent.width*3/4
         height:parent.height*3/4
+
+        contentWidth: parent.width*3/4
+        contentHeight: parent.height*3/4
 
         onVisibleChanged: {
             if (visible)
@@ -236,6 +319,28 @@ Item {
         }
     }
 
+    Connections {
+        target: APPSETTINGS
+        onPrintPDF: {
+            if (leftPanel.playVisible)
+                return;
+
+            matchReportPage.isAutoPrintOn = true
+            matchReportPage.visible = true
+            console.log("-APPSETTINGS-----------------------------onPrintPDF--------------------------")
+//            matchReportPage.printImageInNetworkPath()
+        }
+    }
+    ConnectionError {
+        id: conError
+        z: 10
+        height: parent.height// - header.height
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        visible: false
+    }
+
     function resetDataModels()
     {
         globalModelOfData.clear()
@@ -244,6 +349,7 @@ Item {
         matchFinished = false
         rightPanel.resetRightPanelModels()
         centerPanel.refreshCentralPanelPage()
+        centerPanel.backEndShootCount = 0
     }
 
     function changedToSigherMode()
@@ -257,9 +363,11 @@ Item {
             globalModelOfData.append(globalSlighterModel.get(index))
         }
         sligterMode = true
+        MODREADER.changeSighterMode(true)
         rightPanel.updateTotal()
         centerPanel.currentPageIndexChanged()
         centerPanel.disableMotorMovement = false
+        APPSETTINGS.updateStatusFeedbackFile(2)
     }
 
     function changedToMatchMode()
@@ -268,11 +376,19 @@ Item {
         centerPanel.showSlighter(false)
         leftPanel.enableSighterMode(false)
         globalModelOfData.clear()
+        //console.log("**************globalMatchModel.count**************"+globalMatchModel.count)
         for(var index = 0; index <globalMatchModel.count; ++index )
         {
             globalModelOfData.append(globalMatchModel.get(index))
         }
+        //console.log("***********globalModelOfData*****************"+globalModelOfData.count)
         sligterMode = false
+        MODREADER.changeSighterMode(false)
+        //console.log("***********backEndShootCount*****************"+centerPanel.backEndShootCount)
+        centerPanel.backEndShootCount = 0
+        //console.log("***********backEndShootCount*****************"+centerPanel.backEndShootCount)
+        APPSETTINGS.setGame_is_sighter_mode(0)
+        APPSETTINGS.updateStatusFeedbackFile(3)
         rightPanel.updateTotal()
         centerPanel.currentPageIndexChanged()
         centerPanel.disableMotorMovement = false
@@ -295,4 +411,18 @@ Item {
         return (new Array(length+1).join(pad)+string).slice(-length);
     }
 
+    function startFromServer()
+    {
+//        rightPanel.startFromServer()
+//        settingsPage.startFromServer()
+//        leftPanel.startFromServer()
+//        centerPanel.startFromServer()
+    }
+
+    function applyServerSettings(st, mt, spf,mpf)
+    {
+        centerPanel.totalGameTime = mt*60
+        centerPanel.totalSighterTime = st*60
+//        centerPanel.s
+    }
 }

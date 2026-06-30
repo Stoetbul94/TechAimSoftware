@@ -2,7 +2,7 @@ import QtQuick 2.7
 import QtQuick.Controls 2.0
 import QtQuick.Layouts 1.3
 import QtWinExtras 1.0
-import QtQuick.Window 2.2
+import QtQuick.Window 2.3
 
 ApplicationWindow {
     id: window
@@ -11,7 +11,9 @@ ApplicationWindow {
     height: 480
     title: qsTr("Hello World")
 
+    property bool isOpenGLEnabled: true
     property string userName: "Tachus"
+    property string lane_number_text: "Lane1"
     property string eventName: shootingPage.currentGameDisplay1 + " " + shootingPage.currentGameDisplay2
     property string eventDate: "9/3/2017 4:34 PM"
     property string numberOfShots: "10"
@@ -21,114 +23,422 @@ ApplicationWindow {
     property int totalTime: shootingPage.totalTime
     property int scWidth: Screen.width
     property int scHeight: Screen.height
-    property bool isDefaultIcon: APPSETTINGS.getBrandName() == "tachus" ? true : false // true for tachus and false for seta
+    property bool isDefaultIcon: false //APPSETTINGS.getBrandName() == "tachus" ? true : false // true for tachus and false for seta
     property bool appMode: APPSETTINGS.getAppMode() // false for demo and true for live
     property bool isSaveGame: false
+    property int gameRange: APPSETTINGS.get10or50mRange()   // 10 for 10m 50 for 50m
+    property int shootsPerSeries: 10
+    property string greenColor: "#00ff00" //"lightgreen"
+    property string mpiColor: /*"transparent"//*/"blue"
+    property bool isSingleDecimal: APPSETTINGS.getIsSingleDecimal()
+
+    //property string valueString: ""
+
+    signal appVisiblityModeChanged(int mode)
 
     flags: Qt.FramelessWindowHint | Qt.Window
+
+    function scoreCutoffTofirstDecimal(value) {
+        return MODREADER.getFormatedSCore(value).toFixed(2)
+    }
 
     ListModel
     {
         id:globalModelOfData
+        onCountChanged: {
+            console.log("******globalModelOfData****"+count)
+        }
     }
 
     ListModel {
-        id: gameEventModel
+        id: game10RangeEventModel
+
+            ListElement {
+                name: qsTr("10M AIR RIFLE FREE")
+                count: -1
+                gameDisplay1: qsTr("10M AIR")
+                gameDisplay2: qsTr("RIFLE")
+                matchDisplay: qsTr("UN-LIMITED")
+            }
+            ListElement {
+            name: qsTr("10M AIR RIFLE 10")
+            count: 10
+            gameDisplay1: qsTr("10M AIR")
+            gameDisplay2: qsTr("RIFLE")
+            matchDisplay: qsTr("MATCH-10")
+        }
+        ListElement {
+            name: qsTr("10M AIR RIFLE 20")
+            count: 20
+            gameDisplay1: qsTr("10M AIR")
+            gameDisplay2: qsTr("RIFLE")
+            matchDisplay: qsTr("MATCH-20")
+        }
 
         ListElement {
-            name: "10M AIR RIFLE FREE"
-            count: -1
-            gameDisplay1: "10M AIR"
-            gameDisplay2: "RIFLE"
-            matchDisplay: "UN-LIMITED"
-        }
-        ListElement {
-            name: "10M AIR RIFLE 10"
-            count: 10
-            gameDisplay1: "10M AIR"
-            gameDisplay2: "RIFLE"
-            matchDisplay: "MATCH-10"
-        }
-        ListElement {
-            name: "10M AIR RIFLE 20"
-            count: 20
-            gameDisplay1: "10M AIR"
-            gameDisplay2: "RIFLE"
-            matchDisplay: "MATCH-20"
-        }
-        ListElement {
-            name: "10M AIR RIFLE 30"
+            name: qsTr("10M AIR RIFLE 30")
             count: 30
-            gameDisplay1: "10M AIR"
-            gameDisplay2: "RIFLE"
-            matchDisplay: "MATCH-30"
+            gameDisplay1: qsTr("10M AIR")
+            gameDisplay2: qsTr("RIFLE")
+            matchDisplay: qsTr("MATCH-30")
         }
         ListElement {
-            name: "10M AIR RIFLE 40"
+            name: qsTr("10M AIR RIFLE 40")
             count: 40
-            gameDisplay1: "10M AIR"
-            gameDisplay2: "RIFLE"
-            matchDisplay: "MATCH-40"
+            gameDisplay1: qsTr("10M AIR")
+            gameDisplay2: qsTr("RIFLE")
+            matchDisplay: qsTr("MATCH-40")
         }
         ListElement {
-            name: "10M AIR RIFLE 60"
+            name: qsTr("10M AIR RIFLE 60")
             count: 60
-            gameDisplay1: "10M AIR"
-            gameDisplay2: "RIFLE"
-            matchDisplay: "MATCH-60"
+            gameDisplay1: qsTr("10M AIR")
+            gameDisplay2: qsTr("RIFLE")
+            matchDisplay: qsTr("MATCH-60")
         }
         ListElement {
-            name: "10M AIR PISTOL FREE"
+            name: qsTr("10M AIR PISTOL FREE")
             count: -1
-            gameDisplay1: "10M AIR"
-            gameDisplay2: "PISTOL"
-            matchDisplay: "UN-LIMITED"
+            gameDisplay1: qsTr("10M AIR")
+            gameDisplay2: qsTr("PISTOL")
+            matchDisplay: qsTr("UN-LIMITED")
         }
         ListElement {
-            name: "10M AIR PISTOL 10"
+            name: qsTr("10M AIR PISTOL 10")
             count: 10
-            gameDisplay1: "10M AIR"
-            gameDisplay2: "PISTOL"
-            matchDisplay: "MATCH-10"
+            gameDisplay1: qsTr("10M AIR")
+            gameDisplay2: qsTr("PISTOL")
+            matchDisplay: qsTr("MATCH-10")
         }
         ListElement {
-            name: "10M AIR PISTOL 20"
+            name: qsTr("10M AIR PISTOL 20")
             count: 20
-            gameDisplay1: "10M AIR"
-            gameDisplay2: "PISTOL"
-            matchDisplay: "MATCH-20"
-        }
+            gameDisplay1: qsTr("10M AIR")
+            gameDisplay2: qsTr("PISTOL")
+            matchDisplay: qsTr("MATCH-20")
+        
+	        }
         ListElement {
-            name: "10M AIR PISTOL 30"
+            name: qsTr("10M AIR PISTOL 30")
             count: 30
-            gameDisplay1: "10M AIR"
-            gameDisplay2: "PISTOL"
-            matchDisplay: "MATCH-30"
+            gameDisplay1: qsTr("10M AIR")
+            gameDisplay2: qsTr("PISTOL")
+            matchDisplay: qsTr("MATCH-30")
         }
         ListElement {
-            name: "10M AIR PISTOL 40"
+            name: qsTr("10M AIR PISTOL 40")
             count: 40
-            gameDisplay1: "10M AIR"
-            gameDisplay2: "PISTOL"
-            matchDisplay: "MATCH-40"
+            gameDisplay1: qsTr("10M AIR")
+            gameDisplay2: qsTr("PISTOL")
+            matchDisplay: qsTr("MATCH-40")
         }
         ListElement {
-            name: "10M AIR PISTOL 60"
+            name: qsTr("10M AIR PISTOL 60")
             count: 60
-            gameDisplay1: "10M AIR"
-            gameDisplay2: "PISTOL"
-            matchDisplay: "MATCH-60"
+            gameDisplay1: qsTr("10M AIR")
+            gameDisplay2: qsTr("PISTOL")
+            matchDisplay: qsTr("MATCH-60")
+
+        }
+    }
+
+    ListModel {
+        id: game10RangeEventModel_15
+
+        ListElement {
+            name: qsTr("10M AIR RIFLE FREE")
+            count: -1
+            gameDisplay1: qsTr("10M AIR")
+            gameDisplay2: qsTr("RIFLE")
+            matchDisplay: qsTr("UN-LIMITED")
+        }
+        ListElement {
+            name: qsTr("10M AIR RIFLE 10")
+            count: 10
+            gameDisplay1: qsTr("10M AIR")
+            gameDisplay2: qsTr("RIFLE")
+            matchDisplay: qsTr("MATCH-10")
+        }
+        ListElement {
+            name: qsTr("10M AIR RIFLE 15")
+            count: 15
+            gameDisplay1: qsTr("10M AIR")
+            gameDisplay2: qsTr("RIFLE")
+            matchDisplay: qsTr("MATCH-15")
+        }
+        ListElement {
+            name: qsTr("10M AIR RIFLE 20")
+            count: 20
+            gameDisplay1: qsTr("10M AIR")
+            gameDisplay2: qsTr("RIFLE")
+            matchDisplay: qsTr("MATCH-20")
+        }
+        ListElement {
+            name: qsTr("10M AIR RIFLE 30")
+            count: 30
+            gameDisplay1: qsTr("10M AIR")
+            gameDisplay2: qsTr("RIFLE")
+            matchDisplay: qsTr("MATCH-30")
+        }
+        ListElement {
+            name: qsTr("10M AIR RIFLE 40")
+            count: 40
+            gameDisplay1: qsTr("10M AIR")
+            gameDisplay2: qsTr("RIFLE")
+            matchDisplay: qsTr("MATCH-40")
+        }
+        ListElement {
+            name: qsTr("10M AIR PISTOL FREE")
+            count: -1
+            gameDisplay1: qsTr("10M AIR")
+            gameDisplay2: qsTr("PISTOL")
+            matchDisplay: qsTr("UN-LIMITED")
+        }
+        ListElement {
+            name: qsTr("10M AIR PISTOL 10")
+            count: 10
+            gameDisplay1: qsTr("10M AIR")
+            gameDisplay2: qsTr("PISTOL")
+            matchDisplay: qsTr("MATCH-10")
+        }
+        ListElement {
+            name: qsTr("10M AIR PISTOL 15")
+            count: 15
+            gameDisplay1: qsTr("10M AIR")
+            gameDisplay2: qsTr("PISTOL")
+            matchDisplay: qsTr("MATCH-15")
+        }
+        ListElement {
+            name: qsTr("10M AIR PISTOL 20")
+            count: 20
+            gameDisplay1: qsTr("10M AIR")
+            gameDisplay2: qsTr("PISTOL")
+            matchDisplay: qsTr("MATCH-20")
+        }
+        ListElement {
+            name: qsTr("10M AIR PISTOL 30")
+            count: 30
+            gameDisplay1: qsTr("10M AIR")
+            gameDisplay2: qsTr("PISTOL")
+            matchDisplay: qsTr("MATCH-30")
+        }
+        ListElement {
+            name: qsTr("10M AIR PISTOL 40")
+            count: 40
+            gameDisplay1: qsTr("10M AIR")
+            gameDisplay2: qsTr("PISTOL")
+            matchDisplay: qsTr("MATCH-40")
+        }
+    }
+
+
+//    ListModel {
+//        id: gameEventModel
+//    }
+
+//    ListView {
+//        id: gemeEventListView
+//        visible: false
+//        model: gameRange === 10 ? game10RangeEventModel : game50RangeEventModel
+//    }
+
+    ListModel {
+        id: game50RangeEventModel
+
+        ListElement {
+            name: qsTr("50 Meter RIFLE FREE")
+            count: -1
+            gameDisplay1: qsTr("50 Meter")
+            gameDisplay2: qsTr("RIFLE")
+            matchDisplay: qsTr("UN-LIMITED")
+        }
+        ListElement {
+            name: qsTr("50 Meter RIFLE 10")
+            count: 10
+            gameDisplay1: qsTr("50 Meter")
+            gameDisplay2: qsTr("RIFLE")
+            matchDisplay: qsTr("MATCH-10")
+        }
+        ListElement {
+            name: qsTr("50 Meter RIFLE 20")
+            count: 20
+            gameDisplay1: qsTr("50 Meter")
+            gameDisplay2: qsTr("RIFLE")
+            matchDisplay: qsTr("MATCH-20")
+        } 
+	        ListElement {
+            name: qsTr("50 Meter RIFLE 30")
+            count: 30
+            gameDisplay1: qsTr("50 Meter")
+            gameDisplay2: qsTr("RIFLE")
+            matchDisplay: qsTr("MATCH-30")
+        }
+        ListElement {
+            name: qsTr("50 Meter RIFLE 40")
+            count: 40
+            gameDisplay1: qsTr("50 Meter")
+            gameDisplay2: qsTr("RIFLE")
+            matchDisplay: qsTr("MATCH-40")
+        }
+        ListElement {
+            name: qsTr("50 Meter RIFLE 60")
+            count: 60
+            gameDisplay1: qsTr("50 Meter")
+            gameDisplay2: qsTr("RIFLE")
+            matchDisplay: qsTr("MATCH-60")
+        }
+        ListElement {
+            name: qsTr("50 Meter Free PISTOL FREE")
+            count: -1
+            gameDisplay1: qsTr("50 Meter Free")
+            gameDisplay2: qsTr("PISTOL")
+            matchDisplay: qsTr("UN-LIMITED")
+        }
+        ListElement {
+            name: qsTr("50 Meter Free PISTOL 10")
+            count: 10
+            gameDisplay1: qsTr("50 Meter Free")
+            gameDisplay2: qsTr("PISTOL")
+            matchDisplay: qsTr("MATCH-10")
+        }
+        ListElement {
+            name: qsTr("50 Meter Free PISTOL 20")
+            count: 20
+            gameDisplay1: qsTr("50 Meter Free")
+            gameDisplay2: qsTr("PISTOL")
+            matchDisplay: qsTr("MATCH-20")
+        }
+
+        ListElement {
+            name: qsTr("50 Meter Free PISTOL 30")
+            count: 30
+            gameDisplay1: qsTr("50 Meter Free")
+            gameDisplay2: qsTr("PISTOL")
+            matchDisplay: qsTr("MATCH-30")
+        }
+        ListElement {
+            name: qsTr("50 Meter Free PISTOL 40")
+            count: 40
+            gameDisplay1: qsTr("50 Meter Free")
+            gameDisplay2: qsTr("PISTOL")
+            matchDisplay: qsTr("MATCH-40")
+        }
+        ListElement {
+            name: qsTr("50 Meter Free PISTOL 60")
+            count: 60
+            gameDisplay1: qsTr("50 Meter Free")
+            gameDisplay2: qsTr("PISTOL")
+            matchDisplay: qsTr("MATCH-60")
+        }
+    }
+
+    ListModel {
+        id: game50RangeEventModel_15
+
+        ListElement {
+            name: qsTr("50 Meter RIFLE FREE")
+            count: -1
+            gameDisplay1: qsTr("50 Meter")
+            gameDisplay2: qsTr("RIFLE")
+            matchDisplay: qsTr("UN-LIMITED")
+        }
+        ListElement {
+            name: qsTr("50 Meter RIFLE 10")
+            count: 10
+            gameDisplay1: qsTr("50 Meter")
+            gameDisplay2: qsTr("RIFLE")
+            matchDisplay: qsTr("MATCH-10")
+        }
+        ListElement {
+            name: qsTr("50 Meter RIFLE 15")
+            count: 15
+            gameDisplay1: qsTr("50 Meter")
+            gameDisplay2: qsTr("RIFLE")
+            matchDisplay: qsTr("MATCH-15")
+        }
+            ListElement {
+            name: qsTr("50 Meter RIFLE 20")
+            count: 20
+            gameDisplay1: qsTr("50 Meter")
+            gameDisplay2: qsTr("RIFLE")
+            matchDisplay: qsTr("MATCH-20")
+        }
+        ListElement {
+            name: qsTr("50 Meter RIFLE 30")
+            count: 30
+            gameDisplay1: qsTr("50 Meter")
+            gameDisplay2: qsTr("RIFLE")
+            matchDisplay: qsTr("MATCH-30")
+        }
+        ListElement {
+            name: qsTr("50 Meter RIFLE 40")
+            count: 40
+            gameDisplay1: qsTr("50 Meter")
+            gameDisplay2: qsTr("RIFLE")
+            matchDisplay: qsTr("MATCH-40")
+        }
+        ListElement {
+            name: qsTr("50 Meter Free PISTOL FREE")
+            count: -1
+            gameDisplay1: qsTr("50 Meter Free")
+            gameDisplay2: qsTr("PISTOL")
+            matchDisplay: qsTr("UN-LIMITED")
+        }
+        ListElement {
+            name: qsTr("50 Meter Free PISTOL 10")
+            count: 10
+            gameDisplay1: qsTr("50 Meter Free")
+            gameDisplay2: qsTr("PISTOL")
+            matchDisplay: qsTr("MATCH-10")
+        }
+        ListElement {
+            name: qsTr("50 Meter Free PISTOL 15")
+            count: 15
+            gameDisplay1: qsTr("50 Meter Free")
+            gameDisplay2: qsTr("PISTOL")
+            matchDisplay: qsTr("MATCH-15")
+        }
+
+        ListElement {
+            name: qsTr("50 Meter Free PISTOL 20")
+            count: 20
+            gameDisplay1: qsTr("50 Meter Free")
+            gameDisplay2: qsTr("PISTOL")
+            matchDisplay: qsTr("MATCH-20")
+        }
+        ListElement {
+            name: qsTr("50 Meter Free PISTOL 30")
+            count: 30
+            gameDisplay1: qsTr("50 Meter Free")
+            gameDisplay2: qsTr("PISTOL")
+            matchDisplay: qsTr("MATCH-30")
+        }
+        ListElement {
+            name: qsTr("50 Meter Free PISTOL 40")
+            count: 40
+            gameDisplay1: qsTr("50 Meter Free")
+            gameDisplay2: qsTr("PISTOL")
+            matchDisplay: qsTr("MATCH-40")
         }
     }
 
 
     Component.onCompleted: {
+        MODREADER.setIsSingleDecimal(isSingleDecimal)
         shootingPage.setCurrentGameType(1)
+        title = isDefaultIcon ? "TACHUS" : "SETA"
+        MODREADER.setGame_range(gameRange)
+        MODREADER.setShotPerSeries(shootsPerSeries)
         //MODREADER.on_pushButton_clicked();
     }
 
 //    visibility: "FullScreen"
     visibility: "Maximized"
+
+    onVisibilityChanged: {
+        console.log("wiiiiiin visibility changed .... ", visibility)
+        appVisiblityModeChanged(visibility)
+    }
 
     Rectangle {
         id: fullRect
@@ -144,6 +454,15 @@ ApplicationWindow {
         z: 5
 
         onMinimize: {
+            console.log("windows visibility ", window.visibility)
+
+            if (window.visibility == 2)
+                window.visibility = 5
+            else if (window.visibility == 5)
+                window.visibility = 2
+            else
+                window.visibility = 5
+
             window.visibility = "Minimized"
         }
 
@@ -167,21 +486,35 @@ ApplicationWindow {
         visible: !loginPage.visible
 
         Component.onCompleted: {
-            setCurrentGameType(7)
+            console.log("srinivas", MODREADER.getNetworkPath(), "ssssssssssssss")
+            if (MODREADER.getNetworkPath() == "") {
+                console.log("testing")
+                
+                setCurrentGameType(7)
+            }
+        }
+
+        onVisibleChanged: {
+            if (visible) {
+                APPSETTINGS.updateStatusFeedbackFile(2)
+            } else {
+                APPSETTINGS.updateStatusFeedbackFile(1)
+            }
         }
     }
 
     LoginPage {
         id: loginPage
 
+//        visible: false
         height: parent.height - header.height
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: header.bottom
         anchors.topMargin: 20
 
-        onUsernameChanged: {
-            window.userName = loginPage.username
+        onUsername_loginPageChanged: {
+            window.userName = loginPage.username_loginPage
         }
 
         onGameModeChanged: updateGameType()
@@ -202,8 +535,8 @@ ApplicationWindow {
                 else if (gameEvent === 4)
                     shootingPage.setCurrentGameType(11)
                 else
-                    shootingPage.setCurrentGameType(6)
-            } else {
+                    shootingPage.setCurrentGameType(6)           
+		     } else {
                 if (gameEvent === 0)
                     shootingPage.setCurrentGameType(1)
                 else if (gameEvent === 1)
@@ -214,11 +547,14 @@ ApplicationWindow {
                     shootingPage.setCurrentGameType(4)
                 else if (gameEvent === 4)
                     shootingPage.setCurrentGameType(5)
+
                 else
                     shootingPage.setCurrentGameType(0)
             }
-        }
     }
+           
+
+
 
 
     TaskbarButton {
@@ -249,4 +585,5 @@ ApplicationWindow {
         }
     }
 
+}
 }

@@ -115,5 +115,51 @@
         <file>images/centerPanel/rifle_blue.png</file>
         <file>images/loginPage/bg_tachus.png</file>
         <file>images/rightPanel/total_score_block_tachus.png</file>
+        <file>images/logo/tachus.png</file>
+        <file>images/logo/seta.png</file>
+        <file>images/centerPanel/50_meter.png</file>
+        <file>images/centerPanel/50_meter_blue.png</file>
+        <file>images/centerPanel/black_50_Rifle.png</file>
+        <file>images/centerPanel/blue_50_Rifle.png</file>
+        <file>images/logo/tachus_logo.png</file>
+        <file>images/loginPage/End User Agreement SETA-1.png</file>
+        <file>images/loginPage/End User Agreement SETA-2.png</file>
+        <file>images/loginPage/End User Agreement Tachus-1.png</file>
+        <file>images/settings/pellet_color_yellow_highlight.png</file>
+        <file>images/settings/pellet_color_yellow_no_highlight.png</file>
+        <file>images/header/maximize.jpeg</file>
+        <file>images/rightPanel/total_score_block_tachus_new.png</file>
+        <file>images/loginPage/green.png</file>
+        <file>images/loginPage/red.png</file>
+        <file>images/centerPanel/10mtr_green.png</file>
+        <file>images/centerPanel/10mtr_red.png</file>
+        <file>images/centerPanel/10mtr_yellow.png</file>
+        <file>images/centerPanel/Pistol bullet_50m.png</file>
+        <file>images/centerPanel/Pistol bullet_50mGreen.png</file>
+        <file>images/centerPanel/pYellow.svg</file>
+        <file>images/centerPanel/10m_green_red.png</file>
+        <file>images/centerPanel/10m_yellow_red.png.png</file>
+        <file>images/loginPage/network.png</file>
+        <file>images/loginPage/contact_us_crop.png</file>
+        <file>images/loginPage/iconPistol.png</file>
+        <file>images/loginPage/iconRifle.png</file>
+        <file>images/loginPage/Contact us_29Oct.png</file>
+        <file>images/loginPage/login_page_29Oct.png</file>
+        <file>images/loginPage/save_29Oct.png</file>
+        <file>images/leftPanel/Home_29Oct.png</file>
+        <file>images/leftPanel/play.png</file>
+        <file>images/leftPanel/home.jpeg</file>
+        <file>images/leftPanel/match.jpeg</file>
+        <file>images/leftPanel/setings.jpeg</file>
+        <file>images/leftPanel/summary.jpeg</file>
+        <file>images/leftPanel/home.png</file>
+        <file>images/leftPanel/match.png</file>
+        <file>images/leftPanel/settings.png</file>
+        <file>images/leftPanel/summary.png</file>
+        <file>images/leftPanel/target.jpg</file>
+        <file>images/leftPanel/target.png</file>
+        <file>images/centerPanel/10mtr_green1.png</file>
+        <file>images/centerPanel/10mtr_green1_normal.png</file>
+        <file>images/loginPage/combo_down.png</file>
     </qresource>
 </RCC>

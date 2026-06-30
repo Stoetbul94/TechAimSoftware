@@ -4,6 +4,7 @@
 #include "mainwindow.h"
 
 #include "ModReader/3rdparty/QsLog/QsLog.h"
+#include "../../logfile.h"
 #include <errno.h>
 
 ModbusAdapter *m_instance;
@@ -33,6 +34,7 @@ void ModbusAdapter::modbusConnectRTU(QString port, int baud, QChar parity, int d
     modbusDisConnect();
 
     QLOG_INFO()<<  "Modbus Connect RTU";
+    LogFile::instance().appendToLogFile(QString("ModbusAdapter "), LogType::BackendLevel);
 
     m_modbus = modbus_new_rtu(port.toLatin1().constData(),baud,parity.toLatin1(),dataBits,stopBits,RTS);
     line = "Connecting to Serial Port [" + port + "]...";
@@ -48,18 +50,21 @@ void ModbusAdapter::modbusConnectRTU(QString port, int baud, QChar parity, int d
     if(m_modbus == NULL){
         mainWin->showUpInfoBar(tr("Unable to create the libmodbus context."), InfoBar::Error);
         QLOG_ERROR()<<  "Connection failed. Unable to create the libmodbus context";
+        LogFile::instance().appendToLogFile(QString("Connection failed. Unable to create the libmodbus context"),LogType::BackendLevel);
         return;
     }
     else if(m_modbus && modbus_set_slave(m_modbus, m_slave) == -1){
         modbus_free(m_modbus);
         mainWin->showUpInfoBar(tr("Invalid slave ID."), InfoBar::Error);
         QLOG_ERROR()<<  "Connection failed. Invalid slave ID";
+        LogFile::instance().appendToLogFile(QString("ModbusAdapter Connection failed. Invalid slave ID"),LogType::BackendLevel);
         return;
     }
     else if(m_modbus && modbus_connect(m_modbus) == -1) {
         modbus_free(m_modbus);
         mainWin->showUpInfoBar(tr("Connection failed\nCould not connect to serial port."), InfoBar::Error);
         QLOG_ERROR()<<  "Connection failed. Could not connect to serial port";
+        LogFile::instance().appendToLogFile(QString("ModbusAdapter Connection failed. Could not connect to serial port"),LogType::BackendLevel);
         m_connected = false;
         emit modbusDisconnected();
         line += "Failed";
@@ -70,6 +75,7 @@ void ModbusAdapter::modbusConnectRTU(QString port, int baud, QChar parity, int d
         //response_timeout;
         modbus_set_response_timeout(m_modbus, timeOut, 0);
         m_connected = true;
+        LogFile::instance().appendToLogFile(QString("ModbusAdapter Connected"),LogType::BackendLevel);
         line += "OK";
         mainWin->hideInfoBar();
         QLOG_TRACE() << line;

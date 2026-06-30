@@ -24,7 +24,7 @@ Item {
     }
     Image {
         id: pellet_color_green_highlight
-        source: "qrc:/images/settings/pellet_color_red_highlight.png"
+        source: gameRange == 10 ? "qrc:/images/settings/pellet_color_yellow_highlight.png" : "qrc:/images/settings/pellet_color_red_highlight.png"
         x: ((parent.width/rootItemWidth)*98)
         y: ((parent.height/rootItemHeight)*32)
         opacity: isPalletRedColor
@@ -49,7 +49,7 @@ Item {
     }
     Image {
         id: pellet_color_white_no_highlight
-        source: "qrc:/images/settings/pellet_color_white_no_highlight.png"
+        source: "qrc:/images/settings/pellet_color_green_highlight.png"
         x: ((parent.width/rootItemWidth)*123)
         y: ((parent.height/rootItemHeight)*32)
         opacity: isPalletRedColor
@@ -67,7 +67,7 @@ Item {
     }
     Image {
         id: pellet_color_white_highlight
-        source: "qrc:/images/settings/pellet_color_white_highlight.png"
+        source: "qrc:/images/settings/pellet_color_green_highlight_1.png"
         x: ((parent.width/rootItemWidth)*124)
         y: ((parent.height/rootItemHeight)*33)
         opacity: !isPalletRedColor
@@ -84,7 +84,7 @@ Item {
     }
     Image {
         id: pellet_color_green_highlight_1
-        source: "qrc:/images/settings/pellet_color_red_no_highlight.png"
+        source: gameRange == 10 ? "qrc:/images/settings/pellet_color_yellow_no_highlight.png" : "qrc:/images/settings/pellet_color_red_no_highlight.png"
         x: ((parent.width/rootItemWidth)*99)
         y: ((parent.height/rootItemHeight)*33)
         opacity: !isPalletRedColor
@@ -120,5 +120,44 @@ Item {
                 isBackGroundBlack = true
             }
         }
+    }
+
+    // png text
+    Rectangle {
+        anchors.fill: settings_popup
+        color: "transparent"
+
+        Rectangle {
+            width: parent.width
+            height: parent.height/2 - 10
+            color: "transparent"
+            anchors.top: parent.top
+            anchors.topMargin: 5
+
+            Text {
+                text: qsTr("Background Color")
+                anchors.left: parent.left
+                anchors.leftMargin: 10
+                anchors.verticalCenter: parent.verticalCenter            }
+        }
+        Rectangle {
+            width: parent.width
+            height: parent.height/2 - 10
+            color: "transparent"
+            anchors.bottom: parent.bottom
+            anchors.bottomMargin: 10
+
+            Text {
+                text: qsTr("Pellet Color")
+                anchors.left: parent.left
+                anchors.leftMargin: 10
+                anchors.verticalCenter: parent.verticalCenter
+            }
+        }
+    }
+
+    function startFromServer()
+    {
+
     }
 }
