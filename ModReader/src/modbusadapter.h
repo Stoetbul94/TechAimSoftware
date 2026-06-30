@@ -6,6 +6,7 @@
 #include "registersmodel.h"
 #include "rawdatamodel.h"
 #include <QTimer>
+#include <QRecursiveMutex>
 #include "eutils.h"
 
 class ModbusAdapter : public QObject
@@ -44,6 +45,15 @@ private:
      void modbusWriteData(int slave, int functionCode, int startAddress, int noOfItems);
      QString stripIP(QString ip);
      modbus_t * m_modbus;
+     // Guards every access point to m_modbus (the shared libmodbus context).
+     // libmodbus contexts are not safe for concurrent use - this app has at
+     // least three independent callers that can reach m_modbus: the GUI-thread
+     // poll timer (modbusTransaction -> modbusReadData/modbusWriteData), and
+     // TachusWidget's MotorThread/WorkerThread (separate QThreads) calling
+     // directModbusWriteSingleRegister/directModbusReadRegistry. Recursive
+     // because modbusConnectRTU/modbusConnectTCP call modbusDisConnect()
+     // internally, on the same thread, while already holding the lock.
+     QRecursiveMutex m_modbusMutex;
      bool m_connected;
      int m_ModBusMode;
      int m_slave;

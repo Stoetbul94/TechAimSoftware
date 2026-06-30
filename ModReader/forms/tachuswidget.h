@@ -7,6 +7,7 @@
 #include <QDebug>
 #include <QMessageBox>
 #include <QTcpServer>
+#include <QElapsedTimer>
 
 #include "../src/mainwindow.h"
 #include "logfile.h"
@@ -51,10 +52,20 @@ private:
         m_mainWindow->modbusWriteSingleRegister(8196, 32768);
         QThread::msleep(100);
 
-        //while loop to check, motor status
+        //while loop to check, motor status - bounded by MOTOR_STATUS_TIMEOUT_MS
+        //so a non-responding motor controller can't hang this thread forever
         bool motorStarted = false;
+        QElapsedTimer timeoutTimer;
+        timeoutTimer.start();
         while (!motorStarted)
         {
+            if (timeoutTimer.hasExpired(MOTOR_STATUS_TIMEOUT_MS)) {
+                LogFile::instance().appendToLogFile(
+                    QString("Motor start status timed out after %1 ms - giving up, motor may not have started")
+                        .arg(MOTOR_STATUS_TIMEOUT_MS), LogType::BackendLevel);
+                break;
+            }
+
             uint8_t dest[1024]; //setup memory for data
             uint16_t * dest16 = (uint16_t *) dest;
             memset(dest, 0, 1024);
@@ -77,10 +88,20 @@ private:
         QThread::msleep(100);
 
         m_mainWindow->modbusWriteSingleRegister(8196, 0);
-        //while loop to check, motor status
+        //while loop to check, motor status - bounded by MOTOR_STATUS_TIMEOUT_MS,
+        //same reasoning as startMotor() above
         bool motorStoped = false;
+        QElapsedTimer timeoutTimer;
+        timeoutTimer.start();
         while (!motorStoped)
         {
+            if (timeoutTimer.hasExpired(MOTOR_STATUS_TIMEOUT_MS)) {
+                LogFile::instance().appendToLogFile(
+                    QString("Motor stop status timed out after %1 ms - giving up, motor may not have stopped")
+                        .arg(MOTOR_STATUS_TIMEOUT_MS), LogType::BackendLevel);
+                break;
+            }
+
             uint8_t dest[1024]; //setup memory for data
             uint16_t * dest16 = (uint16_t *) dest;
             memset(dest, 0, 1024);
@@ -96,6 +117,7 @@ private:
         }
     }
 private:
+    static const int MOTOR_STATUS_TIMEOUT_MS = 5000;
     MainWindow* m_mainWindow;
     double motor_movement_time = 0;
 //    TachusWidget* tachusWidget = NULL;

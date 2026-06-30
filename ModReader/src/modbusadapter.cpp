@@ -1,5 +1,6 @@
 #include <QApplication>
 #include <QtDebug>
+#include <QMutexLocker>
 #include "modbusadapter.h"
 #include "mainwindow.h"
 
@@ -29,6 +30,7 @@ ModbusAdapter::ModbusAdapter(QObject *parent) :
 
 void ModbusAdapter::modbusConnectRTU(QString port, int baud, QChar parity, int dataBits, int stopBits, int RTS, int timeOut)
 {
+    QMutexLocker locker(&m_modbusMutex);
     //Modbus RTU connect
     QString line;
     modbusDisConnect();
@@ -91,6 +93,7 @@ void ModbusAdapter::modbusConnectRTU(QString port, int baud, QChar parity, int d
 
 void ModbusAdapter::modbusConnectTCP(QString ip, int port, int timeOut)
 {
+    QMutexLocker locker(&m_modbusMutex);
     //Modbus TCP connect
     QString strippedIP = "";
     QString line;
@@ -154,6 +157,7 @@ void ModbusAdapter::modbusConnectTCP(QString ip, int port, int timeOut)
 
 void ModbusAdapter::modbusDisConnect()
 {
+    QMutexLocker locker(&m_modbusMutex);
     //Modbus disconnect
 
     QLOG_INFO()<<  "Modbus disconnected";
@@ -215,6 +219,7 @@ void ModbusAdapter::modbusTransaction()
 
 void ModbusAdapter::modbusReadData(int slave, int functionCode, int startAddress, int noOfItems)
 {
+    QMutexLocker locker(&m_modbusMutex);
 
     QLOG_ERROR() <<  "Modbus Read Data " << functionCode <<"**"<< startAddress<< noOfItems;
 
@@ -292,6 +297,7 @@ void ModbusAdapter::modbusReadData(int slave, int functionCode, int startAddress
 
 void ModbusAdapter::modbusWriteData(int slave, int functionCode, int startAddress, int noOfItems)
 {
+    QMutexLocker locker(&m_modbusMutex);
 
     QLOG_ERROR() <<  "Modbus Write Data "<<functionCode << "srinivas";
 
@@ -477,11 +483,13 @@ int ModbusAdapter::errors()
 
 int ModbusAdapter::directModbusWriteSingleRegister(int startAdd, int value)
 {
+    QMutexLocker locker(&m_modbusMutex);
     return modbus_write_register( m_modbus, startAdd, value);
 }
 
 int ModbusAdapter::directModbusReadRegistry(int startAdd, int noOfItems, uint16_t *dest)
 {
+    QMutexLocker locker(&m_modbusMutex);
     return modbus_read_registers(m_modbus, startAdd, noOfItems, dest);
 }
 
