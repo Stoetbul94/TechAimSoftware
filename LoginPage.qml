@@ -663,10 +663,90 @@ Item {
                 }
             }
 
+            // ── Network share section ─────────────────────────────────────────
+            Text {
+                id: networkSectionLabel
+                anchors.top: showComportConnector ? connRow.bottom : athleteBox.bottom
+                anchors.topMargin: 18
+                anchors.left: parent.left; anchors.leftMargin: 26
+                text: "NETWORK SHARE"
+                color: theme.textSecondary; font.family: theme.fontFamily
+                font.pixelSize: 10; font.bold: true; font.letterSpacing: 2
+            }
+
+            Rectangle {
+                id: networkShareCard
+                anchors.top: networkSectionLabel.bottom; anchors.topMargin: 6
+                anchors.left: parent.left;   anchors.leftMargin: 26
+                anchors.right: parent.right; anchors.rightMargin: 26
+                height: 52
+                color: theme.bgSurfaceAlt; radius: theme.radiusSmall
+                border.color: netEnabled ? theme.brandPrimary : theme.borderColor; border.width: 1
+
+                property bool netEnabled: false
+
+                Row {
+                    anchors.left: parent.left;  anchors.leftMargin: 14
+                    anchors.right: netToggleTrack.left; anchors.rightMargin: 10
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 12
+
+                    // Network icon
+                    Text {
+                        text: "☁"
+                        font.pixelSize: 18
+                        color: networkShareCard.netEnabled ? theme.brandPrimary : theme.textSecondary
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+
+                    Column {
+                        anchors.verticalCenter: parent.verticalCenter; spacing: 3
+                        Text {
+                            text: networkShareCard.netEnabled ? "Share enabled" : "Share disabled"
+                            color: networkShareCard.netEnabled ? theme.textPrimary : theme.textSecondary
+                            font.family: theme.fontFamily; font.pixelSize: 12; font.bold: true
+                        }
+                        Text {
+                            text: netowrk_path_text.text !== "" ? netowrk_path_text.text : "No path configured"
+                            color: theme.textSecondary; font.family: "Consolas"
+                            font.pixelSize: 10
+                            elide: Text.ElideMiddle
+                            width: networkShareCard.width - 100
+                        }
+                    }
+                }
+
+                // Toggle track
+                Rectangle {
+                    id: netToggleTrack
+                    anchors.right: parent.right; anchors.rightMargin: 14
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 40; height: 22; radius: 11
+                    color: networkShareCard.netEnabled ? theme.brandPrimary : theme.borderColor
+
+                    Rectangle {
+                        id: netToggleThumb
+                        anchors.verticalCenter: parent.verticalCenter
+                        x: networkShareCard.netEnabled ? parent.width - width - 3 : 3
+                        width: 16; height: 16; radius: 8
+                        color: "white"
+                        Behavior on x { NumberAnimation { duration: 120 } }
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: {
+                            networkShareCard.netEnabled = !networkShareCard.netEnabled
+                            MODREADER.setIsServerNetworkEnabled(networkShareCard.netEnabled)
+                        }
+                    }
+                }
+            }
+
             // Selected profile label
             Text {
                 id: profileLabel
-                anchors.top: showComportConnector ? connRow.bottom : athleteBox.bottom
+                anchors.top: networkShareCard.bottom
                 anchors.topMargin: 22
                 anchors.left: parent.left; anchors.leftMargin: 26
                 text: "Selected profile"
@@ -711,7 +791,7 @@ Item {
                             }
                             Text {
                                 text: modelData.val; color: theme.textPrimary
-                                font.family: theme.fontFamily; font.pixelSize: 13; font.bold: true
+                                font.family: "Consolas"; font.pixelSize: 13; font.bold: true
                                 anchors.horizontalCenter: parent.horizontalCenter
                             }
                         }
@@ -756,23 +836,12 @@ Item {
                     }
                 }
 
-                // Start session (crimson gradient)
+                // Start session — flat crimson
                 Rectangle {
                     id: startSessionRect
                     width: (parent.width - 12) * 0.58; height: 50
                     color: "#8c002e"; radius: theme.radiusMedium
                     opacity: startMouse.visible ? 1.0 : 0.4
-                    // Gradient highlight layer
-                    Rectangle {
-                        anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right
-                        height: parent.height / 2; radius: theme.radiusMedium
-                        color: "#ffffff"; opacity: 0.06
-                    }
-                    // Top highlight stripe
-                    Rectangle {
-                        anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right
-                        height: 1; color: "#ffffff"; opacity: 0.18; radius: theme.radiusMedium
-                    }
                     Text {
                         text: "Start session  →"
                         color: theme.textOnBrand; font.family: theme.fontFamily
@@ -925,7 +994,7 @@ Item {
                 }
             }
 
-            // Scrollable event cards
+            // Scrollable event cards — grouped by category
             ScrollView {
                 id: eventScroll
                 anchors.top: weaponRow.bottom; anchors.topMargin: 14
@@ -936,80 +1005,123 @@ Item {
                 ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
 
                 Column {
+                    id: eventColumn
                     width: eventScroll.width
-                    spacing: 10
+                    spacing: 0
 
-                    Repeater {
-                        model: 6
-                        delegate: Rectangle {
-                            width: parent.width; height: 70; radius: theme.radiusMedium
-                            color: gameEvent === index ? "#1fa80038" : theme.bgSurfaceAlt
-                            border.color: gameEvent === index ? theme.brandPrimary : theme.borderColor
-                            border.width: gameEvent === index ? 2 : 1
-                            visible: (hideFreePractice && index === 5) ? false : true
+                    // ── Helper component for an event card ──────────────────────
+                    component EventCard: Rectangle {
+                        property int eventIndex: 0
+                        width: eventColumn.width; height: 70; radius: theme.radiusMedium
+                        color: gameEvent === eventIndex ? "#1fa80038" : theme.bgSurfaceAlt
+                        border.color: gameEvent === eventIndex ? theme.brandPrimary : theme.borderColor
+                        border.width: gameEvent === eventIndex ? 2 : 1
 
-                            Row {
-                                anchors.left: parent.left;  anchors.leftMargin: 14
-                                anchors.right: parent.right; anchors.rightMargin: 14
+                        Row {
+                            anchors.left: parent.left;  anchors.leftMargin: 14
+                            anchors.right: parent.right; anchors.rightMargin: 14
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 14
+
+                            Rectangle {
+                                width: 40; height: 40; radius: 20
+                                color: gameEvent === eventIndex ? theme.brandPrimary : "#28282e"
                                 anchors.verticalCenter: parent.verticalCenter
-                                spacing: 14
-
-                                // Badge circle
-                                Rectangle {
-                                    width: 40; height: 40; radius: 20
-                                    color: gameEvent === index ? theme.brandPrimary : "#28282e"
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    Text {
-                                        text: getEventCardBadge(index)
-                                        color: gameEvent === index ? theme.textOnBrand : theme.textSecondary
-                                        font.pixelSize: index === 5 ? 9 : 12; font.bold: true
-                                        anchors.centerIn: parent
-                                    }
+                                Text {
+                                    text: getEventCardBadge(eventIndex)
+                                    color: gameEvent === eventIndex ? theme.textOnBrand : theme.textSecondary
+                                    font.family: "Consolas"; font.pixelSize: eventIndex === 5 ? 9 : 12; font.bold: true
+                                    anchors.centerIn: parent
                                 }
+                            }
 
-                                // Title + subtitle
-                                Column {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    spacing: 4
-                                    width: parent.width - 40 - 24 - 14 * 3
-                                    Text {
-                                        text: getEventCardTitle(index)
-                                        color: gameEvent === index ? theme.textPrimary : theme.textSecondary
-                                        font.family: theme.fontFamily; font.pixelSize: 13
-                                        font.bold: gameEvent === index
-                                        elide: Text.ElideRight; width: parent.width
-                                    }
-                                    Text {
-                                        text: getEventCardSubtitle(index)
-                                        color: theme.textSecondary
-                                        font.family: theme.fontFamily; font.pixelSize: 11
-                                    }
+                            Column {
+                                anchors.verticalCenter: parent.verticalCenter; spacing: 3
+                                width: parent.width - 40 - 24 - 14 * 3
+                                Text {
+                                    text: getEventCardTitle(eventIndex)
+                                    color: gameEvent === eventIndex ? theme.textPrimary : theme.textSecondary
+                                    font.family: theme.fontFamily; font.pixelSize: 13
+                                    font.bold: gameEvent === eventIndex
+                                    elide: Text.ElideRight; width: parent.width
                                 }
-
-                                // Radio button indicator
-                                Rectangle {
-                                    width: 20; height: 20; radius: 10
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    color: "transparent"
-                                    border.color: gameEvent === index ? theme.brandPrimary : theme.borderColor
-                                    border.width: 2
-                                    Rectangle {
-                                        anchors.centerIn: parent
-                                        width: 10; height: 10; radius: 5
-                                        color: theme.brandPrimary
-                                        visible: gameEvent === index
+                                Row {
+                                    spacing: 10
+                                    Text {
+                                        text: getEventCardSubtitle(eventIndex)
+                                        color: theme.textSecondary; font.family: theme.fontFamily; font.pixelSize: 10
+                                    }
+                                    Text {
+                                        visible: getGameEventText(eventIndex) !== "Free Practice"
+                                        text: {
+                                            var s = getGameEventText(eventIndex)
+                                            if (s === "10") return "·  10 min"
+                                            if (s === "15") return "·  15 min"
+                                            if (s === "20") return "·  20 min"
+                                            if (s === "30") return "·  30 min"
+                                            if (s === "40") return "·  40 min"
+                                            if (s === "60") return "·  50 min"
+                                            return ""
+                                        }
+                                        color: theme.textSecondary; font.family: "Consolas"; font.pixelSize: 10
                                     }
                                 }
                             }
 
-                            MouseArea {
-                                anchors.fill: parent; hoverEnabled: true
-                                onEntered: { if (gameEvent !== index) parent.color = theme.bgBase }
-                                onExited:  { parent.color = gameEvent === index ? "#1fa80038" : theme.bgSurfaceAlt }
-                                onClicked: { gameEvent = index }
+                            Rectangle {
+                                width: 20; height: 20; radius: 10
+                                anchors.verticalCenter: parent.verticalCenter
+                                color: "transparent"
+                                border.color: gameEvent === eventIndex ? theme.brandPrimary : theme.borderColor
+                                border.width: 2
+                                Rectangle {
+                                    anchors.centerIn: parent; width: 10; height: 10; radius: 5
+                                    color: theme.brandPrimary; visible: gameEvent === eventIndex
+                                }
                             }
                         }
+
+                        MouseArea {
+                            anchors.fill: parent; hoverEnabled: true
+                            onEntered: { if (gameEvent !== eventIndex) parent.color = theme.bgBase }
+                            onExited:  { parent.color = gameEvent === eventIndex ? "#1fa80038" : theme.bgSurfaceAlt }
+                            onClicked: { gameEvent = eventIndex }
+                        }
                     }
+
+                    // ── OFFICIAL ISSF MATCH ────────────────────────────────────
+                    Text {
+                        text: "OFFICIAL ISSF MATCH"
+                        color: theme.textSecondary; font.family: theme.fontFamily
+                        font.pixelSize: 9; font.bold: true; font.letterSpacing: 2
+                        topPadding: 4; bottomPadding: 8
+                    }
+                    EventCard { eventIndex: 4 }  // 60 shots — full ISSF qualification
+
+                    // ── TRAINING SESSIONS ──────────────────────────────────────
+                    Text {
+                        text: "TRAINING SESSIONS"
+                        color: theme.textSecondary; font.family: theme.fontFamily
+                        font.pixelSize: 9; font.bold: true; font.letterSpacing: 2
+                        topPadding: 14; bottomPadding: 8
+                    }
+                    EventCard { eventIndex: 0; bottomPadding: 6 }   // 10 shots
+                    Item { width: 1; height: 6 }
+                    EventCard { eventIndex: 1; bottomPadding: 6 }   // 20 shots
+                    Item { width: 1; height: 6 }
+                    EventCard { eventIndex: 2; bottomPadding: 6 }   // 30 shots
+                    Item { width: 1; height: 6 }
+                    EventCard { eventIndex: 3 }                     // 40 shots
+
+                    // ── FREE PRACTICE ──────────────────────────────────────────
+                    Text {
+                        visible: !hideFreePractice
+                        text: "FREE PRACTICE"
+                        color: theme.textSecondary; font.family: theme.fontFamily
+                        font.pixelSize: 9; font.bold: true; font.letterSpacing: 2
+                        topPadding: 14; bottomPadding: 8
+                    }
+                    EventCard { eventIndex: 5; visible: !hideFreePractice }
                 }
             }
         } // rightPanel
@@ -1068,6 +1180,20 @@ Item {
                     color: appMode ? theme.statusConnected : theme.brandAccent
                     font.family: theme.fontFamily; font.pixelSize: 11; font.bold: true; font.letterSpacing: 1
                     anchors.verticalCenter: parent.verticalCenter
+                }
+                Rectangle { width: 1; height: 14; color: theme.borderColor; anchors.verticalCenter: parent.verticalCenter }
+                Text {
+                    text: networkShareCard.netEnabled ? "☁ Share on" : "☁ Share off"
+                    color: networkShareCard.netEnabled ? theme.statusConnected : theme.textSecondary
+                    font.family: theme.fontFamily; font.pixelSize: 11
+                    anchors.verticalCenter: parent.verticalCenter
+                    MouseArea {
+                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            networkShareCard.netEnabled = !networkShareCard.netEnabled
+                            MODREADER.setIsServerNetworkEnabled(networkShareCard.netEnabled)
+                        }
+                    }
                 }
             }
         }
