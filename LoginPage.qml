@@ -382,7 +382,7 @@ Item {
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
-        height: 152
+        height: 128
         color: theme.bgSurface
 
         // Left crimson edge stripe
@@ -484,10 +484,10 @@ Item {
     // ── Two-column content area ────────────────────────────────────────────────
     Item {
         id: contentArea
-        anchors.top: headerBar.bottom; anchors.topMargin: 14
-        anchors.left: parent.left;     anchors.leftMargin: 14
-        anchors.right: parent.right;   anchors.rightMargin: 14
-        anchors.bottom: statusBar.top; anchors.bottomMargin: 14
+        anchors.top: headerBar.bottom; anchors.topMargin: 10
+        anchors.left: parent.left;     anchors.leftMargin: 12
+        anchors.right: parent.right;   anchors.rightMargin: 12
+        anchors.bottom: statusBar.top; anchors.bottomMargin: 10
 
         // ── LEFT PANEL: Session details ───────────────────────────────────────
         Rectangle {
@@ -829,7 +829,7 @@ Item {
         Rectangle {
             id: rightPanel
             anchors.top: parent.top; anchors.right: parent.right; anchors.bottom: parent.bottom
-            anchors.left: leftPanel.right; anchors.leftMargin: 14
+            anchors.left: leftPanel.right; anchors.leftMargin: 10
             color: theme.bgSurface; radius: theme.radiusMedium
             border.color: theme.borderColor; border.width: 1; clip: true
 
