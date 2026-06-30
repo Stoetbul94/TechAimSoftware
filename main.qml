@@ -34,6 +34,13 @@ ApplicationWindow {
 
     //property string valueString: ""
 
+    // Shared TechAim theme - see Theme.qml. Instantiated once here so every
+    // descendant page can reference `theme.xxx` without an import statement,
+    // the same way isDefaultIcon/gameRange/gameMode above already work.
+    Theme {
+        id: theme
+    }
+
     signal appVisiblityModeChanged(int mode)
 
     flags: Qt.FramelessWindowHint | Qt.Window
