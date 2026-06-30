@@ -493,7 +493,7 @@ Item {
         // ── LEFT PANEL: Session details ───────────────────────────────────────
         Rectangle {
             id: leftPanel
-            anchors.top: parent.top; anchors.left: parent.left; anchors.bottom: parent.bottom
+            anchors.top: parent.top; anchors.left: parent.left; anchors.bottom: contentFooter.top; anchors.bottomMargin: 8
             width: Math.floor(parent.width * 0.46)
             color: theme.bgSurface; radius: theme.radiusMedium
             border.color: theme.borderColor; border.width: 1
@@ -719,51 +719,9 @@ Item {
                 }
             }
 
-            // Status footer strip (connection + mode indicator)
-            Rectangle {
-                id: panelFooter
-                anchors.bottom: parent.bottom
-                anchors.left: parent.left; anchors.right: parent.right
-                height: 32
-                color: "#111013"
-                Rectangle {
-                    anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right
-                    height: 1; color: theme.borderColor
-                }
-                Row {
-                    anchors.left: parent.left; anchors.leftMargin: 14
-                    anchors.right: parent.right; anchors.rightMargin: 14
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: 0
-                    Text {
-                        text: "Contact us"
-                        color: theme.textSecondary; font.family: theme.fontFamily; font.pixelSize: 10
-                        MouseArea {
-                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: { contactUsDia.visible = true }
-                        }
-                    }
-                    Item { width: 10; height: 1 }
-                    Rectangle { width: 1; height: 12; color: theme.borderColor; anchors.verticalCenter: parent.verticalCenter }
-                    Item { width: 10; height: 1 }
-                    Text {
-                        text: appMode ? "LIVE MODE" : "DEMO MODE"
-                        color: appMode ? theme.statusConnected : theme.brandAccent
-                        font.family: theme.fontFamily; font.pixelSize: 10; font.bold: true; font.letterSpacing: 1
-                    }
-                    Item { width: 1; height: 1; Layout.fillWidth: true }
-                    Text {
-                        text: mod_connected ? "• Connected" : "• Offline"
-                        color: mod_connected ? theme.statusConnected : theme.textSecondary
-                        font.family: theme.fontFamily; font.pixelSize: 10
-                        anchors.right: undefined
-                    }
-                }
-            }
-
             // Bottom action buttons
             Row {
-                anchors.bottom: panelFooter.top; anchors.bottomMargin: 16
+                anchors.bottom: parent.bottom; anchors.bottomMargin: 22
                 anchors.left: parent.left;   anchors.leftMargin: 26
                 anchors.right: parent.right; anchors.rightMargin: 26
                 height: 50; spacing: 12
@@ -882,7 +840,7 @@ Item {
         // ── RIGHT PANEL: Choose an event ──────────────────────────────────────
         Rectangle {
             id: rightPanel
-            anchors.top: parent.top; anchors.right: parent.right; anchors.bottom: parent.bottom
+            anchors.top: parent.top; anchors.right: parent.right; anchors.bottom: contentFooter.top; anchors.bottomMargin: 8
             anchors.left: leftPanel.right; anchors.leftMargin: 10
             color: theme.bgSurface; radius: theme.radiusMedium
             border.color: theme.borderColor; border.width: 1; clip: true
@@ -1055,6 +1013,64 @@ Item {
                 }
             }
         } // rightPanel
+
+        // ── Full-width footer strip ───────────────────────────────────────────
+        Rectangle {
+            id: contentFooter
+            anchors.bottom: parent.bottom
+            anchors.left: parent.left; anchors.right: parent.right
+            height: 36
+            color: theme.bgSurface
+            radius: theme.radiusMedium
+            // Top divider with left crimson pip
+            Rectangle {
+                anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right
+                height: 1; color: theme.borderColor
+            }
+            Rectangle {
+                anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom
+                width: 3; color: theme.brandPrimary; radius: 2
+            }
+
+            // Left: branding
+            Text {
+                anchors.left: parent.left; anchors.leftMargin: 18
+                anchors.verticalCenter: parent.verticalCenter
+                text: "TechAim  ·  Electronic target control"
+                color: theme.textSecondary; font.family: theme.fontFamily; font.pixelSize: 11
+            }
+
+            // Right: Contact us | mode | connection
+            Row {
+                anchors.right: parent.right; anchors.rightMargin: 18
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 14
+
+                Text {
+                    text: "Contact us"
+                    color: theme.textSecondary; font.family: theme.fontFamily; font.pixelSize: 11
+                    anchors.verticalCenter: parent.verticalCenter
+                    MouseArea {
+                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                        onClicked: { contactUsDia.visible = true }
+                    }
+                }
+                Rectangle { width: 1; height: 14; color: theme.borderColor; anchors.verticalCenter: parent.verticalCenter }
+                Text {
+                    text: mod_connected ? "● Connected" : "● Offline"
+                    color: mod_connected ? theme.statusConnected : theme.textSecondary
+                    font.family: theme.fontFamily; font.pixelSize: 11
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+                Rectangle { width: 1; height: 14; color: theme.borderColor; anchors.verticalCenter: parent.verticalCenter }
+                Text {
+                    text: appMode ? "LIVE MODE" : "DEMO MODE"
+                    color: appMode ? theme.statusConnected : theme.brandAccent
+                    font.family: theme.fontFamily; font.pixelSize: 11; font.bold: true; font.letterSpacing: 1
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+            }
+        }
     } // contentArea
 
     // ── EULA overlay ────────────────────────────────────────────────────────────
