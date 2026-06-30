@@ -22,7 +22,7 @@ Item {
     property bool showLaneConnector: false
     property bool hideFreePractice: isDefaultIcon
 
-    property string licColor: "darkgrey"
+    property color licColor: theme.brandPrimary
     signal loadSavedGame()
     signal sighterStartedFromServer()
     signal matchStartedFromServer()
@@ -229,7 +229,7 @@ Item {
         }
     Rectangle {
         id: fullRect
-        color: "#202020"
+        color: theme.bgBase
         anchors.fill: parent
     }
 
@@ -351,6 +351,7 @@ Item {
         anchors.fill: parent
         width: ((parent.width/rootItemWidth)*sourceSize.width)
         height: ((parent.height/rootItemHeight)*sourceSize.height)
+        visible: false
     }
     Image {
         id: bg
@@ -362,6 +363,7 @@ Item {
         //        fillMode: Image.PreserveAspectFit
         width: ((parent.width/rootItemWidth)*sourceSize.width)
         height: ((parent.height/rootItemHeight)*sourceSize.height)
+        visible: false
     }
     Image {
         id: red
@@ -435,7 +437,9 @@ Item {
 
         Rectangle {
             anchors.fill: parent
-            color: "#0072BC"
+            color: theme.bgSurface
+            border.color: theme.borderColor
+            border.width: 1
         }
     }
 
@@ -530,7 +534,7 @@ Item {
     Rectangle {
         id: com_port_dummy_rect
         anchors.fill: red
-        color: "white"
+        color: "transparent"
     }
 
     Text {
@@ -565,6 +569,13 @@ Item {
         width: 100
         height: ((parent.height/rootItemHeight)*sourceSize.height)
         visible: showComportConnector
+
+        Rectangle {
+            anchors.fill: parent
+            color: theme.bgSurface
+            border.color: theme.borderColor
+            border.width: 1
+        }
     }
 
     TextInput {
@@ -583,7 +594,7 @@ Item {
     Rectangle {
         id: lane_dummy_rect
         anchors.fill: green
-        color: "white"
+        color: "transparent"
     }
 
     Rectangle {
@@ -592,7 +603,7 @@ Item {
         anchors.left: lane_dummy_rect.left
         anchors.right: lane_dummy_rect.right
         anchors.bottom: reset_over.bottom
-        color: "white"
+        color: "transparent"
     }
 
     Image {
@@ -821,13 +832,13 @@ Item {
             width: parent.width
             height: shots_40_match.height
             border.width: 1
-            border.color: "black"
-            color: gameEvent === index ? "red" : "#2698d5"
+            border.color: theme.borderColor
+            color: gameEvent === index ? theme.brandAccent : theme.bgSurface
 
             visible: (hideFreePractice && index === gameEventList.count - 1) ? false : true
 
             onVisibleChanged: {
-                color = (gameEvent === index) ? "red" : "#2698d5"
+                color = (gameEvent === index) ? theme.brandAccent : theme.bgSurface
             }
 
             Text {
@@ -836,7 +847,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: getGameEventText(index)
-                color: "white"
+                color: theme.textPrimary
                 font.pixelSize: (0.8*parent.height)
             }
             MouseArea {
@@ -844,11 +855,11 @@ Item {
                 hoverEnabled: true
 
                 onEntered: {
-                    parent.color = "green"
+                    parent.color = theme.bgSurfaceAlt
                 }
 
                 onExited: {
-                    parent.color = (gameEvent === index) ? "red" : "#2698d5"
+                    parent.color = (gameEvent === index) ? theme.brandAccent : theme.bgSurface
                 }
 
                 onClicked: {
@@ -883,12 +894,8 @@ Item {
             width: parent.width
             height: name.height
             border.width: 1
-            border.color: "black"
-            color: gameEvent === index ? "red" : "#2698d5"
-
-            onVisibleChanged: {
-                color = (gameEvent === index) ? "red" : "#2698d5"
-            }
+            border.color: theme.borderColor
+            color: theme.bgSurface
 
             Text {
                 id: userHistoryText
@@ -897,18 +904,18 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: APPSETTINGS.getUserHistoryData(index)
-                color: "white"
+                color: theme.textPrimary
             }
             MouseArea {
                 anchors.fill: parent
                 hoverEnabled: true
 
                 onEntered: {
-                    parent.color = "green"
+                    parent.color = theme.bgSurfaceAlt
                 }
 
                 onExited: {
-                    parent.color = (gameEvent === index) ? "red" : "#2698d5"
+                    parent.color = theme.bgSurface
                 }
 
                 onClicked: {
@@ -1636,7 +1643,8 @@ Item {
 
     Rectangle {
         visible: eulaPage.visible
-        color: "lightgrey"
+        color: theme.bgBase
+        opacity: 0.92
         anchors.fill: parent
     }
 
@@ -1645,6 +1653,7 @@ Item {
         width: 600
         height: 400
         anchors.centerIn: parent
+        color: theme.bgSurface
         visible: !APPSETTINGS.isEulaAccepted() || !MODREADER.isValidLicence()
         //        visible: false
 
@@ -1740,7 +1749,7 @@ Item {
         y: eulaPage.y
         visible: !MODREADER.isValidLicence()
         //visible: false
-        color: "lightgrey"
+        color: theme.bgSurface
 
         Rectangle {
             width: 200
