@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Seta10 (Qt build + run)",
+      "runtimeExecutable": "qmake",
+      "runtimeArgs": ["Seta.pro", "-spec", "win32-msvc", "&&", "nmake", "&&", "release\\Seta.exe"],
+      "port": 0
+    }
+  ]
+}
