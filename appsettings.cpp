@@ -827,7 +827,7 @@ void AppSettings::updateUserHistoryData(QString name)
 	}
 double AppSettings::getMatch_meter() const
 {
-    return 10; //m_match_meter;
+    return m_match_meter;
 }
 
 bool AppSettings::getNotificationForLastShot() const
@@ -860,11 +860,6 @@ bool AppSettings::timer() const
 {
     return m_timer;
 }
-double AppSettings::getMatch_meter_new() const
-{
-    return m_match_meter;
-}
-
 void AppSettings::setMatch_meter(double match_meter)
 {
     m_match_meter = match_meter;

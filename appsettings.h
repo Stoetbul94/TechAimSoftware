@@ -110,7 +110,6 @@ public:
     Q_INVOKABLE void setIsSingleDecimal(bool isSingleDecimal);
 
     Q_INVOKABLE double getMatch_meter() const;
-    double getMatch_meter_new() const;
     void setMatch_meter(double match_meter);
 
     Q_INVOKABLE bool getIsPalletTypeNormal() const;

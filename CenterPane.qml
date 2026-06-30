@@ -1623,93 +1623,7 @@ Item {
             var logData1 = "sqrt(xsq+ysq) " + mapedRadius
             MODREADER.appendToLogFile(logData1)
 
-            var old = false
-            if (old)
-            {
-                if (gameRange == 10)
-                {
-                    if (gameMode)
-                    { // for pistol
-                        //                    if (mapedRadius > 80)
-                        //                        calculatedSccore = 0
-                        //                    else {
-                        //calculatedSccore = ((Math.floor((11 - (((mapedRadius + 0.1)/0.8)*0.1))*10))*0.1).toFixed(1)
-
-                        var logData2 = "16 - (sqrt(xsq+ysq)+constanct_factor) " + (16 - (mapedRadius+cont_factor))
-                        MODREADER.appendToLogFile(logData2)
-                        var logData3 = "(16 - (sqrt(xsq+ysq)+constanct_factor))/8 " + (16 - (mapedRadius+cont_factor))/8
-                        MODREADER.appendToLogFile(logData3)
-
-                        calculatedSccore = 9+((16 - (mapedRadius/*+cont_factor*/))/8) //https://github.com/raosrinu2004/tachus_bug_tracker/issues/77
-                        calculatedSccore = calculatedSccore + 0.00001
-
-                        var logData111 = "10 m game for pistol -> calculate score "+ calculatedSccore
-                        MODREADER.appendToLogFile(logData111)
-                        if (calculatedSccore <= 0)
-                            calculatedSccore = 0.001
-
-                        var logData100 = "after zero 10 m game for pistol -> calculate score "+ calculatedSccore
-                        MODREADER.appendToLogFile(logData100)
-                        //                    }
-                    } else { // for rifle
-                        //                    if (mapedRadius > 25)
-                        //                        calculatedSccore = 0
-                        //                    else {
-                        //calculatedSccore = ((Math.floor((11 - (((mapedRadius + 0.01)/0.25)*0.1))*10))*0.1).toFixed(1)
-                        var ratio = MODREADER.getGame_distance()*1.0/MODREADER.getGame_range();
-                        /*5=
-
-                    2.5 (distance between rings)
-
-                    + 0.25 (Inner 10 radius)
-
-                    +2.25 (Radius of Bullet)*/
-                        var palletCaculation =  2.5 + 0.25 + (2.25/ratio);
-                        calculatedSccore = 9+((5 - (mapedRadius/*+cont_factor*/))/2.5) //https://github.com/raosrinu2004/tachus_bug_tracker/issues/77
-                        calculatedSccore = calculatedSccore + 0.00001
-                        var logData11 = "10 m game for rifle -> calculate score "+ calculatedSccore
-                        MODREADER.appendToLogFile(logData11)
-                        if (calculatedSccore <= 0)
-                            calculatedSccore = 0.001
-
-                        var logData00 = "after zero 10 m game for rifle -> calculate score "+ calculatedSccore
-                        MODREADER.appendToLogFile(logData00)
-                        //                    }
-                    }
-                } else if (gameRange == 50) {
-                    if (gameMode)
-                    { // for pistol
-                        var logData2 = "52.86 - sqrt(xsq+ysq) " + (52.86 - mapedRadius)
-                        MODREADER.appendToLogFile(logData2)
-                        var logData3 = "(52.86 - sqrt(xsq+ysq))/25 " + (52.86 - mapedRadius)/25
-                        MODREADER.appendToLogFile(logData3)
-
-                        calculatedSccore = 9+((52.86 - mapedRadius)/25) //https://github.com/raosrinu2004/tachus_bug_tracker/issues/77
-                        calculatedSccore = calculatedSccore + 0.00001
-
-                        var logData111 = "50 m game for pistol -> calculate score "+ calculatedSccore
-                        MODREADER.appendToLogFile(logData111)
-                        if (calculatedSccore <= 0)
-                            calculatedSccore = 0.001
-
-                        var logData100 = "after zero 50 m game for pistol -> calculate score "+ calculatedSccore
-                        MODREADER.appendToLogFile(logData100)
-                        //                    }
-                    } else { // for rifle
-                        var ratio = MODREADER.getGame_distance()*1.0/MODREADER.getGame_range();
-                        calculatedSccore = 9+((16.06 - mapedRadius)/8) //https://github.com/raosrinu2004/tachus_bug_tracker/issues/77
-                        calculatedSccore = calculatedSccore + 0.00001
-                        var logData11 = "50 m game for rifle -> calculate score "+ calculatedSccore
-                        MODREADER.appendToLogFile(logData11)
-                        if (calculatedSccore <= 0)
-                            calculatedSccore = 0.001
-
-                        var logData00 = "after zero 50 m game for rifle -> calculate score "+ calculatedSccore
-                        MODREADER.appendToLogFile(logData00)
-                    }
-                }
-            } else {
-                // config bullet radius
+            // config bullet radius
                 if (gameRange == 10)
                 {
                     if (gameMode)
@@ -1819,7 +1733,6 @@ Item {
                         MODREADER.appendToLogFile(logData00)
                     }
                 }
-            }
         } else {
             console.log("shootingcanvas ", shootingPanelRect.width, " height ", shootingPanelRect.height, " shootingMianRect ", shootingMianRect.width, " height ", shootingMianRect.height)
             var clickedX = mapToItem(shootingcanvas, demoXPoint, demoYPoint).x
