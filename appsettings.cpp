@@ -103,8 +103,8 @@ AppSettings::AppSettings(QString fileName)
     shootCountAndTimeMap[24] = m_settings->value("twentyfour_shoot", "35").toInt();
     shootCountAndTimeMap[30] = m_settings->value("thirty_shoot", "45").toInt();
     shootCountAndTimeMap[40] = m_settings->value("forty_shoot", "60").toInt();
-    shootCountAndTimeMap[60] = m_settings->value("sixty_shoot", "90").toInt();
-    shootCountAndTimeMap[-1] = m_settings->value("default", "90").toInt(); // -1 for free practise
+    shootCountAndTimeMap[60]  = m_settings->value("sixty_shoot", "90").toInt();
+    shootCountAndTimeMap[-1]  = m_settings->value("default", "90").toInt(); // -1 for free practise
     m_settings->endGroup();
 
 //    // read server settings file path.
