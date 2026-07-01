@@ -236,6 +236,16 @@ Item {
     }
     Text { id: netowrk_path_text; visible: false }
 
+    FolderDialog {
+        id: networkFolderDialog
+        title: "Select Network Share Folder"
+        onAccepted: {
+            var p = selectedFolder.toString().replace(/^file:\/\/\//, "").replace(/\//g, "\\")
+            netowrk_path_text.text = p
+            MODREADER.saveNameAndPort(name_text_field.text, port_name_text_field.text, p)
+        }
+    }
+
     // Old event list/mouse kept for disableControls() compatibility
     ListView  { id: gameEventList;  width: 0; height: 0; visible: false; model: 0 }
     MouseArea { id: gameEventMouse; width: 0; height: 0 }
@@ -644,9 +654,10 @@ Item {
                 anchors.right: parent.right; anchors.rightMargin: 22
                 height: 50; color: _input; radius: 6
                 border.color: netEnabled ? _red : _borderSub; border.width: 1
-                property bool netEnabled: false
+                property bool netEnabled: true
 
                 Row {
+                    id: netInfoRow
                     anchors.left: parent.left; anchors.leftMargin: 12
                     anchors.right: netToggleTrack.left; anchors.rightMargin: 10
                     anchors.verticalCenter: parent.verticalCenter; spacing: 10
@@ -663,11 +674,19 @@ Item {
                             font.family: theme.fontFamily; font.pixelSize: 12; font.bold: true
                         }
                         Text {
-                            text: netowrk_path_text.text !== "" ? netowrk_path_text.text : "No path configured"
-                            color: _txtMut; font.family: "Consolas"; font.pixelSize: 10
+                            text: netowrk_path_text.text !== "" ? netowrk_path_text.text : "Tap to set folder…"
+                            color: netowrk_path_text.text !== "" ? _txtMut : _red
+                            font.family: "Consolas"; font.pixelSize: 10
                             elide: Text.ElideMiddle; width: networkShareCard.width - 100
                         }
                     }
+                }
+                MouseArea {
+                    anchors.left: parent.left
+                    anchors.right: netToggleTrack.left; anchors.rightMargin: 10
+                    anchors.top: parent.top; anchors.bottom: parent.bottom
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: networkFolderDialog.open()
                 }
                 Rectangle {
                     id: netToggleTrack
@@ -819,7 +838,7 @@ Item {
                             }
                             APPSETTINGS.saveMatch(true)
                             APPSETTINGS.updateUserHistoryData(name_text_field.text)
-                            MODREADER.saveNameAndPort(name_text_field.text, port_name_text_field.text)
+                            MODREADER.saveNameAndPort(name_text_field.text, port_name_text_field.text, netowrk_path_text.text)
                             if (mod_connected) { MODREADER.on_pushButton_clicked(); MODREADER.on_pushButton_2_clicked() }
                             MODREADER.resetShootinCount()
                         }
