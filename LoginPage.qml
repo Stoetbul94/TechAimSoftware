@@ -1021,7 +1021,7 @@ Item {
                         }
                         MouseArea {
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: { gameSubMode = 1; gameEvent = 6 }
+                            onClicked: { gameSubMode = 1; gameEvent = 4 }
                         }
                     }
                 }
