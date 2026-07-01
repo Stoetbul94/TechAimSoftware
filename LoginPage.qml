@@ -271,7 +271,6 @@ Item {
     }
 
     function getGameEventText(index) {
-        if (index === 6) return qsTr("120")  // 50m Rifle 3 Positions official
         if (APPSETTINGS.getIs15Shoot()) {
             if (index === 0) return qsTr("10")
             else if (index === 1) return qsTr("15")
@@ -318,13 +317,18 @@ Item {
 
     function getMatchTime() {
         var shots = getGameEventText(gameEvent)
+        if (shots === "Free Practice") return "—"
         if (shots === "10") return "10 min"
         if (shots === "15") return "15 min"
         if (shots === "20") return "20 min"
         if (shots === "30") return "30 min"
         if (shots === "40") return "40 min"
-        if (shots === "60") return "50 min"
-        if (shots === "120") return "195 min"
+        if (shots === "60") {
+            if (gameMode === 0)      return "75 min"   // 10m Air Pistol  (ISSF 2026)
+            if (gameRange === 10)    return "75 min"   // 10m Air Rifle   (ISSF 2026)
+            if (gameSubMode === 1)   return "105 min"  // 50m Rifle 3 Pos (ISSF 2026, outdoor)
+            return "50 min"                            // 50m Rifle Prone (ISSF 2026)
+        }
         return "—"
     }
 
@@ -738,7 +742,7 @@ Item {
                 Repeater {
                     model: [
                         { lbl: "SHOT PLAN", val: getGameEventText(gameEvent) === "Free Practice" ? "Free" : getGameEventText(gameEvent) + " shots" },
-                        { lbl: "SCORING",   val: gameMode === 1 ? "Decimal" : "Integer" },
+                        { lbl: "SCORING",   val: (gameMode === 0 || (gameMode === 1 && gameRange === 50 && gameSubMode === 1)) ? "Integer" : "Decimal" },
                         { lbl: "PREP",      val: "15 min" },
                         { lbl: "MATCH",     val: getMatchTime() },
                         { lbl: "DISTANCE",  val: gameRange + " m" },
@@ -1060,7 +1064,7 @@ Item {
                                     text: getEventCardBadge(eventIndex)
                                     color: "white"
                                     font.family: "Consolas"
-                                    font.pixelSize: eventIndex === 5 ? 9 : (eventIndex === 6 ? 10 : 12)
+                                    font.pixelSize: eventIndex === 5 ? 9 : 12
                                     font.bold: true
                                     anchors.centerIn: parent
                                 }
@@ -1091,8 +1095,12 @@ Item {
                                             if (s === "20") return "·  20 min"
                                             if (s === "30") return "·  30 min"
                                             if (s === "40") return "·  40 min"
-                                            if (s === "60") return "·  50 min"
-                                            if (s === "120") return "·  195 min"
+                                            if (s === "60") {
+                                                if (gameMode === 0)    return "·  75 min"
+                                                if (gameRange === 10)  return "·  75 min"
+                                                if (gameSubMode === 1) return "·  105 min"
+                                                return "·  50 min"
+                                            }
                                             return ""
                                         }
                                         color: _txtMut; font.family: "Consolas"; font.pixelSize: 10
@@ -1128,10 +1136,8 @@ Item {
                         font.pixelSize: 9; font.bold: true; font.letterSpacing: 2
                         topPadding: 4; bottomPadding: 8
                     }
-                    // 10m/Prone official: 60 shots (index 4)
-                    EventCard { eventIndex: 4; visible: !(gameMode === 1 && gameRange === 50 && gameSubMode === 1) }
-                    // 3 Positions official: 120 shots (index 6)
-                    EventCard { eventIndex: 6; visible: gameMode === 1 && gameRange === 50 && gameSubMode === 1 }
+                    // Official: 60 shots — Pistol, 10m Rifle, 50m Prone, 50m 3 Pos (20+20+20)
+                    EventCard { eventIndex: 4 }
                     Item { width: 1; height: 2 }
 
                     // ── TRAINING SESSIONS ──────────────────────────────────────
@@ -1153,10 +1159,6 @@ Item {
                     // 40 shots: all disciplines
                     EventCard { eventIndex: 3 }
                     Item { width: 1; height: 8 }
-                    // 60 shots training: shown for 3P as single-position run
-                    EventCard { eventIndex: 4; visible: gameMode === 1 && gameRange === 50 && gameSubMode === 1 }
-                    Item { width: 1; height: 8; visible: gameMode === 1 && gameRange === 50 && gameSubMode === 1 }
-
                     // ── FREE PRACTICE ──────────────────────────────────────────
                     Text {
                         visible: !hideFreePractice
