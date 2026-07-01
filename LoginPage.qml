@@ -22,6 +22,21 @@ Item {
     property bool hideFreePractice: isDefaultIcon
 
     property color licColor: theme.brandPrimary
+
+    // ── Refined color palette ─────────────────────────────────────────────────
+    readonly property color _bg:         "#0B0D10"
+    readonly property color _surface:    "#15171C"
+    readonly property color _surfaceAlt: "#1B1E24"
+    readonly property color _input:      "#1D2026"
+    readonly property color _borderSub:  "#2A2E36"
+    readonly property color _borderStr:  "#3A404A"
+    readonly property color _red:        "#C40046"
+    readonly property color _redHover:   "#E00052"
+    readonly property color _redDark:    "#2D0A18"
+    readonly property color _txt:        "#F3F6FA"
+    readonly property color _txtSec:     "#AAB4C0"
+    readonly property color _txtMut:     "#6F7A86"
+    readonly property color _green:      "#20C997"
     signal loadSavedGame()
     signal sighterStartedFromServer()
     signal matchStartedFromServer()
@@ -366,123 +381,101 @@ Item {
     }
 
     // =========================================================================
-    // NEW VISUAL LAYOUT
+    // VISUAL LAYOUT
     // =========================================================================
 
-    // Background
-    Rectangle {
-        id: fullRect
-        anchors.fill: parent
-        color: theme.bgBase
-    }
+    Rectangle { anchors.fill: parent; color: _bg }
 
-    // ── Header ────────────────────────────────────────────────────────────────
+    // ── Header (74 px — compact app bar + session title) ─────────────────────
     Rectangle {
         id: headerBar
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
-        height: 118
-        color: "#0f0d0e"
+        height: 74
+        color: "#0C0E12"
 
-        // Left crimson edge stripe
-        Rectangle {
-            anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom
-            width: 4; color: theme.brandPrimary
-        }
-        // Bottom crimson accent line
-        Rectangle {
-            anchors.bottom: parent.bottom; anchors.left: parent.left; anchors.right: parent.right
-            height: 2; color: theme.brandPrimary; opacity: 0.5
-        }
-        // Dark accent band on the right third (decorative)
-        Rectangle {
-            anchors.right: parent.right; anchors.top: parent.top; anchors.bottom: parent.bottom
-            width: parent.width * 0.34; color: "#141012"
-        }
-        // Crimson divider at the band edge
-        Rectangle {
-            x: parent.width * 0.66 - 2; anchors.top: parent.top; anchors.bottom: parent.bottom
-            width: 2; color: theme.brandPrimary; opacity: 0.20
+        Rectangle { anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom; width: 3; color: _red }
+        Rectangle { anchors.bottom: parent.bottom; anchors.left: parent.left; anchors.right: parent.right; height: 1; color: _borderSub }
+
+        // Logo — right side, subtle
+        Image {
+            source: theme.logoWhite
+            anchors.right: parent.right; anchors.rightMargin: 20
+            anchors.verticalCenter: parent.verticalCenter
+            height: 26; fillMode: Image.PreserveAspectFit; opacity: 0.55
         }
 
-        // App identity row
+        // App identity (top row)
         Row {
             id: identityRow
-            anchors.top: parent.top; anchors.topMargin: 18
-            anchors.left: parent.left; anchors.leftMargin: 28
-            spacing: 10
+            anchors.top: parent.top; anchors.topMargin: 11
+            anchors.left: parent.left; anchors.leftMargin: 20
+            height: 18; spacing: 10
 
             Canvas {
                 id: targetIcon
-                width: 30; height: 30
+                width: 18; height: 18
                 anchors.verticalCenter: parent.verticalCenter
                 onPaint: {
                     var ctx = getContext("2d")
                     ctx.clearRect(0, 0, width, height)
-                    var cx = width / 2, cy = height / 2
-                    var rings  = [14,  10,  7,  4]
-                    var widths = [2.0, 1.5, 1.5, 2.0]
+                    var cx = 9, cy = 9
+                    var rings = [8, 5.5, 3.5, 1.5]
                     for (var i = 0; i < rings.length; i++) {
                         ctx.beginPath()
                         ctx.arc(cx, cy, rings[i], 0, Math.PI * 2)
-                        ctx.strokeStyle = (i === 1) ? "#ffffff50" : "#a80038"
-                        ctx.lineWidth = widths[i]
+                        ctx.strokeStyle = i % 2 === 0 ? "#C40046" : "#ffffff22"
+                        ctx.lineWidth = 1.2
                         ctx.stroke()
                     }
-                    ctx.beginPath(); ctx.arc(cx, cy, 2, 0, Math.PI * 2)
-                    ctx.fillStyle = "#a80038"; ctx.fill()
+                    ctx.beginPath(); ctx.arc(cx, cy, 1.2, 0, Math.PI * 2)
+                    ctx.fillStyle = "#C40046"; ctx.fill()
                 }
             }
             Text {
-                text: "TECH AIM"; color: theme.textPrimary
-                font.family: theme.fontFamily; font.pixelSize: 15
-                font.bold: true; font.letterSpacing: 3
+                text: "TECH AIM"; color: _txt
+                font.family: theme.fontFamily; font.pixelSize: 12
+                font.bold: true; font.letterSpacing: 2.5
                 anchors.verticalCenter: parent.verticalCenter
             }
-            Text { text: "•"; color: theme.textSecondary; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
+            Rectangle { width: 1; height: 12; color: _borderStr; anchors.verticalCenter: parent.verticalCenter }
             Text {
-                text: "ELECTRONIC TARGET"; color: theme.textSecondary
-                font.family: theme.fontFamily; font.pixelSize: 13; font.letterSpacing: 2
+                text: "ELECTRONIC TARGET CONTROL"; color: _txtMut
+                font.family: theme.fontFamily; font.pixelSize: 11; font.letterSpacing: 1.5
                 anchors.verticalCenter: parent.verticalCenter
             }
         }
 
-        // Main heading
-        Text {
-            id: mainHeading
-            anchors.bottom: subHeading.top; anchors.bottomMargin: 6
-            anchors.left: parent.left; anchors.leftMargin: 28
-            text: "Start a shooting session"
-            color: theme.textPrimary; font.family: theme.fontFamily
-            font.pixelSize: 28; font.bold: true
-        }
-        Text {
-            id: subHeading
-            anchors.bottom: parent.bottom; anchors.bottomMargin: 22
-            anchors.left: parent.left; anchors.leftMargin: 28
-            text: "Choose a discipline and shot plan. TechAim configures the target, scoring and timing."
-            color: theme.textSecondary; font.family: theme.fontFamily; font.pixelSize: 12
-        }
+        // Session title row (bottom)
+        Row {
+            anchors.bottom: parent.bottom; anchors.bottomMargin: 11
+            anchors.left: parent.left; anchors.leftMargin: 20
+            height: 28; spacing: 12
 
-        // Tagline (right accent band)
-        Text {
-            anchors.verticalCenter: subHeading.verticalCenter
-            anchors.right: parent.right; anchors.rightMargin: 28
-            text: "WE AIM TO PLEASE"
-            color: theme.brandAccent; font.family: theme.fontFamily
-            font.pixelSize: 11; font.bold: true; font.letterSpacing: 3
-        }
-        // Logo
-        Image {
-            source: theme.logoWhite
-            anchors.right: parent.right; anchors.rightMargin: 28
-            anchors.top: parent.top; anchors.topMargin: 16
-            height: 34; fillMode: Image.PreserveAspectFit; opacity: 0.85
+            Text {
+                text: "Start session"; color: _txt
+                font.family: theme.fontFamily; font.pixelSize: 23; font.bold: true
+                anchors.verticalCenter: parent.verticalCenter
+            }
+            Rectangle {
+                height: 20; radius: 4
+                width: _modeBadge.implicitWidth + 14
+                color: appMode ? "#0d2018" : "#2a0b10"
+                border.color: appMode ? _green : _red; border.width: 1
+                anchors.verticalCenter: parent.verticalCenter
+                Text {
+                    id: _modeBadge
+                    anchors.centerIn: parent
+                    text: appMode ? "LIVE" : "DEMO"
+                    color: appMode ? _green : _red
+                    font.family: theme.fontFamily; font.pixelSize: 9; font.bold: true; font.letterSpacing: 2
+                }
+            }
         }
     }
 
-    // ── Two-column content area ────────────────────────────────────────────────
+    // ── Two-column content area ───────────────────────────────────────────────
     Item {
         id: contentArea
         anchors.top: headerBar.bottom; anchors.topMargin: 10
@@ -490,50 +483,41 @@ Item {
         anchors.right: parent.right;   anchors.rightMargin: 12
         anchors.bottom: parent.bottom; anchors.bottomMargin: 10
 
-        // ── LEFT PANEL: Session details ───────────────────────────────────────
+        // ── LEFT PANEL ────────────────────────────────────────────────────────
         Rectangle {
             id: leftPanel
-            anchors.top: parent.top; anchors.left: parent.left; anchors.bottom: contentFooter.top; anchors.bottomMargin: 8
-            width: Math.floor(parent.width * 0.46)
-            color: theme.bgSurface; radius: theme.radiusMedium
-            border.color: theme.borderColor; border.width: 1
-            clip: true
+            anchors.top: parent.top; anchors.left: parent.left
+            anchors.bottom: contentFooter.top; anchors.bottomMargin: 8
+            width: Math.floor(parent.width * 0.44)
+            color: _surface; radius: 10
+            border.color: _borderSub; border.width: 1; clip: true
 
-            // Left crimson accent stripe
-            Rectangle {
-                anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom
-                width: 3; color: theme.brandPrimary
-            }
+            Rectangle { anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom; width: 3; color: _red; radius: 2 }
 
-            // Panel title
             Text {
                 id: panelTitle
-                anchors.top: parent.top; anchors.topMargin: 22
-                anchors.left: parent.left; anchors.leftMargin: 26
+                anchors.top: parent.top; anchors.topMargin: 20
+                anchors.left: parent.left; anchors.leftMargin: 22
                 text: "Session details"
-                color: theme.textPrimary; font.family: theme.fontFamily
-                font.pixelSize: 16; font.bold: true
+                color: _txt; font.family: theme.fontFamily; font.pixelSize: 16; font.bold: true
             }
 
-            // ATHLETE label
+            // ── ATHLETE ───────────────────────────────────────────────────────
             Text {
                 id: athleteLabel
-                anchors.top: panelTitle.bottom; anchors.topMargin: 20
-                anchors.left: parent.left; anchors.leftMargin: 26
+                anchors.top: panelTitle.bottom; anchors.topMargin: 16
+                anchors.left: parent.left; anchors.leftMargin: 22
                 text: "ATHLETE"
-                color: theme.textSecondary; font.family: theme.fontFamily
+                color: _txtMut; font.family: theme.fontFamily
                 font.pixelSize: 10; font.bold: true; font.letterSpacing: 2
             }
-
-            // Athlete input box
             Rectangle {
                 id: athleteBox
                 anchors.top: athleteLabel.bottom; anchors.topMargin: 6
-                anchors.left: parent.left;   anchors.leftMargin: 26
-                anchors.right: parent.right; anchors.rightMargin: 26
-                height: 44
-                color: theme.bgSurfaceAlt; radius: theme.radiusSmall
-                border.color: name_text_field.activeFocus ? theme.brandPrimary : theme.borderColor
+                anchors.left: parent.left;   anchors.leftMargin: 22
+                anchors.right: parent.right; anchors.rightMargin: 22
+                height: 46; color: _input; radius: 6
+                border.color: name_text_field.activeFocus ? _red : _borderSub
                 border.width: name_text_field.activeFocus ? 2 : 1
 
                 TextInput {
@@ -542,106 +526,93 @@ Item {
                     anchors.right: historyBtn.left; anchors.rightMargin: 4
                     anchors.verticalCenter: parent.verticalCenter
                     font.family: theme.fontFamily; font.pixelSize: 14
-                    color: theme.textPrimary; maximumLength: 20
+                    color: _txt; maximumLength: 20
                     onTextChanged: { username_loginPage = text }
                 }
                 Rectangle {
                     id: historyBtn
                     anchors.right: parent.right; anchors.top: parent.top; anchors.bottom: parent.bottom
-                    width: 36; color: "transparent"; radius: theme.radiusSmall
-                    Text { text: "▾"; color: theme.textSecondary; font.pixelSize: 16; anchors.centerIn: parent }
+                    width: 36; color: "transparent"
+                    Text { text: "▾"; color: _txtMut; font.pixelSize: 14; anchors.centerIn: parent }
                     MouseArea {
                         anchors.fill: parent
-                        onClicked: {
-                            if (APPSETTINGS.getUserHistoryCount() > 0)
-                                userHistoryList.visible = !userHistoryList.visible
-                        }
+                        onClicked: { if (APPSETTINGS.getUserHistoryCount() > 0) userHistoryList.visible = !userHistoryList.visible }
                     }
                 }
             }
-
-            // History dropdown
             ListView {
                 id: userHistoryList
                 anchors.top: athleteBox.bottom
                 anchors.left: athleteBox.left; anchors.right: athleteBox.right
-                height: Math.min(count, 4) * 44
+                height: Math.min(count, 4) * 46
                 visible: false; clip: true; z: 20
                 model: APPSETTINGS.getUserHistoryCount()
                 onVisibleChanged: { model = 0; model = APPSETTINGS.getUserHistoryCount() }
                 delegate: Rectangle {
-                    width: userHistoryList.width; height: 44
-                    color: theme.bgSurfaceAlt
-                    border.color: theme.borderColor; border.width: 1
+                    width: userHistoryList.width; height: 46
+                    color: _surfaceAlt; border.color: _borderSub; border.width: 1
                     Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        anchors.left: parent.left; anchors.leftMargin: 14
+                        anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left; anchors.leftMargin: 14
                         text: APPSETTINGS.getUserHistoryData(index)
-                        color: theme.textPrimary; font.family: theme.fontFamily; font.pixelSize: 14
+                        color: _txt; font.family: theme.fontFamily; font.pixelSize: 14
                     }
                     MouseArea {
                         anchors.fill: parent; hoverEnabled: true
-                        onEntered: parent.color = theme.bgBase
-                        onExited:  parent.color = theme.bgSurfaceAlt
-                        onClicked: {
-                            username_loginPage = APPSETTINGS.getUserHistoryData(index)
-                            userHistoryList.visible = false
-                        }
+                        onEntered: parent.color = _borderSub
+                        onExited:  parent.color = _surfaceAlt
+                        onClicked: { username_loginPage = APPSETTINGS.getUserHistoryData(index); userHistoryList.visible = false }
                     }
                 }
             }
 
-            // TARGET CONNECTION label
+            // ── TARGET CONNECTION ─────────────────────────────────────────────
             Text {
                 id: connLabel
-                anchors.top: athleteBox.bottom; anchors.topMargin: 18
-                anchors.left: parent.left; anchors.leftMargin: 26
+                anchors.top: athleteBox.bottom; anchors.topMargin: 16
+                anchors.left: parent.left; anchors.leftMargin: 22
                 text: "TARGET CONNECTION"
-                color: theme.textSecondary; font.family: theme.fontFamily
+                color: _txtMut; font.family: theme.fontFamily
                 font.pixelSize: 10; font.bold: true; font.letterSpacing: 2
                 visible: showComportConnector
             }
-
-            // Port + connection status row
             Row {
                 id: connRow
                 anchors.top: connLabel.bottom; anchors.topMargin: 6
-                anchors.left: parent.left;   anchors.leftMargin: 26
-                anchors.right: parent.right; anchors.rightMargin: 26
-                height: 44; spacing: 10
+                anchors.left: parent.left;   anchors.leftMargin: 22
+                anchors.right: parent.right; anchors.rightMargin: 22
+                height: 46; spacing: 8
                 visible: showComportConnector
 
                 Rectangle {
-                    width: parent.width - connStatusBtn.width - 10; height: 44
-                    color: theme.bgSurfaceAlt; radius: theme.radiusSmall
-                    border.color: port_name_text_field.activeFocus ? theme.brandPrimary : theme.borderColor
+                    width: parent.width - connStatusBtn.width - 8; height: 46
+                    color: _input; radius: 6
+                    border.color: port_name_text_field.activeFocus ? _red : _borderSub
                     border.width: port_name_text_field.activeFocus ? 2 : 1
                     TextInput {
                         id: port_name_text_field
-                        anchors.left: parent.left;  anchors.leftMargin: 14
+                        anchors.left: parent.left; anchors.leftMargin: 14
                         anchors.right: parent.right; anchors.rightMargin: 10
                         anchors.verticalCenter: parent.verticalCenter
                         font.family: theme.fontFamily; font.pixelSize: 14
-                        color: theme.textPrimary; maximumLength: 5
+                        color: _txt; maximumLength: 5
                     }
                 }
-
                 Rectangle {
                     id: connStatusBtn
-                    width: 130; height: 44; radius: theme.radiusSmall
-                    color: mod_connected ? "#0d1f11" : theme.bgSurfaceAlt
-                    border.color: mod_connected ? theme.statusConnected : theme.borderColor; border.width: 1
+                    width: 130; height: 46; radius: 6
+                    color: mod_connected ? "#0d2018" : _surfaceAlt
+                    border.color: mod_connected ? _green : _borderSub; border.width: 1
                     Row {
                         anchors.centerIn: parent; spacing: 7
                         Rectangle {
                             width: 7; height: 7; radius: 4
-                            color: mod_connected ? theme.statusConnected : theme.textSecondary
+                            color: mod_connected ? _green : _txtMut
                             anchors.verticalCenter: parent.verticalCenter
                         }
                         Text {
                             text: mod_connected ? "Connected" : "Demo / Offline"
-                            color: mod_connected ? theme.statusConnected : theme.textSecondary
-                            font.family: theme.fontFamily; font.pixelSize: 11
+                            color: mod_connected ? _green : _txtMut
+                            font.family: theme.fontFamily; font.pixelSize: 11; font.bold: true
                             anchors.verticalCenter: parent.verticalCenter
                         }
                     }
@@ -649,148 +620,119 @@ Item {
                         anchors.fill: parent
                         onClicked: {
                             if (!mod_connected) {
-                                if (popupMode) {
-                                    MODREADER.connectedModbus()
-                                    mod_connected = MODREADER.isModBusConnected()
-                                    if (!mod_connected) modBusConnector.visible = true
-                                }
-                            } else {
-                                MODREADER.disconnectModbus()
-                                mod_connected = MODREADER.isModBusConnected()
-                            }
+                                if (popupMode) { MODREADER.connectedModbus(); mod_connected = MODREADER.isModBusConnected(); if (!mod_connected) modBusConnector.visible = true }
+                            } else { MODREADER.disconnectModbus(); mod_connected = MODREADER.isModBusConnected() }
                         }
                     }
                 }
             }
 
-            // ── Network share section ─────────────────────────────────────────
+            // ── NETWORK SHARE ─────────────────────────────────────────────────
             Text {
                 id: networkSectionLabel
                 anchors.top: showComportConnector ? connRow.bottom : athleteBox.bottom
-                anchors.topMargin: 18
-                anchors.left: parent.left; anchors.leftMargin: 26
+                anchors.topMargin: 16
+                anchors.left: parent.left; anchors.leftMargin: 22
                 text: "NETWORK SHARE"
-                color: theme.textSecondary; font.family: theme.fontFamily
+                color: _txtMut; font.family: theme.fontFamily
                 font.pixelSize: 10; font.bold: true; font.letterSpacing: 2
             }
-
             Rectangle {
                 id: networkShareCard
                 anchors.top: networkSectionLabel.bottom; anchors.topMargin: 6
-                anchors.left: parent.left;   anchors.leftMargin: 26
-                anchors.right: parent.right; anchors.rightMargin: 26
-                height: 52
-                color: theme.bgSurfaceAlt; radius: theme.radiusSmall
-                border.color: netEnabled ? theme.brandPrimary : theme.borderColor; border.width: 1
-
+                anchors.left: parent.left;   anchors.leftMargin: 22
+                anchors.right: parent.right; anchors.rightMargin: 22
+                height: 50; color: _input; radius: 6
+                border.color: netEnabled ? _red : _borderSub; border.width: 1
                 property bool netEnabled: false
 
                 Row {
-                    anchors.left: parent.left;  anchors.leftMargin: 14
+                    anchors.left: parent.left; anchors.leftMargin: 12
                     anchors.right: netToggleTrack.left; anchors.rightMargin: 10
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: 12
-
-                    // Network icon
+                    anchors.verticalCenter: parent.verticalCenter; spacing: 10
                     Text {
-                        text: "☁"
-                        font.pixelSize: 18
-                        color: networkShareCard.netEnabled ? theme.brandPrimary : theme.textSecondary
+                        text: "☁"; font.pixelSize: 16
+                        color: networkShareCard.netEnabled ? _red : _txtMut
                         anchors.verticalCenter: parent.verticalCenter
                     }
-
                     Column {
-                        anchors.verticalCenter: parent.verticalCenter; spacing: 3
+                        anchors.verticalCenter: parent.verticalCenter; spacing: 2
                         Text {
                             text: networkShareCard.netEnabled ? "Share enabled" : "Share disabled"
-                            color: networkShareCard.netEnabled ? theme.textPrimary : theme.textSecondary
+                            color: networkShareCard.netEnabled ? _txt : _txtSec
                             font.family: theme.fontFamily; font.pixelSize: 12; font.bold: true
                         }
                         Text {
                             text: netowrk_path_text.text !== "" ? netowrk_path_text.text : "No path configured"
-                            color: theme.textSecondary; font.family: "Consolas"
-                            font.pixelSize: 10
-                            elide: Text.ElideMiddle
-                            width: networkShareCard.width - 100
+                            color: _txtMut; font.family: "Consolas"; font.pixelSize: 10
+                            elide: Text.ElideMiddle; width: networkShareCard.width - 100
                         }
                     }
                 }
-
-                // Toggle track
                 Rectangle {
                     id: netToggleTrack
-                    anchors.right: parent.right; anchors.rightMargin: 14
+                    anchors.right: parent.right; anchors.rightMargin: 12
                     anchors.verticalCenter: parent.verticalCenter
-                    width: 40; height: 22; radius: 11
-                    color: networkShareCard.netEnabled ? theme.brandPrimary : theme.borderColor
-
+                    width: 38; height: 20; radius: 10
+                    color: networkShareCard.netEnabled ? _red : _borderStr
                     Rectangle {
-                        id: netToggleThumb
                         anchors.verticalCenter: parent.verticalCenter
-                        x: networkShareCard.netEnabled ? parent.width - width - 3 : 3
-                        width: 16; height: 16; radius: 8
-                        color: "white"
+                        x: networkShareCard.netEnabled ? parent.width - width - 2 : 2
+                        width: 16; height: 16; radius: 8; color: "white"
                         Behavior on x { NumberAnimation { duration: 120 } }
                     }
-
                     MouseArea {
                         anchors.fill: parent
-                        onClicked: {
-                            networkShareCard.netEnabled = !networkShareCard.netEnabled
-                            MODREADER.setIsServerNetworkEnabled(networkShareCard.netEnabled)
-                        }
+                        onClicked: { networkShareCard.netEnabled = !networkShareCard.netEnabled; MODREADER.setIsServerNetworkEnabled(networkShareCard.netEnabled) }
                     }
                 }
             }
 
-            // Selected profile label
+            // ── SELECTED PROFILE ──────────────────────────────────────────────
             Text {
                 id: profileLabel
-                anchors.top: networkShareCard.bottom
-                anchors.topMargin: 22
-                anchors.left: parent.left; anchors.leftMargin: 26
-                text: "Selected profile"
-                color: theme.textSecondary; font.family: theme.fontFamily; font.pixelSize: 11
+                anchors.top: networkShareCard.bottom; anchors.topMargin: 16
+                anchors.left: parent.left; anchors.leftMargin: 22
+                text: "SELECTED PROFILE"
+                color: _txtMut; font.family: theme.fontFamily
+                font.pixelSize: 10; font.bold: true; font.letterSpacing: 2
             }
             Text {
                 id: profileName
                 anchors.top: profileLabel.bottom; anchors.topMargin: 4
-                anchors.left: parent.left; anchors.leftMargin: 26
-                text: getDisciplineName() + " — ISSF Match"
-                color: theme.textPrimary; font.family: theme.fontFamily
-                font.pixelSize: 17; font.bold: true
+                anchors.left: parent.left; anchors.leftMargin: 22
+                text: getDisciplineName() + " — ISSF"
+                color: _txt; font.family: theme.fontFamily; font.pixelSize: 16; font.bold: true
             }
 
-            // Info tiles grid (3×2)
+            // ── INFO TILES ────────────────────────────────────────────────────
             Grid {
                 id: infoTiles
-                anchors.top: profileName.bottom; anchors.topMargin: 14
-                anchors.left: parent.left;   anchors.leftMargin: 26
-                anchors.right: parent.right; anchors.rightMargin: 26
+                anchors.top: profileName.bottom; anchors.topMargin: 12
+                anchors.left: parent.left;   anchors.leftMargin: 22
+                anchors.right: parent.right; anchors.rightMargin: 22
                 columns: 3; spacing: 8
-
                 Repeater {
                     model: [
                         { lbl: "SHOT PLAN", val: getGameEventText(gameEvent) === "Free Practice" ? "Free" : getGameEventText(gameEvent) + " shots" },
-                        { lbl: "SCORING",   val: "Decimal" },
+                        { lbl: "SCORING",   val: gameMode === 1 ? "Decimal" : "Integer" },
                         { lbl: "PREP",      val: "15 min" },
                         { lbl: "MATCH",     val: getMatchTime() },
                         { lbl: "DISTANCE",  val: gameRange + " m" },
                         { lbl: "RULES",     val: "ISSF 2026" }
                     ]
                     delegate: Rectangle {
-                        width: (infoTiles.width - 16) / 3; height: 56
-                        color: theme.bgSurfaceAlt; radius: theme.radiusSmall
-                        border.color: theme.borderColor; border.width: 1
+                        width: (infoTiles.width - 16) / 3; height: 52
+                        color: _surfaceAlt; radius: 6; border.color: _borderSub; border.width: 1
                         Column {
-                            anchors.centerIn: parent; spacing: 5
+                            anchors.centerIn: parent; spacing: 4
                             Text {
-                                text: modelData.lbl; color: theme.textSecondary
-                                font.family: theme.fontFamily; font.pixelSize: 9; font.letterSpacing: 1
+                                text: modelData.lbl; color: _txtMut
+                                font.family: theme.fontFamily; font.pixelSize: 9; font.letterSpacing: 1.5
                                 anchors.horizontalCenter: parent.horizontalCenter
                             }
                             Text {
-                                text: modelData.val; color: theme.textPrimary
+                                text: modelData.val; color: _txt
                                 font.family: "Consolas"; font.pixelSize: 13; font.bold: true
                                 anchors.horizontalCenter: parent.horizontalCenter
                             }
@@ -799,27 +741,24 @@ Item {
                 }
             }
 
-            // Bottom action buttons
+            // ── ACTION BUTTONS ────────────────────────────────────────────────
             Row {
-                anchors.bottom: parent.bottom; anchors.bottomMargin: 22
-                anchors.left: parent.left;   anchors.leftMargin: 26
-                anchors.right: parent.right; anchors.rightMargin: 26
-                height: 50; spacing: 12
+                anchors.bottom: parent.bottom; anchors.bottomMargin: 18
+                anchors.left: parent.left;   anchors.leftMargin: 22
+                anchors.right: parent.right; anchors.rightMargin: 22
+                height: 52; spacing: 10
 
-                // Load saved session
                 Rectangle {
-                    width: (parent.width - 12) * 0.42; height: 50
-                    color: "transparent"; radius: theme.radiusMedium
-                    border.color: theme.borderColor; border.width: 1
+                    width: (parent.width - 10) * 0.40; height: 52
+                    color: "transparent"; radius: 8; border.color: _borderStr; border.width: 1
                     Text {
                         text: "Load saved session"
-                        color: theme.textSecondary; font.family: theme.fontFamily; font.pixelSize: 12
-                        anchors.centerIn: parent
+                        color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 12; anchors.centerIn: parent
                     }
                     MouseArea {
                         anchors.fill: parent; hoverEnabled: true
-                        onEntered: parent.border.color = theme.textSecondary
-                        onExited:  parent.border.color = theme.borderColor
+                        onEntered: parent.border.color = _txtMut
+                        onExited:  parent.border.color = _borderStr
                         onClicked: {
                             APPSETTINGS.uploadGame()
                             username_loginPage = APPSETTINGS.getUserName()
@@ -827,39 +766,33 @@ Item {
                             gameEvent = APPSETTINGS.getGameEvent()
                             gameType  = APPSETTINGS.getGameType()
                             if (gameType == 0) MODREADER.changeSighterMode(false)
-                            console.log(" srinivas --- ", gameType)
-                            if (userName != "") {
-                                isSaveGame = true
-                                startButtonClickedOnLoadGame()
-                            }
+                            if (userName != "") { isSaveGame = true; startButtonClickedOnLoadGame() }
                         }
                     }
                 }
 
-                // Start session — flat crimson
                 Rectangle {
                     id: startSessionRect
-                    width: (parent.width - 12) * 0.58; height: 50
-                    color: "#8c002e"; radius: theme.radiusMedium
+                    width: (parent.width - 10) * 0.60; height: 52
+                    color: _startHov ? _redHover : _red; radius: 8
                     opacity: startMouse.visible ? 1.0 : 0.4
+                    property bool _startHov: false
                     Text {
                         text: "Start session  →"
-                        color: theme.textOnBrand; font.family: theme.fontFamily
-                        font.pixelSize: 14; font.bold: true
+                        color: "white"; font.family: theme.fontFamily; font.pixelSize: 15; font.bold: true
                         anchors.centerIn: parent
                     }
                     MouseArea {
                         id: startMouse
                         anchors.fill: parent; hoverEnabled: true
-                        onEntered: startSessionRect.color = startMouse.visible ? "#a80038" : "#8c002e"
-                        onExited:  startSessionRect.color = "#8c002e"
+                        onEntered: startSessionRect._startHov = true
+                        onExited:  startSessionRect._startHov = false
                         onClicked: {
                             if (!appMode) {
                                 MODREADER.appendToLogFile("Application running in demo mode")
                                 if (connectToMaster && !MODREADER.isMasterSystemConnected()) {
                                     masterConnection.text = "Master system is not connected, Please Click \"Connect\" button."
-                                    masterConnection.visible = true
-                                    return
+                                    masterConnection.visible = true; return
                                 }
                                 rootItem.visible = false
                             } else {
@@ -867,8 +800,7 @@ Item {
                                 if (connectToMaster && !MODREADER.isMasterSystemConnected()) {
                                     MODREADER.appendToLogFile("Master application required")
                                     masterConnection.text = "Master system is not connected, Please Click \"Connect\" button."
-                                    masterConnection.visible = true
-                                    return
+                                    masterConnection.visible = true; return
                                 }
                                 if (masterConnectBtn && port_name_text_field.text != "") {
                                     MODREADER.appendToLogFile("Application with port text field")
@@ -876,29 +808,19 @@ Item {
                                     mod_connected = MODREADER.isModBusConnected()
                                 }
                                 if (!MODREADER.isModBusConnected()) {
-                                    MODREADER.appendToLogFile("Com port not connected")
-                                    validateLogin.text = "Com port not connected"
-                                    validateLogin.visible = true
+                                    validateLogin.text = "Com port not connected"; validateLogin.visible = true
                                 } else if (!MODREADER.isHardwareConnected()) {
-                                    validateLogin.text = "Hardware not connected."
-                                    validateLogin.visible = true
+                                    validateLogin.text = "Hardware not connected."; validateLogin.visible = true
                                 } else if (!MODREADER.checkAutoFeedMode()) {
-                                    validateLogin.text = "Auto feed mode is off"
-                                    validateLogin.visible = false
+                                    validateLogin.text = "Auto feed mode is off"; validateLogin.visible = false
                                 } else if (validate()) {
-                                    MODREADER.appendToLogFile("Validation was successful")
-                                    rootItem.visible = false
-                                } else {
-                                    MODREADER.appendToLogFile("Com-port connected but validation failed")
-                                }
+                                    MODREADER.appendToLogFile("Validation was successful"); rootItem.visible = false
+                                } else { MODREADER.appendToLogFile("Com-port connected but validation failed") }
                             }
                             APPSETTINGS.saveMatch(true)
                             APPSETTINGS.updateUserHistoryData(name_text_field.text)
                             MODREADER.saveNameAndPort(name_text_field.text, port_name_text_field.text)
-                            if (mod_connected) {
-                                MODREADER.on_pushButton_clicked()
-                                MODREADER.on_pushButton_2_clicked()
-                            }
+                            if (mod_connected) { MODREADER.on_pushButton_clicked(); MODREADER.on_pushButton_2_clicked() }
                             MODREADER.resetShootinCount()
                         }
                     }
@@ -906,58 +828,57 @@ Item {
             }
         } // leftPanel
 
-        // ── RIGHT PANEL: Choose an event ──────────────────────────────────────
+        // ── RIGHT PANEL ───────────────────────────────────────────────────────
         Rectangle {
             id: rightPanel
-            anchors.top: parent.top; anchors.right: parent.right; anchors.bottom: contentFooter.top; anchors.bottomMargin: 8
+            anchors.top: parent.top; anchors.right: parent.right
+            anchors.bottom: contentFooter.top; anchors.bottomMargin: 8
             anchors.left: leftPanel.right; anchors.leftMargin: 10
-            color: theme.bgSurface; radius: theme.radiusMedium
-            border.color: theme.borderColor; border.width: 1; clip: true
+            color: _surface; radius: 10
+            border.color: _borderSub; border.width: 1; clip: true
 
-            // Panel title
             Text {
                 id: rightTitle
-                anchors.top: parent.top; anchors.topMargin: 22
-                anchors.left: parent.left; anchors.leftMargin: 26
+                anchors.top: parent.top; anchors.topMargin: 20
+                anchors.left: parent.left; anchors.leftMargin: 22
                 text: "Choose an event"
-                color: theme.textPrimary; font.family: theme.fontFamily
-                font.pixelSize: 16; font.bold: true
+                color: _txt; font.family: theme.fontFamily; font.pixelSize: 16; font.bold: true
             }
             Text {
                 id: rightSubtitle
-                anchors.top: rightTitle.bottom; anchors.topMargin: 4
-                anchors.left: parent.left; anchors.leftMargin: 26
-                text: "The official match settings are applied automatically."
-                color: theme.textSecondary; font.family: theme.fontFamily; font.pixelSize: 11
+                anchors.top: rightTitle.bottom; anchors.topMargin: 3
+                anchors.left: parent.left; anchors.leftMargin: 22
+                text: "Match settings are applied automatically."
+                color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 11
             }
 
             // Weapon selector (PISTOL | RIFLE)
             Row {
                 id: weaponRow
-                anchors.top: rightSubtitle.bottom; anchors.topMargin: 16
-                anchors.left: parent.left;   anchors.leftMargin: 26
-                anchors.right: parent.right; anchors.rightMargin: 26
-                height: 44; spacing: 10
+                anchors.top: rightSubtitle.bottom; anchors.topMargin: 14
+                anchors.left: parent.left;   anchors.leftMargin: 22
+                anchors.right: parent.right; anchors.rightMargin: 22
+                height: 52; spacing: 8
 
                 Rectangle {
-                    width: (parent.width - 10) / 2; height: 44; radius: theme.radiusSmall
-                    color: gameMode === 0 ? "#1fa80038" : theme.bgSurfaceAlt
-                    border.color: gameMode === 0 ? theme.brandPrimary : theme.borderColor
+                    width: (parent.width - 8) / 2; height: 52; radius: 8
+                    color: gameMode === 0 ? _redDark : _surfaceAlt
+                    border.color: gameMode === 0 ? _red : _borderSub
                     border.width: gameMode === 0 ? 2 : 1
-                    Row {
-                        anchors.centerIn: parent; spacing: 10
-                        Image {
-                            source: "qrc:/images/loginPage/iconPistol.png"
-                            width: 22; height: 22; fillMode: Image.PreserveAspectFit
-                            anchors.verticalCenter: parent.verticalCenter
-                            opacity: gameMode === 0 ? 1.0 : 0.3
-                        }
+                    Column {
+                        anchors.centerIn: parent; spacing: 2
                         Text {
                             text: "PISTOL"
-                            color: gameMode === 0 ? theme.brandPrimary : theme.textSecondary
+                            color: gameMode === 0 ? _red : _txtSec
                             font.family: theme.fontFamily; font.pixelSize: 13
                             font.bold: gameMode === 0; font.letterSpacing: 1
-                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.horizontalCenter: parent.horizontalCenter
+                        }
+                        Text {
+                            text: "10 m  ·  50 m"
+                            color: gameMode === 0 ? _txtSec : _txtMut
+                            font.family: theme.fontFamily; font.pixelSize: 10
+                            anchors.horizontalCenter: parent.horizontalCenter
                         }
                     }
                     MouseArea {
@@ -967,24 +888,24 @@ Item {
                 }
 
                 Rectangle {
-                    width: (parent.width - 10) / 2; height: 44; radius: theme.radiusSmall
-                    color: gameMode === 1 ? "#1fa80038" : theme.bgSurfaceAlt
-                    border.color: gameMode === 1 ? theme.brandPrimary : theme.borderColor
+                    width: (parent.width - 8) / 2; height: 52; radius: 8
+                    color: gameMode === 1 ? _redDark : _surfaceAlt
+                    border.color: gameMode === 1 ? _red : _borderSub
                     border.width: gameMode === 1 ? 2 : 1
-                    Row {
-                        anchors.centerIn: parent; spacing: 10
-                        Image {
-                            source: "qrc:/images/loginPage/iconRifle.png"
-                            width: 22; height: 22; fillMode: Image.PreserveAspectFit
-                            anchors.verticalCenter: parent.verticalCenter
-                            opacity: gameMode === 1 ? 1.0 : 0.3
-                        }
+                    Column {
+                        anchors.centerIn: parent; spacing: 2
                         Text {
                             text: "RIFLE"
-                            color: gameMode === 1 ? theme.brandPrimary : theme.textSecondary
+                            color: gameMode === 1 ? _red : _txtSec
                             font.family: theme.fontFamily; font.pixelSize: 13
                             font.bold: gameMode === 1; font.letterSpacing: 1
-                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.horizontalCenter: parent.horizontalCenter
+                        }
+                        Text {
+                            text: "10 m  ·  50 m"
+                            color: gameMode === 1 ? _txtSec : _txtMut
+                            font.family: theme.fontFamily; font.pixelSize: 10
+                            anchors.horizontalCenter: parent.horizontalCenter
                         }
                     }
                     MouseArea {
@@ -994,62 +915,62 @@ Item {
                 }
             }
 
-            // Scrollable event cards — grouped by category
+            // Scrollable event cards
             ScrollView {
                 id: eventScroll
-                anchors.top: weaponRow.bottom; anchors.topMargin: 14
-                anchors.left: parent.left;   anchors.leftMargin: 26
-                anchors.right: parent.right; anchors.rightMargin: 26
-                anchors.bottom: parent.bottom; anchors.bottomMargin: 22
+                anchors.top: weaponRow.bottom; anchors.topMargin: 12
+                anchors.left: parent.left;   anchors.leftMargin: 22
+                anchors.right: parent.right; anchors.rightMargin: 22
+                anchors.bottom: parent.bottom; anchors.bottomMargin: 18
                 clip: true
                 ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                ScrollBar.vertical.policy: ScrollBar.AsNeeded
 
                 Column {
                     id: eventColumn
-                    width: eventScroll.width
+                    width: eventScroll.availableWidth
                     spacing: 0
 
-                    // ── Helper component for an event card ──────────────────────
                     component EventCard: Rectangle {
                         property int eventIndex: 0
-                        width: eventColumn.width; height: 70; radius: theme.radiusMedium
-                        color: gameEvent === eventIndex ? "#1fa80038" : theme.bgSurfaceAlt
-                        border.color: gameEvent === eventIndex ? theme.brandPrimary : theme.borderColor
+                        width: eventColumn.width; height: 72; radius: 8
+                        color: gameEvent === eventIndex ? _redDark : _surfaceAlt
+                        border.color: gameEvent === eventIndex ? _red : _borderSub
                         border.width: gameEvent === eventIndex ? 2 : 1
 
                         Row {
-                            anchors.left: parent.left;  anchors.leftMargin: 14
-                            anchors.right: parent.right; anchors.rightMargin: 14
+                            anchors.left: parent.left;  anchors.leftMargin: 12
+                            anchors.right: parent.right; anchors.rightMargin: 12
                             anchors.verticalCenter: parent.verticalCenter
-                            spacing: 14
+                            spacing: 12
 
                             Rectangle {
-                                width: 40; height: 40; radius: 20
-                                color: gameEvent === eventIndex ? theme.brandPrimary : "#28282e"
+                                width: 38; height: 38; radius: 19
+                                color: gameEvent === eventIndex ? _red : _borderStr
                                 anchors.verticalCenter: parent.verticalCenter
                                 Text {
                                     text: getEventCardBadge(eventIndex)
-                                    color: gameEvent === eventIndex ? theme.textOnBrand : theme.textSecondary
+                                    color: "white"
                                     font.family: "Consolas"; font.pixelSize: eventIndex === 5 ? 9 : 12; font.bold: true
                                     anchors.centerIn: parent
                                 }
                             }
 
                             Column {
-                                anchors.verticalCenter: parent.verticalCenter; spacing: 3
-                                width: parent.width - 40 - 24 - 14 * 3
+                                anchors.verticalCenter: parent.verticalCenter; spacing: 4
+                                width: parent.width - 38 - 20 - 12 * 3
                                 Text {
                                     text: getEventCardTitle(eventIndex)
-                                    color: gameEvent === eventIndex ? theme.textPrimary : theme.textSecondary
+                                    color: gameEvent === eventIndex ? _txt : _txtSec
                                     font.family: theme.fontFamily; font.pixelSize: 13
                                     font.bold: gameEvent === eventIndex
                                     elide: Text.ElideRight; width: parent.width
                                 }
                                 Row {
-                                    spacing: 10
+                                    spacing: 8
                                     Text {
                                         text: getEventCardSubtitle(eventIndex)
-                                        color: theme.textSecondary; font.family: theme.fontFamily; font.pixelSize: 10
+                                        color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 10
                                     }
                                     Text {
                                         visible: getGameEventText(eventIndex) !== "Free Practice"
@@ -1063,28 +984,28 @@ Item {
                                             if (s === "60") return "·  50 min"
                                             return ""
                                         }
-                                        color: theme.textSecondary; font.family: "Consolas"; font.pixelSize: 10
+                                        color: _txtMut; font.family: "Consolas"; font.pixelSize: 10
                                     }
                                 }
                             }
 
                             Rectangle {
-                                width: 20; height: 20; radius: 10
+                                width: 18; height: 18; radius: 9
                                 anchors.verticalCenter: parent.verticalCenter
                                 color: "transparent"
-                                border.color: gameEvent === eventIndex ? theme.brandPrimary : theme.borderColor
+                                border.color: gameEvent === eventIndex ? _red : _borderStr
                                 border.width: 2
                                 Rectangle {
-                                    anchors.centerIn: parent; width: 10; height: 10; radius: 5
-                                    color: theme.brandPrimary; visible: gameEvent === eventIndex
+                                    anchors.centerIn: parent; width: 9; height: 9; radius: 5
+                                    color: _red; visible: gameEvent === eventIndex
                                 }
                             }
                         }
 
                         MouseArea {
                             anchors.fill: parent; hoverEnabled: true
-                            onEntered: { if (gameEvent !== eventIndex) parent.color = theme.bgBase }
-                            onExited:  { parent.color = gameEvent === eventIndex ? "#1fa80038" : theme.bgSurfaceAlt }
+                            onEntered: { if (gameEvent !== eventIndex) parent.color = _borderSub }
+                            onExited:  { parent.color = gameEvent === eventIndex ? _redDark : _surfaceAlt }
                             onClicked: { gameEvent = eventIndex }
                         }
                     }
@@ -1092,108 +1013,90 @@ Item {
                     // ── OFFICIAL ISSF MATCH ────────────────────────────────────
                     Text {
                         text: "OFFICIAL ISSF MATCH"
-                        color: theme.textSecondary; font.family: theme.fontFamily
+                        color: _txtMut; font.family: theme.fontFamily
                         font.pixelSize: 9; font.bold: true; font.letterSpacing: 2
                         topPadding: 4; bottomPadding: 8
                     }
-                    EventCard { eventIndex: 4 }  // 60 shots — full ISSF qualification
+                    EventCard { eventIndex: 4 }
                     Item { width: 1; height: 2 }
 
                     // ── TRAINING SESSIONS ──────────────────────────────────────
                     Text {
                         text: "TRAINING SESSIONS"
-                        color: theme.textSecondary; font.family: theme.fontFamily
+                        color: _txtMut; font.family: theme.fontFamily
                         font.pixelSize: 9; font.bold: true; font.letterSpacing: 2
                         topPadding: 14; bottomPadding: 8
                     }
-                    EventCard { eventIndex: 0 }   // 10 shots
+                    EventCard { eventIndex: 0 }
                     Item { width: 1; height: 8 }
-                    EventCard { eventIndex: 1 }   // 20 shots
+                    EventCard { eventIndex: 1 }
                     Item { width: 1; height: 8 }
-                    EventCard { eventIndex: 2 }   // 30 shots
+                    EventCard { eventIndex: 2 }
                     Item { width: 1; height: 8 }
-                    EventCard { eventIndex: 3 }   // 40 shots
+                    EventCard { eventIndex: 3 }
 
                     // ── FREE PRACTICE ──────────────────────────────────────────
                     Text {
                         visible: !hideFreePractice
                         text: "FREE PRACTICE"
-                        color: theme.textSecondary; font.family: theme.fontFamily
+                        color: _txtMut; font.family: theme.fontFamily
                         font.pixelSize: 9; font.bold: true; font.letterSpacing: 2
                         topPadding: 14; bottomPadding: 8
                     }
                     EventCard { eventIndex: 5; visible: !hideFreePractice }
+                    Item { width: 1; height: 8 }
                 }
             }
         } // rightPanel
 
-        // ── Full-width footer strip ───────────────────────────────────────────
+        // ── Footer strip ──────────────────────────────────────────────────────
         Rectangle {
             id: contentFooter
             anchors.bottom: parent.bottom
             anchors.left: parent.left; anchors.right: parent.right
-            height: 36
-            color: theme.bgSurface
-            radius: theme.radiusMedium
-            // Top divider with left crimson pip
+            height: 34; color: _surfaceAlt; radius: 8
             Rectangle {
                 anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right
-                height: 1; color: theme.borderColor
+                height: 1; color: _borderSub
             }
-            Rectangle {
-                anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom
-                width: 3; color: theme.brandPrimary; radius: 2
-            }
-
-            // Left: branding
             Text {
-                anchors.left: parent.left; anchors.leftMargin: 18
+                anchors.left: parent.left; anchors.leftMargin: 16
                 anchors.verticalCenter: parent.verticalCenter
                 text: "TechAim  ·  Electronic target control"
-                color: theme.textSecondary; font.family: theme.fontFamily; font.pixelSize: 11
+                color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 11
             }
-
-            // Right: Contact us | mode | connection
             Row {
-                anchors.right: parent.right; anchors.rightMargin: 18
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: 14
-
+                anchors.right: parent.right; anchors.rightMargin: 16
+                anchors.verticalCenter: parent.verticalCenter; spacing: 12
                 Text {
                     text: "Contact us"
-                    color: theme.textSecondary; font.family: theme.fontFamily; font.pixelSize: 11
+                    color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 11
                     anchors.verticalCenter: parent.verticalCenter
-                    MouseArea {
-                        anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                        onClicked: { contactUsDia.visible = true }
-                    }
+                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: { contactUsDia.visible = true } }
                 }
-                Rectangle { width: 1; height: 14; color: theme.borderColor; anchors.verticalCenter: parent.verticalCenter }
+                Rectangle { width: 1; height: 12; color: _borderStr; anchors.verticalCenter: parent.verticalCenter }
                 Text {
                     text: mod_connected ? "● Connected" : "● Offline"
-                    color: mod_connected ? theme.statusConnected : theme.textSecondary
+                    color: mod_connected ? _green : _txtMut
                     font.family: theme.fontFamily; font.pixelSize: 11
                     anchors.verticalCenter: parent.verticalCenter
                 }
-                Rectangle { width: 1; height: 14; color: theme.borderColor; anchors.verticalCenter: parent.verticalCenter }
+                Rectangle { width: 1; height: 12; color: _borderStr; anchors.verticalCenter: parent.verticalCenter }
                 Text {
-                    text: appMode ? "LIVE MODE" : "DEMO MODE"
-                    color: appMode ? theme.statusConnected : theme.brandAccent
+                    text: appMode ? "LIVE" : "DEMO"
+                    color: appMode ? _green : _red
                     font.family: theme.fontFamily; font.pixelSize: 11; font.bold: true; font.letterSpacing: 1
                     anchors.verticalCenter: parent.verticalCenter
                 }
-                Rectangle { width: 1; height: 14; color: theme.borderColor; anchors.verticalCenter: parent.verticalCenter }
+                Rectangle { width: 1; height: 12; color: _borderStr; anchors.verticalCenter: parent.verticalCenter }
                 Text {
                     text: networkShareCard.netEnabled ? "☁ Share on" : "☁ Share off"
-                    color: networkShareCard.netEnabled ? theme.statusConnected : theme.textSecondary
+                    color: networkShareCard.netEnabled ? _green : _txtMut
                     font.family: theme.fontFamily; font.pixelSize: 11
                     anchors.verticalCenter: parent.verticalCenter
                     MouseArea {
                         anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            networkShareCard.netEnabled = !networkShareCard.netEnabled
-                            MODREADER.setIsServerNetworkEnabled(networkShareCard.netEnabled)
-                        }
+                        onClicked: { networkShareCard.netEnabled = !networkShareCard.netEnabled; MODREADER.setIsServerNetworkEnabled(networkShareCard.netEnabled) }
                     }
                 }
             }
