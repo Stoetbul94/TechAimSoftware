@@ -1,4 +1,4 @@
-import QtQuick 2.4
+import QtQuick 2.15
 import QtQuick.Controls 2.2
 import QtQuick.Dialogs
 import QtQuick.Window 2.2
@@ -1097,6 +1097,7 @@ Item {
                         topPadding: 4; bottomPadding: 8
                     }
                     EventCard { eventIndex: 4 }  // 60 shots — full ISSF qualification
+                    Item { width: 1; height: 2 }
 
                     // ── TRAINING SESSIONS ──────────────────────────────────────
                     Text {
@@ -1105,13 +1106,13 @@ Item {
                         font.pixelSize: 9; font.bold: true; font.letterSpacing: 2
                         topPadding: 14; bottomPadding: 8
                     }
-                    EventCard { eventIndex: 0; bottomPadding: 6 }   // 10 shots
-                    Item { width: 1; height: 6 }
-                    EventCard { eventIndex: 1; bottomPadding: 6 }   // 20 shots
-                    Item { width: 1; height: 6 }
-                    EventCard { eventIndex: 2; bottomPadding: 6 }   // 30 shots
-                    Item { width: 1; height: 6 }
-                    EventCard { eventIndex: 3 }                     // 40 shots
+                    EventCard { eventIndex: 0 }   // 10 shots
+                    Item { width: 1; height: 8 }
+                    EventCard { eventIndex: 1 }   // 20 shots
+                    Item { width: 1; height: 8 }
+                    EventCard { eventIndex: 2 }   // 30 shots
+                    Item { width: 1; height: 8 }
+                    EventCard { eventIndex: 3 }   // 40 shots
 
                     // ── FREE PRACTICE ──────────────────────────────────────────
                     Text {
