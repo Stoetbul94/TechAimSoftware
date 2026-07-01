@@ -525,6 +525,7 @@ ApplicationWindow {
 
         onGameModeChanged: updateGameType()
         onGameEventChanged: updateGameType()
+        onRangeSelected: { gameRange = range }
 
         function updateGameType()
         {

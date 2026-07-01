@@ -17,6 +17,7 @@ Item {
     property int papermode: 0
     property bool mod_connected: false
     property bool popupMode: false
+    property int gameSubMode: 0  // 0=Prone/Air, 1=3 Positions (50m Rifle only)
     property bool showComportConnector: true
     property bool showLaneConnector: false
     property bool hideFreePractice: isDefaultIcon
@@ -41,6 +42,7 @@ Item {
     signal sighterStartedFromServer()
     signal matchStartedFromServer()
     signal backHomeFromServer()
+    signal rangeSelected(int range)
 
     onGameModeChanged: { APPSETTINGS.setGameMode(gameMode) }
     onGameEventChanged: { APPSETTINGS.setGameEvent(gameEvent) }
@@ -269,6 +271,7 @@ Item {
     }
 
     function getGameEventText(index) {
+        if (index === 6) return qsTr("120")  // 50m Rifle 3 Positions official
         if (APPSETTINGS.getIs15Shoot()) {
             if (index === 0) return qsTr("10")
             else if (index === 1) return qsTr("15")
@@ -291,10 +294,9 @@ Item {
     }
 
     function getDisciplineName() {
-        if (gameRange == 10)
-            return gameMode === 0 ? "10m Air Pistol" : "10m Air Rifle"
-        else
-            return gameMode === 0 ? "50m Pistol" : "50m Rifle Prone"
+        if (gameMode === 0) return "10m Air Pistol"
+        if (gameRange === 10) return "10m Air Rifle"
+        return gameSubMode === 0 ? "50m Rifle Prone" : "50m Rifle 3 Pos"
     }
 
     function getEventCardTitle(index) {
@@ -322,13 +324,15 @@ Item {
         if (shots === "30") return "30 min"
         if (shots === "40") return "40 min"
         if (shots === "60") return "50 min"
+        if (shots === "120") return "195 min"
         return "—"
     }
 
     function disableControls() {
         console.log("Inside disable controls ....")
-        pistolMouse.visible  = false
-        rifleMouse.visible   = false
+        pistolMouse.visible   = false
+        rifleMouse.visible    = false
+        rifle50Mouse.visible  = false
         startMouse.visible   = false
         resetMouse.visible   = false
         gameEventList.enabled = false
@@ -894,7 +898,7 @@ Item {
                             anchors.horizontalCenter: parent.horizontalCenter
                         }
                         Text {
-                            text: "10 m  ·  50 m"
+                            text: "10 m"
                             color: gameMode === 0 ? _txtSec : _txtMut
                             font.family: theme.fontFamily; font.pixelSize: 10
                             anchors.horizontalCenter: parent.horizontalCenter
@@ -902,7 +906,7 @@ Item {
                     }
                     MouseArea {
                         id: pistolMouse; anchors.fill: parent; hoverEnabled: true
-                        onClicked: { papermode = 0; gameMode = 0 }
+                        onClicked: { papermode = 0; gameMode = 0; rangeSelected(10); gameEvent = 0 }
                     }
                 }
 
@@ -929,7 +933,92 @@ Item {
                     }
                     MouseArea {
                         id: rifleMouse; anchors.fill: parent; hoverEnabled: true
-                        onClicked: { papermode = 0; gameMode = 1 }
+                        onClicked: { papermode = 0; gameMode = 1; gameEvent = 0 }
+                    }
+                }
+            }
+
+            // Distance selector (10m | 50m) — only when RIFLE is selected
+            // Sub-discipline selector (Prone | 3 Positions) — only for RIFLE 50m
+            // Both are stacked in a Column so they flow naturally
+            Column {
+                id: subDisciplineRow
+                anchors.top: weaponRow.bottom
+                anchors.topMargin: gameMode === 1 ? 8 : 0
+                anchors.left: parent.left;   anchors.leftMargin: 22
+                anchors.right: parent.right; anchors.rightMargin: 22
+                height: gameMode === 1 ? (gameRange === 50 ? 80 : 36) : 0
+                spacing: 8; clip: true
+
+                // Distance row: 10m | 50m
+                Row {
+                    width: parent.width; height: 36; spacing: 8
+                    Rectangle {
+                        width: (parent.width - 8) / 2; height: 36; radius: 6
+                        color: gameRange === 10 ? _redDark : _input
+                        border.color: gameRange === 10 ? _red : _borderSub
+                        Text {
+                            anchors.centerIn: parent; text: "10 m"
+                            font.family: theme.fontFamily; font.pixelSize: 11; font.letterSpacing: 1
+                            font.bold: gameRange === 10
+                            color: gameRange === 10 ? _red : _txtSec
+                        }
+                        MouseArea {
+                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                            onClicked: { rangeSelected(10); gameSubMode = 0; gameEvent = 0 }
+                        }
+                    }
+                    Rectangle {
+                        id: rifle50Mouse
+                        width: (parent.width - 8) / 2; height: 36; radius: 6
+                        color: gameRange === 50 ? _redDark : _input
+                        border.color: gameRange === 50 ? _red : _borderSub
+                        Text {
+                            anchors.centerIn: parent; text: "50 m"
+                            font.family: theme.fontFamily; font.pixelSize: 11; font.letterSpacing: 1
+                            font.bold: gameRange === 50
+                            color: gameRange === 50 ? _red : _txtSec
+                        }
+                        MouseArea {
+                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                            onClicked: { rangeSelected(50); gameSubMode = 0; gameEvent = 4 }
+                        }
+                    }
+                }
+
+                // Prone | 3 Positions — only shown for 50m
+                Row {
+                    width: parent.width; height: 36; spacing: 8
+                    visible: gameRange === 50
+                    Rectangle {
+                        width: (parent.width - 8) / 2; height: 36; radius: 6
+                        color: gameSubMode === 0 ? _redDark : _input
+                        border.color: gameSubMode === 0 ? _red : _borderSub
+                        Text {
+                            anchors.centerIn: parent; text: "PRONE"
+                            font.family: theme.fontFamily; font.pixelSize: 11; font.letterSpacing: 1
+                            font.bold: gameSubMode === 0
+                            color: gameSubMode === 0 ? _red : _txtSec
+                        }
+                        MouseArea {
+                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                            onClicked: { gameSubMode = 0; gameEvent = 4 }
+                        }
+                    }
+                    Rectangle {
+                        width: (parent.width - 8) / 2; height: 36; radius: 6
+                        color: gameSubMode === 1 ? _redDark : _input
+                        border.color: gameSubMode === 1 ? _red : _borderSub
+                        Text {
+                            anchors.centerIn: parent; text: "3 POSITIONS"
+                            font.family: theme.fontFamily; font.pixelSize: 11; font.letterSpacing: 1
+                            font.bold: gameSubMode === 1
+                            color: gameSubMode === 1 ? _red : _txtSec
+                        }
+                        MouseArea {
+                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                            onClicked: { gameSubMode = 1; gameEvent = 6 }
+                        }
                     }
                 }
             }
@@ -937,7 +1026,7 @@ Item {
             // Scrollable event cards
             ScrollView {
                 id: eventScroll
-                anchors.top: weaponRow.bottom; anchors.topMargin: 12
+                anchors.top: subDisciplineRow.bottom; anchors.topMargin: 12
                 anchors.left: parent.left;   anchors.leftMargin: 22
                 anchors.right: parent.right; anchors.rightMargin: 22
                 anchors.bottom: parent.bottom; anchors.bottomMargin: 18
@@ -970,7 +1059,9 @@ Item {
                                 Text {
                                     text: getEventCardBadge(eventIndex)
                                     color: "white"
-                                    font.family: "Consolas"; font.pixelSize: eventIndex === 5 ? 9 : 12; font.bold: true
+                                    font.family: "Consolas"
+                                    font.pixelSize: eventIndex === 5 ? 9 : (eventIndex === 6 ? 10 : 12)
+                                    font.bold: true
                                     anchors.centerIn: parent
                                 }
                             }
@@ -1001,6 +1092,7 @@ Item {
                                             if (s === "30") return "·  30 min"
                                             if (s === "40") return "·  40 min"
                                             if (s === "60") return "·  50 min"
+                                            if (s === "120") return "·  195 min"
                                             return ""
                                         }
                                         color: _txtMut; font.family: "Consolas"; font.pixelSize: 10
@@ -1036,7 +1128,10 @@ Item {
                         font.pixelSize: 9; font.bold: true; font.letterSpacing: 2
                         topPadding: 4; bottomPadding: 8
                     }
-                    EventCard { eventIndex: 4 }
+                    // 10m/Prone official: 60 shots (index 4)
+                    EventCard { eventIndex: 4; visible: !(gameMode === 1 && gameRange === 50 && gameSubMode === 1) }
+                    // 3 Positions official: 120 shots (index 6)
+                    EventCard { eventIndex: 6; visible: gameMode === 1 && gameRange === 50 && gameSubMode === 1 }
                     Item { width: 1; height: 2 }
 
                     // ── TRAINING SESSIONS ──────────────────────────────────────
@@ -1046,13 +1141,21 @@ Item {
                         font.pixelSize: 9; font.bold: true; font.letterSpacing: 2
                         topPadding: 14; bottomPadding: 8
                     }
-                    EventCard { eventIndex: 0 }
-                    Item { width: 1; height: 8 }
+                    // 10 shots: 10m disciplines only
+                    EventCard { eventIndex: 0; visible: !(gameMode === 1 && gameRange === 50) }
+                    Item { width: 1; height: 8; visible: !(gameMode === 1 && gameRange === 50) }
+                    // 20 shots: all disciplines
                     EventCard { eventIndex: 1 }
                     Item { width: 1; height: 8 }
-                    EventCard { eventIndex: 2 }
-                    Item { width: 1; height: 8 }
+                    // 30 shots: 10m disciplines only
+                    EventCard { eventIndex: 2; visible: !(gameMode === 1 && gameRange === 50) }
+                    Item { width: 1; height: 8; visible: !(gameMode === 1 && gameRange === 50) }
+                    // 40 shots: all disciplines
                     EventCard { eventIndex: 3 }
+                    Item { width: 1; height: 8 }
+                    // 60 shots training: shown for 3P as single-position run
+                    EventCard { eventIndex: 4; visible: gameMode === 1 && gameRange === 50 && gameSubMode === 1 }
+                    Item { width: 1; height: 8; visible: gameMode === 1 && gameRange === 50 && gameSubMode === 1 }
 
                     // ── FREE PRACTICE ──────────────────────────────────────────
                     Text {
