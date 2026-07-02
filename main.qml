@@ -502,6 +502,11 @@ ApplicationWindow {
 
         onVisibleChanged: {
             if (visible) {
+                // Re-map the discipline for the current distance/sub-mode (10m vs
+                // 50m, Prone vs 3P share gameEvent=4, so onGameEventChanged alone
+                // won't refresh it), then force the match timer to recompute.
+                loginPage.updateGameType()
+                shootingPage.refreshMatchTime()
                 APPSETTINGS.updateStatusFeedbackFile(2)
             } else {
                 APPSETTINGS.updateStatusFeedbackFile(1)
@@ -525,7 +530,7 @@ ApplicationWindow {
 
         onGameModeChanged: updateGameType()
         onGameEventChanged: updateGameType()
-        onRangeSelected: { gameRange = range }
+        onRangeSelected: { gameRange = range; APPSETTINGS.set10or50mRange(range) }
 
         function updateGameType()
         {

@@ -46,6 +46,10 @@ public:
     Q_INVOKABLE int getGameEvent() {
         return game_event;
     }
+    Q_INVOKABLE void setGameSubMode(int mode);
+    Q_INVOKABLE int getGameSubMode() {
+        return game_sub_mode;
+    }
     Q_INVOKABLE int getGameType() {
         return game_is_sighter_mode;
     }
@@ -78,7 +82,7 @@ public:
     QString getPortText() const;
     void setPortText(const QString &portText);
     Q_INVOKABLE int get10or50mRange() const;
-    void set10or50mRange(int range);
+    Q_INVOKABLE void set10or50mRange(int range);
 
     // seta modifications
     QString getSetaServerPath() const;
@@ -154,6 +158,7 @@ private:
     QString user_name = "";
     int game_mode = 0;
     int game_event = 0;
+    int game_sub_mode = 0;   // 0 = Prone/Air, 1 = 50m Rifle 3 Positions
     int game_is_sighter_mode = 1; // for sighter mode
     int game_distance = 10; // its for 10 meter game only
     double motor_movement_time = 2.5;

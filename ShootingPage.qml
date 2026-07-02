@@ -205,6 +205,15 @@ Item {
         MODREADER.setCurrentMatchTotalShotsCount(matchShootCount)
     }
 
+    // Force the match timer to re-read getTimeCount even when the shot count is
+    // unchanged (e.g. Prone <-> 3 Positions both = 60 shots) so the countdown
+    // reflects the current discipline's official time.
+    function refreshMatchTime() {
+        centerPanel.totalGameTime = APPSETTINGS.getTimeCount(matchShootCount)
+        centerPanel.shotCount = matchShootCount
+        MODREADER.setCurrentMatchTotalShotsCount(matchShootCount)
+    }
+
     LeftPanel {
         id: leftPanel
         width: 0.15*parent.width
@@ -408,7 +417,12 @@ Item {
     }
 
     function str_pad_left(string,pad,length) {
-        return (new Array(length+1).join(pad)+string).slice(-length);
+        // Pad to `length`, but never truncate longer values (e.g. 104 minutes
+        // for the 105-min 50m Rifle 3 Positions match must not become "04").
+        var s = String(string)
+        if (s.length >= length)
+            return s
+        return (new Array(length+1).join(pad)+s).slice(-length);
     }
 
     function startFromServer()

@@ -351,6 +351,11 @@ void AppSettings::setGameEvent(int event)
     game_event = event;
 }
 
+void AppSettings::setGameSubMode(int mode)
+{
+    game_sub_mode = mode;
+}
+
 bool AppSettings::uploadGame()
 {
     QString dirName = QDir::homePath();
@@ -516,12 +521,27 @@ void AppSettings::clearLoadedData()
 
 int AppSettings::getTimeCount(int shootCount)
 {
+    // The 60-shot official match shares a single shot count across four ISSF
+    // disciplines that each have a different official match time, so the
+    // shot-count-keyed settings map cannot disambiguate them. Return the ISSF
+    // 2026 official time per discipline (must match LoginPage getMatchTime()).
+    if (shootCount == 60)
+    {
+        if (game_mode == 0)          // 10m Air Pistol
+            return 75 * 60;
+        if (m_10or50mRange == 10)    // 10m Air Rifle
+            return 75 * 60;
+        if (game_sub_mode == 1)      // 50m Rifle 3 Positions (outdoor)
+            return 105 * 60;
+        return 50 * 60;              // 50m Rifle Prone
+    }
+
     if (shootCountAndTimeMap.contains(shootCount))
     {
         return shootCountAndTimeMap[shootCount]*60;
     }
 
-    return 90;
+    return 90 * 60;
 }
 
 void AppSettings::setGame_is_sighter_mode(int value)

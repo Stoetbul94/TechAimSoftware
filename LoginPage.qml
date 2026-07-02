@@ -46,6 +46,7 @@ Item {
 
     onGameModeChanged: { APPSETTINGS.setGameMode(gameMode) }
     onGameEventChanged: { APPSETTINGS.setGameEvent(gameEvent) }
+    onGameSubModeChanged: { APPSETTINGS.setGameSubMode(gameSubMode) }
     onUsername_loginPageChanged: {
         console.log("**********??????????????????????*********", username_loginPage)
         APPSETTINGS.setUsername(username_loginPage)
