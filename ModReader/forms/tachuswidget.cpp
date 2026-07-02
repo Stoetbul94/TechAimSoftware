@@ -1517,7 +1517,12 @@ void TachusWidget::licValidated()
 
 bool TachusWidget::getIsServerNetworkEnabled() const
 {
-    return m_isServerNetworkEnabled;
+    // Sharing needs a destination: with no share folder configured the
+    // composed lane-file paths degenerate to "/<file>" on the drive root,
+    // where antivirus write-blocking can stall the UI thread indefinitely.
+    // Treat "no folder" as sharing disabled. This gates every share write
+    // in both TachusWidget and AppSettings.
+    return m_isServerNetworkEnabled && !m_setaServerPath.isEmpty();
 }
 
 void TachusWidget::setIsServerNetworkEnabled(bool isServerNetworkEnabled)

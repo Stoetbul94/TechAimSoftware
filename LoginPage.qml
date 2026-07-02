@@ -711,7 +711,14 @@ Item {
                     }
                     MouseArea {
                         anchors.fill: parent
-                        onClicked: { networkShareCard.netEnabled = !networkShareCard.netEnabled; MODREADER.setIsServerNetworkEnabled(networkShareCard.netEnabled) }
+                        onClicked: {
+                            networkShareCard.netEnabled = !networkShareCard.netEnabled
+                            MODREADER.setIsServerNetworkEnabled(networkShareCard.netEnabled)
+                            // Sharing without a destination folder is a no-op
+                            // (and used to freeze the app) — prompt for one.
+                            if (networkShareCard.netEnabled && MODREADER.getNetworkPath() === "")
+                                networkFolderDialog.open()
+                        }
                     }
                 }
             }
@@ -1221,7 +1228,12 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     MouseArea {
                         anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                        onClicked: { networkShareCard.netEnabled = !networkShareCard.netEnabled; MODREADER.setIsServerNetworkEnabled(networkShareCard.netEnabled) }
+                        onClicked: {
+                            networkShareCard.netEnabled = !networkShareCard.netEnabled
+                            MODREADER.setIsServerNetworkEnabled(networkShareCard.netEnabled)
+                            if (networkShareCard.netEnabled && MODREADER.getNetworkPath() === "")
+                                networkFolderDialog.open()
+                        }
                     }
                 }
             }
