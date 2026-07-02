@@ -327,7 +327,7 @@ Item {
         if (shots === "60") {
             if (gameMode === 0)      return "75 min"   // 10m Air Pistol  (ISSF 2026)
             if (gameRange === 10)    return "75 min"   // 10m Air Rifle   (ISSF 2026)
-            if (gameSubMode === 1)   return "105 min"  // 50m Rifle 3 Pos (ISSF 2026, outdoor)
+            if (gameSubMode === 1)   return "90 min"   // 50m Rifle 3 Pos on EST (ISSF 2026)
             return "50 min"                            // 50m Rifle Prone (ISSF 2026)
         }
         return "—"
@@ -1099,7 +1099,7 @@ Item {
                                             if (s === "60") {
                                                 if (gameMode === 0)    return "·  75 min"
                                                 if (gameRange === 10)  return "·  75 min"
-                                                if (gameSubMode === 1) return "·  105 min"
+                                                if (gameSubMode === 1) return "·  90 min"
                                                 return "·  50 min"
                                             }
                                             return ""

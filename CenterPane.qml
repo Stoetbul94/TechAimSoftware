@@ -43,6 +43,7 @@ Item {
     property string curShootTimeStampSavedGame: "test"
 
     signal sighterModeTimerEnds()
+    signal positionResumeRequested()   // 3P: athlete starts record fire in the new position
 
     onGameModeChanged: {
         circleCordinates()
@@ -1211,6 +1212,56 @@ Item {
 
     }
 
+    // 3P: prominent resume control for mid-match position changes. Uses its
+    // own signal into ShootingPage instead of the legacy play button, which
+    // stops responding after a position transition.
+    Rectangle {
+        id: resumePositionBtn
+        visible: sligterMode && is3PMatch
+                 && globalMatchModel.count > 0 && globalMatchModel.count < 60
+        // Top-centre below the phase/clock row, above everything else: the
+        // top-right corner is occupied by the sighter corner triangle and
+        // z:20 notification overlays.
+        z: 30
+        anchors.top: parent.top
+        anchors.topMargin: 66
+        anchors.horizontalCenter: parent.horizontalCenter
+        width: resumeText.implicitWidth + 40
+        height: 44
+        radius: 8
+        color: "#e8003d"
+        Text {
+            id: resumeText
+            anchors.centerIn: parent
+            text: qsTr("START ") + p3Names[p3Position] + "  →"
+            color: "white"
+            font.bold: true
+            font.pixelSize: 16
+        }
+        MouseArea {
+            anchors.fill: parent
+            // Qualified via the root id: unqualified root-member lookup from
+            // nested handlers fails silently under the compiled-QML cache.
+            onClicked: paneItem.positionResumeRequested()
+        }
+    }
+
+    // Phase indicator: which ISSF phase (and 3P position) the athlete is in.
+    // Sits left of the countdown clock; text comes from ShootingPage scope.
+    Text {
+        id: phaseIndicator
+        anchors.verticalCenter: slighterTimeUpdate.verticalCenter
+        // Follow whichever clock is showing — the match clock shifts left of
+        // the sighter indicator when that is visible.
+        anchors.right: timerNotification.visible ? timerNotification.left : slighterTimeUpdate.left
+        anchors.rightMargin: 8
+        text: phaseText
+        color: "red"
+        font.bold: true
+        font.pixelSize: 20
+        visible: timerNotification.visible || slighterTimeUpdate.visible
+    }
+
     Rectangle
     {
         id:timerNotification
@@ -1603,6 +1654,14 @@ Item {
             gameTimer.restart()
         } else
             gameTimer.stop()
+    }
+
+    // Toggle only the sighter indicator, leaving the match clock untouched —
+    // used for 3P position changes where ISSF counts the changeover and
+    // sighting time as part of the overall match time.
+    function setSighterIndicator(sighterVisible)
+    {
+        sighter.visible = sighterVisible
     }
 
     function calculateShootingSocre(xPoint, yPoint, demoXPoint, demoYPoint)

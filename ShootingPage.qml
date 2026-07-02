@@ -26,6 +26,27 @@ Item {
 
     property bool matchFinished :false
 
+    // ── 50m Rifle 3 Positions (ISSF 3x20 qualification) ──────────────────────
+    // Position is derived from the match-shot count: 0-19 kneeling, 20-39
+    // prone, 40-59 standing. The overall 105-min match clock runs through
+    // position changes; only shot tagging switches to sighter during them.
+    property bool is3PMatch: false
+    // Highest shot-count boundary (20/40) already handled — without it the
+    // watcher re-fires after the athlete resumes, because the count is still
+    // exactly at the boundary, bouncing them straight back into sighting.
+    property int p3BreaksDone: 0
+    readonly property var p3Names: [qsTr("KNEELING"), qsTr("PRONE"), qsTr("STANDING")]
+    readonly property int p3Position: globalMatchModel.count < 20 ? 0
+                                    : (globalMatchModel.count < 40 ? 1 : 2)
+
+    property string phaseDebug: ""
+
+    // Shown next to the countdown clock (CenterPane phaseIndicator).
+    property string phaseText: {
+        var phase = sligterMode ? qsTr("SIGHTING") : qsTr("MATCH")
+        return (is3PMatch ? phase + " · " + p3Names[p3Position] : phase) + phaseDebug
+    }
+
     property string messageText: "Match is completed, restart to stimulate"
     property string sighterSummaryText: "You are in Sighter. You can't generate Match Summary"
     property string sighterMatchText: "You are in Sighter. You can't generate Match Report"
@@ -138,6 +159,7 @@ Item {
     }
 
     function loadGameInMatchMode() {
+        is3PMatch = false   // restored sessions bypass beginPreparationPhase
         rightPanel.startClickedThroughLoad()
         sligterMode = false
         centerPanel.showSlighter(false)
@@ -272,11 +294,23 @@ Item {
             rightPanel.addToSeries(xPosition,yPosition,currentCalculatedScore)
             console.log("x ", xPosition, " y ", yPosition, " score ", currentCalculatedScore, " matchShootCount ", matchShootCount)
 
+            // 3P: after the 20th and 40th match shots, switch to the next
+            // position (kneeling -> prone -> standing) via a sighting break.
+            // Deferred with callLater: running it inside this signal handler
+            // resets models whose delegates are still on the emitting call
+            // stack (shot animation / overlay repeater), which crashes.
+            // 3P position rollover at 20/40 match shots is handled by
+            // positionWatch — see its comment for why it must not be
+            // triggered imperatively from this handler.
         }
 
         onSighterModeTimerEnds: {
             changedToMatchMode()
 
+        }
+
+        onPositionResumeRequested: {
+            changedToMatchMode()
         }
 
         onShowMesuresChanged: {
@@ -385,10 +419,76 @@ Item {
     function beginPreparationPhase()
     {
         MODREADER.appendToLogFile("beginPreparationPhase: prep seconds = " + APPSETTINGS.getPrepTimeCount())
+        is3PMatch = APPSETTINGS.getGameMode() === 1
+                 && APPSETTINGS.get10or50mRange() === 50
+                 && APPSETTINGS.getGameSubMode() === 1
+                 && matchShootCount === 60
+        p3BreaksDone = 0
         centerPanel.totalSighterTime = APPSETTINGS.getPrepTimeCount()
         changedToSigherMode()
         centerPanel.startPreparationCountdown()
-        MODREADER.appendToLogFile("beginPreparationPhase: done, totalSighterTime = " + centerPanel.totalSighterTime)
+        MODREADER.appendToLogFile("beginPreparationPhase: done, totalSighterTime = "
+                                  + centerPanel.totalSighterTime + " is3P = " + is3PMatch)
+    }
+
+    // 3P mid-match position change: shots become sighters for the new position
+    // but the overall 105-min match clock keeps running (ISSF: changeover and
+    // sighting time are part of the match time). The athlete presses play to
+    // resume record fire in the new position.
+    // Runs slightly delayed (positionChangeTimer) so the 20th/40th shot's
+    // processing pipeline (animation, overlay delegates, demo feed timer) has
+    // fully settled before models are swapped.
+    // Declarative watcher instead of an imperatively-armed one-shot: the shot
+    // pipeline delivers shots from a worker-thread emission context where
+    // QTimer.restart() silently fails to arm (running reads true but the
+    // timer never fires) and direct QML mutation crashes. A repeating timer
+    // whose `running` is a plain binding is armed by the engine on the GUI
+    // thread and is immune to all of that.
+    Timer {
+        id: positionWatch
+        interval: 500
+        repeat: true
+        running: is3PMatch && !sligterMode && shootingPage.visible
+        onTriggered: {
+            var count = globalMatchModel.count
+            if ((count === 20 || count === 40) && count > p3BreaksDone) {
+                shootingPage.p3BreaksDone = count
+                shootingPage.enterPositionTransition()
+            }
+        }
+    }
+
+    function enterPositionTransition()
+    {
+        if (sligterMode)   // already transitioned (watcher may fire twice)
+            return
+        try {
+            centerPanel.disableMotorMovement = true
+            centerPanel.setSighterIndicator(true)
+            leftPanel.enableSighterMode(true)
+            globalModelOfData.clear()
+            for(var index = 0; index <globalSlighterModel.count; ++index )
+            {
+                // Only sighters fired for the position being entered.
+                if (globalSlighterModel.get(index).position !== p3Position)
+                    continue
+                globalModelOfData.append(globalSlighterModel.get(index))
+            }
+            sligterMode = true
+            // Deliberately NOT calling MODREADER.changeSighterMode() here: its
+            // QList swaps race against the 100ms polling worker that reads the
+            // same lists and crash the app once shots exist (heap corruption).
+            // Shot routing to sighter/match models is handled QML-side by
+            // sligterMode in addToSeries, which is all the 3P transition needs.
+            rightPanel.updateTotal()
+            centerPanel.currentPageIndexChanged()
+            centerPanel.disableMotorMovement = false
+            leftPanel.playVisible = true
+            MODREADER.appendToLogFile("3P: position change -> " + p3Names[p3Position]
+                                      + " (sighting, match clock keeps running)")
+        } catch (e) {
+            phaseDebug = " [E:" + e + "]"
+        }
     }
 
     function changedToMatchMode()
@@ -401,6 +501,11 @@ Item {
         //console.log("**************globalMatchModel.count**************"+globalMatchModel.count)
         for(var index = 0; index <globalMatchModel.count; ++index )
         {
+            // 3P: each position starts on a clean target face — only the
+            // current position's shots are displayed. The full record stays
+            // in globalMatchModel for the report.
+            if (is3PMatch && globalMatchModel.get(index).position !== p3Position)
+                continue
             globalModelOfData.append(globalMatchModel.get(index))
         }
         //console.log("***********globalModelOfData*****************"+globalModelOfData.count)

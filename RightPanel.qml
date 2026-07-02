@@ -787,12 +787,18 @@ Item {
         MODREADER.appendTimeStamp(timeStampString)
 
         //        globalModelOfData.append({"direction":angle.toFixed(2), "score":radius.toFixed(2),  "timeComsumed":text})
+        // 3P: 0=kneeling 1=prone 2=standing, -1 otherwise. The role must be
+        // present on ALL models that copy entries between each other —
+        // ListModel role sets are locked at first append, so a copy from a
+        // model with this role into one without it throws.
+        var shotPosition = is3PMatch ? p3Position : -1
         if(sligterMode)
         {
             globalSlighterModel.append({"direction":angle.toFixed(2)
                                            ,"score":radius.toFixed(2)/*radius.toFixed(2)*/
                                            ,"timeComsumed":text
-                                           ,"calculatedscore":scoreCutoffTofirstDecimal(calScore)})
+                                           ,"calculatedscore":scoreCutoffTofirstDecimal(calScore)
+                                           ,"position": shotPosition})
             console.log("Shreeraksha-----",APPSETTINGS.getScoringSystem())
         }
         else
@@ -801,11 +807,13 @@ Item {
                                         ,"score":radius.toFixed(2)/*radius.toFixed(2)*/
                                         ,"timeComsumed":text
                                         ,"calculatedscore":scoreCutoffTofirstDecimal(calScore)
-                                        ,"timestamp":timeStampString})
+                                        ,"timestamp":timeStampString
+                                        ,"position": shotPosition})
         }
         globalModelOfData.append({"direction":angle.toFixed(2)
                                      ,"score":radius.toFixed(2)/*radius.toFixed(2)*/,  "timeComsumed":text
-                                     ,"calculatedscore":scoreCutoffTofirstDecimal(calScore)})
+                                     ,"calculatedscore":scoreCutoffTofirstDecimal(calScore)
+                                     ,"position": shotPosition})
 
         console.log("$$$$$$$$$$$$ calscore ", calScore)
         console.log("index ",globalModelOfData.count, " timestamp ", globalModelOfData)
