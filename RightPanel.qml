@@ -833,6 +833,8 @@ Item {
 
     function updateListModel(startIndex,endIndex)
     {
+        if (!visible)   // see updateTotal — no view churn while hidden
+            return
         listModel.clear()
         console.log("inside updateListModel")
         if (listNavigationON)
@@ -915,6 +917,12 @@ Item {
 
     function updateTotal()
     {
+        // Refreshing the score views while the shooting page is hidden (Home
+        // teardown) reassigns models under delegates that are mid-destruction
+        // and crashes the app natively. The next visible session start runs
+        // the full refresh chain anyway.
+        if (!visible)
+            return
         updateGrandTotal()
         // Clamp to 0: with an empty model, floor((0-1)/10) = -1 and the
         // resulting negative indices make ListModel.get() return undefined,
