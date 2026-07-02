@@ -97,6 +97,10 @@ AppSettings::AppSettings(QString fileName)
     if (timer.compare("yes", Qt::CaseInsensitive) == 0)
         m_timer = true;
 
+    // ISSF 2026: combined preparation + sighting period is 15 minutes for all
+    // events. Configurable for training via [shot_count_and_timer] prep_time.
+    m_prepTimeMinutes = m_settings->value("prep_time", "15").toInt();
+
 
     shootCountAndTimeMap[10] = m_settings->value("ten_shoot", "15").toInt();
     shootCountAndTimeMap[20] = m_settings->value("twenty_shoot", "30").toInt();

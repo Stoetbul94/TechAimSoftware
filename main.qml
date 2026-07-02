@@ -507,6 +507,10 @@ ApplicationWindow {
                 // won't refresh it), then force the match timer to recompute.
                 loginPage.updateGameType()
                 shootingPage.refreshMatchTime()
+                // ISSF sequence: every fresh session opens in the preparation/
+                // sighting phase. Loaded sessions restore straight into match.
+                if (!isSaveGame)
+                    shootingPage.beginPreparationPhase()
                 APPSETTINGS.updateStatusFeedbackFile(2)
             } else {
                 APPSETTINGS.updateStatusFeedbackFile(1)

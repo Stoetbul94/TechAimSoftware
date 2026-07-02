@@ -908,7 +908,10 @@ Item {
     function updateTotal()
     {
         updateGrandTotal()
-        var startIndex = Math.floor((globalModelOfData.count-1)/10)
+        // Clamp to 0: with an empty model, floor((0-1)/10) = -1 and the
+        // resulting negative indices make ListModel.get() return undefined,
+        // throwing a TypeError that silently aborts the calling chain.
+        var startIndex = Math.max(0, Math.floor((globalModelOfData.count-1)/10))
         var endIndex = globalModelOfData.count;
         updateListModel(startIndex*10,endIndex)
     }

@@ -379,8 +379,21 @@ Item {
         APPSETTINGS.updateStatusFeedbackFile(2)
     }
 
+    // ISSF flow: enter the preparation/sighting phase at session start.
+    // The 15-min sighting countdown runs; the match clock stays hidden and
+    // zeroed until the match starts (play button or countdown expiry).
+    function beginPreparationPhase()
+    {
+        MODREADER.appendToLogFile("beginPreparationPhase: prep seconds = " + APPSETTINGS.getPrepTimeCount())
+        centerPanel.totalSighterTime = APPSETTINGS.getPrepTimeCount()
+        changedToSigherMode()
+        centerPanel.startPreparationCountdown()
+        MODREADER.appendToLogFile("beginPreparationPhase: done, totalSighterTime = " + centerPanel.totalSighterTime)
+    }
+
     function changedToMatchMode()
     {
+        centerPanel.stopPreparationCountdown()
         centerPanel.disableMotorMovement = true
         centerPanel.showSlighter(false)
         leftPanel.enableSighterMode(false)

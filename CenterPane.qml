@@ -402,7 +402,9 @@ Item {
                 sighterModeTimerEnds()
                 sighterTimer.stop()
                 //sighter.visible = false;
-                slighterTimeUpdate.visible = false
+                // slighterTimeUpdate hides via its !timerNotification.visible
+                // binding — do not assign imperatively (it would break the
+                // binding for the next session).
                 //gameTimer.start()
                 timerNotification.visible = true;
                 MODREADER.intiateAutoMovementSetup()
@@ -1301,10 +1303,15 @@ Item {
     {
         id:slighterTimeUpdate
         anchors.top: parent.top
-        anchors.left: parent.left
+        anchors.right: parent.right
         anchors.topMargin: 20
         width: 0.2*parent.width
-        visible: !sighter.visible && !timerNotification.visible
+        height: 40
+        color: "transparent"
+        // Show the sighting countdown whenever the match clock is hidden —
+        // it takes the match clock's top-right spot (they are mutually
+        // exclusive), keeping clear of the shot counter at top-left.
+        visible: !timerNotification.visible
 
         Row {
             id:stRow
@@ -1832,6 +1839,28 @@ Item {
         countText.visible = false
         timerNotification.visible = false
         //        rightPanel.startFromServer()
+    }
+
+    // ── ISSF preparation/sighting phase (standalone, no range master) ────────
+    // Mirrors startFromServer(): sighting countdown runs, match clock hidden.
+    // Hiding timerNotification zeroes gameTime via stopTimer.onVisibleChanged,
+    // so the match clock starts from the full discipline time later.
+    function startPreparationCountdown()
+    {
+        MODREADER.appendToLogFile("startPreparationCountdown: totalSighterTime=" + totalSighterTime)
+        sighterTime = 0
+        stStopTimer.text = minutesToseconds(totalSighterTime)
+        stStopTimer.visible = true
+        timerNotification.visible = false
+        sighterTimer.restart()
+    }
+
+    // Called when the match phase begins (play button or sighting timer expiry).
+    // Idempotent: safe on later pause/resume cycles.
+    function stopPreparationCountdown()
+    {
+        sighterTimer.stop()
+        timerNotification.visible = APPSETTINGS.timer()
     }
 
 }

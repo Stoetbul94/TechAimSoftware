@@ -50,6 +50,9 @@ public:
     Q_INVOKABLE int getGameSubMode() {
         return game_sub_mode;
     }
+    Q_INVOKABLE int getPrepTimeCount() {   // seconds, for the sighting countdown
+        return m_prepTimeMinutes * 60;
+    }
     Q_INVOKABLE int getGameType() {
         return game_is_sighter_mode;
     }
@@ -159,6 +162,7 @@ private:
     int game_mode = 0;
     int game_event = 0;
     int game_sub_mode = 0;   // 0 = Prone/Air, 1 = 50m Rifle 3 Positions
+    int m_prepTimeMinutes = 15;   // ISSF preparation + sighting period
     int game_is_sighter_mode = 1; // for sighter mode
     int game_distance = 10; // its for 10 meter game only
     double motor_movement_time = 2.5;
