@@ -1664,6 +1664,12 @@ Item {
         sighter.visible = sighterVisible
     }
 
+    function stopMatchClock()
+    {
+        gameTimer.stop()
+        sighterTimer.stop()
+    }
+
     function calculateShootingSocre(xPoint, yPoint, demoXPoint, demoYPoint)
     {
         var logData = "calculateShootingSocre  -- started appmode "+ appMode+ " gamerange "+gameRange+ "game mode "+ gameMode

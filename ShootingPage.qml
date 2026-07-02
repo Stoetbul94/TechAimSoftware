@@ -43,6 +43,8 @@ Item {
 
     // Shown next to the countdown clock (CenterPane phaseIndicator).
     property string phaseText: {
+        if (matchFinished)
+            return qsTr("MATCH COMPLETE")
         var phase = sligterMode ? qsTr("SIGHTING") : qsTr("MATCH")
         return (is3PMatch ? phase + " · " + p3Names[p3Position] : phase) + phaseDebug
     }
@@ -458,6 +460,21 @@ Item {
         }
     }
 
+    // Auto match-finish: when the final match shot of any discipline lands,
+    // declare the match complete and stop the clock. matchShootCount is -1
+    // for free practice, which keeps this watcher off.
+    Timer {
+        id: matchCompleteWatch
+        interval: 500
+        repeat: true
+        running: !sligterMode && !matchFinished && matchShootCount > 0
+                 && shootingPage.visible
+        onTriggered: {
+            if (globalMatchModel.count >= matchShootCount)
+                shootingPage.changedToMatchFinish()
+        }
+    }
+
     function enterPositionTransition()
     {
         if (sligterMode)   // already transitioned (watcher may fire twice)
@@ -524,6 +541,9 @@ Item {
     function changedToMatchFinish()
     {
         matchFinished = true
+        centerPanel.stopMatchClock()
+        MODREADER.appendToLogFile("Match finished: " + globalMatchModel.count
+                                  + "/" + matchShootCount + " match shots")
     }
 
     function minutesToseconds(totalSecs)
