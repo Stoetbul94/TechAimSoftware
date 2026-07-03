@@ -71,6 +71,27 @@ Item {
         height: ((parent.height/rootItemHeight)*sourceSize.height)
     }
 
+    // ── Rebrand overlays (phase 3): themed cards drawn on the legacy PNG
+    // tiles' exact geometry. The PNGs stay for layout; these cover them.
+    Rectangle {   // panel background
+        x: rectangle_1.x; y: rectangle_1.y
+        width: rectangle_1.width; height: rectangle_1.height
+        color: "#15161a"
+    }
+    Rectangle {   // discipline card (was blue)
+        x: rounded_rectangle_4_copy.x; y: rounded_rectangle_4_copy.y
+        width: rounded_rectangle_4_copy.width; height: rounded_rectangle_4_copy.height
+        radius: 8
+        color: "#26272c"
+        border.color: "#e8003d"; border.width: 1
+    }
+    Rectangle {   // shooter name tile (was white)
+        x: white_tile.x; y: white_tile.y
+        width: white_tile.width; height: white_tile.height
+        radius: 6
+        color: "#26272c"
+        border.color: "#3a3b40"; border.width: 1
+    }
 
     Image {
         id: play
@@ -423,7 +444,7 @@ Item {
 
 
         text: "Dummy"
-        color: "black"
+        color: "white"
         font.bold: true
 //        Rectangle {
 //            anchors.fill: parent
@@ -444,7 +465,8 @@ Item {
 
         Rectangle {
             anchors.fill: parent
-            color: "#0072BC"
+            color: "#e8003d"
+            radius: 6
         }
     }
     Text {
