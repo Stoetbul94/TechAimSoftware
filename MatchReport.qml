@@ -44,6 +44,12 @@ Dialog {
     onVisibleChanged: {
         contentRect.visible = visible
 
+        if (visible && is3PMatch) {
+            report3p.refresh()
+            for (var i = 0; i < report3pSeriesRepeater.count; ++i)
+                report3pSeriesRepeater.itemAt(i).refresh()
+        }
+
         if (visible && isAutoPrintOn)
             printTimer.start() //printImageInNetworkPath()
     }
@@ -63,8 +69,16 @@ Dialog {
                 spacing: 20
                 width: scrollView.width
 
+                // 3P matches get the position-aware result sheet as page 1.
+                Report3P {
+                    id: report3p
+                    visible: is3PMatch
+                    anchors.horizontalCenter: parent.horizontalCenter
+                }
+
                 PdfPage {
                     id: print_region
+                    visible: !is3PMatch
                     pageIndex: 1
 //                    width: parent.width
 //                    height: 800
@@ -79,10 +93,22 @@ Dialog {
                     color: "transparent"
                 }
 
+                // 3P: one shot-detail page per position, matching the new
+                // result-sheet design. The legacy Seta series pages remain
+                // for the other disciplines only.
+                Repeater {
+                    id: report3pSeriesRepeater
+                    model: is3PMatch ? 3 : 0
+                    delegate: Report3PSeries {
+                        posIndex: index
+                        anchors.horizontalCenter: parent.horizontalCenter
+                    }
+                }
+
                 Repeater {
                     id: reportRepeater
                     visible: globalModelOfData.count > 10
-                    model: repeaterModelCount
+                    model: is3PMatch ? 0 : repeaterModelCount
                     delegate: PdfSeriesPage {
                         pageIndex: index+2
                         //width: parent.width
@@ -295,12 +321,14 @@ Dialog {
     function printImage()
     {
         CUSTOMPRINT.clearImagesList()
-        var stat = print_region.grabToImage(function(result) {
+        var page1 = is3PMatch ? report3p : print_region
+        var pages = is3PMatch ? report3pSeriesRepeater : reportRepeater
+        var stat = page1.grabToImage(function(result) {
             CUSTOMPRINT.addImage(result.image);
         }, Qt.size(8917/4, 13033/4)); //2229, 3258
-        for (var i=0; i < reportRepeater.count; ++i)
+        for (var i=0; i < pages.count; ++i)
         {
-            reportRepeater.itemAt(i).grabToImage(function(result) {
+            pages.itemAt(i).grabToImage(function(result) {
                 CUSTOMPRINT.addImage(result.image);
             }, Qt.size(8917/4, 13033/4));
         }
@@ -311,12 +339,14 @@ Dialog {
     function printImageInNetworkPath()
     {
         CUSTOMPRINT.clearImagesList()
-        var stat = print_region.grabToImage(function(result) {
+        var page1 = is3PMatch ? report3p : print_region
+        var pages = is3PMatch ? report3pSeriesRepeater : reportRepeater
+        var stat = page1.grabToImage(function(result) {
             CUSTOMPRINT.addImage(result.image);
         }, Qt.size(8917/4, 13033/4)); //2229, 3258
-        for (var i=0; i < reportRepeater.count; ++i)
+        for (var i=0; i < pages.count; ++i)
         {
-            reportRepeater.itemAt(i).grabToImage(function(result) {
+            pages.itemAt(i).grabToImage(function(result) {
                 CUSTOMPRINT.addImage(result.image);
             }, Qt.size(8917/4, 13033/4));
         }

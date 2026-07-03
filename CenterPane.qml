@@ -23,6 +23,13 @@ Item {
 
 
     signal pointAddedToSeries(real xPosition, real yPosition, real currentCalculatedScore)
+
+    // Raw target-face coordinates (mm) of the most recent shot, captured at
+    // scoring time so the shot models can store real geometry — the polar
+    // (direction, score) pair the models held before this cannot recover mm
+    // without unit archaeology. Read by ShootingPage.onPointAddedToSeries.
+    property real lastShotXmm: 0
+    property real lastShotYmm: 0
     //    signal pointAddedXYPoints(real xPosition, real yPosition)
 
     property int gameTime: 0
@@ -43,6 +50,7 @@ Item {
     property string curShootTimeStampSavedGame: "test"
 
     signal sighterModeTimerEnds()
+    signal positionResumeRequested()   // 3P: athlete starts record fire in the new position
 
     onGameModeChanged: {
         circleCordinates()
@@ -402,7 +410,9 @@ Item {
                 sighterModeTimerEnds()
                 sighterTimer.stop()
                 //sighter.visible = false;
-                slighterTimeUpdate.visible = false
+                // slighterTimeUpdate hides via its !timerNotification.visible
+                // binding — do not assign imperatively (it would break the
+                // binding for the next session).
                 //gameTimer.start()
                 timerNotification.visible = true;
                 MODREADER.intiateAutoMovementSetup()
@@ -1209,6 +1219,56 @@ Item {
 
     }
 
+    // 3P: prominent resume control for mid-match position changes. Uses its
+    // own signal into ShootingPage instead of the legacy play button, which
+    // stops responding after a position transition.
+    Rectangle {
+        id: resumePositionBtn
+        visible: sligterMode && is3PMatch
+                 && globalMatchModel.count > 0 && globalMatchModel.count < 60
+        // Top-centre below the phase/clock row, above everything else: the
+        // top-right corner is occupied by the sighter corner triangle and
+        // z:20 notification overlays.
+        z: 30
+        anchors.top: parent.top
+        anchors.topMargin: 66
+        anchors.horizontalCenter: parent.horizontalCenter
+        width: resumeText.implicitWidth + 40
+        height: 44
+        radius: 8
+        color: "#e8003d"
+        Text {
+            id: resumeText
+            anchors.centerIn: parent
+            text: qsTr("START ") + p3Names[p3Position] + "  →"
+            color: "white"
+            font.bold: true
+            font.pixelSize: 16
+        }
+        MouseArea {
+            anchors.fill: parent
+            // Qualified via the root id: unqualified root-member lookup from
+            // nested handlers fails silently under the compiled-QML cache.
+            onClicked: paneItem.positionResumeRequested()
+        }
+    }
+
+    // Phase indicator: which ISSF phase (and 3P position) the athlete is in.
+    // Sits left of the countdown clock; text comes from ShootingPage scope.
+    Text {
+        id: phaseIndicator
+        anchors.verticalCenter: slighterTimeUpdate.verticalCenter
+        // Follow whichever clock is showing — the match clock shifts left of
+        // the sighter indicator when that is visible.
+        anchors.right: timerNotification.visible ? timerNotification.left : slighterTimeUpdate.left
+        anchors.rightMargin: 8
+        text: phaseText
+        color: "red"
+        font.bold: true
+        font.pixelSize: 20
+        visible: timerNotification.visible || slighterTimeUpdate.visible
+    }
+
     Rectangle
     {
         id:timerNotification
@@ -1301,10 +1361,15 @@ Item {
     {
         id:slighterTimeUpdate
         anchors.top: parent.top
-        anchors.left: parent.left
+        anchors.right: parent.right
         anchors.topMargin: 20
         width: 0.2*parent.width
-        visible: !sighter.visible && !timerNotification.visible
+        height: 40
+        color: "transparent"
+        // Show the sighting countdown whenever the match clock is hidden —
+        // it takes the match clock's top-right spot (they are mutually
+        // exclusive), keeping clear of the shot counter at top-left.
+        visible: !timerNotification.visible
 
         Row {
             id:stRow
@@ -1598,8 +1663,24 @@ Item {
             gameTimer.stop()
     }
 
+    // Toggle only the sighter indicator, leaving the match clock untouched —
+    // used for 3P position changes where ISSF counts the changeover and
+    // sighting time as part of the overall match time.
+    function setSighterIndicator(sighterVisible)
+    {
+        sighter.visible = sighterVisible
+    }
+
+    function stopMatchClock()
+    {
+        gameTimer.stop()
+        sighterTimer.stop()
+    }
+
     function calculateShootingSocre(xPoint, yPoint, demoXPoint, demoYPoint)
     {
+        lastShotXmm = xPoint
+        lastShotYmm = yPoint
         var logData = "calculateShootingSocre  -- started appmode "+ appMode+ " gamerange "+gameRange+ "game mode "+ gameMode
         MODREADER.appendToLogFile(logData)
 
@@ -1832,6 +1913,28 @@ Item {
         countText.visible = false
         timerNotification.visible = false
         //        rightPanel.startFromServer()
+    }
+
+    // ── ISSF preparation/sighting phase (standalone, no range master) ────────
+    // Mirrors startFromServer(): sighting countdown runs, match clock hidden.
+    // Hiding timerNotification zeroes gameTime via stopTimer.onVisibleChanged,
+    // so the match clock starts from the full discipline time later.
+    function startPreparationCountdown()
+    {
+        MODREADER.appendToLogFile("startPreparationCountdown: totalSighterTime=" + totalSighterTime)
+        sighterTime = 0
+        stStopTimer.text = minutesToseconds(totalSighterTime)
+        stStopTimer.visible = true
+        timerNotification.visible = false
+        sighterTimer.restart()
+    }
+
+    // Called when the match phase begins (play button or sighting timer expiry).
+    // Idempotent: safe on later pause/resume cycles.
+    function stopPreparationCountdown()
+    {
+        sighterTimer.stop()
+        timerNotification.visible = APPSETTINGS.timer()
     }
 
 }

@@ -46,6 +46,7 @@ Item {
 
     onGameModeChanged: { APPSETTINGS.setGameMode(gameMode) }
     onGameEventChanged: { APPSETTINGS.setGameEvent(gameEvent) }
+    onGameSubModeChanged: { APPSETTINGS.setGameSubMode(gameSubMode) }
     onUsername_loginPageChanged: {
         console.log("**********??????????????????????*********", username_loginPage)
         APPSETTINGS.setUsername(username_loginPage)
@@ -326,7 +327,7 @@ Item {
         if (shots === "60") {
             if (gameMode === 0)      return "75 min"   // 10m Air Pistol  (ISSF 2026)
             if (gameRange === 10)    return "75 min"   // 10m Air Rifle   (ISSF 2026)
-            if (gameSubMode === 1)   return "105 min"  // 50m Rifle 3 Pos (ISSF 2026, outdoor)
+            if (gameSubMode === 1)   return "90 min"   // 50m Rifle 3 Pos on EST (ISSF 2026)
             return "50 min"                            // 50m Rifle Prone (ISSF 2026)
         }
         return "—"
@@ -710,7 +711,14 @@ Item {
                     }
                     MouseArea {
                         anchors.fill: parent
-                        onClicked: { networkShareCard.netEnabled = !networkShareCard.netEnabled; MODREADER.setIsServerNetworkEnabled(networkShareCard.netEnabled) }
+                        onClicked: {
+                            networkShareCard.netEnabled = !networkShareCard.netEnabled
+                            MODREADER.setIsServerNetworkEnabled(networkShareCard.netEnabled)
+                            // Sharing without a destination folder is a no-op
+                            // (and used to freeze the app) — prompt for one.
+                            if (networkShareCard.netEnabled && MODREADER.getNetworkPath() === "")
+                                networkFolderDialog.open()
+                        }
                     }
                 }
             }
@@ -1098,7 +1106,7 @@ Item {
                                             if (s === "60") {
                                                 if (gameMode === 0)    return "·  75 min"
                                                 if (gameRange === 10)  return "·  75 min"
-                                                if (gameSubMode === 1) return "·  105 min"
+                                                if (gameSubMode === 1) return "·  90 min"
                                                 return "·  50 min"
                                             }
                                             return ""
@@ -1220,7 +1228,12 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     MouseArea {
                         anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                        onClicked: { networkShareCard.netEnabled = !networkShareCard.netEnabled; MODREADER.setIsServerNetworkEnabled(networkShareCard.netEnabled) }
+                        onClicked: {
+                            networkShareCard.netEnabled = !networkShareCard.netEnabled
+                            MODREADER.setIsServerNetworkEnabled(networkShareCard.netEnabled)
+                            if (networkShareCard.netEnabled && MODREADER.getNetworkPath() === "")
+                                networkFolderDialog.open()
+                        }
                     }
                 }
             }

@@ -768,8 +768,12 @@ Item {
         timer.start()
     }
 
-    function addToSeries(angle,radius,calScore)
+    function addToSeries(angle,radius,calScore,xmm,ymm)
     {
+        // Raw target-face mm (used by the 3P report for per-position group,
+        // MPI and plots). Default 0 for callers that don't supply them.
+        var shotXmm = xmm === undefined ? 0 : xmm*1
+        var shotYmm = ymm === undefined ? 0 : ymm*1
         var relativeVal = (10 - radius) > 0 ? 10 - radius : 0
         grandTotal = scoreCutoffTofirstDecimal( grandTotal*1 + (calScore)*1)
 //        subTotal = /*Math.round*/scoreCutoffTofirstDecimal( subTotal + (calculatedScore)*1)
@@ -787,12 +791,19 @@ Item {
         MODREADER.appendTimeStamp(timeStampString)
 
         //        globalModelOfData.append({"direction":angle.toFixed(2), "score":radius.toFixed(2),  "timeComsumed":text})
+        // 3P: 0=kneeling 1=prone 2=standing, -1 otherwise. The role must be
+        // present on ALL models that copy entries between each other —
+        // ListModel role sets are locked at first append, so a copy from a
+        // model with this role into one without it throws.
+        var shotPosition = is3PMatch ? p3Position : -1
         if(sligterMode)
         {
             globalSlighterModel.append({"direction":angle.toFixed(2)
                                            ,"score":radius.toFixed(2)/*radius.toFixed(2)*/
                                            ,"timeComsumed":text
-                                           ,"calculatedscore":scoreCutoffTofirstDecimal(calScore)})
+                                           ,"calculatedscore":scoreCutoffTofirstDecimal(calScore)
+                                           ,"position": shotPosition
+                                           ,"xmm": shotXmm, "ymm": shotYmm})
             console.log("Shreeraksha-----",APPSETTINGS.getScoringSystem())
         }
         else
@@ -801,11 +812,15 @@ Item {
                                         ,"score":radius.toFixed(2)/*radius.toFixed(2)*/
                                         ,"timeComsumed":text
                                         ,"calculatedscore":scoreCutoffTofirstDecimal(calScore)
-                                        ,"timestamp":timeStampString})
+                                        ,"timestamp":timeStampString
+                                        ,"position": shotPosition
+                                        ,"xmm": shotXmm, "ymm": shotYmm})
         }
         globalModelOfData.append({"direction":angle.toFixed(2)
                                      ,"score":radius.toFixed(2)/*radius.toFixed(2)*/,  "timeComsumed":text
-                                     ,"calculatedscore":scoreCutoffTofirstDecimal(calScore)})
+                                     ,"calculatedscore":scoreCutoffTofirstDecimal(calScore)
+                                     ,"position": shotPosition
+                                     ,"xmm": shotXmm, "ymm": shotYmm})
 
         console.log("$$$$$$$$$$$$ calscore ", calScore)
         console.log("index ",globalModelOfData.count, " timestamp ", globalModelOfData)
@@ -825,6 +840,8 @@ Item {
 
     function updateListModel(startIndex,endIndex)
     {
+        if (!visible)   // see updateTotal — no view churn while hidden
+            return
         listModel.clear()
         console.log("inside updateListModel")
         if (listNavigationON)
@@ -907,8 +924,17 @@ Item {
 
     function updateTotal()
     {
+        // Refreshing the score views while the shooting page is hidden (Home
+        // teardown) reassigns models under delegates that are mid-destruction
+        // and crashes the app natively. The next visible session start runs
+        // the full refresh chain anyway.
+        if (!visible)
+            return
         updateGrandTotal()
-        var startIndex = Math.floor((globalModelOfData.count-1)/10)
+        // Clamp to 0: with an empty model, floor((0-1)/10) = -1 and the
+        // resulting negative indices make ListModel.get() return undefined,
+        // throwing a TypeError that silently aborts the calling chain.
+        var startIndex = Math.max(0, Math.floor((globalModelOfData.count-1)/10))
         var endIndex = globalModelOfData.count;
         updateListModel(startIndex*10,endIndex)
     }
