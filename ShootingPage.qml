@@ -238,12 +238,90 @@ Item {
         MODREADER.setCurrentMatchTotalShotsCount(matchShootCount)
     }
 
+    // ── Top status strip (rebrand phase 1) ───────────────────────────────
+    Rectangle {
+        id: statusStrip
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        height: 42
+        color: "#15161a"
+        z: 40
+
+        Row {
+            anchors.left: parent.left; anchors.leftMargin: 16
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 12
+            Text {
+                text: currentGameDisplay1 + " " + currentGameDisplay2
+                color: "white"; font.family: theme.fontFamily
+                font.pixelSize: 14; font.bold: true
+                anchors.verticalCenter: parent.verticalCenter
+            }
+            Rectangle { width: 1; height: 18; color: "#3a3b40"; anchors.verticalCenter: parent.verticalCenter }
+            Text {
+                text: currentmatchDisplay
+                color: "#9a9ba0"; font.family: theme.fontFamily; font.pixelSize: 12
+                anchors.verticalCenter: parent.verticalCenter
+            }
+            Rectangle { width: 1; height: 18; color: "#3a3b40"; anchors.verticalCenter: parent.verticalCenter }
+            Text {
+                text: window.userName
+                color: "#9a9ba0"; font.family: theme.fontFamily; font.pixelSize: 12
+                anchors.verticalCenter: parent.verticalCenter
+            }
+        }
+
+        Row {
+            anchors.right: parent.right; anchors.rightMargin: 16
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 12
+            Text {
+                text: globalMatchModel.count + " / " + (matchShootCount > 0 ? matchShootCount : "—")
+                color: "white"; font.family: theme.fontFamily
+                font.pixelSize: 14; font.bold: true
+                anchors.verticalCenter: parent.verticalCenter
+            }
+            Text {
+                text: qsTr("SHOTS")
+                color: "#9a9ba0"; font.family: theme.fontFamily
+                font.pixelSize: 9; font.letterSpacing: 1.5
+                anchors.verticalCenter: parent.verticalCenter
+            }
+            Rectangle {
+                radius: 4; height: 24; width: phaseChipText.implicitWidth + 20
+                anchors.verticalCenter: parent.verticalCenter
+                color: matchFinished ? "#1d7a2f" : (sligterMode ? "#8a6d00" : "#e8003d")
+                Text {
+                    id: phaseChipText
+                    anchors.centerIn: parent
+                    text: phaseText
+                    color: "white"; font.family: theme.fontFamily
+                    font.pixelSize: 10; font.bold: true; font.letterSpacing: 1
+                }
+            }
+            Rectangle {
+                visible: !appMode
+                radius: 4; height: 24; width: demoChipText.implicitWidth + 16
+                anchors.verticalCenter: parent.verticalCenter
+                color: "transparent"; border.color: "#e8003d"; border.width: 1
+                Text {
+                    id: demoChipText
+                    anchors.centerIn: parent
+                    text: qsTr("DEMO")
+                    color: "#e8003d"; font.family: theme.fontFamily
+                    font.pixelSize: 10; font.bold: true; font.letterSpacing: 1
+                }
+            }
+        }
+    }
+
     LeftPanel {
         id: leftPanel
         width: 0.15*parent.width
-        height: parent.height
+        height: parent.height - statusStrip.height
         anchors.left: parent.left
-        anchors.top: parent.top
+        anchors.top: statusStrip.bottom
         name: window.userName
         z: 10
 
@@ -260,9 +338,9 @@ Item {
     RightPanel {
         id: rightPanel
         width: 0.31*parent.width
-        height: parent.height
+        height: parent.height - statusStrip.height
         anchors.right: parent.right
-        anchors.top: parent.top
+        anchors.top: statusStrip.bottom
         z: 10
         onSwitchToSighter:
         {
@@ -284,10 +362,10 @@ Item {
     CenterPane {
         id: centerPanel
         width: parent.width - leftPanel.width - rightPanel.width
-        height: parent.height
+        height: parent.height - statusStrip.height
         anchors.left: leftPanel.right
         anchors.right: rightPanel.left
-        anchors.top: parent.top
+        anchors.top: statusStrip.bottom
 
         property alias showMesures: leftPanel.isShowMPI
 
