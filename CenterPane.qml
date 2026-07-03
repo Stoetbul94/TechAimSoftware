@@ -1247,6 +1247,50 @@ Item {
 
     }
 
+    // Phase stepper: where the athlete is in the ISSF sequence. 3P shows the
+    // full position chain; other disciplines just sighting -> match.
+    Row {
+        id: phaseStepper
+        anchors.top: parent.top
+        anchors.topMargin: 58
+        anchors.horizontalCenter: parent.horizontalCenter
+        spacing: 6
+        z: 30
+        property var steps: is3PMatch ? [qsTr("SIGHT"), qsTr("KNEELING"), qsTr("PRONE"), qsTr("STANDING")]
+                                      : [qsTr("SIGHTING"), qsTr("MATCH")]
+        property int cur: {
+            if (matchFinished) return 99
+            if (is3PMatch)
+                return (sligterMode && globalMatchModel.count === 0) ? 0 : 1 + p3Position
+            return sligterMode ? 0 : 1
+        }
+        Repeater {
+            model: phaseStepper.steps.length
+            delegate: Row {
+                spacing: 6
+                Rectangle {
+                    radius: 9; height: 18
+                    width: stepText.implicitWidth + 16
+                    anchors.verticalCenter: parent.verticalCenter
+                    color: index < phaseStepper.cur ? "#1d7a2f"
+                         : (index === phaseStepper.cur ? "#e8003d" : "#4a4b52")
+                    Text {
+                        id: stepText
+                        anchors.centerIn: parent
+                        text: phaseStepper.steps[index]
+                        color: "white"; font.pixelSize: 8
+                        font.bold: true; font.letterSpacing: 1
+                    }
+                }
+                Rectangle {
+                    visible: index < phaseStepper.steps.length - 1
+                    width: 10; height: 2; color: "#8a8b90"
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+            }
+        }
+    }
+
     // 3P: prominent resume control for mid-match position changes. Uses its
     // own signal into ShootingPage instead of the legacy play button, which
     // stops responding after a position transition.
@@ -1259,7 +1303,7 @@ Item {
         // z:20 notification overlays.
         z: 30
         anchors.top: parent.top
-        anchors.topMargin: 66
+        anchors.topMargin: 86
         anchors.horizontalCenter: parent.horizontalCenter
         width: resumeText.implicitWidth + 40
         height: 44
