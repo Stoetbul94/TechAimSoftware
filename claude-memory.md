@@ -103,3 +103,18 @@ Full 60-shot 3P demo match: K 210.3 / P 214.4 / S 201.9 → total 626.6 (595),
 inner-10s 49; sighting 15:00 countdowns; match clock 90:00 → ran through both
 changeovers; MATCH COMPLETE froze clock at 86:31; PDF result sheet rendered
 correctly with standing group visibly widest (as shot).
+
+## 7. ShootingPage redesign plan (agreed 2026-07-03, in progress)
+
+Direction: mockup 2/3 style (dark + #e8003d red, Theme.qml tokens, like LoginPage)
+with mockup 1's phase stepper (Prep → Sighting → K → P → S) and score-distribution
+bars. Phased, each phase verified live then committed:
+1. Top status strip: event, shooter, phase chip (phaseText, amber/red/green),
+   shots counter (globalMatchModel.count/matchShootCount), DEMO chip. Resume
+   button may move here later.
+2. Right panel: dark cards — LAST SHOT (big score + X/Y mm from xmm/ymm roles),
+   shot log, series totals S1-S6, match total + 10.x/9.x/8.x distribution bars.
+3. Left panel: labeled nav buttons, discipline card, theme colors.
+4. Phase stepper above target (3P-aware).
+Constraint: do NOT restructure CenterPane internals (chart/shot pipeline is
+fragile); style around them. Report design polish also parked (user note).
