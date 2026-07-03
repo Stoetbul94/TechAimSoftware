@@ -293,7 +293,8 @@ Item {
 
 
         onPointAddedToSeries: {
-            rightPanel.addToSeries(xPosition,yPosition,currentCalculatedScore)
+            rightPanel.addToSeries(xPosition,yPosition,currentCalculatedScore,
+                                   centerPanel.lastShotXmm, centerPanel.lastShotYmm)
             console.log("x ", xPosition, " y ", yPosition, " score ", currentCalculatedScore, " matchShootCount ", matchShootCount)
 
             // 3P: after the 20th and 40th match shots, switch to the next

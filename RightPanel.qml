@@ -768,8 +768,12 @@ Item {
         timer.start()
     }
 
-    function addToSeries(angle,radius,calScore)
+    function addToSeries(angle,radius,calScore,xmm,ymm)
     {
+        // Raw target-face mm (used by the 3P report for per-position group,
+        // MPI and plots). Default 0 for callers that don't supply them.
+        var shotXmm = xmm === undefined ? 0 : xmm*1
+        var shotYmm = ymm === undefined ? 0 : ymm*1
         var relativeVal = (10 - radius) > 0 ? 10 - radius : 0
         grandTotal = scoreCutoffTofirstDecimal( grandTotal*1 + (calScore)*1)
 //        subTotal = /*Math.round*/scoreCutoffTofirstDecimal( subTotal + (calculatedScore)*1)
@@ -798,7 +802,8 @@ Item {
                                            ,"score":radius.toFixed(2)/*radius.toFixed(2)*/
                                            ,"timeComsumed":text
                                            ,"calculatedscore":scoreCutoffTofirstDecimal(calScore)
-                                           ,"position": shotPosition})
+                                           ,"position": shotPosition
+                                           ,"xmm": shotXmm, "ymm": shotYmm})
             console.log("Shreeraksha-----",APPSETTINGS.getScoringSystem())
         }
         else
@@ -808,12 +813,14 @@ Item {
                                         ,"timeComsumed":text
                                         ,"calculatedscore":scoreCutoffTofirstDecimal(calScore)
                                         ,"timestamp":timeStampString
-                                        ,"position": shotPosition})
+                                        ,"position": shotPosition
+                                        ,"xmm": shotXmm, "ymm": shotYmm})
         }
         globalModelOfData.append({"direction":angle.toFixed(2)
                                      ,"score":radius.toFixed(2)/*radius.toFixed(2)*/,  "timeComsumed":text
                                      ,"calculatedscore":scoreCutoffTofirstDecimal(calScore)
-                                     ,"position": shotPosition})
+                                     ,"position": shotPosition
+                                     ,"xmm": shotXmm, "ymm": shotYmm})
 
         console.log("$$$$$$$$$$$$ calscore ", calScore)
         console.log("index ",globalModelOfData.count, " timestamp ", globalModelOfData)

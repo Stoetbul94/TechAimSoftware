@@ -23,6 +23,13 @@ Item {
 
 
     signal pointAddedToSeries(real xPosition, real yPosition, real currentCalculatedScore)
+
+    // Raw target-face coordinates (mm) of the most recent shot, captured at
+    // scoring time so the shot models can store real geometry — the polar
+    // (direction, score) pair the models held before this cannot recover mm
+    // without unit archaeology. Read by ShootingPage.onPointAddedToSeries.
+    property real lastShotXmm: 0
+    property real lastShotYmm: 0
     //    signal pointAddedXYPoints(real xPosition, real yPosition)
 
     property int gameTime: 0
@@ -1672,6 +1679,8 @@ Item {
 
     function calculateShootingSocre(xPoint, yPoint, demoXPoint, demoYPoint)
     {
+        lastShotXmm = xPoint
+        lastShotYmm = yPoint
         var logData = "calculateShootingSocre  -- started appmode "+ appMode+ " gamerange "+gameRange+ "game mode "+ gameMode
         MODREADER.appendToLogFile(logData)
 

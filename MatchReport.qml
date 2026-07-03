@@ -44,6 +44,9 @@ Dialog {
     onVisibleChanged: {
         contentRect.visible = visible
 
+        if (visible && is3PMatch)
+            report3p.refresh()
+
         if (visible && isAutoPrintOn)
             printTimer.start() //printImageInNetworkPath()
     }
@@ -63,8 +66,16 @@ Dialog {
                 spacing: 20
                 width: scrollView.width
 
+                // 3P matches get the position-aware result sheet as page 1.
+                Report3P {
+                    id: report3p
+                    visible: is3PMatch
+                    anchors.horizontalCenter: parent.horizontalCenter
+                }
+
                 PdfPage {
                     id: print_region
+                    visible: !is3PMatch
                     pageIndex: 1
 //                    width: parent.width
 //                    height: 800
@@ -295,7 +306,8 @@ Dialog {
     function printImage()
     {
         CUSTOMPRINT.clearImagesList()
-        var stat = print_region.grabToImage(function(result) {
+        var page1 = is3PMatch ? report3p : print_region
+        var stat = page1.grabToImage(function(result) {
             CUSTOMPRINT.addImage(result.image);
         }, Qt.size(8917/4, 13033/4)); //2229, 3258
         for (var i=0; i < reportRepeater.count; ++i)
@@ -311,7 +323,8 @@ Dialog {
     function printImageInNetworkPath()
     {
         CUSTOMPRINT.clearImagesList()
-        var stat = print_region.grabToImage(function(result) {
+        var page1 = is3PMatch ? report3p : print_region
+        var stat = page1.grabToImage(function(result) {
             CUSTOMPRINT.addImage(result.image);
         }, Qt.size(8917/4, 13033/4)); //2229, 3258
         for (var i=0; i < reportRepeater.count; ++i)
