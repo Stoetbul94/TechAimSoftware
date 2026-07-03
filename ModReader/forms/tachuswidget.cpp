@@ -8,6 +8,7 @@
 #include <cfloat>
 #include <QHostInfo>
 #include <QNetworkInterface>
+#include <QSerialPortInfo>
 #include <QFile>
 #include <QFileInfo>
 #include <QTextStream>
@@ -121,6 +122,32 @@ bool TachusWidget::connectedModbus(QString portName)
         clearShootCount();
         intiateAutoMovementSetup();
         return true;
+    }
+
+    // Auto-detect fallback: if the configured port would not even open, try
+    // every serial port on the machine and keep the first that opens. (A
+    // deeper probe via isHardwareConnected() is NOT safe here: the register
+    // read blocks indefinitely on an open port with no responding target.)
+    if (portName.isEmpty()) {
+        const auto ports = QSerialPortInfo::availablePorts();
+        for (const QSerialPortInfo &info : ports) {
+            const QString candidate = info.portName();
+            if (candidate.isEmpty())
+                continue;
+            LogFile::instance().appendToLogFile(
+                QString("auto-detect: trying %1").arg(candidate), LogType::interfaceLevel);
+            m_mainWindow->changedConnect(true, candidate);
+            if (m_mainWindow->isModBusConnected()) {
+                LogFile::instance().appendToLogFile(
+                    QString("auto-detect: connected on %1").arg(candidate), LogType::interfaceLevel);
+                m_lastManuallyConnectedPort = candidate;
+                clearShootCount();
+                intiateAutoMovementSetup();
+                return true;
+            }
+        }
+        LogFile::instance().appendToLogFile(
+            QString("auto-detect: no openable serial port found"), LogType::interfaceLevel);
     }
 
     return false;

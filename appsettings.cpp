@@ -18,6 +18,7 @@
 AppSettings::AppSettings(QString fileName)
 {
     //with ini file
+    m_iniFileName = fileName;
     m_settings = new QSettings( fileName, QSettings::IniFormat );
     m_settings->beginGroup("App_Settings");
     //m_settings->setValue("app_mode", "Demo");
@@ -606,6 +607,26 @@ void AppSettings::setGame_is_sighter_mode(int value)
 double AppSettings::getMotor_movement_time() const
 {
     return motor_movement_time;
+}
+
+void AppSettings::saveMotorTimes(double matchSecs, double sighterSecs)
+{
+    motor_movement_time = matchSecs;
+    motor_movement_time_sighter = sighterSecs;
+
+    // Fresh QSettings with explicit group paths: m_settings' group state
+    // after construction is unknown, and nesting would corrupt the keys.
+    QSettings s(m_iniFileName, QSettings::IniFormat);
+    s.setValue("App_Settings/motor_movement_time", matchSecs);
+    s.setValue("App_Settings/motor_movement_time_sighter", sighterSecs);
+    s.sync();
+
+    if (tachusWidget)
+        tachusWidget->setMotorMovementTime(matchSecs, sighterSecs);
+
+    LogFile::instance().appendToLogFile(
+        QString("motor feed times saved: match %1 s, sighter %2 s")
+            .arg(matchSecs).arg(sighterSecs), LogType::interfaceLevel);
 }
 
 void AppSettings::setMotor_movement_time(double value, double sighterFeedTime)
