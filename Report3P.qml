@@ -102,8 +102,8 @@ Item {
 
         Column {
             anchors.fill: parent
-            anchors.margins: 26
-            spacing: 10
+            anchors.margins: 30
+            spacing: 16
 
             // ── Header ────────────────────────────────────────────────────
             Item {
@@ -154,7 +154,7 @@ Item {
                 Repeater {
                     model: 3
                     delegate: Rectangle {
-                        width: parent.width; height: 24
+                        width: parent.width; height: 30
                         color: index % 2 ? "#f4f4f4" : "white"
                         border.color: "#dddddd"; border.width: 1
                         property var st: stats[index]
@@ -172,7 +172,7 @@ Item {
                     }
                 }
                 Rectangle {
-                    width: parent.width; height: 26; color: "#e8003d"
+                    width: parent.width; height: 32; color: "#e8003d"
                     Row {
                         anchors.fill: parent
                         Text { width: parent.width*0.16; text: qsTr("TOTAL"); color: "white"; font.pixelSize: 11; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; height: parent.height }
@@ -193,7 +193,7 @@ Item {
                     Repeater {
                         model: 6
                         delegate: Rectangle {
-                            width: (reportRoot.width - 52 - 30) / 6; height: 34
+                            width: (reportRoot.width - 60 - 30) / 6; height: 40
                             color: index === bestSeriesIdx() ? "#e7f5e7" : (index === worstSeriesIdx() ? "#fdeaea" : "#f4f4f4")
                             border.color: index === bestSeriesIdx() ? "#3a9a3a" : (index === worstSeriesIdx() ? "#e8003d" : "#dddddd")
                             Column {
@@ -228,7 +228,7 @@ Item {
                             Image {
                                 id: faceImg
                                 source: "qrc:/images/centerPanel/black_50_Rifle.png"
-                                width: (reportRoot.width - 52 - 20) / 3
+                                width: (reportRoot.width - 60 - 20) / 3
                                 height: width
                                 Repeater {
                                     model: globalMatchModel
