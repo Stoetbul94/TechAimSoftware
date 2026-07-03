@@ -81,7 +81,7 @@ Item {
 
     ModConnectorDialog {
         id: modBusConnector
-        width: 300; height: 100
+        width: 300; height: 170
         visible: false
     }
 
@@ -639,8 +639,20 @@ Item {
                         anchors.fill: parent
                         onClicked: {
                             if (!mod_connected) {
-                                if (popupMode) { MODREADER.connectedModbus(); mod_connected = MODREADER.isModBusConnected(); if (!mod_connected) modBusConnector.visible = true }
-                            } else { MODREADER.disconnectModbus(); mod_connected = MODREADER.isModBusConnected() }
+                                // Reconnect: use the typed COM port if given,
+                                // otherwise auto-detect. (Was gated behind
+                                // popupMode, which made re-enabling impossible.)
+                                if (port_name_text_field.text !== "")
+                                    MODREADER.connectedModbus(port_name_text_field.text)
+                                else
+                                    MODREADER.connectedModbus()
+                                mod_connected = MODREADER.isModBusConnected()
+                                if (!mod_connected)
+                                    modBusConnector.visible = true
+                            } else {
+                                MODREADER.disconnectModbus()
+                                mod_connected = MODREADER.isModBusConnected()
+                            }
                         }
                     }
                 }
