@@ -114,6 +114,13 @@ Item {
         width: ((parent.width/rootItemWidth)*sourceSize.width)
         height: ((parent.height/rootItemHeight)*sourceSize.height)
     }
+    // Redesign: uniform dark panel background covering the legacy PNG chrome
+    // (the old "total score block" shape peeked out beside the new cards).
+    // All content below draws on top of this.
+    Rectangle {
+        anchors.fill: parent
+        color: "#15161a"
+    }
     Image {
         id: text_field
         source: "qrc:/images/rightPanel/text_field.png"
@@ -1409,9 +1416,10 @@ Item {
     Rectangle {
         id: series_sum
 //        source: "qrc:/images/rightPanel/series_6.png"
-        anchors.left: text_field_8.left
-        anchors.right: text_field.right
-        anchors.rightMargin: text_field.width*0.07
+        // Aligned to the card column (num) so it lines up with the LAST SHOT,
+        // score-table and TOTAL cards above it.
+        anchors.left: num.left
+        anchors.right: num.right
         anchors.top: text_field2.bottom
         anchors.bottom: total_score_block.bottom
         anchors.bottomMargin: 30
