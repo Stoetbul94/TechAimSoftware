@@ -99,19 +99,36 @@ bool TachusWidget::isMasterSystemConnected()
 
 bool TachusWidget::connectedModbus(QString portName)
 {
+    // A leading/trailing space in the port field ("` COM7`") makes the serial
+    // open fail AND tears down whatever connection was already up — trim
+    // before anything else touches the name.
+    portName = portName.trimmed();
+
     if (portName.isEmpty() && m_lastManuallyConnectedPort != "") {
         portName = m_lastManuallyConnectedPort;
-    } else if (!portName.isEmpty()) {
-        m_lastManuallyConnectedPort = portName;
     }
+
+    if (m_mainWindow == NULL)
+        return false;
+
+    // Already connected on the requested port (or no specific port asked):
+    // keep the live connection instead of tearing it down and reopening.
+    if (m_mainWindow->isModBusConnected()
+            && (portName.isEmpty()
+                || QString::compare(portName, m_lastManuallyConnectedPort, Qt::CaseInsensitive) == 0)) {
+        LogFile::instance().appendToLogFile(
+            QString("already connected on %1 - keeping connection").arg(m_lastManuallyConnectedPort),
+            LogType::interfaceLevel);
+        return true;
+    }
+
+    if (!portName.isEmpty())
+        m_lastManuallyConnectedPort = portName;
 
     if (portName.isEmpty())
         LogFile::instance().appendToLogFile(QString("connect with port number -> Auto Connect"), LogType::interfaceLevel);
     else
         LogFile::instance().appendToLogFile(QString("connect with port number manually -> %1").arg(portName), LogType::interfaceLevel);
-
-    if (m_mainWindow == NULL)
-        return false;
 
     //if (!m_mainWindow->isModBusConnected()) {
         m_mainWindow->tachusReconfigurePortNumber();

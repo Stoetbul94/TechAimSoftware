@@ -14,9 +14,29 @@
   to a `.qrc` (Makefile deps are generated at qmake time).
 - QML lives in `qml.qrc` → **every QML change needs a rebuild** (rcc + relink).
 - The exe locks during linking — kill `Seta.exe` before rebuilding.
-- `release/config.ini` (untracked): `[shot_count_and_timer] timer=yes` makes the
-  on-screen countdown clock visible; `prep_time` (minutes, default 15) sets the
-  preparation/sighting period.
+- `release/config.ini` (untracked) — **required contents proven at the range
+  2026-07-04** (first successful live-fire session):
+
+  ```ini
+  [shot_count_and_timer]
+  timer=yes
+
+  [App_Settings]
+  app_mode=Live
+  is_single_decimal=1
+  motor_movement_time=1
+  motor_movement_time_sighter=1
+  ```
+
+  - `app_mode=Live` is the ONLY way to leave demo mode — the LIVE/DEMO chip on
+    the login page just displays it, nothing in the UI sets it. Without it the
+    app silently ignores all hardware shots ("shots not registering").
+  - `is_single_decimal=1`: this hardware (COM7, RTU 19200 Even 8/1) reports
+    shot coordinates in **tenths of a millimetre**; the default (0 → ÷100)
+    plots every shot 10× too close to centre (all shots look like 10.7+).
+    Value mirrored from the known-good old install at
+    `Desktop/Tech Aim Software/seta10/config.ini`.
+  - Both are read once at startup — config changes need an app restart.
 - Demo-mode test drill: launch → click green **Connected** (→ Demo/Offline) →
   Share toggle OFF (or configure a folder) → pick discipline → Start session →
   play button starts the match → **click the target to fire demo shots**.
@@ -66,7 +86,13 @@ Key commits: `d63b02a` selector · `2c67b74` timer plumbing · `8ea95fe` prep ph
 7. Watch for **stray `gameEvent` indices**: Prone and 3P share `gameEvent=4`;
    the discipline is `APPSETTINGS.getGameSubMode()` (+`get10or50mRange()`), both
    persisted from LoginPage. `is3PMatch` is fixed at `beginPreparationPhase()`.
-8. **C++ getters called from delegate bindings must reject the whole negative
+8. **A leading space in the port text field silently killed live mode at the
+   range**: Start-session blindly called `connectedModbus(" COM7")`, which tore
+   down the already-working COM7 connection and failed to reopen (`" COM7"` is
+   an invalid device name) → "Com port not connected". Fixed in
+   `connectedModbus`: trims the name and returns early (keeping the live
+   connection) when already connected to the requested/last port.
+9. **C++ getters called from delegate bindings must reject the whole negative
    range, not just `-1`.** Pressing play with sighter shots crashed the app
    natively (2026-07-04): entering match mode empties the score list, so
    `updateListModel` computed `currentPageIndex = floor(-1/10) = -1`; the three
@@ -76,7 +102,7 @@ Key commits: `d63b02a` selector · `2c67b74` timer plumbing · `8ea95fe` prep ph
    heap crash. Fixed both layers: `shootNumber < 0` guard in C++, `Math.max(0,…)`
    clamp in QML. Delegate destruction is deferred — assume any index a binding
    computes can be stale/negative during model churn.
-9. **Automation/testing quirk**: the app window drifts ±15 px between states;
+10. **Automation/testing quirk**: the app window drifts ±15 px between states;
    synthetic clicks must be based on a fresh screenshot or they miss silently.
    Bitdefender: `release\Seta.exe` needs an **Advanced Threat Defense** exception
    (separate from the Antivirus folder exclusion) or file writes freeze the UI.
