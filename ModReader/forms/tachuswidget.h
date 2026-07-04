@@ -318,7 +318,16 @@ public slots:
     void resetShootinCount() {
         m_currentShootsCount = 0;
         m_oldResetCount = 0;
-        m_mainWindow->modbusWriteSingleRegister(8193, 0);
+        // Bounded retry: with the modbus response timeout in place this write
+        // returns within ~1s per attempt instead of freezing the GUI thread;
+        // retry because a failed reset desyncs the hardware shot counter.
+        for (int attempt = 0; attempt < 3; ++attempt) {
+            if (m_mainWindow->modbusWriteSingleRegister(8193, 0) != -1)
+                break;
+            LogFile::instance().appendToLogFile(
+                QString("resetShootinCount: hw counter reset failed (attempt %1)").arg(attempt + 1),
+                LogType::BackendLevel);
+        }
         m_xCordList.clear();
         m_yCordList.clear();
         m_xCordList_gameMode.clear();

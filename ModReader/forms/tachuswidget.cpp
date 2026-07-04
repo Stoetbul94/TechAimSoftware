@@ -1484,8 +1484,15 @@ void TachusWidget::clearShootCount()
     LogFile::instance().appendToLogFile(QString("Reset shoot is called, Current shoot count %1").arg(m_currentShootsCount), LogType::interfaceLevel);
     // reset the hardware counter register (2001 Hex = 8193 decimal)
     // skip if hardware check is disabled (no physical target attached)
-    if (!m_hardwareCheckDisabled)
-        m_mainWindow->modbusWriteSingleRegister(8193, 0);
+    if (!m_hardwareCheckDisabled) {
+        for (int attempt = 0; attempt < 3; ++attempt) {
+            if (m_mainWindow->modbusWriteSingleRegister(8193, 0) != -1)
+                break;
+            LogFile::instance().appendToLogFile(
+                QString("clearShootCount: hw counter reset failed (attempt %1)").arg(attempt + 1),
+                LogType::BackendLevel);
+        }
+    }
     //checkForNewShots();
     m_currentShootsCount = 0;
     LogFile::instance().appendToLogFile(QString("Reset done, Current shoot count %1").arg(m_currentShootsCount), LogType::interfaceLevel);

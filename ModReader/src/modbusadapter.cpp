@@ -74,8 +74,9 @@ void ModbusAdapter::modbusConnectRTU(QString port, int baud, QChar parity, int d
     else {
         //error recovery mode
         modbus_set_error_recovery(m_modbus, MODBUS_ERROR_RECOVERY_PROTOCOL);
-        //response_timeout;
-        modbus_set_response_timeout(m_modbus, timeOut, 0);
+        // response timeout — never 0: libmodbus treats {0,0} as wait-forever,
+        // which blocks the GUI thread permanently on an unresponsive target.
+        modbus_set_response_timeout(m_modbus, timeOut > 0 ? timeOut : 1, 0);
         m_connected = true;
         LogFile::instance().appendToLogFile(QString("ModbusAdapter Connected"),LogType::BackendLevel);
         line += "OK";
@@ -138,8 +139,8 @@ void ModbusAdapter::modbusConnectTCP(QString ip, int port, int timeOut)
     else {
         //error recovery mode
         modbus_set_error_recovery(m_modbus, MODBUS_ERROR_RECOVERY_PROTOCOL);
-        //response_timeout;
-        modbus_set_response_timeout(m_modbus, timeOut, 0);
+        // response timeout — never 0 (wait-forever), see RTU path above
+        modbus_set_response_timeout(m_modbus, timeOut > 0 ? timeOut : 1, 0);
         m_connected = true;
         line += " OK";
         mainWin->hideInfoBar();
