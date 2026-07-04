@@ -184,6 +184,56 @@ double CoachAnalyticsEngine::correlation(const std::vector<double>& xs,
     return sxy / std::sqrt(sxx * syy);
 }
 
+std::vector<double> CoachAnalyticsEngine::rollingMeanComplete(const std::vector<double>& v, int window)
+{
+    std::vector<double> out;
+    if (window <= 0 || static_cast<int>(v.size()) < window) return out;
+    const int n = static_cast<int>(v.size());
+    out.reserve(n - window + 1);
+    // Sliding sum for O(n).
+    double acc = 0.0;
+    for (int i = 0; i < window; ++i) acc += v[i];
+    out.push_back(acc / window);
+    for (int i = window; i < n; ++i) {
+        acc += v[i] - v[i - window];
+        out.push_back(acc / window);
+    }
+    return out;
+}
+
+std::vector<double> CoachAnalyticsEngine::rollingSdComplete(const std::vector<double>& v, int window)
+{
+    std::vector<double> out;
+    if (window <= 0 || static_cast<int>(v.size()) < window) return out;
+    const int n = static_cast<int>(v.size());
+    out.reserve(n - window + 1);
+    for (int start = 0; start + window <= n; ++start) {
+        std::vector<double> w(v.begin() + start, v.begin() + start + window);
+        out.push_back(standardDeviation(w, true));   // sample SD within the window
+    }
+    return out;
+}
+
+int CoachAnalyticsEngine::longestStreakAtLeast(const std::vector<double>& scores, double threshold)
+{
+    int best = 0, cur = 0;
+    for (double s : scores) {
+        if (s >= threshold) { ++cur; if (cur > best) best = cur; }
+        else cur = 0;
+    }
+    return best;
+}
+
+int CoachAnalyticsEngine::longestStreakBelow(const std::vector<double>& scores, double threshold)
+{
+    int best = 0, cur = 0;
+    for (double s : scores) {
+        if (s < threshold) { ++cur; if (cur > best) best = cur; }
+        else cur = 0;
+    }
+    return best;
+}
+
 // ----------------------------------------------------------------------------
 //  Layer 2 — shot geometry
 // ----------------------------------------------------------------------------
@@ -404,6 +454,164 @@ ExecutiveSummary CoachAnalyticsEngine::buildExecutiveSummary(
 }
 
 // ----------------------------------------------------------------------------
+//  Phase 4 — Shot Distribution
+// ----------------------------------------------------------------------------
+ShotDistribution CoachAnalyticsEngine::buildShotDistribution(
+    const std::vector<ShotAnalyticsData>& shots, const Options& o)
+{
+    ShotDistribution d;
+    const int n = static_cast<int>(shots.size());
+    d.totalAnalysedShots = n;
+    const double bw = (o.histogramBinWidth > 0.0) ? o.histogramBinWidth : 0.1;
+    d.binWidth = bw;
+    if (n == 0) return d;
+
+    const std::vector<double> scores = scoresOf(shots);
+    const double avg = mean(scores);
+    const double sd  = standardDeviation(scores, o.useSampleStatistics);
+
+    d.bestShot  = maximum(scores);
+    d.worstShot = minimum(scores);
+
+    for (double s : scores) {
+        // Quality band — highest band the shot reaches.
+        if      (s >= o.bandPerfectMin)    ++d.perfectCount;
+        else if (s >= o.bandExcellentMin)  ++d.excellentCount;
+        else if (s >= o.bandGoodMin)       ++d.goodCount;
+        else if (s >= o.bandAcceptableMin) ++d.acceptableCount;
+        else if (s >= o.bandRecoveryMin)   ++d.recoveryCount;
+        else                               ++d.poorCount;
+
+        if (s >= o.count10_5Threshold) ++d.countAtLeast10_5;
+        if (s >= o.count10_7Threshold) ++d.countAtLeast10_7;
+        if (s >= o.count10_8Threshold) ++d.countAtLeast10_8;
+        if (s <  o.below10_0Threshold) ++d.countBelow10_0;
+
+        if (s <  avg)      ++d.countBelowAverage;
+        if (s <  avg - sd) ++d.countBelowAverageMinusSD;
+    }
+
+    const double inv = 100.0 / static_cast<double>(n);
+    d.perfectPct    = d.perfectCount    * inv;
+    d.excellentPct  = d.excellentCount  * inv;
+    d.goodPct       = d.goodCount       * inv;
+    d.acceptablePct = d.acceptableCount * inv;
+    d.recoveryPct   = d.recoveryCount   * inv;
+    d.poorPct       = d.poorCount       * inv;
+
+    d.bestStreak10_5    = longestStreakAtLeast(scores, o.streak10_5Threshold);
+    d.bestStreak10_7    = longestStreakAtLeast(scores, o.streak10_7Threshold);
+    d.longestPoorStreak = longestStreakBelow(scores, o.poorStreakThreshold);
+
+    // Histogram, aligned to a binWidth grid spanning [worst, best].
+    const double eps = 1e-9;
+    const double gridStart = std::floor(d.worstShot / bw + eps) * bw;
+    int nbins = static_cast<int>(std::floor((d.bestShot - gridStart) / bw + eps)) + 1;
+    if (nbins < 1) nbins = 1;
+    d.histogram.resize(static_cast<size_t>(nbins));
+    for (int b = 0; b < nbins; ++b) {
+        d.histogram[b].lowerEdge = gridStart + b * bw;
+        d.histogram[b].upperEdge = gridStart + (b + 1) * bw;
+        d.histogram[b].count = 0;
+    }
+    for (double s : scores) {
+        int idx = static_cast<int>(std::floor((s - gridStart) / bw + eps));
+        if (idx < 0) idx = 0;
+        if (idx >= nbins) idx = nbins - 1;
+        ++d.histogram[static_cast<size_t>(idx)].count;
+    }
+    return d;
+}
+
+// ----------------------------------------------------------------------------
+//  Phase 5 — Trend Analysis
+// ----------------------------------------------------------------------------
+TrendAnalysis CoachAnalyticsEngine::buildTrendAnalysis(
+    const std::vector<ShotAnalyticsData>& shots, const Options& o)
+{
+    TrendAnalysis t;
+    const int n = static_cast<int>(shots.size());
+    const std::vector<double> scores = scoresOf(shots);
+    t.scores = scores;
+    if (n == 0) return t;
+
+    // Rolling complete-window series (no partial/faked windows).
+    t.rolling5Average    = rollingMeanComplete(scores, 5);
+    t.rolling5SD         = rollingSdComplete(scores, 5);
+    t.rolling5Available  = !t.rolling5Average.empty();
+    t.rolling10Average   = rollingMeanComplete(scores, 10);
+    t.rolling10SD        = rollingSdComplete(scores, 10);
+    t.rolling10Available = !t.rolling10Average.empty();
+
+    if (n >= 10) {
+        t.first10Available = true; t.first10Average = averageScoreOfRange(shots, 0, 10);
+        t.last10Available  = true; t.last10Average  = averageScoreOfRange(shots, n - 10, n);
+    }
+
+    if (n >= 2) {
+        t.halvesAvailable = true;
+        const int half = n / 2;
+        t.firstHalfAverage  = averageScoreOfRange(shots, 0, half);
+        t.secondHalfAverage = averageScoreOfRange(shots, half, n);
+    }
+
+    if (n >= 3) {
+        t.thirdsAvailable = true;
+        const int third = n / 3;
+        t.firstThirdAverage  = averageScoreOfRange(shots, 0, third);
+        t.middleThirdAverage = averageScoreOfRange(shots, third, n - third);
+        t.lastThirdAverage   = averageScoreOfRange(shots, n - third, n);
+    }
+
+    if (n >= 2) {
+        std::vector<double> xs; xs.reserve(n);
+        for (const auto& s : shots) xs.push_back(static_cast<double>(s.shotNumber));
+        bool usable = false;
+        for (int i = 1; i < n; ++i) if (xs[i] != xs[0]) { usable = true; break; }
+        if (!usable) { xs.clear(); for (int i = 0; i < n; ++i) xs.push_back(i + 1); }
+        t.regressionAvailable   = true;
+        t.regressionSlope       = linearRegressionSlope(xs, scores);
+        t.regressionCorrelation = correlation(xs, scores);
+    }
+
+    if (t.regressionSlope > 0.01)       t.trendDirection = TrendDirection::Improving;
+    else if (t.regressionSlope < -0.01) t.trendDirection = TrendDirection::Declining;
+    else                                t.trendDirection = TrendDirection::Stable;
+
+    if (t.rolling5Available) {
+        t.rolling5ExtremesAvailable = true;
+        t.highestRolling5Average = maximum(t.rolling5Average);
+        t.lowestRolling5Average  = minimum(t.rolling5Average);
+    }
+    if (t.rolling10Available) {
+        t.rolling10ExtremesAvailable = true;
+        t.highestRolling10Average = maximum(t.rolling10Average);
+        t.lowestRolling10Average  = minimum(t.rolling10Average);
+    }
+
+    // Deterioration: rolling-5 average declines while rolling-5 SD rises.
+    // Needs at least 2 rolling points (=> n >= 6) to have a slope.
+    if (t.rolling5Average.size() >= 2 && t.rolling5SD.size() >= 2) {
+        std::vector<double> idxA(t.rolling5Average.size());
+        for (size_t i = 0; i < idxA.size(); ++i) idxA[i] = static_cast<double>(i);
+        std::vector<double> idxB(t.rolling5SD.size());
+        for (size_t i = 0; i < idxB.size(); ++i) idxB[i] = static_cast<double>(i);
+        const double avgSlope = linearRegressionSlope(idxA, t.rolling5Average);
+        const double sdSlope  = linearRegressionSlope(idxB, t.rolling5SD);
+        t.deteriorationDeterminable = true;
+        t.deteriorationFlag = (avgSlope < o.deteriorationAvgSlopeMax) &&
+                              (sdSlope  > o.deteriorationSdSlopeMin);
+    }
+
+    if (t.thirdsAvailable) {
+        t.lateSessionDrop     = t.firstThirdAverage - t.lastThirdAverage;
+        t.lateSessionDropFlag = t.lateSessionDrop > o.lateSessionDropThreshold;
+    }
+
+    return t;
+}
+
+// ----------------------------------------------------------------------------
 //  Public entry point
 // ----------------------------------------------------------------------------
 CoachReportData CoachAnalyticsEngine::analyze(const std::vector<ShotAnalyticsData>& shots)
@@ -431,6 +639,8 @@ CoachReportData CoachAnalyticsEngine::analyze(const std::vector<ShotAnalyticsDat
     }
 
     report.executiveSummary = buildExecutiveSummary(prepared, options);
+    report.shotDistribution = buildShotDistribution(prepared, options);
+    report.trendAnalysis    = buildTrendAnalysis(prepared, options);
     report.valid = true;
     report.message = report.lowSampleWarning
         ? "Analysed with fewer than 10 shots; results are indicative only."

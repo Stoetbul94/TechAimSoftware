@@ -43,6 +43,36 @@ public:
         // Sample statistics (n-1) by default — the standard estimator for a
         // finite sample of shots.
         bool useSampleStatistics = true;
+
+        // ---- Phase 4: shot-distribution thresholds ----
+        // Quality-band lower bounds (a shot is in the highest band it reaches).
+        double bandPerfectMin    = 10.8;
+        double bandExcellentMin  = 10.5;
+        double bandGoodMin       = 10.2;
+        double bandAcceptableMin = 10.0;
+        double bandRecoveryMin   = 9.5;   // below this = Poor
+
+        // Reporting-count thresholds.
+        double count10_5Threshold = 10.5;
+        double count10_7Threshold = 10.7;
+        double count10_8Threshold = 10.8;
+        double below10_0Threshold = 10.0;
+
+        // Streak thresholds.
+        double streak10_5Threshold = 10.5;  // longest run at or above
+        double streak10_7Threshold = 10.7;
+        double poorStreakThreshold = 9.5;   // longest run below
+
+        // Histogram bin width (decimal score units).
+        double histogramBinWidth = 0.1;
+
+        // ---- Phase 5: trend thresholds ----
+        // Late-session drop flag: firstThird - lastThird greater than this.
+        double lateSessionDropThreshold = 0.15;
+        // Deterioration: rolling-average slope below this AND rolling-SD slope
+        // above this (both on the rolling-5 series).
+        double deteriorationAvgSlopeMax = 0.0;
+        double deteriorationSdSlopeMin  = 0.0;
     };
 
     // Main entry point. Validates + prepares the shot list, then builds the
@@ -73,6 +103,12 @@ public:
     static double correlation(const std::vector<double>& xs,
                               const std::vector<double>& ys);
 
+    // Complete-window rolling series (length max(0, n-window+1)); empty if the
+    // window cannot fit. Unlike rollingAverage/rollingStandardDeviation above,
+    // these never emit partial-window values.
+    static std::vector<double> rollingMeanComplete(const std::vector<double>& v, int window);
+    static std::vector<double> rollingSdComplete(const std::vector<double>& v, int window);
+
     // ----------------------------------------------------------------------
     //  Layer 2 — shot geometry (operate on shot lists)
     // ----------------------------------------------------------------------
@@ -96,6 +132,18 @@ private:
     static ExecutiveSummary buildExecutiveSummary(
         const std::vector<ShotAnalyticsData>& shots,
         const Options& options);
+
+    static ShotDistribution buildShotDistribution(
+        const std::vector<ShotAnalyticsData>& shots,
+        const Options& options);
+
+    static TrendAnalysis buildTrendAnalysis(
+        const std::vector<ShotAnalyticsData>& shots,
+        const Options& options);
+
+    // Longest consecutive run satisfying a predicate over scores.
+    static int longestStreakAtLeast(const std::vector<double>& scores, double threshold);
+    static int longestStreakBelow(const std::vector<double>& scores, double threshold);
 
     // Small utilities.
     static double clampd(double v, double lo, double hi);
