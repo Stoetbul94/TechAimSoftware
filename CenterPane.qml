@@ -15,6 +15,37 @@ Item {
     property int backEndShootCount: 0
     property double zoom_offset: 0.51
 
+    // ── SIUS-style auto-zoom on shot ─────────────────────────────────────
+    // When a shot lands, magnify the target around the shot (autoZoomOrigin)
+    // for a moment, then ease back out. Driven declaratively via a Behavior +
+    // a repeating hold Timer (armed by a `running:` binding) so it is safe
+    // from the shot pipeline (imperative Timer.restart()/callLater there fail).
+    property bool autoZoomOn: true
+    property real autoZoomTarget: 2.4   // magnification while a shot is fresh
+    property real autoZoomFactor: 1
+    property real autoZoomOriginX: shootingPanelRect.width/2
+    property real autoZoomOriginY: shootingPanelRect.height/2
+    property int  autoZoomHold: 0       // ticks remaining before easing out
+
+    function triggerAutoZoom(px, py) {
+        if (!autoZoomOn)
+            return
+        autoZoomOriginX = px
+        autoZoomOriginY = py
+        autoZoomFactor = autoZoomTarget
+        autoZoomHold = 4                // ~4 * 450ms hold, reset on each shot
+    }
+
+    Timer {
+        interval: 450; repeat: true
+        running: shootingPage.visible && paneItem.autoZoomHold > 0
+        onTriggered: {
+            paneItem.autoZoomHold = paneItem.autoZoomHold - 1
+            if (paneItem.autoZoomHold <= 0)
+                paneItem.autoZoomFactor = 1
+        }
+    }
+
     property bool lightBackGroundMode: true
     property bool gameMode: shootingPage.currentGameDisplay2 === qsTr("PISTOL") ? true : false // true for pistol
     property int shootinRectWidth: shootingMianRect.width
@@ -278,6 +309,9 @@ Item {
                     addIfinRange(temp)
                 }
 
+                // SIUS-style: zoom in on where the shot just landed.
+                paneItem.triggerAutoZoom(paneItem.itemPoint.x, paneItem.itemPoint.y)
+
                 backEndShootCount = newShootCount
 
                 var curSeriesIndex = Math.floor((newShootCount-1)/shootsPerSeries)
@@ -434,6 +468,18 @@ Item {
         height: parent.height*0.8
         anchors.centerIn: parent
         color: "transparent"
+
+        // Auto-zoom on shot: scales the target (and its markers) around the
+        // shot position. Compounds with the manual +/- zoom (built-in `scale`,
+        // origin Center); at rest autoZoomFactor is 1 so this is identity.
+        transform: Scale {
+            origin.x: paneItem.autoZoomOriginX
+            origin.y: paneItem.autoZoomOriginY
+            xScale: paneItem.autoZoomFactor
+            yScale: paneItem.autoZoomFactor
+            Behavior on xScale { NumberAnimation { duration: 300; easing.type: Easing.InOutQuad } }
+            Behavior on yScale { NumberAnimation { duration: 300; easing.type: Easing.InOutQuad } }
+        }
         property string secondColor: greenColor //gameRange == 50 ? greenColor : "yellow"
         property string firstColor: gameRange == 10 ? "yellow" : "red" //gameRange == 10 ? greenColor : "red"
         property string highestShootColor: "red"
@@ -1727,6 +1773,8 @@ Item {
     function refreshCentralPanelPage()
     {
         shootingPanelRect.scale = 1
+        autoZoomHold = 0
+        autoZoomFactor = 1
         currentScoreValue = -1
     }
 
