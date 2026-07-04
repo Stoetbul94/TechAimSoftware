@@ -73,6 +73,22 @@ public:
         // above this (both on the rolling-5 series).
         double deteriorationAvgSlopeMax = 0.0;
         double deteriorationSdSlopeMin  = 0.0;
+
+        // ---- Phase 6: heat-map source data ----
+        double heatMapBinSize = 5.0;   // mm per (square) cell
+        double heatMapExtent  = 0.0;   // >0 => grid covers [-extent,+extent] both axes; 0 => auto-fit to data
+        double heatMapMargin  = 5.0;   // mm padding added around data when auto-fitting
+        double heatMapGoodMin = 10.5;  // good-shot heat map: score >=
+        double heatMapPoorMax = 10.0;  // poor-shot heat map: score <
+    };
+
+    // Shared coordinate frame for a set of heat-map grids (so bins align).
+    struct HeatMapFrame {
+        double originX   = 0.0;   // lower-left corner of cell (0,0)
+        double originY   = 0.0;
+        double binSize   = 5.0;
+        int    gridWidth = 0;
+        int    gridHeight= 0;
     };
 
     // Main entry point. Validates + prepares the shot list, then builds the
@@ -121,6 +137,19 @@ public:
     static double  horizontalBias(const std::vector<ShotAnalyticsData>& shots); // mean x
     static double  verticalBias(const std::vector<ShotAnalyticsData>& shots);   // mean y
 
+    // ----------------------------------------------------------------------
+    //  Phase 6 — heat-map source data (public for unit testing)
+    // ----------------------------------------------------------------------
+    // Grid frame spanning all shots (or the configured fixed extent).
+    static HeatMapFrame computeHeatMapFrame(const std::vector<ShotAnalyticsData>& allShots,
+                                            const Options& options);
+    // Density grid for a subset of shots on a shared frame (MPI/radius are
+    // computed from the raw coordinates, not the binned cells).
+    static HeatMapGrid buildGrid(const std::vector<ShotAnalyticsData>& shots,
+                                 const HeatMapFrame& frame);
+    // B relative to A (both must share a frame for the dominant-shift to be meaningful).
+    static HeatMapComparison compareHeatMaps(const HeatMapGrid& a, const HeatMapGrid& b);
+
 private:
     // Validation + ordering. Returns the shots to analyse and fills the
     // provenance/validation fields on `meta`.
@@ -138,6 +167,10 @@ private:
         const Options& options);
 
     static TrendAnalysis buildTrendAnalysis(
+        const std::vector<ShotAnalyticsData>& shots,
+        const Options& options);
+
+    static HeatMapAnalysis buildHeatMapAnalysis(
         const std::vector<ShotAnalyticsData>& shots,
         const Options& options);
 

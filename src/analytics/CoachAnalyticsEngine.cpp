@@ -46,6 +46,15 @@ std::string toString(TrendDirection t)
     }
 }
 
+std::string toString(ImpactLevel i)
+{
+    switch (i) {
+    case ImpactLevel::Low:    return "Low";
+    case ImpactLevel::Medium: return "Medium";
+    case ImpactLevel::High:   default: return "High";
+    }
+}
+
 // ----------------------------------------------------------------------------
 //  Layer 1 — basic statistics
 // ----------------------------------------------------------------------------
@@ -612,6 +621,198 @@ TrendAnalysis CoachAnalyticsEngine::buildTrendAnalysis(
 }
 
 // ----------------------------------------------------------------------------
+//  Phase 6 — Heat Map source data
+// ----------------------------------------------------------------------------
+CoachAnalyticsEngine::HeatMapFrame CoachAnalyticsEngine::computeHeatMapFrame(
+    const std::vector<ShotAnalyticsData>& shots, const Options& o)
+{
+    HeatMapFrame f;
+    f.binSize = (o.heatMapBinSize > 0.0) ? o.heatMapBinSize : 5.0;
+    const double bs  = f.binSize;
+    const double eps = 1e-9;
+
+    // Fixed, symmetric extent requested: cover [-E, +E] on both axes.
+    if (o.heatMapExtent > 0.0) {
+        const double E = o.heatMapExtent;
+        f.originX = std::floor((-E) / bs + eps) * bs;
+        f.originY = std::floor((-E) / bs + eps) * bs;
+        f.gridWidth  = static_cast<int>(std::floor((E - f.originX) / bs + eps)) + 1;
+        f.gridHeight = static_cast<int>(std::floor((E - f.originY) / bs + eps)) + 1;
+        return f;
+    }
+
+    if (shots.empty()) return f;   // gridWidth/Height stay 0
+
+    double minX = shots[0].x, maxX = shots[0].x;
+    double minY = shots[0].y, maxY = shots[0].y;
+    for (const auto& s : shots) {
+        minX = std::min(minX, s.x); maxX = std::max(maxX, s.x);
+        minY = std::min(minY, s.y); maxY = std::max(maxY, s.y);
+    }
+    const double m = std::max(0.0, o.heatMapMargin);
+    minX -= m; maxX += m; minY -= m; maxY += m;
+
+    f.originX = std::floor(minX / bs + eps) * bs;
+    f.originY = std::floor(minY / bs + eps) * bs;
+    f.gridWidth  = static_cast<int>(std::floor((maxX - f.originX) / bs + eps)) + 1;
+    f.gridHeight = static_cast<int>(std::floor((maxY - f.originY) / bs + eps)) + 1;
+    if (f.gridWidth  < 1) f.gridWidth  = 1;
+    if (f.gridHeight < 1) f.gridHeight = 1;
+    return f;
+}
+
+HeatMapGrid CoachAnalyticsEngine::buildGrid(const std::vector<ShotAnalyticsData>& shots,
+                                            const HeatMapFrame& frame)
+{
+    HeatMapGrid g;
+    g.binSize    = frame.binSize;
+    g.originX    = frame.originX;
+    g.originY    = frame.originY;
+    g.gridWidth  = frame.gridWidth;
+    g.gridHeight = frame.gridHeight;
+    g.shotCount  = static_cast<int>(shots.size());
+    if (shots.empty() || frame.gridWidth <= 0 || frame.gridHeight <= 0) return g;
+    g.hasData = true;
+
+    const double bs  = frame.binSize;
+    const double eps = 1e-9;
+
+    // Geometry from raw coordinates (not binned).
+    g.mpi        = groupCentre(shots);
+    g.meanRadius = groupRadius(shots);
+
+    struct Acc { int count = 0; double scoreSum = 0.0; std::vector<int> shotNums; };
+    std::vector<Acc> acc(static_cast<size_t>(frame.gridWidth) * frame.gridHeight);
+
+    for (const auto& s : shots) {
+        int bx = static_cast<int>(std::floor((s.x - frame.originX) / bs + eps));
+        int by = static_cast<int>(std::floor((s.y - frame.originY) / bs + eps));
+        if (bx < 0) bx = 0;
+        if (bx >= frame.gridWidth)  bx = frame.gridWidth  - 1;
+        if (by < 0) by = 0;
+        if (by >= frame.gridHeight) by = frame.gridHeight - 1;
+        const size_t idx = static_cast<size_t>(by) * frame.gridWidth + bx;
+        acc[idx].count++;
+        acc[idx].scoreSum += s.decimalScore;
+        acc[idx].shotNums.push_back(s.shotNumber);
+    }
+
+    // Emit non-empty cells in (binY, binX) order; track dominant (first max = tie-break).
+    int    bestCount = 0;
+    size_t bestIdx   = 0;
+    bool   anyDom    = false;
+    for (int by = 0; by < frame.gridHeight; ++by) {
+        for (int bx = 0; bx < frame.gridWidth; ++bx) {
+            const size_t idx = static_cast<size_t>(by) * frame.gridWidth + bx;
+            if (acc[idx].count == 0) continue;
+            HeatMapCell cell;
+            cell.binX = bx; cell.binY = by;
+            cell.centreX = frame.originX + (bx + 0.5) * bs;
+            cell.centreY = frame.originY + (by + 0.5) * bs;
+            cell.count = acc[idx].count;
+            cell.averageScore = acc[idx].scoreSum / acc[idx].count;
+            cell.shotNumbers = acc[idx].shotNums;
+            g.cells.push_back(cell);
+            if (acc[idx].count > g.maxCellDensity) g.maxCellDensity = acc[idx].count;
+            if (acc[idx].count > bestCount) { bestCount = acc[idx].count; bestIdx = idx; anyDom = true; }
+        }
+    }
+
+    if (anyDom) {
+        g.hasDominantZone = true;
+        const int by = static_cast<int>(bestIdx / frame.gridWidth);
+        const int bx = static_cast<int>(bestIdx % frame.gridWidth);
+        g.dominantBinX = bx; g.dominantBinY = by;
+        g.dominantCentreX = frame.originX + (bx + 0.5) * bs;
+        g.dominantCentreY = frame.originY + (by + 0.5) * bs;
+        g.dominantCount = bestCount;
+        g.dominantSharePct = 100.0 * bestCount / static_cast<double>(g.shotCount);
+    }
+    return g;
+}
+
+HeatMapComparison CoachAnalyticsEngine::compareHeatMaps(const HeatMapGrid& a, const HeatMapGrid& b)
+{
+    HeatMapComparison c;
+    if (!a.hasData || !b.hasData) return c;
+    c.available      = true;
+    c.shiftX         = b.mpi.x - a.mpi.x;
+    c.shiftY         = b.mpi.y - a.mpi.y;
+    c.shiftDistance  = std::sqrt(c.shiftX * c.shiftX + c.shiftY * c.shiftY);
+    c.radiusChange   = b.meanRadius - a.meanRadius;
+    c.radiusChangePct= (std::fabs(a.meanRadius) > 1e-9)
+                         ? (c.radiusChange / a.meanRadius * 100.0) : 0.0;
+    if (a.hasDominantZone && b.hasDominantZone) {
+        c.dominantShiftX = b.dominantCentreX - a.dominantCentreX;
+        c.dominantShiftY = b.dominantCentreY - a.dominantCentreY;
+    }
+    return c;
+}
+
+HeatMapAnalysis CoachAnalyticsEngine::buildHeatMapAnalysis(
+    const std::vector<ShotAnalyticsData>& shots, const Options& o)
+{
+    HeatMapAnalysis h;
+    const int n = static_cast<int>(shots.size());
+    h.binSize = (o.heatMapBinSize > 0.0) ? o.heatMapBinSize : 5.0;
+    if (n == 0) return h;
+    h.available = true;
+
+    const HeatMapFrame frame = computeHeatMapFrame(shots, o);
+    h.binSize = frame.binSize;
+
+    auto slice = [&](int begin, int end) {
+        if (begin < 0) begin = 0;
+        if (end > n)   end = n;
+        std::vector<ShotAnalyticsData> v;
+        for (int i = begin; i < end; ++i) v.push_back(shots[i]);
+        return v;
+    };
+    auto byPos = [&](PositionType p) {
+        std::vector<ShotAnalyticsData> v;
+        for (const auto& s : shots) if (s.positionType == p) v.push_back(s);
+        return v;
+    };
+
+    h.allShots = buildGrid(shots, frame);
+
+    const int half = n / 2;
+    h.firstHalf  = buildGrid(slice(0, half), frame);
+    h.secondHalf = buildGrid(slice(half, n), frame);
+
+    const int third = n / 3;
+    if (third >= 1) {
+        h.firstThird  = buildGrid(slice(0, third), frame);
+        h.middleThird = buildGrid(slice(third, n - third), frame);
+        h.lastThird   = buildGrid(slice(n - third, n), frame);
+    }
+
+    std::vector<ShotAnalyticsData> good, poor;
+    for (const auto& s : shots) {
+        if (s.decimalScore >= o.heatMapGoodMin) good.push_back(s);
+        if (s.decimalScore <  o.heatMapPoorMax) poor.push_back(s);
+    }
+    h.goodShots = buildGrid(good, frame);
+    h.poorShots = buildGrid(poor, frame);
+
+    h.prone           = buildGrid(byPos(PositionType::Prone),     frame);
+    h.kneeling        = buildGrid(byPos(PositionType::Kneeling),  frame);
+    h.standing        = buildGrid(byPos(PositionType::Standing),  frame);
+    h.airRifle        = buildGrid(byPos(PositionType::AirRifle),  frame);
+    h.airPistol       = buildGrid(byPos(PositionType::AirPistol), frame);
+    h.unknownPosition = buildGrid(byPos(PositionType::Unknown),   frame);
+
+    h.firstToSecondHalf = compareHeatMaps(h.firstHalf, h.secondHalf);
+    h.firstToLastThird  = compareHeatMaps(h.firstThird, h.lastThird);
+    h.horizontalDriftHalves = h.firstToSecondHalf.shiftX;
+    h.verticalDriftHalves   = h.firstToSecondHalf.shiftY;
+    h.horizontalDriftThirds = h.firstToLastThird.shiftX;
+    h.verticalDriftThirds   = h.firstToLastThird.shiftY;
+
+    return h;
+}
+
+// ----------------------------------------------------------------------------
 //  Public entry point
 // ----------------------------------------------------------------------------
 CoachReportData CoachAnalyticsEngine::analyze(const std::vector<ShotAnalyticsData>& shots)
@@ -641,6 +842,7 @@ CoachReportData CoachAnalyticsEngine::analyze(const std::vector<ShotAnalyticsDat
     report.executiveSummary = buildExecutiveSummary(prepared, options);
     report.shotDistribution = buildShotDistribution(prepared, options);
     report.trendAnalysis    = buildTrendAnalysis(prepared, options);
+    report.heatMapAnalysis  = buildHeatMapAnalysis(prepared, options);
     report.valid = true;
     report.message = report.lowSampleWarning
         ? "Analysed with fewer than 10 shots; results are indicative only."

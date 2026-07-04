@@ -19,10 +19,59 @@
 
 #include <string>
 #include <vector>
+#include <utility>
 #include "ShotAnalyticsTypes.h"
 
 namespace techaim {
 namespace analytics {
+
+// ===========================================================================
+//  Confidence & evidence infrastructure
+// ---------------------------------------------------------------------------
+//  Every higher-level conclusion the engine makes (fatigue, training
+//  priorities, the coach conclusion) must be able to explain *why* it was
+//  reached. These primitives make that traceability first-class: a conclusion
+//  carries a 0..100 confidence and the list of measured facts behind it.
+//
+//  Raw-metric sections (Executive Summary, Shot Distribution, Trend, Heat Map)
+//  do NOT carry confidence — they are direct measurements, not judgements.
+// ===========================================================================
+
+// One measurable, human-readable justification for a conclusion.
+struct Evidence {
+    std::string statement;      // e.g. "Last third average declined by 0.23"
+    std::string metricKey;      // stable machine id, e.g. "trend.lateSessionDrop"
+    double      value    = 0.0; // the number behind the statement
+    bool        hasValue = false;
+
+    Evidence() = default;
+    explicit Evidence(std::string s) : statement(std::move(s)) {}
+    Evidence(std::string s, std::string key, double v)
+        : statement(std::move(s)), metricKey(std::move(key)), value(v), hasValue(true) {}
+};
+
+// Mixed into any confidence-scored conclusion.
+struct ConfidenceScored {
+    double confidence = 0.0;    // 0..100
+    std::vector<Evidence> evidence;
+
+    void addEvidence(Evidence e)        { evidence.push_back(std::move(e)); }
+    void addEvidence(std::string s)     { evidence.emplace_back(std::move(s)); }
+    void addEvidence(std::string s, std::string key, double v)
+                                        { evidence.emplace_back(std::move(s), std::move(key), v); }
+};
+
+// Estimated coaching impact of acting on a finding.
+enum class ImpactLevel { Low, Medium, High };
+std::string toString(ImpactLevel i);
+
+// Exemplar of a confidence-scored recommendation (populated in Phase 11).
+// Declared now so the shape is fixed and every priority is traceable.
+struct TrainingPriority : ConfidenceScored {
+    std::string priority;                 // e.g. "Standing Stability"
+    ImpactLevel impact = ImpactLevel::Low;
+    std::vector<std::string> linkedMetrics;
+};
 
 // ---- Section 1: Executive Summary -----------------------------------------
 struct ExecutiveSummary {
@@ -161,6 +210,93 @@ struct TrendAnalysis {
     bool   lateSessionDropFlag = false;   // drop > threshold (default 0.15)
 };
 
+// ---- Section 4: Heat Map source data (Phase 6) ----------------------------
+//  Pure numeric source data for later rendering — no drawing here. Grids are
+//  square, aligned to a common frame (origin + bin size) so that sub-maps
+//  share bins and can be compared cell-for-cell.
+struct HeatMapCell {
+    int    binX     = 0;      // column index (0 = leftmost)
+    int    binY     = 0;      // row index    (0 = lowest)
+    double centreX  = 0.0;    // cell centre, target-face mm
+    double centreY  = 0.0;
+    int    count    = 0;
+    double averageScore = 0.0;
+    std::vector<int> shotNumbers;
+};
+
+// A density grid over one subset of shots, on a shared coordinate frame.
+struct HeatMapGrid {
+    // Frame (shared across all sub-maps in a HeatMapAnalysis so bins align).
+    double binSize    = 5.0;  // mm per cell (square)
+    double originX    = 0.0;  // lower-left corner of cell (0,0)
+    double originY    = 0.0;
+    int    gridWidth  = 0;    // columns
+    int    gridHeight = 0;    // rows
+
+    int    shotCount  = 0;
+    bool   hasData    = false;
+    std::vector<HeatMapCell> cells;   // non-empty cells only, ordered (binY, binX)
+
+    // Geometry (from raw coordinates, not binned)
+    Point2D mpi;                       // mean point of impact = group centre
+    double  meanRadius     = 0.0;      // mean distance of shots from MPI
+    int     maxCellDensity = 0;        // peak cell count
+
+    // Dominant impact zone = most populated cell (ties -> lowest binY, then binX)
+    bool   hasDominantZone   = false;
+    int    dominantBinX      = 0;
+    int    dominantBinY      = 0;
+    double dominantCentreX   = 0.0;
+    double dominantCentreY   = 0.0;
+    int    dominantCount     = 0;
+    double dominantSharePct  = 0.0;    // dominantCount / shotCount * 100
+};
+
+// Comparison metrics between two grids on the same frame (B relative to A).
+struct HeatMapComparison {
+    bool   available     = false;      // both grids have data
+    double shiftX        = 0.0;        // MPI shift, + = right   (B.mpi.x - A.mpi.x)
+    double shiftY        = 0.0;        // MPI shift, + = high
+    double shiftDistance = 0.0;        // sqrt(shiftX^2 + shiftY^2)
+    double radiusChange  = 0.0;        // B.meanRadius - A.meanRadius
+    double radiusChangePct = 0.0;      // relative to A.meanRadius (0 if A radius ~0)
+    double dominantShiftX = 0.0;       // dominant-cell centre shift, mm
+    double dominantShiftY = 0.0;
+};
+
+struct HeatMapAnalysis {
+    bool   available = false;
+    double binSize   = 5.0;
+
+    // Temporal / quality / all
+    HeatMapGrid allShots;
+    HeatMapGrid firstHalf;
+    HeatMapGrid secondHalf;
+    HeatMapGrid firstThird;
+    HeatMapGrid middleThird;
+    HeatMapGrid lastThird;
+    HeatMapGrid goodShots;   // score >= good threshold (default 10.5)
+    HeatMapGrid poorShots;   // score <  poor threshold (default 10.0)
+
+    // Position-specific (empty grids for positions not present)
+    HeatMapGrid prone;
+    HeatMapGrid kneeling;
+    HeatMapGrid standing;
+    HeatMapGrid airRifle;
+    HeatMapGrid airPistol;
+    HeatMapGrid unknownPosition;
+
+    // Drift comparisons over the session
+    HeatMapComparison firstToSecondHalf;
+    HeatMapComparison firstToLastThird;
+
+    // Convenience X/Y drift read-outs (mm)
+    double horizontalDriftHalves = 0.0;  // firstToSecondHalf.shiftX
+    double verticalDriftHalves   = 0.0;  // firstToSecondHalf.shiftY
+    double horizontalDriftThirds = 0.0;  // firstToLastThird.shiftX
+    double verticalDriftThirds   = 0.0;
+};
+
 // ---- Top-level result -----------------------------------------------------
 struct CoachReportData {
     // Validation / provenance
@@ -179,9 +315,9 @@ struct CoachReportData {
     ExecutiveSummary executiveSummary;   // Section 1
     ShotDistribution shotDistribution;   // Section 2 (Phase 4)
     TrendAnalysis    trendAnalysis;      // Section 3 (Phase 5)
+    HeatMapAnalysis  heatMapAnalysis;    // Section 4 (Phase 6)
 
-    // Sections 4..11 — declared contract, implemented in later phases:
-    //   HeatMapAnalysis   heatMapAnalysis;
+    // Sections 5..11 — declared contract, implemented in later phases:
     //   TimingAnalysis    timingAnalysis;
     //   PositionAnalysis  positionAnalysis;
     //   RecoveryAnalysis  recoveryAnalysis;
