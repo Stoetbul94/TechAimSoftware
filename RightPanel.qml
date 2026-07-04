@@ -23,6 +23,9 @@ Item {
     // Redesign: the LAST SHOT card sits at the top of the panel; the series
     // header and score table are shifted down by this amount to make room.
     property real tableShift: 68
+    // Extra height reclaimed from the score table for the redesigned TOTAL +
+    // distribution card that sits between the table and the series cards.
+    property real totalCardRoom: 48
 
     signal switchToSighter(bool sighterEnable)
 
@@ -250,6 +253,7 @@ Item {
 
         text: ""
         color: "white"
+        opacity: 0   // redesign: value shown in the TOTAL card; kept as data source
         anchors.centerIn: text_field_1_55
     }
 
@@ -276,6 +280,7 @@ Item {
 
         text: ""
         color: "white"
+        opacity: 0   // redesign: value shown in the TOTAL card; kept as data source
         anchors.centerIn: text_field2
 
         onTextChanged: {
@@ -307,6 +312,7 @@ Item {
 
         text: ""
         color: "white"
+        opacity: 0   // redesign: value shown in the TOTAL card; kept as data source
         anchors.centerIn: field_88_7
 
         onTextChanged: {
@@ -339,6 +345,7 @@ Item {
 
         text: ""
         color: "white"
+        opacity: 0   // redesign: value shown in the TOTAL card; kept as data source
         anchors.centerIn: text_filed_3
     }
 
@@ -423,8 +430,8 @@ Item {
         opacity: 0   // redesign: legacy white table bg hidden; geometry kept for matchScore
         width: ((parent.width/rootItemWidth)*sourceSize.width)*1.2
         // Shifted down by tableShift for the LAST SHOT card; height reduced by
-        // the same so the bottom stays clear of the totals band.
-        height: ((parent.height/rootItemHeight)*sourceSize.height) - tableShift
+        // that plus totalCardRoom so the redesigned TOTAL card fits below.
+        height: ((parent.height/rootItemHeight)*sourceSize.height) - tableShift - totalCardRoom
         x: ((parent.width/rootItemWidth)*400) - width*0.1
         y: ((parent.height/rootItemHeight)*347) + tableShift
     }
@@ -819,7 +826,11 @@ Item {
                         id: timeText
                         anchors.centerIn: parent
                         color: "#c8c9cf"
-                        text: MODREADER.getTeilerForShootOfMatch((currentPageIndex*10)+index).toFixed(1) //isSaveGame ? "NA" : timeComsumed
+                        // Per-shot split time in seconds (was the German "Teiler"
+                        // precision metric). timeComsumed is a model role in
+                        // seconds; no C++ getter, so no negative-index risk.
+                        text: (typeof timeComsumed === "undefined" || timeComsumed === "")
+                              ? "" : (Number(timeComsumed).toFixed(0) + " s")
                         font.pixelSize: 0.65*currentItem.height
                     }
                 }
@@ -1176,11 +1187,12 @@ Item {
         color: "white"
         width: implicitWidth
         height: implicitHeight
-        text: qsTr("Teiler")//qsTr("Time (s)")
+        text: qsTr("Time (s)")
         font.pixelSize: dafaultFontSize
     }
     Rectangle {
         id: midRect
+        visible: false   // redesign: replaced by the TOTAL + distribution card
         anchors.left: field_88_7.left
         anchors.right: text_field2.right
         anchors.bottom: text_field2.top
@@ -1228,6 +1240,7 @@ Item {
     }
 
     Rectangle {
+        visible: false   // redesign: "Time (m)" label folded into the TOTAL card
         width: text_field_1_55.width
         anchors.left: midRect.right
         anchors.top: midRect.top
@@ -1252,6 +1265,145 @@ Item {
         leftPanel.playVisible = false;
     }
 
+
+    // ── TOTAL + distribution card (redesign) ─────────────────────────────
+    // Sits between the score table and the series cards. Reads grandTotal /
+    // grandTotalExculdeDec / totalStars / totalTimeConsume directly; the
+    // legacy value texts are kept (opacity 0) only for their backend pushes.
+    Rectangle {
+        id: totalCard
+        anchors.left: num.left
+        anchors.right: num.right
+        anchors.top: num.bottom
+        anchors.topMargin: 8
+        anchors.bottom: series_sum.top
+        anchors.bottomMargin: 8
+        radius: 10
+        color: "#1a1a1f"; border.color: "#2a2b30"; border.width: 1
+
+        property int shots: globalModelOfData.count
+
+        // Top row: TOTAL label + big score (int) · inner-10s · time
+        Item {
+            id: totalTopRow
+            anchors.top: parent.top; anchors.topMargin: 8
+            anchors.left: parent.left; anchors.leftMargin: 14
+            anchors.right: parent.right; anchors.rightMargin: 14
+            height: 30
+            Column {
+                anchors.left: parent.left
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 1
+                Text {
+                    text: qsTr("TOTAL SCORE")
+                    color: "#8a8a92"; font.family: theme.fontFamily
+                    font.pixelSize: 10; font.letterSpacing: 1.5
+                }
+                Row {
+                    spacing: 5
+                    Text {
+                        anchors.baseline: totalInt.baseline
+                        text: scoreCutoffTofirstDecimal(grandTotal)*1
+                        color: "white"; font.family: theme.fontFamily
+                        font.pixelSize: 24; font.bold: true
+                    }
+                    Text {
+                        id: totalInt
+                        text: "(" + grandTotalExculdeDec + ")"
+                        color: "#8a8a92"; font.family: theme.fontFamily
+                        font.pixelSize: 13
+                    }
+                }
+            }
+            Row {
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 18
+                Column {
+                    Text {
+                        anchors.right: parent.right
+                        text: qsTr("INNER 10s")
+                        color: "#8a8a92"; font.family: theme.fontFamily; font.pixelSize: 10
+                    }
+                    Text {
+                        anchors.right: parent.right
+                        text: "★ " + totalStars
+                        color: "#ffb020"; font.family: theme.fontFamily
+                        font.pixelSize: 15; font.bold: true
+                    }
+                }
+                Column {
+                    Text {
+                        anchors.right: parent.right
+                        text: qsTr("TIME")
+                        color: "#8a8a92"; font.family: theme.fontFamily; font.pixelSize: 10
+                    }
+                    Text {
+                        anchors.right: parent.right
+                        text: minutesToseconds(totalTimeConsume)
+                        color: "white"; font.family: theme.fontFamily
+                        font.pixelSize: 15; font.bold: true
+                    }
+                }
+            }
+        }
+
+        // Distribution: horizontal bars, one per ring band, width proportional
+        // to the tally. Colour-coded so quality reads at a glance.
+        Column {
+            anchors.top: totalTopRow.bottom; anchors.topMargin: 6
+            anchors.left: parent.left; anchors.leftMargin: 14
+            anchors.right: parent.right; anchors.rightMargin: 14
+            anchors.bottom: parent.bottom; anchors.bottomMargin: 8
+            spacing: 3
+            Repeater {
+                model: [{ lbl: "10", b: 10, c: "#2ecc71" },
+                        { lbl: "9",  b: 9,  c: "#3aa0ff" },
+                        { lbl: "8",  b: 8,  c: "#ffb020" },
+                        { lbl: "≤7", b: 7,  c: "#e8003d" }]
+                delegate: Item {
+                    width: parent.width
+                    height: (parent.height - 9) / 4
+                    property int cnt: bandCount(modelData.b, totalCard.shots)
+                    Text {
+                        id: bandLbl
+                        anchors.left: parent.left
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 20
+                        text: modelData.lbl
+                        color: "#9a9ba0"; font.family: theme.fontFamily; font.pixelSize: 11
+                        horizontalAlignment: Text.AlignRight
+                    }
+                    Rectangle {   // track
+                        id: bandTrack
+                        anchors.left: bandLbl.right; anchors.leftMargin: 8
+                        anchors.right: bandCnt.left; anchors.rightMargin: 8
+                        anchors.verticalCenter: parent.verticalCenter
+                        height: 9; radius: 4
+                        color: "#141519"
+                        Rectangle {   // fill
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            height: parent.height; radius: 4
+                            width: parent.width * (parent.parent.cnt / maxBandCount(totalCard.shots))
+                            color: modelData.c
+                            visible: parent.parent.cnt > 0
+                        }
+                    }
+                    Text {
+                        id: bandCnt
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 16
+                        text: parent.cnt
+                        color: "white"; font.family: theme.fontFamily
+                        font.pixelSize: 11; font.bold: true
+                        horizontalAlignment: Text.AlignRight
+                    }
+                }
+            }
+        }
+    }
 
     // for series Sum
     Rectangle {
@@ -1408,6 +1560,13 @@ Item {
             else if (s === band) n++
         }
         return n
+    }
+
+    // Largest band tally (>=1) so the distribution bars scale to full width.
+    function maxBandCount(trigger)
+    {
+        return Math.max(bandCount(10, trigger), bandCount(9, trigger),
+                        bandCount(8, trigger), bandCount(7, trigger), 1)
     }
 
     function getSeriesTotalNonDecimal(seriesIndex)
