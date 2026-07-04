@@ -156,6 +156,91 @@ Item {
         }
     }
 
+    // ── Motor feed times (paper-advance duration in seconds) ─────────────
+    Rectangle {
+        id: motorSection
+        anchors.top: settings_popup.bottom
+        anchors.left: settings_popup.left
+        width: settings_popup.width
+        height: 96
+        color: "#26272c"
+        border.color: "#3a3b40"; border.width: 1
+
+        Column {
+            anchors.fill: parent
+            anchors.margins: 8
+            spacing: 6
+
+            Text {
+                text: qsTr("MOTOR FEED (SECONDS)")
+                color: "#9a9ba0"; font.pixelSize: 9
+                font.bold: true; font.letterSpacing: 1
+            }
+            Row {
+                spacing: 8
+                Column {
+                    spacing: 2
+                    Text { text: qsTr("Match"); color: "white"; font.pixelSize: 9 }
+                    Rectangle {
+                        width: 52; height: 20; radius: 3
+                        color: "#15161a"; border.color: "#3a3b40"
+                        TextInput {
+                            id: motorMatchInput
+                            anchors.fill: parent; anchors.margins: 3
+                            color: "white"; font.pixelSize: 11
+                            inputMethodHints: Qt.ImhFormattedNumbersOnly
+                            text: APPSETTINGS.getMotor_movement_time().toFixed(1)
+                        }
+                    }
+                }
+                Column {
+                    spacing: 2
+                    Text { text: qsTr("Sighter"); color: "white"; font.pixelSize: 9 }
+                    Rectangle {
+                        width: 52; height: 20; radius: 3
+                        color: "#15161a"; border.color: "#3a3b40"
+                        TextInput {
+                            id: motorSighterInput
+                            anchors.fill: parent; anchors.margins: 3
+                            color: "white"; font.pixelSize: 11
+                            inputMethodHints: Qt.ImhFormattedNumbersOnly
+                            text: APPSETTINGS.getMotor_movement_time_sighter().toFixed(1)
+                        }
+                    }
+                }
+            }
+            Rectangle {
+                width: 70; height: 20; radius: 3
+                color: "#e8003d"
+                Text {
+                    id: motorSaveText
+                    anchors.centerIn: parent
+                    text: qsTr("Save")
+                    color: "white"; font.pixelSize: 10; font.bold: true
+                }
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: {
+                        var m = parseFloat(motorMatchInput.text)
+                        var s = parseFloat(motorSighterInput.text)
+                        if (isNaN(m) || m <= 0 || m > 60) m = 2.5
+                        if (isNaN(s) || s <= 0 || s > 60) s = 2.5
+                        motorMatchInput.text = m.toFixed(1)
+                        motorSighterInput.text = s.toFixed(1)
+                        APPSETTINGS.saveMotorTimes(m, s)
+                        motorSaveText.text = qsTr("Saved ✓")
+                        motorSavedReset.restart()
+                    }
+                }
+                Timer {
+                    id: motorSavedReset
+                    interval: 1500
+                    onTriggered: motorSaveText.text = qsTr("Save")
+                }
+            }
+        }
+    }
+
     function startFromServer()
     {
 

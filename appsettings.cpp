@@ -8,6 +8,7 @@
 #include <QFileDialog>
 #include <QDomDocument>
 #include <QFileInfo>
+#include <QCoreApplication>
 
 #define CONTROL_FILE "status.csv"
 #define REPORT_FILE "report.pdf"
@@ -18,6 +19,7 @@
 AppSettings::AppSettings(QString fileName)
 {
     //with ini file
+    m_iniFileName = fileName;
     m_settings = new QSettings( fileName, QSettings::IniFormat );
     m_settings->beginGroup("App_Settings");
     //m_settings->setValue("app_mode", "Demo");
@@ -93,7 +95,10 @@ AppSettings::AppSettings(QString fileName)
 
     m_settings->beginGroup("shot_count_and_timer");
 
-    QString timer = m_settings->value("timer").toString();
+    // Countdown clock is ON by default; config.ini can still turn it off
+    // with timer=no. (Previously it was hidden unless the file said yes,
+    // which made the app silently lose the clock without its config file.)
+    QString timer = m_settings->value("timer", "yes").toString();
     if (timer.compare("yes", Qt::CaseInsensitive) == 0)
         m_timer = true;
 
@@ -362,7 +367,9 @@ void AppSettings::setGameSubMode(int mode)
 
 bool AppSettings::uploadGame()
 {
-    QString dirName = QDir::homePath();
+    // Default to the folder the app saves matches into (next to the exe),
+    // not the Windows home folder; remember the last-used folder after that.
+    QString dirName = QCoreApplication::applicationDirPath();
     if (!getLoadFileLocation().isEmpty()) {
         dirName = getLoadFileLocation();
     }
@@ -606,6 +613,26 @@ void AppSettings::setGame_is_sighter_mode(int value)
 double AppSettings::getMotor_movement_time() const
 {
     return motor_movement_time;
+}
+
+void AppSettings::saveMotorTimes(double matchSecs, double sighterSecs)
+{
+    motor_movement_time = matchSecs;
+    motor_movement_time_sighter = sighterSecs;
+
+    // Fresh QSettings with explicit group paths: m_settings' group state
+    // after construction is unknown, and nesting would corrupt the keys.
+    QSettings s(m_iniFileName, QSettings::IniFormat);
+    s.setValue("App_Settings/motor_movement_time", matchSecs);
+    s.setValue("App_Settings/motor_movement_time_sighter", sighterSecs);
+    s.sync();
+
+    if (tachusWidget)
+        tachusWidget->setMotorMovementTime(matchSecs, sighterSecs);
+
+    LogFile::instance().appendToLogFile(
+        QString("motor feed times saved: match %1 s, sighter %2 s")
+            .arg(matchSecs).arg(sighterSecs), LogType::interfaceLevel);
 }
 
 void AppSettings::setMotor_movement_time(double value, double sighterFeedTime)

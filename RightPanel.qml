@@ -20,6 +20,13 @@ Item {
     property int fontForMath: 18
     property int dafaultFontSize: 19
 
+    // Redesign: the LAST SHOT card sits at the top of the panel; the series
+    // header and score table are shifted down by this amount to make room.
+    property real tableShift: 68
+    // Extra height reclaimed from the score table for the redesigned TOTAL +
+    // distribution card that sits between the table and the series cards.
+    property real totalCardRoom: 48
+
     signal switchToSighter(bool sighterEnable)
 
     signal matchFinished()
@@ -106,6 +113,13 @@ Item {
         opacity: 1
         width: ((parent.width/rootItemWidth)*sourceSize.width)
         height: ((parent.height/rootItemHeight)*sourceSize.height)
+    }
+    // Redesign: uniform dark panel background covering the legacy PNG chrome
+    // (the old "total score block" shape peeked out beside the new cards).
+    // All content below draws on top of this.
+    Rectangle {
+        anchors.fill: parent
+        color: "#15161a"
     }
     Image {
         id: text_field
@@ -246,6 +260,7 @@ Item {
 
         text: ""
         color: "white"
+        opacity: 0   // redesign: value shown in the TOTAL card; kept as data source
         anchors.centerIn: text_field_1_55
     }
 
@@ -272,6 +287,7 @@ Item {
 
         text: ""
         color: "white"
+        opacity: 0   // redesign: value shown in the TOTAL card; kept as data source
         anchors.centerIn: text_field2
 
         onTextChanged: {
@@ -303,6 +319,7 @@ Item {
 
         text: ""
         color: "white"
+        opacity: 0   // redesign: value shown in the TOTAL card; kept as data source
         anchors.centerIn: field_88_7
 
         onTextChanged: {
@@ -335,6 +352,7 @@ Item {
 
         text: ""
         color: "white"
+        opacity: 0   // redesign: value shown in the TOTAL card; kept as data source
         anchors.centerIn: text_filed_3
     }
 
@@ -416,11 +434,87 @@ Item {
     Image {
         id: num
         source: "qrc:/images/rightPanel/num.png"
-        opacity: 1
+        opacity: 0   // redesign: legacy white table bg hidden; geometry kept for matchScore
         width: ((parent.width/rootItemWidth)*sourceSize.width)*1.2
-        height: ((parent.height/rootItemHeight)*sourceSize.height)
+        // Shifted down by tableShift for the LAST SHOT card; height reduced by
+        // that plus totalCardRoom so the redesigned TOTAL card fits below.
+        height: ((parent.height/rootItemHeight)*sourceSize.height) - tableShift - totalCardRoom
         x: ((parent.width/rootItemWidth)*400) - width*0.1
-        y: ((parent.height/rootItemHeight)*347)
+        y: ((parent.height/rootItemHeight)*347) + tableShift
+    }
+    // Dark score-table background (redesign). Drawn before matchScore so the
+    // shot rows render on top.
+    Rectangle {
+        anchors.fill: num
+        color: "#1a1a1f"
+        radius: 8
+        border.color: "#2a2b30"; border.width: 1
+    }
+
+    // ── LAST SHOT card (redesign) ────────────────────────────────────────
+    // Reads the most recent entry in globalModelOfData (the same shot shown
+    // selected in the table) plus its raw target-face x/y in mm.
+    Rectangle {
+        id: lastShotCard
+        anchors.top: parent.top; anchors.topMargin: 8
+        anchors.left: num.left
+        anchors.right: num.right
+        height: tableShift - 12
+        radius: 10
+        color: "#1a1a1f"; border.color: "#2a2b30"; border.width: 1
+
+        property int shotN: globalModelOfData.count
+        property bool hasShot: shotN > 0
+        property real lastScore: hasShot ? globalModelOfData.get(shotN-1).calculatedscore*1 : 0
+        property real lastDir: hasShot ? globalModelOfData.get(shotN-1).direction*1 : 0
+        property real lastXmm: hasShot ? globalModelOfData.get(shotN-1).xmm*1 : 0
+        property real lastYmm: hasShot ? globalModelOfData.get(shotN-1).ymm*1 : 0
+
+        // Left group: label above the big score + direction arrow, centered
+        // vertically so it lines up with the X/Y block on the right.
+        Column {
+            anchors.left: parent.left; anchors.leftMargin: 16
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 2
+            Text {
+                text: qsTr("LAST SHOT")
+                color: "#8a8a92"; font.family: theme.fontFamily
+                font.pixelSize: 10; font.letterSpacing: 1.5
+            }
+            Row {
+                spacing: 8
+                Text {
+                    id: lastShotScore
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: lastShotCard.hasShot ? scoreCutoffTofirstDecimal(lastShotCard.lastScore)*1 : "—"
+                    color: "white"; font.family: theme.fontFamily
+                    font.pixelSize: 28; font.bold: true
+                }
+                Image {
+                    visible: lastShotCard.hasShot
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 18; height: 18
+                    source: "qrc:/images/rightPanel/up_arrow.png"
+                    rotation: lastShotCard.lastDir
+                }
+            }
+        }
+        // Right group: X/Y in mm, right-aligned, vertically centered.
+        Column {
+            anchors.right: parent.right; anchors.rightMargin: 16
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 5
+            Text {
+                anchors.right: parent.right
+                text: lastShotCard.hasShot ? ("X   " + lastShotCard.lastXmm.toFixed(1) + " mm") : ""
+                color: "#c8c9cf"; font.family: theme.fontFamily; font.pixelSize: 13
+            }
+            Text {
+                anchors.right: parent.right
+                text: lastShotCard.hasShot ? ("Y   " + lastShotCard.lastYmm.toFixed(1) + " mm") : ""
+                color: "#c8c9cf"; font.family: theme.fontFamily; font.pixelSize: 13
+            }
+        }
     }
     Image {
         id: series_6
@@ -430,7 +524,7 @@ Item {
         anchors.top: left_arrow.top
         anchors.bottom: left_arrow.bottom
 //        x: ((parent.width/rootItemWidth)*400)
-//        y: ((parent.height/rootItemHeight)*131)
+//        y: ((parent.height/rootItemHeight)*131) + tableShift
         opacity: 1
 //        width: ((parent.width/rootItemWidth)*sourceSize.width)
 //        height: ((parent.height/rootItemHeight)*sourceSize.height)
@@ -441,7 +535,7 @@ Item {
         id: series_text_field
         source: "qrc:/images/rightPanel/series_text_field.png"
         x: ((parent.width/rootItemWidth)*970)
-        y: ((parent.height/rootItemHeight)*170)
+        y: ((parent.height/rootItemHeight)*170) + tableShift
         opacity: 0
         width: ((parent.width/rootItemWidth)*sourceSize.width)
         height: ((parent.height/rootItemHeight)*sourceSize.height)
@@ -461,7 +555,7 @@ Item {
         id: right
         source: "qrc:/images/rightPanel/right.png"
         x: ((parent.width/rootItemWidth)*1408) + num.width*0.07
-        y: ((parent.height/rootItemHeight)*131)
+        y: ((parent.height/rootItemHeight)*131) + tableShift
         opacity: 1
         width: ((parent.width/rootItemWidth)*sourceSize.width)
         height: ((parent.height/rootItemHeight)*sourceSize.height)
@@ -479,7 +573,7 @@ Item {
         id: right_end
         source: "qrc:/images/rightPanel/right_end.png"
         x: ((parent.width/rootItemWidth)*1408) + num.width*0.07
-        y: ((parent.height/rootItemHeight)*131)
+        y: ((parent.height/rootItemHeight)*131) + tableShift
         opacity: 1
         width: ((parent.width/rootItemWidth)*sourceSize.width)
         height: ((parent.height/rootItemHeight)*sourceSize.height)
@@ -497,7 +591,7 @@ Item {
         id: right_over
         source: "qrc:/images/rightPanel/right_over.png"
         x: ((parent.width/rootItemWidth)*1408) + num.width*0.07
-        y: ((parent.height/rootItemHeight)*131)
+        y: ((parent.height/rootItemHeight)*131) + tableShift
         opacity: 1
         width: ((parent.width/rootItemWidth)*sourceSize.width)
         height: ((parent.height/rootItemHeight)*sourceSize.height)
@@ -515,7 +609,7 @@ Item {
         id: left_arrow
         source: "qrc:/images/rightPanel/left_arrow.png"
         x: ((parent.width/rootItemWidth)*297) - num.width*0.1
-        y: ((parent.height/rootItemHeight)*131)
+        y: ((parent.height/rootItemHeight)*131) + tableShift
         opacity: 1
         width: ((parent.width/rootItemWidth)*sourceSize.width)
         height: ((parent.height/rootItemHeight)*sourceSize.height)
@@ -533,7 +627,7 @@ Item {
         id: left_arrow_end
         source: "qrc:/images/rightPanel/left_arrow_end.png"
         x: ((parent.width/rootItemWidth)*297) - num.width*0.1
-        y: ((parent.height/rootItemHeight)*131)
+        y: ((parent.height/rootItemHeight)*131) + tableShift
         opacity: 1
         width: ((parent.width/rootItemWidth)*sourceSize.width)
         height: ((parent.height/rootItemHeight)*sourceSize.height)
@@ -551,7 +645,7 @@ Item {
         id: left_arrow_over
         source: "qrc:/images/rightPanel/left_arrow_over.png"
         x: ((parent.width/rootItemWidth)*297) - num.width*0.1
-        y: ((parent.height/rootItemHeight)*131)
+        y: ((parent.height/rootItemHeight)*131) + tableShift
         opacity: 1
         width: ((parent.width/rootItemWidth)*sourceSize.width)
         height: ((parent.height/rootItemHeight)*sourceSize.height)
@@ -654,7 +748,7 @@ Item {
             Rectangle {
                 id: currentItem
                 anchors.fill: parent
-                color: "#A6CE72"
+                color: "#3a0d16"   // redesign: themed selection highlight
                 visible: matchScore.currentIndex == index //(right_end.visible) && (index === (globalModelOfData.count-1)%10)
             }
 
@@ -662,12 +756,13 @@ Item {
                 id: indexRect
                 height: parent.height
                 width: parent.width*0.1
-                border.color: "grey"
+                border.color: "#2a2b30"
                 color: "transparent"
 
                 Text {
                     text: currentPageIndex*10 + index + 1
                     anchors.centerIn: parent
+                    color: "#9a9ba0"
                     font.pixelSize: 0.65*currentItem.height
                 }
             }
@@ -677,7 +772,7 @@ Item {
                 width: parent.width - indexRect.width
                 height: parent.height
 
-                border.color: "grey"
+                border.color: "#2a2b30"
                 color: "transparent"
 
                 Image {
@@ -708,6 +803,7 @@ Item {
                     Text {
                         id: scoreText
                         anchors.centerIn: parent
+                        color: "white"
 
                         text:APPSETTINGS.getScoringSystem()? (scoreCutoffTofirstDecimal(calculatedscore)*1): parseInt(scoreCutoffTofirstDecimal(calculatedscore)*1)
                         font.pixelSize: 0.65*currentItem.height
@@ -736,7 +832,12 @@ Item {
                     Text {
                         id: timeText
                         anchors.centerIn: parent
-                        text: MODREADER.getTeilerForShootOfMatch((currentPageIndex*10)+index).toFixed(1) //isSaveGame ? "NA" : timeComsumed
+                        color: "#c8c9cf"
+                        // Per-shot split time in seconds (was the German "Teiler"
+                        // precision metric). timeComsumed is a model role in
+                        // seconds; no C++ getter, so no negative-index risk.
+                        text: (typeof timeComsumed === "undefined" || timeComsumed === "")
+                              ? "" : (Number(timeComsumed).toFixed(0) + " s")
                         font.pixelSize: 0.65*currentItem.height
                     }
                 }
@@ -843,10 +944,8 @@ Item {
         if (!visible)   // see updateTotal — no view churn while hidden
             return
         listModel.clear()
-        console.log("inside updateListModel")
         if (listNavigationON)
             matchScore.model = 0 //used in Qt 5.13
-        console.log("inside updateListModel model assign to empty")
         subTotal = subTotal*0
         subTotalExculdeDec = subTotalExculdeDec*0
         seriesStars = 0
@@ -875,9 +974,10 @@ Item {
                 ++seriesStars
         }
         matchScore.model = listModel
-        console.log("inside updateListModel reassigning the model")
-        currentPageIndex = Math.floor( (endIndex-1)/10)
-        console.log("inside updateListModel pageindex changed")
+        // Clamp: entering match mode with 0 match shots gives endIndex 0 →
+        // floor(-1/10) = -1, and a negative page index feeds negative shot
+        // numbers into delegate bindings (see getTeilerForShootOfMatch).
+        currentPageIndex = Math.max(0, Math.floor( (endIndex-1)/10))
 
         //Log messages
         grandStarText.text = totalStars
@@ -1094,11 +1194,12 @@ Item {
         color: "white"
         width: implicitWidth
         height: implicitHeight
-        text: qsTr("Teiler")//qsTr("Time (s)")
+        text: qsTr("Time (s)")
         font.pixelSize: dafaultFontSize
     }
     Rectangle {
         id: midRect
+        visible: false   // redesign: replaced by the TOTAL + distribution card
         anchors.left: field_88_7.left
         anchors.right: text_field2.right
         anchors.bottom: text_field2.top
@@ -1120,24 +1221,33 @@ Item {
                 font.pixelSize: dafaultFontSize
             }
         }
-        Rectangle {
+        // Distribution strip: live ring-band tallies (10s / 9s / 8s / <=7).
+        Row {
+            anchors.horizontalCenter: parent.horizontalCenter
             anchors.bottom: parent.bottom
-            width: parent.width
-            height: parent.height/2
-            color: "transparent"
-            Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                anchors.verticalCenter: parent.verticalCenter
-                color: "white"
-                width: implicitWidth
-                height: implicitHeight
-                text: qsTr("Match Performance")
-                font.pixelSize: dafaultFontSize
+            spacing: 12
+            Repeater {
+                model: [{ lbl: qsTr("10s"), b: 10 }, { lbl: qsTr("9s"), b: 9 },
+                        { lbl: qsTr("8s"), b: 8 }, { lbl: qsTr("≤7"), b: 7 }]
+                delegate: Row {
+                    spacing: 4
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: modelData.lbl
+                        color: "#8a8a92"; font.pixelSize: 12
+                    }
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: bandCount(modelData.b, globalModelOfData.count)
+                        color: "white"; font.pixelSize: 13; font.bold: true
+                    }
+                }
             }
         }
     }
 
     Rectangle {
+        visible: false   // redesign: "Time (m)" label folded into the TOTAL card
         width: text_field_1_55.width
         anchors.left: midRect.right
         anchors.top: midRect.top
@@ -1155,21 +1265,7 @@ Item {
         }
     }
 
-    Rectangle {
-        anchors.left: field_88_7.left
-        anchors.right: text_field2.right
-        anchors.top: text_field2.bottom
-        height: midRect.height/2
-        color: "transparent"
-        Text {
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.verticalCenter: parent.verticalCenter
-            color: "white"
-            width: implicitWidth
-            height: implicitHeight
-            text: qsTr("MatchOLd Performance")
-        }
-    }
+    // (removed leftover "MatchOld Performance" label — redesign)
 
     function startFromServer()
     {
@@ -1177,20 +1273,160 @@ Item {
     }
 
 
+    // ── TOTAL + distribution card (redesign) ─────────────────────────────
+    // Sits between the score table and the series cards. Reads grandTotal /
+    // grandTotalExculdeDec / totalStars / totalTimeConsume directly; the
+    // legacy value texts are kept (opacity 0) only for their backend pushes.
+    Rectangle {
+        id: totalCard
+        anchors.left: num.left
+        anchors.right: num.right
+        anchors.top: num.bottom
+        anchors.topMargin: 8
+        anchors.bottom: series_sum.top
+        anchors.bottomMargin: 8
+        radius: 10
+        color: "#1a1a1f"; border.color: "#2a2b30"; border.width: 1
+
+        property int shots: globalModelOfData.count
+
+        // Top row: TOTAL label + big score (int) · inner-10s · time
+        Item {
+            id: totalTopRow
+            anchors.top: parent.top; anchors.topMargin: 8
+            anchors.left: parent.left; anchors.leftMargin: 14
+            anchors.right: parent.right; anchors.rightMargin: 14
+            height: 40
+            Column {
+                anchors.left: parent.left
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 5
+                Text {
+                    text: qsTr("TOTAL SCORE")
+                    color: "#8a8a92"; font.family: theme.fontFamily
+                    font.pixelSize: 10; font.letterSpacing: 1.5
+                }
+                Row {
+                    spacing: 5
+                    Text {
+                        anchors.baseline: totalInt.baseline
+                        text: scoreCutoffTofirstDecimal(grandTotal)*1
+                        color: "white"; font.family: theme.fontFamily
+                        font.pixelSize: 24; font.bold: true
+                    }
+                    Text {
+                        id: totalInt
+                        text: "(" + grandTotalExculdeDec + ")"
+                        color: "#8a8a92"; font.family: theme.fontFamily
+                        font.pixelSize: 13
+                    }
+                }
+            }
+            Row {
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 18
+                Column {
+                    Text {
+                        anchors.right: parent.right
+                        text: qsTr("INNER 10s")
+                        color: "#8a8a92"; font.family: theme.fontFamily; font.pixelSize: 10
+                    }
+                    Text {
+                        anchors.right: parent.right
+                        text: "★ " + totalStars
+                        color: "#ffb020"; font.family: theme.fontFamily
+                        font.pixelSize: 15; font.bold: true
+                    }
+                }
+                Column {
+                    Text {
+                        anchors.right: parent.right
+                        text: qsTr("TIME")
+                        color: "#8a8a92"; font.family: theme.fontFamily; font.pixelSize: 10
+                    }
+                    Text {
+                        anchors.right: parent.right
+                        text: minutesToseconds(totalTimeConsume)
+                        color: "white"; font.family: theme.fontFamily
+                        font.pixelSize: 15; font.bold: true
+                    }
+                }
+            }
+        }
+
+        // Distribution: horizontal bars, one per ring band, width proportional
+        // to the tally. Colour-coded so quality reads at a glance.
+        Column {
+            anchors.top: totalTopRow.bottom; anchors.topMargin: 6
+            anchors.left: parent.left; anchors.leftMargin: 14
+            anchors.right: parent.right; anchors.rightMargin: 14
+            anchors.bottom: parent.bottom; anchors.bottomMargin: 8
+            spacing: 3
+            Repeater {
+                model: [{ lbl: "10", b: 10, c: "#2ecc71" },
+                        { lbl: "9",  b: 9,  c: "#3aa0ff" },
+                        { lbl: "8",  b: 8,  c: "#ffb020" },
+                        { lbl: "≤7", b: 7,  c: "#e8003d" }]
+                delegate: Item {
+                    width: parent.width
+                    height: (parent.height - 9) / 4
+                    property int cnt: bandCount(modelData.b, totalCard.shots)
+                    Text {
+                        id: bandLbl
+                        anchors.left: parent.left
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 20
+                        text: modelData.lbl
+                        color: "#9a9ba0"; font.family: theme.fontFamily; font.pixelSize: 11
+                        horizontalAlignment: Text.AlignRight
+                    }
+                    Rectangle {   // track
+                        id: bandTrack
+                        anchors.left: bandLbl.right; anchors.leftMargin: 8
+                        anchors.right: bandCnt.left; anchors.rightMargin: 8
+                        anchors.verticalCenter: parent.verticalCenter
+                        height: 9; radius: 4
+                        color: "#141519"
+                        Rectangle {   // fill
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            height: parent.height; radius: 4
+                            width: parent.width * (parent.parent.cnt / maxBandCount(totalCard.shots))
+                            color: modelData.c
+                            visible: parent.parent.cnt > 0
+                        }
+                    }
+                    Text {
+                        id: bandCnt
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 16
+                        text: parent.cnt
+                        color: "white"; font.family: theme.fontFamily
+                        font.pixelSize: 11; font.bold: true
+                        horizontalAlignment: Text.AlignRight
+                    }
+                }
+            }
+        }
+    }
+
     // for series Sum
     Rectangle {
         id: series_sum
 //        source: "qrc:/images/rightPanel/series_6.png"
-        anchors.left: text_field_8.left
-        anchors.right: text_field.right
-        anchors.rightMargin: text_field.width*0.07
+        // Aligned to the card column (num) so it lines up with the LAST SHOT,
+        // score-table and TOTAL cards above it.
+        anchors.left: num.left
+        anchors.right: num.right
         anchors.top: text_field2.bottom
         anchors.bottom: total_score_block.bottom
         anchors.bottomMargin: 30
         opacity: 1
         //height: series_6.height*1.5
         visible: true
-        color: "red"
+        color: "transparent"   // redesign: themed cells below draw the look
 
         Row {
             id: firstRow
@@ -1199,13 +1435,12 @@ Item {
                 model: 6
                 Rectangle {
                     width: series_sum.width/6; height: series_sum.height/5*1
-                    //border.width: 1
-                    color: "#373536"
+                    color: "transparent"
 
                     Text {
                         anchors.centerIn: parent
                         text: "S"+(index+1)
-                        color: "white"
+                        color: "#8a8a92"
                         font.pixelSize: dafaultFontSize
                     }
                 }
@@ -1222,13 +1457,14 @@ Item {
                     Rectangle {
                         width: series_sum.width/6; height: series_sum.height/5*2
                         border.width: 1
-                        border.color: "lightgrey"
-                        color:/*"blue" //*/"#312E2F"
+                        border.color: "#2a2b30"
+                        radius: 6
+                        color: "#1a1a1f"
 
                         Text {
                             anchors.centerIn: parent
-                            text: isValidSeries(index) ? getSeriesTotal(index+1) : ""
-                            color: "white"
+                            text: isValidSeries(index) ? getSeriesTotal(index+1) : "—"
+                            color: isValidSeries(index) ? "white" : "#55555e"
                             font.pointSize: parent.height*0.25 //parent.height*0.3
 //                            font.pointSize: isSingleDecimal ? parent.height*0.37 : parent.height*0.32
 //                            font.bold: true
@@ -1251,13 +1487,14 @@ Item {
                     Rectangle {
                         width: series_sum.width/6; height: series_sum.height/5*2
                         border.width: 1
-                        color: "#312E2F"
-                        border.color: "white"
+                        color: "#141519"
+                        border.color: "#2a2b30"
+                        radius: 6
 
                         Text {
                             anchors.centerIn: parent
                             text: isValidSeries(index) ? /*"("+*/getSeriesTotalNonDecimal(index+1)/*+")"*/ : ""
-                            color: "white"
+                            color: "#9a9ba0"
                             font.pointSize: parent.height*0.25//parent.height*0.3
 //                            font.bold: true
 
@@ -1316,6 +1553,28 @@ Item {
         }
         //return isSingleDecimal ? seriesScore.toFixed(1) : scoreCutoffTofirstDecimal(seriesScore)
         return seriesScore.toFixed(1)
+    }
+
+    // Score-distribution count: how many match shots fall in a ring band.
+    // `trigger` is passed globalModelOfData.count so the binding re-evaluates
+    // as shots land (functions aren't reactive on their own).
+    function bandCount(band, trigger)
+    {
+        var n = 0
+        for (var i = 0; i < globalModelOfData.count; i++) {
+            var s = Math.floor(globalModelOfData.get(i).calculatedscore*1)
+            if (band === 10) { if (s >= 10) n++ }
+            else if (band === 7) { if (s <= 7) n++ }
+            else if (s === band) n++
+        }
+        return n
+    }
+
+    // Largest band tally (>=1) so the distribution bars scale to full width.
+    function maxBandCount(trigger)
+    {
+        return Math.max(bandCount(10, trigger), bandCount(9, trigger),
+                        bandCount(8, trigger), bandCount(7, trigger), 1)
     }
 
     function getSeriesTotalNonDecimal(seriesIndex)

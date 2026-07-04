@@ -238,12 +238,203 @@ Item {
         MODREADER.setCurrentMatchTotalShotsCount(matchShootCount)
     }
 
+    // ── Top status strip (rebrand phase 1) ───────────────────────────────
+    Rectangle {
+        id: statusStrip
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        height: 42
+        color: "#15161a"
+        z: 40
+
+        Row {
+            anchors.left: parent.left; anchors.leftMargin: 16
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 12
+            Text {
+                text: currentGameDisplay1 + " " + currentGameDisplay2
+                color: "white"; font.family: theme.fontFamily
+                font.pixelSize: 14; font.bold: true
+                anchors.verticalCenter: parent.verticalCenter
+            }
+            Rectangle { width: 1; height: 18; color: "#3a3b40"; anchors.verticalCenter: parent.verticalCenter }
+            Text {
+                text: currentmatchDisplay
+                color: "#9a9ba0"; font.family: theme.fontFamily; font.pixelSize: 12
+                anchors.verticalCenter: parent.verticalCenter
+            }
+            Rectangle { width: 1; height: 18; color: "#3a3b40"; anchors.verticalCenter: parent.verticalCenter }
+            Text {
+                text: window.userName
+                color: "#9a9ba0"; font.family: theme.fontFamily; font.pixelSize: 12
+                anchors.verticalCenter: parent.verticalCenter
+            }
+        }
+
+        // ── Phase stepper: SIGHT → MATCH, or SIGHT → KNEEL → PRONE → STAND ──
+        Row {
+            anchors.centerIn: parent
+            spacing: 6
+            Repeater {
+                model: is3PMatch ? [qsTr("SIGHT"), qsTr("KNEEL"), qsTr("PRONE"), qsTr("STAND")]
+                                 : [qsTr("SIGHTING"), qsTr("MATCH")]
+                delegate: Rectangle {
+                    // Index of the active step: initial sighting is step 0;
+                    // once the match starts, 3P tracks the current position.
+                    readonly property int activeStep: {
+                        if (is3PMatch)
+                            return (sligterMode && p3BreaksDone === 0) ? 0 : 1 + p3Position
+                        return sligterMode ? 0 : 1
+                    }
+                    readonly property bool isCurrent: !matchFinished && index === activeStep
+                    readonly property bool isDone: matchFinished || index < activeStep
+                    radius: 10; height: 20
+                    width: stepText.implicitWidth + 18
+                    color: isCurrent ? "#3a0d16" : "#26262c"
+                    border.color: isCurrent ? "#e8003d" : "transparent"
+                    border.width: 1
+                    Text {
+                        id: stepText
+                        anchors.centerIn: parent
+                        text: modelData
+                        color: isCurrent ? "#ff5c7a" : (isDone ? "#9a9ba0" : "#55555e")
+                        font.family: theme.fontFamily
+                        font.pixelSize: 9; font.bold: isCurrent; font.letterSpacing: 1
+                    }
+                }
+            }
+        }
+
+        Row {
+            anchors.right: parent.right; anchors.rightMargin: 16
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 12
+            Text {
+                text: globalMatchModel.count + " / " + (matchShootCount > 0 ? matchShootCount : "—")
+                color: "white"; font.family: theme.fontFamily
+                font.pixelSize: 14; font.bold: true
+                anchors.verticalCenter: parent.verticalCenter
+            }
+            Text {
+                text: qsTr("SHOTS")
+                color: "#9a9ba0"; font.family: theme.fontFamily
+                font.pixelSize: 9; font.letterSpacing: 1.5
+                anchors.verticalCenter: parent.verticalCenter
+            }
+            Rectangle {
+                radius: 4; height: 24; width: phaseChipText.implicitWidth + 20
+                anchors.verticalCenter: parent.verticalCenter
+                color: matchFinished ? "#1d7a2f" : (sligterMode ? "#8a6d00" : "#e8003d")
+                Text {
+                    id: phaseChipText
+                    anchors.centerIn: parent
+                    text: phaseText
+                    color: "white"; font.family: theme.fontFamily
+                    font.pixelSize: 10; font.bold: true; font.letterSpacing: 1
+                }
+            }
+            Rectangle {
+                visible: !appMode
+                radius: 4; height: 24; width: demoChipText.implicitWidth + 16
+                anchors.verticalCenter: parent.verticalCenter
+                color: "transparent"; border.color: "#e8003d"; border.width: 1
+                Text {
+                    id: demoChipText
+                    anchors.centerIn: parent
+                    text: qsTr("DEMO")
+                    color: "#e8003d"; font.family: theme.fontFamily
+                    font.pixelSize: 10; font.bold: true; font.letterSpacing: 1
+                }
+            }
+        }
+    }
+
+    // ── Bottom action bar: ONE context-aware primary button, always in the
+    // same place (range feedback: the floating resume strip and the small
+    // play icon were not ergonomic). Feed-paper stays as a jam-recovery
+    // fallback — the motor is otherwise automatic after every shot.
+    Rectangle {
+        id: actionBar
+        anchors.bottom: parent.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+        height: 62
+        color: "#15161a"
+        z: 40
+
+        // matchFinished → view report · sighting/position break → start ·
+        // record fire → finish match (with confirmation)
+        readonly property int barMode: matchFinished ? 2 : (sligterMode ? 0 : 1)
+
+        Rectangle {
+            id: primaryActionBtn
+            anchors.left: parent.left; anchors.leftMargin: leftPanel.width
+            anchors.right: feedPaperBtn.left; anchors.rightMargin: 10
+            anchors.verticalCenter: parent.verticalCenter
+            height: 44; radius: 8
+            color: actionBar.barMode === 1
+                   ? "transparent"
+                   : (primaryMouse.containsMouse ? "#c40034" : "#e8003d")
+            border.color: actionBar.barMode === 1 ? "#3a3b40" : "transparent"
+            border.width: 1
+            Text {
+                anchors.centerIn: parent
+                text: {
+                    if (actionBar.barMode === 2) return qsTr("VIEW REPORT  →")
+                    if (actionBar.barMode === 1)
+                        return qsTr("MATCH IN PROGRESS  ·  ") + qsTr("FINISH MATCH")
+                    if (is3PMatch && p3BreaksDone > 0)
+                        return qsTr("START ") + p3Names[p3Position] + "  →"
+                    return qsTr("START MATCH  →")
+                }
+                color: actionBar.barMode === 1 ? "#9a9ba0" : "white"
+                font.family: theme.fontFamily
+                font.pixelSize: 14; font.bold: actionBar.barMode !== 1
+                font.letterSpacing: 1.5
+            }
+            MouseArea {
+                id: primaryMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                onClicked: {
+                    if (actionBar.barMode === 2)
+                        matchReportPage.visible = true
+                    else if (actionBar.barMode === 1)
+                        matchFinishConfirmation.visible = true
+                    else
+                        rightPanel.startClicked()
+                }
+            }
+        }
+
+        Rectangle {
+            id: feedPaperBtn
+            anchors.right: parent.right; anchors.rightMargin: 16
+            anchors.verticalCenter: parent.verticalCenter
+            width: 130; height: 44; radius: 8
+            color: feedMouse.containsMouse ? "#26272c" : "#1a1a1f"
+            border.color: "#3a3b40"; border.width: 1
+            Text {
+                anchors.centerIn: parent
+                text: qsTr("Feed paper")
+                color: "#b9b9c0"; font.family: theme.fontFamily; font.pixelSize: 12
+            }
+            MouseArea {
+                id: feedMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                onClicked: MODREADER.initiateMotorMovement()
+            }
+        }
+    }
+
     LeftPanel {
         id: leftPanel
         width: 0.15*parent.width
-        height: parent.height
+        height: parent.height - statusStrip.height - actionBar.height
         anchors.left: parent.left
-        anchors.top: parent.top
+        anchors.top: statusStrip.bottom
         name: window.userName
         z: 10
 
@@ -260,9 +451,9 @@ Item {
     RightPanel {
         id: rightPanel
         width: 0.31*parent.width
-        height: parent.height
+        height: parent.height - statusStrip.height - actionBar.height
         anchors.right: parent.right
-        anchors.top: parent.top
+        anchors.top: statusStrip.bottom
         z: 10
         onSwitchToSighter:
         {
@@ -284,10 +475,10 @@ Item {
     CenterPane {
         id: centerPanel
         width: parent.width - leftPanel.width - rightPanel.width
-        height: parent.height
+        height: parent.height - statusStrip.height - actionBar.height
         anchors.left: leftPanel.right
         anchors.right: rightPanel.left
-        anchors.top: parent.top
+        anchors.top: statusStrip.bottom
 
         property alias showMesures: leftPanel.isShowMPI
 
@@ -529,13 +720,17 @@ Item {
         //console.log("***********globalModelOfData*****************"+globalModelOfData.count)
         sligterMode = false
         MODREADER.changeSighterMode(false)
-        //console.log("***********backEndShootCount*****************"+centerPanel.backEndShootCount)
+        MODREADER.appendToLogFile("play: changeSighterMode returned")
         centerPanel.backEndShootCount = 0
-        //console.log("***********backEndShootCount*****************"+centerPanel.backEndShootCount)
+        MODREADER.appendToLogFile("play: backEndShootCount cleared")
         APPSETTINGS.setGame_is_sighter_mode(0)
+        MODREADER.appendToLogFile("play: sighter-mode flag saved")
         APPSETTINGS.updateStatusFeedbackFile(3)
+        MODREADER.appendToLogFile("play: status feedback updated")
         rightPanel.updateTotal()
+        MODREADER.appendToLogFile("play: updateTotal done")
         centerPanel.currentPageIndexChanged()
+        MODREADER.appendToLogFile("play: page index refreshed")
         centerPanel.disableMotorMovement = false
     }
 

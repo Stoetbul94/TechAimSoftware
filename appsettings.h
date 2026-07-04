@@ -73,8 +73,13 @@ public:
 
     Q_INVOKABLE void setGame_is_sighter_mode(int value);
 
-    double getMotor_movement_time() const;
+    Q_INVOKABLE double getMotor_movement_time() const;
+    Q_INVOKABLE double getMotor_movement_time_sighter() const {
+        return motor_movement_time_sighter;
+    }
     Q_INVOKABLE void setMotor_movement_time(double value, double sighterFeedTime);
+    // Persisting variant (plain seconds): saves to config.ini and applies live.
+    Q_INVOKABLE void saveMotorTimes(double matchSecs, double sighterSecs);
 
     Q_INVOKABLE int getGame_distance() const;
 
@@ -157,6 +162,7 @@ signals:
 private:
     bool m_appMode = false; // false for demo, true for live
     QString m_brandName = "tachus";
+    QString m_iniFileName;   // config.ini path, for group-safe writes
     QSettings* m_settings = NULL;
     QString user_name = "";
     int game_mode = 0;

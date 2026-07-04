@@ -320,7 +320,7 @@ void ModbusCommSettings::load(QSettings *s)
         m_baseAddr = s->value("Var/BaseAddr").toString();
 
     if (s->value("Var/TimeOut").isNull())
-        m_timeOut = "0";
+        m_timeOut = "1";   // seconds; 0 means wait-forever and freezes the app
     else
         m_timeOut = s->value("Var/TimeOut").toString();
 

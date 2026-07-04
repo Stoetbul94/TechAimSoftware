@@ -950,12 +950,19 @@ Item {
 
             function refreshPosition() {
                 console.log("refreshPosition")
-                var xCor = MODREADER.getXMPI()
-                var yCor = MODREADER.getYMPI()
-
-                var distance_factor = APPSETTINGS.getMatch_meter() /*modified match distance*//10 /*10m match*/
-                xCor = xCor/distance_factor
-                yCor = yCor/distance_factor
+                // Mean point of impact over the shots currently DISPLAYED —
+                // the backend lists span all positions in a 3P match, which
+                // put this marker at a stale mixed-position average.
+                var xCor = 0
+                var yCor = 0
+                if (globalModelOfData.count > 0) {
+                    for (var i = 0; i < globalModelOfData.count; ++i) {
+                        xCor += globalModelOfData.get(i).xmm*1
+                        yCor += globalModelOfData.get(i).ymm*1
+                    }
+                    xCor /= globalModelOfData.count
+                    yCor /= globalModelOfData.count
+                }
 
                 var pistalWidthHeight = gameRange == 10 ? 155.5 : 500
                 var rifleWidthHeight = gameRange == 10 ? 45.5 : 154.4
@@ -989,7 +996,7 @@ Item {
                 height = width
 
                 // mpi text
-                mpiText.text = qsTr("X:") + MODREADER.getXMPI().toFixed(2)+qsTr(", Y:")+MODREADER.getYMPI().toFixed(2)
+                mpiText.text = qsTr("X:") + xCor.toFixed(2)+qsTr(", Y:")+yCor.toFixed(2)
             }
 
             Component.onCompleted:
@@ -1013,11 +1020,26 @@ Item {
 
             function refreshPosition() {
                 console.log("group refreshPosition", rightPanel.currentPageIndex)
-                var distance = MODREADER.getGroup(rightPanel.currentPageIndex, false)
-                group_distance = distance
+                // Group over the shots currently DISPLAYED (see mpiRect) —
+                // widest pair of shots, circle centred between them.
+                var g = 0
+                var xCor = 0
+                var yCor = 0
+                for (var i = 0; i < globalModelOfData.count; ++i) {
+                    var ei = globalModelOfData.get(i)
+                    for (var j = i + 1; j < globalModelOfData.count; ++j) {
+                        var ej = globalModelOfData.get(j)
+                        var d = Math.sqrt(Math.pow(ei.xmm*1 - ej.xmm*1, 2)
+                                        + Math.pow(ei.ymm*1 - ej.ymm*1, 2))
+                        if (d > g) {
+                            g = d
+                            xCor = (ei.xmm*1 + ej.xmm*1) / 2
+                            yCor = (ei.ymm*1 + ej.ymm*1) / 2
+                        }
+                    }
+                }
+                group_distance = globalModelOfData.count > 1 ? g + APPSETTINGS.bullet_diameter() : 0
                 console.log("group refreshPosition group_distance ", group_distance)
-                var xCor = MODREADER.getXGroup()
-                var yCor = MODREADER.getYGroup()
 
                 var pistalWidthHeight = gameRange == 10 ? 155.5 : 500
                 var rifleWidthHeight = gameRange == 10 ? 45.5 : 154.4
@@ -1087,12 +1109,18 @@ Item {
             height: width
 
             function refreshPosition() {
-                var xCor = MODREADER.getXCord(rightPanel.currentShootIndex+1)
-                var yCor = MODREADER.getYCord(rightPanel.currentShootIndex+1)
-
-                var distance_factor = APPSETTINGS.getMatch_meter() /*modified match distance*//10 /*10m match*/
-                xCor = xCor/distance_factor
-                yCor = yCor/distance_factor
+                // Coordinates come from the DISPLAY model, not the backend
+                // lists: after a 3P position change the display is filtered
+                // to the current position, so display index N no longer maps
+                // to backend shot N. Using the backend here drew this marker
+                // (which looks like a shot and shows the same number) at a
+                // previous position's coordinates — a "phantom shot".
+                var idx = rightPanel.currentShootIndex
+                if (idx < 0 || idx >= globalModelOfData.count)
+                    return
+                var e = globalModelOfData.get(idx)
+                var xCor = e.xmm*1
+                var yCor = e.ymm*1
 
                 var pistalWidthHeight = gameRange == 10 ? 155.5 : 500
                 var rifleWidthHeight = gameRange == 10 ? 45.5 : 154.4
@@ -1219,19 +1247,67 @@ Item {
 
     }
 
+    // Phase stepper: where the athlete is in the ISSF sequence. 3P shows the
+    // full position chain; other disciplines just sighting -> match.
+    // Hidden on the target — the ShootingPage header strip now carries the
+    // phase/position stepper, so this is redundant here.
+    Row {
+        id: phaseStepper
+        visible: false
+        anchors.top: parent.top
+        anchors.topMargin: 58
+        anchors.horizontalCenter: parent.horizontalCenter
+        spacing: 6
+        z: 30
+        property var steps: is3PMatch ? [qsTr("SIGHT"), qsTr("KNEELING"), qsTr("PRONE"), qsTr("STANDING")]
+                                      : [qsTr("SIGHTING"), qsTr("MATCH")]
+        property int cur: {
+            if (matchFinished) return 99
+            if (is3PMatch)
+                return (sligterMode && globalMatchModel.count === 0) ? 0 : 1 + p3Position
+            return sligterMode ? 0 : 1
+        }
+        Repeater {
+            model: phaseStepper.steps.length
+            delegate: Row {
+                spacing: 6
+                Rectangle {
+                    radius: 9; height: 18
+                    width: stepText.implicitWidth + 16
+                    anchors.verticalCenter: parent.verticalCenter
+                    color: index < phaseStepper.cur ? "#1d7a2f"
+                         : (index === phaseStepper.cur ? "#e8003d" : "#4a4b52")
+                    Text {
+                        id: stepText
+                        anchors.centerIn: parent
+                        text: phaseStepper.steps[index]
+                        color: "white"; font.pixelSize: 8
+                        font.bold: true; font.letterSpacing: 1
+                    }
+                }
+                Rectangle {
+                    visible: index < phaseStepper.steps.length - 1
+                    width: 10; height: 2; color: "#8a8b90"
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+            }
+        }
+    }
+
     // 3P: prominent resume control for mid-match position changes. Uses its
     // own signal into ShootingPage instead of the legacy play button, which
     // stops responding after a position transition.
     Rectangle {
         id: resumePositionBtn
-        visible: sligterMode && is3PMatch
-                 && globalMatchModel.count > 0 && globalMatchModel.count < 60
+        // Superseded by the fixed bottom action bar in ShootingPage (redesign);
+        // the bar's start button drives the same resume path.
+        visible: false
         // Top-centre below the phase/clock row, above everything else: the
         // top-right corner is occupied by the sighter corner triangle and
         // z:20 notification overlays.
         z: 30
         anchors.top: parent.top
-        anchors.topMargin: 66
+        anchors.topMargin: 86
         anchors.horizontalCenter: parent.horizontalCenter
         width: resumeText.implicitWidth + 40
         height: 44
@@ -1254,7 +1330,8 @@ Item {
     }
 
     // Phase indicator: which ISSF phase (and 3P position) the athlete is in.
-    // Sits left of the countdown clock; text comes from ShootingPage scope.
+    // Hidden on the target — the ShootingPage header strip shows the phase now;
+    // only the countdown clock remains on the target face.
     Text {
         id: phaseIndicator
         anchors.verticalCenter: slighterTimeUpdate.verticalCenter
@@ -1266,7 +1343,7 @@ Item {
         color: "red"
         font.bold: true
         font.pixelSize: 20
-        visible: timerNotification.visible || slighterTimeUpdate.visible
+        visible: false
     }
 
     Rectangle

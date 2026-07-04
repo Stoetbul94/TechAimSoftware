@@ -28,17 +28,39 @@ Dialog {
                 id: portTextInput
                 width: 100
                 height: 20
-                placeholderText: "port number"
+                placeholderText: "e.g. COM6"
             }
 
-            Button {
-                text: "Connect"
-                onClicked: {
-                    console.log("**************************************", portTextInput.text)
-                    MODREADER.connectedModbus(portTextInput.text)
-                    mod_connected = MODREADER.isModBusConnected()
-                    if (MODREADER.isModBusConnected())
+            Text {
+                id: connectError
+                text: qsTr("Could not connect — check cable and port")
+                color: "#7a0016"
+                font.pixelSize: 11
+                visible: false
+            }
+
+            Row {
+                spacing: 8
+                Button {
+                    text: "Connect"
+                    onClicked: {
+                        console.log("**************************************", portTextInput.text)
+                        MODREADER.connectedModbus(portTextInput.text)
+                        mod_connected = MODREADER.isModBusConnected()
+                        if (MODREADER.isModBusConnected()) {
+                            connectError.visible = false
+                            modBusConnectorDia.close()
+                        } else {
+                            connectError.visible = true
+                        }
+                    }
+                }
+                Button {
+                    text: "Cancel"
+                    onClicked: {
+                        connectError.visible = false
                         modBusConnectorDia.close()
+                    }
                 }
             }
         }

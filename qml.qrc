@@ -1,6 +1,7 @@
 <RCC>
     <qresource prefix="/">
         <file>Theme.qml</file>
+        <file>VIcon.qml</file>
         <file>main.qml</file>
         <file>Header.qml</file>
         <file>LeftPanel.qml</file>

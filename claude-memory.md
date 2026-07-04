@@ -14,9 +14,29 @@
   to a `.qrc` (Makefile deps are generated at qmake time).
 - QML lives in `qml.qrc` → **every QML change needs a rebuild** (rcc + relink).
 - The exe locks during linking — kill `Seta.exe` before rebuilding.
-- `release/config.ini` (untracked): `[shot_count_and_timer] timer=yes` makes the
-  on-screen countdown clock visible; `prep_time` (minutes, default 15) sets the
-  preparation/sighting period.
+- `release/config.ini` (untracked) — **required contents proven at the range
+  2026-07-04** (first successful live-fire session):
+
+  ```ini
+  [shot_count_and_timer]
+  timer=yes
+
+  [App_Settings]
+  app_mode=Live
+  is_single_decimal=1
+  motor_movement_time=1
+  motor_movement_time_sighter=1
+  ```
+
+  - `app_mode=Live` is the ONLY way to leave demo mode — the LIVE/DEMO chip on
+    the login page just displays it, nothing in the UI sets it. Without it the
+    app silently ignores all hardware shots ("shots not registering").
+  - `is_single_decimal=1`: this hardware (COM7, RTU 19200 Even 8/1) reports
+    shot coordinates in **tenths of a millimetre**; the default (0 → ÷100)
+    plots every shot 10× too close to centre (all shots look like 10.7+).
+    Value mirrored from the known-good old install at
+    `Desktop/Tech Aim Software/seta10/config.ini`.
+  - Both are read once at startup — config changes need an app restart.
 - Demo-mode test drill: launch → click green **Connected** (→ Demo/Offline) →
   Share toggle OFF (or configure a folder) → pick discipline → Start session →
   play button starts the match → **click the target to fire demo shots**.
@@ -66,7 +86,23 @@ Key commits: `d63b02a` selector · `2c67b74` timer plumbing · `8ea95fe` prep ph
 7. Watch for **stray `gameEvent` indices**: Prone and 3P share `gameEvent=4`;
    the discipline is `APPSETTINGS.getGameSubMode()` (+`get10or50mRange()`), both
    persisted from LoginPage. `is3PMatch` is fixed at `beginPreparationPhase()`.
-8. **Automation/testing quirk**: the app window drifts ±15 px between states;
+8. **A leading space in the port text field silently killed live mode at the
+   range**: Start-session blindly called `connectedModbus(" COM7")`, which tore
+   down the already-working COM7 connection and failed to reopen (`" COM7"` is
+   an invalid device name) → "Com port not connected". Fixed in
+   `connectedModbus`: trims the name and returns early (keeping the live
+   connection) when already connected to the requested/last port.
+9. **C++ getters called from delegate bindings must reject the whole negative
+   range, not just `-1`.** Pressing play with sighter shots crashed the app
+   natively (2026-07-04): entering match mode empties the score list, so
+   `updateListModel` computed `currentPageIndex = floor(-1/10) = -1`; the three
+   not-yet-destroyed sighter delegates re-evaluated
+   `getTeilerForShootOfMatch(currentPageIndex*10 + index)` with −10/−9/−8, and
+   the old guard (`shootNumber == -1` only) let `m_xCordList.at(-10)` run →
+   heap crash. Fixed both layers: `shootNumber < 0` guard in C++, `Math.max(0,…)`
+   clamp in QML. Delegate destruction is deferred — assume any index a binding
+   computes can be stale/negative during model churn.
+10. **Automation/testing quirk**: the app window drifts ±15 px between states;
    synthetic clicks must be based on a fresh screenshot or they miss silently.
    Bitdefender: `release\Seta.exe` needs an **Advanced Threat Defense** exception
    (separate from the Antivirus folder exclusion) or file writes freeze the UI.
@@ -83,6 +119,50 @@ Key commits: `d63b02a` selector · `2c67b74` timer plumbing · `8ea95fe` prep ph
 - `MatchReport.qml` grabs `report3p` instead of `print_region` when 3P;
   `CUSTOMPRINT.createPdf()` opens a native Save dialog (known quirk: typing a
   name may append to "untitled.pdf" in automation).
+
+## 5b. ShootingPage redesign — DONE & verified across disciplines (2026-07-04)
+
+The shooting UI is ONE shared page (`ShootingPage`/`LeftPanel`/`CenterPane`/
+`RightPanel`) used by every discipline; the redesign therefore applies to all.
+Verified live in demo: 10m Air Pistol, 10m Air Rifle, 50m Rifle 3 Pos (50m
+Prone shares the 3P page). Delivered:
+- Header status strip with phase stepper (SIGHT·MATCH, or SIGHT·KNEEL·PRONE·
+  STAND for 3P); redundant on-target phase pills + phase word removed.
+- Bottom action bar: one context-aware full-width button + Feed paper.
+- Left panel: full-height labelled nav (Stats/Report/Coach report/Group·MPI/
+  Settings/Home), compact discipline header, crisp vector icons (`VIcon.qml`,
+  QtQuick.Shapes) incl. realistic pistol/rifle silhouettes.
+- Right panel cards: LAST SHOT (score+dir+X/Y mm), dark shot log with a
+  **Time (s)** column (was the German "Teiler"; now per-shot split seconds via
+  the timeComsumed role), TOTAL card (total+inner10s+time) with a colour-coded
+  horizontal distribution bar chart (10/9/8/≤7), aligned S1-S6 series cards.
+  Full-width dark bg covers the legacy total_score_block PNG chrome.
+Fragility preserved: all hidden data-holder Texts + onTextChanged backend
+pushes (setTotalScoreWD/updateSeriesScore/…) kept alive at opacity 0.
+
+Parked design polish (user OK'd for later): colour-code shot-log scores;
+tint/tag sighter shots; highlight the active series card.
+
+## 5a. Range list from first live day (2026-07-04) — do AFTER the full redesign
+
+User's backlog, in his priority order (design first, then these):
+1. **Redesign must reach every discipline** — Prone, 10m Air Rifle, 10m Air
+   Pistol, etc. each get the same layout adapted to its own discipline
+   (its phases, series count, times).
+2. **Verify match/prep times per discipline** against ISSF rules.
+3. **Auto-zoom on shot** (like SIUS Ascor): after a shot lands, the view
+   zooms in on the shot briefly/persistently. Series + last shot are the
+   most important info to keep visible.
+4. **Coach report** — third report type next to Stats/Report (button added
+   in redesign; content TBD with user).
+5. **Motor feed time settings reachable from the login/home page** too, not
+   only SettingsPage (rarely visited). Keep manual "Feed paper" button on
+   the shooting page as a jam-recovery fallback (motor is otherwise fully
+   automatic after each shot).
+6. Report bug seen in kn.pdf: an empty series still prints ("SERIES: 3
+   Group: 0 mm MPI: NaN, NaN") — skip empty series.
+Design principles he stated: not too complicated, professional, functional,
+user-friendly; the series and the last shot are the key data.
 
 ## 5. Open items / next steps
 
@@ -103,3 +183,18 @@ Full 60-shot 3P demo match: K 210.3 / P 214.4 / S 201.9 → total 626.6 (595),
 inner-10s 49; sighting 15:00 countdowns; match clock 90:00 → ran through both
 changeovers; MATCH COMPLETE froze clock at 86:31; PDF result sheet rendered
 correctly with standing group visibly widest (as shot).
+
+## 7. ShootingPage redesign plan (agreed 2026-07-03, in progress)
+
+Direction: mockup 2/3 style (dark + #e8003d red, Theme.qml tokens, like LoginPage)
+with mockup 1's phase stepper (Prep → Sighting → K → P → S) and score-distribution
+bars. Phased, each phase verified live then committed:
+1. Top status strip: event, shooter, phase chip (phaseText, amber/red/green),
+   shots counter (globalMatchModel.count/matchShootCount), DEMO chip. Resume
+   button may move here later.
+2. Right panel: dark cards — LAST SHOT (big score + X/Y mm from xmm/ymm roles),
+   shot log, series totals S1-S6, match total + 10.x/9.x/8.x distribution bars.
+3. Left panel: labeled nav buttons, discipline card, theme colors.
+4. Phase stepper above target (3P-aware).
+Constraint: do NOT restructure CenterPane internals (chart/shot pipeline is
+fragile); style around them. Report design polish also parked (user note).

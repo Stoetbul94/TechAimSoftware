@@ -8,6 +8,7 @@
 #include <cfloat>
 #include <QHostInfo>
 #include <QNetworkInterface>
+#include <QSerialPortInfo>
 #include <QFile>
 #include <QFileInfo>
 #include <QTextStream>
@@ -98,19 +99,36 @@ bool TachusWidget::isMasterSystemConnected()
 
 bool TachusWidget::connectedModbus(QString portName)
 {
+    // A leading/trailing space in the port field ("` COM7`") makes the serial
+    // open fail AND tears down whatever connection was already up — trim
+    // before anything else touches the name.
+    portName = portName.trimmed();
+
     if (portName.isEmpty() && m_lastManuallyConnectedPort != "") {
         portName = m_lastManuallyConnectedPort;
-    } else if (!portName.isEmpty()) {
-        m_lastManuallyConnectedPort = portName;
     }
+
+    if (m_mainWindow == NULL)
+        return false;
+
+    // Already connected on the requested port (or no specific port asked):
+    // keep the live connection instead of tearing it down and reopening.
+    if (m_mainWindow->isModBusConnected()
+            && (portName.isEmpty()
+                || QString::compare(portName, m_lastManuallyConnectedPort, Qt::CaseInsensitive) == 0)) {
+        LogFile::instance().appendToLogFile(
+            QString("already connected on %1 - keeping connection").arg(m_lastManuallyConnectedPort),
+            LogType::interfaceLevel);
+        return true;
+    }
+
+    if (!portName.isEmpty())
+        m_lastManuallyConnectedPort = portName;
 
     if (portName.isEmpty())
         LogFile::instance().appendToLogFile(QString("connect with port number -> Auto Connect"), LogType::interfaceLevel);
     else
         LogFile::instance().appendToLogFile(QString("connect with port number manually -> %1").arg(portName), LogType::interfaceLevel);
-
-    if (m_mainWindow == NULL)
-        return false;
 
     //if (!m_mainWindow->isModBusConnected()) {
         m_mainWindow->tachusReconfigurePortNumber();
@@ -121,6 +139,32 @@ bool TachusWidget::connectedModbus(QString portName)
         clearShootCount();
         intiateAutoMovementSetup();
         return true;
+    }
+
+    // Auto-detect fallback: if the configured port would not even open, try
+    // every serial port on the machine and keep the first that opens. (A
+    // deeper probe via isHardwareConnected() is NOT safe here: the register
+    // read blocks indefinitely on an open port with no responding target.)
+    if (portName.isEmpty()) {
+        const auto ports = QSerialPortInfo::availablePorts();
+        for (const QSerialPortInfo &info : ports) {
+            const QString candidate = info.portName();
+            if (candidate.isEmpty())
+                continue;
+            LogFile::instance().appendToLogFile(
+                QString("auto-detect: trying %1").arg(candidate), LogType::interfaceLevel);
+            m_mainWindow->changedConnect(true, candidate);
+            if (m_mainWindow->isModBusConnected()) {
+                LogFile::instance().appendToLogFile(
+                    QString("auto-detect: connected on %1").arg(candidate), LogType::interfaceLevel);
+                m_lastManuallyConnectedPort = candidate;
+                clearShootCount();
+                intiateAutoMovementSetup();
+                return true;
+            }
+        }
+        LogFile::instance().appendToLogFile(
+            QString("auto-detect: no openable serial port found"), LogType::interfaceLevel);
     }
 
     return false;
@@ -1012,7 +1056,11 @@ double TachusWidget::getTeilerForShoot(int series, int shootNumber)
 
 double TachusWidget::getTeilerForShootOfMatch(int shootNumber)
 {
-    if (shootNumber == -1 || m_xCordList.count() <= shootNumber)
+    // QML delegate bindings re-evaluate with negative indices while the score
+    // list is being cleared (currentPageIndex briefly -1 → shootNumber -10),
+    // so reject the whole negative range, not just -1 — .at(-10) on an empty
+    // QList is a native crash.
+    if (shootNumber < 0 || m_xCordList.count() <= shootNumber)
         return -1;
     qDebug() << shootNumber << " " << __FUNCTION__;
 //    int series = shootNumber/m_shotPerSeries+1;
@@ -1205,6 +1253,7 @@ void TachusWidget::changeSighterMode(bool flag)
 
         // reset live/game mode
         resetShootinCount();
+        LogFile::instance().appendToLogFile("changeSighterMode: lists reset, leaving sighter mode", LogType::BackendLevel);
     }
 
     isSighterMode = flag;
@@ -1457,8 +1506,15 @@ void TachusWidget::clearShootCount()
     LogFile::instance().appendToLogFile(QString("Reset shoot is called, Current shoot count %1").arg(m_currentShootsCount), LogType::interfaceLevel);
     // reset the hardware counter register (2001 Hex = 8193 decimal)
     // skip if hardware check is disabled (no physical target attached)
-    if (!m_hardwareCheckDisabled)
-        m_mainWindow->modbusWriteSingleRegister(8193, 0);
+    if (!m_hardwareCheckDisabled) {
+        for (int attempt = 0; attempt < 3; ++attempt) {
+            if (m_mainWindow->modbusWriteSingleRegister(8193, 0) != -1)
+                break;
+            LogFile::instance().appendToLogFile(
+                QString("clearShootCount: hw counter reset failed (attempt %1)").arg(attempt + 1),
+                LogType::BackendLevel);
+        }
+    }
     //checkForNewShots();
     m_currentShootsCount = 0;
     LogFile::instance().appendToLogFile(QString("Reset done, Current shoot count %1").arg(m_currentShootsCount), LogType::interfaceLevel);
