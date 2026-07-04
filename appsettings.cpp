@@ -8,6 +8,7 @@
 #include <QFileDialog>
 #include <QDomDocument>
 #include <QFileInfo>
+#include <QCoreApplication>
 
 #define CONTROL_FILE "status.csv"
 #define REPORT_FILE "report.pdf"
@@ -366,7 +367,9 @@ void AppSettings::setGameSubMode(int mode)
 
 bool AppSettings::uploadGame()
 {
-    QString dirName = QDir::homePath();
+    // Default to the folder the app saves matches into (next to the exe),
+    // not the Windows home folder; remember the last-used folder after that.
+    QString dirName = QCoreApplication::applicationDirPath();
     if (!getLoadFileLocation().isEmpty()) {
         dirName = getLoadFileLocation();
     }
