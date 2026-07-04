@@ -318,15 +318,22 @@ public slots:
     void resetShootinCount() {
         m_currentShootsCount = 0;
         m_oldResetCount = 0;
+        // Only touch the hardware shot counter in LIVE mode. In demo mode a COM
+        // port may be open with no target answering (e.g. a spare/virtual port);
+        // the blocking retries below would then freeze the GUI on the demo path
+        // (login -> shooting page). Demo shots come from the UI, so the reset is
+        // pointless there. (isAppDemoMode is really "is live" — set from appMode.)
         // Bounded retry: with the modbus response timeout in place this write
-        // returns within ~1s per attempt instead of freezing the GUI thread;
-        // retry because a failed reset desyncs the hardware shot counter.
-        for (int attempt = 0; attempt < 3; ++attempt) {
-            if (m_mainWindow->modbusWriteSingleRegister(8193, 0) != -1)
-                break;
-            LogFile::instance().appendToLogFile(
-                QString("resetShootinCount: hw counter reset failed (attempt %1)").arg(attempt + 1),
-                LogType::BackendLevel);
+        // returns within ~1s per attempt instead of freezing forever; retry
+        // because a failed reset desyncs the hardware shot counter.
+        if (isAppDemoMode) {
+            for (int attempt = 0; attempt < 3; ++attempt) {
+                if (m_mainWindow->modbusWriteSingleRegister(8193, 0) != -1)
+                    break;
+                LogFile::instance().appendToLogFile(
+                    QString("resetShootinCount: hw counter reset failed (attempt %1)").arg(attempt + 1),
+                    LogType::BackendLevel);
+            }
         }
         m_xCordList.clear();
         m_yCordList.clear();
