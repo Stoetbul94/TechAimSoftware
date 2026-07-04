@@ -210,6 +210,22 @@ struct TrendAnalysis {
     bool   lateSessionDropFlag = false;   // drop > threshold (default 0.15)
 };
 
+// ---- Reusable raw-coordinate statistics (millimetres) ---------------------
+//  The GROUND TRUTH for a set of shots, computed from raw coordinates. Heat-map
+//  grids are a visualisation layer only; future algorithms (KDE, clustering,
+//  Gaussian density, CEP, ...) must use these raw statistics / the raw
+//  coordinates, never reconstructed grid data. All values are in millimetres.
+struct CoordinateStats {
+    bool    hasData        = false;
+    int     shotCount      = 0;
+    Point2D mpi;                       // mean point of impact
+    double  meanRadius      = 0.0;     // mean distance of shots from MPI
+    double  groupRadius     = 0.0;     // == meanRadius (project definition); kept for naming
+    double  groupDiameter   = 0.0;     // extreme spread: max pairwise distance
+    double  horizontalSpread= 0.0;     // sample SD of x
+    double  verticalSpread  = 0.0;     // sample SD of y
+};
+
 // ---- Section 4: Heat Map source data (Phase 6) ----------------------------
 //  Pure numeric source data for later rendering — no drawing here. Grids are
 //  square, aligned to a common frame (origin + bin size) so that sub-maps
@@ -235,12 +251,13 @@ struct HeatMapGrid {
 
     int    shotCount  = 0;
     bool   hasData    = false;
-    std::vector<HeatMapCell> cells;   // non-empty cells only, ordered (binY, binX)
+    std::vector<HeatMapCell> cells;   // VISUALISATION LAYER ONLY, ordered (binY, binX)
 
-    // Geometry (from raw coordinates, not binned)
-    Point2D mpi;                       // mean point of impact = group centre
-    double  meanRadius     = 0.0;      // mean distance of shots from MPI
-    int     maxCellDensity = 0;        // peak cell count
+    // Ground-truth raw-coordinate statistics (mm). Use these — not the binned
+    // cells — for any further mathematics.
+    CoordinateStats stats;
+
+    int maxCellDensity = 0;            // peak cell count
 
     // Dominant impact zone = most populated cell (ties -> lowest binY, then binX)
     bool   hasDominantZone   = false;
@@ -255,10 +272,10 @@ struct HeatMapGrid {
 // Comparison metrics between two grids on the same frame (B relative to A).
 struct HeatMapComparison {
     bool   available     = false;      // both grids have data
-    double shiftX        = 0.0;        // MPI shift, + = right   (B.mpi.x - A.mpi.x)
+    double shiftX        = 0.0;        // MPI shift, + = right   (B - A, mm)
     double shiftY        = 0.0;        // MPI shift, + = high
     double shiftDistance = 0.0;        // sqrt(shiftX^2 + shiftY^2)
-    double radiusChange  = 0.0;        // B.meanRadius - A.meanRadius
+    double radiusChange  = 0.0;        // B.meanRadius - A.meanRadius (mm)
     double radiusChangePct = 0.0;      // relative to A.meanRadius (0 if A radius ~0)
     double dominantShiftX = 0.0;       // dominant-cell centre shift, mm
     double dominantShiftY = 0.0;
@@ -297,6 +314,83 @@ struct HeatMapAnalysis {
     double verticalDriftThirds   = 0.0;
 };
 
+// ---- Reusable timing primitives -------------------------------------------
+//  Intervals are derived ONLY from real timestamps. Later phases (fatigue,
+//  pressure, recovery) reuse IntervalSeries rather than recomputing gaps.
+enum class PaceTrend { SpeedingUp, Steady, SlowingDown };
+std::string toString(PaceTrend p);
+
+// One gap between two consecutive, both-timestamped shots (seconds).
+struct ShotInterval {
+    int    fromIndex      = 0;   // index of the earlier shot in the analysed list
+    int    toIndex        = 0;   // index of the later shot
+    int    fromShotNumber = 0;
+    int    toShotNumber   = 0;
+    double seconds        = 0.0; // timestamp(to) - timestamp(from), >= 0
+};
+
+struct IntervalSeries {
+    bool available       = false;         // at least one valid interval exists
+    int  timedShotCount  = 0;             // shots carrying a timestamp
+    std::vector<ShotInterval> intervals;
+    std::vector<double>       seconds;    // parallel: just the interval seconds
+};
+
+// ---- Section 5: Timing Analysis (Phase 7) ---------------------------------
+//  Every metric carries its own availability flag. When timestamps are missing
+//  nothing is fabricated: available stays false and values remain at defaults.
+struct TimingAnalysis {
+    bool available      = false;          // timestamps present and >= 1 interval
+    int  timedShotCount = 0;
+    int  intervalCount  = 0;
+    std::vector<double> intervals;        // seconds per gap (to the later shot)
+
+    bool   statsAvailable   = false;      // intervalCount >= 1
+    double averageInterval  = 0.0;
+    double medianInterval   = 0.0;
+    double intervalSD       = 0.0;        // sample SD (0 for a single interval)
+    double fastestInterval  = 0.0;
+    double slowestInterval  = 0.0;
+
+    bool rolling3Available = false;
+    std::vector<double> rolling3Average;  // complete-window over the interval series
+    std::vector<double> rolling3SD;
+    bool rolling5Available = false;
+    std::vector<double> rolling5Average;
+    std::vector<double> rolling5SD;
+
+    // Rushed / delayed relative to the median interval (factors configurable).
+    int rushedShotCount  = 0;             // interval < rushedFactor  * median
+    int delayedShotCount = 0;             // interval > delayedFactor * median
+    std::vector<int> rushedShotNumbers;   // the later shot of each rushed gap
+    std::vector<int> delayedShotNumbers;
+
+    bool   rhythmAvailable   = false;     // intervalCount >= 2 and median > 0
+    double rhythmConsistency = 0.0;       // clamp(100 - SD/median*100, 0, 100)
+
+    bool      trendAvailable = false;     // intervalCount >= 2
+    double    intervalRegressionSlope       = 0.0;  // interval vs gap index
+    double    intervalRegressionCorrelation = 0.0;
+    PaceTrend intervalTrend  = PaceTrend::Steady;
+
+    bool   scoreIntervalCorrelationAvailable = false; // intervalCount >= 2
+    double scoreVsIntervalCorrelation = 0.0;  // corr(interval, score of the later shot)
+
+    // Time taken AFTER a poor shot before the next shot (reset time).
+    bool   recoveryIntervalAvailable   = false;
+    int    recoveryIntervalSampleCount = 0;
+    double averageRecoveryInterval     = 0.0;
+
+    // Decision time = interval leading INTO a shot.
+    bool   decisionBeforeHighAvailable   = false;  // later shot >= high threshold (10.7)
+    int    decisionBeforeHighSampleCount = 0;
+    double averageDecisionTimeBeforeHigh = 0.0;
+
+    bool   decisionBeforePoorAvailable   = false;  // later shot < poor threshold (10.0)
+    int    decisionBeforePoorSampleCount = 0;
+    double averageDecisionTimeBeforePoor = 0.0;
+};
+
 // ---- Top-level result -----------------------------------------------------
 struct CoachReportData {
     // Validation / provenance
@@ -316,8 +410,9 @@ struct CoachReportData {
     ShotDistribution shotDistribution;   // Section 2 (Phase 4)
     TrendAnalysis    trendAnalysis;      // Section 3 (Phase 5)
     HeatMapAnalysis  heatMapAnalysis;    // Section 4 (Phase 6)
+    TimingAnalysis   timingAnalysis;     // Section 5 (Phase 7)
 
-    // Sections 5..11 — declared contract, implemented in later phases:
+    // Sections 6..11 — declared contract, implemented in later phases:
     //   TimingAnalysis    timingAnalysis;
     //   PositionAnalysis  positionAnalysis;
     //   RecoveryAnalysis  recoveryAnalysis;

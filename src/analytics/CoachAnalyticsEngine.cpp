@@ -55,6 +55,15 @@ std::string toString(ImpactLevel i)
     }
 }
 
+std::string toString(PaceTrend p)
+{
+    switch (p) {
+    case PaceTrend::SpeedingUp:  return "SpeedingUp";
+    case PaceTrend::SlowingDown: return "SlowingDown";
+    case PaceTrend::Steady:      default: return "Steady";
+    }
+}
+
 // ----------------------------------------------------------------------------
 //  Layer 1 — basic statistics
 // ----------------------------------------------------------------------------
@@ -310,6 +319,21 @@ double CoachAnalyticsEngine::horizontalBias(const std::vector<ShotAnalyticsData>
 double CoachAnalyticsEngine::verticalBias(const std::vector<ShotAnalyticsData>& shots)
 {
     return groupCentre(shots).y;
+}
+
+CoordinateStats CoachAnalyticsEngine::computeCoordinateStats(const std::vector<ShotAnalyticsData>& shots)
+{
+    CoordinateStats s;
+    s.shotCount = static_cast<int>(shots.size());
+    if (shots.empty()) return s;
+    s.hasData = true;
+    s.mpi = groupCentre(shots);
+    s.meanRadius   = groupRadius(shots);
+    s.groupRadius  = s.meanRadius;           // same measure (project definition)
+    s.groupDiameter= groupDiameter(shots);
+    s.horizontalSpread = horizontalStandardDeviation(shots);
+    s.verticalSpread   = verticalStandardDeviation(shots);
+    return s;
 }
 
 // ----------------------------------------------------------------------------
@@ -677,9 +701,8 @@ HeatMapGrid CoachAnalyticsEngine::buildGrid(const std::vector<ShotAnalyticsData>
     const double bs  = frame.binSize;
     const double eps = 1e-9;
 
-    // Geometry from raw coordinates (not binned).
-    g.mpi        = groupCentre(shots);
-    g.meanRadius = groupRadius(shots);
+    // Ground-truth geometry from raw coordinates (not binned).
+    g.stats = computeCoordinateStats(shots);
 
     struct Acc { int count = 0; double scoreSum = 0.0; std::vector<int> shotNums; };
     std::vector<Acc> acc(static_cast<size_t>(frame.gridWidth) * frame.gridHeight);
@@ -736,12 +759,12 @@ HeatMapComparison CoachAnalyticsEngine::compareHeatMaps(const HeatMapGrid& a, co
     HeatMapComparison c;
     if (!a.hasData || !b.hasData) return c;
     c.available      = true;
-    c.shiftX         = b.mpi.x - a.mpi.x;
-    c.shiftY         = b.mpi.y - a.mpi.y;
+    c.shiftX         = b.stats.mpi.x - a.stats.mpi.x;
+    c.shiftY         = b.stats.mpi.y - a.stats.mpi.y;
     c.shiftDistance  = std::sqrt(c.shiftX * c.shiftX + c.shiftY * c.shiftY);
-    c.radiusChange   = b.meanRadius - a.meanRadius;
-    c.radiusChangePct= (std::fabs(a.meanRadius) > 1e-9)
-                         ? (c.radiusChange / a.meanRadius * 100.0) : 0.0;
+    c.radiusChange   = b.stats.meanRadius - a.stats.meanRadius;
+    c.radiusChangePct= (std::fabs(a.stats.meanRadius) > 1e-9)
+                         ? (c.radiusChange / a.stats.meanRadius * 100.0) : 0.0;
     if (a.hasDominantZone && b.hasDominantZone) {
         c.dominantShiftX = b.dominantCentreX - a.dominantCentreX;
         c.dominantShiftY = b.dominantCentreY - a.dominantCentreY;
@@ -813,6 +836,135 @@ HeatMapAnalysis CoachAnalyticsEngine::buildHeatMapAnalysis(
 }
 
 // ----------------------------------------------------------------------------
+//  Phase 7 — Timing Analysis
+// ----------------------------------------------------------------------------
+IntervalSeries CoachAnalyticsEngine::extractIntervals(const std::vector<ShotAnalyticsData>& shots)
+{
+    IntervalSeries is;
+    for (const auto& s : shots) if (s.hasTimestamp) ++is.timedShotCount;
+
+    const int n = static_cast<int>(shots.size());
+    for (int i = 1; i < n; ++i) {
+        if (!shots[i].hasTimestamp || !shots[i - 1].hasTimestamp) continue;
+        const double dt = shots[i].timestamp - shots[i - 1].timestamp;
+        if (dt < 0.0) continue;   // non-monotonic timestamps: skip rather than fabricate
+        ShotInterval iv;
+        iv.fromIndex = i - 1;
+        iv.toIndex   = i;
+        iv.fromShotNumber = shots[i - 1].shotNumber;
+        iv.toShotNumber   = shots[i].shotNumber;
+        iv.seconds = dt;
+        is.intervals.push_back(iv);
+        is.seconds.push_back(dt);
+    }
+    is.available = !is.intervals.empty();
+    return is;
+}
+
+TimingAnalysis CoachAnalyticsEngine::buildTimingAnalysis(
+    const std::vector<ShotAnalyticsData>& shots, const Options& o)
+{
+    TimingAnalysis t;
+    const IntervalSeries is = extractIntervals(shots);
+    t.timedShotCount = is.timedShotCount;
+    t.intervalCount  = static_cast<int>(is.intervals.size());
+    if (!is.available) return t;   // no timing data -> everything stays unavailable
+
+    t.available = true;
+    t.intervals = is.seconds;
+    const std::vector<double>& secs = is.seconds;
+
+    // Basic stats (>= 1 interval).
+    t.statsAvailable   = true;
+    t.averageInterval  = mean(secs);
+    t.medianInterval   = median(secs);
+    t.intervalSD       = standardDeviation(secs, o.useSampleStatistics);
+    t.fastestInterval  = minimum(secs);
+    t.slowestInterval  = maximum(secs);
+
+    // Rolling interval series (complete windows only).
+    t.rolling3Average = rollingMeanComplete(secs, 3);
+    t.rolling3SD      = rollingSdComplete(secs, 3);
+    t.rolling3Available = !t.rolling3Average.empty();
+    t.rolling5Average = rollingMeanComplete(secs, 5);
+    t.rolling5SD      = rollingSdComplete(secs, 5);
+    t.rolling5Available = !t.rolling5Average.empty();
+
+    // Rushed / delayed relative to the median.
+    const double med = t.medianInterval;
+    if (med > 0.0) {
+        for (const auto& iv : is.intervals) {
+            if (iv.seconds < o.timingRushedFactor * med) {
+                ++t.rushedShotCount;  t.rushedShotNumbers.push_back(iv.toShotNumber);
+            }
+            if (iv.seconds > o.timingDelayedFactor * med) {
+                ++t.delayedShotCount; t.delayedShotNumbers.push_back(iv.toShotNumber);
+            }
+        }
+    }
+
+    // Rhythm consistency (needs a spread => >= 2 intervals, positive median).
+    if (t.intervalCount >= 2 && med > 0.0) {
+        t.rhythmAvailable = true;
+        t.rhythmConsistency = clampd(100.0 - (t.intervalSD / med) * 100.0, 0.0, 100.0);
+    }
+
+    // Interval trend + score-vs-interval correlation (>= 2 gaps).
+    if (t.intervalCount >= 2) {
+        std::vector<double> idx(secs.size());
+        for (size_t i = 0; i < idx.size(); ++i) idx[i] = static_cast<double>(i);
+        t.trendAvailable = true;
+        t.intervalRegressionSlope       = linearRegressionSlope(idx, secs);
+        t.intervalRegressionCorrelation = correlation(idx, secs);
+        if (t.intervalRegressionSlope > 1e-9)       t.intervalTrend = PaceTrend::SlowingDown;
+        else if (t.intervalRegressionSlope < -1e-9) t.intervalTrend = PaceTrend::SpeedingUp;
+        else                                        t.intervalTrend = PaceTrend::Steady;
+
+        std::vector<double> laterScores;
+        laterScores.reserve(is.intervals.size());
+        for (const auto& iv : is.intervals) laterScores.push_back(shots[iv.toIndex].decimalScore);
+        t.scoreIntervalCorrelationAvailable = true;
+        t.scoreVsIntervalCorrelation = correlation(secs, laterScores);
+    }
+
+    // Reset time: intervals whose EARLIER shot was poor.
+    {
+        std::vector<double> recov;
+        for (const auto& iv : is.intervals)
+            if (shots[iv.fromIndex].decimalScore < o.timingPoorThreshold) recov.push_back(iv.seconds);
+        if (!recov.empty()) {
+            t.recoveryIntervalAvailable   = true;
+            t.recoveryIntervalSampleCount = static_cast<int>(recov.size());
+            t.averageRecoveryInterval     = mean(recov);
+        }
+    }
+    // Decision time before high-value shots: intervals whose LATER shot >= high.
+    {
+        std::vector<double> dh;
+        for (const auto& iv : is.intervals)
+            if (shots[iv.toIndex].decimalScore >= o.timingHighThreshold) dh.push_back(iv.seconds);
+        if (!dh.empty()) {
+            t.decisionBeforeHighAvailable   = true;
+            t.decisionBeforeHighSampleCount = static_cast<int>(dh.size());
+            t.averageDecisionTimeBeforeHigh = mean(dh);
+        }
+    }
+    // Decision time before poor shots: intervals whose LATER shot < poor.
+    {
+        std::vector<double> dp;
+        for (const auto& iv : is.intervals)
+            if (shots[iv.toIndex].decimalScore < o.timingPoorThreshold) dp.push_back(iv.seconds);
+        if (!dp.empty()) {
+            t.decisionBeforePoorAvailable   = true;
+            t.decisionBeforePoorSampleCount = static_cast<int>(dp.size());
+            t.averageDecisionTimeBeforePoor = mean(dp);
+        }
+    }
+
+    return t;
+}
+
+// ----------------------------------------------------------------------------
 //  Public entry point
 // ----------------------------------------------------------------------------
 CoachReportData CoachAnalyticsEngine::analyze(const std::vector<ShotAnalyticsData>& shots)
@@ -843,6 +995,7 @@ CoachReportData CoachAnalyticsEngine::analyze(const std::vector<ShotAnalyticsDat
     report.shotDistribution = buildShotDistribution(prepared, options);
     report.trendAnalysis    = buildTrendAnalysis(prepared, options);
     report.heatMapAnalysis  = buildHeatMapAnalysis(prepared, options);
+    report.timingAnalysis   = buildTimingAnalysis(prepared, options);
     report.valid = true;
     report.message = report.lowSampleWarning
         ? "Analysed with fewer than 10 shots; results are indicative only."

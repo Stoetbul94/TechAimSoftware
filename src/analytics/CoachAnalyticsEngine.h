@@ -80,6 +80,12 @@ public:
         double heatMapMargin  = 5.0;   // mm padding added around data when auto-fitting
         double heatMapGoodMin = 10.5;  // good-shot heat map: score >=
         double heatMapPoorMax = 10.0;  // poor-shot heat map: score <
+
+        // ---- Phase 7: timing thresholds ----
+        double timingRushedFactor  = 0.7;   // interval < factor * median  => rushed
+        double timingDelayedFactor = 1.5;   // interval > factor * median  => delayed
+        double timingHighThreshold = 10.7;  // decision-time-before "high" shot
+        double timingPoorThreshold = 10.0;  // decision-before / recovery-after "poor" shot
     };
 
     // Shared coordinate frame for a set of heat-map grids (so bins align).
@@ -137,6 +143,10 @@ public:
     static double  horizontalBias(const std::vector<ShotAnalyticsData>& shots); // mean x
     static double  verticalBias(const std::vector<ShotAnalyticsData>& shots);   // mean y
 
+    // Full raw-coordinate statistics (mm) for a shot set — the ground truth
+    // reused by heat maps and future geometry algorithms.
+    static CoordinateStats computeCoordinateStats(const std::vector<ShotAnalyticsData>& shots);
+
     // ----------------------------------------------------------------------
     //  Phase 6 — heat-map source data (public for unit testing)
     // ----------------------------------------------------------------------
@@ -149,6 +159,13 @@ public:
                                  const HeatMapFrame& frame);
     // B relative to A (both must share a frame for the dominant-shift to be meaningful).
     static HeatMapComparison compareHeatMaps(const HeatMapGrid& a, const HeatMapGrid& b);
+
+    // ----------------------------------------------------------------------
+    //  Phase 7 — timing primitives (public, reusable by later phases)
+    // ----------------------------------------------------------------------
+    // Intervals between consecutive both-timestamped shots. Empty +
+    // available=false when timing data is absent — never fabricated.
+    static IntervalSeries extractIntervals(const std::vector<ShotAnalyticsData>& shots);
 
 private:
     // Validation + ordering. Returns the shots to analyse and fills the
@@ -171,6 +188,10 @@ private:
         const Options& options);
 
     static HeatMapAnalysis buildHeatMapAnalysis(
+        const std::vector<ShotAnalyticsData>& shots,
+        const Options& options);
+
+    static TimingAnalysis buildTimingAnalysis(
         const std::vector<ShotAnalyticsData>& shots,
         const Options& options);
 
