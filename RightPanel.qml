@@ -20,6 +20,10 @@ Item {
     property int fontForMath: 18
     property int dafaultFontSize: 19
 
+    // Redesign: the LAST SHOT card sits at the top of the panel; the series
+    // header and score table are shifted down by this amount to make room.
+    property real tableShift: 62
+
     signal switchToSighter(bool sighterEnable)
 
     signal matchFinished()
@@ -418,9 +422,11 @@ Item {
         source: "qrc:/images/rightPanel/num.png"
         opacity: 0   // redesign: legacy white table bg hidden; geometry kept for matchScore
         width: ((parent.width/rootItemWidth)*sourceSize.width)*1.2
-        height: ((parent.height/rootItemHeight)*sourceSize.height)
+        // Shifted down by tableShift for the LAST SHOT card; height reduced by
+        // the same so the bottom stays clear of the totals band.
+        height: ((parent.height/rootItemHeight)*sourceSize.height) - tableShift
         x: ((parent.width/rootItemWidth)*400) - width*0.1
-        y: ((parent.height/rootItemHeight)*347)
+        y: ((parent.height/rootItemHeight)*347) + tableShift
     }
     // Dark score-table background (redesign). Drawn before matchScore so the
     // shot rows render on top.
@@ -430,6 +436,68 @@ Item {
         radius: 8
         border.color: "#2a2b30"; border.width: 1
     }
+
+    // ── LAST SHOT card (redesign) ────────────────────────────────────────
+    // Reads the most recent entry in globalModelOfData (the same shot shown
+    // selected in the table) plus its raw target-face x/y in mm.
+    Rectangle {
+        id: lastShotCard
+        anchors.top: parent.top; anchors.topMargin: 8
+        anchors.left: num.left
+        anchors.right: num.right
+        height: tableShift - 12
+        radius: 10
+        color: "#1a1a1f"; border.color: "#2a2b30"; border.width: 1
+
+        property int shotN: globalModelOfData.count
+        property bool hasShot: shotN > 0
+        property real lastScore: hasShot ? globalModelOfData.get(shotN-1).calculatedscore*1 : 0
+        property real lastDir: hasShot ? globalModelOfData.get(shotN-1).direction*1 : 0
+        property real lastXmm: hasShot ? globalModelOfData.get(shotN-1).xmm*1 : 0
+        property real lastYmm: hasShot ? globalModelOfData.get(shotN-1).ymm*1 : 0
+
+        Text {
+            id: lastShotLabel
+            anchors.left: parent.left; anchors.leftMargin: 14
+            anchors.top: parent.top; anchors.topMargin: 8
+            text: qsTr("LAST SHOT")
+            color: "#8a8a92"; font.family: theme.fontFamily
+            font.pixelSize: 10; font.letterSpacing: 1.5
+        }
+        Text {
+            id: lastShotScore
+            anchors.left: parent.left; anchors.leftMargin: 14
+            anchors.top: lastShotLabel.bottom; anchors.topMargin: 1
+            text: lastShotCard.hasShot ? scoreCutoffTofirstDecimal(lastShotCard.lastScore)*1 : "—"
+            color: "white"; font.family: theme.fontFamily
+            font.pixelSize: 26; font.bold: true
+        }
+        // Direction arrow (rotated up-arrow, same convention as the shot log)
+        Image {
+            id: lastShotArrow
+            visible: lastShotCard.hasShot
+            anchors.left: lastShotScore.right; anchors.leftMargin: 8
+            anchors.verticalCenter: lastShotScore.verticalCenter
+            width: 18; height: 18
+            source: "qrc:/images/rightPanel/up_arrow.png"
+            rotation: lastShotCard.lastDir
+        }
+        Column {
+            anchors.right: parent.right; anchors.rightMargin: 14
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 3
+            Text {
+                anchors.right: parent.right
+                text: lastShotCard.hasShot ? ("X  " + lastShotCard.lastXmm.toFixed(1) + " mm") : ""
+                color: "#c8c9cf"; font.family: theme.fontFamily; font.pixelSize: 13
+            }
+            Text {
+                anchors.right: parent.right
+                text: lastShotCard.hasShot ? ("Y  " + lastShotCard.lastYmm.toFixed(1) + " mm") : ""
+                color: "#c8c9cf"; font.family: theme.fontFamily; font.pixelSize: 13
+            }
+        }
+    }
     Image {
         id: series_6
         source: "qrc:/images/rightPanel/series_6.png"
@@ -438,7 +506,7 @@ Item {
         anchors.top: left_arrow.top
         anchors.bottom: left_arrow.bottom
 //        x: ((parent.width/rootItemWidth)*400)
-//        y: ((parent.height/rootItemHeight)*131)
+//        y: ((parent.height/rootItemHeight)*131) + tableShift
         opacity: 1
 //        width: ((parent.width/rootItemWidth)*sourceSize.width)
 //        height: ((parent.height/rootItemHeight)*sourceSize.height)
@@ -449,7 +517,7 @@ Item {
         id: series_text_field
         source: "qrc:/images/rightPanel/series_text_field.png"
         x: ((parent.width/rootItemWidth)*970)
-        y: ((parent.height/rootItemHeight)*170)
+        y: ((parent.height/rootItemHeight)*170) + tableShift
         opacity: 0
         width: ((parent.width/rootItemWidth)*sourceSize.width)
         height: ((parent.height/rootItemHeight)*sourceSize.height)
@@ -469,7 +537,7 @@ Item {
         id: right
         source: "qrc:/images/rightPanel/right.png"
         x: ((parent.width/rootItemWidth)*1408) + num.width*0.07
-        y: ((parent.height/rootItemHeight)*131)
+        y: ((parent.height/rootItemHeight)*131) + tableShift
         opacity: 1
         width: ((parent.width/rootItemWidth)*sourceSize.width)
         height: ((parent.height/rootItemHeight)*sourceSize.height)
@@ -487,7 +555,7 @@ Item {
         id: right_end
         source: "qrc:/images/rightPanel/right_end.png"
         x: ((parent.width/rootItemWidth)*1408) + num.width*0.07
-        y: ((parent.height/rootItemHeight)*131)
+        y: ((parent.height/rootItemHeight)*131) + tableShift
         opacity: 1
         width: ((parent.width/rootItemWidth)*sourceSize.width)
         height: ((parent.height/rootItemHeight)*sourceSize.height)
@@ -505,7 +573,7 @@ Item {
         id: right_over
         source: "qrc:/images/rightPanel/right_over.png"
         x: ((parent.width/rootItemWidth)*1408) + num.width*0.07
-        y: ((parent.height/rootItemHeight)*131)
+        y: ((parent.height/rootItemHeight)*131) + tableShift
         opacity: 1
         width: ((parent.width/rootItemWidth)*sourceSize.width)
         height: ((parent.height/rootItemHeight)*sourceSize.height)
@@ -523,7 +591,7 @@ Item {
         id: left_arrow
         source: "qrc:/images/rightPanel/left_arrow.png"
         x: ((parent.width/rootItemWidth)*297) - num.width*0.1
-        y: ((parent.height/rootItemHeight)*131)
+        y: ((parent.height/rootItemHeight)*131) + tableShift
         opacity: 1
         width: ((parent.width/rootItemWidth)*sourceSize.width)
         height: ((parent.height/rootItemHeight)*sourceSize.height)
@@ -541,7 +609,7 @@ Item {
         id: left_arrow_end
         source: "qrc:/images/rightPanel/left_arrow_end.png"
         x: ((parent.width/rootItemWidth)*297) - num.width*0.1
-        y: ((parent.height/rootItemHeight)*131)
+        y: ((parent.height/rootItemHeight)*131) + tableShift
         opacity: 1
         width: ((parent.width/rootItemWidth)*sourceSize.width)
         height: ((parent.height/rootItemHeight)*sourceSize.height)
@@ -559,7 +627,7 @@ Item {
         id: left_arrow_over
         source: "qrc:/images/rightPanel/left_arrow_over.png"
         x: ((parent.width/rootItemWidth)*297) - num.width*0.1
-        y: ((parent.height/rootItemHeight)*131)
+        y: ((parent.height/rootItemHeight)*131) + tableShift
         opacity: 1
         width: ((parent.width/rootItemWidth)*sourceSize.width)
         height: ((parent.height/rootItemHeight)*sourceSize.height)
