@@ -120,6 +120,29 @@ Key commits: `d63b02a` selector · `2c67b74` timer plumbing · `8ea95fe` prep ph
   `CUSTOMPRINT.createPdf()` opens a native Save dialog (known quirk: typing a
   name may append to "untitled.pdf" in automation).
 
+## 5b. ShootingPage redesign — DONE & verified across disciplines (2026-07-04)
+
+The shooting UI is ONE shared page (`ShootingPage`/`LeftPanel`/`CenterPane`/
+`RightPanel`) used by every discipline; the redesign therefore applies to all.
+Verified live in demo: 10m Air Pistol, 10m Air Rifle, 50m Rifle 3 Pos (50m
+Prone shares the 3P page). Delivered:
+- Header status strip with phase stepper (SIGHT·MATCH, or SIGHT·KNEEL·PRONE·
+  STAND for 3P); redundant on-target phase pills + phase word removed.
+- Bottom action bar: one context-aware full-width button + Feed paper.
+- Left panel: full-height labelled nav (Stats/Report/Coach report/Group·MPI/
+  Settings/Home), compact discipline header, crisp vector icons (`VIcon.qml`,
+  QtQuick.Shapes) incl. realistic pistol/rifle silhouettes.
+- Right panel cards: LAST SHOT (score+dir+X/Y mm), dark shot log with a
+  **Time (s)** column (was the German "Teiler"; now per-shot split seconds via
+  the timeComsumed role), TOTAL card (total+inner10s+time) with a colour-coded
+  horizontal distribution bar chart (10/9/8/≤7), aligned S1-S6 series cards.
+  Full-width dark bg covers the legacy total_score_block PNG chrome.
+Fragility preserved: all hidden data-holder Texts + onTextChanged backend
+pushes (setTotalScoreWD/updateSeriesScore/…) kept alive at opacity 0.
+
+Parked design polish (user OK'd for later): colour-code shot-log scores;
+tint/tag sighter shots; highlight the active series card.
+
 ## 5a. Range list from first live day (2026-07-04) — do AFTER the full redesign
 
 User's backlog, in his priority order (design first, then these):
