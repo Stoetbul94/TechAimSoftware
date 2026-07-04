@@ -1296,11 +1296,11 @@ Item {
             anchors.top: parent.top; anchors.topMargin: 8
             anchors.left: parent.left; anchors.leftMargin: 14
             anchors.right: parent.right; anchors.rightMargin: 14
-            height: 30
+            height: 40
             Column {
                 anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: 1
+                spacing: 5
                 Text {
                     text: qsTr("TOTAL SCORE")
                     color: "#8a8a92"; font.family: theme.fontFamily
