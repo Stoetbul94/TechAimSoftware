@@ -1249,8 +1249,11 @@ Item {
 
     // Phase stepper: where the athlete is in the ISSF sequence. 3P shows the
     // full position chain; other disciplines just sighting -> match.
+    // Hidden on the target — the ShootingPage header strip now carries the
+    // phase/position stepper, so this is redundant here.
     Row {
         id: phaseStepper
+        visible: false
         anchors.top: parent.top
         anchors.topMargin: 58
         anchors.horizontalCenter: parent.horizontalCenter
@@ -1327,7 +1330,8 @@ Item {
     }
 
     // Phase indicator: which ISSF phase (and 3P position) the athlete is in.
-    // Sits left of the countdown clock; text comes from ShootingPage scope.
+    // Hidden on the target — the ShootingPage header strip shows the phase now;
+    // only the countdown clock remains on the target face.
     Text {
         id: phaseIndicator
         anchors.verticalCenter: slighterTimeUpdate.verticalCenter
@@ -1339,7 +1343,7 @@ Item {
         color: "red"
         font.bold: true
         font.pixelSize: 20
-        visible: timerNotification.visible || slighterTimeUpdate.visible
+        visible: false
     }
 
     Rectangle

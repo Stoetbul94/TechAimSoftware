@@ -22,7 +22,7 @@ Item {
 
     // Redesign: the LAST SHOT card sits at the top of the panel; the series
     // header and score table are shifted down by this amount to make room.
-    property real tableShift: 62
+    property real tableShift: 68
 
     signal switchToSighter(bool sighterEnable)
 
@@ -456,44 +456,48 @@ Item {
         property real lastXmm: hasShot ? globalModelOfData.get(shotN-1).xmm*1 : 0
         property real lastYmm: hasShot ? globalModelOfData.get(shotN-1).ymm*1 : 0
 
-        Text {
-            id: lastShotLabel
-            anchors.left: parent.left; anchors.leftMargin: 14
-            anchors.top: parent.top; anchors.topMargin: 8
-            text: qsTr("LAST SHOT")
-            color: "#8a8a92"; font.family: theme.fontFamily
-            font.pixelSize: 10; font.letterSpacing: 1.5
-        }
-        Text {
-            id: lastShotScore
-            anchors.left: parent.left; anchors.leftMargin: 14
-            anchors.top: lastShotLabel.bottom; anchors.topMargin: 1
-            text: lastShotCard.hasShot ? scoreCutoffTofirstDecimal(lastShotCard.lastScore)*1 : "—"
-            color: "white"; font.family: theme.fontFamily
-            font.pixelSize: 26; font.bold: true
-        }
-        // Direction arrow (rotated up-arrow, same convention as the shot log)
-        Image {
-            id: lastShotArrow
-            visible: lastShotCard.hasShot
-            anchors.left: lastShotScore.right; anchors.leftMargin: 8
-            anchors.verticalCenter: lastShotScore.verticalCenter
-            width: 18; height: 18
-            source: "qrc:/images/rightPanel/up_arrow.png"
-            rotation: lastShotCard.lastDir
-        }
+        // Left group: label above the big score + direction arrow, centered
+        // vertically so it lines up with the X/Y block on the right.
         Column {
-            anchors.right: parent.right; anchors.rightMargin: 14
+            anchors.left: parent.left; anchors.leftMargin: 16
             anchors.verticalCenter: parent.verticalCenter
-            spacing: 3
+            spacing: 2
+            Text {
+                text: qsTr("LAST SHOT")
+                color: "#8a8a92"; font.family: theme.fontFamily
+                font.pixelSize: 10; font.letterSpacing: 1.5
+            }
+            Row {
+                spacing: 8
+                Text {
+                    id: lastShotScore
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: lastShotCard.hasShot ? scoreCutoffTofirstDecimal(lastShotCard.lastScore)*1 : "—"
+                    color: "white"; font.family: theme.fontFamily
+                    font.pixelSize: 28; font.bold: true
+                }
+                Image {
+                    visible: lastShotCard.hasShot
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 18; height: 18
+                    source: "qrc:/images/rightPanel/up_arrow.png"
+                    rotation: lastShotCard.lastDir
+                }
+            }
+        }
+        // Right group: X/Y in mm, right-aligned, vertically centered.
+        Column {
+            anchors.right: parent.right; anchors.rightMargin: 16
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 5
             Text {
                 anchors.right: parent.right
-                text: lastShotCard.hasShot ? ("X  " + lastShotCard.lastXmm.toFixed(1) + " mm") : ""
+                text: lastShotCard.hasShot ? ("X   " + lastShotCard.lastXmm.toFixed(1) + " mm") : ""
                 color: "#c8c9cf"; font.family: theme.fontFamily; font.pixelSize: 13
             }
             Text {
                 anchors.right: parent.right
-                text: lastShotCard.hasShot ? ("Y  " + lastShotCard.lastYmm.toFixed(1) + " mm") : ""
+                text: lastShotCard.hasShot ? ("Y   " + lastShotCard.lastYmm.toFixed(1) + " mm") : ""
                 color: "#c8c9cf"; font.family: theme.fontFamily; font.pixelSize: 13
             }
         }
