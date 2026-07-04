@@ -1202,19 +1202,27 @@ Item {
                 font.pixelSize: dafaultFontSize
             }
         }
-        Rectangle {
+        // Distribution strip: live ring-band tallies (10s / 9s / 8s / <=7).
+        Row {
+            anchors.horizontalCenter: parent.horizontalCenter
             anchors.bottom: parent.bottom
-            width: parent.width
-            height: parent.height/2
-            color: "transparent"
-            Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                anchors.verticalCenter: parent.verticalCenter
-                color: "white"
-                width: implicitWidth
-                height: implicitHeight
-                text: qsTr("Match Performance")
-                font.pixelSize: dafaultFontSize
+            spacing: 12
+            Repeater {
+                model: [{ lbl: qsTr("10s"), b: 10 }, { lbl: qsTr("9s"), b: 9 },
+                        { lbl: qsTr("8s"), b: 8 }, { lbl: qsTr("≤7"), b: 7 }]
+                delegate: Row {
+                    spacing: 4
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: modelData.lbl
+                        color: "#8a8a92"; font.pixelSize: 12
+                    }
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: bandCount(modelData.b, globalModelOfData.count)
+                        color: "white"; font.pixelSize: 13; font.bold: true
+                    }
+                }
             }
         }
     }
@@ -1237,21 +1245,7 @@ Item {
         }
     }
 
-    Rectangle {
-        anchors.left: field_88_7.left
-        anchors.right: text_field2.right
-        anchors.top: text_field2.bottom
-        height: midRect.height/2
-        color: "transparent"
-        Text {
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.verticalCenter: parent.verticalCenter
-            color: "white"
-            width: implicitWidth
-            height: implicitHeight
-            text: qsTr("MatchOLd Performance")
-        }
-    }
+    // (removed leftover "MatchOld Performance" label — redesign)
 
     function startFromServer()
     {
@@ -1272,7 +1266,7 @@ Item {
         opacity: 1
         //height: series_6.height*1.5
         visible: true
-        color: "red"
+        color: "transparent"   // redesign: themed cells below draw the look
 
         Row {
             id: firstRow
@@ -1281,13 +1275,12 @@ Item {
                 model: 6
                 Rectangle {
                     width: series_sum.width/6; height: series_sum.height/5*1
-                    //border.width: 1
-                    color: "#373536"
+                    color: "transparent"
 
                     Text {
                         anchors.centerIn: parent
                         text: "S"+(index+1)
-                        color: "white"
+                        color: "#8a8a92"
                         font.pixelSize: dafaultFontSize
                     }
                 }
@@ -1304,13 +1297,14 @@ Item {
                     Rectangle {
                         width: series_sum.width/6; height: series_sum.height/5*2
                         border.width: 1
-                        border.color: "lightgrey"
-                        color:/*"blue" //*/"#312E2F"
+                        border.color: "#2a2b30"
+                        radius: 6
+                        color: "#1a1a1f"
 
                         Text {
                             anchors.centerIn: parent
-                            text: isValidSeries(index) ? getSeriesTotal(index+1) : ""
-                            color: "white"
+                            text: isValidSeries(index) ? getSeriesTotal(index+1) : "—"
+                            color: isValidSeries(index) ? "white" : "#55555e"
                             font.pointSize: parent.height*0.25 //parent.height*0.3
 //                            font.pointSize: isSingleDecimal ? parent.height*0.37 : parent.height*0.32
 //                            font.bold: true
@@ -1333,13 +1327,14 @@ Item {
                     Rectangle {
                         width: series_sum.width/6; height: series_sum.height/5*2
                         border.width: 1
-                        color: "#312E2F"
-                        border.color: "white"
+                        color: "#141519"
+                        border.color: "#2a2b30"
+                        radius: 6
 
                         Text {
                             anchors.centerIn: parent
                             text: isValidSeries(index) ? /*"("+*/getSeriesTotalNonDecimal(index+1)/*+")"*/ : ""
-                            color: "white"
+                            color: "#9a9ba0"
                             font.pointSize: parent.height*0.25//parent.height*0.3
 //                            font.bold: true
 
@@ -1398,6 +1393,21 @@ Item {
         }
         //return isSingleDecimal ? seriesScore.toFixed(1) : scoreCutoffTofirstDecimal(seriesScore)
         return seriesScore.toFixed(1)
+    }
+
+    // Score-distribution count: how many match shots fall in a ring band.
+    // `trigger` is passed globalModelOfData.count so the binding re-evaluates
+    // as shots land (functions aren't reactive on their own).
+    function bandCount(band, trigger)
+    {
+        var n = 0
+        for (var i = 0; i < globalModelOfData.count; i++) {
+            var s = Math.floor(globalModelOfData.get(i).calculatedscore*1)
+            if (band === 10) { if (s >= 10) n++ }
+            else if (band === 7) { if (s <= 7) n++ }
+            else if (s === band) n++
+        }
+        return n
     }
 
     function getSeriesTotalNonDecimal(seriesIndex)
