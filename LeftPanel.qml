@@ -18,12 +18,22 @@ Item {
 
     property int offsetDisplacement: 100
 
-    // Filled gun silhouettes (24x24 authoring grid), muzzle pointing right:
-    // slide/barrel on top, trigger guard notch, grip at the rear.
+    // Filled match-equipment silhouettes traced from the reference photos,
+    // muzzle pointing right. Match AIR PISTOL: orthopedic grip with palm
+    // shelf + finger grooves, forked barrel/air-cylinder, sights.
+    // Authoring grid 48x32.
     readonly property string pistolPath:
-        "M3 6.5 H21 V10 H12 V12.5 H10 V10 H8 L7 18.5 H4 L3 10 Z"
+        "M8 11 L8 9 L12 9 L12 11 L20 11 L20 10 L42 10 L42 8 L44 8 L44 10 " +
+        "L45 10 L45 12.5 L44 12.5 L29 12.5 L29 14 L43 14 L43 17 L29 17 " +
+        "L27 17 L27 20 L24 20 L24 17 L21 17 L20 20 L21 21 L20 23 L21 24 " +
+        "L20 26 L19 29 L19 31 L6 31 L5 29 L7 17 L8 11 Z"
+    // 50m TARGET RIFLE: long barrel, raised aperture sight, thumbhole stock,
+    // hand-stop under the forend, adjustable buttplate hook. Grid 96x28.
     readonly property string riflePath:
-        "M1 8.5 H23 V10.5 H12.5 V12.5 H10.5 V10.5 H8 L7.4 15.5 H5 L5.6 10.5 H1 Z"
+        "M4 8 L11 8 L14 5 L23 5 L25 8 L31 8 L33 3 L37 3 L37 8 L46 9 L54 11 " +
+        "L88 11 L88 8 L94 8 L94 15 L88 15 L88 13 L54 13 L50 14 L48 14 L48 22 " +
+        "L45 22 L45 14 L41 14 L39 17 L37 17 L37 14 L34 14 L34 21 L28 21 L28 14 " +
+        "L11 14 L8 15 L9 16 L8 17 L8 20 L4 20 Z"
 
     signal homeButtonClicked()
     signal settingsClicked()
@@ -101,8 +111,12 @@ Item {
                 anchors.centerIn: parent
                 spacing: 12
                 VIcon {
-                    width: 38; height: 38
-                    pathData: gameDisplayText2.text === "PISTOL" ? pistolPath : riflePath
+                    property bool isPistol: gameDisplayText2.text === "PISTOL"
+                    viewBoxW: isPistol ? 48 : 96
+                    viewBoxH: isPistol ? 32 : 28
+                    width: isPistol ? 48 : 66
+                    height: width * (viewBoxH / viewBoxW)
+                    pathData: isPistol ? pistolPath : riflePath
                     color: "white"; filled: true; strokeWidth: 0
                     anchors.verticalCenter: parent.verticalCenter
                 }

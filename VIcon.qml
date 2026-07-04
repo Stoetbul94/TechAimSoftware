@@ -11,14 +11,17 @@ Item {
     property color color: "white"
     property real strokeWidth: 1.9
     property bool filled: false
+    // Authoring grid — override for non-square art (e.g. a long rifle).
+    property real viewBoxW: 24
+    property real viewBoxH: 24
 
     Shape {
         anchors.fill: parent
         layer.enabled: true
         layer.samples: 4
         transform: Scale {
-            xScale: root.width > 0 ? root.width / 24 : 1
-            yScale: root.height > 0 ? root.height / 24 : 1
+            xScale: root.width > 0 ? root.width / root.viewBoxW : 1
+            yScale: root.height > 0 ? root.height / root.viewBoxH : 1
         }
         ShapePath {
             strokeColor: root.strokeWidth > 0 ? root.color : "transparent"
