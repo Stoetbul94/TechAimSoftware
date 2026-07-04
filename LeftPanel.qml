@@ -18,6 +18,13 @@ Item {
 
     property int offsetDisplacement: 100
 
+    // Filled gun silhouettes (24x24 authoring grid), muzzle pointing right:
+    // slide/barrel on top, trigger guard notch, grip at the rear.
+    readonly property string pistolPath:
+        "M3 6.5 H21 V10 H12 V12.5 H10 V10 H8 L7 18.5 H4 L3 10 Z"
+    readonly property string riflePath:
+        "M1 8.5 H23 V10.5 H12.5 V12.5 H10.5 V10.5 H8 L7.4 15.5 H5 L5.6 10.5 H1 Z"
+
     signal homeButtonClicked()
     signal settingsClicked()
 
@@ -92,13 +99,11 @@ Item {
             color: "#26272c"; border.color: "#e8003d"; border.width: 1
             Row {
                 anchors.centerIn: parent
-                spacing: 10
-                Image {
-                    source: gameDisplayText2.text === "PISTOL"
-                            ? "qrc:/images/loginPage/iconPistol.png"
-                            : "qrc:/images/loginPage/iconRifle.png"
-                    width: 30; height: 30
-                    fillMode: Image.PreserveAspectFit
+                spacing: 12
+                VIcon {
+                    width: 38; height: 38
+                    pathData: gameDisplayText2.text === "PISTOL" ? pistolPath : riflePath
+                    color: "white"; filled: true; strokeWidth: 0
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 Text {
@@ -202,12 +207,18 @@ Item {
             Repeater {
                 id: navRepeater
                 model: [
-                    { key: "stats",    label: qsTr("Stats"),        icon: "qrc:/images/leftPanel/summary.png" },
-                    { key: "report",   label: qsTr("Report"),       icon: "qrc:/images/leftPanel/match.png" },
-                    { key: "coach",    label: qsTr("Coach report"), icon: "qrc:/images/leftPanel/match.png" },
-                    { key: "mpi",      label: qsTr("Group / MPI"),  icon: "qrc:/images/leftPanel/target.png" },
-                    { key: "settings", label: qsTr("Settings"),     icon: "qrc:/images/leftPanel/settings.png" },
-                    { key: "home",     label: qsTr("Home"),         icon: "qrc:/images/leftPanel/home.png" }
+                    { key: "stats",    label: qsTr("Stats"),
+                      path: "M18 20V10 M12 20V4 M6 20v-6" },
+                    { key: "report",   label: qsTr("Report"),
+                      path: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M16 13H8 M16 17H8 M10 9H8" },
+                    { key: "coach",    label: qsTr("Coach report"),
+                      path: "M12 15a7 7 0 1 0 0-14 7 7 0 0 0 0 14z M8.21 13.89L7 23l5-3 5 3-1.21-9.12" },
+                    { key: "mpi",      label: qsTr("Group / MPI"),
+                      path: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12z M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" },
+                    { key: "settings", label: qsTr("Settings"),
+                      path: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" },
+                    { key: "home",     label: qsTr("Home"),
+                      path: "M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10" }
                 ]
                 delegate: Rectangle {
                     id: navBtn
@@ -221,10 +232,10 @@ Item {
                         anchors.left: parent.left; anchors.leftMargin: 18
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 14
-                        Image {
-                            source: modelData.icon
+                        VIcon {
                             width: 26; height: 26
-                            fillMode: Image.PreserveAspectFit
+                            pathData: modelData.path
+                            color: modelData.key === "mpi" && isShowMPI ? "#e8003d" : "white"
                             anchors.verticalCenter: parent.verticalCenter
                         }
                         Text {
