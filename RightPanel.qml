@@ -416,11 +416,19 @@ Item {
     Image {
         id: num
         source: "qrc:/images/rightPanel/num.png"
-        opacity: 1
+        opacity: 0   // redesign: legacy white table bg hidden; geometry kept for matchScore
         width: ((parent.width/rootItemWidth)*sourceSize.width)*1.2
         height: ((parent.height/rootItemHeight)*sourceSize.height)
         x: ((parent.width/rootItemWidth)*400) - width*0.1
         y: ((parent.height/rootItemHeight)*347)
+    }
+    // Dark score-table background (redesign). Drawn before matchScore so the
+    // shot rows render on top.
+    Rectangle {
+        anchors.fill: num
+        color: "#1a1a1f"
+        radius: 8
+        border.color: "#2a2b30"; border.width: 1
     }
     Image {
         id: series_6
@@ -654,7 +662,7 @@ Item {
             Rectangle {
                 id: currentItem
                 anchors.fill: parent
-                color: "#A6CE72"
+                color: "#3a0d16"   // redesign: themed selection highlight
                 visible: matchScore.currentIndex == index //(right_end.visible) && (index === (globalModelOfData.count-1)%10)
             }
 
@@ -662,12 +670,13 @@ Item {
                 id: indexRect
                 height: parent.height
                 width: parent.width*0.1
-                border.color: "grey"
+                border.color: "#2a2b30"
                 color: "transparent"
 
                 Text {
                     text: currentPageIndex*10 + index + 1
                     anchors.centerIn: parent
+                    color: "#9a9ba0"
                     font.pixelSize: 0.65*currentItem.height
                 }
             }
@@ -677,7 +686,7 @@ Item {
                 width: parent.width - indexRect.width
                 height: parent.height
 
-                border.color: "grey"
+                border.color: "#2a2b30"
                 color: "transparent"
 
                 Image {
@@ -708,6 +717,7 @@ Item {
                     Text {
                         id: scoreText
                         anchors.centerIn: parent
+                        color: "white"
 
                         text:APPSETTINGS.getScoringSystem()? (scoreCutoffTofirstDecimal(calculatedscore)*1): parseInt(scoreCutoffTofirstDecimal(calculatedscore)*1)
                         font.pixelSize: 0.65*currentItem.height
@@ -736,6 +746,7 @@ Item {
                     Text {
                         id: timeText
                         anchors.centerIn: parent
+                        color: "#c8c9cf"
                         text: MODREADER.getTeilerForShootOfMatch((currentPageIndex*10)+index).toFixed(1) //isSaveGame ? "NA" : timeComsumed
                         font.pixelSize: 0.65*currentItem.height
                     }
