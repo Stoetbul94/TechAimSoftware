@@ -12,7 +12,15 @@ SOURCES += main.cpp \
     appsettings.cpp \
     logfile.cpp \
     receiverTachus.cpp \
-    sender.cpp
+    sender.cpp \
+    src/analytics/CoachAnalyticsEngine.cpp
+
+# Offline coach-analytics module (pure C++, independent from Qt/QML).
+HEADERS += \
+    src/analytics/ShotAnalyticsTypes.h \
+    src/analytics/CoachReportData.h \
+    src/analytics/CoachAnalyticsEngine.h
+INCLUDEPATH += src/analytics
 
 RESOURCES += qml.qrc \
     images.qrc \
