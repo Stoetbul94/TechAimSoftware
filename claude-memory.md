@@ -120,6 +120,27 @@ Key commits: `d63b02a` selector · `2c67b74` timer plumbing · `8ea95fe` prep ph
   `CUSTOMPRINT.createPdf()` opens a native Save dialog (known quirk: typing a
   name may append to "untitled.pdf" in automation).
 
+## 5a. Range list from first live day (2026-07-04) — do AFTER the full redesign
+
+User's backlog, in his priority order (design first, then these):
+1. **Redesign must reach every discipline** — Prone, 10m Air Rifle, 10m Air
+   Pistol, etc. each get the same layout adapted to its own discipline
+   (its phases, series count, times).
+2. **Verify match/prep times per discipline** against ISSF rules.
+3. **Auto-zoom on shot** (like SIUS Ascor): after a shot lands, the view
+   zooms in on the shot briefly/persistently. Series + last shot are the
+   most important info to keep visible.
+4. **Coach report** — third report type next to Stats/Report (button added
+   in redesign; content TBD with user).
+5. **Motor feed time settings reachable from the login/home page** too, not
+   only SettingsPage (rarely visited). Keep manual "Feed paper" button on
+   the shooting page as a jam-recovery fallback (motor is otherwise fully
+   automatic after each shot).
+6. Report bug seen in kn.pdf: an empty series still prints ("SERIES: 3
+   Group: 0 mm MPI: NaN, NaN") — skip empty series.
+Design principles he stated: not too complicated, professional, functional,
+user-friendly; the series and the last shot are the key data.
+
 ## 5. Open items / next steps
 
 1. **User to confirm**: the "phantom dot" on the 2nd shot of a phase is most

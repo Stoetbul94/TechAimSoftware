@@ -1296,8 +1296,9 @@ Item {
     // stops responding after a position transition.
     Rectangle {
         id: resumePositionBtn
-        visible: sligterMode && is3PMatch
-                 && globalMatchModel.count > 0 && globalMatchModel.count < 60
+        // Superseded by the fixed bottom action bar in ShootingPage (redesign);
+        // the bar's start button drives the same resume path.
+        visible: false
         // Top-centre below the phase/clock row, above everything else: the
         // top-right corner is occupied by the sighter corner triangle and
         // z:20 notification overlays.

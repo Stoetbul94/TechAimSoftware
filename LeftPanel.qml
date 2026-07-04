@@ -7,9 +7,9 @@ Item {
     property alias gameDisplay1: gameDisplayText1.text
     property alias gameDisplay2: gameDisplayText2.text
     property alias matchDisplay: matchText.text
-    property alias settingsX:settings_unclicked.x
-    property alias settingsY:settings_unclicked.y
-    property alias settingsWidth:settings_unclicked.width
+    property alias settingsX:navColumn.x
+    property alias settingsY:settingsNavBtn.navY
+    property alias settingsWidth:navColumn.width
 
 
     property bool isShowMPI: APPSETTINGS.getShowGroupAndMPI()
@@ -85,34 +85,44 @@ Item {
         color: "#26272c"
         border.color: "#e8003d"; border.width: 1
     }
-    Rectangle {   // shooter name tile (was white)
+    Rectangle {   // shooter name tile (was white) — compact, wraps the name
+        id: nameCard
         x: white_tile.x; y: white_tile.y
-        width: white_tile.width; height: white_tile.height
+        width: white_tile.width; height: 46
         radius: 6
         color: "#26272c"
         border.color: "#3a3b40"; border.width: 1
+        Text {
+            anchors.centerIn: parent
+            text: nameText.text
+            color: "white"; font.bold: true
+            font.family: theme.fontFamily; font.pixelSize: 14
+            elide: Text.ElideRight
+            width: parent.width - 16
+            horizontalAlignment: Text.AlignHCenter
+        }
     }
 
     Image {
         id: play
+        // `visible` doubles as the waiting-to-start STATE (playVisible alias is
+        // read by enterPositionTransition and the auto-print guard), so the
+        // redesign hides the icon with opacity instead of visible. The bottom
+        // action bar in ShootingPage is the start control now.
         visible: true
+        opacity: 0
         source: "qrc:/images/leftPanel/play.png"
-        //anchors.horizontalCenter: parent.horizontalCenter
         anchors.left: white_tile.left
         anchors.leftMargin: 3
         anchors.top: white_tile.bottom
         anchors.topMargin: 20
-        opacity: 1
         width: ((rightPanel.width/rightPanel.rootItemWidth)*sourceSize.width)
         height: ((rightPanel.height/rightPanel.rootItemHeight)*sourceSize.height)
 
         MouseArea
         {
             anchors.fill: parent
-            onClicked:
-            {
-                rightPanel.startClicked()
-            }
+            enabled: false
         }
     }
 
@@ -136,258 +146,93 @@ Item {
         width: ((parent.width/rootItemWidth)*sourceSize.width)
         height: ((parent.height/rootItemHeight)*sourceSize.height)
     }
-    Image {
-        id: home_hover
-        visible: false
-        source: "qrc:/images/leftPanel/home.png"
-        x: ((parent.width/rootItemWidth)*38)
-//        y: ((parent.height/rootItemHeight)*549)
-        y: ((parent.height/rootItemHeight)*(549-offsetDisplacement))
-        opacity: 1
-        width: ((parent.width/rootItemWidth)*sourceSize.width)
-        height: ((parent.height/rootItemHeight)*sourceSize.height)
-    }
-    Image {
-        id: home_clicked
-        visible: false
-        source: "qrc:/images/leftPanel/home.png"
-        x: ((parent.width/rootItemWidth)*38)
-//        y: ((parent.height/rootItemHeight)*549)
-        y: ((parent.height/rootItemHeight)*(549-offsetDisplacement))
-        opacity: 1
-        width: ((parent.width/rootItemWidth)*sourceSize.width)
-        height: ((parent.height/rootItemHeight)*sourceSize.height)
-    }
+    // ── Redesign: labeled nav column replaces the bare icon stack. Same
+    // handlers and guard logic as the legacy MouseAreas; PNG icons reused.
+    Column {
+        id: navColumn
+        anchors.top: nameCard.bottom
+        anchors.topMargin: 14
+        anchors.left: parent.left; anchors.leftMargin: parent.width * 0.08
+        anchors.right: parent.right; anchors.rightMargin: parent.width * 0.08
+        spacing: 8
 
-//    Rectangle {
-//        color: "black"//isShowMPI ? "lightblue" : "red"
-//        width: home_clicked.width
-//        x: home_clicked.x
-//        y: home_clicked.y + 2.5*home_clicked.height
-//        height: home_clicked.height - 10
-////        visible: false
-
-//        Text {
-//            text: isShowMPI ? "Hide MPI" : "Show MPI"
-//            width: implicitWidth
-//            height: implicitHeight
-//            anchors.centerIn: parent
-//        }
-//        Image {
-//            id: mpiTarget
-//            visible: true
-//    //        visible: false
-//            source: "qrc:/images/leftPanel/target.png"
-//            width: ((parent.width/rootItemWidth)*sourceSize.width)
-//            height: ((parent.height/rootItemHeight)*sourceSize.height)
-//            opacity: 1
-//        }
-
-//        MouseArea {
-//            anchors.fill: parent
-//            onClicked: {
-//                isShowMPI = !isShowMPI
-//            }
-//        }
-//    }
-
-    Image {
-        id: mpi_unclicked
-        visible: true
-//        visible: false
-        source: "qrc:/images/leftPanel/target.png"
-        x: ((parent.width/rootItemWidth)*38)
-//        y: ((parent.height/rootItemHeight)*549)
-        y: ((parent.height/rootItemHeight)*(617-offsetDisplacement))
-        opacity: 1
-        width: ((parent.width/rootItemWidth)*sourceSize.width)
-        height: ((parent.height/rootItemHeight)*sourceSize.height)
-        MouseArea {
-            anchors.fill: parent
-            onClicked: {
-                isShowMPI = !isShowMPI
+        Repeater {
+            id: navRepeater
+            model: [
+                { key: "stats",    label: qsTr("Stats"),        icon: "qrc:/images/leftPanel/summary.png" },
+                { key: "report",   label: qsTr("Report"),       icon: "qrc:/images/leftPanel/match.png" },
+                { key: "coach",    label: qsTr("Coach report"), icon: "qrc:/images/leftPanel/match.png" },
+                { key: "mpi",      label: qsTr("Group / MPI"),  icon: "qrc:/images/leftPanel/target.png" },
+                { key: "settings", label: qsTr("Settings"),     icon: "qrc:/images/leftPanel/settings.png" },
+                { key: "home",     label: qsTr("Home"),         icon: "qrc:/images/leftPanel/home.png" }
+            ]
+            delegate: Rectangle {
+                id: navBtn
+                width: navColumn.width
+                height: 38
+                radius: 8
+                color: navMouse.containsMouse ? "#26272c" : "transparent"
+                border.color: modelData.key === "mpi" && isShowMPI ? "#e8003d" : "#3a3b40"
+                border.width: 1
+                Row {
+                    anchors.left: parent.left; anchors.leftMargin: 10
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 9
+                    Image {
+                        source: modelData.icon
+                        width: 16; height: 16
+                        fillMode: Image.PreserveAspectFit
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                    Text {
+                        text: modelData.label
+                        color: "#b9b9c0"
+                        font.family: theme.fontFamily
+                        font.pixelSize: 12
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                }
+                MouseArea {
+                    id: navMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    onClicked: navColumn.navAction(modelData.key)
+                }
             }
         }
-    }
 
-    Image {
-        id: home_unclicked
-        visible: true
-//        visible: false
-        source: "qrc:/images/leftPanel/home.png"
-        x: ((parent.width/rootItemWidth)*38)
-//        y: ((parent.height/rootItemHeight)*549)
-        y: ((parent.height/rootItemHeight)*(549-offsetDisplacement))
-        opacity: 1
-        width: ((parent.width/rootItemWidth)*sourceSize.width)
-        height: ((parent.height/rootItemHeight)*sourceSize.height)
-        MouseArea {
-            anchors.fill: parent
-            onClicked: {
-                console.log("testing ----------------- Home inactive")
+        function navAction(key) {
+            if (key === "stats") {
+                if (sligterMode) {
+                    cannotGenerate.text = sighterSummaryText
+                    cannotGenerate.visible = true
+                } else if (!isSaveGame) {
+                    showSummary()
+                }
+            } else if (key === "report") {
+                if (sligterMode) {
+                    cannotGenerate.text = sighterMatchText
+                    cannotGenerate.visible = true
+                } else {
+                    showMatchReport()
+                }
+            } else if (key === "coach") {
+                cannotGenerate.text = qsTr("Coach report is coming soon")
+                cannotGenerate.visible = true
+            } else if (key === "mpi") {
+                isShowMPI = !isShowMPI
+            } else if (key === "settings") {
+                settingsClicked()
+            } else if (key === "home") {
                 homeButtonClicked()
             }
         }
     }
-    Image {
-        id: settings_clicked
-        visible: true
-        source: "qrc:/images/leftPanel/settings.png"
-        x: ((parent.width/rootItemWidth)*38)
-//        y: ((parent.height/rootItemHeight)*481)
-        y: ((parent.height/rootItemHeight)*(481-offsetDisplacement))
-        opacity: 1
-        width: ((parent.width/rootItemWidth)*sourceSize.width)
-        height: ((parent.height/rootItemHeight)*sourceSize.height)
-    }
-    Image {
-        id: settings_hover
-        visible: true
-        source: "qrc:/images/leftPanel/settings.png"
-        x: ((parent.width/rootItemWidth)*38)
-//        y: ((parent.height/rootItemHeight)*481)
-        y: ((parent.height/rootItemHeight)*(481-offsetDisplacement))
-        opacity: 1
-        width: ((parent.width/rootItemWidth)*sourceSize.width)
-        height: ((parent.height/rootItemHeight)*sourceSize.height)
-    }
-    Image {
-        id: settings_unclicked
-        visible: true
-        source: "qrc:/images/leftPanel/settings.png"
-        x: ((parent.width/rootItemWidth)*38)
-//        y: ((parent.height/rootItemHeight)*481)
-        y: ((parent.height/rootItemHeight)*(481-offsetDisplacement))
-        opacity: 1
-        width: ((parent.width/rootItemWidth)*sourceSize.width)
-        height: ((parent.height/rootItemHeight)*sourceSize.height)
-        MouseArea
-        {
-            anchors.fill: parent
-            onClicked:
-            {
-                console.log("Settings Clicked")
-                settingsClicked()
-            }
-        }
-    }
-    Image {
-        id: match_report_clicked
-        visible: false
-        source: "qrc:/images/leftPanel/match.png"
-        x: ((parent.width/rootItemWidth)*38)
-//        y: ((parent.height/rootItemHeight)*415)
-        y: ((parent.height/rootItemHeight)*(415-offsetDisplacement))
-        opacity: 1
-        width: ((parent.width/rootItemWidth)*sourceSize.width)
-        height: ((parent.height/rootItemHeight)*sourceSize.height)
-    }
-    Image {
-        id: match_report_hover
-        visible: false
-        source: "qrc:/images/leftPanel/match.png"
-        x: ((parent.width/rootItemWidth)*38)
-//        y: ((parent.height/rootItemHeight)*415)
-        y: ((parent.height/rootItemHeight)*(415-offsetDisplacement))
-        opacity: 1
-        width: ((parent.width/rootItemWidth)*sourceSize.width)
-        height: ((parent.height/rootItemHeight)*sourceSize.height)
-    }
-    Image {
-        id: match_report_unclicked
-        visible: true
-        source: "qrc:/images/leftPanel/match.png"
-        x: ((parent.width/rootItemWidth)*38)
-//        y: ((parent.height/rootItemHeight)*415)
-        y: ((parent.height/rootItemHeight)*(415-offsetDisplacement))
-        opacity: 1
-        width: ((parent.width/rootItemWidth)*sourceSize.width)
-        height: ((parent.height/rootItemHeight)*sourceSize.height)
-        MouseArea
-        {
-            anchors.fill: parent
-            onClicked:
-            {
-                if(sligterMode)
-                {
-                    cannotGenerate.text = sighterMatchText
-                    cannotGenerate.visible = true
-                }
-                else
-                {
-                    if(1/*globalModelOfData.count >= 10*/)
-                    {
-                        //if (!isSaveGame)
-                            showMatchReport()
-                        // only show summary for now
-                        //showSummary()
-                    }
-                    else
-                    {
-                        cannotGenerate.text = minimumShotsMatchReport
-                        cannotGenerate.visible = true
-                    }
-                }
-            }
-        }
-    }
-    Image {
-        id: summery_clicked
-        visible: true
-        source: "qrc:/images/leftPanel/summary.png"
-        x: ((parent.width/rootItemWidth)*38)
-//        y: ((parent.height/rootItemHeight)*348)
-        y: ((parent.height/rootItemHeight)*(348-offsetDisplacement))
-        opacity: 1
-        width: ((parent.width/rootItemWidth)*sourceSize.width)
-        height: ((parent.height/rootItemHeight)*sourceSize.height)
-    }
-    Image {
-        id: summery_mouse_hover
-        visible: false
-        source: "qrc:/images/leftPanel/summary.png"
-        x: ((parent.width/rootItemWidth)*38)
-//        y: ((parent.height/rootItemHeight)*348)
-        y: ((parent.height/rootItemHeight)*(348-offsetDisplacement))
-        opacity: 1
-        width: ((parent.width/rootItemWidth)*sourceSize.width)
-        height: ((parent.height/rootItemHeight)*sourceSize.height)
-    }
-    Image {
-        id: summery_unclicked
-        visible: true
-        source: "qrc:/images/leftPanel/summary.png"
-        x: ((parent.width/rootItemWidth)*38)
-//        y: ((parent.height/rootItemHeight)*348)
-        y: ((parent.height/rootItemHeight)*(348-offsetDisplacement))
-        opacity: 1
-        width: ((parent.width/rootItemWidth)*sourceSize.width)
-        height: ((parent.height/rootItemHeight)*sourceSize.height)
-        MouseArea{
-            anchors.fill: parent
-            onClicked:
-            {
-                if(sligterMode)
-                {
-                    cannotGenerate.text = sighterSummaryText
-                    cannotGenerate.visible = true
-                }
-                else
-                {
-                    if (isSaveGame)
-                        return
-//                    if(globalModelOfData.count >= 10)
-//                    {
-                        showSummary()
-//                    }
-//                    else
-//                    {
-//                        cannotGenerate.text = minimumShotsSummary
-//                        cannotGenerate.visible = true
-//                    }
-                }
-            }
-        }
+
+    // Anchor for the SettingsPage popup (was the settings icon's position).
+    Item {
+        id: settingsNavBtn
+        property real navY: navColumn.y + 4*46
     }
     Image {
         id: sighter_selected
@@ -446,11 +291,7 @@ Item {
         text: "Dummy"
         color: "white"
         font.bold: true
-//        Rectangle {
-//            anchors.fill: parent
-//            color: "red"
-//            opacity: 0.5
-//        }
+        opacity: 0   // data source only; the visible name is drawn in nameCard
     }
 
     Image {
@@ -585,52 +426,6 @@ Item {
         visible: device_connected.visible
     }
     Text {
-        id: homeText
-        x: home_clicked.x + (home_clicked.width/2) - (width/2) - 15
-        y: home_clicked.y + (home_clicked.height/2) - (height/2)
-        text : qsTr("Home")
-        width: implicitWidth
-        height: implicitHeight
-        color: "white"
-        font.pointSize: 10
-
-        visible: home_unclicked.visible
-        opacity: 0
-    }
-    Text {
-        id: matchReportText
-        x: match_report_clicked.x + (match_report_clicked.width/2) - (width/2) - 15
-        y: match_report_clicked.y + (match_report_clicked.height/2) - (height/2)
-        text : qsTr("Match report")
-        width: implicitWidth
-        height: implicitHeight
-        color: "white"
-        font.pointSize: 10
-        opacity: 0
-    }
-    Text {
-        id: settingText
-        x: settings_clicked.x + (settings_clicked.width/2) - (width/2) - 15
-        y: settings_clicked.y + (settings_clicked.height/2) - (height/2)
-        text : qsTr("Settings")
-        width: implicitWidth
-        height: implicitHeight
-        color: "white"
-        font.pointSize: 10
-        opacity: 0
-    }
-    Text {
-        id: summaryText
-        x: summery_clicked.x + (summery_clicked.width/2) - (width/2) - 15
-        y: summery_clicked.y + (summery_clicked.height/2) - (height/2)
-        text : qsTr("Summary")
-        width: implicitWidth
-        height: implicitHeight
-        color: "white"
-        font.pointSize: 10
-        opacity: 0
-    }
-    Text {
         id: sighterText
         width: ((parent.width/rootItemWidth)*sighter_selected.sourceSize.width)
         height: ((parent.height/rootItemHeight)*sighter_selected.sourceSize.height) / 2
@@ -646,10 +441,7 @@ Item {
 
     function startFromServer()
     {
-        home_clicked.enabled = false;
-        home_unclicked.enabled = false;
-        settings_clicked.enabled = false;
-        settings_unclicked.enabled = false;
-//        homeButtonClicked().visible = false;
+        // Nav column disabling for server-driven sessions can be reinstated
+        // here if needed; the legacy icon ids it toggled no longer exist.
     }
 }
