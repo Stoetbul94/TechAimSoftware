@@ -843,10 +843,8 @@ Item {
         if (!visible)   // see updateTotal — no view churn while hidden
             return
         listModel.clear()
-        console.log("inside updateListModel")
         if (listNavigationON)
             matchScore.model = 0 //used in Qt 5.13
-        console.log("inside updateListModel model assign to empty")
         subTotal = subTotal*0
         subTotalExculdeDec = subTotalExculdeDec*0
         seriesStars = 0
@@ -875,9 +873,10 @@ Item {
                 ++seriesStars
         }
         matchScore.model = listModel
-        console.log("inside updateListModel reassigning the model")
-        currentPageIndex = Math.floor( (endIndex-1)/10)
-        console.log("inside updateListModel pageindex changed")
+        // Clamp: entering match mode with 0 match shots gives endIndex 0 →
+        // floor(-1/10) = -1, and a negative page index feeds negative shot
+        // numbers into delegate bindings (see getTeilerForShootOfMatch).
+        currentPageIndex = Math.max(0, Math.floor( (endIndex-1)/10))
 
         //Log messages
         grandStarText.text = totalStars

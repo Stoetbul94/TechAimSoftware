@@ -1039,7 +1039,11 @@ double TachusWidget::getTeilerForShoot(int series, int shootNumber)
 
 double TachusWidget::getTeilerForShootOfMatch(int shootNumber)
 {
-    if (shootNumber == -1 || m_xCordList.count() <= shootNumber)
+    // QML delegate bindings re-evaluate with negative indices while the score
+    // list is being cleared (currentPageIndex briefly -1 → shootNumber -10),
+    // so reject the whole negative range, not just -1 — .at(-10) on an empty
+    // QList is a native crash.
+    if (shootNumber < 0 || m_xCordList.count() <= shootNumber)
         return -1;
     qDebug() << shootNumber << " " << __FUNCTION__;
 //    int series = shootNumber/m_shotPerSeries+1;
@@ -1232,6 +1236,7 @@ void TachusWidget::changeSighterMode(bool flag)
 
         // reset live/game mode
         resetShootinCount();
+        LogFile::instance().appendToLogFile("changeSighterMode: lists reset, leaving sighter mode", LogType::BackendLevel);
     }
 
     isSighterMode = flag;

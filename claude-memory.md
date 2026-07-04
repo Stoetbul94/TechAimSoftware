@@ -66,7 +66,17 @@ Key commits: `d63b02a` selector · `2c67b74` timer plumbing · `8ea95fe` prep ph
 7. Watch for **stray `gameEvent` indices**: Prone and 3P share `gameEvent=4`;
    the discipline is `APPSETTINGS.getGameSubMode()` (+`get10or50mRange()`), both
    persisted from LoginPage. `is3PMatch` is fixed at `beginPreparationPhase()`.
-8. **Automation/testing quirk**: the app window drifts ±15 px between states;
+8. **C++ getters called from delegate bindings must reject the whole negative
+   range, not just `-1`.** Pressing play with sighter shots crashed the app
+   natively (2026-07-04): entering match mode empties the score list, so
+   `updateListModel` computed `currentPageIndex = floor(-1/10) = -1`; the three
+   not-yet-destroyed sighter delegates re-evaluated
+   `getTeilerForShootOfMatch(currentPageIndex*10 + index)` with −10/−9/−8, and
+   the old guard (`shootNumber == -1` only) let `m_xCordList.at(-10)` run →
+   heap crash. Fixed both layers: `shootNumber < 0` guard in C++, `Math.max(0,…)`
+   clamp in QML. Delegate destruction is deferred — assume any index a binding
+   computes can be stale/negative during model churn.
+9. **Automation/testing quirk**: the app window drifts ±15 px between states;
    synthetic clicks must be based on a fresh screenshot or they miss silently.
    Bitdefender: `release\Seta.exe` needs an **Advanced Threat Defense** exception
    (separate from the Antivirus folder exclusion) or file writes freeze the UI.

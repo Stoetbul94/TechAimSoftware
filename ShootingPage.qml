@@ -607,13 +607,17 @@ Item {
         //console.log("***********globalModelOfData*****************"+globalModelOfData.count)
         sligterMode = false
         MODREADER.changeSighterMode(false)
-        //console.log("***********backEndShootCount*****************"+centerPanel.backEndShootCount)
+        MODREADER.appendToLogFile("play: changeSighterMode returned")
         centerPanel.backEndShootCount = 0
-        //console.log("***********backEndShootCount*****************"+centerPanel.backEndShootCount)
+        MODREADER.appendToLogFile("play: backEndShootCount cleared")
         APPSETTINGS.setGame_is_sighter_mode(0)
+        MODREADER.appendToLogFile("play: sighter-mode flag saved")
         APPSETTINGS.updateStatusFeedbackFile(3)
+        MODREADER.appendToLogFile("play: status feedback updated")
         rightPanel.updateTotal()
+        MODREADER.appendToLogFile("play: updateTotal done")
         centerPanel.currentPageIndexChanged()
+        MODREADER.appendToLogFile("play: page index refreshed")
         centerPanel.disableMotorMovement = false
     }
 
