@@ -94,7 +94,10 @@ AppSettings::AppSettings(QString fileName)
 
     m_settings->beginGroup("shot_count_and_timer");
 
-    QString timer = m_settings->value("timer").toString();
+    // Countdown clock is ON by default; config.ini can still turn it off
+    // with timer=no. (Previously it was hidden unless the file said yes,
+    // which made the app silently lose the clock without its config file.)
+    QString timer = m_settings->value("timer", "yes").toString();
     if (timer.compare("yes", Qt::CaseInsensitive) == 0)
         m_timer = true;
 
