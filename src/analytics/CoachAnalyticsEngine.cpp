@@ -77,6 +77,17 @@ std::string toString(Severity s)
     }
 }
 
+std::string toString(RecoveryPattern p)
+{
+    switch (p) {
+    case RecoveryPattern::GoodRecovery:          return "GoodRecovery";
+    case RecoveryPattern::SlowRecovery:          return "SlowRecovery";
+    case RecoveryPattern::RepeatedErrorPattern:  return "RepeatedErrorPattern";
+    case RecoveryPattern::OverCorrectionPattern: return "OverCorrectionPattern";
+    case RecoveryPattern::InsufficientData:      default: return "InsufficientData";
+    }
+}
+
 // ----------------------------------------------------------------------------
 //  Layer 1 — basic statistics
 // ----------------------------------------------------------------------------
@@ -1308,6 +1319,286 @@ PositionAnalysis CoachAnalyticsEngine::buildPositionAnalysis(
 }
 
 // ----------------------------------------------------------------------------
+//  Phase 9 — Recovery Analysis
+// ----------------------------------------------------------------------------
+//  Built on the computeScoreRecovery primitive but expanded into a full report
+//  layer. The poor-shot definition is single-sourced with the primitive
+//  (score < poorThreshold OR score < set-average - set-SD) so the headline rate
+//  matches summary.recoveryPercentage exactly.
+ShotRecoveryReport CoachAnalyticsEngine::buildShotRecovery(
+    const std::vector<ShotAnalyticsData>& shots, const Options& o)
+{
+    ShotRecoveryReport r;
+    const int n = static_cast<int>(shots.size());
+    r.shotCount   = n;
+    r.neutralBand = o.recoveryNeutralBand;
+    if (n < 2) return r;
+
+    std::vector<double> scores; scores.reserve(n);
+    for (const auto& s : shots) scores.push_back(s.decimalScore);
+    const double avg = mean(scores);
+    const double sd  = standardDeviation(scores, o.useSampleStatistics);
+    r.baseline   = avg;
+    r.baselineSD = sd;
+
+    // Single-sourced core rate from the reusable primitive.
+    r.summary = computeScoreRecovery(shots, o.recoveryPoorThreshold, o.useSampleStatistics);
+
+    auto isPoor = [&](double sc){ return (sc < o.recoveryPoorThreshold) || (sc < avg - sd); };
+
+    double recShotsSum = 0.0;
+    for (int i = 0; i + 1 < n; ++i) {         // last shot cannot be recovered from
+        if (!isPoor(scores[i])) continue;
+        ++r.badShotCount;
+        const double next = scores[i + 1];
+
+        // Next-shot recovery (baseline = set average).
+        if (next >= avg) ++r.recoveredNextCount; else ++r.notRecoveredNextCount;
+
+        // Follow-up quality relative to the poor shot itself.
+        if (next > scores[i] + o.recoveryNeutralBand)      ++r.followUpBetterCount;
+        else if (next < scores[i] - o.recoveryNeutralBand) ++r.followUpWorseCount;
+        else                                               ++r.followUpNeutralCount;
+
+        // Repeated error: the very next shot is also poor.
+        if (isPoor(next)) ++r.repeatedErrorCount;
+
+        // Depth: number of shots until the FIRST return to baseline.
+        int k = 0;
+        for (int j = i + 1; j < n; ++j) { if (scores[j] >= avg) { k = j - i; break; } }
+        if (k > 0) { recShotsSum += k; ++r.recoveryShotsSampleCount; }
+        else       { ++r.unrecoveredCount; }
+
+        // Over-correction (spatial): needs coordinates and an off-centre poor shot.
+        const ShotAnalyticsData& a = shots[i];
+        const ShotAnalyticsData& b = shots[i + 1];
+        const double magA = std::sqrt(a.x * a.x + a.y * a.y);
+        const double magB = std::sqrt(b.x * b.x + b.y * b.y);
+        if (magA > 1e-9) {
+            ++r.overCorrectionSampleCount;
+            const double dot = a.x * b.x + a.y * b.y;         // < 0 => opposite side
+            if (dot < 0.0 && magB > o.recoveryOverCorrectFactor * magA) ++r.overCorrectionCount;
+        }
+    }
+
+    if (r.badShotCount == 0) return r;        // available stays false: nothing to recover from
+
+    r.available           = true;
+    r.badShotRecoveryRate = r.summary.recoveryPercentage;        // == 100 * recoveredNext / bad
+    r.postErrorAverage    = r.summary.averageNextShotAfterPoor;
+    r.postErrorDelta      = r.postErrorAverage - avg;
+    r.repeatedErrorRate   = 100.0 * r.repeatedErrorCount / r.badShotCount;
+
+    if (r.recoveryShotsSampleCount > 0) {
+        r.recoveryShotsAvailable = true;
+        r.averageRecoveryShots   = recShotsSum / r.recoveryShotsSampleCount;
+    }
+    if (r.overCorrectionSampleCount > 0) {
+        r.overCorrectionAvailable = true;
+        r.overCorrectionRate = 100.0 * r.overCorrectionCount / r.overCorrectionSampleCount;
+    }
+
+    // Confidence from poor-shot sample size (honest for small samples).
+    const double confN = o.recoveryConfidentSampleSize > 0.0 ? o.recoveryConfidentSampleSize : 1.0;
+    r.recoveryConfidence = clampd(100.0 * r.badShotCount / confN, 0.0, 100.0);
+
+    // Severity from recovery goodness (reuse the shared component mapping).
+    r.recoverySeverity = severityFromComponent(r.badShotRecoveryRate);
+
+    // Practical classification (priority-ordered, data-driven; NOT prose).
+    if (r.badShotCount < static_cast<int>(o.recoveryMinPatternSample)) {
+        r.pattern = RecoveryPattern::InsufficientData;
+    } else if (r.repeatedErrorRate >= o.recoveryRepeatedPatternRate) {
+        r.pattern = RecoveryPattern::RepeatedErrorPattern;
+    } else if (r.overCorrectionAvailable && r.overCorrectionRate >= o.recoveryOverCorrectPatternRate) {
+        r.pattern = RecoveryPattern::OverCorrectionPattern;
+    } else if (r.badShotRecoveryRate >= o.recoveryGoodRateThreshold
+               && (!r.recoveryShotsAvailable || r.averageRecoveryShots <= o.recoverySlowMaxShots)) {
+        r.pattern = RecoveryPattern::GoodRecovery;
+    } else {
+        r.pattern = RecoveryPattern::SlowRecovery;
+    }
+    return r;
+}
+
+SeriesRecoveryReport CoachAnalyticsEngine::buildSeriesRecovery(
+    const std::vector<ShotAnalyticsData>& shots, const Options& o)
+{
+    SeriesRecoveryReport r;
+    const int n = static_cast<int>(shots.size());
+    if (n < 1) return r;
+
+    // Group by seriesNumber in first-appearance order (deterministic).
+    std::vector<int> order;
+    std::vector<std::vector<double>> buckets;
+    for (const auto& s : shots) {
+        int idx = -1;
+        for (int j = 0; j < static_cast<int>(order.size()); ++j) {
+            if (order[j] == s.seriesNumber) { idx = j; break; }
+        }
+        if (idx < 0) { order.push_back(s.seriesNumber); buckets.emplace_back(); idx = static_cast<int>(order.size()) - 1; }
+        buckets[idx].push_back(s.decimalScore);
+    }
+
+    std::vector<double> allScores; allScores.reserve(n);
+    for (const auto& s : shots) allScores.push_back(s.decimalScore);
+    r.sessionAverage = mean(allScores);
+    r.seriesCount    = static_cast<int>(order.size());
+
+    for (int j = 0; j < static_cast<int>(order.size()); ++j) {
+        SeriesRecoveryPoint p;
+        p.seriesNumber = order[j];
+        p.shotCount    = static_cast<int>(buckets[j].size());
+        p.average      = mean(buckets[j]);
+        p.isDip        = p.average < r.sessionAverage - o.seriesDipThreshold;
+        r.series.push_back(p);
+    }
+
+    if (r.seriesCount < 2) return r;          // need >= 2 series to talk about rebound
+    r.available = true;
+
+    double reboundDeltaSum = 0.0;
+    for (int j = 0; j < static_cast<int>(r.series.size()); ++j) {
+        if (!r.series[j].isDip) continue;
+        ++r.dipCount;
+        if (j + 1 < static_cast<int>(r.series.size())) {
+            ++r.evaluableDipCount;
+            const double delta = r.series[j + 1].average - r.series[j].average;
+            reboundDeltaSum += delta;
+            if (r.series[j + 1].average > r.series[j].average) ++r.dipReboundCount;
+            else                                               ++r.dipSustainedCount;
+        }
+    }
+    if (r.evaluableDipCount > 0) {
+        r.dipReboundRate      = 100.0 * r.dipReboundCount / r.evaluableDipCount;
+        r.averageReboundDelta = reboundDeltaSum / r.evaluableDipCount;
+    }
+    return r;
+}
+
+RecoveryAnalysis CoachAnalyticsEngine::buildRecoveryAnalysis(
+    const std::vector<ShotAnalyticsData>& shots, const Options& o)
+{
+    RecoveryAnalysis ra;
+    const int n = static_cast<int>(shots.size());
+    if (n < 2) return ra;
+    ra.available = true;
+
+    ra.overall = buildShotRecovery(shots, o);
+    ra.series  = buildSeriesRecovery(shots, o);
+
+    // Independent per-position recovery — never merged across positions.
+    static const PositionType porder[] = {
+        PositionType::Prone, PositionType::Kneeling, PositionType::Standing,
+        PositionType::AirRifle, PositionType::AirPistol, PositionType::Unknown
+    };
+    for (PositionType p : porder) {
+        std::vector<ShotAnalyticsData> sub;
+        for (const auto& s : shots) if (s.positionType == p) sub.push_back(s);
+        if (sub.empty()) continue;
+        PositionRecoveryEntry e;
+        e.position     = p;
+        e.positionName = toString(p);
+        e.recovery     = buildShotRecovery(sub, o);
+        ra.byPosition.push_back(e);
+    }
+
+    // Cross-position comparison over positions with an available recovery report.
+    std::vector<const PositionRecoveryEntry*> avail;
+    for (const auto& e : ra.byPosition) if (e.recovery.available) avail.push_back(&e);
+    if (avail.size() >= 2) {
+        ra.comparativeAvailable = true;
+        const PositionRecoveryEntry* best  = avail.front();
+        const PositionRecoveryEntry* worst = avail.front();
+        for (const auto* e : avail) {
+            if (e->recovery.badShotRecoveryRate > best->recovery.badShotRecoveryRate)  best  = e;
+            if (e->recovery.badShotRecoveryRate < worst->recovery.badShotRecoveryRate) worst = e;
+        }
+        ra.hasBestRecovery  = true; ra.bestRecoveryPosition  = best->position;
+        ra.hasWorstRecovery = true; ra.worstRecoveryPosition = worst->position;
+    }
+
+    // Whole-match interpreted metrics in the shared PerformanceMetric language.
+    // Higher-is-worse severity mapper (ascending cut points).
+    auto worseWhenHigh = [](double v, double good, double ok, double poor) -> Severity {
+        if (v <= good) return Severity::None;
+        if (v <= ok)   return Severity::Low;
+        if (v <= poor) return Severity::Moderate;
+        return Severity::High;
+    };
+    const ShotRecoveryReport& sr = ra.overall;
+    if (sr.available) {
+        {
+            PerformanceMetric m;
+            m.name = "Bad-shot recovery rate";
+            m.value = sr.badShotRecoveryRate;
+            m.availability = true;
+            m.confidence = sr.recoveryConfidence;
+            m.severity = severityFromComponent(sr.badShotRecoveryRate);
+            m.addEvidence(fnum(sr.recoveredNextCount, 0) + " of " + fnum(sr.badShotCount, 0) +
+                          " poor shots recovered on the next shot", "recovery.rate",
+                          sr.badShotRecoveryRate);
+            ra.metrics.push_back(m);
+        }
+        {
+            PerformanceMetric m;
+            m.name = "Average recovery shots";
+            m.value = sr.averageRecoveryShots;
+            m.availability = sr.recoveryShotsAvailable;
+            m.confidence = sr.recoveryConfidence;
+            m.severity = sr.recoveryShotsAvailable
+                ? worseWhenHigh(sr.averageRecoveryShots, 1.2, 2.0, 3.0) : Severity::None;
+            m.addEvidence("Shots to regain baseline, averaged over " +
+                          fnum(sr.recoveryShotsSampleCount, 0) + " recovered poor shots",
+                          "recovery.shots", sr.averageRecoveryShots);
+            ra.metrics.push_back(m);
+        }
+        {
+            PerformanceMetric m;
+            m.name = "Post-error delta";
+            m.value = sr.postErrorDelta;
+            m.availability = true;
+            m.confidence = sr.recoveryConfidence;
+            m.severity = sr.postErrorDelta >= 0.0 ? Severity::None
+                         : worseWhenHigh(-sr.postErrorDelta, 0.1, 0.3, 0.6);
+            m.addEvidence("Post-error average " + fnum(sr.postErrorAverage, 2) +
+                          " vs baseline " + fnum(sr.baseline, 2), "recovery.postErrorDelta",
+                          sr.postErrorDelta);
+            ra.metrics.push_back(m);
+        }
+        {
+            PerformanceMetric m;
+            m.name = "Repeated-error rate";
+            m.value = sr.repeatedErrorRate;
+            m.availability = true;
+            m.confidence = sr.recoveryConfidence;
+            m.severity = worseWhenHigh(sr.repeatedErrorRate, 15.0, 30.0, 50.0);
+            m.addEvidence(fnum(sr.repeatedErrorCount, 0) + " of " + fnum(sr.badShotCount, 0) +
+                          " poor shots followed by another poor shot", "recovery.repeatedError",
+                          sr.repeatedErrorRate);
+            ra.metrics.push_back(m);
+        }
+        {
+            PerformanceMetric m;
+            m.name = "Over-correction rate";
+            m.value = sr.overCorrectionRate;
+            m.availability = sr.overCorrectionAvailable;
+            m.confidence = sr.recoveryConfidence;
+            m.severity = sr.overCorrectionAvailable
+                ? worseWhenHigh(sr.overCorrectionRate, 15.0, 30.0, 45.0) : Severity::None;
+            m.addEvidence(sr.overCorrectionAvailable
+                          ? (fnum(sr.overCorrectionCount, 0) + " of " +
+                             fnum(sr.overCorrectionSampleCount, 0) +
+                             " poor shots overshot to the opposite side")
+                          : std::string("No coordinates available for over-correction"),
+                          "recovery.overCorrection", sr.overCorrectionRate);
+            ra.metrics.push_back(m);
+        }
+    }
+    return ra;
+}
+
+// ----------------------------------------------------------------------------
 //  Public entry point
 // ----------------------------------------------------------------------------
 CoachReportData CoachAnalyticsEngine::analyze(const std::vector<ShotAnalyticsData>& shots)
@@ -1340,6 +1631,7 @@ CoachReportData CoachAnalyticsEngine::analyze(const std::vector<ShotAnalyticsDat
     report.heatMapAnalysis  = buildHeatMapAnalysis(prepared, options);
     report.timingAnalysis   = buildTimingAnalysis(prepared, options);
     report.positionAnalysis = buildPositionAnalysis(prepared, options);
+    report.recoveryAnalysis = buildRecoveryAnalysis(prepared, options);
     report.valid = true;
     report.message = report.lowSampleWarning
         ? "Analysed with fewer than 10 shots; results are indicative only."

@@ -106,6 +106,18 @@ public:
         // Strength / weakness thresholds on 0..100 components.
         double positionStrengthThreshold = 70.0;
         double positionWeaknessThreshold = 45.0;
+
+        // ---- Phase 9: recovery analysis ----
+        double recoveryPoorThreshold        = 10.0;  // poor shot = score < this OR < (avg - sd)
+        double recoveryNeutralBand          = 0.2;   // |next - bad| within band => neutral follow-up
+        double recoveryOverCorrectFactor    = 1.0;   // |next err| > factor*|bad err| & opposite side => over-correct
+        double recoveryConfidentSampleSize  = 8.0;   // poor shots needed for full recovery confidence
+        double recoveryMinPatternSample     = 3.0;   // fewer poor shots => InsufficientData
+        double recoveryGoodRateThreshold    = 60.0;  // badShotRecoveryRate >= this => good-recovery candidate
+        double recoverySlowMaxShots         = 1.5;   // averageRecoveryShots <= this => quick enough for "good"
+        double recoveryRepeatedPatternRate  = 50.0;  // repeatedErrorRate >= this => RepeatedErrorPattern
+        double recoveryOverCorrectPatternRate = 40.0;// overCorrectionRate >= this => OverCorrectionPattern
+        double seriesDipThreshold           = 0.15;  // series avg below session avg by this => dip
     };
 
     // Shared coordinate frame for a set of heat-map grids (so bins align).
@@ -199,6 +211,17 @@ public:
     static PositionReport buildPositionReport(const std::vector<ShotAnalyticsData>& positionShots,
                                               PositionType position, const Options& options);
 
+    // ----------------------------------------------------------------------
+    //  Phase 9 — recovery analysis (public for unit testing)
+    // ----------------------------------------------------------------------
+    // Shot-to-shot recovery for one dataset (whole match, or one position).
+    // Built on computeScoreRecovery; expands it into a full report layer.
+    static ShotRecoveryReport buildShotRecovery(const std::vector<ShotAnalyticsData>& shots,
+                                                const Options& options);
+    // Series-level rebound: does a poor series get followed by a better one?
+    static SeriesRecoveryReport buildSeriesRecovery(const std::vector<ShotAnalyticsData>& shots,
+                                                    const Options& options);
+
 private:
     // Validation + ordering. Returns the shots to analyse and fills the
     // provenance/validation fields on `meta`.
@@ -228,6 +251,10 @@ private:
         const Options& options);
 
     static PositionAnalysis buildPositionAnalysis(
+        const std::vector<ShotAnalyticsData>& shots,
+        const Options& options);
+
+    static RecoveryAnalysis buildRecoveryAnalysis(
         const std::vector<ShotAnalyticsData>& shots,
         const Options& options);
 

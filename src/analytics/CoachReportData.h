@@ -541,6 +541,119 @@ struct PositionAnalysis {
     bool hasGreatestDeterioration = false; PositionType greatestDeteriorationPosition = PositionType::Unknown;
 };
 
+// ===========================================================================
+//  Section 7: Recovery Analysis (Phase 9)
+// ---------------------------------------------------------------------------
+//  What happens AFTER a poor shot, an unstable sequence, or a local dip — not
+//  just a generic average. Built on the reusable computeScoreRecovery
+//  primitive but expanded into a proper report layer: shot-to-shot recovery,
+//  series-level rebound, and independent per-position recovery. Every metric
+//  carries an availability / confidence flag; nothing is fabricated for a low
+//  sample. Coordinate-dependent metrics (over-correction) additionally require
+//  raw coordinates and flag themselves unavailable when those are missing.
+// ===========================================================================
+
+// A practical, data-driven classification of the recovery picture (NOT prose).
+enum class RecoveryPattern {
+    InsufficientData,      // too few poor shots to conclude anything
+    GoodRecovery,          // bounces back to baseline quickly and reliably
+    SlowRecovery,          // eventually recovers but takes several shots / often misses baseline
+    RepeatedErrorPattern,  // a poor shot tends to be followed by another poor shot
+    OverCorrectionPattern  // corrects past centre and overshoots to the opposite side
+};
+std::string toString(RecoveryPattern p);
+
+// Shot-to-shot recovery for ONE dataset (the whole match, or one position).
+struct ShotRecoveryReport {
+    bool   available   = false;    // >= 1 poor shot that has a following shot
+    int    shotCount   = 0;
+    double baseline    = 0.0;      // return-to-baseline reference = set average
+    double baselineSD  = 0.0;
+
+    // Core rate (single-sourced from the computeScoreRecovery primitive).
+    int    badShotCount          = 0;   // poor shots that have a following shot
+    int    recoveredNextCount    = 0;   // next shot reached baseline
+    int    notRecoveredNextCount = 0;
+    double badShotRecoveryRate   = 0.0; // 100 * recoveredNext / bad (== summary.recoveryPercentage)
+
+    // Depth: how many shots to first return to baseline after a poor shot.
+    bool   recoveryShotsAvailable   = false;
+    double averageRecoveryShots     = 0.0; // averaged over poor shots that DID recover
+    int    recoveryShotsSampleCount = 0;
+    int    unrecoveredCount         = 0;   // poor shots that never regained baseline before the end
+
+    // Post-error behaviour.
+    double postErrorAverage = 0.0;  // avg score of the shot AFTER a poor shot (== summary.averageNextShotAfterPoor)
+    double postErrorDelta   = 0.0;  // postErrorAverage - baseline (negative = compounding)
+    int    followUpBetterCount  = 0; // next > bad + neutralBand
+    int    followUpWorseCount   = 0; // next < bad - neutralBand
+    int    followUpNeutralCount = 0; // within +/- neutralBand of the bad shot
+    double neutralBand          = 0.0;
+
+    // Dysfunction patterns.
+    double repeatedErrorRate  = 0.0; // 100 * (poor followed by poor) / bad
+    int    repeatedErrorCount = 0;
+
+    bool   overCorrectionAvailable   = false; // needs coordinates on poor shot + successor
+    double overCorrectionRate        = 0.0;   // 100 * opposite-side-overshoot / evaluable poor shots
+    int    overCorrectionCount       = 0;
+    int    overCorrectionSampleCount = 0;
+
+    // Confidence + interpretation.
+    double          recoveryConfidence = 0.0;  // 0..100 from poor-shot sample size
+    Severity        recoverySeverity   = Severity::None;
+    RecoveryPattern pattern            = RecoveryPattern::InsufficientData;
+
+    // The reusable primitive result kept verbatim (single source of truth).
+    RecoverySummary summary;
+};
+
+// One series' scoring summary for series-level rebound analysis.
+struct SeriesRecoveryPoint {
+    int    seriesNumber = 0;
+    int    shotCount    = 0;
+    double average      = 0.0;
+    bool   isDip        = false;   // average below session average by >= dip threshold
+};
+
+// Series-level recovery: does a poor series get followed by a better one?
+struct SeriesRecoveryReport {
+    bool   available      = false; // >= 2 series present
+    int    seriesCount    = 0;
+    double sessionAverage = 0.0;
+    std::vector<SeriesRecoveryPoint> series; // first-appearance order
+
+    int    dipCount          = 0;  // series flagged as a dip
+    int    evaluableDipCount = 0;  // dips that have a following series
+    int    dipReboundCount   = 0;  // dip followed by a HIGHER series (temporary dip)
+    int    dipSustainedCount = 0;  // dip followed by an equal/lower series (sustained degradation)
+    double dipReboundRate    = 0.0;// 100 * rebound / evaluable dips
+    double averageReboundDelta = 0.0; // avg (nextSeriesAvg - dipSeriesAvg) over evaluable dips
+};
+
+// Per-position recovery — each computed independently (never merged).
+struct PositionRecoveryEntry {
+    PositionType       position = PositionType::Unknown;
+    std::string        positionName;
+    ShotRecoveryReport recovery;
+};
+
+struct RecoveryAnalysis {
+    bool available = false;        // there was something to analyse (>= 2 shots)
+
+    ShotRecoveryReport overall;    // whole match, shot-to-shot
+    SeriesRecoveryReport series;   // series-level rebound
+    std::vector<PositionRecoveryEntry> byPosition; // independent per present position
+
+    // Interpreted metrics in the shared PerformanceMetric language (whole match).
+    std::vector<PerformanceMetric> metrics;
+
+    // Cross-position comparison (requires >= 2 positions with available recovery).
+    bool comparativeAvailable = false;
+    bool hasBestRecovery  = false; PositionType bestRecoveryPosition  = PositionType::Unknown;
+    bool hasWorstRecovery = false; PositionType worstRecoveryPosition = PositionType::Unknown;
+};
+
 // ---- Top-level result -----------------------------------------------------
 struct CoachReportData {
     // Validation / provenance
@@ -562,11 +675,9 @@ struct CoachReportData {
     HeatMapAnalysis  heatMapAnalysis;    // Section 4 (Phase 6)
     TimingAnalysis   timingAnalysis;     // Section 5 (Phase 7)
     PositionAnalysis positionAnalysis;   // Section 6 (Phase 8)
+    RecoveryAnalysis recoveryAnalysis;   // Section 7 (Phase 9)
 
-    // Sections 7..11 — declared contract, implemented in later phases:
-    //   TimingAnalysis    timingAnalysis;
-    //   PositionAnalysis  positionAnalysis;
-    //   RecoveryAnalysis  recoveryAnalysis;
+    // Sections 8..11 — declared contract, implemented in later phases:
     //   FatigueAnalysis   fatigueAnalysis;
     //   TrainingPriorities trainingPriorities;
     //   CoachConclusion   coachConclusion;
