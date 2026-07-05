@@ -88,31 +88,48 @@ bool CoachReportFeeder::analyzeCurrentMatch(int gameSubMode)
     return runArrays(readGameMode(gameSubMode), gameSubMode, false);
 }
 
-bool CoachReportFeeder::analyzeDemoMatch()
+bool CoachReportFeeder::analyzeDemoMatch(int kind)
 {
-    return runArrays(makeDemoArrays(), 0, true);
+    return runArrays(makeDemoArrays(kind), kind == 1 ? 1 : 0, true);
 }
 
-// TEMPORARY / DEV-ONLY sample data: 20 prone record shots with coordinates,
-// timing intervals, four poor shots each followed by a recovery, a slight high
-// bias, and a couple of rushed/delayed intervals — enough for every section to
-// populate. Remove with the demo button once the live hardware test passes.
-MatchArrays CoachReportFeeder::makeDemoArrays() const
+// TEMPORARY / DEV-ONLY sample data. Both variants carry coordinates + timing +
+// poor shots that recover, enough for every section to populate. Remove with
+// the demo buttons once the live hardware test passes.
+techaim::bridge::MatchArrays CoachReportFeeder::makeDemoArrays(int kind) const
 {
+    using techaim::analytics::PositionType;
     MatchArrays a;
     a.shotsPerSeries = 10;
-    a.is3P = false;
-    a.singlePosition = techaim::analytics::PositionType::Prone;
     a.flipY = m_flipY;   // honour the current toggle so Flip Y is testable here too
-    a.scores = { 10.5, 10.6, 9.2, 10.7, 10.4, 10.6, 9.0, 10.8, 10.5, 10.3,
-                 10.6, 9.4, 10.7, 10.5, 10.4, 10.6, 10.2, 9.1, 10.8, 10.5 };
-    a.xs =     {  2.0, -1.0,  8.0,  1.0, -2.0,  3.0, -11.0,  0.0,  2.0, -3.0,
-                  1.0,  9.0, -1.0,  2.0,  0.0, -2.0,  3.0, -8.0,  1.0,  0.0 };
-    a.ys =     {  3.0,  2.0, -10.0, 4.0,  3.0,  1.0,  9.0,  2.0,  5.0,  1.0,
-                  3.0,  7.0,  2.0,  4.0,  1.0,  3.0,  2.0, -9.0,  5.0,  3.0 };
-    // intervals[0] is ignored (first shot anchors t=0); others must be > 0.
-    a.intervals = { 0.0, 32.0, 28.0, 46.0, 30.0, 26.0, 55.0, 18.0, 31.0, 29.0,
-                    33.0, 48.0, 27.0, 30.0, 25.0, 34.0, 29.0, 52.0, 19.0, 30.0 };
+
+    if (kind == 1) {
+        // 50m 3P: 60 shots, equal thirds K -> P -> S. Prone tightest/best,
+        // Standing widest/worst, so the position comparison is meaningful.
+        a.is3P = true;
+        a.singlePosition = PositionType::Unknown;
+        for (int i = 0; i < 60; ++i) {
+            double sc, mag, y = 1.0;
+            if (i < 20)      { sc = (i % 2) ? 10.1 : 10.3; mag = 6.0; }         // Kneeling
+            else if (i < 40) { sc = (i % 2) ? 10.5 : 10.7; mag = 3.0; }         // Prone
+            else { const int k = i - 40; sc = (k % 3 == 0) ? 9.3 : ((k % 2) ? 9.9 : 10.1); mag = 12.0; y = -1.0; } // Standing
+            a.scores.push_back(sc);
+            a.xs.push_back((i % 2) ? mag : -mag);
+            a.ys.push_back(y);
+            a.intervals.push_back(i == 0 ? -1.0 : 30.0);
+        }
+    } else {
+        // 50m Prone: 40 shots, tight group, three poor shots that recover.
+        a.is3P = false;
+        a.singlePosition = PositionType::Prone;
+        for (int i = 0; i < 40; ++i) {
+            const bool poor = (i == 7 || i == 18 || i == 29);
+            a.scores.push_back(poor ? 9.2 : ((i % 2) ? 10.5 : 10.6));
+            a.xs.push_back(poor ? 11.0 : ((i % 2) ? 3.0 : -3.0));
+            a.ys.push_back(poor ? -9.0 : 2.0);
+            a.intervals.push_back(i == 0 ? -1.0 : 30.0);
+        }
+    }
     return a;
 }
 

@@ -534,19 +534,23 @@ ApplicationWindow {
     }
 
     // TEMPORARY / DEV-ONLY: preview the Coach Report with fixed sample data, no
-    // hardware needed. Remove this button after the live hardware test passes.
-    Button {
-        id: demoReportBtn
+    // hardware needed. Remove these buttons after the live hardware test passes.
+    Row {
+        id: demoReportRow
         z: 9
         visible: !coachReportVisible
-        text: "DEMO REPORT"
+        spacing: 8
         anchors.top: header.bottom
         anchors.right: parent.right
         anchors.topMargin: 8
         anchors.rightMargin: 8
-        onClicked: {
-            COACHFEED.analyzeDemoMatch()
-            coachReportVisible = true
+        Button {
+            text: "DEMO PRONE"
+            onClicked: { COACHFEED.analyzeDemoMatch(0); coachReportVisible = true }
+        }
+        Button {
+            text: "DEMO 3P"
+            onClicked: { COACHFEED.analyzeDemoMatch(1); coachReportVisible = true }
         }
     }
 
