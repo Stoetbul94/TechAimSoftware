@@ -304,20 +304,25 @@ Rectangle {
                 title: "Executive Summary"; body: reportPage.fmtExec(reportPage.rep ? reportPage.rep.executiveSummary : null)
             }
 
-            // ----- Shot Map / Heat Map (targets) -----
+            // ----- Shot Map / Heat Map (density heat map + dot targets) -----
             CoachReportCard {
                 width: scrollColumn.width; visible: reportPage.rep && reportPage.rep.valid
                 title: "Shot Map / Heat Map"; body: reportPage.fmtHeat(reportPage.rep ? reportPage.rep.heatMapAnalysis : null)
+
+                Text { width: parent.width; text: "Density heat map"; color: theme.textSecondary; font.pixelSize: 13; font.bold: true; font.family: theme.fontFamily }
                 Flow {
                     width: parent.width; spacing: 18
                     Repeater {
                         model: reportPage.targets
-                        delegate: ShotTargetCanvas {
-                            title: modelData.title
-                            shots: modelData.shots
-                            side: 240
-                            extentMm: reportPage.sharedExtent
-                        }
+                        delegate: HeatMapCanvas { title: modelData.title; shots: modelData.shots; side: 260; extentMm: reportPage.sharedExtent }
+                    }
+                }
+                Text { width: parent.width; text: "Shot positions"; color: theme.textSecondary; font.pixelSize: 13; font.bold: true; font.family: theme.fontFamily }
+                Flow {
+                    width: parent.width; spacing: 18
+                    Repeater {
+                        model: reportPage.targets
+                        delegate: ShotTargetCanvas { title: modelData.title; shots: modelData.shots; side: 240; extentMm: reportPage.sharedExtent }
                     }
                 }
             }
