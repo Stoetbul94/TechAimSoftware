@@ -174,8 +174,9 @@ Rectangle {
 
     // ---------- target shot-map data ----------
     function refreshTargets() {
+        // Match the engine's analysed set exactly (same filter as the dashboard).
         var all = COACHREPORT.shots()
-        all = all.filter(function (s) { return s.isCompetitionShot && !s.isSighter })
+        all = all.filter(function (s) { return s.isValid && s.isCompetitionShot && !s.isSighter })
         var ext = 8
         for (var i = 0; i < all.length; i++)
             ext = Math.max(ext, Math.sqrt(all[i].x * all[i].x + all[i].y * all[i].y))

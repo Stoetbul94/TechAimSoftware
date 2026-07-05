@@ -332,6 +332,7 @@ QVariantList shotsToVariant(const std::vector<ShotAnalyticsData>& shots)
         m["y"]                 = s.y;
         m["decimalScore"]      = s.decimalScore;
         m["position"]          = q(toString(s.positionType));
+        m["isValid"]           = s.isValid;
         m["isCompetitionShot"] = s.isCompetitionShot;
         m["isSighter"]         = s.isSighter;
         m["hasTimestamp"]      = s.hasTimestamp;

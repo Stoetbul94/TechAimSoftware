@@ -45,7 +45,8 @@ Rectangle {
         return x.toFixed(d === undefined ? 2 : d)
     }
     function pct(x) { return (x === undefined || x === null) ? "—" : f(x, 1) + "%" }
-    function competition(s) { return s.isCompetitionShot && !s.isSighter }
+    // Match the engine's analysed set exactly, so plotted shots == report counts.
+    function competition(s) { return s.isValid && s.isCompetitionShot && !s.isSighter }
 
     function specKey() {
         var d = dbg && dbg.discipline ? String(dbg.discipline).toLowerCase() : ""
