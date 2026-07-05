@@ -828,6 +828,63 @@ struct CoachConclusion {
     std::vector<Evidence> evidence;                 // traceable facts behind the conclusion
 };
 
+// ===========================================================================
+//  Section 11: Coach Diary (Phase 13)
+// ---------------------------------------------------------------------------
+//  Purely MANUAL, human-recorded context that the electronic target cannot
+//  know — goals, notes, equipment, conditions, mental/physical state. It is
+//  NOT analytics: the engine never populates it, never reads it, and it never
+//  influences any computed section. It is optional, safe when completely
+//  empty, and serialisable. (Qt-free by design: std::string / std::vector and
+//  ISO-8601 string timestamps set by the UI layer, not the engine clock.)
+// ===========================================================================
+enum class SessionType {
+    Training, Match, Qualification, Final, TestSession, EquipmentTest, Unknown
+};
+std::string toString(SessionType t);
+SessionType  sessionTypeFromString(const std::string& s);
+
+enum class SessionIntensity { Low, Moderate, High, MatchPressure, Unknown };
+std::string      toString(SessionIntensity i);
+SessionIntensity sessionIntensityFromString(const std::string& s);
+
+struct CoachDiary {
+    // Categorical context.
+    SessionType      sessionType      = SessionType::Unknown;
+    SessionIntensity sessionIntensity = SessionIntensity::Unknown;
+
+    // Free-form human notes — all optional (empty string = not recorded).
+    std::string sessionGoal;
+    std::string coachNotes;
+    std::string athleteNotes;
+
+    std::string equipmentNotes;
+    std::string ammunitionNotes;
+    std::string sightAdjustmentNotes;
+    std::string positionSetupNotes;
+
+    std::string windNotes;
+    std::string lightingNotes;
+    std::string rangeConditionNotes;
+
+    std::string mentalStateNotes;
+    std::string physicalConditionNotes;
+    std::string fatigueNotes;
+
+    std::string technicalFocus;
+    std::string nextSessionFocus;
+
+    std::vector<std::string> tags;         // order preserved
+    std::vector<std::string> attachments;  // order preserved (file paths / ids)
+
+    // ISO-8601 strings; the UI sets these — the engine never generates time.
+    std::string createdAt;
+    std::string updatedAt;
+
+    // True when nothing has been recorded (the diary is entirely optional).
+    bool isEmpty() const;
+};
+
 // ---- Top-level result -----------------------------------------------------
 struct CoachReportData {
     // Validation / provenance
@@ -854,8 +911,8 @@ struct CoachReportData {
     TrainingPriorities trainingPriorities; // Section 9 (Phase 11)
     CoachConclusion  coachConclusion;    // Section 10 (Phase 12)
 
-    // Section 11 — declared contract, implemented in a later phase:
-    //   CoachDiaryFields  manualDiaryFields;
+    // Section 11 — manual human context; engine leaves it default (empty).
+    CoachDiary       manualDiary;        // Section 11 (Phase 13)
 };
 
 } // namespace analytics

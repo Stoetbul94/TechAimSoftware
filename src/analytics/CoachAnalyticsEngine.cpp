@@ -128,6 +128,65 @@ std::string toString(PerformanceRating r)
     }
 }
 
+// ---- Phase 13: Coach Diary (categorical serialisation + empty check) -------
+std::string toString(SessionType t)
+{
+    switch (t) {
+    case SessionType::Training:      return "Training";
+    case SessionType::Match:         return "Match";
+    case SessionType::Qualification: return "Qualification";
+    case SessionType::Final:         return "Final";
+    case SessionType::TestSession:   return "TestSession";
+    case SessionType::EquipmentTest: return "EquipmentTest";
+    case SessionType::Unknown:       default: return "Unknown";
+    }
+}
+
+SessionType sessionTypeFromString(const std::string& s)
+{
+    if (s == "Training")      return SessionType::Training;
+    if (s == "Match")         return SessionType::Match;
+    if (s == "Qualification") return SessionType::Qualification;
+    if (s == "Final")         return SessionType::Final;
+    if (s == "TestSession")   return SessionType::TestSession;
+    if (s == "EquipmentTest") return SessionType::EquipmentTest;
+    return SessionType::Unknown;
+}
+
+std::string toString(SessionIntensity i)
+{
+    switch (i) {
+    case SessionIntensity::Low:           return "Low";
+    case SessionIntensity::Moderate:      return "Moderate";
+    case SessionIntensity::High:          return "High";
+    case SessionIntensity::MatchPressure: return "MatchPressure";
+    case SessionIntensity::Unknown:       default: return "Unknown";
+    }
+}
+
+SessionIntensity sessionIntensityFromString(const std::string& s)
+{
+    if (s == "Low")           return SessionIntensity::Low;
+    if (s == "Moderate")      return SessionIntensity::Moderate;
+    if (s == "High")          return SessionIntensity::High;
+    if (s == "MatchPressure") return SessionIntensity::MatchPressure;
+    return SessionIntensity::Unknown;
+}
+
+bool CoachDiary::isEmpty() const
+{
+    return sessionType == SessionType::Unknown
+        && sessionIntensity == SessionIntensity::Unknown
+        && sessionGoal.empty() && coachNotes.empty() && athleteNotes.empty()
+        && equipmentNotes.empty() && ammunitionNotes.empty()
+        && sightAdjustmentNotes.empty() && positionSetupNotes.empty()
+        && windNotes.empty() && lightingNotes.empty() && rangeConditionNotes.empty()
+        && mentalStateNotes.empty() && physicalConditionNotes.empty() && fatigueNotes.empty()
+        && technicalFocus.empty() && nextSessionFocus.empty()
+        && tags.empty() && attachments.empty()
+        && createdAt.empty() && updatedAt.empty();
+}
+
 // ----------------------------------------------------------------------------
 //  Layer 1 — basic statistics
 // ----------------------------------------------------------------------------
