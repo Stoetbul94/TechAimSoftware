@@ -31,6 +31,7 @@ ApplicationWindow {
     property string mpiColor: /*"transparent"//*/"blue"
     property bool isSingleDecimal: APPSETTINGS.getIsSingleDecimal()
     property bool coachReportVisible: false   // Coach Report overlay toggle
+    property int  coachViewMode: 0            // 0 = dashboard, 1 = detailed report
 
     //property string valueString: ""
 
@@ -519,9 +520,9 @@ ApplicationWindow {
         }
     }
 
-    // Coach Report overlay (offline analytics view). Sits above the shooting
-    // page; opened from the Match Summary. Reads COACHREPORT only — no analytics.
-    // Polished light dashboard (mockup style).
+    // Coach Report overlay. Two views over the same COACHREPORT data, toggled
+    // by coachViewMode: the polished light dashboard (0) and the detailed dark
+    // report (1). Opened from the Match Summary / DEMO buttons.
     CoachDashboardPage {
         id: coachDashboard
         z: 8
@@ -529,9 +530,22 @@ ApplicationWindow {
         anchors.right: parent.right
         anchors.top: header.bottom
         anchors.bottom: parent.bottom
-        visible: coachReportVisible
+        visible: coachReportVisible && coachViewMode === 0
         gameSubMode: loginPage.gameSubMode
         onClosed: coachReportVisible = false
+        onDetailsRequested: coachViewMode = 1
+    }
+    CoachReportPage {
+        id: coachReportPage
+        z: 8
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: header.bottom
+        anchors.bottom: parent.bottom
+        visible: coachReportVisible && coachViewMode === 1
+        gameSubMode: loginPage.gameSubMode
+        onClosed: coachReportVisible = false
+        onDashboardRequested: coachViewMode = 0
     }
 
     // TEMPORARY / DEV-ONLY: preview the Coach Report with fixed sample data, no

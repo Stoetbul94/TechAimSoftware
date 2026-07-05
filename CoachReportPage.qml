@@ -18,6 +18,7 @@ Rectangle {
     property real sharedExtent: 0
 
     signal closed()
+    signal dashboardRequested()
 
     Connections {
         target: COACHREPORT
@@ -253,6 +254,7 @@ Rectangle {
                 onToggled: { COACHFEED.coordinatesFlipY = checked; COACHFEED.analyzeCurrentMatch(reportPage.gameSubMode) }
             }
             Button { anchors.verticalCenter: parent.verticalCenter; text: "Re-run"; onClicked: COACHFEED.analyzeCurrentMatch(reportPage.gameSubMode) }
+            Button { anchors.verticalCenter: parent.verticalCenter; text: "◂ Dashboard"; onClicked: reportPage.dashboardRequested() }
             Button { anchors.verticalCenter: parent.verticalCenter; text: "Close"; onClicked: reportPage.closed() }
         }
     }

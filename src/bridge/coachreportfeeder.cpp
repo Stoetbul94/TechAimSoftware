@@ -1,6 +1,7 @@
 #include "coachreportfeeder.h"
 #include "coachreportbridge.h"
 #include "../../ModReader/forms/tachuswidget.h"
+#include <cmath>
 
 using namespace techaim::bridge;
 
@@ -103,30 +104,42 @@ techaim::bridge::MatchArrays CoachReportFeeder::makeDemoArrays(int kind) const
     a.shotsPerSeries = 10;
     a.flipY = m_flipY;   // honour the current toggle so Flip Y is testable here too
 
+    // Deterministic 2-D scatter (golden-angle spiral) so the group looks like a
+    // real cluster on the target and heat map — no RNG (engine stays deterministic).
+    const double GOLDEN = 2.39996323;
     if (kind == 1) {
         // 50m 3P: 60 shots, equal thirds K -> P -> S. Prone tightest/best,
         // Standing widest/worst, so the position comparison is meaningful.
         a.is3P = true;
         a.singlePosition = PositionType::Unknown;
         for (int i = 0; i < 60; ++i) {
-            double sc, mag, y = 1.0;
-            if (i < 20)      { sc = (i % 2) ? 10.1 : 10.3; mag = 6.0; }         // Kneeling
-            else if (i < 40) { sc = (i % 2) ? 10.5 : 10.7; mag = 3.0; }         // Prone
-            else { const int k = i - 40; sc = (k % 3 == 0) ? 9.3 : ((k % 2) ? 9.9 : 10.1); mag = 12.0; y = -1.0; } // Standing
+            double sc, spread, cyc; bool poor = false;
+            if (i < 20)      { sc = (i % 2) ? 10.1 : 10.3; spread = 7.0;  cyc = 1.0; }        // Kneeling
+            else if (i < 40) { sc = (i % 2) ? 10.5 : 10.7; spread = 4.0;  cyc = 1.0; }        // Prone
+            else {                                                                            // Standing
+                const int k = i - 40;
+                poor = (k % 5 == 0);
+                sc = poor ? 9.3 : ((k % 2) ? 9.9 : 10.2);
+                spread = 13.0; cyc = -1.0;
+            }
+            const double ang = i * GOLDEN;
+            const double rr = (poor ? spread * 1.9 : spread * std::sqrt(((i % 6) + 1) / 6.0));
             a.scores.push_back(sc);
-            a.xs.push_back((i % 2) ? mag : -mag);
-            a.ys.push_back(y);
+            a.xs.push_back(rr * std::cos(ang));
+            a.ys.push_back(cyc + rr * std::sin(ang));
             a.intervals.push_back(i == 0 ? -1.0 : 30.0);
         }
     } else {
-        // 50m Prone: 40 shots, tight group, three poor shots that recover.
+        // 50m Prone: 40 shots, tight 2-D group, three poor shots that recover.
         a.is3P = false;
         a.singlePosition = PositionType::Prone;
         for (int i = 0; i < 40; ++i) {
             const bool poor = (i == 7 || i == 18 || i == 29);
+            const double ang = i * GOLDEN;
+            const double rr = poor ? 14.0 : 4.5 * std::sqrt(((i % 6) + 1) / 6.0);
             a.scores.push_back(poor ? 9.2 : ((i % 2) ? 10.5 : 10.6));
-            a.xs.push_back(poor ? 11.0 : ((i % 2) ? 3.0 : -3.0));
-            a.ys.push_back(poor ? -9.0 : 2.0);
+            a.xs.push_back(rr * std::cos(ang));
+            a.ys.push_back(1.0 + rr * std::sin(ang));
             a.intervals.push_back(i == 0 ? -1.0 : 30.0);
         }
     }

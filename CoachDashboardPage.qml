@@ -16,6 +16,7 @@ Rectangle {
     property var targets: []
 
     signal closed()
+    signal detailsRequested()
 
     // ---- light palette ----
     readonly property color cPanel:  "#ffffff"
@@ -146,6 +147,7 @@ Rectangle {
                 onClicked: { COACHFEED.coordinatesFlipY = !COACHFEED.coordinatesFlipY; COACHFEED.analyzeCurrentMatch(dash.gameSubMode) }
             }
             Button { text: "Re-run"; onClicked: COACHFEED.analyzeCurrentMatch(dash.gameSubMode) }
+            Button { text: "Detailed ▸"; onClicked: dash.detailsRequested() }
             Button { text: "Close"; onClicked: dash.closed() }
         }
     }
