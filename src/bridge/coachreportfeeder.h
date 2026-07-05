@@ -40,6 +40,11 @@ public:
     // Returns true when a valid report was produced.
     Q_INVOKABLE bool analyzeCurrentMatch(int gameSubMode = 0);
 
+    // TEMPORARY / DEV-ONLY: run a known sample match (no hardware needed) so the
+    // QML report page can be visually verified. Uses the SAME build+analyze path
+    // as real data. Remove once the live hardware test is done.
+    Q_INVOKABLE bool analyzeDemoMatch();
+
     // Number of game-mode shots the feeder would read (for QML guards).
     Q_INVOKABLE int matchShotCount() const;
 
@@ -57,6 +62,10 @@ signals:
 
 private:
     techaim::bridge::MatchArrays readGameMode(int gameSubMode) const;
+    // Shared: build shots, capture debug facts, run the bridge.
+    bool runArrays(const techaim::bridge::MatchArrays& arrays, int gameSubMode, bool demo);
+    // TEMPORARY: fixed sample match (20 prone shots, coords + timing + poor/recovery).
+    techaim::bridge::MatchArrays makeDemoArrays() const;
 
     TachusWidget*      m_widget;
     CoachReportBridge* m_bridge;
@@ -71,6 +80,7 @@ private:
     int         m_dbgGameSubMode = 0;
     QStringList m_dbgPositions;
     bool        m_dbgRan         = false;
+    bool        m_dbgDemo        = false;
 };
 
 #endif // COACHREPORTFEEDER_H

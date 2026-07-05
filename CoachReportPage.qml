@@ -161,8 +161,9 @@ Rectangle {
     Component.onCompleted: reportPage.dbg = COACHFEED.debugInfo()
 
     function fmtDebug(d, r) {
-        if (!d || !d.ran) return "No match analysed yet. Finish a match and click Coach Report."
-        return "report valid: " + ((r && r.valid) ? "true" : "false")
+        if (!d || !d.ran) return "No match analysed yet. Finish a match and click Coach Report,\nor use the DEMO REPORT button to preview with sample data."
+        return "mode: " + (d.demo ? "DEMO sample data" : "live TachusWidget")
+            + "\nreport valid: " + ((r && r.valid) ? "true" : "false")
             + "\nraw shots received: " + f(d.shotCount, 0) + "   (feeder read: " + f(COACHFEED.matchShotCount(), 0) + ")"
             + "\ncoordinates available: " + (d.hasCoordinates ? "true" : "false")
             + "\ntiming available: " + (d.hasTiming ? "true" : "false")

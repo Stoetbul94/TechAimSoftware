@@ -533,6 +533,23 @@ ApplicationWindow {
         onClosed: coachReportVisible = false
     }
 
+    // TEMPORARY / DEV-ONLY: preview the Coach Report with fixed sample data, no
+    // hardware needed. Remove this button after the live hardware test passes.
+    Button {
+        id: demoReportBtn
+        z: 9
+        visible: !coachReportVisible
+        text: "DEMO REPORT"
+        anchors.top: header.bottom
+        anchors.right: parent.right
+        anchors.topMargin: 8
+        anchors.rightMargin: 8
+        onClicked: {
+            COACHFEED.analyzeDemoMatch()
+            coachReportVisible = true
+        }
+    }
+
     LoginPage {
         id: loginPage
 

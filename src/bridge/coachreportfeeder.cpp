@@ -58,10 +58,9 @@ MatchArrays CoachReportFeeder::readGameMode(int gameSubMode) const
     return a;
 }
 
-bool CoachReportFeeder::analyzeCurrentMatch(int gameSubMode)
+bool CoachReportFeeder::runArrays(const MatchArrays& arrays, int gameSubMode, bool demo)
 {
-    if (!m_widget || !m_bridge) return false;
-    const MatchArrays arrays = readGameMode(gameSubMode);
+    if (!m_bridge) return false;
     const std::vector<techaim::analytics::ShotAnalyticsData> shots = buildShots(arrays);
 
     // Capture debug facts before analysis (from what was actually built).
@@ -76,16 +75,52 @@ bool CoachReportFeeder::analyzeCurrentMatch(int gameSubMode)
         const QString p = QString::fromStdString(techaim::analytics::toString(s.positionType));
         if (!m_dbgPositions.contains(p)) m_dbgPositions << p;
     }
-    m_dbgRan = true;
+    m_dbgRan  = true;
+    m_dbgDemo = demo;
 
     m_bridge->analyze(shots);
     return m_bridge->valid();
+}
+
+bool CoachReportFeeder::analyzeCurrentMatch(int gameSubMode)
+{
+    if (!m_widget || !m_bridge) return false;
+    return runArrays(readGameMode(gameSubMode), gameSubMode, false);
+}
+
+bool CoachReportFeeder::analyzeDemoMatch()
+{
+    return runArrays(makeDemoArrays(), 0, true);
+}
+
+// TEMPORARY / DEV-ONLY sample data: 20 prone record shots with coordinates,
+// timing intervals, four poor shots each followed by a recovery, a slight high
+// bias, and a couple of rushed/delayed intervals — enough for every section to
+// populate. Remove with the demo button once the live hardware test passes.
+MatchArrays CoachReportFeeder::makeDemoArrays() const
+{
+    MatchArrays a;
+    a.shotsPerSeries = 10;
+    a.is3P = false;
+    a.singlePosition = techaim::analytics::PositionType::Prone;
+    a.flipY = m_flipY;   // honour the current toggle so Flip Y is testable here too
+    a.scores = { 10.5, 10.6, 9.2, 10.7, 10.4, 10.6, 9.0, 10.8, 10.5, 10.3,
+                 10.6, 9.4, 10.7, 10.5, 10.4, 10.6, 10.2, 9.1, 10.8, 10.5 };
+    a.xs =     {  2.0, -1.0,  8.0,  1.0, -2.0,  3.0, -11.0,  0.0,  2.0, -3.0,
+                  1.0,  9.0, -1.0,  2.0,  0.0, -2.0,  3.0, -8.0,  1.0,  0.0 };
+    a.ys =     {  3.0,  2.0, -10.0, 4.0,  3.0,  1.0,  9.0,  2.0,  5.0,  1.0,
+                  3.0,  7.0,  2.0,  4.0,  1.0,  3.0,  2.0, -9.0,  5.0,  3.0 };
+    // intervals[0] is ignored (first shot anchors t=0); others must be > 0.
+    a.intervals = { 0.0, 32.0, 28.0, 46.0, 30.0, 26.0, 55.0, 18.0, 31.0, 29.0,
+                    33.0, 48.0, 27.0, 30.0, 25.0, 34.0, 29.0, 52.0, 19.0, 30.0 };
+    return a;
 }
 
 QVariantMap CoachReportFeeder::debugInfo() const
 {
     QVariantMap m;
     m["ran"]              = m_dbgRan;
+    m["demo"]             = m_dbgDemo;
     m["valid"]            = m_bridge ? m_bridge->valid() : false;
     m["shotCount"]        = m_dbgShotCount;
     m["hasCoordinates"]   = m_dbgHasCoords;
