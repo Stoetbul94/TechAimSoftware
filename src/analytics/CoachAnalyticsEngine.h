@@ -140,6 +140,20 @@ public:
         double fatigueWeightDispersion    = 0.35;
         double fatigueWeightTiming        = 0.20;
         double fatigueWeightLateCluster   = 0.10;
+
+        // ---- Phase 11: training priorities ----
+        double priorityMinScore            = 20.0;  // a candidate below this is not surfaced
+        double priorityImpactHighMin       = 67.0;  // priorityScore >= this => High impact
+        double priorityImpactMediumMin     = 34.0;  // >= this => Medium impact (else Low)
+        double priorityConfidentSampleSize = 30.0;  // competition shots for full sample confidence
+        // Group geometry reference band (mm): radius at/below good => 0, at/above poor => 100.
+        double priorityGroupGoodRadius     = 8.0;
+        double priorityGroupPoorRadius     = 20.0;
+        double priorityAimOffsetGood       = 2.0;   // MPI offset (mm) at/below => 0
+        double priorityAimOffsetPoor       = 12.0;  // MPI offset (mm) at/above => 100
+        double priorityPositionWeakMax     = 65.0;  // position quality below this => a priority
+        double priorityRepeatedErrorBump   = 15.0;  // extra points for repeated-error / over-correction
+        double priorityPoorPctFull         = 25.0;  // poor-shot % mapped to a full outlier priority
     };
 
     // Shared coordinate frame for a set of heat-map grids (so bins align).
@@ -251,6 +265,16 @@ public:
     // fabricates a coordinate/timing trend when that data is absent.
     static FatigueAnalysis buildFatigueAnalysis(const std::vector<ShotAnalyticsData>& shots,
                                                 const Options& options);
+
+    // ----------------------------------------------------------------------
+    //  Phase 11 — training priorities (public for unit testing)
+    // ----------------------------------------------------------------------
+    // Pure synthesis over the already-built report sections; invents no new
+    // measurement. `shots` is used only for provenance facts (coordinate
+    // presence, competition-shot count).
+    static TrainingPriorities buildTrainingPriorities(const std::vector<ShotAnalyticsData>& shots,
+                                                      const CoachReportData& report,
+                                                      const Options& options);
 
 private:
     // Validation + ordering. Returns the shots to analyse and fills the

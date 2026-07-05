@@ -80,11 +80,28 @@ struct PerformanceMetric : ConfidenceScored {
     Severity    severity      = Severity::None;
 };
 
-// Exemplar of a confidence-scored recommendation (populated in Phase 11).
-// Declared now so the shape is fixed and every priority is traceable.
+// Categorical coach-facing training area (Phase 11). Deterministic buckets —
+// NOT free-text advice. Each maps to a specific analytics source.
+enum class PriorityArea {
+    ScoreConsistency,   // shot-to-shot score spread (Executive Summary)
+    GroupTightness,     // group size / dispersion (Executive Summary geometry)
+    AimOffset,          // systematic MPI offset from centre (Executive Summary bias)
+    PositionStability,  // a weak shooting position (Phase 8)
+    ErrorRecovery,      // recovering after poor shots (Phase 9)
+    Endurance,          // fatigue / late-session decline (Phase 10)
+    ShotTiming,         // rhythm / rushed / delayed shots (Phase 7)
+    OutlierControl      // poor-shot rate / outliers (Phase 4)
+};
+std::string toString(PriorityArea a);
+
+// One confidence-scored, traceable training priority (populated in Phase 11).
+// Categorical (area + label + impact/severity), never advice prose.
 struct TrainingPriority : ConfidenceScored {
-    std::string priority;                 // e.g. "Standing Stability"
-    ImpactLevel impact = ImpactLevel::Low;
+    PriorityArea area = PriorityArea::ScoreConsistency;
+    std::string  priority;                // categorical label, e.g. "Standing Stability"
+    ImpactLevel  impact   = ImpactLevel::Low;
+    Severity     severity = Severity::None;
+    double       priorityScore = 0.0;     // 0..100, higher = more training need (drives ranking)
     std::vector<std::string> linkedMetrics;
 };
 
@@ -753,6 +770,30 @@ struct FatigueAnalysis {
     PositionType mostFatiguedPosition  = PositionType::Unknown;
 };
 
+// ===========================================================================
+//  Section 9: Training Priorities (Phase 11)
+// ---------------------------------------------------------------------------
+//  A pure SYNTHESIS layer over Sections 1..8 — it invents no new measurement.
+//  It converts the analytics outputs into a ranked list of categorical,
+//  coach-facing priority areas, each traceable to the metrics that produced
+//  it. Deterministic ordering (priorityScore desc, then fixed area order).
+//  Still categorical, NOT advice prose: it names WHERE to work and how
+//  strongly the data supports it, not HOW to train.
+// ===========================================================================
+struct TrainingPriorities {
+    bool available = false;                 // >= 1 priority cleared the inclusion threshold
+
+    // Ranked, highest priority first.
+    std::vector<TrainingPriority> priorities;
+
+    bool         hasTopPriority = false;
+    PriorityArea topPriorityArea = PriorityArea::ScoreConsistency;
+
+    // How many candidate areas were evaluated vs surfaced (transparency).
+    int areasEvaluated = 0;
+    int areasSurfaced  = 0;
+};
+
 // ---- Top-level result -----------------------------------------------------
 struct CoachReportData {
     // Validation / provenance
@@ -776,9 +817,9 @@ struct CoachReportData {
     PositionAnalysis positionAnalysis;   // Section 6 (Phase 8)
     RecoveryAnalysis recoveryAnalysis;   // Section 7 (Phase 9)
     FatigueAnalysis  fatigueAnalysis;    // Section 8 (Phase 10)
+    TrainingPriorities trainingPriorities; // Section 9 (Phase 11)
 
-    // Sections 9..11 — declared contract, implemented in later phases:
-    //   TrainingPriorities trainingPriorities;
+    // Sections 10..11 — declared contract, implemented in later phases:
     //   CoachConclusion   coachConclusion;
     //   CoachDiaryFields  manualDiaryFields;
 };

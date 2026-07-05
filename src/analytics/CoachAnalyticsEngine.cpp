@@ -102,6 +102,20 @@ std::string toString(FatiguePattern p)
     }
 }
 
+std::string toString(PriorityArea a)
+{
+    switch (a) {
+    case PriorityArea::ScoreConsistency:  return "ScoreConsistency";
+    case PriorityArea::GroupTightness:    return "GroupTightness";
+    case PriorityArea::AimOffset:         return "AimOffset";
+    case PriorityArea::PositionStability: return "PositionStability";
+    case PriorityArea::ErrorRecovery:     return "ErrorRecovery";
+    case PriorityArea::Endurance:         return "Endurance";
+    case PriorityArea::ShotTiming:        return "ShotTiming";
+    case PriorityArea::OutlierControl:    default: return "OutlierControl";
+    }
+}
+
 // ----------------------------------------------------------------------------
 //  Layer 1 — basic statistics
 // ----------------------------------------------------------------------------
@@ -1917,6 +1931,199 @@ FatigueAnalysis CoachAnalyticsEngine::buildFatigueAnalysis(
 }
 
 // ----------------------------------------------------------------------------
+//  Phase 11 — Training Priorities (file-local helpers)
+// ----------------------------------------------------------------------------
+namespace {
+
+// Linear 0..100 map: value at `atZero` -> 0, at `atHundred` -> 100, clamped.
+double linMap100(double v, double atZero, double atHundred)
+{
+    if (std::fabs(atHundred - atZero) < 1e-9) return 0.0;
+    const double t = (v - atZero) / (atHundred - atZero);
+    return clamp01d(t, 0.0, 1.0) * 100.0;
+}
+
+ImpactLevel impactFromScore(double s, const CoachAnalyticsEngine::Options& o)
+{
+    if (s >= o.priorityImpactHighMin)   return ImpactLevel::High;
+    if (s >= o.priorityImpactMediumMin) return ImpactLevel::Medium;
+    return ImpactLevel::Low;
+}
+
+// Capitalise the first character for a coach-facing label (presentation only;
+// the underlying enum string / machine key stays as-is).
+std::string capFirst(std::string s)
+{
+    if (!s.empty() && s[0] >= 'a' && s[0] <= 'z') s[0] = static_cast<char>(s[0] - 'a' + 'A');
+    return s;
+}
+
+} // namespace
+
+TrainingPriorities CoachAnalyticsEngine::buildTrainingPriorities(
+    const std::vector<ShotAnalyticsData>& shots, const CoachReportData& r, const Options& o)
+{
+    TrainingPriorities tp;
+    const int compN = r.competitionShotCount > 0 ? r.competitionShotCount
+                                                 : static_cast<int>(shots.size());
+    const double sampleConf = clamp01d(
+        100.0 * compN / (o.priorityConfidentSampleSize > 0 ? o.priorityConfidentSampleSize : 1.0),
+        0.0, 100.0);
+    const bool coordsPresent = anyCoords(shots);
+
+    std::vector<TrainingPriority> cand;
+    int evaluated = 0;
+
+    auto add = [&](PriorityArea area, std::string label, double score, double conf,
+                   std::vector<Evidence> ev, std::vector<std::string> links) {
+        ++evaluated;
+        score = clamp01d(score, 0.0, 100.0);
+        if (score < o.priorityMinScore) return;      // not worth surfacing
+        TrainingPriority p;
+        p.area          = area;
+        p.priority      = std::move(label);
+        p.priorityScore = score;
+        p.impact        = impactFromScore(score, o);
+        p.severity      = severityFromComponent(100.0 - score);   // higher score => higher severity
+        p.confidence    = clamp01d(conf, 0.0, 100.0);
+        p.evidence      = std::move(ev);
+        p.linkedMetrics = std::move(links);
+        cand.push_back(std::move(p));
+    };
+
+    // 1) Score consistency (Executive Summary) — always assessable.
+    {
+        const double consistency = r.executiveSummary.consistencyPercentage;
+        std::vector<Evidence> ev;
+        ev.emplace_back("Score consistency " + fnum(consistency, 1) + "% (SD " +
+                        fnum(r.executiveSummary.scoreStandardDeviation, 3) + ")",
+                        "exec.consistency", consistency);
+        add(PriorityArea::ScoreConsistency, "Score Consistency", 100.0 - consistency,
+            sampleConf, ev,
+            {"executiveSummary.consistencyPercentage", "executiveSummary.scoreStandardDeviation"});
+    }
+
+    // 2) Group tightness (Executive Summary geometry) — coordinates required.
+    if (coordsPresent) {
+        const double gr = r.executiveSummary.groupRadius;
+        std::vector<Evidence> ev;
+        ev.emplace_back("Group radius " + fnum(gr, 2) + "mm (diameter " +
+                        fnum(r.executiveSummary.groupDiameter, 2) + "mm)", "exec.groupRadius", gr);
+        add(PriorityArea::GroupTightness, "Group Tightness",
+            linMap100(gr, o.priorityGroupGoodRadius, o.priorityGroupPoorRadius),
+            sampleConf, ev, {"executiveSummary.groupRadius"});
+    }
+
+    // 3) Aim / zero offset (systematic MPI shift) — coordinates required.
+    if (coordsPresent) {
+        const double bx = r.executiveSummary.horizontalBias;
+        const double by = r.executiveSummary.verticalBias;
+        const double off = std::sqrt(bx * bx + by * by);
+        std::vector<Evidence> ev;
+        ev.emplace_back("MPI offset " + fnum(off, 2) + "mm (h " + fnum(bx, 2) + ", v " +
+                        fnum(by, 2) + ")", "exec.mpiOffset", off);
+        add(PriorityArea::AimOffset, "Sight / Zero Offset",
+            linMap100(off, o.priorityAimOffsetGood, o.priorityAimOffsetPoor),
+            sampleConf, ev, {"executiveSummary.horizontalBias", "executiveSummary.verticalBias"});
+    }
+
+    // 4) Position stability (Phase 8) — one priority per weak position.
+    if (r.positionAnalysis.available) {
+        for (const auto& pos : r.positionAnalysis.positions) {
+            if (!pos.qualityAvailable || pos.qualityScore >= o.priorityPositionWeakMax) continue;
+            std::vector<Evidence> ev;
+            ev.emplace_back(pos.positionName + " quality " + fnum(pos.qualityScore, 1) +
+                            "/100, " + fnum(pos.pointsLost, 1) + " points lost",
+                            "position.quality", pos.qualityScore);
+            add(PriorityArea::PositionStability, capFirst(pos.positionName) + " Stability",
+                100.0 - pos.qualityScore, pos.confidence, ev,
+                {"positionAnalysis." + pos.positionName + ".qualityScore"});
+        }
+    }
+
+    // 5) Recovery after errors (Phase 9).
+    {
+        const ShotRecoveryReport& rec = r.recoveryAnalysis.overall;
+        if (rec.available) {
+            double score = 100.0 - rec.badShotRecoveryRate;
+            if (rec.pattern == RecoveryPattern::RepeatedErrorPattern ||
+                rec.pattern == RecoveryPattern::OverCorrectionPattern)
+                score += o.priorityRepeatedErrorBump;
+            std::vector<Evidence> ev;
+            ev.emplace_back("Recovery rate " + fnum(rec.badShotRecoveryRate, 1) + "% (" +
+                            toString(rec.pattern) + "), repeated-error " +
+                            fnum(rec.repeatedErrorRate, 1) + "%", "recovery.rate",
+                            rec.badShotRecoveryRate);
+            add(PriorityArea::ErrorRecovery, "Recovery After Errors", score,
+                rec.recoveryConfidence, ev, {"recoveryAnalysis.overall.badShotRecoveryRate"});
+        }
+    }
+
+    // 6) Endurance / fatigue (Phase 10).
+    {
+        const FatigueAnalysis& fat = r.fatigueAnalysis;
+        if (fat.available && fat.scoreTrendAvailable &&
+            fat.overallPattern != FatiguePattern::NoFatigueDetected &&
+            fat.overallPattern != FatiguePattern::InsufficientData) {
+            const bool posSpecific = fat.overallPattern == FatiguePattern::PositionSpecificFatigue
+                                     && fat.hasFatiguedPosition;
+            const std::string label = posSpecific
+                ? (capFirst(toString(fat.mostFatiguedPosition)) + " Endurance") : "Match Endurance";
+            std::vector<Evidence> ev;
+            ev.emplace_back("Fatigue " + toString(fat.overallPattern) + ", index " +
+                            fnum(fat.fatigueIndex, 2) + ", early-late " +
+                            fnum(fat.earlyLateDelta, 2), "fatigue.index", fat.fatigueIndex);
+            add(PriorityArea::Endurance, label, fat.fatigueIndex * 100.0, fat.confidence, ev,
+                {"fatigueAnalysis.fatigueIndex", "fatigueAnalysis.overallPattern"});
+        }
+    }
+
+    // 7) Shot rhythm / timing (Phase 7).
+    {
+        const TimingAnalysis& tim = r.timingAnalysis;
+        if (tim.rhythmAvailable) {
+            const int rd = tim.rushedShotCount + tim.delayedShotCount;
+            const double frac = tim.intervalCount > 0
+                ? static_cast<double>(rd) / tim.intervalCount : 0.0;
+            const double score = (100.0 - tim.rhythmConsistency) + frac * 20.0;
+            std::vector<Evidence> ev;
+            ev.emplace_back("Rhythm consistency " + fnum(tim.rhythmConsistency, 1) + "%, " +
+                            fnum(tim.rushedShotCount, 0) + " rushed / " +
+                            fnum(tim.delayedShotCount, 0) + " delayed", "timing.rhythm",
+                            tim.rhythmConsistency);
+            add(PriorityArea::ShotTiming, "Shot Rhythm & Timing", score, sampleConf, ev,
+                {"timingAnalysis.rhythmConsistency"});
+        }
+    }
+
+    // 8) Poor-shot / outlier control (Phase 4) — always assessable.
+    {
+        const ShotDistribution& dist = r.shotDistribution;
+        std::vector<Evidence> ev;
+        ev.emplace_back("Poor shots " + fnum(dist.poorPct, 1) + "% (" + fnum(dist.poorCount, 0) +
+                        " below 9.5, " + fnum(dist.countBelow10_0, 0) + " below 10.0)",
+                        "distribution.poorPct", dist.poorPct);
+        add(PriorityArea::OutlierControl, "Outlier / Poor-Shot Control",
+            linMap100(dist.poorPct, 0.0, o.priorityPoorPctFull), sampleConf, ev,
+            {"shotDistribution.poorPct"});
+    }
+
+    // Deterministic ranking: priorityScore desc, then fixed area order.
+    std::stable_sort(cand.begin(), cand.end(),
+        [](const TrainingPriority& a, const TrainingPriority& b) {
+            if (a.priorityScore != b.priorityScore) return a.priorityScore > b.priorityScore;
+            return static_cast<int>(a.area) < static_cast<int>(b.area);
+        });
+
+    tp.priorities     = std::move(cand);
+    tp.areasEvaluated = evaluated;
+    tp.areasSurfaced  = static_cast<int>(tp.priorities.size());
+    tp.available      = !tp.priorities.empty();
+    if (tp.available) { tp.hasTopPriority = true; tp.topPriorityArea = tp.priorities.front().area; }
+    return tp;
+}
+
+// ----------------------------------------------------------------------------
 //  Public entry point
 // ----------------------------------------------------------------------------
 CoachReportData CoachAnalyticsEngine::analyze(const std::vector<ShotAnalyticsData>& shots)
@@ -1951,6 +2158,8 @@ CoachReportData CoachAnalyticsEngine::analyze(const std::vector<ShotAnalyticsDat
     report.positionAnalysis = buildPositionAnalysis(prepared, options);
     report.recoveryAnalysis = buildRecoveryAnalysis(prepared, options);
     report.fatigueAnalysis  = buildFatigueAnalysis(prepared, options);
+    // Phase 11 synthesises the sections above — build it last.
+    report.trainingPriorities = buildTrainingPriorities(prepared, report, options);
     report.valid = true;
     report.message = report.lowSampleWarning
         ? "Analysed with fewer than 10 shots; results are indicative only."
