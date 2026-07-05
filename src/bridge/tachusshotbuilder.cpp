@@ -50,7 +50,8 @@ std::vector<ShotAnalyticsData> buildShots(const MatchArrays& a)
         }
     }
 
-    // 3P equal-thirds split in K -> P -> S order.
+    // FALLBACK ONLY: 3P equal-thirds split in K -> P -> S order. Replace with a
+    // real position-per-shot signal from the match state machine when available.
     const int block = a.is3P ? (n / 3) : 0;
 
     for (int i = 0; i < n; ++i) {

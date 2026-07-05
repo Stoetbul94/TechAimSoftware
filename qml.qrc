@@ -8,6 +8,8 @@
         <file>RightPanel.qml</file>
         <file>CenterPane.qml</file>
         <file>SummaryPage.qml</file>
+        <file>CoachReportPage.qml</file>
+        <file>CoachReportCard.qml</file>
         <file>LoginPage.qml</file>
         <file>ShootingPage.qml</file>
         <file>MatchReport.qml</file>

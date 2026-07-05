@@ -20,9 +20,14 @@
 //    - Timing is built from per-shot "time consumed" values (interval to each
 //      shot); the first shot anchors t=0. If any interval is missing/invalid,
 //      timing is reported unavailable rather than fabricated.
-//    - 3-position (3P) shots are split into equal thirds in K -> P -> S order
-//      (the codebase's confirmed 3P state machine). Single-position disciplines
-//      carry one resolved position for every shot.
+//    - 3-position (3P) shots are split into equal thirds in K -> P -> S order.
+//      *** THIS IS A TEMPORARY FALLBACK. *** For a real ISSF 3P match the
+//      per-shot position must come from the match mode / position state machine
+//      (the actual K/P/S shot counts), not an equal-thirds guess. Replace
+//      buildShots' is3P branch with a real position-per-shot input when that
+//      wiring exists; the equal-thirds split is only a stopgap so 3P data is
+//      not lumped into one position. Single-position disciplines carry one
+//      resolved position for every shot (not a fallback).
 // ============================================================================
 
 #include <vector>

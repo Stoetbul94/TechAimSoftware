@@ -30,6 +30,7 @@ ApplicationWindow {
     property string greenColor: "#00ff00" //"lightgreen"
     property string mpiColor: /*"transparent"//*/"blue"
     property bool isSingleDecimal: APPSETTINGS.getIsSingleDecimal()
+    property bool coachReportVisible: false   // Coach Report overlay toggle
 
     //property string valueString: ""
 
@@ -516,6 +517,20 @@ ApplicationWindow {
                 APPSETTINGS.updateStatusFeedbackFile(1)
             }
         }
+    }
+
+    // Coach Report overlay (offline analytics view). Sits above the shooting
+    // page; opened from the Match Summary. Reads COACHREPORT only — no analytics.
+    CoachReportPage {
+        id: coachReportPage
+        z: 8
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: header.bottom
+        anchors.bottom: parent.bottom
+        visible: coachReportVisible
+        gameSubMode: loginPage.gameSubMode
+        onClosed: coachReportVisible = false
     }
 
     LoginPage {

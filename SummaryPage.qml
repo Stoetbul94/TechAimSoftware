@@ -344,6 +344,21 @@ Dialog {
                     printImage()
                 }
             }
+
+            // Run the offline Coach Report on the just-finished match and open
+            // the report overlay. gameSubMode/coachReportVisible resolve via the
+            // main.qml context (same pattern as gameRange/theme).
+            Button {
+                text: "Coach Report"
+                anchors.left: parent.left
+                anchors.leftMargin: 10
+                onClicked:
+                {
+                    COACHFEED.analyzeCurrentMatch(loginPage.gameSubMode)
+                    coachReportVisible = true
+                    close()
+                }
+            }
         }
     }
 
