@@ -61,8 +61,39 @@ MatchArrays CoachReportFeeder::readGameMode(int gameSubMode) const
 bool CoachReportFeeder::analyzeCurrentMatch(int gameSubMode)
 {
     if (!m_widget || !m_bridge) return false;
-    const std::vector<techaim::analytics::ShotAnalyticsData> shots =
-        buildShots(readGameMode(gameSubMode));
+    const MatchArrays arrays = readGameMode(gameSubMode);
+    const std::vector<techaim::analytics::ShotAnalyticsData> shots = buildShots(arrays);
+
+    // Capture debug facts before analysis (from what was actually built).
+    m_dbgShotCount   = static_cast<int>(shots.size());
+    m_dbgHasCoords   = !arrays.xs.empty();
+    m_dbgHasTiming   = !shots.empty() && shots.front().hasTimestamp;
+    m_dbgIs3P        = arrays.is3P;
+    m_dbgSinglePos   = QString::fromStdString(techaim::analytics::toString(arrays.singlePosition));
+    m_dbgGameSubMode = gameSubMode;
+    m_dbgPositions.clear();
+    for (const auto& s : shots) {
+        const QString p = QString::fromStdString(techaim::analytics::toString(s.positionType));
+        if (!m_dbgPositions.contains(p)) m_dbgPositions << p;
+    }
+    m_dbgRan = true;
+
     m_bridge->analyze(shots);
     return m_bridge->valid();
+}
+
+QVariantMap CoachReportFeeder::debugInfo() const
+{
+    QVariantMap m;
+    m["ran"]              = m_dbgRan;
+    m["valid"]            = m_bridge ? m_bridge->valid() : false;
+    m["shotCount"]        = m_dbgShotCount;
+    m["hasCoordinates"]   = m_dbgHasCoords;
+    m["hasTiming"]        = m_dbgHasTiming;
+    m["is3P"]             = m_dbgIs3P;
+    m["discipline"]       = m_dbgIs3P ? QStringLiteral("3P (fallback thirds)") : m_dbgSinglePos;
+    m["gameSubMode"]      = m_dbgGameSubMode;
+    m["positions"]        = m_dbgPositions;
+    m["coordinatesFlipY"] = m_flipY;
+    return m;
 }

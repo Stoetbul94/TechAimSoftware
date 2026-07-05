@@ -16,6 +16,10 @@
 // ============================================================================
 
 #include <QObject>
+#include <QString>
+#include <QStringList>
+#include <QVariant>
+#include <QVariantMap>
 #include "tachusshotbuilder.h"
 
 class TachusWidget;
@@ -39,6 +43,12 @@ public:
     // Number of game-mode shots the feeder would read (for QML guards).
     Q_INVOKABLE int matchShotCount() const;
 
+    // Lightweight facts about the LAST analyzeCurrentMatch, for the first-test
+    // debug card: { valid, shotCount, hasCoordinates, hasTiming, is3P,
+    // discipline, gameSubMode, positions[], coordinatesFlipY }. Sourced from
+    // where the decisions are made — not inferred from the report.
+    Q_INVOKABLE QVariantMap debugInfo() const;
+
     bool coordinatesFlipY() const { return m_flipY; }
     void setCoordinatesFlipY(bool f);
 
@@ -51,6 +61,16 @@ private:
     TachusWidget*      m_widget;
     CoachReportBridge* m_bridge;
     bool               m_flipY = false;
+
+    // Captured on the last analyzeCurrentMatch (debug card only).
+    int         m_dbgShotCount   = 0;
+    bool        m_dbgHasCoords   = false;
+    bool        m_dbgHasTiming   = false;
+    bool        m_dbgIs3P        = false;
+    QString     m_dbgSinglePos   = "Unknown";
+    int         m_dbgGameSubMode = 0;
+    QStringList m_dbgPositions;
+    bool        m_dbgRan         = false;
 };
 
 #endif // COACHREPORTFEEDER_H

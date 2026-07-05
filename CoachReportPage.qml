@@ -152,6 +152,25 @@ Rectangle {
         return t
     }
 
+    // First-test debug facts (from COACHFEED, refreshed on each analysis).
+    property var dbg: ({})
+    Connections {
+        target: COACHREPORT
+        function onReportChanged() { reportPage.dbg = COACHFEED.debugInfo() }
+    }
+    Component.onCompleted: reportPage.dbg = COACHFEED.debugInfo()
+
+    function fmtDebug(d, r) {
+        if (!d || !d.ran) return "No match analysed yet. Finish a match and click Coach Report."
+        return "report valid: " + ((r && r.valid) ? "true" : "false")
+            + "\nraw shots received: " + f(d.shotCount, 0) + "   (feeder read: " + f(COACHFEED.matchShotCount(), 0) + ")"
+            + "\ncoordinates available: " + (d.hasCoordinates ? "true" : "false")
+            + "\ntiming available: " + (d.hasTiming ? "true" : "false")
+            + "\ndiscipline: " + (d.discipline || "—") + "   gameSubMode: " + f(d.gameSubMode, 0)
+            + "\ndetected positions: " + ((d.positions && d.positions.length) ? d.positions.join(", ") : "—")
+            + "\ncoordinatesFlipY: " + (d.coordinatesFlipY ? "true" : "false")
+    }
+
     // Section model, rebuilt whenever the report changes.
     property var cards: buildCards(rep)
     function buildCards(r) {
@@ -283,20 +302,8 @@ Rectangle {
     }
 
     // ---------- body ----------
-    Text {
-        anchors.centerIn: parent
-        visible: !(reportPage.rep && reportPage.rep.valid)
-        width: parent.width * 0.7
-        horizontalAlignment: Text.AlignHCenter
-        wrapMode: Text.WordWrap
-        text: "No report yet.\n\n" + ((reportPage.rep && reportPage.rep.message) ? reportPage.rep.message
-              : "Finish a match, then open the Coach Report.")
-        color: theme.textSecondary; font.pixelSize: 16; font.family: theme.fontFamily
-    }
-
     ScrollView {
         id: scroller
-        visible: reportPage.rep && reportPage.rep.valid
         anchors.top: topBar.bottom
         anchors.left: parent.left
         anchors.right: parent.right
@@ -310,6 +317,40 @@ Rectangle {
             width: scroller.availableWidth
             spacing: 12
 
+            // First-test-only debug card (data-plumbing visibility). Distinct
+            // accent border so it is obviously not part of the coach report.
+            Rectangle {
+                width: scrollColumn.width
+                implicitHeight: dbgCol.implicitHeight + 24
+                height: implicitHeight
+                color: theme.bgSurfaceAlt
+                radius: 8
+                border.color: theme.brandAccent
+                border.width: 1
+                Column {
+                    id: dbgCol
+                    x: 14; y: 12; width: parent.width - 28; spacing: 8
+                    Text {
+                        width: parent.width; text: "🛈 DEBUG — first-test only"
+                        color: theme.brandAccent; font.bold: true; font.pixelSize: 16; font.family: theme.fontFamily
+                    }
+                    Text {
+                        width: parent.width; text: reportPage.fmtDebug(reportPage.dbg, reportPage.rep)
+                        color: theme.textSecondary; font.pixelSize: 13; font.family: "monospace"
+                        wrapMode: Text.WordWrap; lineHeight: 1.25
+                    }
+                }
+            }
+
+            Text {
+                width: parent.width
+                visible: !(reportPage.rep && reportPage.rep.valid)
+                text: "No report to display yet.\n" + ((reportPage.rep && reportPage.rep.message)
+                      ? reportPage.rep.message : "Finish a match, then click Coach Report.")
+                color: theme.textSecondary; font.pixelSize: 15; font.family: theme.fontFamily
+                wrapMode: Text.WordWrap
+            }
+
             Text {
                 width: parent.width
                 text: (reportPage.rep && reportPage.rep.lowSampleWarning)
@@ -321,7 +362,7 @@ Rectangle {
             }
 
             Repeater {
-                model: reportPage.cards
+                model: (reportPage.rep && reportPage.rep.valid) ? reportPage.cards : []
                 delegate: CoachReportCard {
                     width: scrollColumn.width
                     title: modelData.title
