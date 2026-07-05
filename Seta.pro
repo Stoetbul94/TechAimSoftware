@@ -14,8 +14,10 @@ SOURCES += main.cpp \
     receiverTachus.cpp \
     sender.cpp \
     src/analytics/CoachAnalyticsEngine.cpp \
+    src/bridge/tachusshotbuilder.cpp \
     src/bridge/coachreportvariant.cpp \
-    src/bridge/coachreportbridge.cpp
+    src/bridge/coachreportbridge.cpp \
+    src/bridge/coachreportfeeder.cpp
 
 # Offline coach-analytics module (pure C++, independent from Qt/QML).
 HEADERS += \
@@ -25,9 +27,12 @@ HEADERS += \
 INCLUDEPATH += src/analytics
 
 # QML boundary layer (the ONLY place Qt meets the analytics engine).
+# tachusshotbuilder is pure C++ (Qt-free); the rest bridge to Qt/QML.
 HEADERS += \
+    src/bridge/tachusshotbuilder.h \
     src/bridge/coachreportvariant.h \
-    src/bridge/coachreportbridge.h
+    src/bridge/coachreportbridge.h \
+    src/bridge/coachreportfeeder.h
 INCLUDEPATH += src/bridge
 
 RESOURCES += qml.qrc \

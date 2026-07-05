@@ -25,6 +25,7 @@
 #include "appsettings.h"
 #include "receiverTachus.h"
 #include "src/bridge/coachreportbridge.h"
+#include "src/bridge/coachreportfeeder.h"
 #include <QLockFile>
 #include <QDir>
 #include <QMessageBox>
@@ -127,6 +128,10 @@ int main(int argc, char *argv[])
     // logic here; it only marshals CoachReportData to/from QVariant.
     CoachReportBridge coachReport;
     engine.rootContext()->setContextProperty("COACHREPORT", &coachReport);
+    // Real-data feeder: reads the TachusWidget game-mode match history and runs
+    // the report through the bridge. QML calls COACHFEED.analyzeCurrentMatch(...).
+    CoachReportFeeder coachFeed(widget, &coachReport);
+    engine.rootContext()->setContextProperty("COACHFEED", &coachFeed);
     engine.load(QUrl(QLatin1String("qrc:/main.qml")));
     if (engine.rootObjects().isEmpty())
         return -1;
