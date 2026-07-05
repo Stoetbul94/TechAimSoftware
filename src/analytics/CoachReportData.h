@@ -794,6 +794,40 @@ struct TrainingPriorities {
     int areasSurfaced  = 0;
 };
 
+// ===========================================================================
+//  Section 10: Coach Conclusion (Phase 12)
+// ---------------------------------------------------------------------------
+//  The first section that emits coach-facing TEXT — but every string is
+//  templated from real report numbers, never free-form. It summarises the
+//  session using the analytics already generated: a categorical performance
+//  rating, grounded strengths, the ranked limiting factors, categorical
+//  technical risk flags, and a training-focus line. No motivational fluff, no
+//  generic advice, no claim without a number behind it. Deterministic.
+// ===========================================================================
+enum class PerformanceRating {
+    InsufficientData,
+    Developing,     // low average
+    Inconsistent,   // decent average but erratic (high variance)
+    Solid,
+    Strong,
+    Excellent
+};
+std::string toString(PerformanceRating r);
+
+struct CoachConclusion {
+    bool              available = false;
+    PerformanceRating rating    = PerformanceRating::InsufficientData;
+
+    std::string overallAssessment;                 // 1-3 grounded sentences
+    std::vector<std::string> keyStrengths;         // grounded, only what the data supports
+    std::vector<std::string> mainLimitingFactors;  // from the ranked training priorities
+    std::vector<std::string> technicalRiskFlags;   // categorical pattern flags (only if present)
+    std::string trainingFocusSummary;              // names the top priority area(s)
+
+    double confidence = 0.0;                        // 0..100 (sample size x data completeness)
+    std::vector<Evidence> evidence;                 // traceable facts behind the conclusion
+};
+
 // ---- Top-level result -----------------------------------------------------
 struct CoachReportData {
     // Validation / provenance
@@ -818,9 +852,9 @@ struct CoachReportData {
     RecoveryAnalysis recoveryAnalysis;   // Section 7 (Phase 9)
     FatigueAnalysis  fatigueAnalysis;    // Section 8 (Phase 10)
     TrainingPriorities trainingPriorities; // Section 9 (Phase 11)
+    CoachConclusion  coachConclusion;    // Section 10 (Phase 12)
 
-    // Sections 10..11 — declared contract, implemented in later phases:
-    //   CoachConclusion   coachConclusion;
+    // Section 11 — declared contract, implemented in a later phase:
     //   CoachDiaryFields  manualDiaryFields;
 };
 

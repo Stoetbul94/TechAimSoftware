@@ -154,6 +154,20 @@ public:
         double priorityPositionWeakMax     = 65.0;  // position quality below this => a priority
         double priorityRepeatedErrorBump   = 15.0;  // extra points for repeated-error / over-correction
         double priorityPoorPctFull         = 25.0;  // poor-shot % mapped to a full outlier priority
+
+        // ---- Phase 12: coach conclusion ----
+        int    conclusionMinShots            = 10;   // fewer analysed shots => InsufficientData rating
+        double conclusionExcellentAvg        = 10.5; // average-score rating bands (decimal scoring)
+        double conclusionStrongAvg           = 10.2;
+        double conclusionSolidAvg            = 10.0;
+        double conclusionDevelopingAvg       = 9.5;  // below this stays Developing
+        double conclusionInconsistentPct     = 40.0; // consistency% below this downgrades to Inconsistent
+        double conclusionStrengthConsistency = 70.0; // consistency% at/above => a strength
+        double conclusionStrengthPosQuality  = 75.0; // position quality at/above => a strength
+        double conclusionStrengthPoorPctMax  = 5.0;  // poor-shot % at/below => a strength
+        double conclusionAimOffsetFlag       = 8.0;  // MPI offset (mm) at/above => a risk flag
+        int    conclusionMaxLimitingFactors  = 3;    // cap on listed limiting factors
+        double conclusionConfidentSampleSize = 40.0; // analysed shots for full sample confidence
     };
 
     // Shared coordinate frame for a set of heat-map grids (so bins align).
@@ -275,6 +289,15 @@ public:
     static TrainingPriorities buildTrainingPriorities(const std::vector<ShotAnalyticsData>& shots,
                                                       const CoachReportData& report,
                                                       const Options& options);
+
+    // ----------------------------------------------------------------------
+    //  Phase 12 — coach conclusion (public for unit testing)
+    // ----------------------------------------------------------------------
+    // Synthesis over the built report. Emits coach-facing text, but every
+    // string is templated from real report numbers — nothing free-form.
+    static CoachConclusion buildCoachConclusion(const std::vector<ShotAnalyticsData>& shots,
+                                                const CoachReportData& report,
+                                                const Options& options);
 
 private:
     // Validation + ordering. Returns the shots to analyse and fills the

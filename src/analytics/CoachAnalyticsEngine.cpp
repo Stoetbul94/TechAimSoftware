@@ -116,6 +116,18 @@ std::string toString(PriorityArea a)
     }
 }
 
+std::string toString(PerformanceRating r)
+{
+    switch (r) {
+    case PerformanceRating::Developing:   return "Developing";
+    case PerformanceRating::Inconsistent: return "Inconsistent";
+    case PerformanceRating::Solid:        return "Solid";
+    case PerformanceRating::Strong:       return "Strong";
+    case PerformanceRating::Excellent:    return "Excellent";
+    case PerformanceRating::InsufficientData: default: return "InsufficientData";
+    }
+}
+
 // ----------------------------------------------------------------------------
 //  Layer 1 — basic statistics
 // ----------------------------------------------------------------------------
@@ -2124,6 +2136,174 @@ TrainingPriorities CoachAnalyticsEngine::buildTrainingPriorities(
 }
 
 // ----------------------------------------------------------------------------
+//  Phase 12 — Coach Conclusion
+// ----------------------------------------------------------------------------
+//  Emits coach-facing text, but every string is templated from real report
+//  numbers — deterministic, grounded, no free-form generation.
+CoachConclusion CoachAnalyticsEngine::buildCoachConclusion(
+    const std::vector<ShotAnalyticsData>& shots, const CoachReportData& r, const Options& o)
+{
+    CoachConclusion c;
+    const int n = r.analysedShotCount > 0 ? r.analysedShotCount : static_cast<int>(shots.size());
+    const ExecutiveSummary& ex = r.executiveSummary;
+    const bool coords = anyCoords(shots);
+    const bool timing = r.timingAnalysis.available;
+
+    // --- categorical rating from average, adjusted for consistency & impact ---
+    if (n < o.conclusionMinShots) {
+        c.rating = PerformanceRating::InsufficientData;
+    } else {
+        const double a = ex.averageScore;
+        if      (a >= o.conclusionExcellentAvg) c.rating = PerformanceRating::Excellent;
+        else if (a >= o.conclusionStrongAvg)    c.rating = PerformanceRating::Strong;
+        else if (a >= o.conclusionSolidAvg)     c.rating = PerformanceRating::Solid;
+        else                                    c.rating = PerformanceRating::Developing;
+        // Decent average but erratic -> Inconsistent.
+        if (ex.consistencyPercentage < o.conclusionInconsistentPct
+            && static_cast<int>(c.rating) >= static_cast<int>(PerformanceRating::Solid))
+            c.rating = PerformanceRating::Inconsistent;
+        // Cannot be "Excellent" while a High-impact limiting factor stands.
+        bool highImpact = false;
+        for (const auto& p : r.trainingPriorities.priorities)
+            if (p.impact == ImpactLevel::High) { highImpact = true; break; }
+        if (c.rating == PerformanceRating::Excellent && highImpact)
+            c.rating = PerformanceRating::Strong;
+    }
+    c.available = true;
+
+    std::string word;
+    switch (c.rating) {
+    case PerformanceRating::Excellent:    word = "excellent";    break;
+    case PerformanceRating::Strong:       word = "strong";       break;
+    case PerformanceRating::Solid:        word = "solid";        break;
+    case PerformanceRating::Inconsistent: word = "inconsistent"; break;
+    case PerformanceRating::Developing:   word = "developing";   break;
+    default:                              word = "indicative";   break;
+    }
+
+    // --- overall assessment ---
+    if (c.rating == PerformanceRating::InsufficientData) {
+        c.overallAssessment = "Limited sample (" + fnum(n, 0) + " shots); this assessment is "
+            "indicative only. Average " + fnum(ex.averageScore, 2) + ", consistency "
+            + fnum(ex.consistencyPercentage, 0) + "%.";
+    } else {
+        std::string s = "Over " + fnum(n, 0) + " shots the athlete averaged "
+            + fnum(ex.averageScore, 2) + " (total " + fnum(ex.totalScore, 1) + ", consistency "
+            + fnum(ex.consistencyPercentage, 0) + "%), rated " + word + ".";
+        if (coords) s += " Group radius " + fnum(ex.groupRadius, 2) + "mm.";
+        if (r.trainingPriorities.hasTopPriority && !r.trainingPriorities.priorities.empty())
+            s += " Primary limiting factor: " + r.trainingPriorities.priorities.front().priority + ".";
+        if (r.fatigueAnalysis.available && r.fatigueAnalysis.scoreTrendAvailable
+            && r.fatigueAnalysis.overallPattern != FatiguePattern::NoFatigueDetected
+            && r.fatigueAnalysis.overallPattern != FatiguePattern::InsufficientData)
+            s += " Fatigue signal: " + toString(r.fatigueAnalysis.overallPattern) + ".";
+        c.overallAssessment = s;
+    }
+
+    // --- key strengths (only what the data actually supports) ---
+    if (ex.consistencyPercentage >= o.conclusionStrengthConsistency)
+        c.keyStrengths.push_back("High score consistency (" + fnum(ex.consistencyPercentage, 0) + "%).");
+    if (coords && ex.groupRadius > 0.0 && ex.groupRadius <= o.priorityGroupGoodRadius)
+        c.keyStrengths.push_back("Tight shot group (radius " + fnum(ex.groupRadius, 2) + "mm).");
+    {
+        const PositionReport* best = nullptr;
+        for (const auto& p : r.positionAnalysis.positions)
+            if (p.qualityAvailable && (!best || p.qualityScore > best->qualityScore)) best = &p;
+        if (best && best->qualityScore >= o.conclusionStrengthPosQuality)
+            c.keyStrengths.push_back("Strong " + capFirst(best->positionName) + " (quality "
+                + fnum(best->qualityScore, 0) + "/100).");
+    }
+    if (r.recoveryAnalysis.overall.available
+        && r.recoveryAnalysis.overall.pattern == RecoveryPattern::GoodRecovery)
+        c.keyStrengths.push_back("Reliable recovery after poor shots ("
+            + fnum(r.recoveryAnalysis.overall.badShotRecoveryRate, 0) + "% next-shot).");
+    // "Held performance" is only a genuine strength when the sustained level was
+    // actually decent — not fading a weak session is not a highlight.
+    if (r.fatigueAnalysis.available && r.fatigueAnalysis.scoreTrendAvailable
+        && r.fatigueAnalysis.overallPattern == FatiguePattern::NoFatigueDetected
+        && static_cast<int>(c.rating) >= static_cast<int>(PerformanceRating::Solid))
+        c.keyStrengths.push_back("Held performance across the session (no fatigue signal).");
+    if (r.shotDistribution.poorPct <= o.conclusionStrengthPoorPctMax)
+        c.keyStrengths.push_back("Very few poor shots (" + fnum(r.shotDistribution.poorPct, 1) + "%).");
+
+    // --- limiting factors (straight from the ranked priorities) ---
+    for (const auto& p : r.trainingPriorities.priorities) {
+        if (static_cast<int>(c.mainLimitingFactors.size()) >= o.conclusionMaxLimitingFactors) break;
+        c.mainLimitingFactors.push_back(p.priority + " (" + toString(p.impact) + " impact, score "
+            + fnum(p.priorityScore, 0) + ").");
+    }
+    if (c.mainLimitingFactors.empty())
+        c.mainLimitingFactors.push_back("No major limiting factor detected in this session's data.");
+
+    // --- technical risk flags (categorical; only when the condition is present) ---
+    const ShotRecoveryReport& rec = r.recoveryAnalysis.overall;
+    if (rec.available && rec.pattern == RecoveryPattern::RepeatedErrorPattern)
+        c.technicalRiskFlags.push_back("Repeated-error pattern: poor shots tend to cluster.");
+    if (rec.available && rec.pattern == RecoveryPattern::OverCorrectionPattern)
+        c.technicalRiskFlags.push_back("Over-correction after poor shots (opposite-side overshoot).");
+    const FatigueAnalysis& fat = r.fatigueAnalysis;
+    if (fat.available && fat.scoreTrendAvailable) {
+        switch (fat.overallPattern) {
+        case FatiguePattern::LateMatchDrop:
+            c.technicalRiskFlags.push_back("Late-match score drop."); break;
+        case FatiguePattern::IncreasingDispersion:
+            c.technicalRiskFlags.push_back("Group opening up over the session."); break;
+        case FatiguePattern::TimingSlowdown:
+            c.technicalRiskFlags.push_back("Shot timing slowing late in the session."); break;
+        case FatiguePattern::FatigueCompensation:
+            c.technicalRiskFlags.push_back("Maintaining score with rising effort (possible compensation)."); break;
+        case FatiguePattern::GradualDecline:
+            c.technicalRiskFlags.push_back("Gradual score decline across the session."); break;
+        case FatiguePattern::PositionSpecificFatigue:
+            if (fat.hasFatiguedPosition)
+                c.technicalRiskFlags.push_back(capFirst(toString(fat.mostFatiguedPosition))
+                    + " shows position-specific fatigue.");
+            break;
+        default: break;
+        }
+    }
+    if (r.trendAnalysis.deteriorationDeterminable && r.trendAnalysis.deteriorationFlag)
+        c.technicalRiskFlags.push_back("Rolling average declining while variability rises.");
+    if (coords) {
+        const double off = std::sqrt(ex.horizontalBias * ex.horizontalBias
+                                     + ex.verticalBias * ex.verticalBias);
+        if (off >= o.conclusionAimOffsetFlag)
+            c.technicalRiskFlags.push_back("Systematic aim offset (MPI " + fnum(off, 1) + "mm off centre).");
+    }
+
+    // --- training focus line ---
+    const auto& pr = r.trainingPriorities.priorities;
+    if (r.trainingPriorities.available && !pr.empty()) {
+        std::string s = "Primary training focus: " + pr.front().priority;
+        if (pr.size() >= 2) s += ", then " + pr[1].priority;
+        if (pr.size() >= 3) s += " and " + pr[2].priority;
+        s += ".";
+        c.trainingFocusSummary = s;
+    } else {
+        c.trainingFocusSummary = "No specific training focus indicated by this session's data.";
+    }
+
+    // --- confidence: sample size x data completeness ---
+    const double confN = o.conclusionConfidentSampleSize > 0.0 ? o.conclusionConfidentSampleSize : 1.0;
+    const double sampleConf = clamp01d(100.0 * n / confN, 0.0, 100.0);
+    const double completeness = 0.7 + 0.15 * (coords ? 1.0 : 0.0) + 0.15 * (timing ? 1.0 : 0.0);
+    c.confidence = clamp01d(sampleConf * completeness, 0.0, 100.0);
+
+    // --- evidence (traceable facts behind the conclusion) ---
+    c.evidence.emplace_back("Average " + fnum(ex.averageScore, 2) + " over " + fnum(n, 0) + " shots",
+                            "conclusion.average", ex.averageScore);
+    c.evidence.emplace_back("Consistency " + fnum(ex.consistencyPercentage, 0) + "%",
+                            "conclusion.consistency", ex.consistencyPercentage);
+    if (coords)
+        c.evidence.emplace_back("Group radius " + fnum(ex.groupRadius, 2) + "mm",
+                                "conclusion.groupRadius", ex.groupRadius);
+    if (r.trainingPriorities.hasTopPriority && !pr.empty())
+        c.evidence.emplace_back("Top priority: " + pr.front().priority,
+                                "conclusion.topPriority", pr.front().priorityScore);
+    return c;
+}
+
+// ----------------------------------------------------------------------------
 //  Public entry point
 // ----------------------------------------------------------------------------
 CoachReportData CoachAnalyticsEngine::analyze(const std::vector<ShotAnalyticsData>& shots)
@@ -2158,8 +2338,9 @@ CoachReportData CoachAnalyticsEngine::analyze(const std::vector<ShotAnalyticsDat
     report.positionAnalysis = buildPositionAnalysis(prepared, options);
     report.recoveryAnalysis = buildRecoveryAnalysis(prepared, options);
     report.fatigueAnalysis  = buildFatigueAnalysis(prepared, options);
-    // Phase 11 synthesises the sections above — build it last.
+    // Phase 11 synthesises the sections above; Phase 12 concludes over all of them.
     report.trainingPriorities = buildTrainingPriorities(prepared, report, options);
+    report.coachConclusion    = buildCoachConclusion(prepared, report, options);
     report.valid = true;
     report.message = report.lowSampleWarning
         ? "Analysed with fewer than 10 shots; results are indicative only."
