@@ -303,7 +303,9 @@ Rectangle {
     }
 
     // ---------- body ----------
-    ScrollView {
+    // Explicit Flickable (not ScrollView) so contentHeight is derived reliably
+    // from the column and vertical scrolling always works.
+    Flickable {
         id: scroller
         anchors.top: topBar.bottom
         anchors.left: parent.left
@@ -311,11 +313,14 @@ Rectangle {
         anchors.bottom: parent.bottom
         anchors.margins: 12
         clip: true
-        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+        contentWidth: width
+        contentHeight: scrollColumn.implicitHeight
+        boundsBehavior: Flickable.StopAtBounds
+        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AlwaysOn }
 
         Column {
             id: scrollColumn
-            width: scroller.availableWidth
+            width: scroller.width - 14   // leave room for the scrollbar
             spacing: 12
 
             // First-test-only debug card (data-plumbing visibility). Distinct
