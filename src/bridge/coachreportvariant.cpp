@@ -321,6 +321,26 @@ std::vector<ShotAnalyticsData> shotsFromVariant(const QVariantList& list)
     return out;
 }
 
+QVariantList shotsToVariant(const std::vector<ShotAnalyticsData>& shots)
+{
+    QVariantList l;
+    for (const auto& s : shots) {
+        QVariantMap m;
+        m["shotNumber"]        = s.shotNumber;
+        m["seriesNumber"]      = s.seriesNumber;
+        m["x"]                 = s.x;             // millimetres
+        m["y"]                 = s.y;
+        m["decimalScore"]      = s.decimalScore;
+        m["position"]          = q(toString(s.positionType));
+        m["isCompetitionShot"] = s.isCompetitionShot;
+        m["isSighter"]         = s.isSighter;
+        m["hasTimestamp"]      = s.hasTimestamp;
+        m["timestamp"]         = s.timestamp;
+        l << m;
+    }
+    return l;
+}
+
 // ============================ sections ======================================
 
 QVariantMap executiveSummaryMap(const ExecutiveSummary& s)

@@ -61,6 +61,10 @@ public:
     Q_INVOKABLE QVariantList trainingPriorities() const;
     Q_INVOKABLE QVariantMap  coachConclusion() const;
 
+    // Raw analysed shots for plotting the target/shot-map (mm coordinates,
+    // score, position). Display data — QML converts units via mmToDisplay.
+    Q_INVOKABLE QVariantList shots() const;
+
     // ---- coach diary (human context: read + write-back) ----
     Q_INVOKABLE QVariantMap coachDiary() const;
     Q_INVOKABLE void setCoachDiary(const QVariantMap& diary);
@@ -87,6 +91,7 @@ signals:
 
 private:
     techaim::analytics::CoachReportData m_report;
+    std::vector<techaim::analytics::ShotAnalyticsData> m_shots;  // for the shot-map
     qreal   m_scale  = 4.0;              // pixels per millimetre
     QPointF m_center = QPointF(0.0, 0.0);
     bool    m_flipY  = true;             // screen y grows down; target y grows up

@@ -20,6 +20,7 @@ void CoachReportBridge::analyze(const std::vector<analytics::ShotAnalyticsData>&
     analytics::CoachDiary keepDiary = m_report.manualDiary;
     m_report = analytics::CoachAnalyticsEngine::analyze(shots);
     m_report.manualDiary = keepDiary;
+    m_shots = shots;                    // kept for the shot-map plot
     emit reportChanged();
 }
 
@@ -32,6 +33,7 @@ void CoachReportBridge::setReport(const analytics::CoachReportData& report)
 void CoachReportBridge::clear()
 {
     m_report = analytics::CoachReportData();
+    m_shots.clear();
     emit reportChanged();
 }
 
@@ -88,6 +90,10 @@ QVariantList CoachReportBridge::trainingPriorities() const
 QVariantMap CoachReportBridge::coachConclusion() const
 {
     return bridge::coachConclusionMap(m_report.coachConclusion);
+}
+QVariantList CoachReportBridge::shots() const
+{
+    return bridge::shotsToVariant(m_shots);
 }
 
 // ---- coach diary ------------------------------------------------------------

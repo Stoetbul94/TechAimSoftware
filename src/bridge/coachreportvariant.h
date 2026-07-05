@@ -42,6 +42,9 @@ std::vector<analytics::ShotAnalyticsData> shotsFromVariant(const QVariantList& l
 // ---- Outbound: full report -> nested QVariantMap tree ----
 QVariantMap toVariantMap(const analytics::CoachReportData& r);
 
+// ---- Raw shots for plotting (display data, mm; not analytics) ----
+QVariantList shotsToVariant(const std::vector<analytics::ShotAnalyticsData>& shots);
+
 // ---- Per-section accessors (used by the bridge's convenience getters) ----
 QVariantMap  executiveSummaryMap(const analytics::ExecutiveSummary& s);
 QVariantMap  shotDistributionMap(const analytics::ShotDistribution& s);

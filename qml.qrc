@@ -10,6 +10,7 @@
         <file>SummaryPage.qml</file>
         <file>CoachReportPage.qml</file>
         <file>CoachReportCard.qml</file>
+        <file>ShotTargetCanvas.qml</file>
         <file>LoginPage.qml</file>
         <file>ShootingPage.qml</file>
         <file>MatchReport.qml</file>

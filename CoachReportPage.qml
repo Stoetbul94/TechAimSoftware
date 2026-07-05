@@ -1,26 +1,37 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
+import QtCharts 2.15
 
-// First visible Coach Report screen.
-//
-// STRICT RULE: this page only DISPLAYS what COACHREPORT already computed.
-// No analytics, no recalculation, no fabricated values. Missing/low-sample
-// data is shown as "Not available", never faked.
-//
-// `theme`, `gameSubMode`, COACHREPORT and COACHFEED all resolve via main.qml's
-// context (the same ancestor-scope pattern the other pages use).
+// Visual Coach Report screen. DISPLAY ONLY — no analytics, no recomputation,
+// no fabricated values. Charts/targets are drawn from what COACHREPORT already
+// computed (+ COACHREPORT.shots() for the target map). `theme`, `gameSubMode`,
+// COACHREPORT and COACHFEED resolve via main.qml's context.
 Rectangle {
     id: reportPage
     color: theme.bgBase
 
-    // gameSubMode is passed in from main.qml (0 = prone/air, 1 = 3P). Used only
-    // to re-run the feeder when the coordinate orientation toggle changes.
     property int gameSubMode: 0
-
-    // Live view of the computed report. Re-evaluates on COACHREPORT.reportChanged.
     property var rep: COACHREPORT.report
 
+    // Target shot-map data (refreshed on each analysis).
+    property var  targets: []
+    property real sharedExtent: 0
+
     signal closed()
+
+    Connections {
+        target: COACHREPORT
+        function onReportChanged() {
+            reportPage.dbg = COACHFEED.debugInfo()
+            reportPage.refreshTargets()
+            reportPage.rebuildCharts()
+        }
+    }
+    Component.onCompleted: {
+        reportPage.dbg = COACHFEED.debugInfo()
+        refreshTargets()
+        rebuildCharts()
+    }
 
     // ---------- formatting helpers (display only) ----------
     function f(x, d) {
@@ -33,21 +44,18 @@ Rectangle {
 
     function fmtExec(s) {
         if (!s) return "Not available"
-        return "Shots: " + f(s.competitionShotCount, 0)
-            + "   Total: " + f(s.totalScore, 1)
+        return "Shots: " + f(s.competitionShotCount, 0) + "   Total: " + f(s.totalScore, 1)
             + "   Average: " + f(s.averageScore, 2)
             + "\nBest / Worst: " + f(s.bestShot, 1) + " / " + f(s.worstShot, 1)
             + "   Score SD: " + f(s.scoreStandardDeviation, 3)
             + "\nConsistency: " + pct(s.consistencyPercentage)
             + "\nGroup radius / diameter: " + f(s.groupRadius, 2) + " / " + f(s.groupDiameter, 2) + " mm"
             + "\nMPI (x, y): " + f(s.groupCentreX, 2) + ", " + f(s.groupCentreY, 2) + " mm"
-            + "\nTrend: " + (s.trendDirection || "—")
+            + "   Trend: " + (s.trendDirection || "—")
     }
     function fmtDist(s) {
         if (!s) return "Not available"
         return "Perfect (≥10.8): " + f(s.perfectCount, 0) + " (" + pct(s.perfectPct) + ")"
-            + "   Excellent: " + f(s.excellentCount, 0) + "   Good: " + f(s.goodCount, 0)
-            + "\nAcceptable: " + f(s.acceptableCount, 0) + "   Recovery: " + f(s.recoveryCount, 0)
             + "   Poor (<9.5): " + f(s.poorCount, 0) + " (" + pct(s.poorPct) + ")"
             + "\n≥10.5: " + f(s.countAtLeast10_5, 0) + "   ≥10.7: " + f(s.countAtLeast10_7, 0)
             + "   <10.0: " + f(s.countBelow10_0, 0)
@@ -57,9 +65,9 @@ Rectangle {
     function fmtTrend(s) {
         if (!s) return "Not available"
         var t = "Direction: " + (s.trendDirection || "—")
-        if (s.regressionAvailable) t += "\nSlope: " + f(s.regressionSlope, 4) + "   Correlation: " + f(s.regressionCorrelation, 3)
+        if (s.regressionAvailable) t += "   Slope: " + f(s.regressionSlope, 4) + "   Corr: " + f(s.regressionCorrelation, 3)
         if (s.halvesAvailable) t += "\nHalves: " + f(s.firstHalfAverage, 2) + " → " + f(s.secondHalfAverage, 2)
-        if (s.thirdsAvailable) t += "\nThirds: " + f(s.firstThirdAverage, 2) + " / " + f(s.middleThirdAverage, 2) + " / " + f(s.lastThirdAverage, 2)
+        if (s.thirdsAvailable) t += "   Thirds: " + f(s.firstThirdAverage, 2) + " / " + f(s.middleThirdAverage, 2) + " / " + f(s.lastThirdAverage, 2)
         if (s.lateSessionDropFlag) t += "\n⚠ Late-session drop: " + f(s.lateSessionDrop, 2)
         if (s.deteriorationDeterminable && s.deteriorationFlag) t += "\n⚠ Deterioration (mean down, variance up)"
         return t
@@ -69,36 +77,35 @@ Rectangle {
         var g = s.allShots
         var t = "Group radius: " + f(g && g.stats ? g.stats.meanRadius : undefined, 2) + " mm"
             + "   Diameter: " + f(g && g.stats ? g.stats.groupDiameter : undefined, 2) + " mm"
-        if (g && g.hasDominantZone) t += "\nDominant zone share: " + pct(g.dominantSharePct)
+        if (g && g.hasDominantZone) t += "   Dominant zone: " + pct(g.dominantSharePct)
         t += "\nDrift (halves) x/y: " + f(s.horizontalDriftHalves, 2) + " / " + f(s.verticalDriftHalves, 2) + " mm"
-        t += "\nDrift (thirds) x/y: " + f(s.horizontalDriftThirds, 2) + " / " + f(s.verticalDriftThirds, 2) + " mm"
+        t += "   (thirds): " + f(s.horizontalDriftThirds, 2) + " / " + f(s.verticalDriftThirds, 2) + " mm"
+        t += "\nDots: green ≥10.5, amber ≥10.0, red <10.0."
         return t
     }
     function fmtTiming(s) {
         if (!s || !s.available) return "Not available (no timing data)."
         var t = "Avg interval: " + f(s.averageInterval, 2) + "s   Median: " + f(s.medianInterval, 2) + "s   SD: " + f(s.intervalSD, 2)
         t += "\nFastest / slowest: " + f(s.fastestInterval, 2) + " / " + f(s.slowestInterval, 2) + "s"
-        if (s.rhythmAvailable) t += "\nRhythm consistency: " + pct(s.rhythmConsistency)
+        if (s.rhythmAvailable) t += "   Rhythm: " + pct(s.rhythmConsistency)
         t += "\nRushed: " + f(s.rushedShotCount, 0) + "   Delayed: " + f(s.delayedShotCount, 0)
-        if (s.trendAvailable) t += "\nPace: " + (s.intervalTrend || "—")
+        if (s.trendAvailable) t += "   Pace: " + (s.intervalTrend || "—")
         return t
     }
     function fmtPosition(s) {
         if (!s || !s.available) return "Not available"
         var t = ""
         for (var i = 0; i < s.positions.length; i++) {
-            var p = s.positions[i]
-            var m = p.measurements
+            var p = s.positions[i], m = p.measurements
             t += (i > 0 ? "\n\n" : "") + up(p.position)
                 + "\n  shots: " + f(p.shotCount, 0) + "   avg: " + f(m ? m.averageScore : undefined, 2)
                 + "   quality: " + (p.qualityAvailable ? f(p.qualityScore, 0) + "/100" : "—")
                 + "\n  points lost: " + f(p.pointsLost, 1)
                 + "   group radius: " + f(m && m.geometry ? m.geometry.groupRadius : undefined, 2) + " mm"
         }
-        if (s.comparativeAvailable) {
+        if (s.comparativeAvailable)
             t += "\n\nStrongest: " + (s.hasStrongest ? up(s.strongestPosition) : "—")
                 + "   Weakest: " + (s.hasWeakest ? up(s.weakestPosition) : "—")
-        }
         return t
     }
     function fmtRecovery(s) {
@@ -106,9 +113,9 @@ Rectangle {
         var o = s.overall
         var t = "Pattern: " + (o.pattern || "—")
             + "\nBad-shot recovery rate: " + pct(o.badShotRecoveryRate)
-            + "\nAvg recovery shots: " + (o.recoveryShotsAvailable ? f(o.averageRecoveryShots, 2) : "—")
+            + "   Avg recovery shots: " + (o.recoveryShotsAvailable ? f(o.averageRecoveryShots, 2) : "—")
             + "\nPost-error delta: " + f(o.postErrorDelta, 2)
-            + "\nRepeated-error rate: " + pct(o.repeatedErrorRate)
+            + "   Repeated-error rate: " + pct(o.repeatedErrorRate)
         if (o.overCorrectionAvailable) t += "\nOver-correction rate: " + pct(o.overCorrectionRate)
         if (s.comparativeAvailable) t += "\nBest / worst position: " + up(s.bestRecoveryPosition) + " / " + up(s.worstRecoveryPosition)
         return t
@@ -118,18 +125,16 @@ Rectangle {
         var t = "Pattern: " + (s.overallPattern || "—")
             + "\nFatigue index: " + f(s.fatigueIndex, 2) + "   Confidence: " + pct(s.confidence)
             + "\nEarly → late avg delta: " + f(s.earlyLateDelta, 2)
-        if (s.coordinateTrendAvailable) t += "\nGroup expansion: " + f(s.groupExpansionRate * 100, 0) + "%"
-        if (s.timingTrendAvailable) t += "\nTiming change: " + f(s.timingChangeRate * 100, 0) + "%"
+        if (s.coordinateTrendAvailable) t += "   Group expansion: " + f(s.groupExpansionRate * 100, 0) + "%"
+        if (s.timingTrendAvailable) t += "   Timing change: " + f(s.timingChangeRate * 100, 0) + "%"
         if (s.hasFatiguedPosition) t += "\nMost fatigued: " + up(s.mostFatiguedPosition)
         return t
     }
     function fmtPriorities(list) {
         if (!list || list.length === 0) return "No major training priority detected in this session's data."
         var t = ""
-        for (var i = 0; i < list.length; i++) {
-            var p = list[i]
-            t += (i > 0 ? "\n" : "") + (i + 1) + ". " + p.priority + "   [" + p.impact + " impact, score " + f(p.priorityScore, 0) + "]"
-        }
+        for (var i = 0; i < list.length; i++)
+            t += (i > 0 ? "\n" : "") + (i + 1) + ". " + list[i].priority + "   [" + list[i].impact + " impact, score " + f(list[i].priorityScore, 0) + "]"
         return t
     }
     function fmtConclusion(s) {
@@ -152,165 +157,110 @@ Rectangle {
         return t
     }
 
-    // First-test debug facts (from COACHFEED, refreshed on each analysis).
+    // ---------- first-test debug ----------
     property var dbg: ({})
-    Connections {
-        target: COACHREPORT
-        function onReportChanged() { reportPage.dbg = COACHFEED.debugInfo() }
-    }
-    Component.onCompleted: reportPage.dbg = COACHFEED.debugInfo()
-
     function fmtDebug(d, r) {
-        if (!d || !d.ran) return "No match analysed yet. Finish a match and click Coach Report,\nor use the DEMO REPORT button to preview with sample data."
+        if (!d || !d.ran) return "No match analysed yet. Finish a match and click Coach Report,\nor use DEMO PRONE / DEMO 3P to preview with sample data."
         return "mode: " + (d.demo ? "DEMO sample data" : "live TachusWidget")
             + "\nreport valid: " + ((r && r.valid) ? "true" : "false")
             + "\nraw shots received: " + f(d.shotCount, 0) + "   (feeder read: " + f(COACHFEED.matchShotCount(), 0) + ")"
             + "\ncoordinates available: " + (d.hasCoordinates ? "true" : "false")
-            + "\ntiming available: " + (d.hasTiming ? "true" : "false")
+            + "   timing available: " + (d.hasTiming ? "true" : "false")
             + "\ndiscipline: " + (d.discipline || "—") + "   gameSubMode: " + f(d.gameSubMode, 0)
             + "\ndetected positions: " + ((d.positions && d.positions.length) ? d.positions.join(", ") : "—")
-            + "\ncoordinatesFlipY: " + (d.coordinatesFlipY ? "true" : "false")
+            + "   coordinatesFlipY: " + (d.coordinatesFlipY ? "true" : "false")
     }
 
-    // Section model, rebuilt whenever the report changes.
-    property var cards: buildCards(rep)
-    function buildCards(r) {
-        return [
-            { title: "Executive Summary", body: fmtExec(r.executiveSummary) },
-            { title: "Score Distribution", body: fmtDist(r.shotDistribution) },
-            { title: "Trend", body: fmtTrend(r.trendAnalysis) },
-            { title: "Shot Map / Heat Map", body: fmtHeat(r.heatMapAnalysis), map: true },
-            { title: "Timing", body: fmtTiming(r.timingAnalysis) },
-            { title: "Position Analysis", body: fmtPosition(r.positionAnalysis) },
-            { title: "Recovery Analysis", body: fmtRecovery(r.recoveryAnalysis) },
-            { title: "Fatigue Analysis", body: fmtFatigue(r.fatigueAnalysis) },
-            { title: "Training Priorities", body: fmtPriorities(r.trainingPriorities) },
-            { title: "Coach Conclusion", body: fmtConclusion(r.coachConclusion) },
-            { title: "Coach Diary", body: fmtDiary(r.coachDiary) }
-        ]
-    }
-
-    // ---------- shot-map canvas (visual orientation check) ----------
-    Component {
-        id: shotMapComponent
-        Canvas {
-            id: mapCanvas
-            width: parent ? parent.width : 260
-            height: 260
-            Connections { target: COACHREPORT; function onReportChanged() { mapCanvas.requestPaint() } }
-            Component.onCompleted: requestPaint()
-            onPaint: {
-                var ctx = getContext("2d")
-                ctx.reset()
-                var w = width, h = height, cx = w / 2, cy = h / 2
-                // frame + crosshair
-                ctx.strokeStyle = theme.borderColor; ctx.lineWidth = 1
-                ctx.strokeRect(0.5, 0.5, w - 1, h - 1)
-                ctx.beginPath(); ctx.moveTo(cx, 8); ctx.lineTo(cx, h - 8)
-                ctx.moveTo(8, cy); ctx.lineTo(w - 8, cy); ctx.stroke()
-                // high/low labels so orientation is visible during flip testing
-                ctx.fillStyle = theme.textSecondary; ctx.font = "10px sans-serif"
-                ctx.fillText("HIGH", cx + 4, 14); ctx.fillText("LOW", cx + 4, h - 6)
-                ctx.fillText("R", w - 12, cy - 4); ctx.fillText("L", 4, cy - 4)
-
-                var heat = reportPage.rep ? reportPage.rep.heatMapAnalysis : null
-                var g = heat && heat.available ? heat.allShots : null
-                if (!g || !g.cells || g.cells.length === 0) {
-                    ctx.fillStyle = theme.textSecondary
-                    ctx.fillText("No coordinate data", cx - 40, cy + 20)
-                    return
-                }
-                // fit scale from cell extent (mm), leave a margin
-                var ext = 1
-                for (var i = 0; i < g.cells.length; i++) {
-                    ext = Math.max(ext, Math.abs(g.cells[i].centreX), Math.abs(g.cells[i].centreY))
-                }
-                ext += (g.binSize || 5)
-                var scale = (Math.min(w, h) / 2 - 16) / ext
-                for (var j = 0; j < g.cells.length; j++) {
-                    var c = g.cells[j]
-                    var px = cx + scale * c.centreX
-                    var py = cy - scale * c.centreY   // +y = high on screen
-                    var rad = 3 + Math.min(8, c.count)
-                    ctx.beginPath(); ctx.arc(px, py, rad, 0, 2 * Math.PI)
-                    ctx.fillStyle = theme.brandPrimary; ctx.globalAlpha = 0.75
-                    ctx.fill(); ctx.globalAlpha = 1.0
-                }
-            }
+    // ---------- target shot-map data ----------
+    function refreshTargets() {
+        var all = COACHREPORT.shots()
+        all = all.filter(function (s) { return s.isCompetitionShot && !s.isSighter })
+        var ext = 8
+        for (var i = 0; i < all.length; i++)
+            ext = Math.max(ext, Math.sqrt(all[i].x * all[i].x + all[i].y * all[i].y))
+        reportPage.sharedExtent = ext * 1.15
+        var list = [{ title: "All shots", shots: all }]
+        var groups = {}, order = []
+        for (var j = 0; j < all.length; j++) {
+            var p = all[j].position
+            if (!groups[p]) { groups[p] = []; order.push(p) }
+            groups[p].push(all[j])
         }
+        if (order.length > 1)
+            for (var k = 0; k < order.length; k++) list.push({ title: order[k], shots: groups[order[k]] })
+        reportPage.targets = list
     }
 
-    // ---------- top bar ----------
+    // ---------- charts ----------
+    function rebuildCharts() { rebuildDist(); rebuildTrend() }
+    function rebuildDist() {
+        if (typeof distPie === "undefined" || !distPie) return
+        distPie.clear()
+        var d = reportPage.rep ? reportPage.rep.shotDistribution : null
+        if (!d) return
+        function add(label, val, col) {
+            if (val > 0) { var s = distPie.append(label + " (" + val + ")", val); s.color = col; s.labelVisible = false }
+        }
+        add("Perfect", d.perfectCount, "#37c871")
+        add("Excellent", d.excellentCount, "#63b8ff")
+        add("Good", d.goodCount, "#9a7bff")
+        add("Acceptable", d.acceptableCount, "#e0b020")
+        add("Recovery", d.recoveryCount, "#e07f30")
+        add("Poor", d.poorCount, "#e0503a")
+    }
+    function rebuildTrend() {
+        if (typeof scoreSeries === "undefined" || !scoreSeries) return
+        scoreSeries.clear(); rollSeries.clear()
+        var t = reportPage.rep ? reportPage.rep.trendAnalysis : null
+        if (!t || !t.scores || t.scores.length === 0) return
+        var n = t.scores.length, lo = 11, hi = 0
+        for (var i = 0; i < n; i++) {
+            var v = t.scores[i]; scoreSeries.append(i + 1, v)
+            lo = Math.min(lo, v); hi = Math.max(hi, v)
+        }
+        if (t.rolling5Available && t.rolling5Average)
+            for (var j = 0; j < t.rolling5Average.length; j++) rollSeries.append(j + 5, t.rolling5Average[j])
+        axX.min = 1; axX.max = Math.max(2, n)
+        axY.min = Math.max(0, Math.floor(lo) - 0.2); axY.max = Math.min(10.9, Math.ceil(hi) + 0.1)
+    }
+
+    // ================= top bar =================
     Rectangle {
         id: topBar
-        width: parent.width
-        height: 52
-        color: theme.bgSurface
+        width: parent.width; height: 52; color: theme.bgSurface
         anchors.top: parent.top
-
         Text {
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.left: parent.left; anchors.leftMargin: 16
-            text: "COACH REPORT"
-            color: theme.textPrimary; font.bold: true; font.pixelSize: 20; font.family: theme.fontFamily
+            anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left; anchors.leftMargin: 16
+            text: "COACH REPORT"; color: theme.textPrimary; font.bold: true; font.pixelSize: 20; font.family: theme.fontFamily
         }
         Rectangle {
             id: ratingChip
             visible: reportPage.rep && reportPage.rep.coachConclusion && reportPage.rep.coachConclusion.available
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.left: parent.left; anchors.leftMargin: 190
-            width: ratingText.width + 20; height: 26; radius: 13
-            color: theme.brandPrimary
+            anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left; anchors.leftMargin: 190
+            width: ratingText.width + 20; height: 26; radius: 13; color: theme.brandPrimary
             Text {
                 id: ratingText; anchors.centerIn: parent
                 text: (reportPage.rep && reportPage.rep.coachConclusion) ? (reportPage.rep.coachConclusion.rating || "") : ""
                 color: theme.textOnBrand; font.pixelSize: 13; font.bold: true; font.family: theme.fontFamily
             }
         }
-
         Row {
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.right: parent.right; anchors.rightMargin: 12
-            spacing: 12
-
-            Text {
-                anchors.verticalCenter: parent.verticalCenter
-                text: "Flip Y"
-                color: theme.textSecondary; font.pixelSize: 13; font.family: theme.fontFamily
-            }
+            anchors.verticalCenter: parent.verticalCenter; anchors.right: parent.right; anchors.rightMargin: 12; spacing: 12
+            Text { anchors.verticalCenter: parent.verticalCenter; text: "Flip Y"; color: theme.textSecondary; font.pixelSize: 13; font.family: theme.fontFamily }
             Switch {
-                id: flipSwitch
-                anchors.verticalCenter: parent.verticalCenter
+                id: flipSwitch; anchors.verticalCenter: parent.verticalCenter
                 checked: COACHFEED.coordinatesFlipY
-                onToggled: {
-                    // Orientation is a builder-level input, so re-run the feeder
-                    // to recompute the report with the new y convention.
-                    COACHFEED.coordinatesFlipY = checked
-                    COACHFEED.analyzeCurrentMatch(reportPage.gameSubMode)
-                }
+                onToggled: { COACHFEED.coordinatesFlipY = checked; COACHFEED.analyzeCurrentMatch(reportPage.gameSubMode) }
             }
-            Button {
-                anchors.verticalCenter: parent.verticalCenter
-                text: "Re-run"
-                onClicked: COACHFEED.analyzeCurrentMatch(reportPage.gameSubMode)
-            }
-            Button {
-                anchors.verticalCenter: parent.verticalCenter
-                text: "Close"
-                onClicked: reportPage.closed()
-            }
+            Button { anchors.verticalCenter: parent.verticalCenter; text: "Re-run"; onClicked: COACHFEED.analyzeCurrentMatch(reportPage.gameSubMode) }
+            Button { anchors.verticalCenter: parent.verticalCenter; text: "Close"; onClicked: reportPage.closed() }
         }
     }
 
-    // ---------- body ----------
-    // Explicit Flickable (not ScrollView) so contentHeight is derived reliably
-    // from the column and vertical scrolling always works.
+    // ================= body =================
     Flickable {
         id: scroller
-        anchors.top: topBar.bottom
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
+        anchors.top: topBar.bottom; anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom
         anchors.margins: 12
         clip: true
         contentWidth: width
@@ -320,68 +270,101 @@ Rectangle {
 
         Column {
             id: scrollColumn
-            width: scroller.width - 14   // leave room for the scrollbar
+            width: scroller.width - 14
             spacing: 12
 
-            // First-test-only debug card (data-plumbing visibility). Distinct
-            // accent border so it is obviously not part of the coach report.
+            // ----- debug card (first-test only) -----
             Rectangle {
                 width: scrollColumn.width
-                implicitHeight: dbgCol.implicitHeight + 24
-                height: implicitHeight
-                color: theme.bgSurfaceAlt
-                radius: 8
-                border.color: theme.brandAccent
-                border.width: 1
+                implicitHeight: dbgCol.implicitHeight + 24; height: implicitHeight
+                color: theme.bgSurfaceAlt; radius: 8; border.color: theme.brandAccent; border.width: 1
                 Column {
-                    id: dbgCol
-                    x: 14; y: 12; width: parent.width - 28; spacing: 8
-                    Text {
-                        width: parent.width; text: "🛈 DEBUG — first-test only"
-                        color: theme.brandAccent; font.bold: true; font.pixelSize: 16; font.family: theme.fontFamily
-                    }
-                    Text {
-                        width: parent.width; text: reportPage.fmtDebug(reportPage.dbg, reportPage.rep)
-                        color: theme.textSecondary; font.pixelSize: 13; font.family: "monospace"
-                        wrapMode: Text.WordWrap; lineHeight: 1.25
-                    }
+                    id: dbgCol; x: 14; y: 12; width: parent.width - 28; spacing: 8
+                    Text { width: parent.width; text: "🛈 DEBUG — first-test only"; color: theme.brandAccent; font.bold: true; font.pixelSize: 16; font.family: theme.fontFamily }
+                    Text { width: parent.width; text: reportPage.fmtDebug(reportPage.dbg, reportPage.rep); color: theme.textSecondary; font.pixelSize: 13; font.family: "monospace"; wrapMode: Text.WordWrap; lineHeight: 1.25 }
                 }
             }
 
             Text {
                 width: parent.width
                 visible: !(reportPage.rep && reportPage.rep.valid)
-                text: "No report to display yet.\n" + ((reportPage.rep && reportPage.rep.message)
-                      ? reportPage.rep.message : "Finish a match, then click Coach Report.")
-                color: theme.textSecondary; font.pixelSize: 15; font.family: theme.fontFamily
-                wrapMode: Text.WordWrap
+                text: "No report to display yet.\n" + ((reportPage.rep && reportPage.rep.message) ? reportPage.rep.message : "Finish a match, then click Coach Report.")
+                color: theme.textSecondary; font.pixelSize: 15; font.family: theme.fontFamily; wrapMode: Text.WordWrap
             }
-
             Text {
                 width: parent.width
-                text: (reportPage.rep && reportPage.rep.lowSampleWarning)
-                      ? "⚠ Low sample (" + reportPage.f(reportPage.rep.analysedShotCount, 0)
-                        + " shots) — results are indicative only." : ""
+                text: (reportPage.rep && reportPage.rep.lowSampleWarning) ? "⚠ Low sample (" + reportPage.f(reportPage.rep.analysedShotCount, 0) + " shots) — results are indicative only." : ""
                 visible: text.length > 0
-                color: theme.brandAccent; font.pixelSize: 13; font.family: theme.fontFamily
-                wrapMode: Text.WordWrap
+                color: theme.brandAccent; font.pixelSize: 13; font.family: theme.fontFamily; wrapMode: Text.WordWrap
             }
 
-            Repeater {
-                model: (reportPage.rep && reportPage.rep.valid) ? reportPage.cards : []
-                delegate: CoachReportCard {
-                    width: scrollColumn.width
-                    title: modelData.title
-                    body: modelData.body
-                    Loader {
-                        active: modelData.map === true
-                        width: parent ? parent.width : 260
-                        sourceComponent: shotMapComponent
+            // ----- Executive Summary -----
+            CoachReportCard {
+                width: scrollColumn.width; visible: reportPage.rep && reportPage.rep.valid
+                title: "Executive Summary"; body: reportPage.fmtExec(reportPage.rep ? reportPage.rep.executiveSummary : null)
+            }
+
+            // ----- Shot Map / Heat Map (targets) -----
+            CoachReportCard {
+                width: scrollColumn.width; visible: reportPage.rep && reportPage.rep.valid
+                title: "Shot Map / Heat Map"; body: reportPage.fmtHeat(reportPage.rep ? reportPage.rep.heatMapAnalysis : null)
+                Flow {
+                    width: parent.width; spacing: 18
+                    Repeater {
+                        model: reportPage.targets
+                        delegate: ShotTargetCanvas {
+                            title: modelData.title
+                            shots: modelData.shots
+                            side: 240
+                            extentMm: reportPage.sharedExtent
+                        }
                     }
                 }
             }
 
-            Item { width: 1; height: 12 }  // bottom padding
+            // ----- Score Distribution (pie) -----
+            CoachReportCard {
+                width: scrollColumn.width; visible: reportPage.rep && reportPage.rep.valid
+                title: "Score Distribution"; body: reportPage.fmtDist(reportPage.rep ? reportPage.rep.shotDistribution : null)
+                ChartView {
+                    width: parent.width; height: 280
+                    antialiasing: true; legend.visible: true; legend.alignment: Qt.AlignRight
+                    legend.labelColor: theme.textSecondary
+                    backgroundColor: "transparent"; plotAreaColor: "transparent"
+                    theme: ChartView.ChartThemeDark
+                    PieSeries { id: distPie; holeSize: 0.35; size: 0.85 }
+                    Component.onCompleted: reportPage.rebuildDist()
+                }
+            }
+
+            // ----- Trend (line) -----
+            CoachReportCard {
+                width: scrollColumn.width; visible: reportPage.rep && reportPage.rep.valid
+                title: "Trend"; body: reportPage.fmtTrend(reportPage.rep ? reportPage.rep.trendAnalysis : null)
+                ChartView {
+                    width: parent.width; height: 300
+                    antialiasing: true; legend.visible: true; legend.alignment: Qt.AlignBottom
+                    legend.labelColor: theme.textSecondary
+                    backgroundColor: "transparent"; plotAreaColor: "transparent"
+                    theme: ChartView.ChartThemeDark
+                    ValueAxis { id: axX; titleText: "shot"; labelsColor: theme.textSecondary; min: 1; max: 10 }
+                    ValueAxis { id: axY; titleText: "score"; labelsColor: theme.textSecondary; min: 8; max: 10.9 }
+                    LineSeries { id: scoreSeries; name: "Score"; axisX: axX; axisY: axY; color: theme.brandPrimary; width: 2 }
+                    LineSeries { id: rollSeries; name: "Rolling-5 avg"; axisX: axX; axisY: axY; color: "#63b8ff"; width: 2 }
+                    Component.onCompleted: reportPage.rebuildTrend()
+                }
+            }
+
+            // ----- remaining text sections -----
+            CoachReportCard { width: scrollColumn.width; visible: reportPage.rep && reportPage.rep.valid; title: "Timing"; body: reportPage.fmtTiming(reportPage.rep ? reportPage.rep.timingAnalysis : null) }
+            CoachReportCard { width: scrollColumn.width; visible: reportPage.rep && reportPage.rep.valid; title: "Position Analysis"; body: reportPage.fmtPosition(reportPage.rep ? reportPage.rep.positionAnalysis : null) }
+            CoachReportCard { width: scrollColumn.width; visible: reportPage.rep && reportPage.rep.valid; title: "Recovery Analysis"; body: reportPage.fmtRecovery(reportPage.rep ? reportPage.rep.recoveryAnalysis : null) }
+            CoachReportCard { width: scrollColumn.width; visible: reportPage.rep && reportPage.rep.valid; title: "Fatigue Analysis"; body: reportPage.fmtFatigue(reportPage.rep ? reportPage.rep.fatigueAnalysis : null) }
+            CoachReportCard { width: scrollColumn.width; visible: reportPage.rep && reportPage.rep.valid; title: "Training Priorities"; body: reportPage.fmtPriorities(reportPage.rep ? reportPage.rep.trainingPriorities : null) }
+            CoachReportCard { width: scrollColumn.width; visible: reportPage.rep && reportPage.rep.valid; title: "Coach Conclusion"; body: reportPage.fmtConclusion(reportPage.rep ? reportPage.rep.coachConclusion : null) }
+            CoachReportCard { width: scrollColumn.width; visible: reportPage.rep && reportPage.rep.valid; title: "Coach Diary"; body: reportPage.fmtDiary(reportPage.rep ? reportPage.rep.coachDiary : null) }
+
+            Item { width: 1; height: 12 }
         }
     }
 }
