@@ -65,6 +65,21 @@ struct ConfidenceScored {
 enum class ImpactLevel { Low, Medium, High };
 std::string toString(ImpactLevel i);
 
+// How much concern an interpreted metric represents (data-driven, not advice).
+enum class Severity { None, Low, Moderate, High, Critical };
+std::string toString(Severity s);
+
+// The common interpreted-metric object used across all judgement sections
+// (position, fatigue, recovery, pressure, priorities, coach conclusion).
+// A measurement is a raw number; a PerformanceMetric is a measurement that has
+// been interpreted, with confidence, evidence, availability and severity.
+struct PerformanceMetric : ConfidenceScored {
+    std::string name;
+    double      value        = 0.0;
+    bool        availability  = false;
+    Severity    severity      = Severity::None;
+};
+
 // Exemplar of a confidence-scored recommendation (populated in Phase 11).
 // Declared now so the shape is fixed and every priority is traceable.
 struct TrainingPriority : ConfidenceScored {
@@ -391,6 +406,141 @@ struct TimingAnalysis {
     double averageDecisionTimeBeforePoor = 0.0;
 };
 
+// ---- Reusable score-recovery primitive ------------------------------------
+//  Poor shot = score < poorThreshold OR score < (setAverage - setSD).
+//  A poor shot is only counted if it is followed by another shot. Successful
+//  recovery = the next shot reaches the set average. Reused by Phase 8 and the
+//  future Phase 9 Recovery Analysis so the definition stays single-sourced.
+struct RecoverySummary {
+    bool   available               = false;
+    int    poorShotCount           = 0;   // poor shots that have a following shot
+    int    successfulRecoveryCount = 0;
+    int    failedRecoveryCount     = 0;
+    double recoveryPercentage      = 0.0; // 0..100
+    double averageNextShotAfterPoor= 0.0;
+};
+
+// ===========================================================================
+//  Section 6: Position Analysis (Phase 8)
+// ---------------------------------------------------------------------------
+//  Each shooting position is analysed as an INDEPENDENT dataset; positions are
+//  never merged. Measurements (raw numbers, for graphs) are kept separate from
+//  the derived performance metrics (interpreted, for conclusions).
+// ===========================================================================
+
+struct PositionMeasurements {
+    bool available = false;
+    int  shotCount = 0;
+
+    // Scoring
+    double totalScore   = 0.0;
+    double averageScore = 0.0;
+    double medianScore  = 0.0;
+    double minScore     = 0.0;
+    double maxScore     = 0.0;
+    double scoreSD      = 0.0;
+    double scoreRange   = 0.0;
+    double scoreVariance= 0.0;
+    double coefficientOfVariation = 0.0;   // scoreSD / averageScore (0 if avg ~0)
+    bool   hasIntegerScores    = false;
+    double averageIntegerScore = 0.0;
+
+    // Geometry (raw coordinates, mm)
+    CoordinateStats geometry;              // MPI, mean/group radius, diameter, H/V spread
+    double horizontalBias  = 0.0;          // = geometry.mpi.x
+    double verticalBias    = 0.0;          // = geometry.mpi.y
+    double dispersionRatio = 0.0;          // horizontalSpread / verticalSpread (0 if vSpread ~0)
+
+    // Trend
+    bool   trendAvailable   = false;       // shotCount >= 2
+    double trendSlope       = 0.0;
+    double trendCorrelation = 0.0;
+    bool   halvesAvailable  = false;
+    double firstHalfAverage = 0.0;
+    double secondHalfAverage= 0.0;
+    bool   thirdsAvailable  = false;
+    double firstThirdAverage  = 0.0;
+    double middleThirdAverage = 0.0;
+    double lastThirdAverage   = 0.0;
+
+    // Timing (reuses the timing primitives)
+    bool   timingAvailable   = false;
+    double averageInterval   = 0.0;
+    double rhythmConsistency = 0.0;
+    int    rushedShotCount   = 0;
+    int    delayedShotCount  = 0;
+
+    // Outliers (spatial: radial distance from MPI beyond mean + sigma*SD)
+    int    outlierCount            = 0;
+    double outlierPercentage       = 0.0;
+    double averageOutlierDistance  = 0.0;  // mm from MPI
+    std::string dominantOutlierDirection = "none"; // right/high-right/high/.../low-right
+};
+
+struct PositionReport {
+    PositionType position = PositionType::Unknown;
+    std::string  positionName;
+    bool   available  = false;             // shotCount >= 1
+    int    shotCount  = 0;
+    double confidence = 0.0;               // 0..100, grows with sample size
+
+    PositionMeasurements measurements;
+    RecoverySummary      recovery;
+    std::vector<PerformanceMetric> metrics; // derived, confidence-scored
+
+    // Weighted position quality (components normalized 0..100; weights configurable)
+    bool   qualityAvailable = false;
+    double qualityScore     = 0.0;         // 0..100
+    double scoreComponent        = 0.0; bool scoreComponentAvailable       = false;
+    double consistencyComponent  = 0.0; bool consistencyComponentAvailable = false;
+    double geometryComponent     = 0.0; bool geometryComponentAvailable    = false;
+    double trendComponent        = 0.0; bool trendComponentAvailable       = false;
+    double recoveryComponent     = 0.0; bool recoveryComponentAvailable    = false;
+    double timingComponent       = 0.0; bool timingComponentAvailable      = false;
+
+    // Points lost = shotCount * maxShotScore - totalScore (maxShotScore configurable)
+    double pointsLost = 0.0;
+
+    // Training-priority support — raw measurable info only, no recommendations.
+    std::vector<Evidence>    strengths;
+    std::vector<Evidence>    weaknesses;
+    std::vector<std::string> linkedMetrics;
+};
+
+struct PositionRankingEntry {
+    PositionType position = PositionType::Unknown;
+    std::string  positionName;
+    double       value = 0.0;              // the ranked quantity
+};
+
+struct PositionAnalysis {
+    bool available        = false;         // >= 1 position present
+    int  positionsPresent = 0;
+
+    std::vector<PositionReport> positions;  // deterministic enum order, present only
+
+    // Rankings (each ordered best-first for its dimension; only positions where
+    // the ranked quantity is available are included).
+    std::vector<PositionRankingEntry> pointsLostRanking;   // most points lost first (worst)
+    std::vector<PositionRankingEntry> consistencyRanking;  // most consistent first
+    std::vector<PositionRankingEntry> geometryRanking;     // smallest group first
+    std::vector<PositionRankingEntry> trendRanking;        // best (most positive) trend first
+    std::vector<PositionRankingEntry> recoveryRanking;     // best recovery first
+    std::vector<PositionRankingEntry> timingRanking;       // best rhythm first
+    std::vector<PositionRankingEntry> overallRanking;      // highest quality first
+
+    // Identified extremes (require >= 2 positions for a comparison to be meaningful).
+    bool comparativeAvailable = false;
+    bool hasStrongest = false;             PositionType strongestPosition = PositionType::Unknown;
+    bool hasWeakest   = false;             PositionType weakestPosition   = PositionType::Unknown;
+    bool hasMostConsistent  = false;       PositionType mostConsistentPosition  = PositionType::Unknown;
+    bool hasLeastConsistent = false;       PositionType leastConsistentPosition = PositionType::Unknown;
+    bool hasLargestGroup  = false;         PositionType largestGroupPosition  = PositionType::Unknown;
+    bool hasSmallestGroup = false;         PositionType smallestGroupPosition = PositionType::Unknown;
+    bool hasGreatestImprovement   = false; PositionType greatestImprovementPosition   = PositionType::Unknown;
+    bool hasGreatestDeterioration = false; PositionType greatestDeteriorationPosition = PositionType::Unknown;
+};
+
 // ---- Top-level result -----------------------------------------------------
 struct CoachReportData {
     // Validation / provenance
@@ -411,8 +561,9 @@ struct CoachReportData {
     TrendAnalysis    trendAnalysis;      // Section 3 (Phase 5)
     HeatMapAnalysis  heatMapAnalysis;    // Section 4 (Phase 6)
     TimingAnalysis   timingAnalysis;     // Section 5 (Phase 7)
+    PositionAnalysis positionAnalysis;   // Section 6 (Phase 8)
 
-    // Sections 6..11 — declared contract, implemented in later phases:
+    // Sections 7..11 — declared contract, implemented in later phases:
     //   TimingAnalysis    timingAnalysis;
     //   PositionAnalysis  positionAnalysis;
     //   RecoveryAnalysis  recoveryAnalysis;

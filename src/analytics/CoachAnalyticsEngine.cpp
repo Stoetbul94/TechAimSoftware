@@ -7,7 +7,9 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <limits>
+#include <string>
 
 namespace techaim {
 namespace analytics {
@@ -61,6 +63,17 @@ std::string toString(PaceTrend p)
     case PaceTrend::SpeedingUp:  return "SpeedingUp";
     case PaceTrend::SlowingDown: return "SlowingDown";
     case PaceTrend::Steady:      default: return "Steady";
+    }
+}
+
+std::string toString(Severity s)
+{
+    switch (s) {
+    case Severity::None:     return "None";
+    case Severity::Low:      return "Low";
+    case Severity::Moderate: return "Moderate";
+    case Severity::High:     return "High";
+    case Severity::Critical: default: return "Critical";
     }
 }
 
@@ -965,6 +978,336 @@ TimingAnalysis CoachAnalyticsEngine::buildTimingAnalysis(
 }
 
 // ----------------------------------------------------------------------------
+//  Reusable score-recovery primitive (Phase 8 + future Phase 9)
+// ----------------------------------------------------------------------------
+RecoverySummary CoachAnalyticsEngine::computeScoreRecovery(
+    const std::vector<ShotAnalyticsData>& shots, double poorThreshold, bool useSample)
+{
+    RecoverySummary r;
+    const int n = static_cast<int>(shots.size());
+    if (n < 2) return r;
+
+    std::vector<double> scores; scores.reserve(n);
+    for (const auto& s : shots) scores.push_back(s.decimalScore);
+    const double avg = mean(scores);
+    const double sd  = standardDeviation(scores, useSample);
+
+    double nextSum = 0.0;
+    for (int i = 0; i + 1 < n; ++i) {           // last shot cannot be "recovered from"
+        const bool poor = (scores[i] < poorThreshold) || (scores[i] < avg - sd);
+        if (!poor) continue;
+        ++r.poorShotCount;
+        const double next = scores[i + 1];
+        nextSum += next;
+        if (next >= avg) ++r.successfulRecoveryCount; else ++r.failedRecoveryCount;
+    }
+    if (r.poorShotCount > 0) {
+        r.available = true;
+        r.recoveryPercentage       = 100.0 * r.successfulRecoveryCount / r.poorShotCount;
+        r.averageNextShotAfterPoor = nextSum / r.poorShotCount;
+    }
+    return r;
+}
+
+// ----------------------------------------------------------------------------
+//  Phase 8 — Position Analysis (file-local helpers)
+// ----------------------------------------------------------------------------
+namespace {
+
+std::string fnum(double v, int prec)
+{
+    char buf[64];
+    std::snprintf(buf, sizeof(buf), "%.*f", prec, v);
+    return std::string(buf);
+}
+
+// Component is 0..100 where higher = better; map its LOW-ness to a severity.
+Severity severityFromComponent(double component)
+{
+    if (component >= 70.0) return Severity::None;
+    if (component >= 55.0) return Severity::Low;
+    if (component >= 40.0) return Severity::Moderate;
+    if (component >= 25.0) return Severity::High;
+    return Severity::Critical;
+}
+
+// 8-way compass label for an average error vector (mm); +x=right, +y=high.
+std::string outlierDirection(double dx, double dy)
+{
+    if (std::fabs(dx) < 1e-9 && std::fabs(dy) < 1e-9) return "centre";
+    double ang = std::atan2(dy, dx) * 180.0 / 3.14159265358979323846; // (-180,180]
+    if (ang < 0) ang += 360.0;                                        // [0,360)
+    if (ang < 22.5  || ang >= 337.5) return "right";
+    if (ang < 67.5)  return "high-right";
+    if (ang < 112.5) return "high";
+    if (ang < 157.5) return "high-left";
+    if (ang < 202.5) return "left";
+    if (ang < 247.5) return "low-left";
+    if (ang < 292.5) return "low";
+    return "low-right";
+}
+
+template <typename ValueFn, typename AvailFn>
+std::vector<PositionRankingEntry> rankPositions(const std::vector<PositionReport>& reports,
+                                                ValueFn valueOf, AvailFn availOf, bool descending)
+{
+    std::vector<PositionRankingEntry> v;
+    for (const auto& r : reports) {
+        if (!availOf(r)) continue;
+        PositionRankingEntry e;
+        e.position = r.position; e.positionName = r.positionName; e.value = valueOf(r);
+        v.push_back(e);
+    }
+    std::stable_sort(v.begin(), v.end(),
+        [descending](const PositionRankingEntry& a, const PositionRankingEntry& b) {
+            return descending ? (a.value > b.value) : (a.value < b.value);
+        });
+    return v;
+}
+
+} // anonymous namespace
+
+PositionReport CoachAnalyticsEngine::buildPositionReport(
+    const std::vector<ShotAnalyticsData>& shots, PositionType position, const Options& o)
+{
+    PositionReport pr;
+    pr.position     = position;
+    pr.positionName = toString(position);
+    pr.shotCount    = static_cast<int>(shots.size());
+    if (shots.empty()) return pr;
+    pr.available = true;
+
+    const double refN = (o.positionConfidentSampleSize > 0.0) ? o.positionConfidentSampleSize : 1.0;
+    pr.confidence = clampd(100.0 * pr.shotCount / refN, 0.0, 100.0);
+
+    PositionMeasurements& m = pr.measurements;
+    m.available = true;
+    m.shotCount = pr.shotCount;
+    const int n = pr.shotCount;
+
+    // ---- Scoring measurements ----
+    const std::vector<double> scores = scoresOf(shots);
+    m.totalScore   = sum(scores);
+    m.averageScore = mean(scores);
+    m.medianScore  = median(scores);
+    m.minScore     = minimum(scores);
+    m.maxScore     = maximum(scores);
+    m.scoreSD      = standardDeviation(scores, o.useSampleStatistics);
+    m.scoreRange   = range(scores);
+    m.scoreVariance= variance(scores, o.useSampleStatistics);
+    m.coefficientOfVariation = (std::fabs(m.averageScore) > 1e-9) ? (m.scoreSD / m.averageScore) : 0.0;
+    int intCount = 0; double intSum = 0.0;
+    for (const auto& s : shots) if (s.hasIntegerScore) { ++intCount; intSum += s.integerScore; }
+    if (intCount > 0) { m.hasIntegerScores = true; m.averageIntegerScore = intSum / intCount; }
+
+    // ---- Geometry measurements (raw coords) ----
+    m.geometry        = computeCoordinateStats(shots);
+    m.horizontalBias  = m.geometry.mpi.x;
+    m.verticalBias    = m.geometry.mpi.y;
+    m.dispersionRatio = (std::fabs(m.geometry.verticalSpread) > 1e-9)
+                          ? (m.geometry.horizontalSpread / m.geometry.verticalSpread) : 0.0;
+
+    // ---- Trend measurements ----
+    if (n >= 2) {
+        std::vector<double> xs; xs.reserve(n);
+        for (const auto& s : shots) xs.push_back(static_cast<double>(s.shotNumber));
+        bool usable = false; for (int i = 1; i < n; ++i) if (xs[i] != xs[0]) { usable = true; break; }
+        if (!usable) { xs.clear(); for (int i = 0; i < n; ++i) xs.push_back(i + 1); }
+        m.trendAvailable   = true;
+        m.trendSlope       = linearRegressionSlope(xs, scores);
+        m.trendCorrelation = correlation(xs, scores);
+        m.halvesAvailable  = true;
+        const int half = n / 2;
+        m.firstHalfAverage  = averageScoreOfRange(shots, 0, half);
+        m.secondHalfAverage = averageScoreOfRange(shots, half, n);
+    }
+    if (n >= 3) {
+        m.thirdsAvailable = true;
+        const int third = n / 3;
+        m.firstThirdAverage  = averageScoreOfRange(shots, 0, third);
+        m.middleThirdAverage = averageScoreOfRange(shots, third, n - third);
+        m.lastThirdAverage   = averageScoreOfRange(shots, n - third, n);
+    }
+
+    // ---- Timing measurements (reuse the timing engine on this position) ----
+    const TimingAnalysis ta = buildTimingAnalysis(shots, o);
+    if (ta.available) {
+        m.timingAvailable   = true;
+        m.averageInterval   = ta.averageInterval;
+        m.rhythmConsistency = ta.rhythmConsistency;   // 0 unless rhythmAvailable
+        m.rushedShotCount   = ta.rushedShotCount;
+        m.delayedShotCount  = ta.delayedShotCount;
+    }
+
+    // ---- Recovery (reuse the recovery primitive) ----
+    pr.recovery = computeScoreRecovery(shots, o.positionRecoveryPoorThreshold, o.useSampleStatistics);
+
+    // ---- Outliers (spatial, radial distance from MPI) ----
+    if (n >= 3) {
+        std::vector<double> dists; dists.reserve(n);
+        for (const auto& s : shots)
+            dists.push_back(distanceFromCentre(s.x - m.geometry.mpi.x, s.y - m.geometry.mpi.y));
+        const double dMean = mean(dists);
+        const double dSD   = standardDeviation(dists, o.useSampleStatistics);
+        const double thr   = dMean + o.positionOutlierSigma * dSD;
+        double sumOutDist = 0.0, sumDx = 0.0, sumDy = 0.0;
+        for (int i = 0; i < n; ++i) {
+            if (dists[i] > thr) {
+                ++m.outlierCount; sumOutDist += dists[i];
+                sumDx += shots[i].x - m.geometry.mpi.x;
+                sumDy += shots[i].y - m.geometry.mpi.y;
+            }
+        }
+        if (m.outlierCount > 0) {
+            m.outlierPercentage      = 100.0 * m.outlierCount / n;
+            m.averageOutlierDistance = sumOutDist / m.outlierCount;
+            m.dominantOutlierDirection = outlierDirection(sumDx / m.outlierCount, sumDy / m.outlierCount);
+        }
+    }
+
+    // ---- Quality components (0..100, higher = better) ----
+    if (n >= 1) {
+        pr.scoreComponentAvailable = true;
+        const double denom = o.positionScoreCeil - o.positionScoreFloor;
+        pr.scoreComponent = clampd((denom > 1e-9)
+            ? (m.averageScore - o.positionScoreFloor) / denom * 100.0 : 0.0, 0.0, 100.0);
+    }
+    if (n >= 2 && o.expectedEliteScoreSD > 0.0) {
+        pr.consistencyComponentAvailable = true;
+        pr.consistencyComponent = clampd(100.0 * (1.0 - m.scoreSD / o.expectedEliteScoreSD), 0.0, 100.0);
+    }
+    if (n >= 2 && o.positionExpectedGroupRadius > 0.0) {
+        pr.geometryComponentAvailable = true;
+        pr.geometryComponent = clampd(100.0 * (1.0 - m.geometry.groupRadius / o.positionExpectedGroupRadius), 0.0, 100.0);
+    }
+    if (m.trendAvailable) {
+        pr.trendComponentAvailable = true;
+        pr.trendComponent = clampd(50.0 + m.trendSlope * o.positionTrendScale, 0.0, 100.0);
+    }
+    if (pr.recovery.available) {
+        pr.recoveryComponentAvailable = true;
+        pr.recoveryComponent = clampd(pr.recovery.recoveryPercentage, 0.0, 100.0);
+    }
+    if (ta.rhythmAvailable) {
+        pr.timingComponentAvailable = true;
+        pr.timingComponent = clampd(ta.rhythmConsistency, 0.0, 100.0);
+    }
+
+    // Weighted quality over the AVAILABLE components (weights renormalised).
+    double wsum = 0.0, vsum = 0.0;
+    auto acc = [&](bool avail, double comp, double w) { if (avail) { wsum += w; vsum += w * comp; } };
+    acc(pr.scoreComponentAvailable,       pr.scoreComponent,       o.positionWeightScore);
+    acc(pr.consistencyComponentAvailable, pr.consistencyComponent, o.positionWeightConsistency);
+    acc(pr.geometryComponentAvailable,    pr.geometryComponent,    o.positionWeightGeometry);
+    acc(pr.trendComponentAvailable,       pr.trendComponent,       o.positionWeightTrend);
+    acc(pr.recoveryComponentAvailable,    pr.recoveryComponent,    o.positionWeightRecovery);
+    acc(pr.timingComponentAvailable,      pr.timingComponent,      o.positionWeightTiming);
+    if (wsum > 0.0) { pr.qualityAvailable = true; pr.qualityScore = vsum / wsum; }
+
+    pr.pointsLost = pr.shotCount * o.positionMaxShotScore - m.totalScore;
+
+    // ---- Derived performance metrics + strengths/weaknesses (raw info only) ----
+    auto addMetric = [&](const std::string& name, const std::string& key,
+                         bool avail, double component, const std::string& evidenceText) {
+        PerformanceMetric pm;
+        pm.name = name; pm.value = component; pm.availability = avail; pm.confidence = pr.confidence;
+        if (avail) {
+            pm.severity = severityFromComponent(component);
+            pm.addEvidence(evidenceText, key, component);
+            if (component >= o.positionStrengthThreshold) {
+                pr.strengths.emplace_back(pr.positionName + " " + name + ": " + evidenceText, key, component);
+                pr.linkedMetrics.push_back(key);
+            } else if (component <= o.positionWeaknessThreshold) {
+                pr.weaknesses.emplace_back(pr.positionName + " " + name + ": " + evidenceText, key, component);
+                pr.linkedMetrics.push_back(key);
+            }
+        }
+        pr.metrics.push_back(pm);
+    };
+
+    addMetric("Score level", "position.score", pr.scoreComponentAvailable, pr.scoreComponent,
+              "average score " + fnum(m.averageScore, 2));
+    addMetric("Consistency", "position.consistency", pr.consistencyComponentAvailable, pr.consistencyComponent,
+              "score SD " + fnum(m.scoreSD, 3));
+    addMetric("Group tightness", "position.groupRadius", pr.geometryComponentAvailable, pr.geometryComponent,
+              "group radius " + fnum(m.geometry.groupRadius, 2) + " mm");
+    addMetric("Trend", "position.trend", pr.trendComponentAvailable, pr.trendComponent,
+              "score slope " + fnum(m.trendSlope, 3) + "/shot");
+    addMetric("Recovery", "position.recovery", pr.recoveryComponentAvailable, pr.recoveryComponent,
+              "recovered " + fnum(pr.recovery.recoveryPercentage, 0) + "% of "
+              + std::to_string(pr.recovery.poorShotCount) + " poor shots");
+    addMetric("Cadence stability", "position.rhythm", pr.timingComponentAvailable, pr.timingComponent,
+              "rhythm " + fnum(m.rhythmConsistency, 1));
+
+    return pr;
+}
+
+PositionAnalysis CoachAnalyticsEngine::buildPositionAnalysis(
+    const std::vector<ShotAnalyticsData>& shots, const Options& o)
+{
+    PositionAnalysis pa;
+
+    // Independent datasets, deterministic enum order.
+    static const PositionType order[] = {
+        PositionType::Prone, PositionType::Kneeling, PositionType::Standing,
+        PositionType::AirRifle, PositionType::AirPistol, PositionType::Unknown
+    };
+    for (PositionType p : order) {
+        std::vector<ShotAnalyticsData> sub;
+        for (const auto& s : shots) if (s.positionType == p) sub.push_back(s);
+        if (sub.empty()) continue;
+        pa.positions.push_back(buildPositionReport(sub, p, o));
+    }
+    pa.positionsPresent = static_cast<int>(pa.positions.size());
+    pa.available = pa.positionsPresent >= 1;
+    if (!pa.available) return pa;
+
+    pa.pointsLostRanking = rankPositions(pa.positions,
+        [](const PositionReport& r){ return r.pointsLost; },
+        [](const PositionReport&){ return true; }, true);
+    pa.consistencyRanking = rankPositions(pa.positions,
+        [](const PositionReport& r){ return r.consistencyComponent; },
+        [](const PositionReport& r){ return r.consistencyComponentAvailable; }, true);
+    pa.geometryRanking = rankPositions(pa.positions,
+        [](const PositionReport& r){ return r.measurements.geometry.groupRadius; },
+        [](const PositionReport& r){ return r.geometryComponentAvailable; }, false);
+    pa.trendRanking = rankPositions(pa.positions,
+        [](const PositionReport& r){ return r.measurements.trendSlope; },
+        [](const PositionReport& r){ return r.measurements.trendAvailable; }, true);
+    pa.recoveryRanking = rankPositions(pa.positions,
+        [](const PositionReport& r){ return r.recovery.recoveryPercentage; },
+        [](const PositionReport& r){ return r.recovery.available; }, true);
+    pa.timingRanking = rankPositions(pa.positions,
+        [](const PositionReport& r){ return r.timingComponent; },
+        [](const PositionReport& r){ return r.timingComponentAvailable; }, true);
+    pa.overallRanking = rankPositions(pa.positions,
+        [](const PositionReport& r){ return r.qualityScore; },
+        [](const PositionReport& r){ return r.qualityAvailable; }, true);
+
+    // Comparative extremes require >= 2 positions.
+    if (pa.positionsPresent >= 2) {
+        pa.comparativeAvailable = true;
+        if (pa.overallRanking.size() >= 2) {
+            pa.hasStrongest = true; pa.strongestPosition = pa.overallRanking.front().position;
+            pa.hasWeakest   = true; pa.weakestPosition   = pa.overallRanking.back().position;
+        }
+        if (pa.consistencyRanking.size() >= 2) {
+            pa.hasMostConsistent  = true; pa.mostConsistentPosition  = pa.consistencyRanking.front().position;
+            pa.hasLeastConsistent = true; pa.leastConsistentPosition = pa.consistencyRanking.back().position;
+        }
+        if (pa.geometryRanking.size() >= 2) {
+            pa.hasSmallestGroup = true; pa.smallestGroupPosition = pa.geometryRanking.front().position;
+            pa.hasLargestGroup  = true; pa.largestGroupPosition  = pa.geometryRanking.back().position;
+        }
+        if (pa.trendRanking.size() >= 2) {
+            pa.hasGreatestImprovement   = true; pa.greatestImprovementPosition   = pa.trendRanking.front().position;
+            pa.hasGreatestDeterioration = true; pa.greatestDeteriorationPosition = pa.trendRanking.back().position;
+        }
+    }
+    return pa;
+}
+
+// ----------------------------------------------------------------------------
 //  Public entry point
 // ----------------------------------------------------------------------------
 CoachReportData CoachAnalyticsEngine::analyze(const std::vector<ShotAnalyticsData>& shots)
@@ -996,6 +1339,7 @@ CoachReportData CoachAnalyticsEngine::analyze(const std::vector<ShotAnalyticsDat
     report.trendAnalysis    = buildTrendAnalysis(prepared, options);
     report.heatMapAnalysis  = buildHeatMapAnalysis(prepared, options);
     report.timingAnalysis   = buildTimingAnalysis(prepared, options);
+    report.positionAnalysis = buildPositionAnalysis(prepared, options);
     report.valid = true;
     report.message = report.lowSampleWarning
         ? "Analysed with fewer than 10 shots; results are indicative only."

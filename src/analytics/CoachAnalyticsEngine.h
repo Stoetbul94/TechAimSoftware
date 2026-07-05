@@ -86,6 +86,26 @@ public:
         double timingDelayedFactor = 1.5;   // interval > factor * median  => delayed
         double timingHighThreshold = 10.7;  // decision-time-before "high" shot
         double timingPoorThreshold = 10.0;  // decision-before / recovery-after "poor" shot
+
+        // ---- Phase 8: position analysis ----
+        double positionConfidentSampleSize   = 20.0;  // shots for full-confidence assessment
+        double positionMaxShotScore          = 10.9;  // for points-lost
+        double positionScoreFloor            = 9.0;   // score-component normalisation range
+        double positionScoreCeil             = 10.9;
+        double positionExpectedGroupRadius   = 15.0;  // mm; geometry-component reference (discipline-tunable)
+        double positionTrendScale            = 500.0; // score slope -> component points
+        double positionRecoveryPoorThreshold = 10.0;
+        double positionOutlierSigma          = 2.0;   // outlier if radial dist > mean + sigma*SD
+        // Quality-score weights (renormalised over the components that are available).
+        double positionWeightScore       = 0.30;
+        double positionWeightConsistency = 0.20;
+        double positionWeightGeometry    = 0.20;
+        double positionWeightTrend       = 0.10;
+        double positionWeightRecovery    = 0.10;
+        double positionWeightTiming      = 0.10;
+        // Strength / weakness thresholds on 0..100 components.
+        double positionStrengthThreshold = 70.0;
+        double positionWeaknessThreshold = 45.0;
     };
 
     // Shared coordinate frame for a set of heat-map grids (so bins align).
@@ -167,6 +187,18 @@ public:
     // available=false when timing data is absent — never fabricated.
     static IntervalSeries extractIntervals(const std::vector<ShotAnalyticsData>& shots);
 
+    // ----------------------------------------------------------------------
+    //  Reusable score-recovery primitive (shared by Phase 8 and Phase 9)
+    // ----------------------------------------------------------------------
+    static RecoverySummary computeScoreRecovery(const std::vector<ShotAnalyticsData>& shots,
+                                                double poorThreshold, bool useSampleStatistics);
+
+    // ----------------------------------------------------------------------
+    //  Phase 8 — position analysis (public for unit testing)
+    // ----------------------------------------------------------------------
+    static PositionReport buildPositionReport(const std::vector<ShotAnalyticsData>& positionShots,
+                                              PositionType position, const Options& options);
+
 private:
     // Validation + ordering. Returns the shots to analyse and fills the
     // provenance/validation fields on `meta`.
@@ -192,6 +224,10 @@ private:
         const Options& options);
 
     static TimingAnalysis buildTimingAnalysis(
+        const std::vector<ShotAnalyticsData>& shots,
+        const Options& options);
+
+    static PositionAnalysis buildPositionAnalysis(
         const std::vector<ShotAnalyticsData>& shots,
         const Options& options);
 
