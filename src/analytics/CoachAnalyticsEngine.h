@@ -118,6 +118,28 @@ public:
         double recoveryRepeatedPatternRate  = 50.0;  // repeatedErrorRate >= this => RepeatedErrorPattern
         double recoveryOverCorrectPatternRate = 40.0;// overCorrectionRate >= this => OverCorrectionPattern
         double seriesDipThreshold           = 0.15;  // series avg below session avg by this => dip
+
+        // ---- Phase 10: fatigue analysis ----
+        double fatigueEarlyLateFraction   = 0.35;  // fraction of shots in each of the early / late blocks
+        int    fatigueMinWholeMatch       = 20;    // min shots for a whole-match score trend
+        int    fatigueMinPerPosition      = 15;    // min shots for a per-position score trend
+        double fatigueScoreDropRef        = 0.5;   // early->late avg drop mapped to a full score component
+        double fatigueLateDropThreshold   = 0.3;   // middle->late drop counting as a late-match drop
+        double fatigueGradualTotalDrop    = 0.3;   // early->late total drop for a gradual decline
+        double fatigueScoreSlopeThreshold = -0.01; // score slope (per shot) counting as declining
+        double fatigueStableBand          = 0.1;   // |earlyLateDelta| below this = stable score
+        double fatigueDispersionRef       = 0.5;   // relative group expansion mapped to a full component
+        double fatigueExpansionThreshold  = 0.25;  // relative group expansion counting as material
+        double fatigueTimingRef           = 0.5;   // relative interval change mapped to a full component
+        double fatigueTimingSlowThreshold = 0.25;  // relative late interval increase counting as a slowdown
+        double fatigueLateClusterRef      = 0.4;   // late below-average fraction mapped to a full component
+        double fatigueIndexThreshold      = 0.35;  // index above which a fatigue signal is "present"
+        double fatigueConfidentSampleSize = 40.0;  // shots for full confidence
+        double fatigueLowSampleConfCap    = 25.0;  // confidence ceiling when the score trend is unavailable
+        double fatigueWeightScore         = 0.35;
+        double fatigueWeightDispersion    = 0.35;
+        double fatigueWeightTiming        = 0.20;
+        double fatigueWeightLateCluster   = 0.10;
     };
 
     // Shared coordinate frame for a set of heat-map grids (so bins align).
@@ -221,6 +243,14 @@ public:
     // Series-level rebound: does a poor series get followed by a better one?
     static SeriesRecoveryReport buildSeriesRecovery(const std::vector<ShotAnalyticsData>& shots,
                                                     const Options& options);
+
+    // ----------------------------------------------------------------------
+    //  Phase 10 — fatigue analysis (public for unit testing)
+    // ----------------------------------------------------------------------
+    // Inferred fatigue SIGNAL (whole match + independent per position). Never
+    // fabricates a coordinate/timing trend when that data is absent.
+    static FatigueAnalysis buildFatigueAnalysis(const std::vector<ShotAnalyticsData>& shots,
+                                                const Options& options);
 
 private:
     // Validation + ordering. Returns the shots to analyse and fills the

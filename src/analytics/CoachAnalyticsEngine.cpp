@@ -88,6 +88,20 @@ std::string toString(RecoveryPattern p)
     }
 }
 
+std::string toString(FatiguePattern p)
+{
+    switch (p) {
+    case FatiguePattern::NoFatigueDetected:       return "NoFatigueDetected";
+    case FatiguePattern::GradualDecline:          return "GradualDecline";
+    case FatiguePattern::LateMatchDrop:           return "LateMatchDrop";
+    case FatiguePattern::IncreasingDispersion:    return "IncreasingDispersion";
+    case FatiguePattern::TimingSlowdown:          return "TimingSlowdown";
+    case FatiguePattern::FatigueCompensation:     return "FatigueCompensation";
+    case FatiguePattern::PositionSpecificFatigue: return "PositionSpecificFatigue";
+    case FatiguePattern::InsufficientData:        default: return "InsufficientData";
+    }
+}
+
 // ----------------------------------------------------------------------------
 //  Layer 1 — basic statistics
 // ----------------------------------------------------------------------------
@@ -1599,6 +1613,310 @@ RecoveryAnalysis CoachAnalyticsEngine::buildRecoveryAnalysis(
 }
 
 // ----------------------------------------------------------------------------
+//  Phase 10 — Fatigue Analysis (file-local helpers)
+// ----------------------------------------------------------------------------
+namespace {
+
+double clamp01d(double v, double lo, double hi)
+{
+    return v < lo ? lo : (v > hi ? hi : v);
+}
+
+// Disjoint early/late block size for n items at the given fraction. 0 if n < 2.
+int earlyLateBlock(int n, double frac)
+{
+    if (n < 2) return 0;
+    int k = static_cast<int>(std::floor(n * frac));
+    if (k < 1) k = 1;
+    if (2 * k > n) k = n / 2;
+    return k < 1 ? 0 : k;
+}
+
+bool anyCoords(const std::vector<ShotAnalyticsData>& v)
+{
+    for (const auto& s : v) if (std::fabs(s.x) > 1e-9 || std::fabs(s.y) > 1e-9) return true;
+    return false;
+}
+
+double meanRadiusOf(const std::vector<ShotAnalyticsData>& v)
+{
+    return CoachAnalyticsEngine::computeCoordinateStats(v).meanRadius;
+}
+
+// Higher fatigue index => higher severity (data-driven concern level).
+Severity fatigueSeverity(double index)
+{
+    if (index < 0.20) return Severity::None;
+    if (index < 0.35) return Severity::Low;
+    if (index < 0.50) return Severity::Moderate;
+    if (index < 0.70) return Severity::High;
+    return Severity::Critical;
+}
+
+// Compute a full fatigue view for one ordered dataset (whole match OR one
+// position). Sets .pattern to a non-position-specific value; the caller layers
+// the position-specific override on top for the whole-match result.
+PositionFatigueAnalysis computeFatigueCore(const std::vector<ShotAnalyticsData>& shots,
+                                           const CoachAnalyticsEngine::Options& o,
+                                           int minTrendSample, PositionType pos)
+{
+    using Eng = CoachAnalyticsEngine;
+    PositionFatigueAnalysis f;
+    f.position     = pos;
+    f.positionName = toString(pos);
+    const int n = static_cast<int>(shots.size());
+    f.shotCount = n;
+    if (n < 2) { f.pattern = FatiguePattern::InsufficientData; return f; }
+    f.available = true;
+
+    std::vector<double> scores(n), idx(n);
+    for (int i = 0; i < n; ++i) { scores[i] = shots[i].decimalScore; idx[i] = i; }
+    const double sessionAvg = Eng::mean(scores);
+
+    // --- early / middle / late score segments ---
+    const int k = earlyLateBlock(n, o.fatigueEarlyLateFraction);
+    std::vector<ShotAnalyticsData> early(shots.begin(), shots.begin() + k);
+    std::vector<ShotAnalyticsData> late(shots.end() - k, shots.end());
+    std::vector<ShotAnalyticsData> middle;
+    if (n - 2 * k > 0) middle.assign(shots.begin() + k, shots.end() - k);
+
+    std::vector<double> es, ls, ms;
+    for (const auto& s : early)  es.push_back(s.decimalScore);
+    for (const auto& s : late)   ls.push_back(s.decimalScore);
+    for (const auto& s : middle) ms.push_back(s.decimalScore);
+    f.earlyAverage  = Eng::mean(es);
+    f.lateAverage   = Eng::mean(ls);
+    f.middleAverage = middle.empty() ? (f.earlyAverage + f.lateAverage) / 2.0 : Eng::mean(ms);
+    f.earlyLateDelta = f.lateAverage - f.earlyAverage;
+
+    // --- score trend ---
+    f.scoreTrendAvailable = (n >= minTrendSample);
+    f.scoreSlope = Eng::linearRegressionSlope(idx, scores);
+
+    // late low-shot clustering (below the athlete's own session average)
+    int lateLow = 0;
+    for (double s : ls) if (s < sessionAvg) ++lateLow;
+    const double lateLowFraction = ls.empty() ? 0.0 : static_cast<double>(lateLow) / ls.size();
+
+    // --- dispersion (each segment from its OWN MPI so shift != expansion) ---
+    f.coordinateTrendAvailable = anyCoords(shots) && !early.empty() && !late.empty();
+    if (f.coordinateTrendAvailable) {
+        f.earlyGroupRadius = meanRadiusOf(early);
+        f.lateGroupRadius  = meanRadiusOf(late);
+        f.groupExpansionRate = f.earlyGroupRadius > 1e-9
+            ? (f.lateGroupRadius - f.earlyGroupRadius) / f.earlyGroupRadius : 0.0;
+        const CoordinateStats all = Eng::computeCoordinateStats(shots);
+        std::vector<double> rad(n);
+        for (int i = 0; i < n; ++i) {
+            const double dx = shots[i].x - all.mpi.x, dy = shots[i].y - all.mpi.y;
+            rad[i] = std::sqrt(dx * dx + dy * dy);
+        }
+        f.dispersionSlope = Eng::linearRegressionSlope(idx, rad);
+    }
+
+    // --- timing (reuse the interval primitive) ---
+    const IntervalSeries is = Eng::extractIntervals(shots);
+    if (is.available && is.seconds.size() >= 2) {
+        const int m = static_cast<int>(is.seconds.size());
+        const int kk = earlyLateBlock(m, o.fatigueEarlyLateFraction);
+        if (kk >= 1 && 2 * kk <= m) {
+            std::vector<double> eiv(is.seconds.begin(), is.seconds.begin() + kk);
+            std::vector<double> liv(is.seconds.end() - kk, is.seconds.end());
+            f.earlyShotInterval = Eng::mean(eiv);
+            f.lateShotInterval  = Eng::mean(liv);
+            f.timingChangeRate  = f.earlyShotInterval > 1e-9
+                ? (f.lateShotInterval - f.earlyShotInterval) / f.earlyShotInterval : 0.0;
+            std::vector<double> gi(m);
+            for (int i = 0; i < m; ++i) gi[i] = i;
+            f.timingSlope = Eng::linearRegressionSlope(gi, is.seconds);
+            f.timingTrendAvailable = true;
+        }
+    }
+
+    // --- bounded fatigue index (only available components, renormalised) ---
+    const double scoreComp = clamp01d(-f.earlyLateDelta / o.fatigueScoreDropRef, 0.0, 1.0);
+    const double lateClusterComp = clamp01d(lateLowFraction / o.fatigueLateClusterRef, 0.0, 1.0);
+    double num = o.fatigueWeightScore * scoreComp + o.fatigueWeightLateCluster * lateClusterComp;
+    double den = o.fatigueWeightScore + o.fatigueWeightLateCluster;
+    if (f.coordinateTrendAvailable) {
+        const double dispComp = clamp01d(f.groupExpansionRate / o.fatigueDispersionRef, 0.0, 1.0);
+        num += o.fatigueWeightDispersion * dispComp; den += o.fatigueWeightDispersion;
+    }
+    if (f.timingTrendAvailable) {
+        const double timeComp = clamp01d(std::fabs(f.timingChangeRate) / o.fatigueTimingRef, 0.0, 1.0);
+        num += o.fatigueWeightTiming * timeComp; den += o.fatigueWeightTiming;
+    }
+    f.fatigueIndex = den > 0.0 ? clamp01d(num / den, 0.0, 1.0) : 0.0;
+
+    // --- confidence (sample size; capped hard when the trend is unreliable) ---
+    const double confN = o.fatigueConfidentSampleSize > 0.0 ? o.fatigueConfidentSampleSize : 1.0;
+    f.confidence = clamp01d(100.0 * n / confN, 0.0, 100.0);
+    if (!f.scoreTrendAvailable && f.confidence > o.fatigueLowSampleConfCap)
+        f.confidence = o.fatigueLowSampleConfCap;
+
+    // --- pattern classification (deterministic, priority-ordered) ---
+    // NOTE ON PRECEDENCE: FatigueCompensation is checked before the generic
+    // IncreasingDispersion / TimingSlowdown because a MAINTAINED score while
+    // effort indicators rise ("working harder to hold the result") is the
+    // higher-information story. A falling score with dispersion up is plain
+    // IncreasingDispersion; a falling score with timing up is TimingSlowdown.
+    const bool  middleAvail   = !middle.empty();
+    const double earlyToMiddle = f.middleAverage - f.earlyAverage;
+    const double middleToLate  = f.lateAverage - f.middleAverage;
+    const bool scoreStable  = std::fabs(f.earlyLateDelta) < o.fatigueStableBand;
+    const bool lateDrop     = middleAvail
+                              && (middleToLate <= -o.fatigueLateDropThreshold)
+                              && (std::fabs(earlyToMiddle) < o.fatigueStableBand)
+                              && (f.lateAverage < f.earlyAverage);
+    const bool dispersionUp = f.coordinateTrendAvailable
+                              && (f.groupExpansionRate >= o.fatigueExpansionThreshold);
+    const bool timingUp     = f.timingTrendAvailable
+                              && (f.timingChangeRate >= o.fatigueTimingSlowThreshold);
+    const bool scoreLowerLate = f.earlyLateDelta <= -0.05;
+    const bool gradual = (f.scoreSlope <= o.fatigueScoreSlopeThreshold)
+                         && ((f.earlyAverage - f.lateAverage) >= o.fatigueGradualTotalDrop);
+
+    if (!f.scoreTrendAvailable)                 f.pattern = FatiguePattern::InsufficientData;
+    else if (lateDrop)                          f.pattern = FatiguePattern::LateMatchDrop;
+    else if (scoreStable && timingUp)           f.pattern = FatiguePattern::FatigueCompensation;
+    else if (dispersionUp)                      f.pattern = FatiguePattern::IncreasingDispersion;
+    else if (timingUp && scoreLowerLate)        f.pattern = FatiguePattern::TimingSlowdown;
+    else if (gradual)                           f.pattern = FatiguePattern::GradualDecline;
+    else                                        f.pattern = FatiguePattern::NoFatigueDetected;
+    return f;
+}
+
+} // namespace
+
+FatigueAnalysis CoachAnalyticsEngine::buildFatigueAnalysis(
+    const std::vector<ShotAnalyticsData>& shots, const Options& o)
+{
+    FatigueAnalysis fa;
+    const int n = static_cast<int>(shots.size());
+    if (n < 2) { fa.overallPattern = FatiguePattern::InsufficientData; return fa; }
+
+    const PositionFatigueAnalysis whole =
+        computeFatigueCore(shots, o, o.fatigueMinWholeMatch, PositionType::Unknown);
+    fa.available          = true;
+    fa.earlyAverage       = whole.earlyAverage;
+    fa.middleAverage      = whole.middleAverage;
+    fa.lateAverage        = whole.lateAverage;
+    fa.earlyLateDelta     = whole.earlyLateDelta;
+    fa.scoreSlope         = whole.scoreSlope;
+    fa.dispersionSlope    = whole.dispersionSlope;
+    fa.timingSlope        = whole.timingSlope;
+    fa.earlyGroupRadius   = whole.earlyGroupRadius;
+    fa.lateGroupRadius    = whole.lateGroupRadius;
+    fa.groupExpansionRate = whole.groupExpansionRate;
+    fa.earlyShotInterval  = whole.earlyShotInterval;
+    fa.lateShotInterval   = whole.lateShotInterval;
+    fa.timingChangeRate   = whole.timingChangeRate;
+    fa.fatigueIndex       = whole.fatigueIndex;
+    fa.confidence         = whole.confidence;
+    fa.scoreTrendAvailable      = whole.scoreTrendAvailable;
+    fa.coordinateTrendAvailable = whole.coordinateTrendAvailable;
+    fa.timingTrendAvailable     = whole.timingTrendAvailable;
+    fa.overallPattern     = whole.pattern;
+
+    // Independent per-position analyses (never merged).
+    static const PositionType order[] = {
+        PositionType::Prone, PositionType::Kneeling, PositionType::Standing,
+        PositionType::AirRifle, PositionType::AirPistol, PositionType::Unknown
+    };
+    int positionsWithData = 0, fatiguedCount = 0;
+    for (PositionType p : order) {
+        std::vector<ShotAnalyticsData> sub;
+        for (const auto& s : shots) if (s.positionType == p) sub.push_back(s);
+        if (sub.empty()) continue;
+        PositionFatigueAnalysis pf = computeFatigueCore(sub, o, o.fatigueMinPerPosition, p);
+        if (pf.pattern != FatiguePattern::InsufficientData) ++positionsWithData;
+        if (pf.pattern != FatiguePattern::InsufficientData
+            && pf.pattern != FatiguePattern::NoFatigueDetected) ++fatiguedCount;
+        fa.byPosition.push_back(pf);
+    }
+
+    // Most-fatigued position (by index) among the fatigued ones.
+    double bestIdx = -1.0;
+    for (const auto& pf : fa.byPosition) {
+        const bool fat = pf.pattern != FatiguePattern::InsufficientData
+                         && pf.pattern != FatiguePattern::NoFatigueDetected;
+        if (fat && pf.fatigueIndex > bestIdx) {
+            bestIdx = pf.fatigueIndex;
+            fa.hasFatiguedPosition = true;
+            fa.mostFatiguedPosition = pf.position;
+        }
+    }
+
+    // Position-specific override: a STRICT nonzero subset of positions fatigued.
+    if (positionsWithData >= 2 && fatiguedCount >= 1 && fatiguedCount < positionsWithData)
+        fa.overallPattern = FatiguePattern::PositionSpecificFatigue;
+
+    // Interpreted whole-match metrics in the shared language.
+    auto negWorse = [](double v, double good, double ok, double poor) -> Severity {
+        const double d = -v;                       // more-negative = worse
+        if (d <= good) return Severity::None;
+        if (d <= ok)   return Severity::Low;
+        if (d <= poor) return Severity::Moderate;
+        return Severity::High;
+    };
+    {
+        PerformanceMetric m;
+        m.name = "Fatigue index";
+        m.value = fa.fatigueIndex;
+        m.availability = fa.scoreTrendAvailable;
+        m.confidence = fa.confidence;
+        m.severity = fatigueSeverity(fa.fatigueIndex);
+        m.addEvidence("Bounded fatigue signal (0..1) over " + fnum(n, 0) + " shots",
+                      "fatigue.index", fa.fatigueIndex);
+        fa.metrics.push_back(m);
+    }
+    {
+        PerformanceMetric m;
+        m.name = "Early-to-late score delta";
+        m.value = fa.earlyLateDelta;
+        m.availability = true;
+        m.confidence = fa.confidence;
+        m.severity = fa.earlyLateDelta >= 0.0 ? Severity::None : negWorse(fa.earlyLateDelta, 0.1, 0.3, 0.6);
+        m.addEvidence("Late average " + fnum(fa.lateAverage, 2) + " vs early " +
+                      fnum(fa.earlyAverage, 2), "fatigue.earlyLateDelta", fa.earlyLateDelta);
+        fa.metrics.push_back(m);
+    }
+    {
+        PerformanceMetric m;
+        m.name = "Group expansion rate";
+        m.value = fa.groupExpansionRate;
+        m.availability = fa.coordinateTrendAvailable;
+        m.confidence = fa.confidence;
+        m.severity = fa.coordinateTrendAvailable
+            ? fatigueSeverity(clamp01d(fa.groupExpansionRate / o.fatigueDispersionRef, 0.0, 1.0))
+            : Severity::None;
+        m.addEvidence(fa.coordinateTrendAvailable
+                      ? ("Late group radius " + fnum(fa.lateGroupRadius, 2) + "mm vs early " +
+                         fnum(fa.earlyGroupRadius, 2) + "mm")
+                      : std::string("No coordinates available for dispersion trend"),
+                      "fatigue.groupExpansion", fa.groupExpansionRate);
+        fa.metrics.push_back(m);
+    }
+    {
+        PerformanceMetric m;
+        m.name = "Timing change rate";
+        m.value = fa.timingChangeRate;
+        m.availability = fa.timingTrendAvailable;
+        m.confidence = fa.confidence;
+        m.severity = fa.timingTrendAvailable
+            ? fatigueSeverity(clamp01d(std::fabs(fa.timingChangeRate) / o.fatigueTimingRef, 0.0, 1.0))
+            : Severity::None;
+        m.addEvidence(fa.timingTrendAvailable
+                      ? ("Late interval " + fnum(fa.lateShotInterval, 2) + "s vs early " +
+                         fnum(fa.earlyShotInterval, 2) + "s")
+                      : std::string("No timestamps available for timing trend"),
+                      "fatigue.timingChange", fa.timingChangeRate);
+        fa.metrics.push_back(m);
+    }
+    return fa;
+}
+
+// ----------------------------------------------------------------------------
 //  Public entry point
 // ----------------------------------------------------------------------------
 CoachReportData CoachAnalyticsEngine::analyze(const std::vector<ShotAnalyticsData>& shots)
@@ -1632,6 +1950,7 @@ CoachReportData CoachAnalyticsEngine::analyze(const std::vector<ShotAnalyticsDat
     report.timingAnalysis   = buildTimingAnalysis(prepared, options);
     report.positionAnalysis = buildPositionAnalysis(prepared, options);
     report.recoveryAnalysis = buildRecoveryAnalysis(prepared, options);
+    report.fatigueAnalysis  = buildFatigueAnalysis(prepared, options);
     report.valid = true;
     report.message = report.lowSampleWarning
         ? "Analysed with fewer than 10 shots; results are indicative only."

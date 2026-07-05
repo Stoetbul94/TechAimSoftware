@@ -654,6 +654,105 @@ struct RecoveryAnalysis {
     bool hasWorstRecovery = false; PositionType worstRecoveryPosition = PositionType::Unknown;
 };
 
+// ===========================================================================
+//  Section 8: Fatigue Analysis (Phase 10)
+// ---------------------------------------------------------------------------
+//  Fatigue is treated as an INFERRED performance pattern, never a
+//  physiological diagnosis. The engine reports a "fatigue signal", not
+//  "fatigue confirmed": a late-session decline can equally come from wind,
+//  light, equipment, sight changes, position transitions, match pressure,
+//  deliberate pacing, or simply a small sample. Every trend carries its own
+//  availability flag — missing coordinates or timing never fabricate a signal
+//  — and a low sample caps confidence. Deterministic, explainable, no ML.
+// ===========================================================================
+enum class FatiguePattern {
+    NoFatigueDetected,
+    GradualDecline,
+    LateMatchDrop,
+    IncreasingDispersion,
+    TimingSlowdown,
+    FatigueCompensation,
+    PositionSpecificFatigue,
+    InsufficientData
+};
+std::string toString(FatiguePattern p);
+
+// One position analysed independently (same concept as the whole-match view).
+struct PositionFatigueAnalysis {
+    PositionType   position = PositionType::Unknown;
+    std::string    positionName;
+    bool           available = false;    // >= 2 shots (an early/late split exists)
+    int            shotCount = 0;
+    FatiguePattern pattern   = FatiguePattern::InsufficientData;
+
+    // Early vs late (segment averages, session order)
+    double earlyAverage   = 0.0;
+    double middleAverage  = 0.0;
+    double lateAverage    = 0.0;
+    double earlyLateDelta = 0.0;         // lateAverage - earlyAverage (negative = decline)
+
+    // Trend slopes (least squares)
+    double scoreSlope      = 0.0;        // score vs shot index
+    double dispersionSlope = 0.0;        // per-shot radial error vs shot index (mm/shot)
+    double timingSlope     = 0.0;        // interval vs gap index (s/gap)
+
+    // Dispersion (coordinates; each segment measured from its OWN MPI)
+    double earlyGroupRadius   = 0.0;
+    double lateGroupRadius    = 0.0;
+    double groupExpansionRate = 0.0;     // (late - early) / early, relative
+
+    // Timing (reuses the interval primitive)
+    double earlyShotInterval = 0.0;
+    double lateShotInterval  = 0.0;
+    double timingChangeRate  = 0.0;      // (late - early) / early, relative
+
+    double fatigueIndex = 0.0;           // 0..1 bounded fatigue signal
+    double confidence   = 0.0;           // 0..100, capped on low sample
+
+    bool scoreTrendAvailable      = false;
+    bool coordinateTrendAvailable = false;
+    bool timingTrendAvailable     = false;
+};
+
+struct FatigueAnalysis {
+    bool           available      = false;
+    FatiguePattern overallPattern = FatiguePattern::InsufficientData;
+
+    double earlyAverage   = 0.0;
+    double middleAverage  = 0.0;
+    double lateAverage    = 0.0;
+    double earlyLateDelta = 0.0;
+
+    double scoreSlope      = 0.0;
+    double dispersionSlope = 0.0;
+    double timingSlope     = 0.0;
+
+    double earlyGroupRadius   = 0.0;
+    double lateGroupRadius    = 0.0;
+    double groupExpansionRate = 0.0;
+
+    double earlyShotInterval = 0.0;
+    double lateShotInterval  = 0.0;
+    double timingChangeRate  = 0.0;
+
+    double fatigueIndex = 0.0;
+    double confidence   = 0.0;
+
+    bool scoreTrendAvailable      = false;
+    bool coordinateTrendAvailable = false;
+    bool timingTrendAvailable     = false;
+
+    // Independent per-position analyses (present positions only, enum order).
+    std::vector<PositionFatigueAnalysis> byPosition;
+
+    // Interpreted metrics in the shared PerformanceMetric language.
+    std::vector<PerformanceMetric> metrics;
+
+    // Position-specific fatigue support.
+    bool         hasFatiguedPosition   = false;
+    PositionType mostFatiguedPosition  = PositionType::Unknown;
+};
+
 // ---- Top-level result -----------------------------------------------------
 struct CoachReportData {
     // Validation / provenance
@@ -676,9 +775,9 @@ struct CoachReportData {
     TimingAnalysis   timingAnalysis;     // Section 5 (Phase 7)
     PositionAnalysis positionAnalysis;   // Section 6 (Phase 8)
     RecoveryAnalysis recoveryAnalysis;   // Section 7 (Phase 9)
+    FatigueAnalysis  fatigueAnalysis;    // Section 8 (Phase 10)
 
-    // Sections 8..11 — declared contract, implemented in later phases:
-    //   FatigueAnalysis   fatigueAnalysis;
+    // Sections 9..11 — declared contract, implemented in later phases:
     //   TrainingPriorities trainingPriorities;
     //   CoachConclusion   coachConclusion;
     //   CoachDiaryFields  manualDiaryFields;
