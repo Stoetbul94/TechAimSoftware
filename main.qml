@@ -521,8 +521,9 @@ ApplicationWindow {
 
     // Coach Report overlay (offline analytics view). Sits above the shooting
     // page; opened from the Match Summary. Reads COACHREPORT only — no analytics.
-    CoachReportPage {
-        id: coachReportPage
+    // Polished light dashboard (mockup style).
+    CoachDashboardPage {
+        id: coachDashboard
         z: 8
         anchors.left: parent.left
         anchors.right: parent.right
