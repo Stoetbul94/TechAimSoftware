@@ -13,7 +13,9 @@ SOURCES += main.cpp \
     logfile.cpp \
     receiverTachus.cpp \
     sender.cpp \
-    src/analytics/CoachAnalyticsEngine.cpp
+    src/analytics/CoachAnalyticsEngine.cpp \
+    src/bridge/coachreportvariant.cpp \
+    src/bridge/coachreportbridge.cpp
 
 # Offline coach-analytics module (pure C++, independent from Qt/QML).
 HEADERS += \
@@ -21,6 +23,12 @@ HEADERS += \
     src/analytics/CoachReportData.h \
     src/analytics/CoachAnalyticsEngine.h
 INCLUDEPATH += src/analytics
+
+# QML boundary layer (the ONLY place Qt meets the analytics engine).
+HEADERS += \
+    src/bridge/coachreportvariant.h \
+    src/bridge/coachreportbridge.h
+INCLUDEPATH += src/bridge
 
 RESOURCES += qml.qrc \
     images.qrc \

@@ -24,6 +24,7 @@
 #include "defines.h"
 #include "appsettings.h"
 #include "receiverTachus.h"
+#include "src/bridge/coachreportbridge.h"
 #include <QLockFile>
 #include <QDir>
 #include <QMessageBox>
@@ -122,6 +123,10 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("CUSTOMPRINT", &printComponent);
     engine.rootContext()->setContextProperty("MODREADER", widget);
     engine.rootContext()->setContextProperty("APPSETTINGS", appsettings);
+    // Coach-report QML bridge (offline analytics engine <-> QML). No analytics
+    // logic here; it only marshals CoachReportData to/from QVariant.
+    CoachReportBridge coachReport;
+    engine.rootContext()->setContextProperty("COACHREPORT", &coachReport);
     engine.load(QUrl(QLatin1String("qrc:/main.qml")));
     if (engine.rootObjects().isEmpty())
         return -1;
