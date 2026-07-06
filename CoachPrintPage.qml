@@ -71,6 +71,7 @@ Rectangle {
     // ---- diary edit state ----
     property var focusOptions: ["Trigger control","Follow-through","Position stability","Breathing","Rhythm & timing","Recovery routine","Endurance","Sight picture"]
     property var focusChecked: ({})
+    property int diaryVer: 0   // bumped on reload to force checkbox delegates to rebuild
     function loadDiary(){
         var d = COACHREPORT.coachDiary()
         dfEquip.text=d.equipmentNotes||""; dfSight.text=d.sightAdjustmentNotes||""; dfAmmo.text=d.ammunitionNotes||""
@@ -78,6 +79,7 @@ Rectangle {
         dfPhys.text=d.physicalConditionNotes||""; dfMental.text=d.mentalStateNotes||""
         dfCoach.text=d.coachNotes||""; dfAthlete.text=d.athleteNotes||""; dfNext.text=d.nextSessionFocus||""
         var fc={}; var tags=d.tags||[]; for(var i=0;i<tags.length;i++) fc[tags[i]]=true; pg.focusChecked=fc
+        pg.diaryVer++   // force the focus checkboxes to rebuild from the reloaded state
     }
     function saveDiary(){
         var cur = COACHREPORT.coachDiary()
@@ -121,7 +123,7 @@ Rectangle {
             // The A4-ish white page, centred.
             Rectangle {
                 id: page
-                width: Math.min(820, pageWrap.width - 40)
+                width: Math.min(794, pageWrap.width - 40)   // A4 width at 96 dpi (210 mm)
                 x: (pageWrap.width - width) / 2; y: 20
                 height: content.implicitHeight + 56
                 color: pg.cPage; border.color: pg.cRule; border.width: 1
@@ -156,7 +158,7 @@ Rectangle {
                         Text { text: "Executive Summary"; color: pg.cInk; font.bold: true; font.pixelSize: 15; font.family: pg.fam }
                         Rectangle { width: parent.width; height: 1; color: pg.cRule }
                         Grid {
-                            width: parent.width; columns: 4; columnSpacing: 8; rowSpacing: 4
+                            width: parent.width; columns: 2; columnSpacing: 24; rowSpacing: 4
                             property var e: pg.rep ? pg.rep.executiveSummary : ({})
                             Repeater {
                                 model: [
@@ -208,12 +210,12 @@ Rectangle {
                             }
                             delegate: Row {
                                 width: parent.width; spacing: 8; height: 18
-                                Text { width: parent.width*0.24; text: modelData.l; color: pg.cInk; font.pixelSize: 11; font.family: pg.fam; anchors.verticalCenter: parent.verticalCenter }
+                                Text { width: parent.width*0.26; text: modelData.l; color: pg.cInk; font.pixelSize: 11; font.family: pg.fam; elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter }
                                 Rectangle {
-                                    width: parent.width*0.56; height: 12; radius: 2; color: "#eee"; anchors.verticalCenter: parent.verticalCenter
+                                    width: parent.width*0.52; height: 12; radius: 2; color: "#eee"; anchors.verticalCenter: parent.verticalCenter
                                     Rectangle { width: parent.width*Math.min(1,(modelData.p||0)/100); height: parent.height; radius: 2; color: modelData.col }
                                 }
-                                Text { text: modelData.c+"  ("+pg.f(modelData.p,1)+"%)"; color: pg.cSub; font.pixelSize: 11; font.family: pg.fam; anchors.verticalCenter: parent.verticalCenter }
+                                Text { width: parent.width*0.18; text: modelData.c+"  ("+pg.f(modelData.p,1)+"%)"; color: pg.cSub; font.pixelSize: 11; font.family: pg.fam; elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter }
                             }
                         }
                     }
@@ -366,7 +368,7 @@ Rectangle {
                         Flow {
                             width: parent.width; spacing: 6
                             Repeater {
-                                model: pg.focusOptions
+                                model: (pg.diaryVer, pg.focusOptions.slice())   // rebuilds on reload
                                 delegate: Row {
                                     spacing: 4
                                     CheckBox {
