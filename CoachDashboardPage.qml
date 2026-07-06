@@ -73,6 +73,64 @@ Rectangle {
         if (slope < -0.005) return cRed
         return cSub
     }
+    function up(x) { return x ? String(x).toUpperCase() : "—" }
+
+    // ---- Key Coach Insights (compact summaries; engine values only) ----
+    function limitingPosition(pa) {
+        if (!pa || !pa.available) return "—"
+        if (pa.comparativeAvailable && pa.hasWeakest) return up(pa.weakestPosition)
+        if (pa.positions.length === 1) return up(pa.positions[0].position)
+        return "—"
+    }
+    function fatigueLevel(fa) {
+        if (!fa || !fa.available || !fa.scoreTrendAvailable) return "N/A"
+        if (fa.overallPattern === "NoFatigueDetected") return "None"
+        var i = fa.fatigueIndex
+        return i < 0.35 ? "Mild" : (i < 0.55 ? "Moderate" : "High")
+    }
+    function fatigueColor(fa) {
+        var l = fatigueLevel(fa)
+        return l === "None" ? cGreen : (l === "Mild" ? cAmber : (l === "Moderate" ? "#e07a30" : (l === "High" ? cRed : cSub)))
+    }
+    function recoveryRating(ra) {
+        if (!ra || !ra.overall || !ra.overall.available) return "N/A"
+        switch (ra.overall.pattern) {
+        case "GoodRecovery":          return "Good"
+        case "SlowRecovery":          return "Slow"
+        case "RepeatedErrorPattern":  return "Clustered errors"
+        case "OverCorrectionPattern": return "Over-correcting"
+        default:                      return "N/A"
+        }
+    }
+    function recoveryColor(ra) {
+        var r = recoveryRating(ra)
+        return r === "Good" ? cGreen : (r === "N/A" ? cSub : (r === "Slow" ? cAmber : cRed))
+    }
+    function errorDirection(ex) {
+        if (!ex) return "—"
+        var x = ex.horizontalBias, y = ex.verticalBias
+        var r = Math.sqrt(x * x + y * y)
+        if (r < 1.0) return "Centred"
+        var ang = Math.atan2(y, x) * 180 / Math.PI
+        if (ang < 0) ang += 360
+        var dirs = ["Right", "High-right", "High", "High-left", "Left", "Low-left", "Low", "Low-right"]
+        return dirs[Math.round(ang / 45) % 8]
+    }
+    function trainingFocus(tp) {
+        if (!tp || tp.length === 0) return "None detected"
+        return tp[0].priority
+    }
+    function insightTiles() {
+        var r = rep
+        if (!r || !r.valid) return []
+        return [
+            { label: "Main limiting position", value: limitingPosition(r.positionAnalysis), color: cText },
+            { label: "Fatigue level",          value: fatigueLevel(r.fatigueAnalysis),      color: fatigueColor(r.fatigueAnalysis) },
+            { label: "Recovery rating",        value: recoveryRating(r.recoveryAnalysis),   color: recoveryColor(r.recoveryAnalysis) },
+            { label: "Dominant error dir.",    value: errorDirection(r.executiveSummary),   color: cText },
+            { label: "Main training focus",    value: trainingFocus(r.trainingPriorities),  color: cAccent }
+        ]
+    }
 
     function refresh() {
         // group shots by position (first-appearance order = K, P, S for 3P)
@@ -172,6 +230,28 @@ Rectangle {
                 visible: !(dash.rep && dash.rep.valid)
                 text: "No report to display yet — finish a match (or use DEMO PRONE / DEMO 3P), then open Coach Report."
                 color: cSub; font.pixelSize: 15; font.family: fam; wrapMode: Text.WordWrap
+            }
+
+            // ---------------- Key Coach Insights ----------------
+            Rectangle {
+                width: parent.width; visible: dash.rep && dash.rep.valid
+                implicitHeight: kciCol.implicitHeight + 26; height: implicitHeight
+                color: cPanel; border.color: cBorder; border.width: 1; radius: 10
+                Column {
+                    id: kciCol; x: 16; y: 12; width: parent.width - 32; spacing: 10
+                    Text { text: "✦  Key Coach Insights"; color: cText; font.bold: true; font.pixelSize: 16; font.family: fam }
+                    Row {
+                        width: parent.width
+                        Repeater {
+                            model: dash.insightTiles()
+                            delegate: Column {
+                                width: kciCol.width / 5; spacing: 4
+                                Text { width: parent.width - 10; text: modelData.label; color: dash.cSub; font.pixelSize: 12; font.family: dash.fam; wrapMode: Text.WordWrap }
+                                Text { width: parent.width - 10; text: modelData.value; color: modelData.color; font.bold: true; font.pixelSize: 16; font.family: dash.fam; wrapMode: Text.WordWrap }
+                            }
+                        }
+                    }
+                }
             }
 
             // ---------------- Shot Map ----------------

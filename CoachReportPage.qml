@@ -158,6 +158,46 @@ Rectangle {
         return t
     }
 
+    // ---------- coach-facing labels for Recovery / Fatigue ----------
+    function recoveryPatternLabel(p) {
+        switch (p) {
+        case "GoodRecovery":          return "Recovers well after mistakes"
+        case "SlowRecovery":          return "Slow to recover after mistakes"
+        case "RepeatedErrorPattern":  return "Mistakes tend to cluster together"
+        case "OverCorrectionPattern": return "Over-corrects after mistakes"
+        default:                      return "Not enough poor shots to assess recovery"
+        }
+    }
+    function fatiguePatternLabel(p) {
+        switch (p) {
+        case "NoFatigueDetected":       return "No fatigue signal — held up well"
+        case "GradualDecline":          return "Gradual decline through the session"
+        case "LateMatchDrop":           return "Score dropped late in the match"
+        case "IncreasingDispersion":    return "Group opened up over the session"
+        case "TimingSlowdown":          return "Shot timing slowed late"
+        case "FatigueCompensation":     return "Working harder late to hold the score"
+        case "PositionSpecificFatigue": return "Fatigue localised to one position"
+        default:                        return "Not enough data to assess fatigue"
+        }
+    }
+    function sevColor(s) {
+        switch (s) {
+        case "Low":      return "#8bbf5a"
+        case "Moderate": return "#e0b020"
+        case "High":     return "#e07a30"
+        case "Critical": return "#d0392b"
+        default:         return theme.textSecondary   // None
+        }
+    }
+    function indexSevColor(idx) {
+        if (idx === undefined || idx === null) return theme.textSecondary
+        if (idx < 0.20) return theme.textSecondary
+        if (idx < 0.35) return "#8bbf5a"
+        if (idx < 0.50) return "#e0b020"
+        if (idx < 0.70) return "#e07a30"
+        return "#d0392b"
+    }
+
     // ---------- first-test debug ----------
     property var dbg: ({})
     function fmtDebug(d, r) {
@@ -366,8 +406,96 @@ Rectangle {
             // ----- remaining text sections -----
             CoachReportCard { width: scrollColumn.width; visible: reportPage.rep && reportPage.rep.valid; title: "Timing"; body: reportPage.fmtTiming(reportPage.rep ? reportPage.rep.timingAnalysis : null) }
             CoachReportCard { width: scrollColumn.width; visible: reportPage.rep && reportPage.rep.valid; title: "Position Analysis"; body: reportPage.fmtPosition(reportPage.rep ? reportPage.rep.positionAnalysis : null) }
-            CoachReportCard { width: scrollColumn.width; visible: reportPage.rep && reportPage.rep.valid; title: "Recovery Analysis"; body: reportPage.fmtRecovery(reportPage.rep ? reportPage.rep.recoveryAnalysis : null) }
-            CoachReportCard { width: scrollColumn.width; visible: reportPage.rep && reportPage.rep.valid; title: "Fatigue Analysis"; body: reportPage.fmtFatigue(reportPage.rep ? reportPage.rep.fatigueAnalysis : null) }
+            // ----- Recovery (structured, with evidence) -----
+            CoachReportCard {
+                width: scrollColumn.width; visible: reportPage.rep && reportPage.rep.valid
+                title: "Recovery Analysis"; body: ""
+                Row {
+                    spacing: 8
+                    Rectangle {
+                        width: 12; height: 12; radius: 6; anchors.verticalCenter: parent.verticalCenter
+                        color: reportPage.sevColor((reportPage.rep && reportPage.rep.recoveryAnalysis.overall.available) ? reportPage.rep.recoveryAnalysis.overall.recoverySeverity : "None")
+                    }
+                    Text {
+                        text: reportPage.recoveryPatternLabel(reportPage.rep ? reportPage.rep.recoveryAnalysis.overall.pattern : "")
+                        color: theme.textPrimary; font.bold: true; font.pixelSize: 15; font.family: theme.fontFamily
+                    }
+                }
+                Text {
+                    width: parent.width
+                    visible: reportPage.rep && reportPage.rep.recoveryAnalysis.overall.available
+                    text: "Recovery rate " + reportPage.pct(reportPage.rep ? reportPage.rep.recoveryAnalysis.overall.badShotRecoveryRate : 0)
+                          + "   •   confidence " + reportPage.pct(reportPage.rep ? reportPage.rep.recoveryAnalysis.overall.recoveryConfidence : 0)
+                    color: theme.textSecondary; font.pixelSize: 13; font.family: theme.fontFamily
+                }
+                Repeater {
+                    model: (reportPage.rep && reportPage.rep.recoveryAnalysis.metrics) ? reportPage.rep.recoveryAnalysis.metrics : []
+                    delegate: Column {
+                        width: parent.width; spacing: 2
+                        Row {
+                            spacing: 6
+                            Rectangle { width: 9; height: 9; radius: 4.5; anchors.verticalCenter: parent.verticalCenter; color: reportPage.sevColor(modelData.severity) }
+                            Text { text: modelData.name; color: theme.textPrimary; font.bold: true; font.pixelSize: 13; font.family: theme.fontFamily }
+                        }
+                        Repeater {
+                            model: modelData.evidence
+                            delegate: Text { width: parent.width; text: "    " + modelData.statement; color: theme.textSecondary; font.pixelSize: 12; font.family: theme.fontFamily; wrapMode: Text.WordWrap }
+                        }
+                    }
+                }
+                Text {
+                    width: parent.width
+                    visible: reportPage.rep && reportPage.rep.recoveryAnalysis.comparativeAvailable
+                    text: "Best position: " + reportPage.up(reportPage.rep ? reportPage.rep.recoveryAnalysis.bestRecoveryPosition : "")
+                          + "   •   Worst: " + reportPage.up(reportPage.rep ? reportPage.rep.recoveryAnalysis.worstRecoveryPosition : "")
+                    color: theme.textSecondary; font.pixelSize: 13; font.family: theme.fontFamily
+                }
+            }
+
+            // ----- Fatigue (structured, with evidence) -----
+            CoachReportCard {
+                width: scrollColumn.width; visible: reportPage.rep && reportPage.rep.valid
+                title: "Fatigue Analysis"; body: ""
+                Row {
+                    spacing: 8
+                    Rectangle {
+                        width: 12; height: 12; radius: 6; anchors.verticalCenter: parent.verticalCenter
+                        color: reportPage.indexSevColor(reportPage.rep ? reportPage.rep.fatigueAnalysis.fatigueIndex : 0)
+                    }
+                    Text {
+                        text: reportPage.fatiguePatternLabel(reportPage.rep ? reportPage.rep.fatigueAnalysis.overallPattern : "")
+                        color: theme.textPrimary; font.bold: true; font.pixelSize: 15; font.family: theme.fontFamily
+                    }
+                }
+                Text {
+                    width: parent.width
+                    visible: reportPage.rep && reportPage.rep.fatigueAnalysis.scoreTrendAvailable
+                    text: "Fatigue index " + reportPage.f(reportPage.rep ? reportPage.rep.fatigueAnalysis.fatigueIndex : 0, 2)
+                          + "   •   confidence " + reportPage.pct(reportPage.rep ? reportPage.rep.fatigueAnalysis.confidence : 0)
+                    color: theme.textSecondary; font.pixelSize: 13; font.family: theme.fontFamily
+                }
+                Repeater {
+                    model: (reportPage.rep && reportPage.rep.fatigueAnalysis.metrics) ? reportPage.rep.fatigueAnalysis.metrics : []
+                    delegate: Column {
+                        width: parent.width; spacing: 2
+                        Row {
+                            spacing: 6
+                            Rectangle { width: 9; height: 9; radius: 4.5; anchors.verticalCenter: parent.verticalCenter; color: reportPage.sevColor(modelData.severity) }
+                            Text { text: modelData.name; color: theme.textPrimary; font.bold: true; font.pixelSize: 13; font.family: theme.fontFamily }
+                        }
+                        Repeater {
+                            model: modelData.evidence
+                            delegate: Text { width: parent.width; text: "    " + modelData.statement; color: theme.textSecondary; font.pixelSize: 12; font.family: theme.fontFamily; wrapMode: Text.WordWrap }
+                        }
+                    }
+                }
+                Text {
+                    width: parent.width
+                    visible: reportPage.rep && reportPage.rep.fatigueAnalysis.hasFatiguedPosition
+                    text: "Most fatigued position: " + reportPage.up(reportPage.rep ? reportPage.rep.fatigueAnalysis.mostFatiguedPosition : "")
+                    color: theme.textSecondary; font.pixelSize: 13; font.family: theme.fontFamily
+                }
+            }
             CoachReportCard { width: scrollColumn.width; visible: reportPage.rep && reportPage.rep.valid; title: "Training Priorities"; body: reportPage.fmtPriorities(reportPage.rep ? reportPage.rep.trainingPriorities : null) }
             CoachReportCard { width: scrollColumn.width; visible: reportPage.rep && reportPage.rep.valid; title: "Coach Conclusion"; body: reportPage.fmtConclusion(reportPage.rep ? reportPage.rep.coachConclusion : null) }
             CoachReportCard { width: scrollColumn.width; visible: reportPage.rep && reportPage.rep.valid; title: "Coach Diary"; body: reportPage.fmtDiary(reportPage.rep ? reportPage.rep.coachDiary : null) }
