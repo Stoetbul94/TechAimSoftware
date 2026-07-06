@@ -31,7 +31,7 @@ ApplicationWindow {
     property string mpiColor: /*"transparent"//*/"blue"
     property bool isSingleDecimal: APPSETTINGS.getIsSingleDecimal()
     property bool coachReportVisible: false   // Coach Report overlay toggle
-    property int  coachViewMode: 0            // 0 = dashboard, 1 = detailed report
+    property int  coachViewMode: 0            // 0 = dashboard, 1 = detailed, 2 = print
 
     //property string valueString: ""
 
@@ -534,6 +534,7 @@ ApplicationWindow {
         gameSubMode: loginPage.gameSubMode
         onClosed: coachReportVisible = false
         onDetailsRequested: coachViewMode = 1
+        onPrintRequested: coachViewMode = 2
     }
     CoachReportPage {
         id: coachReportPage
@@ -546,6 +547,20 @@ ApplicationWindow {
         gameSubMode: loginPage.gameSubMode
         onClosed: coachReportVisible = false
         onDashboardRequested: coachViewMode = 0
+        onPrintRequested: coachViewMode = 2
+    }
+    CoachPrintPage {
+        id: coachPrintPage
+        z: 8
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: header.bottom
+        anchors.bottom: parent.bottom
+        visible: coachReportVisible && coachViewMode === 2
+        gameSubMode: loginPage.gameSubMode
+        onClosed: coachReportVisible = false
+        onDashboardRequested: coachViewMode = 0
+        onDetailsRequested: coachViewMode = 1
     }
 
     // TEMPORARY / DEV-ONLY: preview the Coach Report with fixed sample data, no

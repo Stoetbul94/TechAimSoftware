@@ -17,6 +17,7 @@ Rectangle {
 
     signal closed()
     signal detailsRequested()
+    signal printRequested()
 
     // ---- light palette ----
     readonly property color cPanel:  "#ffffff"
@@ -207,6 +208,7 @@ Rectangle {
             }
             Button { text: "Re-run"; onClicked: COACHFEED.analyzeCurrentMatch(dash.gameSubMode) }
             Button { text: "Detailed ▸"; onClicked: dash.detailsRequested() }
+            Button { text: "🖶 Print"; onClicked: dash.printRequested() }
             Button { text: "Close"; onClicked: dash.closed() }
         }
     }

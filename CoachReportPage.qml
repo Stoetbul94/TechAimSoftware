@@ -19,6 +19,7 @@ Rectangle {
 
     signal closed()
     signal dashboardRequested()
+    signal printRequested()
 
     Connections {
         target: COACHREPORT
@@ -296,6 +297,7 @@ Rectangle {
             }
             Button { anchors.verticalCenter: parent.verticalCenter; text: "Re-run"; onClicked: COACHFEED.analyzeCurrentMatch(reportPage.gameSubMode) }
             Button { anchors.verticalCenter: parent.verticalCenter; text: "◂ Dashboard"; onClicked: reportPage.dashboardRequested() }
+            Button { anchors.verticalCenter: parent.verticalCenter; text: "🖶 Print"; onClicked: reportPage.printRequested() }
             Button { anchors.verticalCenter: parent.verticalCenter; text: "Close"; onClicked: reportPage.closed() }
         }
     }

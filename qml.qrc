@@ -10,6 +10,7 @@
         <file>SummaryPage.qml</file>
         <file>CoachReportPage.qml</file>
         <file>CoachDashboardPage.qml</file>
+        <file>CoachPrintPage.qml</file>
         <file>IssfTargetCanvas.qml</file>
         <file>CoachReportCard.qml</file>
         <file>ShotTargetCanvas.qml</file>
