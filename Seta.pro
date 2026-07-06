@@ -17,7 +17,8 @@ SOURCES += main.cpp \
     src/bridge/tachusshotbuilder.cpp \
     src/bridge/coachreportvariant.cpp \
     src/bridge/coachreportbridge.cpp \
-    src/bridge/coachreportfeeder.cpp
+    src/bridge/coachreportfeeder.cpp \
+    src/bridge/pdfexporter.cpp
 
 # Offline coach-analytics module (pure C++, independent from Qt/QML).
 HEADERS += \
@@ -32,7 +33,8 @@ HEADERS += \
     src/bridge/tachusshotbuilder.h \
     src/bridge/coachreportvariant.h \
     src/bridge/coachreportbridge.h \
-    src/bridge/coachreportfeeder.h
+    src/bridge/coachreportfeeder.h \
+    src/bridge/pdfexporter.h
 INCLUDEPATH += src/bridge
 
 RESOURCES += qml.qrc \

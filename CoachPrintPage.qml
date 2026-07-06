@@ -91,9 +91,38 @@ Rectangle {
             physicalConditionNotes: dfPhys.text, mentalStateNotes: dfMental.text,
             coachNotes: dfCoach.text, athleteNotes: dfAthlete.text, nextSessionFocus: dfNext.text, tags: tags
         })
-        savedFlash.visible = true; flashTimer.restart()
+        savedFlash.text = "✓ diary saved"; savedFlash.visible = true; flashTimer.restart()
     }
-    Timer { id: flashTimer; interval: 1500; onTriggered: savedFlash.visible=false }
+    Timer { id: flashTimer; interval: 2000; onTriggered: savedFlash.visible=false }
+
+    // ---- PDF export (grabs Print-view sections; no analysis) ----
+    function athleteName(){ return (dbg&&dbg.demo)?"DEMO":(typeof userName!=="undefined"?userName:"Athlete") }
+    function exportPdf(){
+        if(!(rep && rep.valid)) return
+        var secs=[]
+        for(var i=0;i<content.children.length;i++){
+            var c=content.children[i]
+            if(c && c.visible && c.width>4 && c.height>8) secs.push(c)
+        }
+        if(secs.length===0) return
+        PDFEXPORT.clear()
+        var results=new Array(secs.length); var remaining=secs.length
+        for(var j=0;j<secs.length;j++){
+            (function(idx){
+                secs[idx].grabToImage(function(res){
+                    results[idx]=res; remaining--
+                    if(remaining===0){
+                        for(var k=0;k<results.length;k++) if(results[k]) PDFEXPORT.addSection(results[k].image)
+                        PDFEXPORT.exportToFile(PDFEXPORT.suggestFileName(pg.athleteName(), pg.disciplineLabel(), Qt.formatDateTime(new Date(),"yyyy-MM-dd")))
+                    }
+                }, Qt.size(secs[idx].width*2, secs[idx].height*2))
+            })(j)
+        }
+    }
+    Connections {
+        target: PDFEXPORT
+        function onExportFinished(path){ if(path && path.length){ savedFlash.text="✓ PDF exported"; savedFlash.visible=true; flashTimer.restart() } }
+    }
 
     // ================= toolbar (screen only) =================
     Rectangle {
@@ -105,6 +134,7 @@ Rectangle {
         }
         Row {
             anchors.verticalCenter: parent.verticalCenter; anchors.right: parent.right; anchors.rightMargin: 12; spacing: 10
+            Button { text: "⤓ Export PDF"; onClicked: pg.exportPdf() }
             Button { text: "Save Diary"; onClicked: pg.saveDiary() }
             Button { text: "Dashboard"; onClicked: pg.dashboardRequested() }
             Button { text: "Detailed"; onClicked: pg.detailsRequested() }
