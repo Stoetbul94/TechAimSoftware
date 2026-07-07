@@ -99,7 +99,7 @@ Item {
                     }
                     Text {
                         text: qsTr("50m Rifle 3 Positions · ") + userName + (appMode ? "" : qsTr("  —  DEMO"))
-                        font.pixelSize: 9; color: appMode ? "#555555" : "#e8003d"; font.letterSpacing: 1
+                        font.pixelSize: 9; color: appMode ? "#555555" : "#a80038"; font.letterSpacing: 1
                     }
                 }
                 Image {
@@ -108,7 +108,7 @@ Item {
                     height: 32; fillMode: Image.PreserveAspectFit
                 }
             }
-            Rectangle { width: parent.width; height: 2; color: "#e8003d" }
+            Rectangle { width: parent.width; height: 2; color: "#a80038" }
 
             // ── Series tables + target plot ───────────────────────────────
             Row {
@@ -141,7 +141,7 @@ Item {
                                     width: parent.width*0.6; height: parent.height
                                     text: shotScore(index) >= 0 ? fmt(shotScore(index)) : "-"
                                     font.pixelSize: 12; font.bold: true
-                                    color: shotScore(index) >= 10 ? "#3a9a3a" : (shotScore(index) >= 9 ? "#111111" : "#e8003d")
+                                    color: shotScore(index) >= 10 ? "#3a9a3a" : (shotScore(index) >= 9 ? "#111111" : "#a80038")
                                     horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
                                 }
                             }
@@ -184,7 +184,7 @@ Item {
                                     width: parent.width*0.6; height: parent.height
                                     text: shotScore(index + 10) >= 0 ? fmt(shotScore(index + 10)) : "-"
                                     font.pixelSize: 12; font.bold: true
-                                    color: shotScore(index + 10) >= 10 ? "#3a9a3a" : (shotScore(index + 10) >= 9 ? "#111111" : "#e8003d")
+                                    color: shotScore(index + 10) >= 10 ? "#3a9a3a" : (shotScore(index + 10) >= 9 ? "#111111" : "#a80038")
                                     horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
                                 }
                             }
@@ -232,7 +232,7 @@ Item {
                         }
                     }
                     Rectangle {
-                        width: parent.width; height: 30; color: "#e8003d"
+                        width: parent.width; height: 30; color: "#a80038"
                         Row {
                             anchors.fill: parent
                             Text { width: parent.width*0.5; height: parent.height; text: qsTr("  POSITION TOTAL"); color: "white"; font.pixelSize: 10; font.bold: true; verticalAlignment: Text.AlignVCenter }

@@ -9,6 +9,7 @@ Item {
     property string value: "—"
     property string unit: ""
     property color  accent: "#a80038"   // Tech Aim maroon
+    property int    valueSize: 26        // override for long values (MPI, time, etc.)
 
     implicitWidth: 172
     implicitHeight: 84
@@ -49,7 +50,7 @@ Item {
                 spacing: 5
                 Text {
                     text: card.value
-                    color: "#191b1f"; font.pixelSize: 26; font.bold: true; font.family: "Segoe UI"
+                    color: "#191b1f"; font.pixelSize: card.valueSize; font.bold: true; font.family: "Segoe UI"
                 }
                 Text {
                     visible: card.unit.length > 0

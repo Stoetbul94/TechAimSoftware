@@ -16,6 +16,7 @@ Item {
     property string lane: ""
     property string extraLabel: ""       // free slot (e.g. Wind / Light)
     property string extraValue: ""
+    property var    extraPairs: []       // additional [{l,v}] appended after built-ins (e.g. Shots/Score/Time)
     property color  accent: "#a80038"
 
     implicitHeight: 78
@@ -32,6 +33,8 @@ Item {
         add("Range", range)
         add("Lane", lane)
         add(extraLabel, extraValue)
+        for (var i = 0; i < extraPairs.length; ++i)
+            add(extraPairs[i].l, extraPairs[i].v)
         return p
     }
 

@@ -1,68 +1,37 @@
 import QtQuick 2.0
 
+// A4 host for the Match Report cover page. The cover content (ReportHeader,
+// Executive Summary, Overall Target, ReportFooter) is supplied via sourceComp
+// and already carries its own branding, so this page is just a clean white
+// sheet with a subtle demo watermark in non-live builds.
 Item {
     id: rootItem
     width: 595 // A4 size for 72 dpi
     height: 842 // A4 sixe for 72 dpi
 
     property int pageIndex: 0
-    property string title: appMode ? qsTr("Page ") + pageIndex : qsTr("Page ") + pageIndex + qsTr(" DEMO")
+    property string title: qsTr("Page ") + pageIndex
     property var sourceComp: null
-
-    onVisibleChanged: {
-        console.log("Pdf page visible ", visible)
-    }
 
     Rectangle {
         anchors.fill: parent
-        color: "transparent"
-
-        Text {
-            id: headerTitle
-            width: implicitWidth
-            height: implicitHeight
-            anchors.top: parent.top
-            anchors.topMargin: 20
-            anchors.horizontalCenter: parent.horizontalCenter
-            text: title
-            color: "black"
-        }
-
-        Image {
-            id: bg
-            source: isDefaultIcon ? "qrc:/images/logo/tachus_logo.png" : "qrc:/images/logo/seta.png"
-            opacity: 1
-            anchors.top: parent.top
-            anchors.topMargin: 10
-            anchors.right: parent.right
-            anchors.rightMargin: 10
-            //        fillMode: Image.PreserveAspectFit
-            width: (0.3*sourceSize.width)
-            height: (0.3*sourceSize.height)
-        }
-        Text {
-            id: demoText
-            width: implicitWidth
-            height: bg.height/2
-            anchors.top: bg.bottom
-            anchors.topMargin: 20
-            anchors.right: parent.right
-            anchors.rightMargin: 10
-            text: "DEMO"
-            color: "red"
-            font.pixelSize: 0.3*bg.height
-            visible: !appMode
-        }
+        color: "white"
 
         Loader {
+            anchors.fill: parent
             sourceComponent: sourceComp
-            anchors.top: parent.top
-            anchors.topMargin: 40
-            anchors.bottom: parent.bottom
-            anchors.left: parent.left
-            anchors.right: parent.right
         }
 
-        radius: 8
+        // Faint diagonal watermark, live builds (appMode) hide it.
+        Text {
+            anchors.centerIn: parent
+            text: "DEMO"
+            visible: !appMode
+            rotation: -30
+            color: "#14bf1919"
+            font.pixelSize: 160
+            font.bold: true
+            font.family: "Segoe UI"
+        }
     }
 }
