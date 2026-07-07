@@ -211,12 +211,21 @@ void CustomPrint::createSummryPdf()
         QImage img1 = m_images.at(i);
         if(!img.isNull())
         {
-            img = img.scaledToWidth(iWidth*0.9);
-            painter.drawImage(QRectF(0, 0, img1.width()*3, img1.height()), img1, img1.rect());
-            totalHeight += img1.height();
-            //iYPos += img.height() + 250;
+            // Fit the grabbed A4 page within the printable page, preserving the
+            // aspect ratio and centring it horizontally (was drawn at 3x width,
+            // which distorted and overflowed the page).
+            img = img1.scaled(iWidth, iHeight, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+            qreal xOff = (iWidth - img.width()) / 2.0;
+            painter.drawImage(QRectF(xOff, 0, img.width(), img.height()), img1, img1.rect());
+            totalHeight += img.height();
         }
     }
+    // The redesigned Match Summary page is a self-contained A4 report (header,
+    // executive summary, target, footer), so the PDF is exactly that page image
+    // (PDF == print view). The legacy logo overlay and raw text dump below are
+    // intentionally skipped.
+    painter.end();
+    return;
 
     painter.setPen(Qt::blue);
     painter.setFont(QFont("Times", 10));
