@@ -164,51 +164,43 @@ Rectangle {
                     visible: pg.rep && pg.rep.valid
 
                     // ---- header ----
-                    Column {
-                        width: parent.width; spacing: 4
-                        Row {
-                            width: parent.width
-                            Text { text: "TECHAIM"; color: pg.cAccent; font.bold: true; font.pixelSize: 22; font.family: pg.fam }
-                            Item { width: 10; height: 1 }
-                            Text { text: "· Coach Report"; color: pg.cInk; font.pixelSize: 22; font.family: pg.fam; anchors.verticalCenter: parent.verticalCenter }
-                        }
-                        Rectangle { width: parent.width; height: 2; color: pg.cAccent }
-                        Text {
-                            width: parent.width; color: pg.cSub; font.pixelSize: 12; font.family: pg.fam
-                            text: "Athlete: " + pg.athleteName()
-                                  + "    Discipline: " + pg.disciplineLabel()
-                                  + "    Date: " + Qt.formatDateTime(new Date(),"d MMM yyyy HH:mm")
-                                  + "    Session: Match"
-                        }
+                    ReportHeader {
+                        width: parent.width
+                        reportTitle: "Coach Report"
+                        athlete: pg.athleteName()
+                        discipline: pg.disciplineLabel()
+                        sessionType: "Match"
+                        dateText: Qt.formatDateTime(new Date(),"d MMM yyyy")
+                        timeText: Qt.formatDateTime(new Date(),"HH:mm")
                     }
 
-                    // ---- section helper via inline component ----
                     // Executive Summary
                     Column {
-                        width: parent.width; spacing: 6
-                        Text { text: "Executive Summary"; color: pg.cInk; font.bold: true; font.pixelSize: 15; font.family: pg.fam }
-                        Rectangle { width: parent.width; height: 1; color: pg.cRule }
+                        width: parent.width; spacing: 10
+                        property var e: pg.rep ? pg.rep.executiveSummary : null
+                        SectionTitle { width: parent.width; title: "Executive Summary" }
                         Grid {
-                            width: parent.width; columns: 2; columnSpacing: 24; rowSpacing: 4
-                            property var e: pg.rep ? pg.rep.executiveSummary : ({})
-                            Repeater {
-                                model: [
-                                    {k:"Shots", v: pg.f(parent.e.competitionShotCount,0)}, {k:"Total", v: pg.f(parent.e.totalScore,1)},
-                                    {k:"Average", v: pg.f(parent.e.averageScore,2)}, {k:"Consistency", v: pg.pct(parent.e.consistencyPercentage)},
-                                    {k:"Best / Worst", v: pg.f(parent.e.bestShot,1)+" / "+pg.f(parent.e.worstShot,1)}, {k:"Score SD", v: pg.f(parent.e.scoreStandardDeviation,3)},
-                                    {k:"Group radius", v: pg.f(parent.e.groupRadius,1)+" mm"}, {k:"Group diameter", v: pg.f(parent.e.groupDiameter,1)+" mm"},
-                                    {k:"MPI (x,y)", v: pg.f(parent.e.horizontalBias,1)+", "+pg.f(parent.e.verticalBias,1)+" mm"}, {k:"Trend", v: (parent.e.trendDirection||"—")}
-                                ]
-                                delegate: Row { Text { text: modelData.k+": "; color: pg.cSub; font.pixelSize: 12; font.family: pg.fam } Text { text: modelData.v; color: pg.cInk; font.bold: true; font.pixelSize: 12; font.family: pg.fam } }
-                            }
+                            id: execGrid
+                            width: parent.width; columns: 3; columnSpacing: 12; rowSpacing: 12
+                            property real cw: (width - 2*columnSpacing) / 3
+                            property var e: parent.e
+                            MetricCard { width: execGrid.cw; label: "Shots";          value: execGrid.e ? pg.f(execGrid.e.competitionShotCount,0) : "—" }
+                            MetricCard { width: execGrid.cw; label: "Total Score";    value: execGrid.e ? pg.f(execGrid.e.totalScore,1) : "—" }
+                            MetricCard { width: execGrid.cw; label: "Average";        value: execGrid.e ? pg.f(execGrid.e.averageScore,2) : "—" }
+                            MetricCard { width: execGrid.cw; label: "Consistency";    valueSize: 22; value: execGrid.e ? pg.pct(execGrid.e.consistencyPercentage) : "—" }
+                            MetricCard { width: execGrid.cw; label: "Best / Worst";   valueSize: 18; value: execGrid.e ? pg.f(execGrid.e.bestShot,1)+" / "+pg.f(execGrid.e.worstShot,1) : "—" }
+                            MetricCard { width: execGrid.cw; label: "Score SD";       valueSize: 20; value: execGrid.e ? pg.f(execGrid.e.scoreStandardDeviation,3) : "—" }
+                            MetricCard { width: execGrid.cw; label: "Group Radius";   unit: "mm"; valueSize: 20; value: execGrid.e ? pg.f(execGrid.e.groupRadius,1) : "—" }
+                            MetricCard { width: execGrid.cw; label: "Group Diameter"; unit: "mm"; valueSize: 20; value: execGrid.e ? pg.f(execGrid.e.groupDiameter,1) : "—" }
+                            MetricCard { width: execGrid.cw; label: "MPI"; unit: "mm"; valueSize: 18; value: execGrid.e ? pg.f(execGrid.e.horizontalBias,1)+", "+pg.f(execGrid.e.verticalBias,1) : "—" }
+                            MetricCard { width: execGrid.cw; label: "Trend";          valueSize: 18; value: execGrid.e ? (execGrid.e.trendDirection||"—") : "—" }
                         }
                     }
 
                     // Shot Map (ISSF targets)
                     Column {
                         width: parent.width; spacing: 6
-                        Text { text: "Shot Map"; color: pg.cInk; font.bold: true; font.pixelSize: 15; font.family: pg.fam }
-                        Rectangle { width: parent.width; height: 1; color: pg.cRule }
+                        SectionTitle { width: parent.width; title: "Shot Map" }
                         Flow {
                             width: parent.width; spacing: 12
                             Repeater {
@@ -225,8 +217,7 @@ Rectangle {
                     // Score Distribution (print-friendly bars)
                     Column {
                         width: parent.width; spacing: 6
-                        Text { text: "Score Distribution"; color: pg.cInk; font.bold: true; font.pixelSize: 15; font.family: pg.fam }
-                        Rectangle { width: parent.width; height: 1; color: pg.cRule }
+                        SectionTitle { width: parent.width; title: "Score Distribution" }
                         Repeater {
                             model: {
                                 var d = pg.rep ? pg.rep.shotDistribution : null; if(!d) return []
@@ -254,8 +245,7 @@ Rectangle {
                     // Trend
                     Column {
                         width: parent.width; spacing: 6
-                        Text { text: "Trend"; color: pg.cInk; font.bold: true; font.pixelSize: 15; font.family: pg.fam }
-                        Rectangle { width: parent.width; height: 1; color: pg.cRule }
+                        SectionTitle { width: parent.width; title: "Trend" }
                         ChartView {
                             width: parent.width; height: 220; antialiasing: true; legend.visible: true; legend.alignment: Qt.AlignTop
                             backgroundColor: "transparent"; plotAreaColor: "transparent"; theme: ChartView.ChartThemeLight
@@ -272,8 +262,7 @@ Rectangle {
                     Column {
                         width: parent.width; spacing: 6
                         visible: pg.rep && pg.rep.positionAnalysis && pg.rep.positionAnalysis.positions.length > 1
-                        Text { text: "Position Summary"; color: pg.cInk; font.bold: true; font.pixelSize: 15; font.family: pg.fam }
-                        Rectangle { width: parent.width; height: 1; color: pg.cRule }
+                        SectionTitle { width: parent.width; title: "Position Summary" }
                         Row {
                             width: parent.width
                             Repeater {
@@ -302,8 +291,7 @@ Rectangle {
                     Column {
                         width: parent.width; spacing: 4
                         property var ra: pg.rep ? pg.rep.recoveryAnalysis : null
-                        Text { text: "Recovery Analysis"; color: pg.cInk; font.bold: true; font.pixelSize: 15; font.family: pg.fam }
-                        Rectangle { width: parent.width; height: 1; color: pg.cRule }
+                        SectionTitle { width: parent.width; title: "Recovery Analysis" }
                         Text { text: pg.recoveryLabel(parent.ra?parent.ra.overall.pattern:""); color: pg.cInk; font.bold: true; font.pixelSize: 13; font.family: pg.fam }
                         Text { visible: parent.ra&&parent.ra.overall.available; text: "Recovery rate "+pg.pct(parent.ra?parent.ra.overall.badShotRecoveryRate:0)+"   ·   confidence "+pg.pct(parent.ra?parent.ra.overall.recoveryConfidence:0); color: pg.cSub; font.pixelSize: 12; font.family: pg.fam }
                         Repeater { model: pg.evLines(parent.ra?parent.ra.metrics:[]); delegate: Text { width: parent.width; text: "• "+modelData; color: pg.cSub; font.pixelSize: 11; font.family: pg.fam; wrapMode: Text.WordWrap } }
@@ -313,8 +301,7 @@ Rectangle {
                     Column {
                         width: parent.width; spacing: 4
                         property var fa: pg.rep ? pg.rep.fatigueAnalysis : null
-                        Text { text: "Fatigue Analysis"; color: pg.cInk; font.bold: true; font.pixelSize: 15; font.family: pg.fam }
-                        Rectangle { width: parent.width; height: 1; color: pg.cRule }
+                        SectionTitle { width: parent.width; title: "Fatigue Analysis" }
                         Text { text: pg.fatigueLabel(parent.fa?parent.fa.overallPattern:""); color: pg.cInk; font.bold: true; font.pixelSize: 13; font.family: pg.fam }
                         Text { visible: parent.fa&&parent.fa.scoreTrendAvailable; text: "Fatigue index "+pg.f(parent.fa?parent.fa.fatigueIndex:0,2)+"   ·   confidence "+pg.pct(parent.fa?parent.fa.confidence:0); color: pg.cSub; font.pixelSize: 12; font.family: pg.fam }
                         Repeater { model: pg.evLines(parent.fa?parent.fa.metrics:[]); delegate: Text { width: parent.width; text: "• "+modelData; color: pg.cSub; font.pixelSize: 11; font.family: pg.fam; wrapMode: Text.WordWrap } }
@@ -323,8 +310,7 @@ Rectangle {
                     // Training Priorities
                     Column {
                         width: parent.width; spacing: 4
-                        Text { text: "Training Priorities"; color: pg.cInk; font.bold: true; font.pixelSize: 15; font.family: pg.fam }
-                        Rectangle { width: parent.width; height: 1; color: pg.cRule }
+                        SectionTitle { width: parent.width; title: "Training Priorities" }
                         Repeater {
                             model: (pg.rep&&pg.rep.trainingPriorities)?pg.rep.trainingPriorities:[]
                             delegate: Text { width: parent.width; text: (index+1)+".  "+modelData.priority+"   ["+modelData.impact+" impact]"; color: pg.cInk; font.pixelSize: 12; font.family: pg.fam; wrapMode: Text.WordWrap }
@@ -336,8 +322,7 @@ Rectangle {
                     Column {
                         width: parent.width; spacing: 4
                         property var cc: pg.rep ? pg.rep.coachConclusion : null
-                        Text { text: "Coach Conclusion"; color: pg.cInk; font.bold: true; font.pixelSize: 15; font.family: pg.fam }
-                        Rectangle { width: parent.width; height: 1; color: pg.cRule }
+                        SectionTitle { width: parent.width; title: "Coach Conclusion" }
                         Text { text: "Rating: "+(parent.cc?parent.cc.rating:"—"); color: pg.cAccent; font.bold: true; font.pixelSize: 13; font.family: pg.fam }
                         Text { width: parent.width; text: parent.cc?parent.cc.overallAssessment:""; color: pg.cInk; font.pixelSize: 12; font.family: pg.fam; wrapMode: Text.WordWrap }
                         Text { width: parent.width; visible: parent.cc&&parent.cc.trainingFocusSummary; text: parent.cc?parent.cc.trainingFocusSummary:""; color: pg.cSub; font.pixelSize: 12; font.family: pg.fam; wrapMode: Text.WordWrap }
@@ -346,8 +331,7 @@ Rectangle {
                     // Coach Diary (editable)
                     Column {
                         width: parent.width; spacing: 8
-                        Text { text: "Coach Diary"; color: pg.cInk; font.bold: true; font.pixelSize: 15; font.family: pg.fam }
-                        Rectangle { width: parent.width; height: 1; color: pg.cRule }
+                        SectionTitle { width: parent.width; title: "Coach Diary" }
                         Grid {
                             id: diaryGrid
                             width: parent.width; columns: 2; columnSpacing: 16; rowSpacing: 8
@@ -415,6 +399,12 @@ Rectangle {
                             TextField { id: dfNext; width: parent.width; font.pixelSize: 12; font.family: pg.fam; color: pg.cInk
                                 background: Rectangle { color: "#fbfbf9"; border.color: pg.cRule; border.width: 1; radius: 3 } }
                         }
+                    }
+
+                    ReportFooter {
+                        width: parent.width
+                        softwareVersion: "Seta 4.0"
+                        generatedText: "Generated " + Qt.formatDateTime(new Date(),"ddd yyyy-MM-dd HH:mm")
                     }
 
                     Item { width: 1; height: 6 }
