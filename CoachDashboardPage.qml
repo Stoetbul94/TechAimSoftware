@@ -12,7 +12,6 @@ Rectangle {
 
     property int gameSubMode: 0
     property var rep: COACHREPORT.report
-    property var dbg: ({})
     property var targets: []
 
     signal closed()
@@ -32,12 +31,9 @@ Rectangle {
 
     Connections {
         target: COACHREPORT
-        function onReportChanged() {
-            dash.dbg = COACHFEED.debugInfo()
-            dash.refresh()
-        }
+        function onReportChanged() { dash.refresh() }
     }
-    Component.onCompleted: { dash.dbg = COACHFEED.debugInfo(); refresh() }
+    Component.onCompleted: refresh()
 
     // ---- helpers ----
     function f(x, d) {
@@ -49,19 +45,29 @@ Rectangle {
     // Match the engine's analysed set exactly, so plotted shots == report counts.
     function competition(s) { return s.isValid && s.isCompetitionShot && !s.isSighter }
 
+    // Discipline is derived from the report's own positions (single source),
+    // not from any feeder debug info.
+    function positionsPresent() {
+        var out = []
+        if (rep && rep.positionAnalysis && rep.positionAnalysis.positions)
+            for (var i = 0; i < rep.positionAnalysis.positions.length; i++)
+                out.push(rep.positionAnalysis.positions[i].position)
+        return out
+    }
     function specKey() {
-        var d = dbg && dbg.discipline ? String(dbg.discipline).toLowerCase() : ""
-        if (d.indexOf("airpistol") >= 0) return "airpistol10"
-        if (d.indexOf("airrifle") >= 0)  return "airrifle10"
+        var p = positionsPresent()
+        if (p.indexOf("airPistol") >= 0) return "airpistol10"
+        if (p.indexOf("airRifle") >= 0)  return "airrifle10"
         return "rifle50"
     }
     function disciplineLabel() {
-        var d = dbg && dbg.discipline ? String(dbg.discipline) : ""
-        if (d.indexOf("3P") >= 0) return "3-Position Rifle (50)"
-        if (d.toLowerCase().indexOf("airpistol") >= 0) return "Air Pistol (10)"
-        if (d.toLowerCase().indexOf("airrifle") >= 0) return "Air Rifle (10)"
-        if (d.toLowerCase().indexOf("prone") >= 0) return "Prone Rifle (50)"
-        return d || "—"
+        var p = positionsPresent()
+        if (p.indexOf("airPistol") >= 0) return "Air Pistol (10m)"
+        if (p.indexOf("airRifle") >= 0)  return "Air Rifle (10m)"
+        if (p.indexOf("kneeling") >= 0 && p.indexOf("standing") >= 0 && p.indexOf("prone") >= 0)
+            return "3-Position Rifle (50m)"
+        if (p.indexOf("prone") >= 0 && p.length === 1) return "Prone Rifle (50m)"
+        return "50m Rifle"
     }
     function trendWord(slope) {
         if (slope === undefined || slope === null) return "—"
@@ -196,7 +202,7 @@ Rectangle {
             Text {
                 color: cSub; font.pixelSize: 13; font.family: fam
                 text: "Discipline: " + dash.disciplineLabel()
-                      + "    |    Athlete: " + ((dash.dbg && dash.dbg.demo) ? "DEMO" : (typeof userName !== "undefined" ? userName : "—"))
+                      + "    |    Athlete: " + (typeof userName !== "undefined" ? userName : "—")
                       + "    |    " + Qt.formatDateTime(new Date(), "MMM d, yyyy HH:mm")
             }
         }
@@ -230,7 +236,7 @@ Rectangle {
             Text {
                 width: parent.width
                 visible: !(dash.rep && dash.rep.valid)
-                text: "No report to display yet — finish a match (or use DEMO PRONE / DEMO 3P), then open Coach Report."
+                text: "No report to display yet — finish a match, then open Coach Report."
                 color: cSub; font.pixelSize: 15; font.family: fam; wrapMode: Text.WordWrap
             }
 

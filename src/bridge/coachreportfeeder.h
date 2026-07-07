@@ -16,10 +16,6 @@
 // ============================================================================
 
 #include <QObject>
-#include <QString>
-#include <QStringList>
-#include <QVariant>
-#include <QVariantMap>
 #include "tachusshotbuilder.h"
 
 class TachusWidget;
@@ -40,20 +36,8 @@ public:
     // Returns true when a valid report was produced.
     Q_INVOKABLE bool analyzeCurrentMatch(int gameSubMode = 0);
 
-    // TEMPORARY / DEV-ONLY: run a known sample match (no hardware needed) so the
-    // QML report page can be visually verified. Uses the SAME build+analyze path
-    // as real data. kind: 0 = 50m Prone (40 shots), 1 = 50m 3P (60 shots).
-    // Remove once the live hardware test is done.
-    Q_INVOKABLE bool analyzeDemoMatch(int kind = 0);
-
     // Number of game-mode shots the feeder would read (for QML guards).
     Q_INVOKABLE int matchShotCount() const;
-
-    // Lightweight facts about the LAST analyzeCurrentMatch, for the first-test
-    // debug card: { valid, shotCount, hasCoordinates, hasTiming, is3P,
-    // discipline, gameSubMode, positions[], coordinatesFlipY }. Sourced from
-    // where the decisions are made — not inferred from the report.
-    Q_INVOKABLE QVariantMap debugInfo() const;
 
     bool coordinatesFlipY() const { return m_flipY; }
     void setCoordinatesFlipY(bool f);
@@ -63,25 +47,10 @@ signals:
 
 private:
     techaim::bridge::MatchArrays readGameMode(int gameSubMode) const;
-    // Shared: build shots, capture debug facts, run the bridge.
-    bool runArrays(const techaim::bridge::MatchArrays& arrays, int gameSubMode, bool demo);
-    // TEMPORARY: fixed sample match. kind 0 = 50m Prone, 1 = 50m 3P.
-    techaim::bridge::MatchArrays makeDemoArrays(int kind) const;
 
     TachusWidget*      m_widget;
     CoachReportBridge* m_bridge;
     bool               m_flipY = false;
-
-    // Captured on the last analyzeCurrentMatch (debug card only).
-    int         m_dbgShotCount   = 0;
-    bool        m_dbgHasCoords   = false;
-    bool        m_dbgHasTiming   = false;
-    bool        m_dbgIs3P        = false;
-    QString     m_dbgSinglePos   = "Unknown";
-    int         m_dbgGameSubMode = 0;
-    QStringList m_dbgPositions;
-    bool        m_dbgRan         = false;
-    bool        m_dbgDemo        = false;
 };
 
 #endif // COACHREPORTFEEDER_H

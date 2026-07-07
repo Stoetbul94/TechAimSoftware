@@ -520,9 +520,9 @@ ApplicationWindow {
         }
     }
 
-    // Coach Report overlay. Two views over the same COACHREPORT data, toggled
-    // by coachViewMode: the polished light dashboard (0) and the detailed dark
-    // report (1). Opened from the Match Summary / DEMO buttons.
+    // Coach Report overlay. Three views over the same COACHREPORT data, toggled
+    // by coachViewMode: the light dashboard (0), the detailed dark report (1),
+    // and the printable A4 view (2). Opened from the Match Summary.
     CoachDashboardPage {
         id: coachDashboard
         z: 8
@@ -561,27 +561,6 @@ ApplicationWindow {
         onClosed: coachReportVisible = false
         onDashboardRequested: coachViewMode = 0
         onDetailsRequested: coachViewMode = 1
-    }
-
-    // TEMPORARY / DEV-ONLY: preview the Coach Report with fixed sample data, no
-    // hardware needed. Remove these buttons after the live hardware test passes.
-    Row {
-        id: demoReportRow
-        z: 9
-        visible: !coachReportVisible
-        spacing: 8
-        anchors.top: header.bottom
-        anchors.right: parent.right
-        anchors.topMargin: 8
-        anchors.rightMargin: 8
-        Button {
-            text: "DEMO PRONE"
-            onClicked: { COACHFEED.analyzeDemoMatch(0); coachReportVisible = true }
-        }
-        Button {
-            text: "DEMO 3P"
-            onClicked: { COACHFEED.analyzeDemoMatch(1); coachReportVisible = true }
-        }
     }
 
     LoginPage {

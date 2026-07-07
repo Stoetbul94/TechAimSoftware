@@ -24,13 +24,11 @@ Rectangle {
     Connections {
         target: COACHREPORT
         function onReportChanged() {
-            reportPage.dbg = COACHFEED.debugInfo()
             reportPage.refreshTargets()
             reportPage.rebuildCharts()
         }
     }
     Component.onCompleted: {
-        reportPage.dbg = COACHFEED.debugInfo()
         refreshTargets()
         rebuildCharts()
     }
@@ -199,20 +197,6 @@ Rectangle {
         return "#d0392b"
     }
 
-    // ---------- first-test debug ----------
-    property var dbg: ({})
-    function fmtDebug(d, r) {
-        if (!d || !d.ran) return "No match analysed yet. Finish a match and click Coach Report,\nor use DEMO PRONE / DEMO 3P to preview with sample data."
-        return "mode: " + (d.demo ? "DEMO sample data" : "live TachusWidget")
-            + "\nreport valid: " + ((r && r.valid) ? "true" : "false")
-            + "\nraw shots received: " + f(d.shotCount, 0) + "   (feeder read: " + f(COACHFEED.matchShotCount(), 0) + ")"
-            + "\ncoordinates available: " + (d.hasCoordinates ? "true" : "false")
-            + "   timing available: " + (d.hasTiming ? "true" : "false")
-            + "\ndiscipline: " + (d.discipline || "—") + "   gameSubMode: " + f(d.gameSubMode, 0)
-            + "\ndetected positions: " + ((d.positions && d.positions.length) ? d.positions.join(", ") : "—")
-            + "   coordinatesFlipY: " + (d.coordinatesFlipY ? "true" : "false")
-    }
-
     // ---------- target shot-map data ----------
     function refreshTargets() {
         // Match the engine's analysed set exactly (same filter as the dashboard).
@@ -317,18 +301,6 @@ Rectangle {
             id: scrollColumn
             width: scroller.width - 14
             spacing: 12
-
-            // ----- debug card (first-test only) -----
-            Rectangle {
-                width: scrollColumn.width
-                implicitHeight: dbgCol.implicitHeight + 24; height: implicitHeight
-                color: theme.bgSurfaceAlt; radius: 8; border.color: theme.brandAccent; border.width: 1
-                Column {
-                    id: dbgCol; x: 14; y: 12; width: parent.width - 28; spacing: 8
-                    Text { width: parent.width; text: "🛈 DEBUG — first-test only"; color: theme.brandAccent; font.bold: true; font.pixelSize: 16; font.family: theme.fontFamily }
-                    Text { width: parent.width; text: reportPage.fmtDebug(reportPage.dbg, reportPage.rep); color: theme.textSecondary; font.pixelSize: 13; font.family: "monospace"; wrapMode: Text.WordWrap; lineHeight: 1.25 }
-                }
-            }
 
             Text {
                 width: parent.width

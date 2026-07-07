@@ -11,7 +11,6 @@ Rectangle {
 
     property int gameSubMode: 0
     property var rep: COACHREPORT.report
-    property var dbg: ({})
     property var targets: []
 
     signal closed()
@@ -31,18 +30,20 @@ Rectangle {
 
     Connections {
         target: COACHREPORT
-        function onReportChanged() { pg.dbg = COACHFEED.debugInfo(); pg.refresh() }
+        function onReportChanged() { pg.refresh() }
     }
-    onVisibleChanged: if (visible) { dbg = COACHFEED.debugInfo(); refresh(); loadDiary() }
-    Component.onCompleted: { dbg = COACHFEED.debugInfo(); refresh() }
+    onVisibleChanged: if (visible) { refresh(); loadDiary() }
+    Component.onCompleted: refresh()
 
     // ---- helpers ----
     function f(x,d){ if(x===undefined||x===null) return "—"; if(typeof x!=="number") return String(x); return x.toFixed(d===undefined?2:d) }
     function pct(x){ return (x===undefined||x===null)?"—":f(x,1)+"%" }
     function up(x){ return x?String(x).toUpperCase():"—" }
     function competition(s){ return s.isValid && s.isCompetitionShot && !s.isSighter }
-    function specKey(){ var d=dbg&&dbg.discipline?String(dbg.discipline).toLowerCase():""; if(d.indexOf("airpistol")>=0)return "airpistol10"; if(d.indexOf("airrifle")>=0)return "airrifle10"; return "rifle50" }
-    function disciplineLabel(){ var d=dbg&&dbg.discipline?String(dbg.discipline):""; if(d.indexOf("3P")>=0)return "3-Position Rifle (50m)"; if(d.toLowerCase().indexOf("airpistol")>=0)return "Air Pistol (10m)"; if(d.toLowerCase().indexOf("airrifle")>=0)return "Air Rifle (10m)"; if(d.toLowerCase().indexOf("prone")>=0)return "Prone Rifle (50m)"; return d||"—" }
+    // Discipline derived from the report's own positions (single source).
+    function positionsPresent(){ var out=[]; if(rep&&rep.positionAnalysis&&rep.positionAnalysis.positions) for(var i=0;i<rep.positionAnalysis.positions.length;i++) out.push(rep.positionAnalysis.positions[i].position); return out }
+    function specKey(){ var p=positionsPresent(); if(p.indexOf("airPistol")>=0)return "airpistol10"; if(p.indexOf("airRifle")>=0)return "airrifle10"; return "rifle50" }
+    function disciplineLabel(){ var p=positionsPresent(); if(p.indexOf("airPistol")>=0)return "Air Pistol (10m)"; if(p.indexOf("airRifle")>=0)return "Air Rifle (10m)"; if(p.indexOf("kneeling")>=0&&p.indexOf("standing")>=0&&p.indexOf("prone")>=0)return "3-Position Rifle (50m)"; if(p.indexOf("prone")>=0&&p.length===1)return "Prone Rifle (50m)"; return "50m Rifle" }
     function recoveryLabel(p){ switch(p){case "GoodRecovery":return "Recovers well after mistakes";case "SlowRecovery":return "Slow to recover after mistakes";case "RepeatedErrorPattern":return "Mistakes tend to cluster together";case "OverCorrectionPattern":return "Over-corrects after mistakes";default:return "Not enough poor shots to assess"} }
     function fatigueLabel(p){ switch(p){case "NoFatigueDetected":return "No fatigue signal — held up well";case "GradualDecline":return "Gradual decline through the session";case "LateMatchDrop":return "Score dropped late in the match";case "IncreasingDispersion":return "Group opened up over the session";case "TimingSlowdown":return "Shot timing slowed late";case "FatigueCompensation":return "Working harder late to hold the score";case "PositionSpecificFatigue":return "Fatigue localised to one position";default:return "Not enough data to assess fatigue"} }
 
@@ -96,7 +97,7 @@ Rectangle {
     Timer { id: flashTimer; interval: 2000; onTriggered: savedFlash.visible=false }
 
     // ---- PDF export (grabs Print-view sections; no analysis) ----
-    function athleteName(){ return (dbg&&dbg.demo)?"DEMO":(typeof userName!=="undefined"?userName:"Athlete") }
+    function athleteName(){ return (typeof userName!=="undefined"&&userName)?userName:"Athlete" }
     function exportPdf(){
         if(!(rep && rep.valid)) return
         var secs=[]
@@ -174,7 +175,7 @@ Rectangle {
                         Rectangle { width: parent.width; height: 2; color: pg.cAccent }
                         Text {
                             width: parent.width; color: pg.cSub; font.pixelSize: 12; font.family: pg.fam
-                            text: "Athlete: " + ((pg.dbg&&pg.dbg.demo)?"DEMO":(typeof userName!=="undefined"?userName:"—"))
+                            text: "Athlete: " + pg.athleteName()
                                   + "    Discipline: " + pg.disciplineLabel()
                                   + "    Date: " + Qt.formatDateTime(new Date(),"d MMM yyyy HH:mm")
                                   + "    Session: Match"
