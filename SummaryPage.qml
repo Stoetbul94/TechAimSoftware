@@ -12,6 +12,7 @@ Dialog {
     property double screenContentHeight: 0
 
     property int fontSize: 12
+    property int tick: 0   // bumped in update() to refresh MPI/Group metric cards
 
     Connections {
         target: MODREADER
@@ -39,15 +40,25 @@ Dialog {
             //        }
             Column{
                 anchors.fill: parent
+                anchors.margins: 24
+                spacing: 12
+
+                ReportHeader {
+                    width: parent.width
+                    reportTitle: "Match Summary"
+                    athlete: userName
+                    discipline: eventName
+                    dateText: new Date().toLocaleString(Qt.locale(""), "ddd yyyy-MM-dd")
+                    timeText: new Date().toLocaleString(Qt.locale(""), "hh:mm:ss")
+                }
+
                 Row {
-                    //                anchors.fill: parent
-                    width:parent.width
-                    height: parent.height*0.9
-//                    anchors.fill: parent
-//                    anchors.leftMargin: 20
+                    width: parent.width
+                    height: parent.height - 128
+                    spacing: 16
 
                     Rectangle {
-                        width: parent.width < parent.height ? parent.width : parent.height
+                        width: parent.width * 0.48
                         height: width
 
                         Image {
@@ -139,179 +150,45 @@ Dialog {
                     }
 
                     Rectangle {
-                        width:parent.width*0.5
-                        height:parent.height
-                        Column{
+                        width: parent.width * 0.5
+                        height: parent.height
+                        color: "transparent"
+
+                        Column {
                             anchors.fill: parent
-                            anchors.leftMargin: 30
-                            anchors.topMargin: 30
-                            spacing: 20
-                            Grid{
-                                columns : 2
-                                rows: 12
-                                columnSpacing:  40
-                                rowSpacing: 20
-                                id:shooterName
-                                Text {
-                                    text: qsTr("Date")
-                                    font.bold: true
-                                    font.pointSize: fontSize
-                                }
-                                Text {
-                                    id:event_Date
-                                    text:": " + new Date().toLocaleString(Qt.locale(""), "ddd yyyy-MM-dd")
-                                    font.bold: true
-                                    font.pointSize: fontSize
-                                }
-                                Text {
-                                    text: qsTr("Time")
-                                    font.bold: true
-                                    font.pointSize: fontSize
-                                }
-                                Text {
-                                    id:event_time
-                                    text:": " + new Date().toLocaleString(Qt.locale(""), "hh:mm:ss")
-                                    font.bold: true
-                                    font.pointSize: fontSize
-                                }
-                                Text {
-                                    id:shooterLabel
-                                    text: qsTr("Shooter Name")
-                                    font.bold: true
-                                    font.pointSize: fontSize
-                                }
-                                Text {
-                                    id:name
-                                    text:": " + userName
-                                    font.bold: true
-                                    font.pointSize: fontSize
-                                }
-                                Text {
-                                    id:eventLabel
-                                    text: qsTr("Event")
-                                    font.bold: true
-                                    font.pointSize: fontSize
-                                }
-                                Text {
-                                    id:event_Name
-                                    text:": " + eventName
-                                    font.bold: true
-                                    font.pointSize: fontSize
-                                }
-                                Text {
-                                    text: qsTr("Total Shots")
-                                    font.pointSize: fontSize
-                                    font.bold: true
-                                }
-                                Text {
-                                    id:number_Shots
-                                    text:": " + globalModelOfData.count
-                                    font.bold: true
-                                    font.pointSize: fontSize
-                                }
-                                Text {
-                                    text: qsTr("Total Score")
-                                    font.bold: true
-                                    font.pointSize: fontSize
-                                }
-                                Text {
-                                    id:event_score
-                                    text: ": " + totalScore + " ("+totalScoreWithoutDecimal+")"
-                                    font.bold: true
-                                    font.pointSize: fontSize
-                                }
-                                Text {
-                                    text: qsTr("Avg score")
-                                    font.bold: true
-                                    font.pointSize: fontSize
-                                }
-                                Text {
-                                    id:event_average
-                                    text:": " + (totalScore/globalModelOfData.count).toFixed(2)
-                                    font.bold: true
-                                    font.pointSize: fontSize
-                                }
-                                Text {
-                                    text:qsTr("Avg Time/Shot (In minutes)")
-                                    font.bold: true
-                                    font.pointSize: fontSize
-                                }
-                                Text {
-                                    id:average_time_shot
-                                    //                            text:": " + averageTime
-                                    text: /*isSaveGame ? ": N/A" :*/ ": " +converSecondToMins(totalTime/globalModelOfData.count)
-                                    font.bold: true
-                                    font.pointSize: fontSize
-                                }
-//                                Text {
-//                                    id:series_wise_totalLabel
-//                                    text: qsTr("Series wise total")
-//                                    font.bold: true
-//                                }
-//                                Text {
-//                                    id:series_wise_total
-//                                    width: 150
-//                                    text:": " + getSeriesTotalText()
-//                                    font.bold: true
-//                                    wrapMode: Text.WordWrap
-//                                }
-                                Text {
-                                    id:mpi_label
-                                    text:"MPI (mm)"
-                                    font.bold: true
-                                    font.pointSize: fontSize
-                                }
-                                Text {
-                                    id:mpi
-                                    width: 150
-                                    text: ":  X: " + 0.0+" mm; Y: "+0.0 + " mm"
-                                    font.bold: true
-                                    wrapMode: Text.WordWrap
-                                    font.pointSize: fontSize
-                                }
-//                                Text {
-//                                    id:teiler_lable
-//                                    text:"Teiler"
-//                                    font.bold: true
-//                                }
-//                                Text {
-//                                    id:teiler
-//                                    width: 150
-//                                    text: ": " + 0.0
-//                                    font.bold: true
-//                                    wrapMode: Text.WordWrap
-//                                }
-                                Text {
-                                    id: startTotal
-                                    text:"Inner 10 Count"
-                                    font.bold: true
-                                    font.pointSize: fontSize
-                                }
-                                Text {
-                                    id: startTotalValue
-                                    text:": " + rightPanel.totalStars //+ " mm"
-                                    font.bold: true
-                                    wrapMode: Text.WordWrap
-                                    font.pointSize: fontSize
-                                }
-                                Text {
-                                    id: group
-                                    text:"Group"
-                                    font.bold: true
-                                    font.pointSize: fontSize
-                                }
-                                Text {
-                                    id: groupValue
-                                    text:": " + MODREADER.getGroup(-1)+qsTr(" mm2")
-                                    font.bold: true
-                                    wrapMode: Text.WordWrap
-                                    font.pointSize: fontSize
-                                }
+                            anchors.leftMargin: 18
+                            spacing: 12
+
+                            SectionTitle { width: parent.width - 6; title: "Executive Summary" }
+
+                            Grid {
+                                id: metricGrid
+                                width: parent.width - 6
+                                columns: 2
+                                columnSpacing: 12
+                                rowSpacing: 12
+                                property real cw: (width - columnSpacing) / 2
+
+                                MetricCard { width: metricGrid.cw; label: "Total Score"; value: "" + totalScore; unit: "(" + totalScoreWithoutDecimal + ")" }
+                                MetricCard { width: metricGrid.cw; label: "Average Shot"; value: globalModelOfData.count > 0 ? (totalScore / globalModelOfData.count).toFixed(2) : "—" }
+                                MetricCard { width: metricGrid.cw; label: "Total Shots"; value: "" + globalModelOfData.count }
+                                MetricCard { width: metricGrid.cw; label: "Inner 10"; value: "" + rightPanel.totalStars }
+                                MetricCard { width: metricGrid.cw; label: "MPI"; unit: "mm"
+                                    value: (screenPresence.tick, "X " + MODREADER.getXMPI().toFixed(1) + "   Y " + MODREADER.getYMPI().toFixed(1)) }
+                                MetricCard { width: metricGrid.cw; label: "Group"; unit: "mm²"
+                                    value: (screenPresence.tick, "" + MODREADER.getGroup(-1).toFixed(1)) }
+                                MetricCard { width: metricGrid.cw; label: "Avg Time / Shot"; unit: "min"
+                                    value: globalModelOfData.count > 0 ? converSecondToMins(totalTime / globalModelOfData.count) : "—" }
                             }
                         }
                     }
                 }
 
+                ReportFooter {
+                    width: parent.width
+                    softwareVersion: "Seta 4.0"
+                    generatedText: "Generated " + new Date().toLocaleString(Qt.locale(""), "ddd yyyy-MM-dd hh:mm")
+                }
             }
         }
         Rectangle {
@@ -433,11 +310,9 @@ Dialog {
 
     function update()
     {
-        mpi.text = ": " + MODREADER.getXMPI().toFixed(1)+"; "+MODREADER.getYMPI().toFixed(1)//+" mm"
-        //teiler.text = ": "+MODREADER.getTeiler(seriesIndex).toFixed(1)//+" mm"
-        //var org_palletSize = gameRange == 10 ? 4.5 : 5.6
-        var group_distance_text = MODREADER.getGroup(-1) //+ org_palletSize
-        groupValue.text = qsTr(": ") + group_distance_text.toFixed(2) + qsTr(" mm")
+        // MPI / Group are read via functions (not notifying properties), so the
+        // metric cards can't auto-bind to them; bump tick to re-evaluate.
+        screenPresence.tick++
     }
 
     function printImage()
