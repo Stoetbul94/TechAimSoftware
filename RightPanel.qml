@@ -1353,126 +1353,110 @@ Item {
         anchors.bottom: series_sum.top
         anchors.bottomMargin: 8
         radius: 10
-        color: "#1a1a1f"; border.color: "#2a2b30"; border.width: 1
+        color: "transparent"; border.width: 0
 
         property int shots: globalModelOfData.count
 
-        // Top row: TOTAL label + big score (int) · inner-10s · time
-        Item {
-            id: totalTopRow
-            anchors.top: parent.top; anchors.topMargin: 8
-            anchors.left: parent.left; anchors.leftMargin: 14
-            anchors.right: parent.right; anchors.rightMargin: 14
-            height: 40
-            Column {
-                anchors.left: parent.left
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: 5
-                Text {
-                    text: qsTr("TOTAL SCORE")
-                    color: "#8a8a92"; font.family: theme.fontFamily
-                    font.pixelSize: 10; font.letterSpacing: 1.5
-                }
-                Row {
-                    spacing: 5
-                    Text {
-                        anchors.baseline: totalInt.baseline
-                        text: scoreCutoffTofirstDecimal(grandTotal)*1
-                        color: "white"; font.family: theme.fontFamily
-                        font.pixelSize: 24; font.bold: true
-                    }
-                    Text {
-                        id: totalInt
-                        text: "(" + grandTotalExculdeDec + ")"
-                        color: "#8a8a92"; font.family: theme.fontFamily
-                        font.pixelSize: 13
-                    }
-                }
-            }
-            Row {
-                anchors.right: parent.right
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: 18
-                Column {
-                    Text {
-                        anchors.right: parent.right
-                        text: qsTr("INNER 10s")
-                        color: "#8a8a92"; font.family: theme.fontFamily; font.pixelSize: 10
-                    }
-                    Text {
-                        anchors.right: parent.right
-                        text: "★ " + totalStars
-                        color: "#ffb020"; font.family: theme.fontFamily
-                        font.pixelSize: 15; font.bold: true
-                    }
-                }
-                Column {
-                    Text {
-                        anchors.right: parent.right
-                        text: qsTr("TIME")
-                        color: "#8a8a92"; font.family: theme.fontFamily; font.pixelSize: 10
-                    }
-                    Text {
-                        anchors.right: parent.right
-                        text: minutesToseconds(totalTimeConsume)
-                        color: "white"; font.family: theme.fontFamily
-                        font.pixelSize: 15; font.bold: true
-                    }
-                }
-            }
-        }
+        Row {
+            anchors.fill: parent
+            spacing: 8
 
-        // Distribution: horizontal bars, one per ring band, width proportional
-        // to the tally. Colour-coded so quality reads at a glance.
-        Column {
-            anchors.top: totalTopRow.bottom; anchors.topMargin: 6
-            anchors.left: parent.left; anchors.leftMargin: 14
-            anchors.right: parent.right; anchors.rightMargin: 14
-            anchors.bottom: parent.bottom; anchors.bottomMargin: 8
-            spacing: 3
-            Repeater {
-                model: [{ lbl: "10", b: 10, c: "#2ecc71" },
-                        { lbl: "9",  b: 9,  c: "#3aa0ff" },
-                        { lbl: "8",  b: 8,  c: "#ffb020" },
-                        { lbl: "≤7", b: 7,  c: "#e8003d" }]
-                delegate: Item {
-                    width: parent.width
-                    height: (parent.height - 9) / 4
-                    property int cnt: bandCount(modelData.b, totalCard.shots)
-                    Text {
-                        id: bandLbl
-                        anchors.left: parent.left
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: 20
-                        text: modelData.lbl
-                        color: "#9a9ba0"; font.family: theme.fontFamily; font.pixelSize: 11
-                        horizontalAlignment: Text.AlignRight
-                    }
-                    Rectangle {   // track
-                        id: bandTrack
-                        anchors.left: bandLbl.right; anchors.leftMargin: 8
-                        anchors.right: bandCnt.left; anchors.rightMargin: 8
-                        anchors.verticalCenter: parent.verticalCenter
-                        height: 9; radius: 4
-                        color: "#141519"
-                        Rectangle {   // fill
-                            anchors.left: parent.left
+            // ── Session summary: 2×2 metric cards ─────────────────────────
+            Grid {
+                id: summaryGrid
+                width: parent.width - 148
+                height: parent.height
+                columns: 2; rows: 2
+                columnSpacing: 8; rowSpacing: 8
+                property real cw: (width - columnSpacing) / 2
+                property real ch: (height - rowSpacing) / 2
+
+                Repeater {
+                    model: [
+                        { l: qsTr("TOTAL"),    v: scoreCutoffTofirstDecimal(grandTotal)*1 + "", sub: "(" + grandTotalExculdeDec + ")", col: "#ffffff" },
+                        { l: qsTr("AVERAGE"),  v: totalCard.shots > 0 ? (grandTotal / totalCard.shots).toFixed(2) : "—", sub: "", col: "#ffffff" },
+                        { l: qsTr("INNER 10"), v: "★ " + totalStars, sub: "", col: "#ffb020" },
+                        { l: qsTr("TIME"),     v: minutesToseconds(totalTimeConsume), sub: "", col: "#ffffff" }
+                    ]
+                    delegate: Rectangle {
+                        width: summaryGrid.cw; height: summaryGrid.ch
+                        radius: 8; color: "#1a1a1f"; border.color: "#2a2b30"; border.width: 1
+                        Column {
+                            anchors.left: parent.left; anchors.leftMargin: 10
+                            anchors.right: parent.right; anchors.rightMargin: 8
                             anchors.verticalCenter: parent.verticalCenter
-                            height: parent.height; radius: 4
-                            width: parent.width * (parent.parent.cnt / maxBandCount(totalCard.shots))
-                            color: modelData.c
-                            visible: parent.parent.cnt > 0
+                            spacing: 2
+                            Text {
+                                text: modelData.l
+                                color: "#8a8a92"; font.family: theme.fontFamily
+                                font.pixelSize: 9; font.letterSpacing: 1
+                            }
+                            Row {
+                                spacing: 4
+                                Text {
+                                    id: valTxt
+                                    text: modelData.v
+                                    color: modelData.col; font.family: theme.fontFamily
+                                    font.pixelSize: 17; font.bold: true
+                                }
+                                Text {
+                                    visible: modelData.sub.length > 0
+                                    anchors.baseline: valTxt.baseline
+                                    text: modelData.sub
+                                    color: "#8a8a92"; font.family: theme.fontFamily; font.pixelSize: 10
+                                }
+                            }
                         }
                     }
-                    Text {
-                        id: bandCnt
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: 16
-                        text: parent.cnt
-                        color: "white"; font.family: theme.fontFamily
-                        font.pixelSize: 11; font.bold: true
-                        horizontalAlignment: Text.AlignRight
+                }
+            }
+
+            // ── Distribution: colour-coded ring-band tallies ──────────────
+            Rectangle {
+                width: 140; height: parent.height
+                radius: 8; color: "#1a1a1f"; border.color: "#2a2b30"; border.width: 1
+                Column {
+                    anchors.fill: parent; anchors.margins: 8
+                    spacing: 4
+                    Repeater {
+                        model: [{ lbl: "10", b: 10, c: "#2ecc71" },
+                                { lbl: "9",  b: 9,  c: "#3aa0ff" },
+                                { lbl: "8",  b: 8,  c: "#ffb020" },
+                                { lbl: "≤7", b: 7,  c: "#e8003d" }]
+                        delegate: Item {
+                            width: parent.width
+                            height: (parent.height - 12) / 4
+                            property int cnt: bandCount(modelData.b, totalCard.shots)
+                            Text {
+                                id: bandLbl2
+                                anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
+                                width: 18
+                                text: modelData.lbl
+                                color: "#9a9ba0"; font.family: theme.fontFamily; font.pixelSize: 10
+                                horizontalAlignment: Text.AlignRight
+                            }
+                            Rectangle {
+                                anchors.left: bandLbl2.right; anchors.leftMargin: 6
+                                anchors.right: bandCnt2.left; anchors.rightMargin: 6
+                                anchors.verticalCenter: parent.verticalCenter
+                                height: 8; radius: 4; color: "#141519"
+                                Rectangle {
+                                    anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
+                                    height: parent.height; radius: 4
+                                    width: parent.width * (parent.parent.cnt / maxBandCount(totalCard.shots))
+                                    color: modelData.c
+                                    visible: parent.parent.cnt > 0
+                                }
+                            }
+                            Text {
+                                id: bandCnt2
+                                anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
+                                width: 14
+                                text: parent.cnt
+                                color: "white"; font.family: theme.fontFamily; font.pixelSize: 10; font.bold: true
+                                horizontalAlignment: Text.AlignRight
+                            }
+                        }
                     }
                 }
             }
