@@ -1495,104 +1495,66 @@ Item {
         visible: true
         color: "transparent"   // redesign: themed cells below draw the look
 
+        // Series overview as mini cards: completed = green edge, current =
+        // maroon outline, pending = grey. The int-score text keeps the exact
+        // MODREADER backend push it had before (unchanged).
         Row {
             id: firstRow
-            anchors.top: parent.top
+            anchors.fill: parent
+            spacing: 6
             Repeater {
                 model: 6
-                Rectangle {
-                    width: series_sum.width/6; height: series_sum.height/5*1
-                    color: "transparent"
+                delegate: Rectangle {
+                    width: (series_sum.width - 30) / 6
+                    height: series_sum.height
+                    radius: 8
+                    property bool valid: isValidSeries(index)
+                    property bool current: index === currentPageIndex
+                    color: current ? "#241016" : "#1a1a1f"
+                    border.width: current ? 2 : 1
+                    border.color: current ? "#a80038" : (valid ? "#2f6b3f" : "#2a2b30")
 
-                    Text {
+                    Column {
                         anchors.centerIn: parent
-                        text: "S"+(index+1)
-                        color: "#8a8a92"
-                        font.pixelSize: dafaultFontSize
-                    }
-                }
-            }
-        }
-
-        Column {
-            anchors.top: firstRow.bottom
-            anchors.bottom: parent.bottom
-            Row {
-                id: secondRow
-                Repeater {
-                    model: 6
-                    Rectangle {
-                        width: series_sum.width/6; height: series_sum.height/5*2
-                        border.width: 1
-                        border.color: "#2a2b30"
-                        radius: 6
-                        color: "#1a1a1f"
-
+                        spacing: 3
                         Text {
-                            anchors.centerIn: parent
-                            text: isValidSeries(index) ? getSeriesTotal(index+1) : "—"
-                            color: isValidSeries(index) ? "white" : "#55555e"
-                            font.pointSize: parent.height*0.25 //parent.height*0.3
-//                            font.pointSize: isSingleDecimal ? parent.height*0.37 : parent.height*0.32
-//                            font.bold: true
-
-                            onTextChanged: {
-                                var textLength = text.length
-                                if (textLength == 5)
-                                    font.pointSize = parent.height*0.2
-                                console.log("sssssssssssssssssssssssssssssssssssss-------------------", textLength)
-                            }
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: "S" + (index + 1)
+                            color: current ? "#e0708f" : "#8a8a92"
+                            font.family: theme.fontFamily; font.pixelSize: 13; font.bold: true
                         }
-                    }
-                }
-            }
-
-            Row {
-                id: thirdRow
-                Repeater {
-                    model: 6
-                    Rectangle {
-                        width: series_sum.width/6; height: series_sum.height/5*2
-                        border.width: 1
-                        color: "#141519"
-                        border.color: "#2a2b30"
-                        radius: 6
-
                         Text {
-                            anchors.centerIn: parent
-                            text: isValidSeries(index) ? /*"("+*/getSeriesTotalNonDecimal(index+1)/*+")"*/ : ""
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: valid ? getSeriesTotal(index + 1) : "—"
+                            color: valid ? "white" : "#55555e"
+                            font.family: theme.fontFamily; font.pixelSize: 17; font.bold: true
+                        }
+                        Text {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: valid ? "(" + getSeriesTotalNonDecimal(index + 1) + ")" : ""
                             color: "#9a9ba0"
-                            font.pointSize: parent.height*0.25//parent.height*0.3
-//                            font.bold: true
+                            font.family: theme.fontFamily; font.pixelSize: 12
 
                             onTextChanged: {
-                                //update the backend variables and file
+                                //update the backend variables and file (unchanged)
                                 if (isValidSeries(index)) {
                                     MODREADER.updateSeriesScore(index+1, getSeriesTotalNonDecimal(index+1))
                                     MODREADER.updateSeriesScoreWD(index+1, (getSeriesTotal(index+1)))
                                     MODREADER.setTotalScoreWOD(seriesSubTotalED.text)
                                     MODREADER.setTotalScoreWD(seriesSubTotal.text)
                                     MODREADER.updateSetaShootSummaryData()
-
-//                                    seriesSubTotal.text = scoreCutoffTofirstDecimal(grandTotal)*1 //scoreCutoffTofirstDecimal(subTotal)*1
-//                                    seriesSubTotalED.text = grandTotalExculdeDec.toFixed(0)*1 //subTotalExculdeDec.toFixed(0)*1
-
                                 }
                             }
+                        }
+                        Text {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            visible: valid && !current
+                            text: "✓"
+                            color: "#2ecc71"; font.pixelSize: 11; font.bold: true
                         }
                     }
                 }
             }
-        }
-
-        Rectangle {
-            x: firstRowX
-            y: firstRowY
-            width: firstRowWidth
-            height: firstRowHeight
-            color: "transparent"
-            border.width: 1
-            border.color: "grey"
         }
     }
 
