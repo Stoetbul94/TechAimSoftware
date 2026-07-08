@@ -66,7 +66,7 @@ Dialog {
                         anchors.left: parent.left
                         anchors.right: parent.right
                         anchors.margins: 34
-                        spacing: 16
+                        spacing: 12
 
                         ReportHeader {
                             width: parent.width
@@ -88,15 +88,15 @@ Dialog {
                             property real cw: (width - 2 * columnSpacing) / 3
 
                             MetricCard { width: metricGrid.cw; label: "Total Score"; value: "" + totalScore; unit: "(" + totalScoreWithoutDecimal + ")" }
-                            MetricCard { width: metricGrid.cw; label: "Average Shot"; value: globalModelOfData.count > 0 ? (totalScore / globalModelOfData.count).toFixed(2) : "—" }
-                            MetricCard { width: metricGrid.cw; label: "Total Shots"; value: "" + globalModelOfData.count }
+                            MetricCard { width: metricGrid.cw; label: "Average Shot"; value: globalMatchModel.count > 0 ? (totalScore / globalMatchModel.count).toFixed(2) : "—" }
+                            MetricCard { width: metricGrid.cw; label: "Total Shots"; value: "" + globalMatchModel.count }
                             MetricCard { width: metricGrid.cw; label: "Inner 10"; value: "" + rightPanel.totalStars }
                             MetricCard { width: metricGrid.cw; label: "MPI"; unit: "mm"; valueSize: 18
                                 value: (screenPresence.tick, MODREADER.getXMPI().toFixed(1) + " / " + MODREADER.getYMPI().toFixed(1)) }
                             MetricCard { width: metricGrid.cw; label: "Group"; unit: "mm²"; valueSize: 20
                                 value: (screenPresence.tick, "" + MODREADER.getGroup(-1).toFixed(1)) }
                             MetricCard { width: metricGrid.cw; label: "Avg Time / Shot"; unit: "min"; valueSize: 20
-                                value: globalModelOfData.count > 0 ? converSecondToMins(totalTime / globalModelOfData.count) : "—" }
+                                value: globalMatchModel.count > 0 ? converSecondToMins(totalTime / globalMatchModel.count) : "—" }
                         }
 
                         SectionTitle { width: parent.width; title: "Overall Target" }
@@ -105,7 +105,7 @@ Dialog {
                         // verbatim, reframed in a clean white card.
                         Rectangle {
                             width: parent.width
-                            height: 540
+                            height: 300
                             radius: 12
                             color: "white"
                             border.color: "#e6e8ec"
@@ -131,7 +131,7 @@ Dialog {
                                 Repeater
                                 {
                                     id:numberRepeater
-                                    model:globalModelOfData
+                                    model:globalMatchModel
                                     delegate: numberDelegate
                                 }
 
@@ -155,8 +155,12 @@ Dialog {
                                         {
                                             Component.onCompleted:
                                             {
-                                                var xCor = MODREADER.getXCord(index+1)
-                                                var yCor = MODREADER.getYCord(index+1)
+                                                // Use each shot's own stored target-face mm (aligned to the
+                                                // full match record), so 3P shots from every position plot
+                                                // correctly - not just the current position. Same source and
+                                                // formula the 3P report uses.
+                                                var xCor = globalMatchModel.get(index).xmm * 1
+                                                var yCor = globalMatchModel.get(index).ymm * 1
 
                                                 var pistalWidthHeight = gameRange == 10 ? 155.5 : 500
                                                 var rifleWidthHeight = gameRange == 10 ? 45.5 : 154.4
@@ -184,6 +188,40 @@ Dialog {
                                             }
                                         }
                                     }
+                                }
+                            }
+                        }
+
+                        SectionTitle { width: parent.width; title: "Series Breakdown" }
+
+                        // Per-series scores across the full match (10 shots per
+                        // series; every series/position included).
+                        Column {
+                            width: parent.width
+                            spacing: 0
+
+                            Rectangle {
+                                width: parent.width; height: 26; color: "#f1f3f5"
+                                Row {
+                                    anchors.fill: parent
+                                    Text { width: parent.width*0.34; height: parent.height; text: qsTr("Series");   leftPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 11; font.bold: true; font.family: "Segoe UI" }
+                                    Text { width: parent.width*0.33; height: parent.height; text: qsTr("Score");    horizontalAlignment: Text.AlignRight; rightPadding: 12; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 11; font.bold: true; font.family: "Segoe UI" }
+                                    Text { width: parent.width*0.33; height: parent.height; text: qsTr("Inner 10"); horizontalAlignment: Text.AlignRight; rightPadding: 12; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 11; font.bold: true; font.family: "Segoe UI" }
+                                }
+                                Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 2; color: "#a80038" }
+                            }
+                            Repeater {
+                                model: Math.ceil(globalMatchModel.count / 10)
+                                delegate: Rectangle {
+                                    width: parent.width; height: 26
+                                    color: index % 2 ? "#f7f8fa" : "#ffffff"
+                                    Row {
+                                        anchors.fill: parent
+                                        Text { width: parent.width*0.34; height: parent.height; text: qsTr("Series ") + (index+1); leftPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 12; font.family: "Segoe UI" }
+                                        Text { width: parent.width*0.33; height: parent.height; text: getSeriesScoreVal(index+1); horizontalAlignment: Text.AlignRight; rightPadding: 12; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 12; font.bold: true; font.family: "Segoe UI" }
+                                        Text { width: parent.width*0.33; height: parent.height; text: "" + getSeriesInnerVal(index+1); horizontalAlignment: Text.AlignRight; rightPadding: 12; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 12; font.family: "Segoe UI" }
+                                    }
+                                    Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: "#eceef1" }
                                 }
                             }
                         }
@@ -259,7 +297,7 @@ Dialog {
     function updateModel()
     {
         numberRepeater.model = null
-        numberRepeater.model =globalModelOfData
+        numberRepeater.model =globalMatchModel
     }
 
 //    function printImage()
@@ -272,12 +310,12 @@ Dialog {
     function getSeriesTotalText()
     {
         var formatText = ""
-        if(globalModelOfData.count === 0)
+        if(globalMatchModel.count === 0)
             return formatText
         var seriesScore = 0;
-        for(var i=0; i<globalModelOfData.count; i++)
+        for(var i=0; i<globalMatchModel.count; i++)
         {
-            var scoreatIndex =globalModelOfData.get(i).calculatedscore*1
+            var scoreatIndex =globalMatchModel.get(i).calculatedscore*1
             seriesScore = seriesScore*1  +  (scoreatIndex.toFixed(1))*1
             if( ( (i+1) % 10 == 0) && (i>0) )
             {
@@ -287,7 +325,7 @@ Dialog {
                 formatText = formatText + seriesText
                 seriesScore = 0
             }
-            if( (i === (globalModelOfData.count-1)) && ( (i+1)%10 != 0) )
+            if( (i === (globalMatchModel.count-1)) && ( (i+1)%10 != 0) )
             {
                 var seriesIdNum = Math.floor((i+1)/10)
                 var seriesScoreText = "Series " + seriesIdNum*1
@@ -323,6 +361,31 @@ Dialog {
         //        return minutes+":"+result_seconds
 
         return (seconds/60).toFixed(2)
+    }
+
+    // Per-series (10-shot) score across the full match record.
+    function getSeriesScoreVal(s)
+    {
+        if (globalMatchModel.count === 0) return "0.0"
+        var sum = 0
+        for (var i = (s-1)*10; i < globalMatchModel.count && i < s*10; ++i)
+            sum += globalMatchModel.get(i).calculatedscore * 1
+        return sum.toFixed(1)
+    }
+
+    // Per-series inner-10 count, same rule the app uses for totalStars
+    // (pistol >= 10.4, rifle >= 10.2).
+    function getSeriesInnerVal(s)
+    {
+        if (globalMatchModel.count === 0) return 0
+        var cnt = 0
+        for (var i = (s-1)*10; i < globalMatchModel.count && i < s*10; ++i) {
+            var v = globalMatchModel.get(i).calculatedscore * 1
+            if ((gameMode === 0 && v >= rightPanel.star_limit_value_pistol)
+                    || (gameMode === 1 && v >= rightPanel.star_limit_value_rifle))
+                ++cnt
+        }
+        return cnt
     }
 
     function update()
