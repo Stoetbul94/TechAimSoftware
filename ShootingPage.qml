@@ -450,7 +450,7 @@ Item {
 
     RightPanel {
         id: rightPanel
-        width: 0.31*parent.width
+        width: 0.34*parent.width
         height: parent.height - statusStrip.height - actionBar.height
         anchors.right: parent.right
         anchors.top: statusStrip.bottom

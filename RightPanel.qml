@@ -3,6 +3,10 @@ Item {
     property int rootItemWidth:1674
     property int rootItemHeight:3092
     property int currentPageIndex : 0
+    // Series navigation state (drives the new chevron buttons; auto-updates).
+    readonly property int maxSeriesPage: globalModelOfData.count > 0 ? Math.floor((globalModelOfData.count - 1) / 10) : 0
+    readonly property bool canPrevSeries: currentPageIndex > 0
+    readonly property bool canNextSeries: currentPageIndex < maxSeriesPage
     property int totalStars : 0
     property int seriesStars : 0
     property int totalTimeConsume: 0
@@ -577,7 +581,7 @@ Item {
         opacity: 1
         width: ((parent.width/rootItemWidth)*sourceSize.width)
         height: ((parent.height/rootItemHeight)*sourceSize.height)
-        visible: true
+        visible: false   // legacy arrow replaced by nextSeriesBtn
         MouseArea
         {
             anchors.fill: parent
@@ -631,7 +635,7 @@ Item {
         opacity: 1
         width: ((parent.width/rootItemWidth)*sourceSize.width)
         height: ((parent.height/rootItemHeight)*sourceSize.height)
-        visible: true
+        visible: false   // legacy arrow replaced by prevSeriesBtn
         MouseArea
         {
             anchors.fill: parent
@@ -657,6 +661,59 @@ Item {
             {
 
             }
+        }
+    }
+
+    // ── Series navigation — clean chevron buttons over the legacy arrow slots.
+    //    Enabled state binds to canPrevSeries/canNextSeries; large hit area.
+    Rectangle {
+        id: prevSeriesBtn
+        anchors.centerIn: left_arrow
+        width: Math.max(40, left_arrow.width * 1.15)
+        height: Math.max(32, series_6.height * 0.82)
+        radius: height / 2
+        color: prevMA.pressed && canPrevSeries ? "#1d5fa8" : (canPrevSeries ? "#2f6fd0" : "#23252c")
+        border.color: canPrevSeries ? "#4b8ae0" : "#34363e"
+        border.width: 1
+        opacity: canPrevSeries ? 1 : 0.55
+        Text {
+            anchors.centerIn: parent
+            text: "◀"
+            font.family: theme.fontFamily
+            color: canPrevSeries ? "white" : "#5a5c64"
+            font.pixelSize: parent.height * 0.42; font.bold: true
+        }
+        MouseArea {
+            id: prevMA
+            anchors.fill: parent
+            enabled: canPrevSeries
+            cursorShape: Qt.PointingHandCursor
+            onClicked: leftClicked()
+        }
+    }
+    Rectangle {
+        id: nextSeriesBtn
+        anchors.centerIn: right
+        width: Math.max(40, right.width * 1.15)
+        height: Math.max(32, series_6.height * 0.82)
+        radius: height / 2
+        color: nextMA.pressed && canNextSeries ? "#1d5fa8" : (canNextSeries ? "#2f6fd0" : "#23252c")
+        border.color: canNextSeries ? "#4b8ae0" : "#34363e"
+        border.width: 1
+        opacity: canNextSeries ? 1 : 0.55
+        Text {
+            anchors.centerIn: parent
+            text: "▶"
+            font.family: theme.fontFamily
+            color: canNextSeries ? "white" : "#5a5c64"
+            font.pixelSize: parent.height * 0.42; font.bold: true
+        }
+        MouseArea {
+            id: nextMA
+            anchors.fill: parent
+            enabled: canNextSeries
+            cursorShape: Qt.PointingHandCursor
+            onClicked: rightClicked()
         }
     }
 
@@ -806,7 +863,8 @@ Item {
                         color: "white"
 
                         text:APPSETTINGS.getScoringSystem()? (scoreCutoffTofirstDecimal(calculatedscore)*1): parseInt(scoreCutoffTofirstDecimal(calculatedscore)*1)
-                        font.pixelSize: 0.65*currentItem.height
+                        font.pixelSize: 0.8*currentItem.height
+                        font.bold: true
                     }
                 }
 
@@ -1075,17 +1133,11 @@ Item {
         console.log("-----------------------------------------------------------"+scoreCutoffTofirstDecimal(subTotal))
     }
 
-    function enableLeftNavigation(showFlag)
-    {
-        left_arrow.visible = showFlag
-        left_arrow_end.visible = !showFlag
-    }
-
-    function enableRightNavigation(showFlag)
-    {
-        right.visible = showFlag
-        right_end.visible = !showFlag
-    }
+    // Legacy PNG arrows replaced by prevSeriesBtn/nextSeriesBtn, which bind
+    // directly to canPrevSeries/canNextSeries. Kept as no-ops so existing
+    // callers stay valid.
+    function enableLeftNavigation(showFlag) {}
+    function enableRightNavigation(showFlag) {}
 
     function resetRightPanelModels()
     {
