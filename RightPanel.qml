@@ -7,6 +7,10 @@ Item {
     readonly property int maxSeriesPage: globalModelOfData.count > 0 ? Math.floor((globalModelOfData.count - 1) / 10) : 0
     readonly property bool canPrevSeries: currentPageIndex > 0
     readonly property bool canNextSeries: currentPageIndex < maxSeriesPage
+    // The series being actively shot across the FULL match (survives 3P
+    // position changes; globalMatchModel is never cleared per position).
+    readonly property int currentMatchSeries: globalMatchModel.count > 0
+                                              ? Math.min(5, Math.floor((globalMatchModel.count - 1) / 10)) : 0
     property int totalStars : 0
     property int seriesStars : 0
     property int totalTimeConsume: 0
@@ -1515,11 +1519,14 @@ Item {
                     width: (series_sum.width - 30) / 6
                     height: series_sum.height
                     radius: 8
-                    property bool valid: isValidSeries(index)
-                    property bool current: index === currentPageIndex
+                    // Full-match state so the six series persist across 3P
+                    // positions (kneeling S1-2, prone S3-4, standing S5-6).
+                    property bool started: matchSeriesStarted(index)
+                    property bool current: index === currentMatchSeries
+                    property bool complete: matchSeriesComplete(index)
                     color: current ? "#241016" : "#1a1a1f"
                     border.width: current ? 2 : 1
-                    border.color: current ? "#a80038" : (valid ? "#2f6b3f" : "#2a2b30")
+                    border.color: current ? "#a80038" : (complete ? "#2f6b3f" : "#2a2b30")
 
                     Column {
                         anchors.centerIn: parent
@@ -1532,21 +1539,21 @@ Item {
                         }
                         Text {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            text: valid ? getSeriesTotal(index + 1) : "—"
-                            color: valid ? "white" : "#55555e"
+                            text: started ? getMatchSeriesTotal(index + 1) : "—"
+                            color: started ? "white" : "#55555e"
                             font.family: theme.fontFamily; font.pixelSize: 17; font.bold: true
                         }
                         Text {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            text: valid ? "(" + getSeriesTotalNonDecimal(index + 1) + ")" : ""
+                            text: started ? "(" + getMatchSeriesInt(index + 1) + ")" : ""
                             color: "#9a9ba0"
                             font.family: theme.fontFamily; font.pixelSize: 12
 
                             onTextChanged: {
-                                //update the backend variables and file (unchanged)
-                                if (isValidSeries(index)) {
-                                    MODREADER.updateSeriesScore(index+1, getSeriesTotalNonDecimal(index+1))
-                                    MODREADER.updateSeriesScoreWD(index+1, (getSeriesTotal(index+1)))
+                                //record each full-match series score (persists across positions)
+                                if (matchSeriesStarted(index)) {
+                                    MODREADER.updateSeriesScore(index+1, getMatchSeriesInt(index+1))
+                                    MODREADER.updateSeriesScoreWD(index+1, (getMatchSeriesTotal(index+1)))
                                     MODREADER.setTotalScoreWOD(seriesSubTotalED.text)
                                     MODREADER.setTotalScoreWD(seriesSubTotal.text)
                                     MODREADER.updateSetaShootSummaryData()
@@ -1555,7 +1562,7 @@ Item {
                         }
                         Text {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            visible: valid && !current
+                            visible: complete && !current
                             text: "✓"
                             color: "#2ecc71"; font.pixelSize: 11; font.bold: true
                         }
@@ -1570,6 +1577,31 @@ Item {
             return true
         else
             return false
+    }
+
+    // ── Full-match series helpers (read globalMatchModel, the whole-match
+    //    record) so the S1..S6 overview accumulates across 3P positions and
+    //    persists until the match ends. For non-3P globalMatchModel equals the
+    //    per-target model, so these behave identically there.
+    function matchSeriesStarted(idx0) {           // idx0 is 0-based (0..5)
+        return globalMatchModel.count > idx0 * 10
+    }
+    function matchSeriesComplete(idx0) {
+        return globalMatchModel.count >= (idx0 + 1) * 10
+    }
+    function getMatchSeriesTotal(seriesIndex) {    // seriesIndex is 1-based
+        if (globalMatchModel.count === 0) return 0
+        var s = 0
+        for (var i = (seriesIndex - 1) * 10; i < globalMatchModel.count && i < seriesIndex * 10; ++i)
+            s = s * 1 + (globalMatchModel.get(i).calculatedscore * 1).toFixed(1) * 1
+        return s.toFixed(1)
+    }
+    function getMatchSeriesInt(seriesIndex) {
+        if (globalMatchModel.count === 0) return 0
+        var s = 0
+        for (var i = (seriesIndex - 1) * 10; i < globalMatchModel.count && i < seriesIndex * 10; ++i)
+            s = s * 1 + Math.floor(globalMatchModel.get(i).calculatedscore * 1)
+        return s
     }
 
     function getSeriesTotal(seriesIndex)
