@@ -7,6 +7,10 @@ Item {
     readonly property int maxSeriesPage: globalModelOfData.count > 0 ? Math.floor((globalModelOfData.count - 1) / 10) : 0
     readonly property bool canPrevSeries: currentPageIndex > 0
     readonly property bool canNextSeries: currentPageIndex < maxSeriesPage
+    // The series being actively shot across the FULL match (survives 3P
+    // position changes; globalMatchModel is never cleared per position).
+    readonly property int currentMatchSeries: globalMatchModel.count > 0
+                                              ? Math.min(5, Math.floor((globalMatchModel.count - 1) / 10)) : 0
     property int totalStars : 0
     property int seriesStars : 0
     property int totalTimeConsume: 0
@@ -492,7 +496,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     text: lastShotCard.hasShot ? scoreCutoffTofirstDecimal(lastShotCard.lastScore)*1 : "—"
                     color: "white"; font.family: theme.fontFamily
-                    font.pixelSize: 28; font.bold: true
+                    font.pixelSize: 34; font.bold: true
                 }
                 Image {
                     visible: lastShotCard.hasShot
@@ -503,20 +507,18 @@ Item {
                 }
             }
         }
-        // Right group: X/Y in mm, right-aligned, vertically centered.
-        Column {
-            anchors.right: parent.right; anchors.rightMargin: 16
+        // Right group: X/Y as stat chips, vertically centered.
+        Row {
+            anchors.right: parent.right; anchors.rightMargin: 14
             anchors.verticalCenter: parent.verticalCenter
-            spacing: 5
-            Text {
-                anchors.right: parent.right
-                text: lastShotCard.hasShot ? ("X   " + lastShotCard.lastXmm.toFixed(1) + " mm") : ""
-                color: "#c8c9cf"; font.family: theme.fontFamily; font.pixelSize: 13
+            spacing: 6
+            StatChip {
+                anchors.verticalCenter: parent.verticalCenter
+                label: "X"; value: lastShotCard.hasShot ? lastShotCard.lastXmm.toFixed(1) + " mm" : "—"
             }
-            Text {
-                anchors.right: parent.right
-                text: lastShotCard.hasShot ? ("Y   " + lastShotCard.lastYmm.toFixed(1) + " mm") : ""
-                color: "#c8c9cf"; font.family: theme.fontFamily; font.pixelSize: 13
+            StatChip {
+                anchors.verticalCenter: parent.verticalCenter
+                label: "Y"; value: lastShotCard.hasShot ? lastShotCard.lastYmm.toFixed(1) + " mm" : "—"
             }
         }
     }
@@ -527,12 +529,34 @@ Item {
         anchors.right: right.left
         anchors.top: left_arrow.top
         anchors.bottom: left_arrow.bottom
-//        x: ((parent.width/rootItemWidth)*400)
-//        y: ((parent.height/rootItemHeight)*131) + tableShift
-        opacity: 1
-//        width: ((parent.width/rootItemWidth)*sourceSize.width)
-//        height: ((parent.height/rootItemHeight)*sourceSize.height)
+        opacity: 0   // redesign: grey PNG bar replaced by the dark strip below
         visible: true
+    }
+    // Dark series-header strip (redesign) occupying the same slot.
+    Rectangle {
+        id: seriesHeaderBg
+        anchors.fill: series_6
+        radius: 8
+        color: "#202127"
+        border.color: "#2a2b30"; border.width: 1
+
+        // Series score + group, top-right (the title sits top-left, column
+        // headers along the bottom).
+        Row {
+            anchors.right: parent.right; anchors.rightMargin: 12
+            anchors.top: parent.top; anchors.topMargin: 5
+            spacing: 10
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: (currentShootIndex >= currentPageIndex*10) ? getSeriesTotal(currentPageIndex+1) : "—"
+                color: "white"; font.family: theme.fontFamily; font.pixelSize: 17; font.bold: true
+            }
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: qsTr("Grp ") + MODREADER.getGroup(currentPageIndex).toFixed(1)
+                color: "#9aa0a6"; font.family: theme.fontFamily; font.pixelSize: 11
+            }
+        }
     }
 
     Image {
@@ -546,14 +570,15 @@ Item {
     }
     Text {
         id: seriesText
-        anchors.bottom: series_text_field.bottom
-        anchors.bottomMargin: -5
-        anchors.left: series_text_field.left
-        //anchors.topMargin: -3
-        //        anchors.horizontalCenter: series_text_field.horizontalCenter
-        text : (currentPageIndex+1)
+        anchors.top: series_6.top
+        anchors.topMargin: 6
+        anchors.left: series_6.left
+        anchors.leftMargin: 12
+        text : qsTr("SERIES ") + (currentPageIndex+1) + qsTr(" OF 6")
         color: "white"
-        font.pixelSize: dafaultFontSize
+        font.bold: true
+        font.family: theme.fontFamily
+        font.pixelSize: 13
     }
     Image {
         id: right
@@ -802,11 +827,28 @@ Item {
             width:matchScore.width
             height: matchScore.height/10
 
+            // Alternating row background (redesign).
+            Rectangle {
+                anchors.fill: parent
+                color: index % 2 ? "#17181c" : "#1c1d22"
+            }
+
             Rectangle {
                 id: currentItem
                 anchors.fill: parent
                 color: "#3a0d16"   // redesign: themed selection highlight
                 visible: matchScore.currentIndex == index //(right_end.visible) && (index === (globalModelOfData.count-1)%10)
+            }
+
+            // Thin quality indicator on the left edge (green inner-10 / amber /
+            // red low) - drawn on top of the selection so it stays visible.
+            Rectangle {
+                width: 4; radius: 2
+                height: parent.height * 0.58
+                anchors.left: parent.left
+                anchors.verticalCenter: parent.verticalCenter
+                property real sc: calculatedscore * 1
+                color: sc >= 10.0 ? "#4caf50" : (sc >= 9.5 ? "#f9a825" : "#d32f2f")
             }
 
             Rectangle {
@@ -1204,12 +1246,12 @@ Item {
         //        stop_over.
     }
 
-    // png text for translation
+    // png text for translation — folded into seriesText ("SERIES N OF 6")
     Text {
+        visible: false
         anchors.right: seriesText.left
         anchors.rightMargin: 5
         anchors.top: seriesText.top
-        //anchors.horizontalCenter: parent.horizontalCenter
         text: qsTr("SERIES")
         color: "white"
         width: implicitWidth
@@ -1338,126 +1380,110 @@ Item {
         anchors.bottom: series_sum.top
         anchors.bottomMargin: 8
         radius: 10
-        color: "#1a1a1f"; border.color: "#2a2b30"; border.width: 1
+        color: "transparent"; border.width: 0
 
         property int shots: globalModelOfData.count
 
-        // Top row: TOTAL label + big score (int) · inner-10s · time
-        Item {
-            id: totalTopRow
-            anchors.top: parent.top; anchors.topMargin: 8
-            anchors.left: parent.left; anchors.leftMargin: 14
-            anchors.right: parent.right; anchors.rightMargin: 14
-            height: 40
-            Column {
-                anchors.left: parent.left
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: 5
-                Text {
-                    text: qsTr("TOTAL SCORE")
-                    color: "#8a8a92"; font.family: theme.fontFamily
-                    font.pixelSize: 10; font.letterSpacing: 1.5
-                }
-                Row {
-                    spacing: 5
-                    Text {
-                        anchors.baseline: totalInt.baseline
-                        text: scoreCutoffTofirstDecimal(grandTotal)*1
-                        color: "white"; font.family: theme.fontFamily
-                        font.pixelSize: 24; font.bold: true
-                    }
-                    Text {
-                        id: totalInt
-                        text: "(" + grandTotalExculdeDec + ")"
-                        color: "#8a8a92"; font.family: theme.fontFamily
-                        font.pixelSize: 13
-                    }
-                }
-            }
-            Row {
-                anchors.right: parent.right
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: 18
-                Column {
-                    Text {
-                        anchors.right: parent.right
-                        text: qsTr("INNER 10s")
-                        color: "#8a8a92"; font.family: theme.fontFamily; font.pixelSize: 10
-                    }
-                    Text {
-                        anchors.right: parent.right
-                        text: "★ " + totalStars
-                        color: "#ffb020"; font.family: theme.fontFamily
-                        font.pixelSize: 15; font.bold: true
-                    }
-                }
-                Column {
-                    Text {
-                        anchors.right: parent.right
-                        text: qsTr("TIME")
-                        color: "#8a8a92"; font.family: theme.fontFamily; font.pixelSize: 10
-                    }
-                    Text {
-                        anchors.right: parent.right
-                        text: minutesToseconds(totalTimeConsume)
-                        color: "white"; font.family: theme.fontFamily
-                        font.pixelSize: 15; font.bold: true
-                    }
-                }
-            }
-        }
+        Row {
+            anchors.fill: parent
+            spacing: 8
 
-        // Distribution: horizontal bars, one per ring band, width proportional
-        // to the tally. Colour-coded so quality reads at a glance.
-        Column {
-            anchors.top: totalTopRow.bottom; anchors.topMargin: 6
-            anchors.left: parent.left; anchors.leftMargin: 14
-            anchors.right: parent.right; anchors.rightMargin: 14
-            anchors.bottom: parent.bottom; anchors.bottomMargin: 8
-            spacing: 3
-            Repeater {
-                model: [{ lbl: "10", b: 10, c: "#2ecc71" },
-                        { lbl: "9",  b: 9,  c: "#3aa0ff" },
-                        { lbl: "8",  b: 8,  c: "#ffb020" },
-                        { lbl: "≤7", b: 7,  c: "#e8003d" }]
-                delegate: Item {
-                    width: parent.width
-                    height: (parent.height - 9) / 4
-                    property int cnt: bandCount(modelData.b, totalCard.shots)
-                    Text {
-                        id: bandLbl
-                        anchors.left: parent.left
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: 20
-                        text: modelData.lbl
-                        color: "#9a9ba0"; font.family: theme.fontFamily; font.pixelSize: 11
-                        horizontalAlignment: Text.AlignRight
-                    }
-                    Rectangle {   // track
-                        id: bandTrack
-                        anchors.left: bandLbl.right; anchors.leftMargin: 8
-                        anchors.right: bandCnt.left; anchors.rightMargin: 8
-                        anchors.verticalCenter: parent.verticalCenter
-                        height: 9; radius: 4
-                        color: "#141519"
-                        Rectangle {   // fill
-                            anchors.left: parent.left
+            // ── Session summary: 2×2 metric cards ─────────────────────────
+            Grid {
+                id: summaryGrid
+                width: parent.width - 148
+                height: parent.height
+                columns: 2; rows: 2
+                columnSpacing: 8; rowSpacing: 8
+                property real cw: (width - columnSpacing) / 2
+                property real ch: (height - rowSpacing) / 2
+
+                Repeater {
+                    model: [
+                        { l: qsTr("TOTAL"),    v: scoreCutoffTofirstDecimal(grandTotal)*1 + "", sub: "(" + grandTotalExculdeDec + ")", col: "#ffffff" },
+                        { l: qsTr("AVERAGE"),  v: totalCard.shots > 0 ? (grandTotal / totalCard.shots).toFixed(2) : "—", sub: "", col: "#ffffff" },
+                        { l: qsTr("INNER 10"), v: "★ " + totalStars, sub: "", col: "#ffb020" },
+                        { l: qsTr("TIME"),     v: minutesToseconds(totalTimeConsume), sub: "", col: "#ffffff" }
+                    ]
+                    delegate: Rectangle {
+                        width: summaryGrid.cw; height: summaryGrid.ch
+                        radius: 8; color: "#1a1a1f"; border.color: "#2a2b30"; border.width: 1
+                        Column {
+                            anchors.left: parent.left; anchors.leftMargin: 10
+                            anchors.right: parent.right; anchors.rightMargin: 8
                             anchors.verticalCenter: parent.verticalCenter
-                            height: parent.height; radius: 4
-                            width: parent.width * (parent.parent.cnt / maxBandCount(totalCard.shots))
-                            color: modelData.c
-                            visible: parent.parent.cnt > 0
+                            spacing: 2
+                            Text {
+                                text: modelData.l
+                                color: "#8a8a92"; font.family: theme.fontFamily
+                                font.pixelSize: 9; font.letterSpacing: 1
+                            }
+                            Row {
+                                spacing: 4
+                                Text {
+                                    id: valTxt
+                                    text: modelData.v
+                                    color: modelData.col; font.family: theme.fontFamily
+                                    font.pixelSize: 17; font.bold: true
+                                }
+                                Text {
+                                    visible: modelData.sub.length > 0
+                                    anchors.baseline: valTxt.baseline
+                                    text: modelData.sub
+                                    color: "#8a8a92"; font.family: theme.fontFamily; font.pixelSize: 10
+                                }
+                            }
                         }
                     }
-                    Text {
-                        id: bandCnt
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: 16
-                        text: parent.cnt
-                        color: "white"; font.family: theme.fontFamily
-                        font.pixelSize: 11; font.bold: true
-                        horizontalAlignment: Text.AlignRight
+                }
+            }
+
+            // ── Distribution: colour-coded ring-band tallies ──────────────
+            Rectangle {
+                width: 140; height: parent.height
+                radius: 8; color: "#1a1a1f"; border.color: "#2a2b30"; border.width: 1
+                Column {
+                    anchors.fill: parent; anchors.margins: 8
+                    spacing: 4
+                    Repeater {
+                        model: [{ lbl: "10", b: 10, c: "#2ecc71" },
+                                { lbl: "9",  b: 9,  c: "#3aa0ff" },
+                                { lbl: "8",  b: 8,  c: "#ffb020" },
+                                { lbl: "≤7", b: 7,  c: "#e8003d" }]
+                        delegate: Item {
+                            width: parent.width
+                            height: (parent.height - 12) / 4
+                            property int cnt: bandCount(modelData.b, totalCard.shots)
+                            Text {
+                                id: bandLbl2
+                                anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
+                                width: 18
+                                text: modelData.lbl
+                                color: "#9a9ba0"; font.family: theme.fontFamily; font.pixelSize: 10
+                                horizontalAlignment: Text.AlignRight
+                            }
+                            Rectangle {
+                                anchors.left: bandLbl2.right; anchors.leftMargin: 6
+                                anchors.right: bandCnt2.left; anchors.rightMargin: 6
+                                anchors.verticalCenter: parent.verticalCenter
+                                height: 8; radius: 4; color: "#141519"
+                                Rectangle {
+                                    anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
+                                    height: parent.height; radius: 4
+                                    width: parent.width * (parent.parent.cnt / maxBandCount(totalCard.shots))
+                                    color: modelData.c
+                                    visible: parent.parent.cnt > 0
+                                }
+                            }
+                            Text {
+                                id: bandCnt2
+                                anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
+                                width: 14
+                                text: parent.cnt
+                                color: "white"; font.family: theme.fontFamily; font.pixelSize: 10; font.bold: true
+                                horizontalAlignment: Text.AlignRight
+                            }
+                        }
                     }
                 }
             }
@@ -1480,104 +1506,69 @@ Item {
         visible: true
         color: "transparent"   // redesign: themed cells below draw the look
 
+        // Series overview as mini cards: completed = green edge, current =
+        // maroon outline, pending = grey. The int-score text keeps the exact
+        // MODREADER backend push it had before (unchanged).
         Row {
             id: firstRow
-            anchors.top: parent.top
+            anchors.fill: parent
+            spacing: 6
             Repeater {
                 model: 6
-                Rectangle {
-                    width: series_sum.width/6; height: series_sum.height/5*1
-                    color: "transparent"
+                delegate: Rectangle {
+                    width: (series_sum.width - 30) / 6
+                    height: series_sum.height
+                    radius: 8
+                    // Full-match state so the six series persist across 3P
+                    // positions (kneeling S1-2, prone S3-4, standing S5-6).
+                    property bool started: matchSeriesStarted(index)
+                    property bool current: index === currentMatchSeries
+                    property bool complete: matchSeriesComplete(index)
+                    color: current ? "#241016" : "#1a1a1f"
+                    border.width: current ? 2 : 1
+                    border.color: current ? "#a80038" : (complete ? "#2f6b3f" : "#2a2b30")
 
-                    Text {
+                    Column {
                         anchors.centerIn: parent
-                        text: "S"+(index+1)
-                        color: "#8a8a92"
-                        font.pixelSize: dafaultFontSize
-                    }
-                }
-            }
-        }
-
-        Column {
-            anchors.top: firstRow.bottom
-            anchors.bottom: parent.bottom
-            Row {
-                id: secondRow
-                Repeater {
-                    model: 6
-                    Rectangle {
-                        width: series_sum.width/6; height: series_sum.height/5*2
-                        border.width: 1
-                        border.color: "#2a2b30"
-                        radius: 6
-                        color: "#1a1a1f"
-
+                        spacing: 3
                         Text {
-                            anchors.centerIn: parent
-                            text: isValidSeries(index) ? getSeriesTotal(index+1) : "—"
-                            color: isValidSeries(index) ? "white" : "#55555e"
-                            font.pointSize: parent.height*0.25 //parent.height*0.3
-//                            font.pointSize: isSingleDecimal ? parent.height*0.37 : parent.height*0.32
-//                            font.bold: true
-
-                            onTextChanged: {
-                                var textLength = text.length
-                                if (textLength == 5)
-                                    font.pointSize = parent.height*0.2
-                                console.log("sssssssssssssssssssssssssssssssssssss-------------------", textLength)
-                            }
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: "S" + (index + 1)
+                            color: current ? "#e0708f" : "#8a8a92"
+                            font.family: theme.fontFamily; font.pixelSize: 13; font.bold: true
                         }
-                    }
-                }
-            }
-
-            Row {
-                id: thirdRow
-                Repeater {
-                    model: 6
-                    Rectangle {
-                        width: series_sum.width/6; height: series_sum.height/5*2
-                        border.width: 1
-                        color: "#141519"
-                        border.color: "#2a2b30"
-                        radius: 6
-
                         Text {
-                            anchors.centerIn: parent
-                            text: isValidSeries(index) ? /*"("+*/getSeriesTotalNonDecimal(index+1)/*+")"*/ : ""
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: started ? getMatchSeriesTotal(index + 1) : "—"
+                            color: started ? "white" : "#55555e"
+                            font.family: theme.fontFamily; font.pixelSize: 17; font.bold: true
+                        }
+                        Text {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: started ? "(" + getMatchSeriesInt(index + 1) + ")" : ""
                             color: "#9a9ba0"
-                            font.pointSize: parent.height*0.25//parent.height*0.3
-//                            font.bold: true
+                            font.family: theme.fontFamily; font.pixelSize: 12
 
                             onTextChanged: {
-                                //update the backend variables and file
-                                if (isValidSeries(index)) {
-                                    MODREADER.updateSeriesScore(index+1, getSeriesTotalNonDecimal(index+1))
-                                    MODREADER.updateSeriesScoreWD(index+1, (getSeriesTotal(index+1)))
+                                //record each full-match series score (persists across positions)
+                                if (matchSeriesStarted(index)) {
+                                    MODREADER.updateSeriesScore(index+1, getMatchSeriesInt(index+1))
+                                    MODREADER.updateSeriesScoreWD(index+1, (getMatchSeriesTotal(index+1)))
                                     MODREADER.setTotalScoreWOD(seriesSubTotalED.text)
                                     MODREADER.setTotalScoreWD(seriesSubTotal.text)
                                     MODREADER.updateSetaShootSummaryData()
-
-//                                    seriesSubTotal.text = scoreCutoffTofirstDecimal(grandTotal)*1 //scoreCutoffTofirstDecimal(subTotal)*1
-//                                    seriesSubTotalED.text = grandTotalExculdeDec.toFixed(0)*1 //subTotalExculdeDec.toFixed(0)*1
-
                                 }
                             }
+                        }
+                        Text {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            visible: complete && !current
+                            text: "✓"
+                            color: "#2ecc71"; font.pixelSize: 11; font.bold: true
                         }
                     }
                 }
             }
-        }
-
-        Rectangle {
-            x: firstRowX
-            y: firstRowY
-            width: firstRowWidth
-            height: firstRowHeight
-            color: "transparent"
-            border.width: 1
-            border.color: "grey"
         }
     }
 
@@ -1586,6 +1577,31 @@ Item {
             return true
         else
             return false
+    }
+
+    // ── Full-match series helpers (read globalMatchModel, the whole-match
+    //    record) so the S1..S6 overview accumulates across 3P positions and
+    //    persists until the match ends. For non-3P globalMatchModel equals the
+    //    per-target model, so these behave identically there.
+    function matchSeriesStarted(idx0) {           // idx0 is 0-based (0..5)
+        return globalMatchModel.count > idx0 * 10
+    }
+    function matchSeriesComplete(idx0) {
+        return globalMatchModel.count >= (idx0 + 1) * 10
+    }
+    function getMatchSeriesTotal(seriesIndex) {    // seriesIndex is 1-based
+        if (globalMatchModel.count === 0) return 0
+        var s = 0
+        for (var i = (seriesIndex - 1) * 10; i < globalMatchModel.count && i < seriesIndex * 10; ++i)
+            s = s * 1 + (globalMatchModel.get(i).calculatedscore * 1).toFixed(1) * 1
+        return s.toFixed(1)
+    }
+    function getMatchSeriesInt(seriesIndex) {
+        if (globalMatchModel.count === 0) return 0
+        var s = 0
+        for (var i = (seriesIndex - 1) * 10; i < globalMatchModel.count && i < seriesIndex * 10; ++i)
+            s = s * 1 + Math.floor(globalMatchModel.get(i).calculatedscore * 1)
+        return s
     }
 
     function getSeriesTotal(seriesIndex)
