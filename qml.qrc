@@ -13,6 +13,9 @@
         <file>SectionTitle.qml</file>
         <file>ReportFooter.qml</file>
         <file>SeriesCard.qml</file>
+        <file>FloatingWindow.qml</file>
+        <file>FloatingWindowGrip.qml</file>
+        <file>WindowManager.qml</file>
         <file>CoachReportPage.qml</file>
         <file>CoachDashboardPage.qml</file>
         <file>CoachPrintPage.qml</file>
