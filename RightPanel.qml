@@ -1522,8 +1522,11 @@ Item {
                     // Full-match state so the six series persist across 3P
                     // positions (kneeling S1-2, prone S3-4, standing S5-6).
                     property bool started: matchSeriesStarted(index)
-                    property bool current: index === currentMatchSeries
                     property bool complete: matchSeriesComplete(index)
+                    // "current" = in progress (started but not yet complete). A
+                    // finished series - including S6 after the 60th shot - reads
+                    // as complete, so it gets the green edge + check, not maroon.
+                    property bool current: started && !complete
                     color: current ? "#241016" : "#1a1a1f"
                     border.width: current ? 2 : 1
                     border.color: current ? "#a80038" : (complete ? "#2f6b3f" : "#2a2b30")
@@ -1562,7 +1565,7 @@ Item {
                         }
                         Text {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            visible: complete && !current
+                            visible: complete
                             text: "✓"
                             color: "#2ecc71"; font.pixelSize: 11; font.bold: true
                         }
