@@ -525,12 +525,34 @@ Item {
         anchors.right: right.left
         anchors.top: left_arrow.top
         anchors.bottom: left_arrow.bottom
-//        x: ((parent.width/rootItemWidth)*400)
-//        y: ((parent.height/rootItemHeight)*131) + tableShift
-        opacity: 1
-//        width: ((parent.width/rootItemWidth)*sourceSize.width)
-//        height: ((parent.height/rootItemHeight)*sourceSize.height)
+        opacity: 0   // redesign: grey PNG bar replaced by the dark strip below
         visible: true
+    }
+    // Dark series-header strip (redesign) occupying the same slot.
+    Rectangle {
+        id: seriesHeaderBg
+        anchors.fill: series_6
+        radius: 8
+        color: "#202127"
+        border.color: "#2a2b30"; border.width: 1
+
+        // Series score + group, top-right (the title sits top-left, column
+        // headers along the bottom).
+        Row {
+            anchors.right: parent.right; anchors.rightMargin: 12
+            anchors.top: parent.top; anchors.topMargin: 5
+            spacing: 10
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: (currentShootIndex >= currentPageIndex*10) ? getSeriesTotal(currentPageIndex+1) : "—"
+                color: "white"; font.family: theme.fontFamily; font.pixelSize: 17; font.bold: true
+            }
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: qsTr("Grp ") + MODREADER.getGroup(currentPageIndex).toFixed(1)
+                color: "#9aa0a6"; font.family: theme.fontFamily; font.pixelSize: 11
+            }
+        }
     }
 
     Image {
@@ -544,14 +566,15 @@ Item {
     }
     Text {
         id: seriesText
-        anchors.bottom: series_text_field.bottom
-        anchors.bottomMargin: -5
-        anchors.left: series_text_field.left
-        //anchors.topMargin: -3
-        //        anchors.horizontalCenter: series_text_field.horizontalCenter
-        text : (currentPageIndex+1)
+        anchors.top: series_6.top
+        anchors.topMargin: 6
+        anchors.left: series_6.left
+        anchors.leftMargin: 12
+        text : qsTr("SERIES ") + (currentPageIndex+1) + qsTr(" OF 6")
         color: "white"
-        font.pixelSize: dafaultFontSize
+        font.bold: true
+        font.family: theme.fontFamily
+        font.pixelSize: 13
     }
     Image {
         id: right
@@ -1219,12 +1242,12 @@ Item {
         //        stop_over.
     }
 
-    // png text for translation
+    // png text for translation — folded into seriesText ("SERIES N OF 6")
     Text {
+        visible: false
         anchors.right: seriesText.left
         anchors.rightMargin: 5
         anchors.top: seriesText.top
-        //anchors.horizontalCenter: parent.horizontalCenter
         text: qsTr("SERIES")
         color: "white"
         width: implicitWidth
