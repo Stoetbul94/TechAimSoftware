@@ -1,5 +1,9 @@
 import QtQuick 2.0
 
+// A4 series-detail page. Carries two series cards. Because series 1 now lives
+// here (not on the cover), the first slot starts at series 1:
+//   first  = (pageIndex-2)*2 + 1
+//   second = (pageIndex-2)*2 + 2
 Item {
     id: rootItem
     width: 595 // A4 size for 72 dpi
@@ -12,69 +16,61 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: "transparent"
+        color: "white"
 
-        Text {
-            id: headerTitle
-            width: implicitWidth
-            height: implicitHeight
+        Column {
             anchors.top: parent.top
-            anchors.topMargin: 20
-            anchors.horizontalCenter: parent.horizontalCenter
-            text: title
-            color: "black"
-        }
-
-        Image {
-            id: bg
-            source: isDefaultIcon ? "qrc:/images/logo/tachus_logo.png" : "qrc:/images/logo/seta.png"
-            opacity: 1
-            anchors.top: parent.top
-            anchors.topMargin: 10
-            anchors.right: parent.right
-            anchors.rightMargin: 10
-            //        fillMode: Image.PreserveAspectFit
-            width: (0.3*sourceSize.width)
-            height: (0.3*sourceSize.height)
-        }
-
-
-
-        Rectangle {
-            color: "transparent"
-            anchors.top: parent.top
-            anchors.topMargin: 40
-            anchors.bottom: parent.bottom
             anchors.left: parent.left
             anchors.right: parent.right
+            anchors.margins: 24
+            spacing: 14
 
-            Column{
-                anchors.fill: parent
-                anchors.topMargin: 20
-                anchors.leftMargin: 20
-
-                SeriesComponent {
-                    seriesIndex: (rootItem.pageIndex-2) * numberOfSeriesInAPagee + 2 // as series 1 is already in first page
-                    width: parent.width
-                    height: 800/numberOfSeriesInAPagee
-                    visible: (seriesIndex-1)*10 <= globalModelOfData.count
-
-                    Component.onCompleted: {
-                        update()
+            // Slim brand strip
+            Item {
+                width: parent.width
+                height: 30
+                Row {
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 6
+                    Text { text: "TECH AIM"; color: "#a80038"; font.bold: true; font.pixelSize: 15; font.letterSpacing: 1; font.family: "Segoe UI" }
+                    Text {
+                        text: "· Match Report — Series Detail"; color: "#9aa0aa"; font.pixelSize: 12; font.family: "Segoe UI"
+                        anchors.baseline: parent.children[0].baseline
                     }
                 }
-                SeriesComponent {
-                    seriesIndex: (rootItem.pageIndex-2) * numberOfSeriesInAPagee + 3 // as series 1 is already in first page
-                    width: parent.width
-                    height: 800/numberOfSeriesInAPagee
-                    visible: (seriesIndex-1)*10 <= globalModelOfData.count
-                    Component.onCompleted: {
-                        update()
-                    }
+                Text {
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: userName
+                    color: "#33373d"; font.pixelSize: 11; font.bold: true; font.family: "Segoe UI"
                 }
+                Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: "#e6e8ec" }
+            }
+
+            SeriesComponent {
+                seriesIndex: (rootItem.pageIndex - 2) * numberOfSeriesInAPagee + 1
+                width: parent.width
+                height: 340
+                Component.onCompleted: { update() }
+            }
+            SeriesComponent {
+                seriesIndex: (rootItem.pageIndex - 2) * numberOfSeriesInAPagee + 2
+                width: parent.width
+                height: 340
+                Component.onCompleted: { update() }
             }
         }
 
-        radius: 8
+        ReportFooter {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            anchors.leftMargin: 24
+            anchors.rightMargin: 24
+            anchors.bottomMargin: 16
+            softwareVersion: "Seta 4.0"
+            pageText: qsTr("Page ") + rootItem.pageIndex
+        }
     }
 }

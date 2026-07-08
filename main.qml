@@ -30,6 +30,8 @@ ApplicationWindow {
     property string greenColor: "#00ff00" //"lightgreen"
     property string mpiColor: /*"transparent"//*/"blue"
     property bool isSingleDecimal: APPSETTINGS.getIsSingleDecimal()
+    property bool coachReportVisible: false   // Coach Report overlay toggle
+    property int  coachViewMode: 0            // 0 = dashboard, 1 = detailed, 2 = print
 
     //property string valueString: ""
 
@@ -516,6 +518,49 @@ ApplicationWindow {
                 APPSETTINGS.updateStatusFeedbackFile(1)
             }
         }
+    }
+
+    // Coach Report overlay. Three views over the same COACHREPORT data, toggled
+    // by coachViewMode: the light dashboard (0), the detailed dark report (1),
+    // and the printable A4 view (2). Opened from the Match Summary.
+    CoachDashboardPage {
+        id: coachDashboard
+        z: 8
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: header.bottom
+        anchors.bottom: parent.bottom
+        visible: coachReportVisible && coachViewMode === 0
+        gameSubMode: loginPage.gameSubMode
+        onClosed: coachReportVisible = false
+        onDetailsRequested: coachViewMode = 1
+        onPrintRequested: coachViewMode = 2
+    }
+    CoachReportPage {
+        id: coachReportPage
+        z: 8
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: header.bottom
+        anchors.bottom: parent.bottom
+        visible: coachReportVisible && coachViewMode === 1
+        gameSubMode: loginPage.gameSubMode
+        onClosed: coachReportVisible = false
+        onDashboardRequested: coachViewMode = 0
+        onPrintRequested: coachViewMode = 2
+    }
+    CoachPrintPage {
+        id: coachPrintPage
+        z: 8
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: header.bottom
+        anchors.bottom: parent.bottom
+        visible: coachReportVisible && coachViewMode === 2
+        gameSubMode: loginPage.gameSubMode
+        onClosed: coachReportVisible = false
+        onDashboardRequested: coachViewMode = 0
+        onDetailsRequested: coachViewMode = 1
     }
 
     LoginPage {

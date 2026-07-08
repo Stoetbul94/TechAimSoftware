@@ -114,7 +114,7 @@ Item {
                     Text { text: qsTr("MATCH REPORT"); font.pixelSize: 21; font.bold: true; font.letterSpacing: 2; color: "#111111" }
                     Text {
                         text: qsTr("50m Rifle 3 Positions · ISSF 3x20 Qualification") + (appMode ? "" : qsTr("   —  DEMO"))
-                        font.pixelSize: 10; color: appMode ? "#555555" : "#e8003d"; font.letterSpacing: 1
+                        font.pixelSize: 10; color: appMode ? "#555555" : "#a80038"; font.letterSpacing: 1
                     }
                 }
                 Image {
@@ -123,7 +123,7 @@ Item {
                     height: 40; fillMode: Image.PreserveAspectFit
                 }
             }
-            Rectangle { width: parent.width; height: 2; color: "#e8003d" }
+            Rectangle { width: parent.width; height: 2; color: "#a80038" }
 
             // ── Meta line ─────────────────────────────────────────────────
             Row {
@@ -160,7 +160,7 @@ Item {
                         property var st: stats[index]
                         Row {
                             anchors.fill: parent
-                            Text { width: parent.width*0.16; text: posNames[index]; font.pixelSize: 10; font.bold: true; color: "#e8003d"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; height: parent.height }
+                            Text { width: parent.width*0.16; text: posNames[index]; font.pixelSize: 10; font.bold: true; color: "#a80038"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; height: parent.height }
                             Text { width: parent.width*0.10; text: st ? fmt(st.sA) : "-"; font.pixelSize: 10; color: "#111111"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; height: parent.height }
                             Text { width: parent.width*0.10; text: st ? fmt(st.sB) : "-"; font.pixelSize: 10; color: "#111111"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; height: parent.height }
                             Text { width: parent.width*0.15; text: st ? fmt(st.dec) + " (" + st.intg + ")" : "-"; font.pixelSize: 10; font.bold: true; color: "#111111"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; height: parent.height }
@@ -172,7 +172,7 @@ Item {
                     }
                 }
                 Rectangle {
-                    width: parent.width; height: 32; color: "#e8003d"
+                    width: parent.width; height: 32; color: "#a80038"
                     Row {
                         anchors.fill: parent
                         Text { width: parent.width*0.16; text: qsTr("TOTAL"); color: "white"; font.pixelSize: 11; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; height: parent.height }
@@ -195,7 +195,7 @@ Item {
                         delegate: Rectangle {
                             width: (reportRoot.width - 60 - 30) / 6; height: 40
                             color: index === bestSeriesIdx() ? "#e7f5e7" : (index === worstSeriesIdx() ? "#fdeaea" : "#f4f4f4")
-                            border.color: index === bestSeriesIdx() ? "#3a9a3a" : (index === worstSeriesIdx() ? "#e8003d" : "#dddddd")
+                            border.color: index === bestSeriesIdx() ? "#3a9a3a" : (index === worstSeriesIdx() ? "#a80038" : "#dddddd")
                             Column {
                                 anchors.centerIn: parent; spacing: 1
                                 Text {
@@ -245,7 +245,7 @@ Item {
                             }
                             Row {
                                 width: faceImg.width
-                                Text { width: parent.width*0.6; text: posNames[posIndex]; font.pixelSize: 9; font.bold: true; color: "#e8003d" }
+                                Text { width: parent.width*0.6; text: posNames[posIndex]; font.pixelSize: 9; font.bold: true; color: "#a80038" }
                                 Text {
                                     width: parent.width*0.4
                                     text: stats[posIndex] ? fmt(stats[posIndex].dec) : "-"

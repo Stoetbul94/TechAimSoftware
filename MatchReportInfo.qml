@@ -1,4 +1,4 @@
-import QtQuick 2.0
+import QtQuick 2.15
 
 Item {
     id: matchInfo
@@ -328,7 +328,10 @@ Item {
         anchors.horizontalCenter: parent.horizontalCenter
         color: "transparent"
         opacity: 0.5
-        visible: !isMatchSummary
+        // Series header (number/score/group/MPI) is now rendered by the
+        // SeriesCard header strip, so this legacy block is kept only for its
+        // refreshSeriesData() hook and not shown.
+        visible: false
 
         Column{
             spacing: 5
@@ -443,63 +446,36 @@ Item {
         }
     }
 
+    // Modern shot table: light header rule, alternating rows, right-aligned
+    // decimals, gentle highlight for inner-10s and low shots. Same data
+    // (score + direction arrow, X/Y mm, Teiler, time) as before.
     Column {
-        anchors.top: topRect1.bottom
-        anchors.topMargin: 5
-        anchors.left: topRect1.left
+        id: tableCol
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        spacing: 0
+        visible: !isMatchSummary
 
-        spacing: 5
-
-        Row {
-            visible: !isMatchSummary
-            spacing: 20
-            Text {
-                id: serialNumber
-                text: qsTr("Sr No.")
-                font.bold: true
-                width: 25
+        // header
+        Rectangle {
+            width: parent.width
+            height: 24
+            color: "#f1f3f5"
+            Row {
+                anchors.fill: parent
+                Text { width: parent.width*0.12; height: parent.height; text: qsTr("Sr");     color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                Text { width: parent.width*0.22; height: parent.height; text: qsTr("Score");  color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; leftPadding: 10; verticalAlignment: Text.AlignVCenter }
+                Text { width: parent.width*0.18; height: parent.height; text: qsTr("X (mm)"); color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
+                Text { width: parent.width*0.18; height: parent.height; text: qsTr("Y (mm)"); color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
+                Text { width: parent.width*0.15; height: parent.height; text: qsTr("Teiler"); color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
+                Text { width: parent.width*0.15; height: parent.height; text: qsTr("Time");   color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
             }
-            Text {
-                id: scoreText
-                text: qsTr("Score")
-                font.bold: true
-                width:30
-            }
-            Text {
-                id: mpiX
-                text: qsTr("    X\n(mm)")
-                 anchors.leftMargin: text.horizontalCenter
-                font.bold: true
-                width: 30
-            }
-            Text {
-                id: mpiY
-                text: qsTr("    Y\n(mm)")
-                anchors.leftMargin: text.horizontalCenter
-                font.bold: true
-                width:30
-            }
-            Text {
-                id: teilerText
-                text: qsTr("Teiler")
-                font.bold: true
-               // font.pointSize:5
-                width: 30
-            }
-            Text {
-                id: timeStamp
-                text: qsTr("      Time")
-
-                font.bold: true
-                width:40
-//                visible: !isSaveGame
-            }
+            Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 2; color: "#a80038" }
         }
-
 
         Repeater {
             id: repeater
-            height: 300
             visible: !isMatchSummary
             model: !isMatchSummary ? (seriesIndex*10 < globalModelOfData.count ? 10 : globalModelOfData.count - ((seriesIndex-1)*10)) : 0
             delegate: seriesItem
@@ -670,69 +646,94 @@ Item {
     Component {
         id: seriesItem
 
-        Row {
+        Rectangle {
+            width: tableCol.width
+            height: 22
             visible: !isMatchSummary
-            height: 16
-            spacing: 20
-            Text {
-                id: serialNumber
-                text: index+1
-                width: 25
-            }
 
-            Rectangle {
-                width: 30
-                height: parent.height
-                color: "transparent"
-                opacity: 0.5
+            // shot score (numeric) drives the gentle highlighting
+            property real sc: getScoreOfShoot(index) * 1
+            property bool inner: (gameMode === 0 && sc >= rightPanel.star_limit_value_pistol)
+                               || (gameMode === 1 && sc >= rightPanel.star_limit_value_rifle)
+            property bool low: sc > 0 && sc < 9.0
+
+            color: inner ? "#fbeef2" : (index % 2 ? "#f7f8fa" : "#ffffff")
+
+            Row {
+                anchors.fill: parent
+
                 Text {
-                    id: scoreText
-                    text: getScoreOfShoot(index)
-             
-                    width: implicitWidth + 5
-                    anchors.left: parent.left
+                    width: parent.width*0.12; height: parent.height
+                    text: index+1
+                    color: "#8a8f98"; font.pixelSize: 11; font.family: "Segoe UI"
+                    horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
                 }
-                Image {
-                    id: arrowImage
-                    height: 10 //parent.height - 4
-                    width: 10
-                    source: "qrc:/images/rightPanel/up_arrow.png"
-                    anchors.top: parent.top
-                    anchors.left: scoreText.right
-                    Component.onCompleted:
-                    {
-                        rotation = getDirectionOfShoot(index)
+
+                Item {
+                    width: parent.width*0.22; height: parent.height
+                    Row {
+                        anchors.left: parent.left; anchors.leftMargin: 10
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: 4
+                        Text {
+                            id: scoreText
+                            text: getScoreOfShoot(index)
+                            font.pixelSize: 12; font.bold: true; font.family: "Segoe UI"
+                            color: low ? "#bf1919" : (inner ? "#a80038" : "#191b1f")
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                        Image {
+                            id: arrowImage
+                            height: 9; width: 9
+                            source: "qrc:/images/rightPanel/up_arrow.png"
+                            anchors.verticalCenter: parent.verticalCenter
+                            Component.onCompleted: { rotation = getDirectionOfShoot(index) }
+                        }
                     }
                 }
+
+                Text {
+                    width: parent.width*0.18; height: parent.height
+                    text: (MODREADER.getXMPIForShoot(seriesIndex, index)*1).toFixed(2)
+                    color: "#33373d"; font.pixelSize: 11; font.family: "Segoe UI"
+                    horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter
+                }
+                Text {
+                    width: parent.width*0.18; height: parent.height
+                    text: (MODREADER.getYMPIForShoot(seriesIndex, index)*1).toFixed(2)
+                    color: "#33373d"; font.pixelSize: 11; font.family: "Segoe UI"
+                    horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter
+                }
+                Text {
+                    width: parent.width*0.15; height: parent.height
+                    text: (MODREADER.getTeilerForShoot(seriesIndex, index)*1).toFixed(2)
+                    color: "#33373d"; font.pixelSize: 11; font.family: "Segoe UI"
+                    horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter
+                }
+                Text {
+                    width: parent.width*0.15; height: parent.height
+                    text: getTimeStamp(index)
+                    color: "#33373d"; font.pixelSize: 11; font.family: "Segoe UI"
+                    horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter
+                }
             }
-
-            Text {
-                id: mpiX
-                text: (MODREADER.getXMPIForShoot(seriesIndex, index)*1).toFixed(2) //+ " mm"
-
-                width:30
-            }
-            Text {
-                id: mpiY
-                text: (MODREADER.getYMPIForShoot(seriesIndex, index)*1).toFixed(2) //+ " mm"
-
-                width:30
-
-            }
-            Text {
-                id: teilerText
-                text: " "+(MODREADER.getTeilerForShoot(seriesIndex, index)*1).toFixed(2) //+ " mm"
-
-                width:35
-            }
-            Text {
-                id: timeStamp
-                text: "  "+getTimeStamp(index)
-                anchors.leftMargin: text.horizontalCenter
-
-                width: 40
-//                visible: !isSaveGame
-            }
+            Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: "#eceef1" }
         }
+    }
+
+    // Per-series inner-10 count, using the exact rule RightPanel applies for
+    // totalStars (pistol >= 10.4, rifle >= 10.2). Display-only; no maths changed.
+    function getSeriesInner(sIdx)
+    {
+        if (globalModelOfData.count === 0 || sIdx < 1)
+            return 0
+        var cnt = 0
+        for (var i = (sIdx-1)*10; i < globalModelOfData.count && i < sIdx*10; ++i) {
+            var s = globalModelOfData.get(i).calculatedscore * 1
+            if ((gameMode === 0 && s >= rightPanel.star_limit_value_pistol)
+                    || (gameMode === 1 && s >= rightPanel.star_limit_value_rifle))
+                ++cnt
+        }
+        return cnt
     }
 }

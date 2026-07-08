@@ -12,6 +12,7 @@ Dialog {
     property double screenContentHeight: 0
 
     property int fontSize: 12
+    property int tick: 0   // bumped in update() to refresh MPI/Group metric cards
 
     Connections {
         target: MODREADER
@@ -27,297 +28,225 @@ Dialog {
     contentItem:Rectangle {
         id:contentRect
         anchors.fill: parent
-        color: "grey"
-        Rectangle
-        {
-            id:print_region
-            width:screenContentWidth
-            height: screenContentHeight*0.9
-            color: "white"
-            border.width: 20
-            border.color: "transparent"
-            //        }
-            Column{
-                anchors.fill: parent
-                Row {
-                    //                anchors.fill: parent
-                    width:parent.width
-                    height: parent.height*0.9
-//                    anchors.fill: parent
-//                    anchors.leftMargin: 20
+        color: "#dcdad3"                     // grey backdrop; the A4 page sits on top
 
-                    Rectangle {
-                        width: parent.width < parent.height ? parent.width : parent.height
-                        height: width
+        // Scrollable print-preview area (same pattern as the Coach Print view).
+        Flickable {
+            id: flick
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: buttonBar.top
+            clip: true
+            contentWidth: width
+            contentHeight: pageWrap.height
+            boundsBehavior: Flickable.StopAtBounds
+            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AlwaysOn }
 
-                        Image {
-                            id: shootingcanvas
-                            //                        source: centerPanel.gameMode ? (shootingPage.isBackgroudBlack ? "qrc:/images/centerPanel/pistol.png" : "qrc:/images/centerPanel/pistol_blue.png")
-                            //                                                     : (shootingPage.isBackgroudBlack ? "qrc:/images/centerPanel/rifle.png" : "qrc:/images/centerPanel/rifle_blue.png")
-                            source: gameRange == 10 ? (centerPanel.gameMode ? (shootingPage.isBackgroudBlack ? "qrc:/images/centerPanel/pistol.png" : "qrc:/images/centerPanel/pistol_blue.png")
-                                                                                        : (shootingPage.isBackgroudBlack ? "qrc:/images/centerPanel/rifle.png" : "qrc:/images/centerPanel/rifle_blue.png"))
-                                                                : (centerPanel.gameMode ? (shootingPage.isBackgroudBlack ? "qrc:/images/centerPanel/50_meter.png" : "qrc:/images/centerPanel/50_meter_blue.png")
-                                                                                        : (shootingPage.isBackgroudBlack ? "qrc:/images/centerPanel/black_50_Rifle.png" : "qrc:/images/centerPanel/blue_50_Rifle.png"))
-                            //                        anchors.fill: parent
-                            width: parent.width*0.8
-                            height: width
-                            opacity: 1
-                            anchors.centerIn: parent
+            Item {
+                id: pageWrap
+                width: flick.width
+                height: print_region.height + 40
 
-                            Rectangle {
-                                id: shootingMianRect
-                                color: "transparent"
-                                anchors.fill: parent
-    //                            opacity: 0.2
-                            }
+                // Fixed portrait A4-ratio page so the grab (and the PDF) are
+                // portrait and undistorted.
+                Rectangle {
+                    id: print_region
+                    width: 794           // A4 width @ 96 dpi
+                    height: 1123         // A4 height @ 96 dpi
+                    x: (pageWrap.width - width) / 2
+                    y: 20
+                    color: "white"
+                    border.color: "#e6e8ec"
+                    border.width: 1
 
-                            Repeater
-                            {
-                                id:numberRepeater
-                                model:globalModelOfData
-                                delegate: numberDelegate
-                            }
+                    Column {
+                        id: coverCol
+                        anchors.top: parent.top
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.margins: 34
+                        spacing: 12
 
-                            Component {
-                                id:numberDelegate
-                                Item {
-                                    id:mainItem
-                                    // 34.55 and 10.11 was given by abins (tachus)
-                                    //10 Meter Pistol Ratio=155.5÷4.5=34.55
-                                    //10 Meter Rifle Ratio=45.5÷4.5=10.11
-                                    //50 Meter Pistol Ratio=500/5.6=89.29
-                                    //50 Meter Rifle Ratio=154.4/5.6=27.57
+                        ReportHeader {
+                            width: parent.width
+                            reportTitle: "Match Summary"
+                            athlete: userName
+                            discipline: eventName
+                            dateText: new Date().toLocaleString(Qt.locale(""), "ddd yyyy-MM-dd")
+                            timeText: new Date().toLocaleString(Qt.locale(""), "hh:mm:ss")
+                        }
 
-                                    property double gameRatio: gameRange == 10 ? (centerPanel.gameMode ? 155.5/APPSETTINGS.bullet_diameter() : 45.5/APPSETTINGS.bullet_diameter())
-                                                                               : (centerPanel.gameMode ? 500/APPSETTINGS.bullet_diameter() : 154.4/APPSETTINGS.bullet_diameter())
+                        SectionTitle { width: parent.width; title: "Executive Summary" }
 
-                                    //width: gameRange == 10 ? (centerPanel.gameMode ? shootingcanvas.height/34.55 : shootingcanvas.height/10.11 )
-                                    //                       : (centerPanel.gameMode ? shootingcanvas.height/89.29 /*size 500 pallet 5.6*/
-                                    //                                               : shootingcanvas.height/27.57 /*size 154.4 pallet 5.6*/)
+                        Grid {
+                            id: metricGrid
+                            width: parent.width
+                            columns: 3
+                            columnSpacing: 12
+                            rowSpacing: 12
+                            property real cw: (width - 2 * columnSpacing) / 3
 
-                                    width: shootingcanvas.height/gameRatio
+                            MetricCard { width: metricGrid.cw; label: "Total Score"; value: "" + totalScore; unit: "(" + totalScoreWithoutDecimal + ")" }
+                            MetricCard { width: metricGrid.cw; label: "Average Shot"; value: globalMatchModel.count > 0 ? (totalScore / globalMatchModel.count).toFixed(2) : "—" }
+                            MetricCard { width: metricGrid.cw; label: "Total Shots"; value: "" + globalMatchModel.count }
+                            MetricCard { width: metricGrid.cw; label: "Inner 10"; value: "" + rightPanel.totalStars }
+                            MetricCard { width: metricGrid.cw; label: "MPI"; unit: "mm"; valueSize: 18
+                                value: (screenPresence.tick, MODREADER.getXMPI().toFixed(1) + " / " + MODREADER.getYMPI().toFixed(1)) }
+                            MetricCard { width: metricGrid.cw; label: "Group"; unit: "mm²"; valueSize: 20
+                                value: (screenPresence.tick, "" + MODREADER.getGroup(-1).toFixed(1)) }
+                            MetricCard { width: metricGrid.cw; label: "Avg Time / Shot"; unit: "min"; valueSize: 20
+                                value: globalMatchModel.count > 0 ? converSecondToMins(totalTime / globalMatchModel.count) : "—" }
+                        }
 
-                                    height: width
-                                    Rectangle
-                                    {
-                                        Component.onCompleted:
+                        SectionTitle { width: parent.width; title: "Overall Target" }
+
+                        // Overall target — existing visualisation, coordinate math kept
+                        // verbatim, reframed in a clean white card.
+                        Rectangle {
+                            width: parent.width
+                            height: 300
+                            radius: 12
+                            color: "white"
+                            border.color: "#e6e8ec"
+                            border.width: 1
+
+                            Image {
+                                id: shootingcanvas
+                                source: gameRange == 10 ? (centerPanel.gameMode ? (shootingPage.isBackgroudBlack ? "qrc:/images/centerPanel/pistol.png" : "qrc:/images/centerPanel/pistol_blue.png")
+                                                                                            : (shootingPage.isBackgroudBlack ? "qrc:/images/centerPanel/rifle.png" : "qrc:/images/centerPanel/rifle_blue.png"))
+                                                                    : (centerPanel.gameMode ? (shootingPage.isBackgroudBlack ? "qrc:/images/centerPanel/50_meter.png" : "qrc:/images/centerPanel/50_meter_blue.png")
+                                                                                            : (shootingPage.isBackgroudBlack ? "qrc:/images/centerPanel/black_50_Rifle.png" : "qrc:/images/centerPanel/blue_50_Rifle.png"))
+                                width: Math.min(parent.width * 0.82, parent.height * 0.9)
+                                height: width
+                                opacity: 1
+                                anchors.centerIn: parent
+
+                                Rectangle {
+                                    id: shootingMianRect
+                                    color: "transparent"
+                                    anchors.fill: parent
+                                }
+
+                                Repeater
+                                {
+                                    id:numberRepeater
+                                    model:globalMatchModel
+                                    delegate: numberDelegate
+                                }
+
+                                Component {
+                                    id:numberDelegate
+                                    Item {
+                                        id:mainItem
+                                        // 34.55 and 10.11 was given by abins (tachus)
+                                        //10 Meter Pistol Ratio=155.5÷4.5=34.55
+                                        //10 Meter Rifle Ratio=45.5÷4.5=10.11
+                                        //50 Meter Pistol Ratio=500/5.6=89.29
+                                        //50 Meter Rifle Ratio=154.4/5.6=27.57
+
+                                        property double gameRatio: gameRange == 10 ? (centerPanel.gameMode ? 155.5/APPSETTINGS.bullet_diameter() : 45.5/APPSETTINGS.bullet_diameter())
+                                                                                   : (centerPanel.gameMode ? 500/APPSETTINGS.bullet_diameter() : 154.4/APPSETTINGS.bullet_diameter())
+
+                                        width: shootingcanvas.height/gameRatio
+
+                                        height: width
+                                        Rectangle
                                         {
-                                            var xCor = MODREADER.getXCord(index+1)
-                                            var yCor = MODREADER.getYCord(index+1)
+                                            Component.onCompleted:
+                                            {
+                                                // Use each shot's own stored target-face mm (aligned to the
+                                                // full match record), so 3P shots from every position plot
+                                                // correctly - not just the current position. Same source and
+                                                // formula the 3P report uses.
+                                                var xCor = globalMatchModel.get(index).xmm * 1
+                                                var yCor = globalMatchModel.get(index).ymm * 1
 
-                                            //                                        var pistalWidthHeight = 155.5
-                                            //                                        var rifleWidthHeight = 45.5
-                                            var pistalWidthHeight = gameRange == 10 ? 155.5 : 500
-                                            var rifleWidthHeight = gameRange == 10 ? 45.5 : 154.4
-                                            var shootingWidth = centerPanel.gameMode ? pistalWidthHeight : rifleWidthHeight
-                                            var shootingHeight = centerPanel.gameMode ? pistalWidthHeight : rifleWidthHeight
+                                                var pistalWidthHeight = gameRange == 10 ? 155.5 : 500
+                                                var rifleWidthHeight = gameRange == 10 ? 45.5 : 154.4
+                                                var shootingWidth = centerPanel.gameMode ? pistalWidthHeight : rifleWidthHeight
+                                                var shootingHeight = centerPanel.gameMode ? pistalWidthHeight : rifleWidthHeight
 
-                                            var offsetX = shootingMianRect.width/shootingWidth
-                                            var offsetY = shootingMianRect.height/shootingHeight
+                                                var offsetX = shootingMianRect.width/shootingWidth
+                                                var offsetY = shootingMianRect.height/shootingHeight
 
-                                            var centerX = shootingMianRect.width/2 //* offset
-                                            var centerY = shootingMianRect.height/2 //* offset
+                                                var centerX = shootingMianRect.width/2 //* offset
+                                                var centerY = shootingMianRect.height/2 //* offset
 
-                                            var bulletSize = 0//4.5/2
+                                                var bulletSize = 0//4.5/2
 
-                                            mainItem.x = shootingMianRect.x + centerX+((xCor+bulletSize)*offsetX) - radius
-                                            mainItem.y = shootingMianRect.y + centerY-((yCor+bulletSize)*offsetY) - radius
+                                                mainItem.x = shootingMianRect.x + centerX+((xCor+bulletSize)*offsetX) - radius
+                                                mainItem.y = shootingMianRect.y + centerY-((yCor+bulletSize)*offsetY) - radius
+                                            }
+                                            anchors.fill: parent
+                                            radius:parent.width/2
+                                            color: greenColor//shootingPage.isPalletRed ? "red" : "white"
+                                            Text{
+                                                anchors.centerIn: parent
+                                                text: index+1
+                                                visible: false
+                                            }
                                         }
-                                        anchors.fill: parent
-                                        radius:parent.width/2
-                                        color: greenColor//shootingPage.isPalletRed ? "red" : "white"
-                                        Text{
-                                            anchors.centerIn: parent
-                                            text: index+1
-                                            visible: false
-                                        }
-                                        //                                    border.color: "red"
                                     }
                                 }
                             }
                         }
-                    }
 
-                    Rectangle {
-                        width:parent.width*0.5
-                        height:parent.height
-                        Column{
-                            anchors.fill: parent
-                            anchors.leftMargin: 30
-                            anchors.topMargin: 30
-                            spacing: 20
-                            Grid{
-                                columns : 2
-                                rows: 12
-                                columnSpacing:  40
-                                rowSpacing: 20
-                                id:shooterName
-                                Text {
-                                    text: qsTr("Date")
-                                    font.bold: true
-                                    font.pointSize: fontSize
+                        SectionTitle { width: parent.width; title: "Series Breakdown" }
+
+                        // Per-series scores across the full match (10 shots per
+                        // series; every series/position included).
+                        Column {
+                            width: parent.width
+                            spacing: 0
+
+                            Rectangle {
+                                width: parent.width; height: 26; color: "#f1f3f5"
+                                Row {
+                                    anchors.fill: parent
+                                    Text { width: parent.width*0.34; height: parent.height; text: qsTr("Series");   leftPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 11; font.bold: true; font.family: "Segoe UI" }
+                                    Text { width: parent.width*0.33; height: parent.height; text: qsTr("Score");    horizontalAlignment: Text.AlignRight; rightPadding: 12; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 11; font.bold: true; font.family: "Segoe UI" }
+                                    Text { width: parent.width*0.33; height: parent.height; text: qsTr("Inner 10"); horizontalAlignment: Text.AlignRight; rightPadding: 12; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 11; font.bold: true; font.family: "Segoe UI" }
                                 }
-                                Text {
-                                    id:event_Date
-                                    text:": " + new Date().toLocaleString(Qt.locale(""), "ddd yyyy-MM-dd")
-                                    font.bold: true
-                                    font.pointSize: fontSize
-                                }
-                                Text {
-                                    text: qsTr("Time")
-                                    font.bold: true
-                                    font.pointSize: fontSize
-                                }
-                                Text {
-                                    id:event_time
-                                    text:": " + new Date().toLocaleString(Qt.locale(""), "hh:mm:ss")
-                                    font.bold: true
-                                    font.pointSize: fontSize
-                                }
-                                Text {
-                                    id:shooterLabel
-                                    text: qsTr("Shooter Name")
-                                    font.bold: true
-                                    font.pointSize: fontSize
-                                }
-                                Text {
-                                    id:name
-                                    text:": " + userName
-                                    font.bold: true
-                                    font.pointSize: fontSize
-                                }
-                                Text {
-                                    id:eventLabel
-                                    text: qsTr("Event")
-                                    font.bold: true
-                                    font.pointSize: fontSize
-                                }
-                                Text {
-                                    id:event_Name
-                                    text:": " + eventName
-                                    font.bold: true
-                                    font.pointSize: fontSize
-                                }
-                                Text {
-                                    text: qsTr("Total Shots")
-                                    font.pointSize: fontSize
-                                    font.bold: true
-                                }
-                                Text {
-                                    id:number_Shots
-                                    text:": " + globalModelOfData.count
-                                    font.bold: true
-                                    font.pointSize: fontSize
-                                }
-                                Text {
-                                    text: qsTr("Total Score")
-                                    font.bold: true
-                                    font.pointSize: fontSize
-                                }
-                                Text {
-                                    id:event_score
-                                    text: ": " + totalScore + " ("+totalScoreWithoutDecimal+")"
-                                    font.bold: true
-                                    font.pointSize: fontSize
-                                }
-                                Text {
-                                    text: qsTr("Avg score")
-                                    font.bold: true
-                                    font.pointSize: fontSize
-                                }
-                                Text {
-                                    id:event_average
-                                    text:": " + (totalScore/globalModelOfData.count).toFixed(2)
-                                    font.bold: true
-                                    font.pointSize: fontSize
-                                }
-                                Text {
-                                    text:qsTr("Avg Time/Shot (In minutes)")
-                                    font.bold: true
-                                    font.pointSize: fontSize
-                                }
-                                Text {
-                                    id:average_time_shot
-                                    //                            text:": " + averageTime
-                                    text: /*isSaveGame ? ": N/A" :*/ ": " +converSecondToMins(totalTime/globalModelOfData.count)
-                                    font.bold: true
-                                    font.pointSize: fontSize
-                                }
-//                                Text {
-//                                    id:series_wise_totalLabel
-//                                    text: qsTr("Series wise total")
-//                                    font.bold: true
-//                                }
-//                                Text {
-//                                    id:series_wise_total
-//                                    width: 150
-//                                    text:": " + getSeriesTotalText()
-//                                    font.bold: true
-//                                    wrapMode: Text.WordWrap
-//                                }
-                                Text {
-                                    id:mpi_label
-                                    text:"MPI (mm)"
-                                    font.bold: true
-                                    font.pointSize: fontSize
-                                }
-                                Text {
-                                    id:mpi
-                                    width: 150
-                                    text: ":  X: " + 0.0+" mm; Y: "+0.0 + " mm"
-                                    font.bold: true
-                                    wrapMode: Text.WordWrap
-                                    font.pointSize: fontSize
-                                }
-//                                Text {
-//                                    id:teiler_lable
-//                                    text:"Teiler"
-//                                    font.bold: true
-//                                }
-//                                Text {
-//                                    id:teiler
-//                                    width: 150
-//                                    text: ": " + 0.0
-//                                    font.bold: true
-//                                    wrapMode: Text.WordWrap
-//                                }
-                                Text {
-                                    id: startTotal
-                                    text:"Inner 10 Count"
-                                    font.bold: true
-                                    font.pointSize: fontSize
-                                }
-                                Text {
-                                    id: startTotalValue
-                                    text:": " + rightPanel.totalStars //+ " mm"
-                                    font.bold: true
-                                    wrapMode: Text.WordWrap
-                                    font.pointSize: fontSize
-                                }
-                                Text {
-                                    id: group
-                                    text:"Group"
-                                    font.bold: true
-                                    font.pointSize: fontSize
-                                }
-                                Text {
-                                    id: groupValue
-                                    text:": " + MODREADER.getGroup(-1)+qsTr(" mm2")
-                                    font.bold: true
-                                    wrapMode: Text.WordWrap
-                                    font.pointSize: fontSize
+                                Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 2; color: "#a80038" }
+                            }
+                            Repeater {
+                                model: Math.ceil(globalMatchModel.count / 10)
+                                delegate: Rectangle {
+                                    width: parent.width; height: 26
+                                    color: index % 2 ? "#f7f8fa" : "#ffffff"
+                                    Row {
+                                        anchors.fill: parent
+                                        Text { width: parent.width*0.34; height: parent.height; text: qsTr("Series ") + (index+1); leftPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 12; font.family: "Segoe UI" }
+                                        Text { width: parent.width*0.33; height: parent.height; text: getSeriesScoreVal(index+1); horizontalAlignment: Text.AlignRight; rightPadding: 12; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 12; font.bold: true; font.family: "Segoe UI" }
+                                        Text { width: parent.width*0.33; height: parent.height; text: "" + getSeriesInnerVal(index+1); horizontalAlignment: Text.AlignRight; rightPadding: 12; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 12; font.family: "Segoe UI" }
+                                    }
+                                    Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: "#eceef1" }
                                 }
                             }
                         }
                     }
-                }
 
+                    ReportFooter {
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.bottom: parent.bottom
+                        anchors.leftMargin: 34
+                        anchors.rightMargin: 34
+                        anchors.bottomMargin: 20
+                        softwareVersion: "Seta 4.0"
+                        generatedText: "Generated " + new Date().toLocaleString(Qt.locale(""), "ddd yyyy-MM-dd hh:mm")
+                    }
+                }
             }
         }
+
         Rectangle {
+            id: buttonBar
             width:parent.width
             height:parent.height*0.1
             anchors.bottom: contentRect.bottom
+            color: "#2a2a2e"
 
             Rectangle {
                 id: dummyRectCenter
@@ -330,6 +259,7 @@ Dialog {
             Button {
                 text:"Close"
                 anchors.left: dummyRectCenter.right
+                anchors.verticalCenter: parent.verticalCenter
                 onClicked:
                 {
                     close()
@@ -337,11 +267,28 @@ Dialog {
             }
 
             Button {
-                text:"Save"
+                text:"Save PDF"
                 anchors.right: dummyRectCenter.left
+                anchors.verticalCenter: parent.verticalCenter
                 onClicked:
                 {
                     printImage()
+                }
+            }
+
+            // Run the offline Coach Report on the just-finished match and open
+            // the report overlay. gameSubMode/coachReportVisible resolve via the
+            // main.qml context (same pattern as gameRange/theme).
+            Button {
+                text: "Coach Report"
+                anchors.left: parent.left
+                anchors.leftMargin: 10
+                anchors.verticalCenter: parent.verticalCenter
+                onClicked:
+                {
+                    COACHFEED.analyzeCurrentMatch(loginPage.gameSubMode)
+                    coachReportVisible = true
+                    close()
                 }
             }
         }
@@ -350,7 +297,7 @@ Dialog {
     function updateModel()
     {
         numberRepeater.model = null
-        numberRepeater.model =globalModelOfData
+        numberRepeater.model =globalMatchModel
     }
 
 //    function printImage()
@@ -363,12 +310,12 @@ Dialog {
     function getSeriesTotalText()
     {
         var formatText = ""
-        if(globalModelOfData.count === 0)
+        if(globalMatchModel.count === 0)
             return formatText
         var seriesScore = 0;
-        for(var i=0; i<globalModelOfData.count; i++)
+        for(var i=0; i<globalMatchModel.count; i++)
         {
-            var scoreatIndex =globalModelOfData.get(i).calculatedscore*1
+            var scoreatIndex =globalMatchModel.get(i).calculatedscore*1
             seriesScore = seriesScore*1  +  (scoreatIndex.toFixed(1))*1
             if( ( (i+1) % 10 == 0) && (i>0) )
             {
@@ -378,7 +325,7 @@ Dialog {
                 formatText = formatText + seriesText
                 seriesScore = 0
             }
-            if( (i === (globalModelOfData.count-1)) && ( (i+1)%10 != 0) )
+            if( (i === (globalMatchModel.count-1)) && ( (i+1)%10 != 0) )
             {
                 var seriesIdNum = Math.floor((i+1)/10)
                 var seriesScoreText = "Series " + seriesIdNum*1
@@ -416,13 +363,36 @@ Dialog {
         return (seconds/60).toFixed(2)
     }
 
+    // Per-series (10-shot) score across the full match record.
+    function getSeriesScoreVal(s)
+    {
+        if (globalMatchModel.count === 0) return "0.0"
+        var sum = 0
+        for (var i = (s-1)*10; i < globalMatchModel.count && i < s*10; ++i)
+            sum += globalMatchModel.get(i).calculatedscore * 1
+        return sum.toFixed(1)
+    }
+
+    // Per-series inner-10 count, same rule the app uses for totalStars
+    // (pistol >= 10.4, rifle >= 10.2).
+    function getSeriesInnerVal(s)
+    {
+        if (globalMatchModel.count === 0) return 0
+        var cnt = 0
+        for (var i = (s-1)*10; i < globalMatchModel.count && i < s*10; ++i) {
+            var v = globalMatchModel.get(i).calculatedscore * 1
+            if ((gameMode === 0 && v >= rightPanel.star_limit_value_pistol)
+                    || (gameMode === 1 && v >= rightPanel.star_limit_value_rifle))
+                ++cnt
+        }
+        return cnt
+    }
+
     function update()
     {
-        mpi.text = ": " + MODREADER.getXMPI().toFixed(1)+"; "+MODREADER.getYMPI().toFixed(1)//+" mm"
-        //teiler.text = ": "+MODREADER.getTeiler(seriesIndex).toFixed(1)//+" mm"
-        //var org_palletSize = gameRange == 10 ? 4.5 : 5.6
-        var group_distance_text = MODREADER.getGroup(-1) //+ org_palletSize
-        groupValue.text = qsTr(": ") + group_distance_text.toFixed(2) + qsTr(" mm")
+        // MPI / Group are read via functions (not notifying properties), so the
+        // metric cards can't auto-bind to them; bump tick to re-evaluate.
+        screenPresence.tick++
     }
 
     function printImage()

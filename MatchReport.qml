@@ -9,7 +9,10 @@ Dialog {
     property bool isPrintFromBackend: false
     property bool isAutoPrintOn: false
 
-    property int repeaterModelCount: globalModelOfData.count <= 10 ? 0 : (globalModelOfData.count - 10)/20 + 1
+    // Series pages now carry every series (series 1 moved off the cover page),
+    // two series per A4 page. Page count = ceil(numSeries / 2).
+    property int repeaterModelCount: globalModelOfData.count === 0 ? 0
+                                     : Math.ceil(Math.ceil(globalModelOfData.count / 10) / 2)
 
     Connections{
         target: CUSTOMPRINT
@@ -146,46 +149,81 @@ Dialog {
         }
     }
 
+    // Cover page (A4): Report Header → Executive Summary → Overall Target → Footer.
+    // Series-wise detail lives on the following pages (see reportRepeater).
     Component {
         id: tempComp
         Rectangle {
-            color: "transparent"
+            color: "white"
 
-            Column{
-                anchors.fill: parent
-                anchors.topMargin: 20
-                anchors.leftMargin: 20
+            Column {
+                id: coverCol
+                anchors.top: parent.top
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.margins: 28
+                spacing: 14
 
-                Rectangle {
-                    id: matchSummartTextRect
+                ReportHeader {
                     width: parent.width
-                    height: 40
-                    color: "transparent"
-
-                    Text {
-                        anchors.top: parent.top
-                        anchors.left: parent.left
-                        anchors.leftMargin: 75
-                        text: qsTr("Match Summary")
-                        font.pixelSize: 20
-                    }
+                    reportTitle: qsTr("Match Report")
+                    athlete: userName
+                    discipline: eventName
+                    dateText: new Date().toLocaleString(Qt.locale(""), "ddd yyyy-MM-dd")
+                    timeText: new Date().toLocaleString(Qt.locale(""), "hh:mm:ss")
+                    extraPairs: [
+                        { l: "Shots", v: "" + globalModelOfData.count },
+                        { l: "Score", v: totalScore + " (" + totalScoreWithoutDecimal + ")" },
+                        { l: "Total time", v: screenPresence.converSecondToMins(totalTime) + " min" }
+                    ]
                 }
 
-                Row {
-                    width: parent.width > 300 ? parent.width : 500
+                SectionTitle { width: parent.width; title: qsTr("Executive Summary") }
+
+                Grid {
+                    id: execGrid
+                    width: parent.width
+                    columns: 3
+                    columnSpacing: 12
+                    rowSpacing: 12
+                    property real cw: (width - 2 * columnSpacing) / 3
+
+                    MetricCard { width: execGrid.cw; label: qsTr("Score");         value: "" + totalScore }
+                    MetricCard { width: execGrid.cw; label: qsTr("Integer Score"); value: "" + totalScoreWithoutDecimal }
+                    MetricCard { width: execGrid.cw; label: qsTr("Total Shots");   value: "" + globalModelOfData.count }
+                    MetricCard { width: execGrid.cw; label: qsTr("Inner 10");      value: "" + rightPanel.totalStars }
+                    MetricCard { width: execGrid.cw; label: qsTr("MPI"); unit: "mm"; valueSize: 18
+                        value: MODREADER.getXMPI(-1).toFixed(1) + " / " + MODREADER.getYMPI(-1).toFixed(1) }
+                    MetricCard { width: execGrid.cw; label: qsTr("Group"); unit: "mm"; valueSize: 20
+                        value: MODREADER.getGroup(-1).toFixed(1) }
+                    MetricCard { width: execGrid.cw; label: qsTr("Total Time"); unit: "min"; valueSize: 20
+                        value: screenPresence.converSecondToMins(totalTime) }
+                    MetricCard { width: execGrid.cw; label: qsTr("Teiler"); valueSize: 20
+                        value: MODREADER.getTeiler(-1).toFixed(1) }
+                }
+
+                SectionTitle { width: parent.width; title: qsTr("Overall Target") }
+
+                // Overall target — existing visualisation and coordinate math kept
+                // verbatim, reframed in a clean white card.
+                Rectangle {
+                    width: parent.width
                     height: 300
-                    spacing: 30
+                    radius: 12
+                    color: "white"
+                    border.color: "#e6e8ec"
+                    border.width: 1
+
                     Image {
                         id: shootingcanvas
-//                        source: centerPanel.gameMode ? (shootingPage.isBackgroudBlack ? "qrc:/images/centerPanel/pistol.png" : "qrc:/images/centerPanel/pistol_blue.png")
-//                                                     : (shootingPage.isBackgroudBlack ? "qrc:/images/centerPanel/rifle.png" : "qrc:/images/centerPanel/rifle_blue.png")
                         source: gameRange == 10 ? (centerPanel.gameMode ? (shootingPage.isBackgroudBlack ? "qrc:/images/centerPanel/pistol.png" : "qrc:/images/centerPanel/pistol_blue.png")
                                          : (shootingPage.isBackgroudBlack ? "qrc:/images/centerPanel/rifle.png" : "qrc:/images/centerPanel/rifle_blue.png"))
                                                 : (centerPanel.gameMode ? (shootingPage.isBackgroudBlack ? "qrc:/images/centerPanel/50_meter.png" : "qrc:/images/centerPanel/50_meter_blue.png")
                                                             : (shootingPage.isBackgroudBlack ? "qrc:/images/centerPanel/black_50_Rifle.png" : "qrc:/images/centerPanel/blue_50_Rifle.png"))
-                        width: 300 //parent.width < parent.height ? parent.width*0.45 : parent.height*0.45
+                        width: 260
                         height: width
                         opacity: 1
+                        anchors.centerIn: parent
 
                         Rectangle {
                             id: shootingMianRect
@@ -252,42 +290,20 @@ Dialog {
                                 }
                             }
                         }
-
-                    }
-
-                    MatchReportInfo {
-                        id: matchReportInfo
-                        width: parent.width - shootingcanvas.width
-                        height: parent.height
                     }
                 }
+            }
 
-                Rectangle {
-                    id: matchReportTextRect
-                    width: parent.width
-                    height: 40
-                    color: "transparent"
-
-                    Text {
-                        anchors.bottom: parent.bottom
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        text: qsTr("SERIES WISE RESULTS")
-                        font.pixelSize: 20
-                    }
-                }
-
-//                Rectangle {
-//                    id: emptySpaceRect
-//                    width: 20
-//                    height: 40
-//                    color: "transparent"
-//                }
-
-                SeriesComponent {
-                    seriesIndex: 1
-                    width: parent.width - 50
-                    height: 500
-                }
+            ReportFooter {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                anchors.leftMargin: 28
+                anchors.rightMargin: 28
+                anchors.bottomMargin: 20
+                softwareVersion: "Seta 4.0"
+                generatedText: qsTr("Generated ") + new Date().toLocaleString(Qt.locale(""), "ddd yyyy-MM-dd hh:mm")
+                pageText: qsTr("Page 1")
             }
         }
     }
@@ -316,6 +332,17 @@ Dialog {
     {
         numberRepeater.model = null
         numberRepeater.model =globalModelOfData
+    }
+
+    // Same m:ss formatting the legacy Match Report used (via MatchReportInfo),
+    // so the Total Time value is presented identically.
+    function converSecondToMins(seconds)
+    {
+        var minutes = Math.floor(seconds / 60);
+        var secd = seconds % 60;
+        if(secd < 10)
+            return minutes+":0"+secd
+        return minutes+":"+secd
     }
 
     function printImage()

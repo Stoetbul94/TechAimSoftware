@@ -867,7 +867,11 @@ Item {
                             APPSETTINGS.saveMatch(true)
                             APPSETTINGS.updateUserHistoryData(name_text_field.text)
                             MODREADER.saveNameAndPort(name_text_field.text, port_name_text_field.text, netowrk_path_text.text)
-                            if (mod_connected) { MODREADER.on_pushButton_clicked(); MODREADER.on_pushButton_2_clicked() }
+                            // Only start hardware polling in LIVE mode. In demo a
+                            // COM port may be open with no target answering, and
+                            // on_pushButton_clicked's blocking reads would freeze
+                            // the transition to the shooting page.
+                            if (appMode && mod_connected) { MODREADER.on_pushButton_clicked(); MODREADER.on_pushButton_2_clicked() }
                             MODREADER.resetShootinCount()
                         }
                     }

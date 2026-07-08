@@ -8,6 +8,18 @@
         <file>RightPanel.qml</file>
         <file>CenterPane.qml</file>
         <file>SummaryPage.qml</file>
+        <file>MetricCard.qml</file>
+        <file>ReportHeader.qml</file>
+        <file>SectionTitle.qml</file>
+        <file>ReportFooter.qml</file>
+        <file>SeriesCard.qml</file>
+        <file>CoachReportPage.qml</file>
+        <file>CoachDashboardPage.qml</file>
+        <file>CoachPrintPage.qml</file>
+        <file>IssfTargetCanvas.qml</file>
+        <file>CoachReportCard.qml</file>
+        <file>ShotTargetCanvas.qml</file>
+        <file>HeatMapCanvas.qml</file>
         <file>LoginPage.qml</file>
         <file>ShootingPage.qml</file>
         <file>MatchReport.qml</file>
