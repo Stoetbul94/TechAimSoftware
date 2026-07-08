@@ -95,6 +95,10 @@ Dialog {
                                 value: (screenPresence.tick, MODREADER.getXMPI().toFixed(1) + " / " + MODREADER.getYMPI().toFixed(1)) }
                             MetricCard { width: metricGrid.cw; label: "Group"; unit: "mm²"; valueSize: 20
                                 value: (screenPresence.tick, "" + MODREADER.getGroup(-1).toFixed(1)) }
+                            MetricCard { width: metricGrid.cw; label: "Teiler"; valueSize: 20
+                                value: (screenPresence.tick, MODREADER.getTeiler(-1).toFixed(1)) }
+                            MetricCard { width: metricGrid.cw; label: "Total Time"; unit: "min"; valueSize: 20
+                                value: converSecondToMins(totalTime) }
                             MetricCard { width: metricGrid.cw; label: "Avg Time / Shot"; unit: "min"; valueSize: 20
                                 value: globalMatchModel.count > 0 ? converSecondToMins(totalTime / globalMatchModel.count) : "—" }
                         }
@@ -105,7 +109,7 @@ Dialog {
                         // verbatim, reframed in a clean white card.
                         Rectangle {
                             width: parent.width
-                            height: 300
+                            height: shootingPage.is3PMatch ? 200 : 300   // shorter for 3P to fit the position breakdown
                             radius: 12
                             color: "white"
                             border.color: "#e6e8ec"
@@ -186,6 +190,40 @@ Dialog {
                                                 text: index+1
                                                 visible: false
                                             }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // ── Position breakdown (3P only; auto-hidden otherwise) ──
+                        SectionTitle {
+                            width: parent.width; title: "Position Breakdown"
+                            visible: shootingPage.is3PMatch
+                        }
+                        Row {
+                            width: parent.width; spacing: 12
+                            visible: shootingPage.is3PMatch
+                            Repeater {
+                                model: shootingPage.is3PMatch
+                                       ? [{ n: "Kneeling", p: 0 }, { n: "Prone", p: 1 }, { n: "Standing", p: 2 }]
+                                       : []
+                                delegate: Rectangle {
+                                    width: (parent.width - 24) / 3
+                                    height: 72
+                                    radius: 12
+                                    color: "white"; border.color: "#e6e8ec"; border.width: 1
+                                    Rectangle { width: 4; radius: 2; height: parent.height * 0.5; color: "#a80038"
+                                        anchors.left: parent.left; anchors.leftMargin: 12; anchors.verticalCenter: parent.verticalCenter }
+                                    Column {
+                                        anchors.left: parent.left; anchors.leftMargin: 26
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        spacing: 3
+                                        Text { text: modelData.n; color: "#6b7280"; font.family: "Segoe UI"; font.pixelSize: 12; font.letterSpacing: 0.4 }
+                                        Text { text: (screenPresence.tick, getPositionTotal(modelData.p)); color: "#191b1f"; font.family: "Segoe UI"; font.pixelSize: 24; font.bold: true }
+                                        Text {
+                                            text: getPositionCount(modelData.p) + " shots · ★ " + getPositionInner(modelData.p)
+                                            color: "#8a8f98"; font.family: "Segoe UI"; font.pixelSize: 11
                                         }
                                     }
                                 }
@@ -386,6 +424,36 @@ Dialog {
                 ++cnt
         }
         return cnt
+    }
+
+    // 3P position subtotals from the full match record (position role:
+    // 0 = kneeling, 1 = prone, 2 = standing).
+    function getPositionTotal(p)
+    {
+        var s = 0
+        for (var i = 0; i < globalMatchModel.count; ++i)
+            if (globalMatchModel.get(i).position === p)
+                s = s * 1 + (globalMatchModel.get(i).calculatedscore * 1).toFixed(1) * 1
+        return s.toFixed(1)
+    }
+    function getPositionCount(p)
+    {
+        var c = 0
+        for (var i = 0; i < globalMatchModel.count; ++i)
+            if (globalMatchModel.get(i).position === p) ++c
+        return c
+    }
+    function getPositionInner(p)
+    {
+        var c = 0
+        for (var i = 0; i < globalMatchModel.count; ++i) {
+            if (globalMatchModel.get(i).position !== p) continue
+            var v = globalMatchModel.get(i).calculatedscore * 1
+            if ((gameMode === 0 && v >= rightPanel.star_limit_value_pistol)
+                    || (gameMode === 1 && v >= rightPanel.star_limit_value_rifle))
+                ++c
+        }
+        return c
     }
 
     function update()
