@@ -492,7 +492,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     text: lastShotCard.hasShot ? scoreCutoffTofirstDecimal(lastShotCard.lastScore)*1 : "—"
                     color: "white"; font.family: theme.fontFamily
-                    font.pixelSize: 28; font.bold: true
+                    font.pixelSize: 34; font.bold: true
                 }
                 Image {
                     visible: lastShotCard.hasShot
@@ -503,20 +503,18 @@ Item {
                 }
             }
         }
-        // Right group: X/Y in mm, right-aligned, vertically centered.
-        Column {
-            anchors.right: parent.right; anchors.rightMargin: 16
+        // Right group: X/Y as stat chips, vertically centered.
+        Row {
+            anchors.right: parent.right; anchors.rightMargin: 14
             anchors.verticalCenter: parent.verticalCenter
-            spacing: 5
-            Text {
-                anchors.right: parent.right
-                text: lastShotCard.hasShot ? ("X   " + lastShotCard.lastXmm.toFixed(1) + " mm") : ""
-                color: "#c8c9cf"; font.family: theme.fontFamily; font.pixelSize: 13
+            spacing: 6
+            StatChip {
+                anchors.verticalCenter: parent.verticalCenter
+                label: "X"; value: lastShotCard.hasShot ? lastShotCard.lastXmm.toFixed(1) + " mm" : "—"
             }
-            Text {
-                anchors.right: parent.right
-                text: lastShotCard.hasShot ? ("Y   " + lastShotCard.lastYmm.toFixed(1) + " mm") : ""
-                color: "#c8c9cf"; font.family: theme.fontFamily; font.pixelSize: 13
+            StatChip {
+                anchors.verticalCenter: parent.verticalCenter
+                label: "Y"; value: lastShotCard.hasShot ? lastShotCard.lastYmm.toFixed(1) + " mm" : "—"
             }
         }
     }
