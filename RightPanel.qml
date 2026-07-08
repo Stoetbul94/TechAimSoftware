@@ -800,11 +800,28 @@ Item {
             width:matchScore.width
             height: matchScore.height/10
 
+            // Alternating row background (redesign).
+            Rectangle {
+                anchors.fill: parent
+                color: index % 2 ? "#17181c" : "#1c1d22"
+            }
+
             Rectangle {
                 id: currentItem
                 anchors.fill: parent
                 color: "#3a0d16"   // redesign: themed selection highlight
                 visible: matchScore.currentIndex == index //(right_end.visible) && (index === (globalModelOfData.count-1)%10)
+            }
+
+            // Thin quality indicator on the left edge (green inner-10 / amber /
+            // red low) - drawn on top of the selection so it stays visible.
+            Rectangle {
+                width: 4; radius: 2
+                height: parent.height * 0.58
+                anchors.left: parent.left
+                anchors.verticalCenter: parent.verticalCenter
+                property real sc: calculatedscore * 1
+                color: sc >= 10.0 ? "#4caf50" : (sc >= 9.5 ? "#f9a825" : "#d32f2f")
             }
 
             Rectangle {
