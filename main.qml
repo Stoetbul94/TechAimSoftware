@@ -520,47 +520,29 @@ ApplicationWindow {
         }
     }
 
-    // Coach Report overlay. Three views over the same COACHREPORT data, toggled
-    // by coachViewMode: the light dashboard (0), the detailed dark report (1),
-    // and the printable A4 view (2). Opened from the Match Summary.
-    CoachDashboardPage {
-        id: coachDashboard
-        z: 8
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: header.bottom
-        anchors.bottom: parent.bottom
-        visible: coachReportVisible && coachViewMode === 0
-        gameSubMode: loginPage.gameSubMode
-        onClosed: coachReportVisible = false
-        onDetailsRequested: coachViewMode = 1
-        onPrintRequested: coachViewMode = 2
+    // Floating-windows overlay (phase 2). The Coach Report is now hosted in a
+    // movable, resizable, non-blocking FloatingWindow instead of a full-screen
+    // overlay — it no longer covers the live target. The window sits above the
+    // main content; empty areas around it stay click-through.
+    WindowManager {
+        id: windowManager
+        z: 50
+        ReportWindow {
+            id: coachReportWindow
+            manager: windowManager
+            gameSubMode: loginPage.gameSubMode
+            onClosed: coachReportVisible = false
+        }
     }
-    CoachReportPage {
-        id: coachReportPage
-        z: 8
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: header.bottom
-        anchors.bottom: parent.bottom
-        visible: coachReportVisible && coachViewMode === 1
-        gameSubMode: loginPage.gameSubMode
-        onClosed: coachReportVisible = false
-        onDashboardRequested: coachViewMode = 0
-        onPrintRequested: coachViewMode = 2
-    }
-    CoachPrintPage {
-        id: coachPrintPage
-        z: 8
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: header.bottom
-        anchors.bottom: parent.bottom
-        visible: coachReportVisible && coachViewMode === 2
-        gameSubMode: loginPage.gameSubMode
-        onClosed: coachReportVisible = false
-        onDashboardRequested: coachViewMode = 0
-        onDetailsRequested: coachViewMode = 1
+    // Opening is still driven by coachReportVisible (set from the Match Summary
+    // Coach Report button). present() opens-or-focuses, so it never duplicates.
+    onCoachReportVisibleChanged: {
+        if (coachReportVisible) {
+            coachReportWindow.viewMode = coachViewMode
+            windowManager.present(coachReportWindow)
+        } else {
+            windowManager.dismiss(coachReportWindow)
+        }
     }
 
     LoginPage {
