@@ -47,15 +47,19 @@ Item {
     }
 
     // ── App-facing facade (pages call these, not window instances) ──────
-    function open(key) {
+    // Optional `arg` is handed to the window's prepare() (if it defines one)
+    // before it is presented — e.g. the Report window uses it to pick a tab.
+    function open(key, arg) {
         var w = manager.registry[key]
-        if (w) manager.present(w)
-        else console.log("WindowManager: no window registered for key '" + key + "'")
+        if (!w) { console.log("WindowManager: no window registered for key '" + key + "'"); return }
+        if (arg !== undefined && typeof w.prepare === "function") w.prepare(arg)
+        manager.present(w)
     }
     function close(key) { manager.dismiss(manager.registry[key]) }
 
-    function openReport()     { manager.open("report") }
-    function openCoach()      { manager.open("coach") }
+    function openReport()      { manager.open("report", 0) }   // Summary tab
+    function openMatchReport() { manager.open("report", 1) }   // Match tab
+    function openCoach()       { manager.open("coach") }
     // Reserved for upcoming tools — register the window, then these just work:
     function openStatistics() { manager.open("statistics") }
     function openSettings()   { manager.open("settings") }

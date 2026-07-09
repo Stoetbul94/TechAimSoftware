@@ -443,7 +443,8 @@ Item {
 
     function showMatchReport()
     {
-        matchReportPage.visible = true
+        // Open the Match report in the floating Report window (Match tab).
+        windowManager.openMatchReport()
     }
 
 

@@ -399,7 +399,7 @@ Item {
                 hoverEnabled: true
                 onClicked: {
                     if (actionBar.barMode === 2)
-                        matchReportPage.visible = true
+                        windowManager.openMatchReport()
                     else if (actionBar.barMode === 1)
                         matchFinishConfirmation.visible = true
                     else
@@ -536,20 +536,8 @@ Item {
         }
     }
 
-    MatchReport
-    {
-        id:matchReportPage
-        visible: false
-        width:parent.width*3/4
-        height:parent.height*3/4
-
-        onVisibleChanged: {
-            if (visible)
-                centerPanel.pauseGameTimer()
-            else
-                centerPanel.unPauseGameTimer()
-        }
-    }
+    // Match report now lives in the floating Report window (Match tab); see the
+    // ReportWindow instance below. The old standalone MatchReport dialog is gone.
 
     Connections {
         target: APPSETTINGS
@@ -557,10 +545,11 @@ Item {
             if (leftPanel.playVisible)
                 return;
 
-            matchReportPage.isAutoPrintOn = true
-            matchReportPage.visible = true
+            // Kiosk auto-export: open the Report window on the Match tab and let it
+            // write the PDF to the configured network path, then close on save.
+            windowManager.openMatchReport()
+            reportWindow.startMatchAutoExport()
             console.log("-APPSETTINGS-----------------------------onPrintPDF--------------------------")
-//            matchReportPage.printImageInNetworkPath()
         }
     }
     ConnectionError {
