@@ -1582,6 +1582,12 @@ Item {
     }
 
     function isValidSeries(index) {
+        // 3P: the six series map to the whole match (K=S1,2 · P=S3,4 · S=S5,6),
+        // so validity follows the continuous match record — not the per-position
+        // display buffer, which resets to 20 shots on each position change and
+        // made S1,S2 re-appear for prone/standing. Non-3P behaviour is unchanged.
+        if (is3PMatch)
+            return globalMatchModel.count > index*10
         if (currentShootIndex >= index*10)
             return true
         else
@@ -1590,15 +1596,19 @@ Item {
 
     function getSeriesTotal(seriesIndex)
     {
-        if(globalModelOfData.count === 0)
+        // 3P sums the continuous match record so S3-S6 carry prone/standing;
+        // other disciplines keep the per-position display buffer. Per-shot
+        // calculatedscore values are untouched — only which shots are summed.
+        var seriesData = is3PMatch ? globalMatchModel : globalModelOfData
+        if(seriesData.count === 0)
             return 0
         var seriesScore = 0
-        for(var i=(seriesIndex-1)*10; i<globalModelOfData.count; i++)
+        for(var i=(seriesIndex-1)*10; i<seriesData.count; i++)
         {
             if (i >=seriesIndex*10)
                 break;
 
-            var scoreatIndex = globalModelOfData.get(i).calculatedscore*1
+            var scoreatIndex = seriesData.get(i).calculatedscore*1
             seriesScore = seriesScore*1  +  (scoreatIndex.toFixed(1))*1
             //            console.log("Total score and score at current Index is",seriesScore,scoreatIndex)
 
@@ -1631,15 +1641,18 @@ Item {
 
     function getSeriesTotalNonDecimal(seriesIndex)
     {
-        if(globalModelOfData.count === 0)
+        // Integer series total. 3P reads the continuous match record (so the
+        // bracketed integer series match K/P/S), non-3P the per-position buffer.
+        var seriesData = is3PMatch ? globalMatchModel : globalModelOfData
+        if(seriesData.count === 0)
             return 0
         var seriesScore = 0
-        for(var i=(seriesIndex-1)*10; i<globalModelOfData.count; i++)
+        for(var i=(seriesIndex-1)*10; i<seriesData.count; i++)
         {
             if (i >=seriesIndex*10)
                 break;
 
-            var scoreatIndex = Math.floor(globalModelOfData.get(i).calculatedscore*1)
+            var scoreatIndex = Math.floor(seriesData.get(i).calculatedscore*1)
             seriesScore = seriesScore*1  +  (scoreatIndex)*1
         }
         return seriesScore
