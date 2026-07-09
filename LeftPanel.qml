@@ -290,11 +290,9 @@ Item {
                     cannotGenerate.text = sighterMatchText
                     cannotGenerate.visible = true
                 } else {
-                    // Open the existing Coach Report floating window. Qualified via
-                    // the root id (window) so the write is reliable from this click
-                    // handler; main.qml's coachReportVisible handler then re-analyses
-                    // the current match and presents the window on the Dashboard tab.
-                    window.coachReportVisible = true
+                    // Open the Coach floating window via the manager (it re-analyses
+                    // the current match on open and defaults to the Dashboard tab).
+                    windowManager.openCoach()
                 }
             } else if (key === "mpi") {
                 isShowMPI = !isShowMPI
@@ -439,9 +437,8 @@ Item {
 
     function showSummary()
     {
-        // Open the Summary in the floating Report window (replaces the old dialog).
-        reportWindow.tab = 0
-        reportWinMgr.present(reportWindow)
+        // Open the Summary in the floating Report window via the manager.
+        windowManager.openReport()
     }
 
     function showMatchReport()

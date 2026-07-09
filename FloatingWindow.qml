@@ -39,12 +39,14 @@ Item {
 
     property bool opened: false
     property var  manager: null           // set by WindowManager; used for raise/focus
+    property var  _geo: null              // saved geometry {x,y,w,h,max}; null = never saved
 
     default property alias content: contentHolder.data
     property alias toolbarItem: toolbarSlot.data
     property alias footerItem: footerSlot.data
 
     signal closed()
+    signal aboutToOpen()     // emitted just before the window becomes visible
 
     anchors.fill: parent
     visible: opened
@@ -54,7 +56,8 @@ Item {
     // ── Methods ─────────────────────────────────────────────────────────
     function open() {
         if (!opened) {
-            if (centerOnOpen && !frame.placed) center()
+            aboutToOpen()       // let the host refresh content before it shows
+            restoreGeometry()   // first open -> centre; reopen -> last geometry (clamped on-screen)
             opened = true
         }
         raise()
@@ -62,14 +65,49 @@ Item {
     }
     function close() {
         if (!opened) return
+        saveGeometry()          // remember size/position (incl. maximized) for next open
         if (frame.maximized) restore()
         opened = false
         win.closed()
     }
+    // Open-or-focus (WindowManager also dedupes).
+    function present() { open() }
+    // Bring to front + give keyboard focus without changing opened state.
+    function activate() { raise(); forceActiveFocus() }
+
     function center() {
         frame.x = Math.max(0, (width - frame.width) / 2)
         frame.y = Math.max(0, (height - frame.height) / 2)
         frame.placed = true
+    }
+
+    // ── Standard imperative setters (for windows built dynamically) ─────
+    function setTitle(t)      { win.title = t }
+    function setContent(item) { if (item) item.parent = contentHolder }
+    function setToolbar(item) { if (item) item.parent = toolbarSlot }
+    function setFooter(item)  { if (item) item.parent = footerSlot }
+
+    // ── Geometry persistence ────────────────────────────────────────────
+    // Store the *restore* geometry (not the maximized frame) plus maximized
+    // state, so a window reopens exactly where/how it was left.
+    function saveGeometry() {
+        _geo = frame.maximized
+             ? { x: frame.rx, y: frame.ry, w: frame.rw, h: frame.rh, max: true }
+             : { x: frame.x,  y: frame.y,  w: frame.width, h: frame.height, max: false }
+    }
+    // Apply saved geometry; centre on first open, or if the saved position is
+    // off the current overlay (e.g. a monitor was removed).
+    function restoreGeometry() {
+        frame.maximized = false
+        if (!_geo) { center(); return }
+        var gw = Math.max(minW, Math.min(_geo.w, win.width))
+        var gh = Math.max(minH, Math.min(_geo.h, win.height))
+        frame.width = gw; frame.height = gh
+        var onScreen = (_geo.x + gw > 60) && (_geo.x < win.width - 60)
+                    && (_geo.y >= 0) && (_geo.y < win.height - 30)
+        if (onScreen) { frame.x = _geo.x; frame.y = _geo.y; frame.placed = true }
+        else center()
+        if (_geo.max) maximize()
     }
     function raise() {
         if (manager) { manager.raise(win); return }

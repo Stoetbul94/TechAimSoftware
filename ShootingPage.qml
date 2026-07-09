@@ -523,19 +523,16 @@ Item {
     }
 
 
-    // Floating Report window (Summary now, Match next). Lives inside ShootingPage
-    // so the embedded SummaryPage can resolve rightPanel/centerPanel/shootingPage.
-    // Non-blocking: it floats over the shooting screen without pausing the match.
-    WindowManager {
-        id: reportWinMgr
-        z: 40
-        ReportWindow {
-            id: reportWindow
-            manager: reportWinMgr
-            onCoachRequestedFromReport: {
-                reportWinMgr.dismiss(reportWindow)
-                window.coachReportVisible = true
-            }
+    // Floating Report window (Summary now, Match next). Declared here so the
+    // embedded SummaryReportView can resolve rightPanel/centerPanel/shootingPage,
+    // but registered with the single app WindowManager. Non-blocking.
+    ReportWindow {
+        id: reportWindow
+        Component.onCompleted: windowManager.register("report", reportWindow)
+        onAboutToOpen: tab = 0
+        onCoachRequestedFromReport: {
+            windowManager.dismiss(reportWindow)
+            windowManager.openCoach()
         }
     }
 

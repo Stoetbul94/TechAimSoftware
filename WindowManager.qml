@@ -1,28 +1,34 @@
 import QtQuick 2.15
 
-// Tech Aim floating-window overlay. Place once over the main content (give it a
-// high z so windows float above the shooting screen). It has no MouseArea of
-// its own, so empty areas stay click-through to the live target — only opened
-// windows are interactive.
+// Tech Aim floating-window overlay + registry.
 //
-// Windows are declared as children of this manager (one instance per window
-// type). Use present(win) to open-or-focus a window: if it is already open it
-// is simply raised/focused, so the same action never spawns a duplicate.
+// Single owner of the app's floating windows. Windows register themselves by
+// key (register("report", win)); pages then request them by intent
+// (openReport(), openCoach(), …) rather than touching window instances. It has
+// no MouseArea of its own, so empty areas stay click-through to whatever is
+// underneath — only opened windows are interactive.
 Item {
     id: manager
     anchors.fill: parent
 
     // Highest z handed out so far; each raise() bumps the target above the rest.
     property int topZ: 1000
+    // key -> FloatingWindow instance. Mutated in place (no bindings depend on it).
+    property var registry: ({})
 
-    // Bring a window to the front.
+    // ── Registration ────────────────────────────────────────────────────
+    function register(key, w) {
+        if (key && w) { manager.registry[key] = w; w.manager = manager }
+    }
+    function windowFor(key) { return manager.registry[key] }
+
+    // ── Generic lifetime ────────────────────────────────────────────────
     function raise(w) {
         if (!w) return
         manager.topZ += 1
         w.z = manager.topZ
     }
-
-    // Open the window if closed; otherwise focus/raise it (no duplicates).
+    // Open-or-focus a window instance (no duplicates: an open window is raised).
     function present(w) {
         if (!w) return
         w.manager = manager
@@ -30,18 +36,28 @@ Item {
         manager.raise(w)
         w.forceActiveFocus()
     }
+    function dismiss(w) { if (w && w.opened) w.close() }
 
-    // Close a window if it is open.
-    function dismiss(w) {
-        if (w && w.opened) w.close()
-    }
-
-    // True if any hosted window is currently open (e.g. to dim the main screen).
     function anyOpen() {
-        for (var i = 0; i < manager.children.length; ++i) {
-            var c = manager.children[i]
-            if (c && c.opened === true) return true
+        for (var k in manager.registry) {
+            var w = manager.registry[k]
+            if (w && w.opened === true) return true
         }
         return false
     }
+
+    // ── App-facing facade (pages call these, not window instances) ──────
+    function open(key) {
+        var w = manager.registry[key]
+        if (w) manager.present(w)
+        else console.log("WindowManager: no window registered for key '" + key + "'")
+    }
+    function close(key) { manager.dismiss(manager.registry[key]) }
+
+    function openReport()     { manager.open("report") }
+    function openCoach()      { manager.open("coach") }
+    // Reserved for upcoming tools — register the window, then these just work:
+    function openStatistics() { manager.open("statistics") }
+    function openSettings()   { manager.open("settings") }
+    function openGroup()      { manager.open("group") }
 }

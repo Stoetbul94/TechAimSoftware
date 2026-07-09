@@ -30,8 +30,6 @@ ApplicationWindow {
     property string greenColor: "#00ff00" //"lightgreen"
     property string mpiColor: /*"transparent"//*/"blue"
     property bool isSingleDecimal: APPSETTINGS.getIsSingleDecimal()
-    property bool coachReportVisible: false   // Coach Report overlay toggle
-    property int  coachViewMode: 0            // 0 = dashboard, 1 = detailed, 2 = print
 
     //property string valueString: ""
 
@@ -520,31 +518,23 @@ ApplicationWindow {
         }
     }
 
-    // Floating-windows overlay (phase 2). The Coach Report is now hosted in a
-    // movable, resizable, non-blocking FloatingWindow instead of a full-screen
-    // overlay — it no longer covers the live target. The window sits above the
-    // main content; empty areas around it stay click-through.
+    // Single floating-window overlay + registry for the whole app. Windows
+    // register by key; pages open them via windowManager.openReport()/openCoach()
+    // etc. (they never touch instances). Click-through except the window frames,
+    // so the live target is never blocked.
     WindowManager {
         id: windowManager
         z: 50
+        // Coach report window (Dashboard/Detailed/Print). Re-analyses the current
+        // match on every open (aboutToOpen) so it never shows stale/demo data.
         CoachReportWindow {
             id: coachReportWindow
-            manager: windowManager
             gameSubMode: loginPage.gameSubMode
-            onClosed: coachReportVisible = false
-        }
-    }
-    // Opening is driven by coachReportVisible (set from the Match Summary Coach
-    // button and the left-side Coach report button). Always re-analyse the
-    // CURRENT match first so the report never shows stale/demo data, default to
-    // the Dashboard tab, then present (opens-or-focuses, never duplicates).
-    onCoachReportVisibleChanged: {
-        if (coachReportVisible) {
-            COACHFEED.analyzeCurrentMatch(loginPage.gameSubMode)
-            coachReportWindow.viewMode = 0
-            windowManager.present(coachReportWindow)
-        } else {
-            windowManager.dismiss(coachReportWindow)
+            Component.onCompleted: windowManager.register("coach", coachReportWindow)
+            onAboutToOpen: {
+                COACHFEED.analyzeCurrentMatch(loginPage.gameSubMode)
+                viewMode = 0
+            }
         }
     }
 
