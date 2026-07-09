@@ -12,3 +12,6 @@ qrc_*.cpp
 *.o
 *.obj
 Seta_resource.rc
+
+.qtcreator/
+.qtc_clangd/
