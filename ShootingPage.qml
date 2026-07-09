@@ -523,6 +523,67 @@ Item {
     }
 
 
+    // Map a globalMatchModel position role (0=K 1=P 2=S for 3P, -1 otherwise) to
+    // the coach engine's position token. Non-3P disciplines carry a single body
+    // position derived from the discipline, matching the old feeder's mapping.
+    function coachPositionName(pos) {
+        if (is3PMatch) {
+            if (pos === 0) return "Kneeling"
+            if (pos === 1) return "Prone"
+            if (pos === 2) return "Standing"
+            return "Unknown"
+        }
+        if (gameRange === 10) return gameMode ? "AirPistol" : "AirRifle"
+        if (gameRange === 50 && gameMode === 0) return "Prone"   // 50m rifle prone
+        return "Unknown"                                         // 50m pistol etc.
+    }
+
+    // Feed the Coach analytics from the authoritative match record. globalMatchModel
+    // holds, per MATCH shot in order, the correct display coordinate (xmm/ymm), the
+    // decimal score and the REAL per-shot position — the same data the Match report
+    // plots. This replaces COACHFEED.analyzeCurrentMatch, whose C++ path read a
+    // coordinate list polluted by each position's sighter shots (so getXCord and the
+    // match-only getScore drifted out of alignment after position 1) and guessed the
+    // 3P positions by an equal-thirds split. No scores/coords are recomputed here —
+    // the model values are passed straight through to the (unchanged) analytics engine.
+    function feedCoachReport() {
+        var n = globalMatchModel.count
+        var shotsPerSeries = 10   // ISSF series size, as used throughout the app
+
+        // Cumulative per-shot timestamps, all-or-nothing like the old feeder: any
+        // missing/invalid interval disables timing rather than fabricating it.
+        var ts = []
+        var timingOk = n >= 1
+        var t = 0
+        for (var k = 0; k < n; ++k) {
+            if (k > 0) {
+                var iv = globalMatchModel.get(k).timeComsumed * 1
+                if (iv > 0) t += iv
+                else timingOk = false
+            }
+            ts.push(t)
+        }
+
+        var list = []
+        for (var i = 0; i < n; ++i) {
+            var e = globalMatchModel.get(i)
+            list.push({
+                "shotNumber": i + 1,
+                "seriesNumber": Math.floor(i / shotsPerSeries) + 1,
+                "decimalScore": e.calculatedscore * 1,
+                "x": e.xmm * 1,
+                "y": e.ymm * 1,
+                "position": coachPositionName(e.position * 1),
+                "timestamp": ts[i],
+                "hasTimestamp": timingOk,
+                "isValid": true,
+                "isSighter": false,
+                "isCompetitionShot": true
+            })
+        }
+        COACHREPORT.analyzeShots(list)
+    }
+
     // Floating Report window (Summary now, Match next). Declared here so the
     // embedded SummaryReportView can resolve rightPanel/centerPanel/shootingPage,
     // but registered with the single app WindowManager. Non-blocking.
@@ -532,6 +593,7 @@ Item {
         onAboutToOpen: tab = 0
         onCoachRequestedFromReport: {
             windowManager.dismiss(reportWindow)
+            feedCoachReport()
             windowManager.openCoach()
         }
     }

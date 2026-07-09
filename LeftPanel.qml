@@ -290,8 +290,9 @@ Item {
                     cannotGenerate.text = sighterMatchText
                     cannotGenerate.visible = true
                 } else {
-                    // Open the Coach floating window via the manager (it re-analyses
-                    // the current match on open and defaults to the Dashboard tab).
+                    // Re-analyse the current match from the authoritative match
+                    // record (real coords + positions), then open the Coach window.
+                    shootingPage.feedCoachReport()
                     windowManager.openCoach()
                 }
             } else if (key === "mpi") {

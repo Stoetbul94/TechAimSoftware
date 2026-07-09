@@ -525,16 +525,16 @@ ApplicationWindow {
     WindowManager {
         id: windowManager
         z: 50
-        // Coach report window (Dashboard/Detailed/Print). Re-analyses the current
-        // match on every open (aboutToOpen) so it never shows stale/demo data.
+        // Coach report window (Dashboard/Detailed/Print). The match is re-analysed
+        // by the opener (ShootingPage.feedCoachReport, from the authoritative match
+        // record) right before this opens, so here we only reset to the Dashboard
+        // tab — analysing again would overwrite that correct data with the old
+        // sighter-polluted C++ feeder path.
         CoachReportWindow {
             id: coachReportWindow
             gameSubMode: loginPage.gameSubMode
             Component.onCompleted: windowManager.register("coach", coachReportWindow)
-            onAboutToOpen: {
-                COACHFEED.analyzeCurrentMatch(loginPage.gameSubMode)
-                viewMode = 0
-            }
+            onAboutToOpen: viewMode = 0
         }
     }
 
