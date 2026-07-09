@@ -18,6 +18,10 @@ Rectangle {
     signal detailsRequested()
     signal printRequested()
 
+    // Hidden internal toolbar when hosted in a FloatingWindow (window supplies
+    // title bar + tabs + actions). Content/analytics unchanged.
+    property bool embedded: false
+
     // ---- light palette ----
     readonly property color cPanel:  "#ffffff"
     readonly property color cBorder: "#e6e2d8"
@@ -195,7 +199,7 @@ Rectangle {
     Rectangle {
         id: head
         anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right
-        height: 70; color: cPanel; border.color: cBorder; border.width: 1
+        visible: !dash.embedded; height: dash.embedded ? 0 : 70; color: cPanel; border.color: cBorder; border.width: 1
         Column {
             anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left; anchors.leftMargin: 20; spacing: 3
             Text { text: "Coach Report"; color: cText; font.bold: true; font.pixelSize: 24; font.family: fam }

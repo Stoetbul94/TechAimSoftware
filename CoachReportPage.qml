@@ -21,6 +21,10 @@ Rectangle {
     signal dashboardRequested()
     signal printRequested()
 
+    // Hidden internal toolbar when hosted in a FloatingWindow (window supplies
+    // title bar + tabs + actions). Content/analytics unchanged.
+    property bool embedded: false
+
     Connections {
         target: COACHREPORT
         function onReportChanged() {
@@ -254,7 +258,8 @@ Rectangle {
     // ================= top bar =================
     Rectangle {
         id: topBar
-        width: parent.width; height: 52; color: theme.bgSurface
+        width: parent.width; color: theme.bgSurface
+        visible: !reportPage.embedded; height: reportPage.embedded ? 0 : 52
         anchors.top: parent.top
         Text {
             anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left; anchors.leftMargin: 16

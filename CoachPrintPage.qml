@@ -17,6 +17,12 @@ Rectangle {
     signal dashboardRequested()
     signal detailsRequested()
 
+    // When hosted inside a FloatingWindow, the window supplies the title bar,
+    // Dashboard/Detailed/Print tabs and Export/Close actions — so the internal
+    // toolbar is hidden to avoid duplicate chrome. Content, diary and PDF export
+    // are unchanged.
+    property bool embedded: false
+
     // ---- print palette ----
     readonly property color cPage:   "#ffffff"
     readonly property color cInk:    "#161616"
@@ -127,7 +133,8 @@ Rectangle {
 
     // ================= toolbar (screen only) =================
     Rectangle {
-        id: bar; anchors.top: parent.top; width: parent.width; height: 44; color: "#2a2a2e"
+        id: bar; anchors.top: parent.top; width: parent.width; color: "#2a2a2e"
+        visible: !pg.embedded; height: pg.embedded ? 0 : 44
         Row {
             anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left; anchors.leftMargin: 12; spacing: 10
             Text { text: "PRINT PREVIEW"; color: "#f0f0f0"; font.bold: true; font.pixelSize: 14; font.family: pg.fam; anchors.verticalCenter: parent.verticalCenter }
