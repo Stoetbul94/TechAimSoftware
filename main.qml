@@ -527,7 +527,7 @@ ApplicationWindow {
     WindowManager {
         id: windowManager
         z: 50
-        ReportWindow {
+        CoachReportWindow {
             id: coachReportWindow
             manager: windowManager
             gameSubMode: loginPage.gameSubMode

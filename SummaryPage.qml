@@ -2,14 +2,17 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtCharts 2.15
 
-Dialog {
+// Embeddable Match Summary report view (hosted inside a FloatingWindow).
+// Was a Dialog; now a plain Item so the FloatingWindow supplies the chrome
+// (title bar, footer actions). The A4 print page + print_region grab and every
+// value are unchanged.
+Item {
     id:screenPresence
-    title: "Match Summary"
-    header: null
-    footer: null
 
-    property double screenContentWidth: 0
-    property double screenContentHeight: 0
+    // The hosting window drives these: Save calls printImage() directly; Close
+    // and Coach Report are surfaced as signals.
+    signal closeRequested()
+    signal coachRequested()
 
     property int fontSize: 12
     property int tick: 0   // bumped in update() to refresh MPI/Group metric cards
@@ -25,7 +28,7 @@ Dialog {
         }
     }
 
-    contentItem:Rectangle {
+    Rectangle {
         id:contentRect
         anchors.fill: parent
         color: "#dcdad3"                     // grey backdrop; the A4 page sits on top
@@ -36,7 +39,7 @@ Dialog {
             anchors.top: parent.top
             anchors.left: parent.left
             anchors.right: parent.right
-            anchors.bottom: buttonBar.top
+            anchors.bottom: parent.bottom
             clip: true
             contentWidth: width
             contentHeight: pageWrap.height
@@ -279,57 +282,6 @@ Dialog {
             }
         }
 
-        Rectangle {
-            id: buttonBar
-            width:parent.width
-            height:parent.height*0.1
-            anchors.bottom: contentRect.bottom
-            color: "#2a2a2e"
-
-            Rectangle {
-                id: dummyRectCenter
-                width: 5
-                height: parent.height
-                color: "transparent"
-                anchors.centerIn: parent
-            }
-
-            Button {
-                text:"Close"
-                anchors.left: dummyRectCenter.right
-                anchors.verticalCenter: parent.verticalCenter
-                onClicked:
-                {
-                    close()
-                }
-            }
-
-            Button {
-                text:"Save PDF"
-                anchors.right: dummyRectCenter.left
-                anchors.verticalCenter: parent.verticalCenter
-                onClicked:
-                {
-                    printImage()
-                }
-            }
-
-            // Run the offline Coach Report on the just-finished match and open
-            // the report overlay. gameSubMode/coachReportVisible resolve via the
-            // main.qml context (same pattern as gameRange/theme).
-            Button {
-                text: "Coach Report"
-                anchors.left: parent.left
-                anchors.leftMargin: 10
-                anchors.verticalCenter: parent.verticalCenter
-                onClicked:
-                {
-                    COACHFEED.analyzeCurrentMatch(loginPage.gameSubMode)
-                    coachReportVisible = true
-                    close()
-                }
-            }
-        }
     }
 
     function updateModel()

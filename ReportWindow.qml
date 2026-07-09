@@ -1,23 +1,22 @@
 import QtQuick 2.15
 
-// Floating Coach Report window (floating-windows phase 2).
+// Floating "Report" window (floating-windows phase 3). Hosts the report layouts
+// (Summary now; Match next) inside the reusable FloatingWindow shell, with tabs
+// in the toolbar and the actions (Save PDF / Coach Report) in the footer.
 //
-// Hosts the existing Coach report views (Dashboard / Detailed / Print) inside
-// the reusable FloatingWindow shell in *embedded* mode: each view's own toolbar
-// is hidden, and the window supplies the chrome — title bar, the
-// Dashboard/Detailed/Print tabs, and the Print actions (Export PDF / Save Diary)
-// in the footer. Coach analytics, data, diary save/load and PDF export are
-// untouched — only the hosting/chrome changes.
+// Must be instantiated inside ShootingPage so the embedded SummaryPage can
+// resolve the ShootingPage ids it reads (rightPanel, centerPanel, shootingPage).
+// No report calculations, values or the PDF grab path are changed.
 FloatingWindow {
     id: reportWin
-    title: "Coach Report"
+    title: "Report"
     subtitle: (typeof userName !== "undefined" && userName) ? userName : ""
-    minW: 820; minH: 560
+    minW: 900; minH: 620
 
-    property int gameSubMode: 0
-    property int viewMode: 0            // 0 = dashboard · 1 = detailed · 2 = print
+    property int tab: 0                 // 0 = Summary · 1 = Match (disabled for now)
+    signal coachRequestedFromReport()
 
-    // ── Toolbar: Dashboard / Detailed / Print tabs ──────────────────────
+    // ── Toolbar: Summary / Match tabs (Match disabled until migrated) ────
     toolbarItem: Rectangle {
         width: parent ? parent.width : 0
         height: 40
@@ -27,84 +26,69 @@ FloatingWindow {
             anchors.verticalCenter: parent.verticalCenter
             spacing: 2
             Repeater {
-                model: [{ l: "Dashboard", m: 0 }, { l: "Detailed", m: 1 }, { l: "Print", m: 2 }]
+                model: [{ l: "Summary", t: 0, en: true }, { l: "Match", t: 1, en: false }]
                 delegate: Rectangle {
-                    width: tabTxt.implicitWidth + 30; height: 30; radius: 6
-                    color: reportWin.viewMode === modelData.m ? "#2f3138" : (tabMA.containsMouse ? "#26272c" : "transparent")
+                    width: tt.implicitWidth + 30; height: 30; radius: 6
+                    color: reportWin.tab === modelData.t ? "#2f3138" : (ma.containsMouse && modelData.en ? "#26272c" : "transparent")
+                    opacity: modelData.en ? 1 : 0.4
                     Text {
-                        id: tabTxt; anchors.centerIn: parent; text: modelData.l
-                        color: reportWin.viewMode === modelData.m ? "white" : "#9aa0a6"
-                        font.family: "Segoe UI"; font.pixelSize: 13; font.bold: reportWin.viewMode === modelData.m
+                        id: tt; anchors.centerIn: parent; text: modelData.l
+                        color: reportWin.tab === modelData.t ? "white" : "#9aa0a6"
+                        font.family: "Segoe UI"; font.pixelSize: 13; font.bold: reportWin.tab === modelData.t
                     }
                     Rectangle {
-                        visible: reportWin.viewMode === modelData.m
+                        visible: reportWin.tab === modelData.t
                         anchors.bottom: parent.bottom; anchors.horizontalCenter: parent.horizontalCenter
                         width: parent.width * 0.6; height: 2; radius: 1; color: "#a80038"
                     }
-                    MouseArea { id: tabMA; anchors.fill: parent; hoverEnabled: true; onClicked: reportWin.viewMode = modelData.m }
+                    MouseArea { id: ma; anchors.fill: parent; hoverEnabled: true; enabled: modelData.en; onClicked: reportWin.tab = modelData.t }
                 }
             }
         }
         Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: "#33353d" }
     }
 
-    // ── Content: the active coach view (internal toolbars hidden) ────────
-    CoachDashboardPage {
-        anchors.fill: parent; embedded: true
-        visible: reportWin.viewMode === 0
-        gameSubMode: reportWin.gameSubMode
-        onClosed: reportWin.close()
-        onDetailsRequested: reportWin.viewMode = 1
-        onPrintRequested: reportWin.viewMode = 2
+    // ── Content ─────────────────────────────────────────────────────────
+    SummaryPage {
+        id: summaryView
+        anchors.fill: parent
+        visible: reportWin.tab === 0
+        onCoachRequested: reportWin.coachRequestedFromReport()
+        onCloseRequested: reportWin.close()
     }
-    CoachReportPage {
-        anchors.fill: parent; embedded: true
-        visible: reportWin.viewMode === 1
-        gameSubMode: reportWin.gameSubMode
-        onClosed: reportWin.close()
-        onDashboardRequested: reportWin.viewMode = 0
-        onPrintRequested: reportWin.viewMode = 2
-    }
-    CoachPrintPage {
-        id: coachPrint
-        anchors.fill: parent; embedded: true
-        visible: reportWin.viewMode === 2
-        gameSubMode: reportWin.gameSubMode
-        onClosed: reportWin.close()
-        onDashboardRequested: reportWin.viewMode = 0
-        onDetailsRequested: reportWin.viewMode = 1
+    Rectangle {
+        anchors.fill: parent
+        visible: reportWin.tab === 1
+        color: "#15161a"
+        Text {
+            anchors.centerIn: parent
+            text: "Match Report — migrating next"
+            color: "#6b6d75"; font.family: "Segoe UI"; font.pixelSize: 14
+        }
     }
 
-    // ── Footer: Print actions (Export PDF + Save Diary) on the Print tab ─
+    // ── Footer: Coach Report + Save PDF (Summary tab) ───────────────────
     footerItem: Rectangle {
         width: parent ? parent.width : 0
         height: 44
         color: "#1f2026"
         Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: "#33353d" }
-
-        Text {
-            visible: reportWin.viewMode !== 2
-            anchors.left: parent.left; anchors.leftMargin: 14; anchors.verticalCenter: parent.verticalCenter
-            text: "Open the Print tab to export the report as PDF"
-            color: "#6b6d75"; font.family: "Segoe UI"; font.pixelSize: 11
-        }
-
         Row {
-            visible: reportWin.viewMode === 2
+            visible: reportWin.tab === 0
             anchors.right: parent.right; anchors.rightMargin: 12
             anchors.verticalCenter: parent.verticalCenter
             spacing: 8
             Rectangle {
-                width: sdTxt.implicitWidth + 26; height: 28; radius: 6
-                color: sdMA.pressed ? "#2a2b30" : "#26272c"; border.color: "#3a3b42"; border.width: 1
-                Text { id: sdTxt; anchors.centerIn: parent; text: "Save Diary"; color: "#d7d8dd"; font.family: "Segoe UI"; font.pixelSize: 12 }
-                MouseArea { id: sdMA; anchors.fill: parent; onClicked: coachPrint.saveDiary() }
+                width: crTxt.implicitWidth + 26; height: 28; radius: 6
+                color: crMA.pressed ? "#2a2b30" : "#26272c"; border.color: "#3a3b42"; border.width: 1
+                Text { id: crTxt; anchors.centerIn: parent; text: "Coach Report"; color: "#d7d8dd"; font.family: "Segoe UI"; font.pixelSize: 12 }
+                MouseArea { id: crMA; anchors.fill: parent; onClicked: reportWin.coachRequestedFromReport() }
             }
             Rectangle {
-                width: epTxt.implicitWidth + 26; height: 28; radius: 6
-                color: epMA.pressed ? "#8a002f" : "#a80038"
-                Text { id: epTxt; anchors.centerIn: parent; text: "⤓  Export PDF"; color: "white"; font.family: "Segoe UI"; font.pixelSize: 12; font.bold: true }
-                MouseArea { id: epMA; anchors.fill: parent; onClicked: coachPrint.exportPdf() }
+                width: spTxt.implicitWidth + 26; height: 28; radius: 6
+                color: spMA.pressed ? "#8a002f" : "#a80038"
+                Text { id: spTxt; anchors.centerIn: parent; text: "⤓  Save PDF"; color: "white"; font.family: "Segoe UI"; font.pixelSize: 12; font.bold: true }
+                MouseArea { id: spMA; anchors.fill: parent; onClicked: summaryView.printImage() }
             }
         }
     }

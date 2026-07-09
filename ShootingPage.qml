@@ -523,22 +523,20 @@ Item {
     }
 
 
-    SummaryPage {
-        id:showSummaryPage
-        visible: false
-        width:parent.width*3/4
-        height:parent.height*3/4
-
-        contentWidth: parent.width*3/4
-        contentHeight: parent.height*3/4
-
-        onVisibleChanged: {
-            if (visible)
-                centerPanel.pauseGameTimer()
-            else
-                centerPanel.unPauseGameTimer()
+    // Floating Report window (Summary now, Match next). Lives inside ShootingPage
+    // so the embedded SummaryPage can resolve rightPanel/centerPanel/shootingPage.
+    // Non-blocking: it floats over the shooting screen without pausing the match.
+    WindowManager {
+        id: reportWinMgr
+        z: 40
+        ReportWindow {
+            id: reportWindow
+            manager: reportWinMgr
+            onCoachRequestedFromReport: {
+                reportWinMgr.dismiss(reportWindow)
+                window.coachReportVisible = true
+            }
         }
-        //z: 20
     }
 
     MatchReport

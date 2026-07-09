@@ -439,7 +439,9 @@ Item {
 
     function showSummary()
     {
-        showSummaryPage.visible = true
+        // Open the Summary in the floating Report window (replaces the old dialog).
+        reportWindow.tab = 0
+        reportWinMgr.present(reportWindow)
     }
 
     function showMatchReport()

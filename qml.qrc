@@ -16,6 +16,7 @@
         <file>FloatingWindow.qml</file>
         <file>FloatingWindowGrip.qml</file>
         <file>WindowManager.qml</file>
+        <file>CoachReportWindow.qml</file>
         <file>ReportWindow.qml</file>
         <file>CoachReportPage.qml</file>
         <file>CoachDashboardPage.qml</file>
