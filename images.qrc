@@ -28,7 +28,7 @@
         <file>images/rightPanel/text_field_509.png</file>
         <file>images/rightPanel/text_field_593_2.png</file>
         <file>images/rightPanel/text_filed_3.png</file>
-        <file>SummaryPage.qml</file>
+        <file>SummaryReportView.qml</file>
         <file>ShootingPage.qml</file>
         <file>LoginPage.qml</file>
         <file>images/loginPage/demo.png</file>

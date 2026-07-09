@@ -9,10 +9,15 @@ import QtCharts 2.15
 Item {
     id:screenPresence
 
-    // The hosting window drives these: Save calls printImage() directly; Close
-    // and Coach Report are surfaced as signals.
-    signal closeRequested()
-    signal coachRequested()
+    // Pure content view — no window logic. The host FloatingWindow owns the
+    // chrome (title bar, tabs, scrolling) and the actions. This view only
+    // exposes its natural height and intent signals, plus exportPdf() which
+    // owns the print_region grab. Every report value is unchanged.
+    signal requestClose()
+    signal requestExportPdf()
+    signal requestPrint()
+
+    implicitHeight: 1163      // A4 page (1123) + 40 top/bottom margin; window scrolls it
 
     property int fontSize: 12
     property int tick: 0   // bumped in update() to refresh MPI/Group metric cards
@@ -33,31 +38,13 @@ Item {
         anchors.fill: parent
         color: "#dcdad3"                     // grey backdrop; the A4 page sits on top
 
-        // Scrollable print-preview area (same pattern as the Coach Print view).
-        Flickable {
-            id: flick
-            anchors.top: parent.top
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.bottom: parent.bottom
-            clip: true
-            contentWidth: width
-            contentHeight: pageWrap.height
-            boundsBehavior: Flickable.StopAtBounds
-            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AlwaysOn }
-
-            Item {
-                id: pageWrap
-                width: flick.width
-                height: print_region.height + 40
-
-                // Fixed portrait A4-ratio page so the grab (and the PDF) are
-                // portrait and undistorted.
-                Rectangle {
+        // A4 print page, centred. The host FloatingWindow owns the scrolling
+        // (scrollableContent), so this view has NO Flickable of its own.
+        Rectangle {
                     id: print_region
                     width: 794           // A4 width @ 96 dpi
                     height: 1123         // A4 height @ 96 dpi
-                    x: (pageWrap.width - width) / 2
+                    anchors.horizontalCenter: parent.horizontalCenter
                     y: 20
                     color: "white"
                     border.color: "#e6e8ec"
@@ -279,8 +266,6 @@ Item {
                         generatedText: "Generated " + new Date().toLocaleString(Qt.locale(""), "ddd yyyy-MM-dd hh:mm")
                     }
                 }
-            }
-        }
 
     }
 
@@ -415,7 +400,9 @@ Item {
         screenPresence.tick++
     }
 
-    function printImage()
+    // Owns the grab: same print_region.grabToImage -> createSummryPdf path as
+    // before. The host window's Save PDF action calls this.
+    function exportPdf()
     {
         CUSTOMPRINT.clearImagesList()
         var stat = print_region.grabToImage(function(result) {

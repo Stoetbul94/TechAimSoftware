@@ -16,6 +16,10 @@ FloatingWindow {
     property int tab: 0                 // 0 = Summary · 1 = Match (disabled for now)
     signal coachRequestedFromReport()
 
+    // The window owns the scrolling; the view exposes its natural height.
+    scrollableContent: true
+    contentNaturalHeight: tab === 0 ? summaryView.implicitHeight : 0
+
     // ── Toolbar: Summary / Match tabs (Match disabled until migrated) ────
     toolbarItem: Rectangle {
         width: parent ? parent.width : 0
@@ -49,12 +53,10 @@ FloatingWindow {
     }
 
     // ── Content ─────────────────────────────────────────────────────────
-    SummaryPage {
+    SummaryReportView {
         id: summaryView
         anchors.fill: parent
         visible: reportWin.tab === 0
-        onCoachRequested: reportWin.coachRequestedFromReport()
-        onCloseRequested: reportWin.close()
     }
     Rectangle {
         anchors.fill: parent
@@ -88,7 +90,7 @@ FloatingWindow {
                 width: spTxt.implicitWidth + 26; height: 28; radius: 6
                 color: spMA.pressed ? "#8a002f" : "#a80038"
                 Text { id: spTxt; anchors.centerIn: parent; text: "⤓  Save PDF"; color: "white"; font.family: "Segoe UI"; font.pixelSize: 12; font.bold: true }
-                MouseArea { id: spMA; anchors.fill: parent; onClicked: summaryView.printImage() }
+                MouseArea { id: spMA; anchors.fill: parent; onClicked: summaryView.exportPdf() }
             }
         }
     }

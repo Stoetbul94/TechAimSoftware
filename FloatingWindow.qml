@@ -1,4 +1,5 @@
 import QtQuick 2.15
+import QtQuick.Controls 2.15
 
 // Tech Aim reusable floating-window shell.
 //
@@ -27,11 +28,19 @@ Item {
     property bool centerOnOpen: true
     property int  minW: 360
     property int  minH: 240
+    // When true the window OWNS the vertical scrolling: content is placed in a
+    // Flickable and scrolled up to `contentNaturalHeight`. Pure-content views
+    // should then NOT wrap themselves in a Flickable (avoids nested scrollbars)
+    // and the host sets contentNaturalHeight to the active view's implicitHeight.
+    // When false (default) the content fills the area and manages its own
+    // scrolling, if any.
+    property bool scrollableContent: false
+    property real contentNaturalHeight: 0
 
     property bool opened: false
     property var  manager: null           // set by WindowManager; used for raise/focus
 
-    default property alias content: contentSlot.data
+    default property alias content: contentHolder.data
     property alias toolbarItem: toolbarSlot.data
     property alias footerItem: footerSlot.data
 
@@ -202,13 +211,31 @@ Item {
                 height: childrenRect.height
             }
 
-            // ── Content slot ────────────────────────────────────────────
-            Item {
-                id: contentSlot
+            // ── Content area — the window owns the Flickable ────────────
+            // scrollableContent = true : scrolls the hosted view by its natural
+            //   height (window owns scrolling; views expose implicitHeight).
+            // scrollableContent = false: acts as a plain clipped container that
+            //   the view fills (the view manages its own scrolling if needed).
+            Flickable {
+                id: contentFlick
                 anchors.top: toolbarSlot.bottom
                 anchors.left: parent.left; anchors.right: parent.right
                 anchors.bottom: footerSlot.top
                 clip: true
+                interactive: win.scrollableContent
+                boundsBehavior: Flickable.StopAtBounds
+                contentWidth: width
+                contentHeight: win.scrollableContent
+                               ? Math.max(height, win.contentNaturalHeight)
+                               : height
+                ScrollBar.vertical: ScrollBar {
+                    policy: win.scrollableContent ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff
+                }
+                Item {
+                    id: contentHolder
+                    width: contentFlick.width
+                    height: contentFlick.contentHeight
+                }
             }
 
             // ── Footer slot (0 height when empty) ───────────────────────

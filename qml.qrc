@@ -7,7 +7,7 @@
         <file>LeftPanel.qml</file>
         <file>RightPanel.qml</file>
         <file>CenterPane.qml</file>
-        <file>SummaryPage.qml</file>
+        <file>SummaryReportView.qml</file>
         <file>MetricCard.qml</file>
         <file>ReportHeader.qml</file>
         <file>SectionTitle.qml</file>
