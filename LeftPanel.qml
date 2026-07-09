@@ -286,8 +286,16 @@ Item {
                     showMatchReport()
                 }
             } else if (key === "coach") {
-                cannotGenerate.text = qsTr("Coach report is coming soon")
-                cannotGenerate.visible = true
+                if (sligterMode) {
+                    cannotGenerate.text = sighterMatchText
+                    cannotGenerate.visible = true
+                } else {
+                    // Open the existing Coach Report floating window. Qualified via
+                    // the root id (window) so the write is reliable from this click
+                    // handler; main.qml's coachReportVisible handler then re-analyses
+                    // the current match and presents the window on the Dashboard tab.
+                    window.coachReportVisible = true
+                }
             } else if (key === "mpi") {
                 isShowMPI = !isShowMPI
             } else if (key === "settings") {

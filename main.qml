@@ -534,11 +534,14 @@ ApplicationWindow {
             onClosed: coachReportVisible = false
         }
     }
-    // Opening is still driven by coachReportVisible (set from the Match Summary
-    // Coach Report button). present() opens-or-focuses, so it never duplicates.
+    // Opening is driven by coachReportVisible (set from the Match Summary Coach
+    // button and the left-side Coach report button). Always re-analyse the
+    // CURRENT match first so the report never shows stale/demo data, default to
+    // the Dashboard tab, then present (opens-or-focuses, never duplicates).
     onCoachReportVisibleChanged: {
         if (coachReportVisible) {
-            coachReportWindow.viewMode = coachViewMode
+            COACHFEED.analyzeCurrentMatch(loginPage.gameSubMode)
+            coachReportWindow.viewMode = 0
             windowManager.present(coachReportWindow)
         } else {
             windowManager.dismiss(coachReportWindow)
