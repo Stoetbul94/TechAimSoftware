@@ -490,7 +490,11 @@ Item {
                 Text {
                     id: lastShotScore
                     anchors.verticalCenter: parent.verticalCenter
-                    text: lastShotCard.hasShot ? scoreCutoffTofirstDecimal(lastShotCard.lastScore)*1 : "—"
+                    // 3P (ISSF): integer primary with the decimal in brackets.
+                    text: !lastShotCard.hasShot ? "—"
+                          : (is3PMatch
+                             ? (parseInt(scoreCutoffTofirstDecimal(lastShotCard.lastScore)*1) + " (" + (scoreCutoffTofirstDecimal(lastShotCard.lastScore)*1) + ")")
+                             : (scoreCutoffTofirstDecimal(lastShotCard.lastScore)*1))
                     color: "white"; font.family: theme.fontFamily
                     font.pixelSize: 28; font.bold: true
                 }
@@ -862,7 +866,11 @@ Item {
                         anchors.centerIn: parent
                         color: "white"
 
-                        text:APPSETTINGS.getScoringSystem()? (scoreCutoffTofirstDecimal(calculatedscore)*1): parseInt(scoreCutoffTofirstDecimal(calculatedscore)*1)
+                        // 3P (ISSF): integer primary with the decimal in brackets.
+                        // Other disciplines follow the app's scoring-system toggle.
+                        text: is3PMatch
+                              ? (parseInt(scoreCutoffTofirstDecimal(calculatedscore)*1) + " (" + (scoreCutoffTofirstDecimal(calculatedscore)*1) + ")")
+                              : (APPSETTINGS.getScoringSystem()? (scoreCutoffTofirstDecimal(calculatedscore)*1): parseInt(scoreCutoffTofirstDecimal(calculatedscore)*1))
                         font.pixelSize: 0.8*currentItem.height
                         font.bold: true
                     }
@@ -1362,13 +1370,14 @@ Item {
                     spacing: 5
                     Text {
                         anchors.baseline: totalInt.baseline
-                        text: scoreCutoffTofirstDecimal(grandTotal)*1
+                        // 3P (ISSF): integer total is the headline, decimal in brackets.
+                        text: is3PMatch ? ("" + grandTotalExculdeDec) : (scoreCutoffTofirstDecimal(grandTotal)*1)
                         color: "white"; font.family: theme.fontFamily
                         font.pixelSize: 24; font.bold: true
                     }
                     Text {
                         id: totalInt
-                        text: "(" + grandTotalExculdeDec + ")"
+                        text: is3PMatch ? ("(" + scoreCutoffTofirstDecimal(grandTotal)*1 + ")") : ("(" + grandTotalExculdeDec + ")")
                         color: "#8a8a92"; font.family: theme.fontFamily
                         font.pixelSize: 13
                     }
@@ -1515,7 +1524,9 @@ Item {
 
                         Text {
                             anchors.centerIn: parent
-                            text: isValidSeries(index) ? getSeriesTotal(index+1) : "—"
+                            // 3P (ISSF) shows the integer series score as the headline;
+                            // other disciplines keep the decimal headline.
+                            text: isValidSeries(index) ? (is3PMatch ? getSeriesTotalNonDecimal(index+1) : getSeriesTotal(index+1)) : "—"
                             color: isValidSeries(index) ? "white" : "#55555e"
                             font.pointSize: parent.height*0.25 //parent.height*0.3
 //                            font.pointSize: isSingleDecimal ? parent.height*0.37 : parent.height*0.32
@@ -1545,7 +1556,9 @@ Item {
 
                         Text {
                             anchors.centerIn: parent
-                            text: isValidSeries(index) ? /*"("+*/getSeriesTotalNonDecimal(index+1)/*+")"*/ : ""
+                            // 3P shows the decimal in brackets under the integer headline;
+                            // other disciplines keep the plain integer sub-total.
+                            text: isValidSeries(index) ? (is3PMatch ? "(" + getSeriesTotal(index+1) + ")" : getSeriesTotalNonDecimal(index+1)) : ""
                             color: "#9a9ba0"
                             font.pointSize: parent.height*0.25//parent.height*0.3
 //                            font.bold: true
