@@ -788,6 +788,11 @@ Item {
         centerPanel.stopMatchClock()
         MODREADER.appendToLogFile("Match finished: " + globalMatchModel.count
                                   + "/" + matchShootCount + " match shots")
+        // 3P: open the right-panel table + face on the final series for review of
+        // all six series. Deferred so the matchFinished-driven paging bindings
+        // have settled before we re-page.
+        if (is3PMatch)
+            Qt.callLater(rightPanel.showLastSeriesForReview)
     }
 
     function minutesToseconds(totalSecs)

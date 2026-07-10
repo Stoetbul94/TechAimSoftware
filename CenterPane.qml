@@ -824,7 +824,10 @@ Item {
         Repeater
         {
             id:numberOverlayRepeater
-            model:globalModelOfData
+            // After a 3P match finishes, the face reviews the whole match (all six
+            // series) alongside the right-panel table; during live shooting and for
+            // every other discipline it stays the current per-position buffer.
+            model: (is3PMatch && shootingPage.matchFinished) ? globalMatchModel : globalModelOfData
             delegate: numberOverlayDelegate
 
             onCountChanged: {
@@ -1767,7 +1770,7 @@ Item {
     function currentPageIndexChanged()
     {
         numberOverlayRepeater.model = null
-        numberOverlayRepeater.model = globalModelOfData
+        numberOverlayRepeater.model = (is3PMatch && shootingPage.matchFinished) ? globalMatchModel : globalModelOfData
     }
 
     function refreshCentralPanelPage()

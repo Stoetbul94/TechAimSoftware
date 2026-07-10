@@ -3,8 +3,15 @@ Item {
     property int rootItemWidth:1674
     property int rootItemHeight:3092
     property int currentPageIndex : 0
+    // Which record the shot table + face review pages over. Once a 3P match is
+    // FINISHED, page the WHOLE match (all 6 series across K/P/S) so the athlete can
+    // review every position; the live target face follows because its overlay
+    // filter keys off currentPageIndex (see CenterPane numberOverlayRepeater).
+    // During live shooting (and every non-3P discipline) this stays the current
+    // display buffer, so the live per-position face/counter behaviour is unchanged.
+    readonly property var pagingModel: (is3PMatch && shootingPage.matchFinished) ? globalMatchModel : globalModelOfData
     // Series navigation state (drives the new chevron buttons; auto-updates).
-    readonly property int maxSeriesPage: globalModelOfData.count > 0 ? Math.floor((globalModelOfData.count - 1) / 10) : 0
+    readonly property int maxSeriesPage: pagingModel.count > 0 ? Math.floor((pagingModel.count - 1) / 10) : 0
     readonly property bool canPrevSeries: currentPageIndex > 0
     readonly property bool canNextSeries: currentPageIndex < maxSeriesPage
     property int totalStars : 0
@@ -60,7 +67,7 @@ Item {
 
     onCurrentPageIndexChanged:
     {
-        var maxPageIndex = Math.floor((globalModelOfData.count-1)/10)
+        var maxPageIndex = Math.floor((pagingModel.count-1)/10)
         console.log("Current Page Index and Max page Index " , currentPageIndex,maxPageIndex)
         if(currentPageIndex < maxPageIndex)
         {
@@ -999,8 +1006,8 @@ Item {
         if( (loginPage.gameMode === 0 && calScore >= star_limit_value_pistol)
                 || (loginPage.gameMode === 1 && calScore >= star_limit_value_rifle) )
             ++totalStars
-        var startIndex = Math.floor((globalModelOfData.count-1)/10)
-        var endIndex = globalModelOfData.count;
+        var startIndex = Math.floor((pagingModel.count-1)/10)
+        var endIndex = pagingModel.count;
         updateListModel(startIndex*10,endIndex)
     }
 
@@ -1018,12 +1025,12 @@ Item {
         seriesTimeConsume = 0
         for(var i = startIndex; i < endIndex; i++)
         {
-            var relativeVal = globalModelOfData.get(i).calculatedscore*1
+            var relativeVal = pagingModel.get(i).calculatedscore*1
             if (relativeVal < 0)
                 relativeVal = 0
-            var direction = globalModelOfData.get(i).direction*1
-            var timeConsumed = globalModelOfData.get(i).timeComsumed
-            var calculatedScore = globalModelOfData.get(i).calculatedscore
+            var direction = pagingModel.get(i).direction*1
+            var timeConsumed = pagingModel.get(i).timeComsumed
+            var calculatedScore = pagingModel.get(i).calculatedscore
 
             listModel.append({"direction":direction.toFixed(2),
                                  "score":relativeVal.toFixed(2),
@@ -1060,16 +1067,28 @@ Item {
         console.log("last line updateListModel")
     }
 
+    // Called (deferred) when a 3P match finishes: jump the table + face to the
+    // final series so review opens on the last shots fired; the athlete can then
+    // page back through all six series. Uses globalMatchModel directly so it does
+    // not depend on the pagingModel binding having settled yet.
+    function showLastSeriesForReview()
+    {
+        if (globalMatchModel.count === 0)
+            return
+        currentPageIndex = Math.floor((globalMatchModel.count - 1) / 10)
+        updateListModel(currentPageIndex * 10, globalMatchModel.count)
+    }
+
     function leftClicked()
     {
         listNavigationON = true
         --currentPageIndex
-        var maxPageIndex = Math.floor(globalModelOfData.count/10)
+        var maxPageIndex = Math.floor(pagingModel.count/10)
         var startIndex = currentPageIndex*10
         var endIndex = startIndex+10;//maxPageIndex*10
-        if(endIndex >= globalModelOfData.count)
+        if(endIndex >= pagingModel.count)
         {
-            endIndex = globalModelOfData.count
+            endIndex = pagingModel.count
         }
         updateListModel(startIndex,endIndex)
         listNavigationON = false
@@ -1079,11 +1098,11 @@ Item {
     {
         listNavigationON = true
         ++currentPageIndex
-        var maxPageIndex = Math.floor(globalModelOfData.count/10)
+        var maxPageIndex = Math.floor(pagingModel.count/10)
         var startIndex = currentPageIndex*10
         var endIndex = startIndex+10;//(maxPageIndex)*10
-        if(endIndex >= globalModelOfData.count)
-            endIndex = globalModelOfData.count
+        if(endIndex >= pagingModel.count)
+            endIndex = pagingModel.count
         updateListModel(startIndex,endIndex)
         listNavigationON = true
     }
