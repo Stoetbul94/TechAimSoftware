@@ -96,15 +96,19 @@ Item {
     }
 
     onCurrentShootIndexChanged: {
-        centerPanel.currentScoreValue = scoreCutoffTofirstDecimal(globalModelOfData.get(currentShootIndex).calculatedscore)*1
-//        if (centerPanel.currentScoreValue == "nan" || centerPanel.currentScoreValue == "NaN")
-//            centerPanel.currentScoreValue = "0"
-        centerPanel.currentScoreDegree = globalModelOfData.get(currentShootIndex).direction*1
+        // Read from the record being paged (full match in 3P review, current
+        // display buffer otherwise). In review currentShootIndex is
+        // match-absolute, so indexing the 20-shot position buffer here returned
+        // undefined and the TypeError aborted this handler — leaving the
+        // selected-shot marker and score bubble stuck on the last live shot.
+        if (currentShootIndex < 0 || currentShootIndex >= pagingModel.count)
+            return
+        centerPanel.currentScoreValue = scoreCutoffTofirstDecimal(pagingModel.get(currentShootIndex).calculatedscore)*1
+        centerPanel.currentScoreDegree = pagingModel.get(currentShootIndex).direction*1
         if (matchScore.count != 0)
             centerPanel.refreshSelectedShootPosition()
 
-        console.log(globalModelOfData.count , globalModelOfData.get(currentShootIndex).calculatedscore, " ***srinu ---",matchScore.count, "current shoot index changed", currentShootIndex)
-        console.log(scoreCutoffTofirstDecimal(globalModelOfData.get(currentShootIndex).calculatedscore)*1, " srinu ---",matchScore.count, "current shoot index changed", currentShootIndex)
+        console.log(pagingModel.count, pagingModel.get(currentShootIndex).calculatedscore, " ***srinu ---",matchScore.count, "current shoot index changed", currentShootIndex)
     }
 
     Image {
@@ -1135,15 +1139,25 @@ Item {
         subTotalExculdeDec = 0
         seriesTimeConsume = 0
 
-        for(var i = 0; i < globalModelOfData.count; i++)
+        // Grand totals are MATCH totals. 3P must re-derive them from the full
+        // match record: this runs on every position transition, when
+        // globalModelOfData holds only the new position's shots — deriving from
+        // it wiped Kneeling+Prone from the TOTAL card (e.g. 173 after a full
+        // 565 match). Non-3P keeps the display buffer (identical behaviour).
+        var totalsData = is3PMatch ? globalMatchModel : globalModelOfData
+        for(var i = 0; i < totalsData.count; i++)
         {
-            var relativeVal = globalModelOfData.get(i).calculatedscore*1
-            var direction = globalModelOfData.get(i).direction*1
-            var timeConsumed = globalModelOfData.get(i).timeComsumed
+            var relativeVal = totalsData.get(i).calculatedscore*1
+            var direction = totalsData.get(i).direction*1
+            var timeConsumed = totalsData.get(i).timeComsumed
 
             grandTotal = ( grandTotal*1 + scoreCutoffTofirstDecimal(relativeVal)*1)
             grandTotalExculdeDec = ( grandTotalExculdeDec*1 + Math.floor(relativeVal))
-            totalTimeConsume = totalTimeConsume*1 + (timeInSec - lastUsedTime)
+            // 3P: sum the per-shot times stored on the record; the legacy
+            // timeInSec-based line re-added the same live delta per iteration
+            // and reset the match time at every position change.
+            totalTimeConsume = is3PMatch ? (totalTimeConsume*1 + timeConsumed*1)
+                                         : (totalTimeConsume*1 + (timeInSec - lastUsedTime))
 
             if(relativeVal > 10)
                 ++totalStars

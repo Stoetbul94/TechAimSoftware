@@ -1158,16 +1158,19 @@ Item {
             height: width
 
             function refreshPosition() {
-                // Coordinates come from the DISPLAY model, not the backend
-                // lists: after a 3P position change the display is filtered
-                // to the current position, so display index N no longer maps
-                // to backend shot N. Using the backend here drew this marker
-                // (which looks like a shot and shows the same number) at a
-                // previous position's coordinates — a "phantom shot".
+                // Coordinates come from the SAME record the face is paging
+                // (never the backend lists — display index N doesn't map to
+                // backend shot N once 3P filters per position). During live
+                // shooting that's the per-position display buffer; in 3P
+                // post-match review it's the full match record, because
+                // currentShootIndex is match-absolute then. Reading the wrong
+                // one left this marker stuck at a stale position with the
+                // page's shot number — a "phantom shot" on every series page.
+                var mdl = (is3PMatch && shootingPage.matchFinished) ? globalMatchModel : globalModelOfData
                 var idx = rightPanel.currentShootIndex
-                if (idx < 0 || idx >= globalModelOfData.count)
+                if (idx < 0 || idx >= mdl.count)
                     return
-                var e = globalModelOfData.get(idx)
+                var e = mdl.get(idx)
                 var xCor = e.xmm*1
                 var yCor = e.ymm*1
 
