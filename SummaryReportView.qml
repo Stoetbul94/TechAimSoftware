@@ -212,7 +212,10 @@ Item {
                                         Text { text: modelData.n; color: "#6b7280"; font.family: "Segoe UI"; font.pixelSize: 12; font.letterSpacing: 0.4 }
                                         Text { text: (screenPresence.tick, getPositionTotal(modelData.p)); color: "#191b1f"; font.family: "Segoe UI"; font.pixelSize: 24; font.bold: true }
                                         Text {
-                                            text: getPositionCount(modelData.p) + " shots · ★ " + getPositionInner(modelData.p)
+                                            // Depend on `tick` (like the score above) so the count/stars
+                                            // re-evaluate as shots land — the delegate is built before any
+                                            // shots exist, so without this it stays stuck at "0 shots".
+                                            text: (screenPresence.tick, getPositionCount(modelData.p) + " shots · ★ " + getPositionInner(modelData.p))
                                             color: "#8a8f98"; font.family: "Segoe UI"; font.pixelSize: 11
                                         }
                                     }

@@ -590,7 +590,9 @@ Item {
     ReportWindow {
         id: reportWindow
         Component.onCompleted: windowManager.register("report", reportWindow)
-        onAboutToOpen: tab = 0
+        // Tab is chosen by the opener via prepare(): Stats -> Summary (0),
+        // Report -> Match (1). Do NOT reset it in onAboutToOpen — that fires
+        // after prepare() on first open and would force both buttons to Summary.
         onCoachRequestedFromReport: {
             windowManager.dismiss(reportWindow)
             feedCoachReport()

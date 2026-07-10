@@ -33,6 +33,9 @@ FloatingWindow {
     }
 
     onTabChanged: if (tab === 1) matchView.refresh3P()
+    // Runs after prepare() has set the tab, so reopening straight onto Match
+    // (no tab change) still refreshes the 3P report tables.
+    onAboutToOpen: if (tab === 1) matchView.refresh3P()
 
     // ── Toolbar: Summary / Match tabs ───────────────────────────────────
     toolbarItem: Rectangle {
