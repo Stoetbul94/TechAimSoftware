@@ -10,6 +10,12 @@ Item {
     // During live shooting (and every non-3P discipline) this stays the current
     // display buffer, so the live per-position face/counter behaviour is unchanged.
     readonly property var pagingModel: (is3PMatch && shootingPage.matchFinished) ? globalMatchModel : globalModelOfData
+    // Display offset (in series) so shot/series numbering runs continuously
+    // through a live 3P match: Kneeling S1-S2 shots 1-20, Prone S3-S4 shots
+    // 21-40, Standing S5-S6 shots 41-60 — even though the table pages the
+    // per-position buffer. Zero while sighting (sighters number from 1), for
+    // non-3P, and in post-match review (paging is already match-absolute).
+    readonly property int p3SeriesOffset: (is3PMatch && !sligterMode && !shootingPage.matchFinished) ? p3Position * 2 : 0
     // Series navigation state (drives the new chevron buttons; auto-updates).
     readonly property int maxSeriesPage: pagingModel.count > 0 ? Math.floor((pagingModel.count - 1) / 10) : 0
     readonly property bool canPrevSeries: currentPageIndex > 0
@@ -566,7 +572,7 @@ Item {
         anchors.left: series_text_field.left
         //anchors.topMargin: -3
         //        anchors.horizontalCenter: series_text_field.horizontalCenter
-        text : (currentPageIndex+1)
+        text : (p3SeriesOffset + currentPageIndex + 1)
         color: "white"
         font.pixelSize: dafaultFontSize
     }
@@ -832,7 +838,7 @@ Item {
                 color: "transparent"
 
                 Text {
-                    text: currentPageIndex*10 + index + 1
+                    text: (p3SeriesOffset + currentPageIndex)*10 + index + 1
                     anchors.centerIn: parent
                     color: "#9a9ba0"
                     font.pixelSize: 0.65*currentItem.height
