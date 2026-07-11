@@ -370,8 +370,11 @@ Item {
         var cnt = 0
         for (var i = (s-1)*10; i < globalMatchModel.count && i < s*10; ++i) {
             var v = globalMatchModel.get(i).calculatedscore * 1
-            if ((gameMode === 0 && v >= rightPanel.star_limit_value_pistol)
-                    || (gameMode === 1 && v >= rightPanel.star_limit_value_rifle))
+            // Qualified via loginPage: main.qml declares gameRange but NOT
+            // gameMode, so a bare `gameMode` here is a ReferenceError that
+            // silently aborts the binding once shots exist (blank column).
+            if ((loginPage.gameMode === 0 && v >= rightPanel.star_limit_value_pistol)
+                    || (loginPage.gameMode === 1 && v >= rightPanel.star_limit_value_rifle))
                 ++cnt
         }
         return cnt
@@ -408,8 +411,11 @@ Item {
         for (var i = 0; i < globalMatchModel.count; ++i) {
             if (globalMatchModel.get(i).position !== p) continue
             var v = globalMatchModel.get(i).calculatedscore * 1
-            if ((gameMode === 0 && v >= rightPanel.star_limit_value_pistol)
-                    || (gameMode === 1 && v >= rightPanel.star_limit_value_rifle))
+            // loginPage.gameMode, not bare gameMode — see getSeriesInnerVal.
+            // The bare lookup threw once shots existed, aborting the binding
+            // and freezing the card at its creation-time "0 shots · ★ 0".
+            if ((loginPage.gameMode === 0 && v >= rightPanel.star_limit_value_pistol)
+                    || (loginPage.gameMode === 1 && v >= rightPanel.star_limit_value_rifle))
                 ++c
         }
         return c
