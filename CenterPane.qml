@@ -945,11 +945,11 @@ Item {
                         anchors.centerIn: parent
                         visible: gameRange == 50 && gameMode ? false : true
                         // Continuous numbering through a live 3P match (K 1-20,
-                        // P 21-40, S 41-60): the overlay shows the per-position
-                        // buffer, so offset by the completed positions. The offset
-                        // is 0 while sighting, for non-3P, and in post-match
-                        // review (the model is match-absolute there already).
-                        text: rightPanel.p3SeriesOffset*10 + index + 1
+                        // P 21-40, S 41-60): snBase counts the completed
+                        // positions' record shots straight from the data. 0 while
+                        // sighting, for non-3P, and in post-match review (the
+                        // model is match-absolute there already).
+                        text: rightPanel.snBase + index + 1
                     }
 
                     //                    z: index === rightPanel.currentShootIndex ? 100 : 15
@@ -1225,7 +1225,7 @@ Item {
                 anchors.centerIn: parent
                 visible: gameRange == 50 && gameMode ? false : true
                 // Same continuous live-3P numbering as the shot overlay labels.
-                text: rightPanel.p3SeriesOffset*10 + rightPanel.currentShootIndex + 1
+                text: rightPanel.snBase + rightPanel.currentShootIndex + 1
             }
 
             radius: width/2
@@ -1252,6 +1252,13 @@ Item {
                     matchInfoDialog.visible = true
                     return
                 }
+
+                // Synchronous cap: the auto-finish watcher polls every 500ms,
+                // so matchFinished can lag the 60th shot — a click in that
+                // window registered a 61st shot. Check the record directly.
+                if (!sligterMode && shootingPage.matchShootCount > 0
+                        && globalMatchModel.count >= shootingPage.matchShootCount)
+                    return
 
                 var logData = "canvas screen clicked position x ->"+ mouseX+ " y -> " + mouseY
                 MODREADER.appendToLogFile(logData)

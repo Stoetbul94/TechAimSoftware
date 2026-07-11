@@ -484,6 +484,17 @@ Item {
 
 
         onPointAddedToSeries: {
+            // Hard cap at the match shot count. The auto-finish watcher polls
+            // every 500ms, so a shot arriving in that window (an extra demo
+            // click, or a late hardware report) used to register as shot 61
+            // and pollute the totals. Free practice (matchShootCount -1) is
+            // unaffected; sighters are unaffected (they don't fill the record).
+            if (!sligterMode && matchShootCount > 0
+                    && globalMatchModel.count >= matchShootCount) {
+                MODREADER.appendToLogFile("Ignoring shot beyond match limit ("
+                                          + globalMatchModel.count + "/" + matchShootCount + ")")
+                return
+            }
             rightPanel.addToSeries(xPosition,yPosition,currentCalculatedScore,
                                    centerPanel.lastShotXmm, centerPanel.lastShotYmm)
             console.log("x ", xPosition, " y ", yPosition, " score ", currentCalculatedScore, " matchShootCount ", matchShootCount)
