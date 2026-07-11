@@ -18,9 +18,9 @@
         <file>WindowManager.qml</file>
         <file>CoachReportWindow.qml</file>
         <file>ReportWindow.qml</file>
-        <file>CoachReportPage.qml</file>
-        <file>CoachDashboardPage.qml</file>
-        <file>CoachPrintPage.qml</file>
+        <file>CoachDetailedView.qml</file>
+        <file>CoachDashboardView.qml</file>
+        <file>CoachPrintView.qml</file>
         <file>IssfTargetCanvas.qml</file>
         <file>CoachReportCard.qml</file>
         <file>ShotTargetCanvas.qml</file>

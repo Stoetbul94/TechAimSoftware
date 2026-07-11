@@ -14,13 +14,12 @@ Rectangle {
     property var rep: COACHREPORT.report
     property var targets: []
 
+    // Pure content view — no window chrome. The hosting CoachReportWindow owns
+    // the title bar, the Dashboard/Detailed/Print tabs and the footer actions;
+    // these intent signals let it react. Content/analytics unchanged.
     signal closed()
     signal detailsRequested()
     signal printRequested()
-
-    // Hidden internal toolbar when hosted in a FloatingWindow (window supplies
-    // title bar + tabs + actions). Content/analytics unchanged.
-    property bool embedded: false
 
     // ---- light palette ----
     readonly property color cPanel:  "#ffffff"
@@ -195,36 +194,12 @@ Rectangle {
         axX.min = 1; axX.max = Math.max(2, n)
     }
 
-    // ================= header =================
-    Rectangle {
-        id: head
-        anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right
-        visible: !dash.embedded; height: dash.embedded ? 0 : 70; color: cPanel; border.color: cBorder; border.width: 1
-        Column {
-            anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left; anchors.leftMargin: 20; spacing: 3
-            Text { text: "Coach Report"; color: cText; font.bold: true; font.pixelSize: 24; font.family: fam }
-            Text {
-                color: cSub; font.pixelSize: 13; font.family: fam
-                text: "Discipline: " + dash.disciplineLabel()
-                      + "    |    Athlete: " + (typeof userName !== "undefined" ? userName : "—")
-                      + "    |    " + Qt.formatDateTime(new Date(), "MMM d, yyyy HH:mm")
-            }
-        }
-        Row {
-            anchors.verticalCenter: parent.verticalCenter; anchors.right: parent.right; anchors.rightMargin: 16; spacing: 12
-            Button {
-                text: (COACHFEED.coordinatesFlipY ? "Flip Y ✓" : "Flip Y (Invert)")
-                onClicked: { COACHFEED.coordinatesFlipY = !COACHFEED.coordinatesFlipY; COACHFEED.analyzeCurrentMatch(dash.gameSubMode) }
-            }
-            Button { text: "Re-run"; onClicked: COACHFEED.analyzeCurrentMatch(dash.gameSubMode) }
-            Button { text: "Detailed ▸"; onClicked: dash.detailsRequested() }
-            Button { text: "🖶 Print"; onClicked: dash.printRequested() }
-            Button { text: "Close"; onClicked: dash.closed() }
-        }
-    }
-
+    // ================= body =================
+    // (The old screen-only header — title, Flip Y / Re-run / nav buttons — is
+    // gone: the window owns the chrome, and re-analysis is fed by
+    // ShootingPage.feedCoachReport() before every open.)
     Flickable {
-        anchors.top: head.bottom; anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom
+        anchors.fill: parent
         anchors.margins: 14
         clip: true
         contentWidth: width

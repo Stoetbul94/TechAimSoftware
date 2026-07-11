@@ -1,12 +1,12 @@
 import QtQuick 2.15
 
-// Floating Coach Report window (floating-windows phase 2).
+// Floating Coach Report window.
 //
-// Hosts the existing Coach report views (Dashboard / Detailed / Print) inside
-// the reusable FloatingWindow shell in *embedded* mode: each view's own toolbar
-// is hidden, and the window supplies the chrome — title bar, the
-// Dashboard/Detailed/Print tabs, and the Print actions (Export PDF / Save Diary)
-// in the footer. Coach analytics, data, diary save/load and PDF export are
+// Hosts the pure-content Coach views (CoachDashboardView / CoachDetailedView /
+// CoachPrintView) inside the reusable FloatingWindow shell. The window supplies
+// all chrome — title bar, the Dashboard/Detailed/Print tabs, and the Print
+// actions (Export PDF / Save Diary) in the footer; the views expose intent
+// signals only. Coach analytics, data, diary save/load and PDF export are
 // untouched — only the hosting/chrome changes.
 FloatingWindow {
     id: reportWin
@@ -48,26 +48,26 @@ FloatingWindow {
         Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: "#33353d" }
     }
 
-    // ── Content: the active coach view (internal toolbars hidden) ────────
-    CoachDashboardPage {
-        anchors.fill: parent; embedded: true
+    // ── Content: the active pure-content coach view ──────────────────────
+    CoachDashboardView {
+        anchors.fill: parent
         visible: reportWin.viewMode === 0
         gameSubMode: reportWin.gameSubMode
         onClosed: reportWin.close()
         onDetailsRequested: reportWin.viewMode = 1
         onPrintRequested: reportWin.viewMode = 2
     }
-    CoachReportPage {
-        anchors.fill: parent; embedded: true
+    CoachDetailedView {
+        anchors.fill: parent
         visible: reportWin.viewMode === 1
         gameSubMode: reportWin.gameSubMode
         onClosed: reportWin.close()
         onDashboardRequested: reportWin.viewMode = 0
         onPrintRequested: reportWin.viewMode = 2
     }
-    CoachPrintPage {
+    CoachPrintView {
         id: coachPrint
-        anchors.fill: parent; embedded: true
+        anchors.fill: parent
         visible: reportWin.viewMode === 2
         gameSubMode: reportWin.gameSubMode
         onClosed: reportWin.close()
