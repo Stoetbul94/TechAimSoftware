@@ -4,6 +4,13 @@ ISSF electronic target scoring application. Qt Widgets + QML hybrid (C++ backend
 
 **Before doing anything else this session:** run `git log --oneline` and read the last 3-4 commit messages in full (`git log -4 -p` or `git show <hash>`). They document what was done and *why* in detail - this isn't boilerplate, it's the actual handoff notes from the previous work. Then read `seta10_ISSF_codebase_analysis.md` in the repo root for the full architecture writeup and findings.
 
+**Before touching anything 3P-related** (50m Rifle 3 Positions), read
+`docs/3p-discipline.md` first. 3P behaves differently from every other
+discipline — its data-model rules (which shot store to read), workflow state
+machine, ISSF integer-primary display format, and hard invariants are all
+documented there, along with the full fix history. Everything 3P-specific is
+gated on `is3PMatch`; other disciplines must remain untouched by 3P logic.
+
 ## Architecture, in short
 
 - `ModReader/qModMaster.pro` is `include()`d directly into `Seta.pro` - one binary, not two.
