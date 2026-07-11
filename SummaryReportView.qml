@@ -77,7 +77,10 @@ Item {
                             rowSpacing: 12
                             property real cw: (width - 2 * columnSpacing) / 3
 
-                            MetricCard { width: metricGrid.cw; label: "Total Score"; value: "" + totalScore; unit: "(" + totalScoreWithoutDecimal + ")" }
+                            // 3P (ISSF): integer total primary, decimal in brackets; others decimal-primary.
+                            MetricCard { width: metricGrid.cw; label: "Total Score"
+                                value: "" + (shootingPage.is3PMatch ? totalScoreWithoutDecimal : totalScore)
+                                unit: "(" + (shootingPage.is3PMatch ? totalScore : totalScoreWithoutDecimal) + ")" }
                             MetricCard { width: metricGrid.cw; label: "Average Shot"; value: globalMatchModel.count > 0 ? (totalScore / globalMatchModel.count).toFixed(2) : "—" }
                             MetricCard { width: metricGrid.cw; label: "Total Shots"; value: "" + globalMatchModel.count }
                             MetricCard { width: metricGrid.cw; label: "Inner 10"; value: "" + rightPanel.totalStars }
@@ -210,7 +213,11 @@ Item {
                                         anchors.verticalCenter: parent.verticalCenter
                                         spacing: 3
                                         Text { text: modelData.n; color: "#6b7280"; font.family: "Segoe UI"; font.pixelSize: 12; font.letterSpacing: 0.4 }
-                                        Text { text: (screenPresence.tick, getPositionTotal(modelData.p)); color: "#191b1f"; font.family: "Segoe UI"; font.pixelSize: 24; font.bold: true }
+                                        // ISSF 3P: integer position total primary, decimal in brackets.
+                                        Text {
+                                            text: (screenPresence.tick, getPositionTotalInt(modelData.p) + " (" + getPositionTotal(modelData.p) + ")")
+                                            color: "#191b1f"; font.family: "Segoe UI"; font.pixelSize: 20; font.bold: true
+                                        }
                                         Text {
                                             // Depend on `tick` (like the score above) so the count/stars
                                             // re-evaluate as shots land — the delegate is built before any
@@ -344,11 +351,15 @@ Item {
     // Per-series (10-shot) score across the full match record.
     function getSeriesScoreVal(s)
     {
-        if (globalMatchModel.count === 0) return "0.0"
-        var sum = 0
-        for (var i = (s-1)*10; i < globalMatchModel.count && i < s*10; ++i)
-            sum += globalMatchModel.get(i).calculatedscore * 1
-        return sum.toFixed(1)
+        if (globalMatchModel.count === 0) return shootingPage.is3PMatch ? "0 (0.0)" : "0.0"
+        var sum = 0, sumInt = 0
+        for (var i = (s-1)*10; i < globalMatchModel.count && i < s*10; ++i) {
+            var v = globalMatchModel.get(i).calculatedscore * 1
+            sum += v
+            sumInt += Math.floor(v)
+        }
+        // ISSF 3P: integer series score primary, decimal in brackets.
+        return shootingPage.is3PMatch ? sumInt + " (" + sum.toFixed(1) + ")" : sum.toFixed(1)
     }
 
     // Per-series inner-10 count, same rule the app uses for totalStars
@@ -375,6 +386,14 @@ Item {
             if (globalMatchModel.get(i).position === p)
                 s = s * 1 + (globalMatchModel.get(i).calculatedscore * 1).toFixed(1) * 1
         return s.toFixed(1)
+    }
+    function getPositionTotalInt(p)
+    {
+        var s = 0
+        for (var i = 0; i < globalMatchModel.count; ++i)
+            if (globalMatchModel.get(i).position === p)
+                s += Math.floor(globalMatchModel.get(i).calculatedscore * 1)
+        return s
     }
     function getPositionCount(p)
     {

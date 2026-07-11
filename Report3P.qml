@@ -15,6 +15,7 @@ Item {
     // Recomputed when the report is opened (MatchReport.onVisibleChanged calls refresh()).
     property var stats: [null, null, null]
     property var seriesTotals: []
+    property var seriesTotalsInt: []
     property var bestShot: ({ score: 0, num: 0, pos: 0 })
     property var worstShot: ({ score: 99, num: 0, pos: 0 })
     property real grandDec: 0
@@ -27,7 +28,7 @@ Item {
         var worst = { score: 99, num: 0, pos: 0 }
         for (var p = 0; p < 3; ++p)
             newStats.push({ dec: 0, intg: 0, inner: 0, n: 0, time: 0,
-                            sA: 0, sB: 0, group: 0, mpiX: 0, mpiY: 0,
+                            sA: 0, sB: 0, sAi: 0, sBi: 0, group: 0, mpiX: 0, mpiY: 0,
                             c10: 0, c9: 0, c8: 0, cLow: 0, xs: [], ys: [] })
         for (var i = 0; i < globalMatchModel.count; ++i) {
             var e = globalMatchModel.get(i)
@@ -37,7 +38,8 @@ Item {
             st.dec += s
             st.intg += Math.floor(s)
             if (s >= rightPanel.star_limit_value_rifle) st.inner++
-            if (st.n < 10) st.sA += s; else st.sB += s
+            if (st.n < 10) { st.sA += s; st.sAi += Math.floor(s) }
+            else           { st.sB += s; st.sBi += Math.floor(s) }
             if (s >= 10) st.c10++
             else if (s >= 9) st.c9++
             else if (s >= 8) st.c8++
@@ -65,15 +67,20 @@ Item {
             t.mpiX = t.n > 0 ? sx / t.n : 0
             t.mpiY = t.n > 0 ? sy / t.n : 0
         }
-        var sTotals = []
+        var sTotals = [], sTotalsInt = []
         for (var k = 0; k < 6; ++k) {
-            var sum = 0
-            for (i = k * 10; i < Math.min((k + 1) * 10, globalMatchModel.count); ++i)
-                sum += globalMatchModel.get(i).calculatedscore * 1
+            var sum = 0, sumInt = 0
+            for (i = k * 10; i < Math.min((k + 1) * 10, globalMatchModel.count); ++i) {
+                var sv = globalMatchModel.get(i).calculatedscore * 1
+                sum += sv
+                sumInt += Math.floor(sv)
+            }
             sTotals.push(sum)
+            sTotalsInt.push(sumInt)
         }
         stats = newStats
         seriesTotals = sTotals
+        seriesTotalsInt = sTotalsInt
         bestShot = best
         worstShot = worst
         grandDec = gDec
@@ -161,9 +168,9 @@ Item {
                         Row {
                             anchors.fill: parent
                             Text { width: parent.width*0.16; text: posNames[index]; font.pixelSize: 10; font.bold: true; color: "#a80038"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; height: parent.height }
-                            Text { width: parent.width*0.10; text: st ? fmt(st.sA) : "-"; font.pixelSize: 10; color: "#111111"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; height: parent.height }
-                            Text { width: parent.width*0.10; text: st ? fmt(st.sB) : "-"; font.pixelSize: 10; color: "#111111"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; height: parent.height }
-                            Text { width: parent.width*0.15; text: st ? fmt(st.dec) + " (" + st.intg + ")" : "-"; font.pixelSize: 10; font.bold: true; color: "#111111"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; height: parent.height }
+                            Text { width: parent.width*0.10; text: st ? st.sAi + " (" + fmt(st.sA) + ")" : "-"; font.pixelSize: 10; color: "#111111"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; height: parent.height }
+                            Text { width: parent.width*0.10; text: st ? st.sBi + " (" + fmt(st.sB) + ")" : "-"; font.pixelSize: 10; color: "#111111"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; height: parent.height }
+                            Text { width: parent.width*0.15; text: st ? st.intg + " (" + fmt(st.dec) + ")" : "-"; font.pixelSize: 10; font.bold: true; color: "#111111"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; height: parent.height }
                             Text { width: parent.width*0.11; text: st ? st.inner : "-"; font.pixelSize: 10; color: "#111111"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; height: parent.height }
                             Text { width: parent.width*0.13; text: st && st.n > 1 ? fmt(st.group) : "-"; font.pixelSize: 10; color: "#111111"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; height: parent.height }
                             Text { width: parent.width*0.15; text: st && st.n > 0 ? fmt(st.mpiX) + " ; " + fmt(st.mpiY) : "-"; font.pixelSize: 10; color: "#111111"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; height: parent.height }
@@ -177,7 +184,7 @@ Item {
                         anchors.fill: parent
                         Text { width: parent.width*0.16; text: qsTr("TOTAL"); color: "white"; font.pixelSize: 11; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; height: parent.height }
                         Text { width: parent.width*0.20; text: ""; height: parent.height }
-                        Text { width: parent.width*0.15; text: fmt(grandDec) + " (" + grandInt + ")"; color: "white"; font.pixelSize: 12; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; height: parent.height }
+                        Text { width: parent.width*0.15; text: grandInt + " (" + fmt(grandDec) + ")"; color: "white"; font.pixelSize: 12; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; height: parent.height }
                         Text { width: parent.width*0.11; text: stats[0] ? (stats[0].inner + stats[1].inner + stats[2].inner) : ""; color: "white"; font.pixelSize: 11; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; height: parent.height }
                         Text { width: parent.width*0.38; text: ""; height: parent.height }
                     }
@@ -203,8 +210,9 @@ Item {
                                     font.pixelSize: 7; color: "#777777"; anchors.horizontalCenter: parent.horizontalCenter
                                 }
                                 Text {
-                                    text: seriesTotals.length > index ? fmt(seriesTotals[index]) : "-"
-                                    font.pixelSize: 12; font.bold: true; color: "#111111"
+                                    text: seriesTotals.length > index
+                                          ? seriesTotalsInt[index] + " (" + fmt(seriesTotals[index]) + ")" : "-"
+                                    font.pixelSize: 10; font.bold: true; color: "#111111"
                                     anchors.horizontalCenter: parent.horizontalCenter
                                 }
                             }
@@ -248,7 +256,7 @@ Item {
                                 Text { width: parent.width*0.6; text: posNames[posIndex]; font.pixelSize: 9; font.bold: true; color: "#a80038" }
                                 Text {
                                     width: parent.width*0.4
-                                    text: stats[posIndex] ? fmt(stats[posIndex].dec) : "-"
+                                    text: stats[posIndex] ? stats[posIndex].intg + " (" + fmt(stats[posIndex].dec) + ")" : "-"
                                     font.pixelSize: 9; font.bold: true; color: "#111111"; horizontalAlignment: Text.AlignRight
                                 }
                             }
@@ -271,8 +279,8 @@ Item {
                         }
                     }
                     Text {
-                        text: qsTr("Best: ") + fmt(bestShot.score) + " (#" + bestShot.num + " " + posNames[bestShot.pos].charAt(0) + ")"
-                              + qsTr("   Worst: ") + fmt(worstShot.score) + " (#" + worstShot.num + " " + posNames[worstShot.pos].charAt(0) + ")"
+                        text: qsTr("Best: ") + Math.floor(bestShot.score) + " (" + fmt(bestShot.score) + ") #" + bestShot.num + " " + posNames[bestShot.pos].charAt(0)
+                              + qsTr("   Worst: ") + Math.floor(worstShot.score) + " (" + fmt(worstShot.score) + ") #" + worstShot.num + " " + posNames[worstShot.pos].charAt(0)
                         font.pixelSize: 10; font.bold: true; color: "#111111"
                     }
                 }
