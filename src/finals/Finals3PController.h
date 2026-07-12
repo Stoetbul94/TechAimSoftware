@@ -17,6 +17,7 @@
 #include <QVariantMap>
 #include <QVariantList>
 #include <QStringList>
+#include <QHash>
 
 #include "Finals3PTypes.h"
 #include "Finals3PConfig.h"
@@ -48,6 +49,9 @@ class Finals3PController : public QObject
     Q_PROPERTY(bool primaryActionEnabled READ primaryActionEnabled NOTIFY advanceLabelChanged)
     Q_PROPERTY(QString primaryActionLabel READ primaryActionLabel NOTIFY advanceLabelChanged)
     Q_PROPERTY(int officialShotCount READ officialShotCount NOTIFY shotCountsChanged)
+    // Expected shots in the current stage (0 outside official stages) — the
+    // controller is the source of truth for capacity; QML only formats.
+    Q_PROPERTY(int stageShotCapacity READ stageShotLimit NOTIFY phaseChanged)
     Q_PROPERTY(double cumulativeTotal READ cumulativeTotal NOTIFY totalsChanged)
     Q_PROPERTY(double stageSubtotal READ stageSubtotal NOTIFY totalsChanged)
     Q_PROPERTY(double timeScale READ timeScale WRITE setTimeScale NOTIFY timeScaleChanged)
@@ -92,6 +96,13 @@ public:
     // and cleared at startup to LOCK the shared ListModels to the role union
     // before any qualification or finals append (plan §2 / role locking).
     Q_INVOKABLE QVariantMap templateShotRecord() const;
+    // Phase C: per-official-stage lifecycle status and decimal subtotals,
+    // persisted per stage (never inferred from the current stage after a
+    // transition). Keys are FinalsStage ids.
+    Q_INVOKABLE int stageStatus(int stageId) const
+        { return m_stageStatus.value(stageId, 0); }
+    Q_INVOKABLE QVariantMap stageStatuses() const;
+    Q_INVOKABLE QVariantMap stageSubtotals() const;
 
     // ── RMS hooks (stubs until the Range Management System exists) ──────
     Q_INVOKABLE void startPhaseFromServer(const QVariantMap& command);
@@ -139,6 +150,7 @@ signals:
     void shotAccepted(const QVariantMap& shot);
     void shotRejected(const QVariantMap& rejection);
     void stageCompleted(int stageId);
+    void stageStatusChanged(int stageId, int status);
     void finalCompleted();
     void targetModeChanged();
     void windowStateChanged();
@@ -170,6 +182,7 @@ private:
     void beginCommandSequence(qint64 gapMs);          // gap -> LOAD -> START steps
     void closeWindowAndStop();
     void recordMissingShots();                        // [P1=B] shortfall -> MissingShot records
+    void setStageStatus(Stage s, techaim::finals::StageStatus st);
     void advanceAfterCommandStage();
     techaim::finals::ShotContext currentShotContext() const;
     void acceptShot(bool sighter, double xMm, double yMm, double score,
@@ -225,6 +238,8 @@ private:
     double m_cumulativeTotal = 0.0;
     double m_stageSubtotal = 0.0;
     int m_officialShotCount = 0;
+    QHash<int, int> m_stageStatus;        // stageId -> StageStatus
+    QHash<int, double> m_stageSubtotalsMap;
 
     // Append-only session journal (plan §9): one JSON line per accepted shot
     // and phase transition. Crash-safe; restart-recovery UI deferred.

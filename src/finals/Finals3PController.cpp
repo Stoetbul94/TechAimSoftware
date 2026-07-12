@@ -17,6 +17,39 @@ const char kJournalPath[] = "finals_session.jsonl";
 
 // ── session journal (plan §9): append-only, crash-safe ──────────────────
 
+QVariantMap Finals3PController::stageStatuses() const
+{
+    QVariantMap m;
+    for (auto it = m_stageStatus.constBegin(); it != m_stageStatus.constEnd(); ++it)
+        m[stageName(static_cast<Stage>(it.key()))] = it.value();
+    return m;
+}
+
+QVariantMap Finals3PController::stageSubtotals() const
+{
+    QVariantMap m;
+    for (auto it = m_stageSubtotalsMap.constBegin(); it != m_stageSubtotalsMap.constEnd(); ++it)
+        m[stageName(static_cast<Stage>(it.key()))] = it.value();
+    return m;
+}
+
+void Finals3PController::setStageStatus(Stage st, techaim::finals::StageStatus status)
+{
+    const int id = static_cast<int>(st);
+    const int cur = m_stageStatus.value(id, 0);
+    // A finished verdict (Complete/Incomplete/Aborted) is never downgraded.
+    if (cur == static_cast<int>(status)
+            || cur >= static_cast<int>(techaim::finals::StageStatus::Complete))
+        return;
+    m_stageStatus[id] = static_cast<int>(status);
+    QVariantMap payload;
+    payload[QStringLiteral("statusStage")] = stageName(st);
+    payload[QStringLiteral("statusStageId")] = id;
+    payload[QStringLiteral("status")] = stageStatusName(status);
+    writeJournal(QStringLiteral("stageStatus"), payload);
+    emit stageStatusChanged(id, static_cast<int>(status));
+}
+
 void Finals3PController::archiveExistingJournal()
 {
     // Never silently reuse or zero a previous session's journal.
@@ -138,6 +171,8 @@ void Finals3PController::startFinal()
     m_cumulativeTotal = 0.0;
     m_stageSubtotal = 0.0;
     m_officialShotCount = 0;
+    m_stageStatus.clear();
+    m_stageSubtotalsMap.clear();
     emit totalsChanged();
     archiveExistingJournal();
     writeJournal(QStringLiteral("finalStarted"), QVariantMap());
@@ -159,6 +194,8 @@ void Finals3PController::abortFinal()
 {
     if (m_stage == Stage::Idle || m_stage == Stage::Complete || m_stage == Stage::Aborted)
         return;
+    if (stageShotLimit() > 0)
+        setStageStatus(m_stage, techaim::finals::StageStatus::Aborted);
     setWindow(WindowState::Closed);
     m_tick.stop();
     m_stage = Stage::Aborted;
@@ -466,6 +503,9 @@ void Finals3PController::acceptShot(bool sighter, double xMm, double yMm,
         finalNumber = stageShotNumberBase() + m_shotsInStage;
         m_stageSubtotal += score;
         m_cumulativeTotal += score;
+        m_stageSubtotalsMap[stageId()] = m_stageSubtotalsMap.value(stageId(), 0.0) + score;
+        if (m_shotsInStage >= stageShotLimit())
+            setStageStatus(m_stage, techaim::finals::StageStatus::Complete);
         ++m_officialShotCount;
         emit totalsChanged();
         emit shotCountsChanged();
@@ -509,6 +549,7 @@ void Finals3PController::rejectShot(RejectReason reason, double xMm, double yMm,
         else if (m_stage == Stage::ProneMatch)
             rej[QStringLiteral("displayText")] = QStringLiteral("PRONE COMPLETE — CHANGE TO STANDING");
     }
+    writeJournal(QStringLiteral("shotRejected"), rej);
     qInfo() << "FINALS3P: shot rejected —" << rejectReasonName(reason)
             << "in" << stageName(m_stage);
     emit shotRejected(rej);
@@ -529,8 +570,19 @@ void Finals3PController::recordMissingShots()
     if (inStage1()) {
         addRange(Stage::KneelingMatch, m_kneelingFired, m_cfg.kneelingShots, 0);
         addRange(Stage::ProneMatch, m_proneFired, m_cfg.proneShots, 10);
+        setStageStatus(Stage::KneelingMatch,
+                       m_kneelingFired >= m_cfg.kneelingShots
+                           ? techaim::finals::StageStatus::Complete
+                           : techaim::finals::StageStatus::Incomplete);
+        setStageStatus(Stage::ProneMatch,
+                       m_proneFired >= m_cfg.proneShots
+                           ? techaim::finals::StageStatus::Complete
+                           : techaim::finals::StageStatus::Incomplete);
     } else if (isSeriesStage() || isSingleStage()) {
         addRange(m_stage, m_shotsInStage, stageShotLimit(), stageShotNumberBase());
+        setStageStatus(m_stage, m_shotsInStage >= stageShotLimit()
+                                    ? techaim::finals::StageStatus::Complete
+                                    : techaim::finals::StageStatus::Incomplete);
     }
 }
 
@@ -594,6 +646,8 @@ void Finals3PController::enterStage(Stage s)
     m_seqStep = 0;
     m_shotsInStage = 0;
     m_stageSubtotal = 0.0;
+    if (stageShotLimit() > 0)
+        setStageStatus(s, techaim::finals::StageStatus::InProgress);
     emit totalsChanged();
     m_warn1Fired = m_warn2Fired = false;
 
@@ -868,6 +922,7 @@ void Finals3PController::issueCommand(CommandType type, const QString& text)
     ev[QStringLiteral("sequenceNumber")] = m_commandSeq;
     ev[QStringLiteral("audioCueId")] = commandTypeName(type).toLower();
     m_events.append(ev);
+    writeJournal(QStringLiteral("command"), ev);
     m_commandText = text;
     qInfo() << "FINALS3P cmd" << m_commandSeq << commandTypeName(type) << text;
     // Phase A audio baseline: system beep (FinalsAudioService lands in Phase D).
@@ -885,6 +940,11 @@ void Finals3PController::setWindow(WindowState w)
         m_lastExternalId = -1;      // duplicate guard is per firing window
         m_lastAcceptScaled = 0;
     }
+    QVariantMap payload;
+    payload[QStringLiteral("window")] = static_cast<int>(w);
+    payload[QStringLiteral("windowId")] = m_windowId;
+    writeJournal(w == WindowState::Closed ? QStringLiteral("windowClosed")
+                                          : QStringLiteral("windowOpened"), payload);
     emit windowStateChanged();
 }
 

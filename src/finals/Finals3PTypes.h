@@ -64,6 +64,28 @@ enum class CeremonyMode {
     Skip        // straight to preparation/sighting
 };
 
+// Per-official-stage lifecycle status (Phase C). Persisted per stage — never
+// inferred from the controller's current stage after a transition.
+enum class StageStatus {
+    NotStarted = 0,
+    InProgress,
+    Complete,
+    Incomplete,   // window/stage expired with expected shots unfired
+    Aborted
+};
+
+inline QString stageStatusName(StageStatus s)
+{
+    switch (s) {
+    case StageStatus::NotStarted: return QStringLiteral("NotStarted");
+    case StageStatus::InProgress: return QStringLiteral("InProgress");
+    case StageStatus::Complete:   return QStringLiteral("Complete");
+    case StageStatus::Incomplete: return QStringLiteral("Incomplete");
+    case StageStatus::Aborted:    return QStringLiteral("Aborted");
+    }
+    return QStringLiteral("Unknown");
+}
+
 enum class RejectReason {
     WindowClosed = 0,
     WrongTargetMode,
