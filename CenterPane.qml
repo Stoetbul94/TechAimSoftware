@@ -1311,6 +1311,9 @@ Item {
         source: "qrc:/images/centerPanel/corner-tri.png"
         anchors.top: parent.top
         anchors.right: parent.right
+        // 3P FINAL: qualification sighter-corner indicator hidden — the HUD
+        // strip shows SIGHTING/MATCH state.
+        visible: !shootingPage.isFinalsMatch
 
         width: 0.2*parent.width
         height: width
@@ -1424,7 +1427,9 @@ Item {
         anchors.topMargin: 20
         width: 0.2*parent.width
         height: 40
-        visible: APPSETTINGS.timer()/*!sighter.visible*/ /*&& !isSaveGame*/
+        // 3P FINAL: the qualification match clock never shows — the Finals
+        // HUD strip is the only time source (FINALS3P.remainingFormatted).
+        visible: APPSETTINGS.timer() && !shootingPage.isFinalsMatch
         color: "transparent"
 
         Row {
@@ -1516,7 +1521,9 @@ Item {
         // Show the sighting countdown whenever the match clock is hidden —
         // it takes the match clock's top-right spot (they are mutually
         // exclusive), keeping clear of the shot counter at top-left.
-        visible: !timerNotification.visible
+        // 3P FINAL: no qualification clocks at all (FINALS3P HUD is the only
+        // time source), so this must not appear when the match clock hides.
+        visible: !timerNotification.visible && !shootingPage.isFinalsMatch
 
         Row {
             id:stRow
