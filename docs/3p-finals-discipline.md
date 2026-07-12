@@ -285,3 +285,24 @@ are the two review gates).
 | Tests | `tests/finals/` — **70 checks, 0 failures**, exact command-event and stage-entry ordering plus timing (tolerance = a few 50 ms ticks × timeScale) |
 | Deferred | [P1] unfired-shot behaviour (disabled); FinalsAudioService voice (beep baseline only); persistence/recovery; all shot-model writes and scoring (Phase B); ranking/elimination/ties/penalties (RMS) |
 | Commits | `55b448a` doc corrections · `07b8527` A1 types/controller/config · `c707611` A2+A3 event entry + UI skeleton · `8ac7365` A4 test suite + docs |
+
+## Finals HUD (Option A — approved, implemented HUD1–HUD4)
+
+Progressive-disclosure presentation layer replacing the Phase-A/B panel; pure
+QML over `FINALS3P` (controller/router/models/journal/tests untouched).
+Components (each takes `ctl`, mock-injectable): `FinalsHud` (shell) ·
+`FinalsTopStrip` (only permanent element, ~6% height clamp 38–46 px: stage
+identity · compact progress · countdown + window LED; collapses <640 px) ·
+`FinalsProgressIndicator` (PREP|K|P|S|S1|S2|SINGLES|DONE, singles expand to
+31–35 in phase; green done / maroon current / grey future / amber "!" missing
+/ red aborted) · `FinalsCommandOverlay` (transient LOAD/START/STOP/UNLOAD/
+RESULTS ARE FINAL etc., fade-in→hold ~2 s (4.5 s results)→fade-out, single
+instance restarts cleanly) · `FinalsPerformanceBlock` (bottom-right, official
+fire only: shots n/N, STAGE, TOTAL — decimal) · `FinalsAdvanceControl`
+(contextual pill from `advanceLabel`; inline non-modal confirmation) ·
+`FinalsIncidentToast` (slide/fade, severity edge bar) ·
+`FinalsDeveloperDrawer` (SKIP CEREMONY/PAUSE/ABORT/RESET behind
+`APPSETTINGS.getDeveloperMode()`, config.ini `developer_mode=1`, default OFF).
+State harness + screenshot capture: `tests/finals/hud_harness.qml` (mock
+controller, saves `docs/img/finals-hud-*.png`: prep, kneeling match, series
+START, single with incident toast).
