@@ -41,13 +41,8 @@ Item {
         anchors.bottomMargin: Math.max(150, hud.height * 0.22)
     }
 
-    // ── Athlete ADVANCE control (contextual pill, bottom centre) ────────
-    FinalsAdvanceControl {
-        ctl: hud.ctl
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottom: parent.bottom
-        anchors.bottomMargin: 14
-    }
+    // The athlete's contextual primary action now lives on the bottom
+    // action bar (ShootingPage, FIX2) - no duplicate ADVANCE pill here.
 
     // ── Incident toasts (slide from under the strip, fade away) ─────────
     FinalsIncidentToast {

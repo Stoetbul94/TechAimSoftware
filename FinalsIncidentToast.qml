@@ -31,7 +31,17 @@ Rectangle {
 
     Connections {
         target: toast.ctl
-        function onShotRejected(rej) { toast.show(rej.reason) }
+        function onShotRejected(rej) {
+            // Athlete-facing wording wins (e.g. "KNEELING COMPLETE - CHANGE TO
+            // PRONE"); the diagnostic reason maps stay for everything else.
+            if (rej.displayText !== undefined) {
+                toast.message = rej.displayText
+                toast.edgeColor = "#3ddc84"   // normal-completion guidance, not an error
+                anim.stop(); anim.restart()
+            } else {
+                toast.show(rej.reason)
+            }
+        }
     }
 
     width: msgTxt.implicitWidth + 34

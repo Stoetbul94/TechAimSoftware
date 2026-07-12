@@ -46,6 +46,7 @@ Item {
                     { l: "SKIP CEREMONY", a: function() { drawer.ctl.skipCeremony() } },
                     { l: "PAUSE / RESUME", a: function() { drawer.ctl.paused ? drawer.ctl.resumeTrainingSimulation()
                                                                              : drawer.ctl.pauseTrainingSimulation() } },
+                    { l: "FORCE ADVANCE", a: function() { drawer.ctl.devForceAdvanceStage1() } },
                     { l: "ABORT", a: function() { drawer.ctl.abortFinal() } },
                     { l: "RESET + START", a: function() { drawer.ctl.resetFinal(); drawer.ctl.startFinal() } },
                     { l: "CLOSE", a: function() { drawer.open = false } }

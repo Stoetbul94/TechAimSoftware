@@ -137,6 +137,7 @@ void Finals3PController::startFinal()
     m_missingShots.clear();
     m_cumulativeTotal = 0.0;
     m_stageSubtotal = 0.0;
+    m_officialShotCount = 0;
     emit totalsChanged();
     archiveExistingJournal();
     writeJournal(QStringLiteral("finalStarted"), QVariantMap());
@@ -216,22 +217,58 @@ QString Finals3PController::advanceLabel() const
 {
     switch (m_stage) {
     case Stage::KneelingMatch:
-        return m_stage1Started ? QStringLiteral("CHANGE TO PRONE — SIGHTERS") : QString();
+        return (m_stage1Started && m_shotsInStage >= m_cfg.kneelingShots)
+            ? QStringLiteral("CHANGE TO PRONE — SIGHTERS") : QString();
     case Stage::ProneSighting: return QStringLiteral("START PRONE MATCH");
-    case Stage::ProneMatch:    return QStringLiteral("CHANGE TO STANDING — SIGHTERS");
-    case Stage::StandingSighting:
-        return m_targetMode == TargetMode::Sighter
-            ? QStringLiteral("TARGET TO MATCH — READY") : QString();
+    case Stage::ProneMatch:
+        return m_shotsInStage >= m_cfg.proneShots
+            ? QStringLiteral("CHANGE TO STANDING — SIGHTERS") : QString();
     default:                   return QString();
+    }
+}
+
+// ── bottom action bar (FIX2): controller-owned contextual primary action ──
+
+bool Finals3PController::primaryActionVisible() const
+{
+    switch (m_stage) {
+    case Stage::KneelingMatch:    return m_stage1Started;
+    case Stage::ProneSighting:
+    case Stage::ProneMatch:
+    case Stage::StandingSighting: return true;
+    default:                      return false;
+    }
+}
+
+bool Finals3PController::primaryActionEnabled() const
+{
+    return !advanceLabel().isEmpty();
+}
+
+QString Finals3PController::primaryActionLabel() const
+{
+    const QString adv = advanceLabel();
+    if (!adv.isEmpty())
+        return adv;
+    switch (m_stage) {
+    case Stage::KneelingMatch:
+        return QStringLiteral("KNEELING — %1 / %2").arg(m_shotsInStage).arg(m_cfg.kneelingShots);
+    case Stage::ProneMatch:
+        return QStringLiteral("PRONE — %1 / %2").arg(m_shotsInStage).arg(m_cfg.proneShots);
+    case Stage::StandingSighting:
+        return QStringLiteral("STANDING SIGHTING — WAIT FOR STOP");
+    default:
+        return QString();
     }
 }
 
 void Finals3PController::advanceStage1()
 {
+    // Legal chain, forward only. StandingSighting has NO manual advance: the
+    // controller sets the target to Match/Ready itself at the 22:00 STOP.
     const bool legal = (m_stage == Stage::KneelingMatch && m_stage1Started)
         || m_stage == Stage::ProneSighting
-        || m_stage == Stage::ProneMatch
-        || (m_stage == Stage::StandingSighting && m_targetMode == TargetMode::Sighter);
+        || m_stage == Stage::ProneMatch;
     if (!legal) {
         QVariantMap info;
         info[QStringLiteral("reason")] = QStringLiteral("IllegalTransition");
@@ -241,26 +278,50 @@ void Finals3PController::advanceStage1()
         emit transitionRejected(info);
         return;
     }
-    // Advancing below the stage shot limit costs the unfired shots at 22:00
-    // ([P1] Option B): require explicit confirmStage1Advance() — repeated
-    // ADVANCE taps only re-raise the confirmation, they never self-confirm.
+    // HARD BLOCK (user decision, supersedes the earlier confirmation flow):
+    // Kneeling/Prone Match may not advance until all 10 accepted match shots
+    // exist. Early transition is forbidden in production; the only bypass is
+    // the developer-only devForceAdvanceStage1().
     const bool underLimit = (m_stage == Stage::KneelingMatch || m_stage == Stage::ProneMatch)
                             && m_shotsInStage < stageShotLimit();
     if (underLimit) {
-        m_pendingAdvance = true;
-        emit advanceConfirmationRequired(m_shotsInStage, stageShotLimit());
+        QVariantMap info;
+        info[QStringLiteral("reason")] = QStringLiteral("StageIncomplete");
+        info[QStringLiteral("stageId")] = stageId();
+        info[QStringLiteral("stageLabel")] = stageName(m_stage);
+        info[QStringLiteral("shotsFired")] = m_shotsInStage;
+        info[QStringLiteral("stageLimit")] = stageShotLimit();
+        qInfo() << "FINALS3P: advance hard-blocked —" << m_shotsInStage << "/"
+                << stageShotLimit() << "in" << stageName(m_stage);
+        emit transitionRejected(info);
         return;
     }
-    m_pendingAdvance = false;
     performStage1Advance();
+}
+
+void Finals3PController::executePrimaryAction()
+{
+    if (primaryActionVisible() && primaryActionEnabled())
+        advanceStage1();
+}
+
+void Finals3PController::devForceAdvanceStage1()
+{
+    // Developer-only hard-block bypass (drawer control; never production UI).
+    const bool legal = (m_stage == Stage::KneelingMatch && m_stage1Started)
+        || m_stage == Stage::ProneSighting
+        || m_stage == Stage::ProneMatch
+        || (m_stage == Stage::StandingSighting && m_targetMode == TargetMode::Sighter);
+    if (legal) {
+        qInfo() << "FINALS3P: DEV force-advance from" << stageName(m_stage);
+        performStage1Advance();
+    }
 }
 
 void Finals3PController::confirmStage1Advance()
 {
-    if (!m_pendingAdvance)
-        return;
-    m_pendingAdvance = false;
-    performStage1Advance();
+    // Inert: production advance is hard-blocked (see advanceStage1); the
+    // developer bypass is devForceAdvanceStage1().
 }
 
 void Finals3PController::cancelStage1Advance()
@@ -405,8 +466,13 @@ void Finals3PController::acceptShot(bool sighter, double xMm, double yMm,
         finalNumber = stageShotNumberBase() + m_shotsInStage;
         m_stageSubtotal += score;
         m_cumulativeTotal += score;
+        ++m_officialShotCount;
         emit totalsChanged();
         emit shotCountsChanged();
+        // Completion flips the stage label and primary action ("KNEELING
+        // COMPLETE" -> "CHANGE TO PRONE — SIGHTERS") the moment shot 10 lands.
+        emit advanceLabelChanged();
+        emit phaseChanged();
     }
     m_lastAcceptScaled = scaledNow();
     QVariantMap shot = techaim::finals::acceptedShotRecord(
@@ -432,9 +498,17 @@ void Finals3PController::acceptShot(bool sighter, double xMm, double yMm,
 void Finals3PController::rejectShot(RejectReason reason, double xMm, double yMm,
                                     bool simulated, qint64 externalShotId)
 {
-    const QVariantMap rej = techaim::finals::rejectionRecord(
+    QVariantMap rej = techaim::finals::rejectionRecord(
         currentShotContext(), reason, xMm, yMm, ++m_shotEventId,
         externalShotId, simulated);
+    // Part 8: stage completion is NORMAL — the athlete-facing text guides the
+    // next action; the diagnostic reason stays in logs/incident records.
+    if (reason == RejectReason::StageShotLimitReached) {
+        if (m_stage == Stage::KneelingMatch)
+            rej[QStringLiteral("displayText")] = QStringLiteral("KNEELING COMPLETE — CHANGE TO PRONE");
+        else if (m_stage == Stage::ProneMatch)
+            rej[QStringLiteral("displayText")] = QStringLiteral("PRONE COMPLETE — CHANGE TO STANDING");
+    }
     qInfo() << "FINALS3P: shot rejected —" << rejectReasonName(reason)
             << "in" << stageName(m_stage);
     emit shotRejected(rej);
@@ -723,6 +797,10 @@ void Finals3PController::tick()
             if (s1 >= m_cfg.stage1Ms) {
                 setWindow(WindowState::Closed);
                 issueCommand(CommandType::Stop, QStringLiteral("STOP"));
+                // Controller places the standing target in MATCH/READY for the
+                // first commanded series (sanctioned automatic switch at the
+                // 22:00 STOP — the athlete has no manual action here).
+                applyTargetModeInternal(TargetMode::Match);
                 // [P1 = Option B] no synthetic shots — the kneeling/prone
                 // shortfall becomes MissingShot records for the report layer.
                 recordMissingShots();
@@ -816,9 +894,13 @@ QString Finals3PController::stageLabel() const
     case Stage::Idle:              return QStringLiteral("IDLE");
     case Stage::Ceremony:          return QStringLiteral("CEREMONY");
     case Stage::KneelingPrepSight: return QStringLiteral("PREPARATION · SIGHTING");
-    case Stage::KneelingMatch:     return QStringLiteral("KNEELING · MATCH");
+    case Stage::KneelingMatch:
+        return (m_stage1Started && m_shotsInStage >= m_cfg.kneelingShots)
+            ? QStringLiteral("KNEELING · COMPLETE") : QStringLiteral("KNEELING · MATCH");
     case Stage::ProneSighting:     return QStringLiteral("PRONE · SIGHTING");
-    case Stage::ProneMatch:        return QStringLiteral("PRONE · MATCH");
+    case Stage::ProneMatch:
+        return m_shotsInStage >= m_cfg.proneShots
+            ? QStringLiteral("PRONE · COMPLETE") : QStringLiteral("PRONE · MATCH");
     case Stage::StandingSighting:  return QStringLiteral("STANDING · SIGHTING");
     case Stage::StandingSeries1:   return QStringLiteral("STANDING · SERIES 1");
     case Stage::StandingSeries2:   return QStringLiteral("STANDING · SERIES 2");

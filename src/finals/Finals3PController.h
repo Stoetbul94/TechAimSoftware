@@ -42,6 +42,12 @@ class Finals3PController : public QObject
     Q_PROPERTY(int shotsInStage READ shotsInStage NOTIFY shotCountsChanged)
     Q_PROPERTY(int nextShotNumber READ nextShotNumber NOTIFY shotCountsChanged)
     Q_PROPERTY(QString advanceLabel READ advanceLabel NOTIFY advanceLabelChanged)
+    // Contextual primary action for the bottom action bar (FIX2): the
+    // controller owns legality and labelling; QML only renders and invokes.
+    Q_PROPERTY(bool primaryActionVisible READ primaryActionVisible NOTIFY advanceLabelChanged)
+    Q_PROPERTY(bool primaryActionEnabled READ primaryActionEnabled NOTIFY advanceLabelChanged)
+    Q_PROPERTY(QString primaryActionLabel READ primaryActionLabel NOTIFY advanceLabelChanged)
+    Q_PROPERTY(int officialShotCount READ officialShotCount NOTIFY shotCountsChanged)
     Q_PROPERTY(double cumulativeTotal READ cumulativeTotal NOTIFY totalsChanged)
     Q_PROPERTY(double stageSubtotal READ stageSubtotal NOTIFY totalsChanged)
     Q_PROPERTY(double timeScale READ timeScale WRITE setTimeScale NOTIFY timeScaleChanged)
@@ -58,6 +64,12 @@ public:
     // Advancing below the stage shot limit first emits
     // advanceConfirmationRequired and waits for confirmStage1Advance().
     Q_INVOKABLE void advanceStage1();
+    Q_INVOKABLE void executePrimaryAction();          // bottom-bar entry point
+    // Developer-only: bypass the hard block for testing. Never wired to a
+    // production control (FinalsDeveloperDrawer only).
+    Q_INVOKABLE void devForceAdvanceStage1();
+    // Retained for API compatibility; production advance is hard-blocked, so
+    // these are inert (developer bypass is devForceAdvanceStage1).
     Q_INVOKABLE void confirmStage1Advance();
     Q_INVOKABLE void cancelStage1Advance();
     Q_INVOKABLE void registerShot(double xMm, double yMm, double decimalScore,
@@ -104,6 +116,10 @@ public:
     int shotsInStage() const { return m_shotsInStage; }
     int nextShotNumber() const;
     QString advanceLabel() const;
+    bool primaryActionVisible() const;
+    bool primaryActionEnabled() const;
+    QString primaryActionLabel() const;
+    int officialShotCount() const { return m_officialShotCount; }
     double cumulativeTotal() const { return m_cumulativeTotal; }
     double stageSubtotal() const { return m_stageSubtotal; }
     double timeScale() const { return m_timeScale; }
@@ -208,6 +224,7 @@ private:
     // sum is the cross-check, this is the incremental source for the UI.
     double m_cumulativeTotal = 0.0;
     double m_stageSubtotal = 0.0;
+    int m_officialShotCount = 0;
 
     // Append-only session journal (plan §9): one JSON line per accepted shot
     // and phase transition. Crash-safe; restart-recovery UI deferred.
