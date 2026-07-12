@@ -23,6 +23,31 @@ Item {
         height: Math.max(38, Math.min(46, hud.height * 0.06))
     }
 
-    // Layers 2 (performance block), 3 (command overlay), athlete ADVANCE,
-    // incident toasts and the developer drawer are added in HUD2/HUD3.
+    // ── Layer 3: CRO command overlay (transient, upper-middle) ──────────
+    FinalsCommandOverlay {
+        ctl: hud.ctl
+        anchors.horizontalCenter: parent.horizontalCenter
+        y: strip.height + hud.height * 0.08
+        maxWidth: hud.width * 0.7
+    }
+
+    // ── Layer 2: contextual performance block (bottom-right, clear of the
+    //    shot-value circle and the central scoring area) ──────────────────
+    FinalsPerformanceBlock {
+        ctl: hud.ctl
+        anchors.right: parent.right
+        anchors.rightMargin: 12
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: Math.max(150, hud.height * 0.22)
+    }
+
+    // ── Athlete ADVANCE control (contextual pill, bottom centre) ────────
+    FinalsAdvanceControl {
+        ctl: hud.ctl
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: 14
+    }
+
+    // Incident toasts and the developer drawer are added in HUD3.
 }
