@@ -259,3 +259,22 @@ What exists and is verified:
 
 Phase B starts from here: window gating into the real shot models, decimal
 totals, persistence/recovery — [P1] to be reconfirmed first.
+**Phase-B implementation plan: `docs/3p-finals-phase-b-plan.md`** (approved
+plan required before Phase-B code; the Stage-1 transition mechanism and [P1]
+are the two review gates).
+
+## Phase A — implementation summary (approved)
+
+| Item | Implemented as |
+|---|---|
+| Files added | `src/finals/Finals3PTypes.h`, `Finals3PConfig.h`, `Finals3PController.h/.cpp`; `tests/finals/finals_tests.pro`, `tst_finals3p.cpp`; QML surface in `LoginPage.qml` (FINAL (35) card), `main.qml` (routing + `FINALS3P` registration in `main.cpp`), `ShootingPage.qml` (finals panel), `CenterPane.qml` (dry-run click gate) |
+| Controller API | `startFinal / skipCeremony / setTargetMode / registerShot / simulateShot / abortFinal / resetFinal / pauseTrainingSimulation / resumeTrainingSimulation / commandEvents / stepLabels` + RMS stubs `startPhaseFromServer / stopPhaseFromServer / synchroniseClock / applyAuthoritativeState` |
+| State enum | `FinalsStage { Idle, Ceremony, KneelingPrepSight, KneelingMatch, ProneSighting, ProneMatch, StandingSighting, StandingSeries1, StandingSeries2, StandingSingle1..5, Complete, Aborted }` |
+| Command-event enum | `CommandType { AthletesToLine, TakeYourPositions, PreparationSightingStart, ThirtySeconds, Stop, StageOneAnnouncement, MatchFiringStart, FiveMinutes, LoadSeries, StartSeries, LoadSingle, StartSingle, Unload, ResultsFinal, InfoNotice }` — every command emitted as a structured map (id, type, text, issuedAt, stage, sequence, audioCueId) |
+| Timer authority | One monotonic `QElapsedTimer`, pause-aware, `timeScale`-scaled; 50 ms tick recomputes `remaining = duration − monotonicElapsed`; the 22:00 Stage-1 clock is a single anchor shared by all Stage-1 sub-stages |
+| Target-mode rules | Athlete `setTargetMode` legal only for K_MATCH→P_SIGHT, P_SIGHT→P_MATCH, P_MATCH→S_SIGHT, S_SIGHT→ready-MATCH; illegal changes ignored + logged; the ONLY automatic MATCH switch is the EST-officer reset at prep end |
+| Firing-window rules | `Closed / SightingOpen / MatchOpen`; shots only accepted in open windows; per-stage limits (10/10/5/5/1) reject with `StageShotLimitReached`; single windows close on their 1 shot, series on the 5th (config `stopSeriesWhenAthleteCompletes`) |
+| Accelerated test mode | `timeScale` (Idle-only setter; env `TECHAIM_FINALS_TIMESCALE`); never in production UI |
+| Tests | `tests/finals/` — **70 checks, 0 failures**, exact command-event and stage-entry ordering plus timing (tolerance = a few 50 ms ticks × timeScale) |
+| Deferred | [P1] unfired-shot behaviour (disabled); FinalsAudioService voice (beep baseline only); persistence/recovery; all shot-model writes and scoring (Phase B); ranking/elimination/ties/penalties (RMS) |
+| Commits | `55b448a` doc corrections · `07b8527` A1 types/controller/config · `c707611` A2+A3 event entry + UI skeleton · `8ac7365` A4 test suite + docs |
