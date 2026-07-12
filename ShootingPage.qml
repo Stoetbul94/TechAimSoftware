@@ -370,6 +370,9 @@ Item {
             Rectangle {
                 radius: 4; height: 24; width: phaseChipText.implicitWidth + 20
                 anchors.verticalCenter: parent.verticalCenter
+                // 3P FINAL: the HUD strip owns phase display; the qualification
+                // phase chip (SIGHTING/MATCH from sligterMode) would conflict.
+                visible: !isFinalsMatch
                 color: matchFinished ? "#1d7a2f" : (sligterMode ? "#8a6d00" : "#e8003d")
                 Text {
                     id: phaseChipText
@@ -418,14 +421,26 @@ Item {
             anchors.right: feedPaperBtn.left; anchors.rightMargin: 10
             anchors.verticalCenter: parent.verticalCenter
             height: 44; radius: 8
-            color: actionBar.barMode === 1
-                   ? "transparent"
-                   : (primaryMouse.containsMouse ? "#c40034" : "#e8003d")
-            border.color: actionBar.barMode === 1 ? "#3a3b40" : "transparent"
+            // 3P FINAL (FIX2): the bar is the Finals contextual primary action.
+            // The controller owns visibility/enabled/label/legality; this QML
+            // only renders and invokes. Qualification behaviour is untouched.
+            readonly property bool finalsMode: shootingPage.isFinalsMatch
+            readonly property bool finalsEnabled: finalsMode && FINALS3P.primaryActionEnabled
+            visible: finalsMode ? FINALS3P.primaryActionVisible : true
+            color: finalsMode
+                   ? (finalsEnabled ? (primaryMouse.containsMouse ? "#c40034" : "#e8003d")
+                                    : "transparent")
+                   : (actionBar.barMode === 1
+                      ? "transparent"
+                      : (primaryMouse.containsMouse ? "#c40034" : "#e8003d"))
+            border.color: (finalsMode ? !finalsEnabled : actionBar.barMode === 1)
+                          ? "#3a3b40" : "transparent"
             border.width: 1
             Text {
                 anchors.centerIn: parent
                 text: {
+                    if (primaryActionBtn.finalsMode)
+                        return FINALS3P.primaryActionLabel
                     if (actionBar.barMode === 2) return qsTr("VIEW REPORT  →")
                     if (actionBar.barMode === 1)
                         return qsTr("MATCH IN PROGRESS  ·  ") + qsTr("FINISH MATCH")
@@ -433,9 +448,13 @@ Item {
                         return qsTr("START ") + p3Names[p3Position] + "  →"
                     return qsTr("START MATCH  →")
                 }
-                color: actionBar.barMode === 1 ? "#9a9ba0" : "white"
+                color: (primaryActionBtn.finalsMode ? !primaryActionBtn.finalsEnabled
+                                                    : actionBar.barMode === 1)
+                       ? "#9a9ba0" : "white"
                 font.family: theme.fontFamily
-                font.pixelSize: 14; font.bold: actionBar.barMode !== 1
+                font.pixelSize: 14
+                font.bold: primaryActionBtn.finalsMode ? primaryActionBtn.finalsEnabled
+                                                       : actionBar.barMode !== 1
                 font.letterSpacing: 1.5
             }
             MouseArea {
@@ -443,6 +462,10 @@ Item {
                 anchors.fill: parent
                 hoverEnabled: true
                 onClicked: {
+                    if (primaryActionBtn.finalsMode) {
+                        FINALS3P.executePrimaryAction()   // controller owns legality
+                        return
+                    }
                     if (actionBar.barMode === 2)
                         windowManager.openMatchReport()
                     else if (actionBar.barMode === 1)
@@ -693,6 +716,26 @@ Item {
             // Display buffer drives the target face (cleared per window below).
             globalModelOfData.append(rec)
             finalsShotListModel.append(rec)
+            // Right panel consumes the SAME accepted record (FIX4).
+            rightPanel.finalsOnShotAccepted(rec)
+
+            // Developer-mode single-source assertions (plan §7): controller
+            // totals must equal the official rows in globalMatchModel.
+            if (APPSETTINGS.getDeveloperMode() && !rec.isSighter) {
+                var n = 0, sum = 0
+                for (var i = 0; i < globalMatchModel.count; ++i) {
+                    var e = globalMatchModel.get(i)
+                    if (e.isFinalsShot === true && e.isSighter !== true) {
+                        ++n
+                        sum += e.calculatedscore * 1
+                    }
+                }
+                if (n !== FINALS3P.officialShotCount
+                        || Math.abs(sum - FINALS3P.cumulativeTotal) > 0.05)
+                    console.warn("FINALS ASSERT: model", n, sum.toFixed(1),
+                                 "!= controller", FINALS3P.officialShotCount,
+                                 FINALS3P.cumulativeTotal.toFixed(1))
+            }
         }
 
         function onShotRejected(rej) {
@@ -806,7 +849,7 @@ Item {
             sligterMode = true            // face shows all current-window shots
             matchFinished = false
             finalsShotSeq = 0
-            rightPanel.currentPageIndex = 0
+            rightPanel.resetRightPanelModels()   // clears the shot table + totals
             MODREADER.appendToLogFile("3P FINAL: session start (FINALS3P owns timing)")
             FINALS3P.resetFinal()
             FINALS3P.startFinal()

@@ -575,7 +575,15 @@ Item {
         anchors.left: series_text_field.left
         //anchors.topMargin: -3
         //        anchors.horizontalCenter: series_text_field.horizontalCenter
-        text : (Math.floor(snBase/10) + currentPageIndex + 1)
+        // FINALS: the header names the stage group (K/P/S1/S2/SINGLES);
+        // qualification keeps its continuous series number.
+        text : shootingPage.isFinalsMatch
+               ? (FINALS3P.stageId === 3 ? "K" : FINALS3P.stageId === 4 ? "K \u00b7 P SIGHT"
+                  : FINALS3P.stageId === 5 ? "P" : FINALS3P.stageId === 6 ? "P \u00b7 S SIGHT"
+                  : FINALS3P.stageId === 7 ? "S1" : FINALS3P.stageId === 8 ? "S2"
+                  : FINALS3P.stageId >= 9 && FINALS3P.stageId <= 13 ? "SINGLES"
+                  : FINALS3P.stageId >= 14 ? "DONE" : "SIGHT")
+               : (Math.floor(snBase/10) + currentPageIndex + 1)
         color: "white"
         font.pixelSize: dafaultFontSize
     }
@@ -841,9 +849,13 @@ Item {
                 color: "transparent"
 
                 Text {
-                    text: snBase + currentPageIndex*10 + index + 1
+                    // Finals rows carry their own official number (sn role;
+                    // sighters show "S"); qualification keeps derived numbering.
+                    text: shootingPage.isFinalsMatch
+                          ? (model.sn > 0 ? model.sn : "S")
+                          : snBase + currentPageIndex*10 + index + 1
                     anchors.centerIn: parent
-                    color: "#9a9ba0"
+                    color: shootingPage.isFinalsMatch && model.sn === 0 ? "#6a6b72" : "#9a9ba0"
                     font.pixelSize: 0.65*currentItem.height
                 }
             }
@@ -953,6 +965,29 @@ Item {
 
     Component.onCompleted: {
         timer.start()
+        // FIX4: pre-lock the table model's role set with the finals row shape
+        // (adds `sn`/`isSighterRow`) before any append — qualification rows
+        // simply leave them unset. Role locks survive clear().
+        listModel.append({ "direction": "0.00", "score": "0.00",
+                           "timeComsumed": 0, "calculatedscore": "0.0",
+                           "sn": 0, "isSighterRow": false })
+        listModel.clear()
+    }
+
+    // FIX4: finals rows come from the SAME accepted records the controller
+    // emitted (single source). Official shots carry their finals shot number;
+    // sighters appear marked "S" and never touch official totals.
+    function finalsOnShotAccepted(rec)
+    {
+        if (!isFinalsMatch)
+            return
+        listModel.append({ "direction": rec.direction,
+                           "score": rec.score,
+                           "timeComsumed": rec.timeComsumed,
+                           "calculatedscore": rec.calculatedscore,
+                           "sn": rec.isSighter ? 0 : rec.finalsShotNumber,
+                           "isSighterRow": rec.isSighter === true })
+        matchScore.model = listModel
     }
 
     function addToSeries(angle,radius,calScore,xmm,ymm)
@@ -1412,14 +1447,21 @@ Item {
                     spacing: 5
                     Text {
                         anchors.baseline: totalInt.baseline
-                        // 3P (ISSF): integer total is the headline, decimal in brackets.
-                        text: is3PMatch ? ("" + grandTotalExculdeDec) : (scoreCutoffTofirstDecimal(grandTotal)*1)
+                        // FINALS: cumulative decimal total straight from the
+                        // controller (single source, no integer brackets).
+                        // 3P qualification (ISSF): integer headline, decimal
+                        // in brackets. Others: decimal headline.
+                        text: shootingPage.isFinalsMatch
+                              ? FINALS3P.cumulativeTotal.toFixed(1)
+                              : is3PMatch ? ("" + grandTotalExculdeDec) : (scoreCutoffTofirstDecimal(grandTotal)*1)
                         color: "white"; font.family: theme.fontFamily
                         font.pixelSize: 24; font.bold: true
                     }
                     Text {
                         id: totalInt
-                        text: is3PMatch ? ("(" + scoreCutoffTofirstDecimal(grandTotal)*1 + ")") : ("(" + grandTotalExculdeDec + ")")
+                        text: shootingPage.isFinalsMatch
+                              ? ("STAGE " + FINALS3P.stageSubtotal.toFixed(1))
+                              : is3PMatch ? ("(" + scoreCutoffTofirstDecimal(grandTotal)*1 + ")") : ("(" + grandTotalExculdeDec + ")")
                         color: "#8a8a92"; font.family: theme.fontFamily
                         font.pixelSize: 13
                     }
@@ -1518,6 +1560,10 @@ Item {
     // for series Sum
     Rectangle {
         id: series_sum
+        // FIX4: qualification S1-S6 grouping never shows in finals — the
+        // finals grouping (K/P/S1/S2/singles) lives in the shot list SNs and
+        // the series header label.
+        visible: !shootingPage.isFinalsMatch
 //        source: "qrc:/images/rightPanel/series_6.png"
         // Aligned to the card column (num) so it lines up with the LAST SHOT,
         // score-table and TOTAL cards above it.
@@ -1528,7 +1574,6 @@ Item {
         anchors.bottomMargin: 30
         opacity: 1
         //height: series_6.height*1.5
-        visible: true
         color: "transparent"   // redesign: themed cells below draw the look
 
         Row {
