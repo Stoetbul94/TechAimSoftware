@@ -33,9 +33,19 @@ Item {
     property bool is3PMatch: false
     // 3P FINAL (35) — separate finals domain; FINALS3P owns all finals timing.
     property bool isFinalsMatch: false
-    // Shot direction (angle) of the shot currently being registered with the
-    // finals controller; injected into the record by the router (display role).
+    // Shot direction (angle) and polar display radius of the shot currently
+    // being registered with the finals controller; injected into the record by
+    // the router. `score`/`direction` are the qualification polar-display
+    // convention the target overlay plots with (mapToPosition on polarSeries);
+    // xmm/ymm remain the canonical millimetre record.
     property real finalsLastDirection: 0
+    property real finalsLastRadius: 0
+    // Deterministic detection-event identity for finals (FIX1): one strictly
+    // increasing sequence per session, incremented once per processed
+    // detection event (demo click or live shot — same pipeline). A repeated
+    // backend delivery never reaches pointAddedToSeries twice (the C++ layer
+    // dedupes register reads), so each emission IS a new physical detection.
+    property int finalsShotSeq: 0
     // Highest shot-count boundary (20/40) already handled — without it the
     // watcher re-fires after the athlete resumes, because the count is still
     // exactly at the boundary, bouncing them straight back into sighting.
@@ -528,8 +538,9 @@ Item {
             // per firing window; a repeated value is a retransmission.
             if (isFinalsMatch) {
                 shootingPage.finalsLastDirection = xPosition
+                shootingPage.finalsLastRadius = yPosition
                 FINALS3P.registerShot(centerPanel.lastShotXmm, centerPanel.lastShotYmm,
-                                      currentCalculatedScore, MODREADER.getShootCount())
+                                      currentCalculatedScore, ++shootingPage.finalsShotSeq)
                 return
             }
             // Hard cap at the match shot count. The auto-finish watcher polls
@@ -671,6 +682,10 @@ Item {
         function onShotAccepted(shot) {
             var rec = shot
             rec.direction = shootingPage.finalsLastDirection.toFixed(2)
+            // Polar display radius (FIX1): the overlay positions shots via
+            // mapToPosition(direction, score) — `score` must be the scoring
+            // engine's polar radius, NOT the decimal score.
+            rec.score = shootingPage.finalsLastRadius.toFixed(2)
             if (rec.isSighter)
                 globalSlighterModel.append(rec)
             else
@@ -781,6 +796,17 @@ Item {
             globalModelOfData.clear()
             finalsIncidentModel.clear()
             finalsShotListModel.clear()
+            // FIX1: deterministic session state. Qualification resets these in
+            // changedToSigherMode/changedToMatchMode, which finals never runs:
+            // stale backEndShootCount made the shot processor read wrong
+            // backend indices after a prior session; stale sligterMode/
+            // matchFinished leak previous-session behaviour into the shared
+            // display pipeline. rightPanel paging state likewise.
+            centerPanel.backEndShootCount = 0
+            sligterMode = true            // face shows all current-window shots
+            matchFinished = false
+            finalsShotSeq = 0
+            rightPanel.currentPageIndex = 0
             MODREADER.appendToLogFile("3P FINAL: session start (FINALS3P owns timing)")
             FINALS3P.resetFinal()
             FINALS3P.startFinal()
