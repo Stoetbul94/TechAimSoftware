@@ -682,7 +682,7 @@ Item {
 
         function onShotRejected(rej) {
             finalsIncidentModel.append(rej)
-            finalsIncidentBanner.show(rej.reason)
+            // Toast presentation listens to FINALS3P.shotRejected itself (HUD3).
         }
 
         function onWindowStateChanged() {
@@ -694,185 +694,13 @@ Item {
         }
     }
 
-    // ── 3P FINAL panel (Phase A skeleton) ────────────────────────────────
-    // Pure binding surface over FINALS3P: stepper, command banner, countdown,
-    // window/target-mode status and dry-run controls. No scoring involvement.
-    Rectangle {
-        id: finalsPanel
+    // ── 3P FINAL HUD (Option A: top strip + contextual layers) ───────────
+    // Pure presentation over FINALS3P — see docs/3p-finals-discipline.md.
+    FinalsHud {
         visible: isFinalsMatch
         z: 30
-        anchors.left: centerPanel.left
-        anchors.right: centerPanel.right
-        anchors.top: centerPanel.top
-        height: 196
-        color: "#e61a1a1f"
-        border.color: "#33353d"; border.width: 1
-
-        Column {
-            anchors.fill: parent
-            anchors.margins: 8
-            spacing: 6
-
-            // Stepper: PREP … 31-35 … DONE (SHOOT-OFF reserved for ties, RMS phase)
-            Row {
-                spacing: 4
-                Repeater {
-                    model: isFinalsMatch ? FINALS3P.stepLabels() : []
-                    delegate: Rectangle {
-                        width: stepTxt.implicitWidth + 12; height: 20; radius: 4
-                        color: index === FINALS3P.stepIndex ? "#a80038"
-                             : index < FINALS3P.stepIndex ? "#2f3138" : "transparent"
-                        border.color: "#3a3b42"; border.width: 1
-                        Text { id: stepTxt; anchors.centerIn: parent; text: modelData
-                               color: index <= FINALS3P.stepIndex ? "white" : "#8a8a92"
-                               font.family: theme.fontFamily; font.pixelSize: 10 }
-                    }
-                }
-            }
-
-            // Command banner + big countdown + status chips
-            Row {
-                spacing: 14
-                Text {
-                    width: finalsPanel.width * 0.42
-                    text: FINALS3P.stageLabel + "\n" + FINALS3P.commandText
-                    color: "white"; font.family: theme.fontFamily
-                    font.pixelSize: 14; font.bold: true; wrapMode: Text.WordWrap
-                }
-                Text {
-                    text: FINALS3P.remainingFormatted
-                    color: FINALS3P.isFiringWindowOpen ? "#3ddc84" : "#e8b93d"
-                    font.family: theme.fontFamily; font.pixelSize: 34; font.bold: true
-                }
-                Column {
-                    spacing: 3
-                    Text { text: FINALS3P.windowState === 2 ? "MATCH FIRING OPEN"
-                                : FINALS3P.windowState === 1 ? "SIGHTING OPEN" : "WINDOW CLOSED"
-                           color: FINALS3P.isFiringWindowOpen ? "#3ddc84" : "#9a9ba0"
-                           font.family: theme.fontFamily; font.pixelSize: 11; font.bold: true }
-                    Text { text: "TARGET: " + (FINALS3P.targetMode === 1 ? "MATCH" : "SIGHTER")
-                                 + (FINALS3P.nextShotNumber > 0 ? "   ·   NEXT SHOT " + FINALS3P.nextShotNumber : "")
-                           color: "#c8c9cf"; font.family: theme.fontFamily; font.pixelSize: 11 }
-                    // Decimal-only totals over accepted official shots (plan §5).
-                    Text { text: "STAGE " + FINALS3P.stageSubtotal.toFixed(1)
-                                 + "   ·   TOTAL " + FINALS3P.cumulativeTotal.toFixed(1)
-                           color: "white"; font.family: theme.fontFamily
-                           font.pixelSize: 13; font.bold: true }
-                }
-
-                // Compact accepted-shot feed: continuous 1-35 numbering from the
-                // record's finalsShotNumber; sighters shown as grey "S" rows.
-                ListView {
-                    width: 120; height: 96; clip: true
-                    model: finalsShotListModel
-                    verticalLayoutDirection: ListView.BottomToTop
-                    delegate: Row {
-                        spacing: 6
-                        Text { text: isSighter ? "S" : finalsShotNumber
-                               width: 24; color: isSighter ? "#8a8a92" : "white"
-                               font.family: theme.fontFamily; font.pixelSize: 11; font.bold: !isSighter }
-                        Text { text: calculatedscore
-                               color: isSighter ? "#8a8a92" : "#3ddc84"
-                               font.family: theme.fontFamily; font.pixelSize: 11 }
-                    }
-                }
-            }
-
-            // Non-blocking incident warning (plan §8): auto-dismissing banner.
-            Rectangle {
-                id: finalsIncidentBanner
-                property string message: ""
-                function show(reason) {
-                    message = reason === "StageShotLimitReached" ? "SHOT LIMIT REACHED — SHOT NOT COUNTED"
-                            : reason === "WindowClosed" ? "SHOT OUTSIDE FIRING WINDOW"
-                            : reason === "DuplicateShot" ? "DUPLICATE SHOT EVENT IGNORED"
-                            : reason === "WrongTargetMode" ? "WRONG TARGET MODE — SHOT NOT COUNTED"
-                            : reason === "FinalsNotActive" ? "FINAL NOT ACTIVE — SHOT IGNORED"
-                            : "SHOT REJECTED — " + reason
-                    visible = true
-                    bannerTimer.restart()
-                }
-                visible: false
-                width: bannerTxt.implicitWidth + 24; height: 22; radius: 5
-                color: "#4a1a1a"; border.color: "#a80038"; border.width: 1
-                Text { id: bannerTxt; anchors.centerIn: parent; text: finalsIncidentBanner.message
-                       color: "#ff9aa8"; font.family: theme.fontFamily; font.pixelSize: 10; font.bold: true }
-                Timer { id: bannerTimer; interval: 4000; onTriggered: finalsIncidentBanner.visible = false }
-            }
-
-            // Athlete transition + simulation controls. Stage-1 position changes
-            // use ONE stage-aware action: the controller decides which
-            // transition is legal; QML only calls FINALS3P.advanceStage1().
-            Row {
-                spacing: 6
-
-                // The single ADVANCE action — label always names the exact
-                // transition ("CHANGE TO PRONE — SIGHTERS", "START PRONE
-                // MATCH", ...). Hidden when no transition is available.
-                Rectangle {
-                    visible: isFinalsMatch && FINALS3P.advanceLabel !== "" && !finalsConfirm.pending
-                    width: advTxt.implicitWidth + 22; height: 24; radius: 5
-                    color: advMA.pressed ? "#8a002f" : "#a80038"
-                    Text { id: advTxt; anchors.centerIn: parent; text: FINALS3P.advanceLabel
-                           color: "white"; font.family: theme.fontFamily; font.pixelSize: 10; font.bold: true }
-                    MouseArea { id: advMA; anchors.fill: parent; onClicked: FINALS3P.advanceStage1() }
-                }
-
-                // One-tap confirmation when advancing below the stage shot limit.
-                Row {
-                    id: finalsConfirm
-                    property bool pending: false
-                    property string prompt: ""
-                    visible: pending
-                    spacing: 6
-                    Connections {
-                        target: FINALS3P
-                        function onAdvanceConfirmationRequired(fired, limit) {
-                            finalsConfirm.prompt = (limit - fired) + " shots unfired — change position anyway?"
-                            finalsConfirm.pending = true
-                        }
-                        function onPhaseChanged() { finalsConfirm.pending = false }
-                    }
-                    Text { text: finalsConfirm.prompt; anchors.verticalCenter: parent.verticalCenter
-                           color: "#e8b93d"; font.family: theme.fontFamily; font.pixelSize: 10 }
-                    Rectangle {
-                        width: cfTxt.implicitWidth + 18; height: 24; radius: 5
-                        color: cfMA.pressed ? "#8a002f" : "#a80038"
-                        Text { id: cfTxt; anchors.centerIn: parent; text: "CONFIRM"; color: "white"
-                               font.family: theme.fontFamily; font.pixelSize: 10; font.bold: true }
-                        MouseArea { id: cfMA; anchors.fill: parent
-                                    onClicked: { finalsConfirm.pending = false; FINALS3P.confirmStage1Advance() } }
-                    }
-                    Rectangle {
-                        width: cnTxt.implicitWidth + 18; height: 24; radius: 5
-                        color: cnMA.pressed ? "#2a2b30" : "#26272c"; border.color: "#3a3b42"; border.width: 1
-                        Text { id: cnTxt; anchors.centerIn: parent; text: "CANCEL"; color: "#d7d8dd"
-                               font.family: theme.fontFamily; font.pixelSize: 10 }
-                        MouseArea { id: cnMA; anchors.fill: parent
-                                    onClicked: { finalsConfirm.pending = false; FINALS3P.cancelStage1Advance() } }
-                    }
-                }
-
-                Repeater {
-                    model: [
-                        { l: "SKIP CEREMONY", a: function() { FINALS3P.skipCeremony() } },
-                        { l: "PAUSE",  a: function() { FINALS3P.paused ? FINALS3P.resumeTrainingSimulation()
-                                                                       : FINALS3P.pauseTrainingSimulation() } },
-                        { l: "ABORT",  a: function() { FINALS3P.abortFinal() } },
-                        { l: "RESET",  a: function() { FINALS3P.resetFinal(); FINALS3P.startFinal() } }
-                    ]
-                    delegate: Rectangle {
-                        width: btnTxt.implicitWidth + 18; height: 24; radius: 5
-                        color: btnMA.pressed ? "#2a2b30" : "#26272c"
-                        border.color: "#3a3b42"; border.width: 1
-                        Text { id: btnTxt; anchors.centerIn: parent
-                               text: modelData.l === "PAUSE" && FINALS3P.paused ? "RESUME" : modelData.l
-                               color: "#d7d8dd"; font.family: theme.fontFamily; font.pixelSize: 10 }
-                        MouseArea { id: btnMA; anchors.fill: parent; onClicked: modelData.a() }
-                    }
-                }
-            }
-        }
+        anchors.fill: centerPanel
+        ctl: FINALS3P
     }
 
     // Match report now lives in the floating Report window (Match tab); see the

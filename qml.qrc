@@ -29,6 +29,9 @@
         <file>HeatMapCanvas.qml</file>
         <file>LoginPage.qml</file>
         <file>ShootingPage.qml</file>
+        <file>FinalsHud.qml</file>
+        <file>FinalsTopStrip.qml</file>
+        <file>FinalsProgressIndicator.qml</file>
         <file>MatchReportView.qml</file>
         <file>Report3P.qml</file>
         <file>Report3PSeries.qml</file>
