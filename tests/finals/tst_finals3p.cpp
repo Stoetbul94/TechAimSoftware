@@ -263,6 +263,15 @@ static void runFullFinal()
     check(waitUntil([&]{ return inStage(c, Stage::Complete); }, 5000), "reached Complete");
     check(r.finalCompletedCount == 1, "finalCompleted emitted once");
     check(c.officialShotCount() == 35, "officialShotCount is 35 at completion");
+    {
+        // Phase C: every official stage carries a persisted Complete verdict.
+        bool allComplete = true; QString bad;
+        const int officials[] = { 3, 5, 7, 8, 9, 10, 11, 12, 13 };
+        for (int id : officials)
+            if (c.stageStatus(id) != 2) { allComplete = false; bad += QString::number(id) + " "; }
+        check(allComplete, "all official stages persisted Complete", bad);
+        check(c.missingShots().isEmpty(), "completion-driven run has no MissingShot records");
+    }
 
     // Exact command ordering (structured events, not just final state).
     const QStringList expected = {
@@ -515,6 +524,127 @@ static void runSecondaryChecks()
     }
 }
 
+// ── Timeout-driven mode (Phase C): expiries instead of completions ─────────
+static void runTimeoutFinal()
+{
+    Finals3PController c;
+    c.setTimeScale(240.0);
+    c.setCeremonyMode(2);   // skip ceremony
+    Recorder r; r.attach(&c);
+    int id = 1000;          // strictly increasing detection ids for this run
+
+    c.startFinal();
+    check(waitUntil([&]{ return c.stageId() == static_cast<int>(Stage::KneelingMatch)
+                                && c.windowState() == 2; }, 15000),
+          "timeout run reached kneeling match window");
+    check(c.property("stageShotCapacity").toInt() == 10, "kneeling capacity from controller",
+          QString::number(c.property("stageShotCapacity").toInt()));
+
+    // 3 kneeling shots at 9.5 each, then developer-forced through Stage 1.
+    for (int i = 0; i < 3; ++i) c.registerShot(0.5, 0.5, 9.5, ++id);
+    c.devForceAdvanceStage1();   // -> ProneSighting
+    c.devForceAdvanceStage1();   // -> ProneMatch (0 shots)
+    c.devForceAdvanceStage1();   // -> StandingSighting
+    check(c.stageId() == static_cast<int>(Stage::StandingSighting),
+          "dev-forced to standing sighting");
+
+    // Stage-1 expiry: K Incomplete (3/10), P Incomplete (0/10), 17 missing.
+    check(waitUntil([&]{ return c.stageId() == static_cast<int>(Stage::StandingSeries1); }, 20000),
+          "stage-1 expiry -> series 1");
+    check(c.stageStatus(3) == 3 && c.stageStatus(5) == 3,
+          "kneeling and prone persisted Incomplete");
+    check(c.missingShots().size() == 17, "17 MissingShot records after stage 1",
+          QString::number(c.missingShots().size()));
+
+    // Shot during the announcer/LOAD phase (window still closed) is rejected.
+    check(c.windowState() == 0, "series 1 window closed during LOAD phase");
+    c.registerShot(0, 0, 9.0, ++id);
+    check(r.rejected.last().toMap().value("reason") == "WindowClosed",
+          "shot during LOAD rejected");
+
+    // Series 1: two shots (21, 22), then the 250 s window expires.
+    check(waitUntil([&]{ return c.windowState() == 2; }, 10000), "series 1 window opened");
+    check(c.property("stageShotCapacity").toInt() == 5, "series capacity from controller");
+    c.registerShot(1.0, 1.0, 10.2, ++id);
+    c.registerShot(-1.0, 0.5, 10.1, ++id);
+    check(r.accepted.last().toMap().value("finalsShotNumber").toInt() == 22,
+          "series 1 numbering 21-22");
+    check(waitUntil([&]{ return c.stageId() == static_cast<int>(Stage::StandingSeries2); }, 10000),
+          "series 1 timeout -> series 2 (single transition)");
+    check(c.stageStatus(7) == 3, "series 1 persisted Incomplete");
+    check(c.missingShots().size() == 20, "MissingShot records 23-25 added",
+          QString::number(c.missingShots().size()));
+    {
+        const QVariantMap last = c.missingShots().last().toMap();
+        check(last.value("expectedShotNumber").toInt() == 25
+                  && last.value("reason") == "TimeExpired",
+              "missing shot numbers/reason correct");
+    }
+    check(qFuzzyCompare(c.cumulativeTotal(), 3 * 9.5 + 10.2 + 10.1),
+          "cumulative exact after series-1 timeout", QString::number(c.cumulativeTotal()));
+
+    // Series 2: completion-driven inside the timeout run (26-30, Complete).
+    check(waitUntil([&]{ return c.windowState() == 2; }, 10000), "series 2 window opened");
+    for (int i = 0; i < 5; ++i) c.registerShot(0.2, -0.2, 10.0, ++id);
+    check(r.accepted.last().toMap().value("finalsShotNumber").toInt() == 30,
+          "series 2 numbering 26-30");
+    check(c.stageStatus(8) == 2, "series 2 persisted Complete");
+
+    // Single 31: no shot -> expiry -> Incomplete + one MissingShot; progresses.
+    check(waitUntil([&]{ return c.stageId() == static_cast<int>(Stage::StandingSingle2); }, 15000),
+          "single 31 timeout -> single 32");
+    check(c.stageStatus(9) == 3, "single 31 persisted Incomplete");
+    check(c.missingShots().size() == 21, "one MissingShot for single 31");
+
+    // Single 32: fired -> Complete, window closes after the single shot.
+    check(waitUntil([&]{ return c.stageId() == static_cast<int>(Stage::StandingSingle2)
+                                && c.windowState() == 2; }, 10000),
+          "single 32 window opened");
+    check(c.property("stageShotCapacity").toInt() == 1, "single capacity from controller");
+    c.registerShot(0.1, 0.1, 10.6, ++id);
+    check(r.accepted.last().toMap().value("finalsShotNumber").toInt() == 32
+              && r.accepted.last().toMap().value("shotWithinStage").toInt() == 1,
+          "single 32 accepted with shotWithinStage 1");
+    check(c.stageStatus(10) == 2, "single 32 persisted Complete");
+
+    // Singles 33-35 all expire; the final still completes after stage 35.
+    check(waitUntil([&]{ return c.stageId() == static_cast<int>(Stage::Complete); }, 20000),
+          "timeout run reaches Complete only after single 35");
+    check(c.stageStatus(11) == 3 && c.stageStatus(12) == 3 && c.stageStatus(13) == 3,
+          "singles 33-35 persisted Incomplete");
+    check(c.missingShots().size() == 24, "24 MissingShot records total",
+          QString::number(c.missingShots().size()));
+    check(c.officialShotCount() == 11, "11 official shots accepted",
+          QString::number(c.officialShotCount()));
+    check(qFuzzyCompare(c.cumulativeTotal(), 3 * 9.5 + 10.2 + 10.1 + 5 * 10.0 + 10.6),
+          "cumulative exact at completion", QString::number(c.cumulativeTotal()));
+    check(r.countOf("Stop") == 9, "STOP exactly once per closed window (9 total)",
+          QString::number(r.countOf("Stop")));
+    check(r.commands.last() == "ResultsFinal"
+              && r.commands.at(r.commands.size() - 2) == "Unload",
+          "ending order STOP -> UNLOAD -> RESULTS ARE FINAL");
+
+    // Journal order matches controller event order (commands as recorded).
+    {
+        QFile jf(QStringLiteral("finals_session.jsonl"));
+        QStringList journalCmds;
+        if (jf.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            while (!jf.atEnd()) {
+                const QString line = QString::fromUtf8(jf.readLine());
+                if (line.contains(QStringLiteral("\"journalType\":\"command\""))) {
+                    const int i = line.indexOf(QStringLiteral("\"typeName\":\""));
+                    if (i >= 0) {
+                        const int st = i + 12;
+                        journalCmds << line.mid(st, line.indexOf('"', st) - st);
+                    }
+                }
+            }
+        }
+        check(journalCmds == r.commands, "journal command order matches controller order",
+              QString::number(journalCmds.size()) + " vs " + QString::number(r.commands.size()));
+    }
+}
+
 int main(int argc, char** argv)
 {
     qputenv("TECHAIM_FINALS_TIMESCALE", "60");
@@ -524,6 +654,7 @@ int main(int argc, char** argv)
     std::printf("=== Finals3PController Phase A acceptance tests ===\n");
     runFullFinal();
     runSecondaryChecks();
+    runTimeoutFinal();
 
     std::printf("=== %d checks, %d failures ===\n", g_checks, g_failures);
     return g_failures == 0 ? 0 : 1;
