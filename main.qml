@@ -30,8 +30,6 @@ ApplicationWindow {
     property string greenColor: "#00ff00" //"lightgreen"
     property string mpiColor: /*"transparent"//*/"blue"
     property bool isSingleDecimal: APPSETTINGS.getIsSingleDecimal()
-    property bool coachReportVisible: false   // Coach Report overlay toggle
-    property int  coachViewMode: 0            // 0 = dashboard, 1 = detailed, 2 = print
 
     //property string valueString: ""
 
@@ -520,47 +518,24 @@ ApplicationWindow {
         }
     }
 
-    // Coach Report overlay. Three views over the same COACHREPORT data, toggled
-    // by coachViewMode: the light dashboard (0), the detailed dark report (1),
-    // and the printable A4 view (2). Opened from the Match Summary.
-    CoachDashboardPage {
-        id: coachDashboard
-        z: 8
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: header.bottom
-        anchors.bottom: parent.bottom
-        visible: coachReportVisible && coachViewMode === 0
-        gameSubMode: loginPage.gameSubMode
-        onClosed: coachReportVisible = false
-        onDetailsRequested: coachViewMode = 1
-        onPrintRequested: coachViewMode = 2
-    }
-    CoachReportPage {
-        id: coachReportPage
-        z: 8
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: header.bottom
-        anchors.bottom: parent.bottom
-        visible: coachReportVisible && coachViewMode === 1
-        gameSubMode: loginPage.gameSubMode
-        onClosed: coachReportVisible = false
-        onDashboardRequested: coachViewMode = 0
-        onPrintRequested: coachViewMode = 2
-    }
-    CoachPrintPage {
-        id: coachPrintPage
-        z: 8
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: header.bottom
-        anchors.bottom: parent.bottom
-        visible: coachReportVisible && coachViewMode === 2
-        gameSubMode: loginPage.gameSubMode
-        onClosed: coachReportVisible = false
-        onDashboardRequested: coachViewMode = 0
-        onDetailsRequested: coachViewMode = 1
+    // Single floating-window overlay + registry for the whole app. Windows
+    // register by key; pages open them via windowManager.openReport()/openCoach()
+    // etc. (they never touch instances). Click-through except the window frames,
+    // so the live target is never blocked.
+    WindowManager {
+        id: windowManager
+        z: 50
+        // Coach report window (Dashboard/Detailed/Print). The match is re-analysed
+        // by the opener (ShootingPage.feedCoachReport, from the authoritative match
+        // record) right before this opens, so here we only reset to the Dashboard
+        // tab — analysing again would overwrite that correct data with the old
+        // sighter-polluted C++ feeder path.
+        CoachReportWindow {
+            id: coachReportWindow
+            gameSubMode: loginPage.gameSubMode
+            Component.onCompleted: windowManager.register("coach", coachReportWindow)
+            onAboutToOpen: viewMode = 0
+        }
     }
 
     LoginPage {

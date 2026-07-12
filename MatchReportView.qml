@@ -1,155 +1,131 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 
-Dialog {
-    id:screenPresence
-    title: "Match Report"
-    header: null
-    footer: null
+// Embeddable Match Report view (hosted inside a FloatingWindow's Report window,
+// Match tab). Was a Dialog; now a plain Item so the FloatingWindow supplies the
+// chrome (title bar, tabs, scrolling) and the footer actions.
+//
+// Pure content — no window logic. It exposes its natural height + intent signals
+// and owns the multi-page grab. Every report page, coordinate/score value and the
+// createPdf grab path are unchanged from the old MatchReport.qml; only the Dialog
+// shell, ScrollView and Save/Cancel buttons were removed (the window owns those).
+//
+// Must be instantiated inside ShootingPage (via ReportWindow) so it can resolve
+// the ShootingPage ids/props it reads: globalModelOfData, is3PMatch, userName,
+// eventName, totalScore, totalScoreWithoutDecimal, totalTime, gameRange,
+// greenColor, rightPanel, centerPanel, shootingPage.
+Item {
+    id: screenPresence
+
+    signal requestClose()
+    signal requestExportPdf()
+    signal requestPrint()
+
     property bool isPrintFromBackend: false
     property bool isAutoPrintOn: false
+    // Set when THIS view starts a save, so the shared CUSTOMPRINT.saveComplete
+    // signal only closes the window for a Match save (not a Summary save).
+    property bool _pendingClose: false
 
-    // Series pages now carry every series (series 1 moved off the cover page),
-    // two series per A4 page. Page count = ceil(numSeries / 2).
+    // Series pages carry every series (series 1 moved off the cover page), two
+    // series per A4 page. Page count = ceil(numSeries / 2).
     property int repeaterModelCount: globalModelOfData.count === 0 ? 0
                                      : Math.ceil(Math.ceil(globalModelOfData.count / 10) / 2)
 
-    Connections{
-        target: CUSTOMPRINT
-        onSaveComplete :{
-            console.log("Saved done")
-            close()
+    // Natural height of all A4 pages stacked; the host FloatingWindow scrolls it.
+    implicitHeight: reportColumn.height + 40
+
+    // Re-run the 3P position-aware refresh when the Match tab becomes visible.
+    function refresh3P() {
+        if (is3PMatch) {
+            report3p.refresh()
+            for (var i = 0; i < report3pSeriesRepeater.count; ++i)
+                report3pSeriesRepeater.itemAt(i).refresh()
         }
     }
 
-    onAccepted: {
-    }
-
-    onRejected: {
+    // Kiosk auto-export: on the onPrintPDF signal, write the PDF to the configured
+    // network path after a short render delay, then close the window on save.
+    function startNetworkAutoExport() {
+        isAutoPrintOn = true
+        _pendingClose = true
+        printTimer.restart()
     }
 
     Timer {
         id: printTimer
         repeat: false
-        interval: isAutoPrintOn ? 2000 : 0
+        interval: 2000
         onTriggered: {
-            printImageInNetworkPath()
             printTimer.stop()
             isAutoPrintOn = false
+            exportPdfToNetworkPath()
         }
     }
 
-    onIsAutoPrintOnChanged: {
-        if (!isAutoPrintOn)
-            printTimer.stop()
-    }
-
-    onVisibleChanged: {
-        contentRect.visible = visible
-
-        if (visible && is3PMatch) {
-            report3p.refresh()
-            for (var i = 0; i < report3pSeriesRepeater.count; ++i)
-                report3pSeriesRepeater.itemAt(i).refresh()
+    // The old Match dialog closed after every save; keep that for the Match view
+    // by scoping it to saves this view initiated (guarded by _pendingClose).
+    Connections {
+        target: CUSTOMPRINT
+        onSaveComplete: {
+            console.log("Match report saved")
+            if (screenPresence._pendingClose) {
+                screenPresence._pendingClose = false
+                screenPresence.requestClose()
+            }
         }
-
-        if (visible && isAutoPrintOn)
-            printTimer.start() //printImageInNetworkPath()
     }
 
-    contentItem:Rectangle {
-        id:contentRect
+    Rectangle {
         anchors.fill: parent
-        color: "transparent"
+        color: "#dcdad3"                     // grey backdrop; the A4 pages sit on top
+    }
 
-        onVisibleChanged: {
+    Column {
+        id: reportColumn
+        y: 20
+        anchors.horizontalCenter: parent.horizontalCenter
+        spacing: 20
+
+        // 3P matches get the position-aware result sheet as page 1.
+        Report3P {
+            id: report3p
+            visible: is3PMatch
+            anchors.horizontalCenter: parent.horizontalCenter
         }
-        ScrollView {
-            id: scrollView
-            width: parent.width
-            height: parent.height - buttonRect.height
-            Column {
-                spacing: 20
-                width: scrollView.width
 
-                // 3P matches get the position-aware result sheet as page 1.
-                Report3P {
-                    id: report3p
-                    visible: is3PMatch
-                    anchors.horizontalCenter: parent.horizontalCenter
-                }
+        PdfPage {
+            id: print_region
+            visible: !is3PMatch
+            pageIndex: 1
+            width: 595 // A4 size for 72 dpi
+            height: 842 // A4 size for 72 dpi
+            sourceComp: tempComp
+            anchors.horizontalCenter: parent.horizontalCenter
+        }
 
-                PdfPage {
-                    id: print_region
-                    visible: !is3PMatch
-                    pageIndex: 1
-//                    width: parent.width
-//                    height: 800
-                    width: 595 // A4 size for 72 dpi
-                    height: 842 // A4 sixe for 72 dpi
-                    sourceComp: tempComp
-                    anchors.horizontalCenter: parent.horizontalCenter
-                }
-                Rectangle {
-                    height: 20
-                    width: scrollView.width
-                    color: "transparent"
-                }
-
-                // 3P: one shot-detail page per position, matching the new
-                // result-sheet design. The legacy Seta series pages remain
-                // for the other disciplines only.
-                Repeater {
-                    id: report3pSeriesRepeater
-                    model: is3PMatch ? 3 : 0
-                    delegate: Report3PSeries {
-                        posIndex: index
-                        anchors.horizontalCenter: parent.horizontalCenter
-                    }
-                }
-
-                Repeater {
-                    id: reportRepeater
-                    visible: globalModelOfData.count > 10
-                    model: is3PMatch ? 0 : repeaterModelCount
-                    delegate: PdfSeriesPage {
-                        pageIndex: index+2
-                        //width: parent.width
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        onVisibleChanged: {
-                            console.log("test 1111--------------------------------")
-                        }
-                    }
-                }
+        // 3P: one shot-detail page per position, matching the new result-sheet
+        // design. The legacy Seta series pages remain for the other disciplines.
+        Repeater {
+            id: report3pSeriesRepeater
+            model: is3PMatch ? 3 : 0
+            delegate: Report3PSeries {
+                posIndex: index
+                anchors.horizontalCenter: parent.horizontalCenter
             }
         }
 
-        Rectangle {
-            id: buttonRect
-            width:parent.width
-            height:parent.height*0.1
-            anchors.bottom: contentRect.bottom
-            Row{
-                anchors.centerIn: parent
-                Button {
-                    text:"Save"
-                    onClicked:
-                    {
-                        printImage()
-                    }
-                }
-                Button {
-                    text:"Cancel"
-                    onClicked:
-                    {
-                        close()
-                    }
-                }
+        Repeater {
+            id: reportRepeater
+            model: is3PMatch ? 0 : repeaterModelCount
+            delegate: PdfSeriesPage {
+                pageIndex: index + 2
+                anchors.horizontalCenter: parent.horizontalCenter
             }
         }
     }
 
-    // Cover page (A4): Report Header → Executive Summary → Overall Target → Footer.
+    // Cover page (A4): Report Header -> Executive Summary -> Overall Target -> Footer.
     // Series-wise detail lives on the following pages (see reportRepeater).
     Component {
         id: tempComp
@@ -204,7 +180,7 @@ Dialog {
 
                 SectionTitle { width: parent.width; title: qsTr("Overall Target") }
 
-                // Overall target — existing visualisation and coordinate math kept
+                // Overall target -- existing visualisation and coordinate math kept
                 // verbatim, reframed in a clean white card.
                 Rectangle {
                     width: parent.width
@@ -250,9 +226,6 @@ Dialog {
 
                                 property double gameRatio: gameRange == 10 ? (centerPanel.gameMode ? 155.5/APPSETTINGS.bullet_diameter() : 45.5/APPSETTINGS.bullet_diameter())
                                                                            : (centerPanel.gameMode ? 500/APPSETTINGS.bullet_diameter() : 154.4/APPSETTINGS.bullet_diameter())
-                                //width: gameRange == 10 ? (centerPanel.gameMode ? shootingcanvas.height/34.55 : shootingcanvas.height/10.11 )
-                                //                       : (centerPanel.gameMode ? shootingcanvas.height/89.29 /*size 500 pallet 5.6*/
-                                //                                   : shootingcanvas.height/27.57 /*size 154.4 pallet 5.6*/)
                                 width: shootingcanvas.height/gameRatio
                                 height: width
                                 Rectangle
@@ -286,7 +259,6 @@ Dialog {
                                         text: index+1
                                         visible: false
                                     }
-//                                    border.color: "red"
                                 }
                             }
                         }
@@ -308,34 +280,7 @@ Dialog {
         }
     }
 
-    function circleRegionCordinates()
-    {
-        var left = Qt.point(270,4);
-        left = preview.mapToPosition(left,scaterSeries);
-        var right = Qt.point(90,4);
-        right = preview.mapToPosition(right,scaterSeries);
-        var top = Qt.point(360,4);
-        top = preview.mapToPosition(top,scaterSeries);
-        var bottom = Qt.point(180,4);
-        bottom = preview.mapToPosition(bottom,scaterSeries);
-
-        circleRegion.x = left.x
-        circleRegion.y = top.y
-        circleRegion.width = right.x - left.x
-        circleRegion.height = circleRegion.width
-        circleRegion.radius = circleRegion.width/2
-
-        updateModel()
-    }
-
-    function updateModel()
-    {
-        numberRepeater.model = null
-        numberRepeater.model =globalModelOfData
-    }
-
-    // Same m:ss formatting the legacy Match Report used (via MatchReportInfo),
-    // so the Total Time value is presented identically.
+    // Same m:ss formatting the legacy Match Report used, so Total Time is identical.
     function converSecondToMins(seconds)
     {
         var minutes = Math.floor(seconds / 60);
@@ -345,8 +290,17 @@ Dialog {
         return minutes+":"+secd
     }
 
-    function printImage()
+    function updateModel()
     {
+        numberRepeater.model = null
+        numberRepeater.model = globalModelOfData
+    }
+
+    // Manual "Save PDF" (footer). Grab path unchanged from the old printImage():
+    // page 1 (report3p or print_region) + each series page -> CUSTOMPRINT -> PDF.
+    function exportPdf()
+    {
+        screenPresence._pendingClose = true
         CUSTOMPRINT.clearImagesList()
         var page1 = is3PMatch ? report3p : print_region
         var pages = is3PMatch ? report3pSeriesRepeater : reportRepeater
@@ -363,7 +317,8 @@ Dialog {
         CUSTOMPRINT.createPdf();
     }
 
-    function printImageInNetworkPath()
+    // Kiosk auto-export path, unchanged from the old printImageInNetworkPath().
+    function exportPdfToNetworkPath()
     {
         CUSTOMPRINT.clearImagesList()
         var page1 = is3PMatch ? report3p : print_region

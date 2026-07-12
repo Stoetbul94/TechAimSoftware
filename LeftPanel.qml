@@ -286,8 +286,15 @@ Item {
                     showMatchReport()
                 }
             } else if (key === "coach") {
-                cannotGenerate.text = qsTr("Coach report is coming soon")
-                cannotGenerate.visible = true
+                if (sligterMode) {
+                    cannotGenerate.text = sighterMatchText
+                    cannotGenerate.visible = true
+                } else {
+                    // Re-analyse the current match from the authoritative match
+                    // record (real coords + positions), then open the Coach window.
+                    shootingPage.feedCoachReport()
+                    windowManager.openCoach()
+                }
             } else if (key === "mpi") {
                 isShowMPI = !isShowMPI
             } else if (key === "settings") {
@@ -431,12 +438,14 @@ Item {
 
     function showSummary()
     {
-        showSummaryPage.visible = true
+        // Open the Summary in the floating Report window via the manager.
+        windowManager.openReport()
     }
 
     function showMatchReport()
     {
-        matchReportPage.visible = true
+        // Open the Match report in the floating Report window (Match tab).
+        windowManager.openMatchReport()
     }
 
 

@@ -824,7 +824,10 @@ Item {
         Repeater
         {
             id:numberOverlayRepeater
-            model:globalModelOfData
+            // After a 3P match finishes, the face reviews the whole match (all six
+            // series) alongside the right-panel table; during live shooting and for
+            // every other discipline it stays the current per-position buffer.
+            model: (is3PMatch && shootingPage.matchFinished) ? globalMatchModel : globalModelOfData
             delegate: numberOverlayDelegate
 
             onCountChanged: {
@@ -941,7 +944,12 @@ Item {
                     Text{
                         anchors.centerIn: parent
                         visible: gameRange == 50 && gameMode ? false : true
-                        text: index+1
+                        // Continuous numbering through a live 3P match (K 1-20,
+                        // P 21-40, S 41-60): snBase counts the completed
+                        // positions' record shots straight from the data. 0 while
+                        // sighting, for non-3P, and in post-match review (the
+                        // model is match-absolute there already).
+                        text: rightPanel.snBase + index + 1
                     }
 
                     //                    z: index === rightPanel.currentShootIndex ? 100 : 15
@@ -1155,16 +1163,19 @@ Item {
             height: width
 
             function refreshPosition() {
-                // Coordinates come from the DISPLAY model, not the backend
-                // lists: after a 3P position change the display is filtered
-                // to the current position, so display index N no longer maps
-                // to backend shot N. Using the backend here drew this marker
-                // (which looks like a shot and shows the same number) at a
-                // previous position's coordinates — a "phantom shot".
+                // Coordinates come from the SAME record the face is paging
+                // (never the backend lists — display index N doesn't map to
+                // backend shot N once 3P filters per position). During live
+                // shooting that's the per-position display buffer; in 3P
+                // post-match review it's the full match record, because
+                // currentShootIndex is match-absolute then. Reading the wrong
+                // one left this marker stuck at a stale position with the
+                // page's shot number — a "phantom shot" on every series page.
+                var mdl = (is3PMatch && shootingPage.matchFinished) ? globalMatchModel : globalModelOfData
                 var idx = rightPanel.currentShootIndex
-                if (idx < 0 || idx >= globalModelOfData.count)
+                if (idx < 0 || idx >= mdl.count)
                     return
-                var e = globalModelOfData.get(idx)
+                var e = mdl.get(idx)
                 var xCor = e.xmm*1
                 var yCor = e.ymm*1
 
@@ -1213,7 +1224,8 @@ Item {
             Text{
                 anchors.centerIn: parent
                 visible: gameRange == 50 && gameMode ? false : true
-                text: rightPanel.currentShootIndex+1
+                // Same continuous live-3P numbering as the shot overlay labels.
+                text: rightPanel.snBase + rightPanel.currentShootIndex + 1
             }
 
             radius: width/2
@@ -1240,6 +1252,13 @@ Item {
                     matchInfoDialog.visible = true
                     return
                 }
+
+                // Synchronous cap: the auto-finish watcher polls every 500ms,
+                // so matchFinished can lag the 60th shot — a click in that
+                // window registered a 61st shot. Check the record directly.
+                if (!sligterMode && shootingPage.matchShootCount > 0
+                        && globalMatchModel.count >= shootingPage.matchShootCount)
+                    return
 
                 var logData = "canvas screen clicked position x ->"+ mouseX+ " y -> " + mouseY
                 MODREADER.appendToLogFile(logData)
@@ -1767,7 +1786,7 @@ Item {
     function currentPageIndexChanged()
     {
         numberOverlayRepeater.model = null
-        numberOverlayRepeater.model = globalModelOfData
+        numberOverlayRepeater.model = (is3PMatch && shootingPage.matchFinished) ? globalMatchModel : globalModelOfData
     }
 
     function refreshCentralPanelPage()

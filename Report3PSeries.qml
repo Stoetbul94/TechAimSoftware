@@ -63,12 +63,15 @@ Item {
         shotsRepeaterB.model = 0; shotsRepeaterB.model = 10
         plotRepeater.model = 0;  plotRepeater.model = 20
         statsLine.text = statsText()
-        totalAText.text = fmt(seriesTotal(0)) + "  (" + seriesTotalInt(0) + ")"
-        totalBText.text = fmt(seriesTotal(1)) + "  (" + seriesTotalInt(1) + ")"
-        posTotalText.text = fmt(seriesTotal(0) + seriesTotal(1))
-                          + "  (" + (seriesTotalInt(0) + seriesTotalInt(1)) + ")"
+        // ISSF 3P: integer primary, decimal in brackets.
+        totalAText.text = seriesTotalInt(0) + "  (" + fmt(seriesTotal(0)) + ")"
+        totalBText.text = seriesTotalInt(1) + "  (" + fmt(seriesTotal(1)) + ")"
+        posTotalText.text = (seriesTotalInt(0) + seriesTotalInt(1))
+                          + "  (" + fmt(seriesTotal(0) + seriesTotal(1)) + ")"
     }
     function fmt(v) { return (v * 1).toFixed(1) }
+    // Per-shot display: integer primary with the decimal in brackets (ISSF 3P).
+    function fmtShot(v) { return Math.floor(v) + " (" + fmt(v) + ")" }
     function statsText() {
         var st = posStats()
         return qsTr("Inner 10s: ") + st.inner
@@ -139,8 +142,8 @@ Item {
                                 Text { width: parent.width*0.4; height: parent.height; text: index + 1; font.pixelSize: 11; color: "#555555"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                                 Text {
                                     width: parent.width*0.6; height: parent.height
-                                    text: shotScore(index) >= 0 ? fmt(shotScore(index)) : "-"
-                                    font.pixelSize: 12; font.bold: true
+                                    text: shotScore(index) >= 0 ? fmtShot(shotScore(index)) : "-"
+                                    font.pixelSize: 11; font.bold: true
                                     color: shotScore(index) >= 10 ? "#3a9a3a" : (shotScore(index) >= 9 ? "#111111" : "#a80038")
                                     horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
                                 }
@@ -182,8 +185,8 @@ Item {
                                 Text { width: parent.width*0.4; height: parent.height; text: index + 11; font.pixelSize: 11; color: "#555555"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                                 Text {
                                     width: parent.width*0.6; height: parent.height
-                                    text: shotScore(index + 10) >= 0 ? fmt(shotScore(index + 10)) : "-"
-                                    font.pixelSize: 12; font.bold: true
+                                    text: shotScore(index + 10) >= 0 ? fmtShot(shotScore(index + 10)) : "-"
+                                    font.pixelSize: 11; font.bold: true
                                     color: shotScore(index + 10) >= 10 ? "#3a9a3a" : (shotScore(index + 10) >= 9 ? "#111111" : "#a80038")
                                     horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
                                 }

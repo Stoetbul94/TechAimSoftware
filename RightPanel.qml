@@ -3,14 +3,26 @@ Item {
     property int rootItemWidth:1674
     property int rootItemHeight:3092
     property int currentPageIndex : 0
+    // Which record the shot table + face review pages over. Once a 3P match is
+    // FINISHED, page the WHOLE match (all 6 series across K/P/S) so the athlete can
+    // review every position; the live target face follows because its overlay
+    // filter keys off currentPageIndex (see CenterPane numberOverlayRepeater).
+    // During live shooting (and every non-3P discipline) this stays the current
+    // display buffer, so the live per-position face/counter behaviour is unchanged.
+    readonly property var pagingModel: (is3PMatch && shootingPage.matchFinished) ? globalMatchModel : globalModelOfData
+    // Shot-number base so numbering runs continuously through a live 3P match
+    // (Kneeling 1-20, Prone 21-40, Standing 41-60) even though the table pages
+    // the per-position buffer. Derived from the DATA, not from position state:
+    // during record fire the buffer holds only the current position's record
+    // shots, so (full record − buffer) = shots from completed positions —
+    // 20/40 in 3P, always 0 for non-3P (buffer == record). While sighting the
+    // buffer holds sighters (which number from 1), and in review pagingModel
+    // IS the full record, so the difference is 0 and numbers stay absolute.
+    readonly property int snBase: sligterMode ? 0 : Math.max(0, globalMatchModel.count - pagingModel.count)
     // Series navigation state (drives the new chevron buttons; auto-updates).
-    readonly property int maxSeriesPage: globalModelOfData.count > 0 ? Math.floor((globalModelOfData.count - 1) / 10) : 0
+    readonly property int maxSeriesPage: pagingModel.count > 0 ? Math.floor((pagingModel.count - 1) / 10) : 0
     readonly property bool canPrevSeries: currentPageIndex > 0
     readonly property bool canNextSeries: currentPageIndex < maxSeriesPage
-    // The series being actively shot across the FULL match (survives 3P
-    // position changes; globalMatchModel is never cleared per position).
-    readonly property int currentMatchSeries: globalMatchModel.count > 0
-                                              ? Math.min(5, Math.floor((globalMatchModel.count - 1) / 10)) : 0
     property int totalStars : 0
     property int seriesStars : 0
     property int totalTimeConsume: 0
@@ -64,7 +76,7 @@ Item {
 
     onCurrentPageIndexChanged:
     {
-        var maxPageIndex = Math.floor((globalModelOfData.count-1)/10)
+        var maxPageIndex = Math.floor((pagingModel.count-1)/10)
         console.log("Current Page Index and Max page Index " , currentPageIndex,maxPageIndex)
         if(currentPageIndex < maxPageIndex)
         {
@@ -93,15 +105,19 @@ Item {
     }
 
     onCurrentShootIndexChanged: {
-        centerPanel.currentScoreValue = scoreCutoffTofirstDecimal(globalModelOfData.get(currentShootIndex).calculatedscore)*1
-//        if (centerPanel.currentScoreValue == "nan" || centerPanel.currentScoreValue == "NaN")
-//            centerPanel.currentScoreValue = "0"
-        centerPanel.currentScoreDegree = globalModelOfData.get(currentShootIndex).direction*1
+        // Read from the record being paged (full match in 3P review, current
+        // display buffer otherwise). In review currentShootIndex is
+        // match-absolute, so indexing the 20-shot position buffer here returned
+        // undefined and the TypeError aborted this handler — leaving the
+        // selected-shot marker and score bubble stuck on the last live shot.
+        if (currentShootIndex < 0 || currentShootIndex >= pagingModel.count)
+            return
+        centerPanel.currentScoreValue = scoreCutoffTofirstDecimal(pagingModel.get(currentShootIndex).calculatedscore)*1
+        centerPanel.currentScoreDegree = pagingModel.get(currentShootIndex).direction*1
         if (matchScore.count != 0)
             centerPanel.refreshSelectedShootPosition()
 
-        console.log(globalModelOfData.count , globalModelOfData.get(currentShootIndex).calculatedscore, " ***srinu ---",matchScore.count, "current shoot index changed", currentShootIndex)
-        console.log(scoreCutoffTofirstDecimal(globalModelOfData.get(currentShootIndex).calculatedscore)*1, " srinu ---",matchScore.count, "current shoot index changed", currentShootIndex)
+        console.log(pagingModel.count, pagingModel.get(currentShootIndex).calculatedscore, " ***srinu ---",matchScore.count, "current shoot index changed", currentShootIndex)
     }
 
     Image {
@@ -494,9 +510,13 @@ Item {
                 Text {
                     id: lastShotScore
                     anchors.verticalCenter: parent.verticalCenter
-                    text: lastShotCard.hasShot ? scoreCutoffTofirstDecimal(lastShotCard.lastScore)*1 : "—"
+                    // 3P (ISSF): integer primary with the decimal in brackets.
+                    text: !lastShotCard.hasShot ? "—"
+                          : (is3PMatch
+                             ? (parseInt(scoreCutoffTofirstDecimal(lastShotCard.lastScore)*1) + " (" + (scoreCutoffTofirstDecimal(lastShotCard.lastScore)*1) + ")")
+                             : (scoreCutoffTofirstDecimal(lastShotCard.lastScore)*1))
                     color: "white"; font.family: theme.fontFamily
-                    font.pixelSize: 34; font.bold: true
+                    font.pixelSize: 28; font.bold: true
                 }
                 Image {
                     visible: lastShotCard.hasShot
@@ -507,18 +527,20 @@ Item {
                 }
             }
         }
-        // Right group: X/Y as stat chips, vertically centered.
-        Row {
-            anchors.right: parent.right; anchors.rightMargin: 14
+        // Right group: X/Y in mm, right-aligned, vertically centered.
+        Column {
+            anchors.right: parent.right; anchors.rightMargin: 16
             anchors.verticalCenter: parent.verticalCenter
-            spacing: 6
-            StatChip {
-                anchors.verticalCenter: parent.verticalCenter
-                label: "X"; value: lastShotCard.hasShot ? lastShotCard.lastXmm.toFixed(1) + " mm" : "—"
+            spacing: 5
+            Text {
+                anchors.right: parent.right
+                text: lastShotCard.hasShot ? ("X   " + lastShotCard.lastXmm.toFixed(1) + " mm") : ""
+                color: "#c8c9cf"; font.family: theme.fontFamily; font.pixelSize: 13
             }
-            StatChip {
-                anchors.verticalCenter: parent.verticalCenter
-                label: "Y"; value: lastShotCard.hasShot ? lastShotCard.lastYmm.toFixed(1) + " mm" : "—"
+            Text {
+                anchors.right: parent.right
+                text: lastShotCard.hasShot ? ("Y   " + lastShotCard.lastYmm.toFixed(1) + " mm") : ""
+                color: "#c8c9cf"; font.family: theme.fontFamily; font.pixelSize: 13
             }
         }
     }
@@ -529,34 +551,12 @@ Item {
         anchors.right: right.left
         anchors.top: left_arrow.top
         anchors.bottom: left_arrow.bottom
-        opacity: 0   // redesign: grey PNG bar replaced by the dark strip below
+//        x: ((parent.width/rootItemWidth)*400)
+//        y: ((parent.height/rootItemHeight)*131) + tableShift
+        opacity: 1
+//        width: ((parent.width/rootItemWidth)*sourceSize.width)
+//        height: ((parent.height/rootItemHeight)*sourceSize.height)
         visible: true
-    }
-    // Dark series-header strip (redesign) occupying the same slot.
-    Rectangle {
-        id: seriesHeaderBg
-        anchors.fill: series_6
-        radius: 8
-        color: "#202127"
-        border.color: "#2a2b30"; border.width: 1
-
-        // Series score + group, top-right (the title sits top-left, column
-        // headers along the bottom).
-        Row {
-            anchors.right: parent.right; anchors.rightMargin: 12
-            anchors.top: parent.top; anchors.topMargin: 5
-            spacing: 10
-            Text {
-                anchors.verticalCenter: parent.verticalCenter
-                text: (currentShootIndex >= currentPageIndex*10) ? getSeriesTotal(currentPageIndex+1) : "—"
-                color: "white"; font.family: theme.fontFamily; font.pixelSize: 17; font.bold: true
-            }
-            Text {
-                anchors.verticalCenter: parent.verticalCenter
-                text: qsTr("Grp ") + MODREADER.getGroup(currentPageIndex).toFixed(1)
-                color: "#9aa0a6"; font.family: theme.fontFamily; font.pixelSize: 11
-            }
-        }
     }
 
     Image {
@@ -570,15 +570,14 @@ Item {
     }
     Text {
         id: seriesText
-        anchors.top: series_6.top
-        anchors.topMargin: 6
-        anchors.left: series_6.left
-        anchors.leftMargin: 12
-        text : qsTr("SERIES ") + (currentPageIndex+1) + qsTr(" OF 6")
+        anchors.bottom: series_text_field.bottom
+        anchors.bottomMargin: -5
+        anchors.left: series_text_field.left
+        //anchors.topMargin: -3
+        //        anchors.horizontalCenter: series_text_field.horizontalCenter
+        text : (Math.floor(snBase/10) + currentPageIndex + 1)
         color: "white"
-        font.bold: true
-        font.family: theme.fontFamily
-        font.pixelSize: 13
+        font.pixelSize: dafaultFontSize
     }
     Image {
         id: right
@@ -827,28 +826,11 @@ Item {
             width:matchScore.width
             height: matchScore.height/10
 
-            // Alternating row background (redesign).
-            Rectangle {
-                anchors.fill: parent
-                color: index % 2 ? "#17181c" : "#1c1d22"
-            }
-
             Rectangle {
                 id: currentItem
                 anchors.fill: parent
                 color: "#3a0d16"   // redesign: themed selection highlight
                 visible: matchScore.currentIndex == index //(right_end.visible) && (index === (globalModelOfData.count-1)%10)
-            }
-
-            // Thin quality indicator on the left edge (green inner-10 / amber /
-            // red low) - drawn on top of the selection so it stays visible.
-            Rectangle {
-                width: 4; radius: 2
-                height: parent.height * 0.58
-                anchors.left: parent.left
-                anchors.verticalCenter: parent.verticalCenter
-                property real sc: calculatedscore * 1
-                color: sc >= 10.0 ? "#4caf50" : (sc >= 9.5 ? "#f9a825" : "#d32f2f")
             }
 
             Rectangle {
@@ -859,7 +841,7 @@ Item {
                 color: "transparent"
 
                 Text {
-                    text: currentPageIndex*10 + index + 1
+                    text: snBase + currentPageIndex*10 + index + 1
                     anchors.centerIn: parent
                     color: "#9a9ba0"
                     font.pixelSize: 0.65*currentItem.height
@@ -904,7 +886,11 @@ Item {
                         anchors.centerIn: parent
                         color: "white"
 
-                        text:APPSETTINGS.getScoringSystem()? (scoreCutoffTofirstDecimal(calculatedscore)*1): parseInt(scoreCutoffTofirstDecimal(calculatedscore)*1)
+                        // 3P (ISSF): integer primary with the decimal in brackets.
+                        // Other disciplines follow the app's scoring-system toggle.
+                        text: is3PMatch
+                              ? (parseInt(scoreCutoffTofirstDecimal(calculatedscore)*1) + " (" + (scoreCutoffTofirstDecimal(calculatedscore)*1) + ")")
+                              : (APPSETTINGS.getScoringSystem()? (scoreCutoffTofirstDecimal(calculatedscore)*1): parseInt(scoreCutoffTofirstDecimal(calculatedscore)*1))
                         font.pixelSize: 0.8*currentItem.height
                         font.bold: true
                     }
@@ -1033,8 +1019,8 @@ Item {
         if( (loginPage.gameMode === 0 && calScore >= star_limit_value_pistol)
                 || (loginPage.gameMode === 1 && calScore >= star_limit_value_rifle) )
             ++totalStars
-        var startIndex = Math.floor((globalModelOfData.count-1)/10)
-        var endIndex = globalModelOfData.count;
+        var startIndex = Math.floor((pagingModel.count-1)/10)
+        var endIndex = pagingModel.count;
         updateListModel(startIndex*10,endIndex)
     }
 
@@ -1052,12 +1038,12 @@ Item {
         seriesTimeConsume = 0
         for(var i = startIndex; i < endIndex; i++)
         {
-            var relativeVal = globalModelOfData.get(i).calculatedscore*1
+            var relativeVal = pagingModel.get(i).calculatedscore*1
             if (relativeVal < 0)
                 relativeVal = 0
-            var direction = globalModelOfData.get(i).direction*1
-            var timeConsumed = globalModelOfData.get(i).timeComsumed
-            var calculatedScore = globalModelOfData.get(i).calculatedscore
+            var direction = pagingModel.get(i).direction*1
+            var timeConsumed = pagingModel.get(i).timeComsumed
+            var calculatedScore = pagingModel.get(i).calculatedscore
 
             listModel.append({"direction":direction.toFixed(2),
                                  "score":relativeVal.toFixed(2),
@@ -1094,16 +1080,28 @@ Item {
         console.log("last line updateListModel")
     }
 
+    // Called (deferred) when a 3P match finishes: jump the table + face to the
+    // final series so review opens on the last shots fired; the athlete can then
+    // page back through all six series. Uses globalMatchModel directly so it does
+    // not depend on the pagingModel binding having settled yet.
+    function showLastSeriesForReview()
+    {
+        if (globalMatchModel.count === 0)
+            return
+        currentPageIndex = Math.floor((globalMatchModel.count - 1) / 10)
+        updateListModel(currentPageIndex * 10, globalMatchModel.count)
+    }
+
     function leftClicked()
     {
         listNavigationON = true
         --currentPageIndex
-        var maxPageIndex = Math.floor(globalModelOfData.count/10)
+        var maxPageIndex = Math.floor(pagingModel.count/10)
         var startIndex = currentPageIndex*10
         var endIndex = startIndex+10;//maxPageIndex*10
-        if(endIndex >= globalModelOfData.count)
+        if(endIndex >= pagingModel.count)
         {
-            endIndex = globalModelOfData.count
+            endIndex = pagingModel.count
         }
         updateListModel(startIndex,endIndex)
         listNavigationON = false
@@ -1113,11 +1111,11 @@ Item {
     {
         listNavigationON = true
         ++currentPageIndex
-        var maxPageIndex = Math.floor(globalModelOfData.count/10)
+        var maxPageIndex = Math.floor(pagingModel.count/10)
         var startIndex = currentPageIndex*10
         var endIndex = startIndex+10;//(maxPageIndex)*10
-        if(endIndex >= globalModelOfData.count)
-            endIndex = globalModelOfData.count
+        if(endIndex >= pagingModel.count)
+            endIndex = pagingModel.count
         updateListModel(startIndex,endIndex)
         listNavigationON = true
     }
@@ -1150,15 +1148,25 @@ Item {
         subTotalExculdeDec = 0
         seriesTimeConsume = 0
 
-        for(var i = 0; i < globalModelOfData.count; i++)
+        // Grand totals are MATCH totals. 3P must re-derive them from the full
+        // match record: this runs on every position transition, when
+        // globalModelOfData holds only the new position's shots — deriving from
+        // it wiped Kneeling+Prone from the TOTAL card (e.g. 173 after a full
+        // 565 match). Non-3P keeps the display buffer (identical behaviour).
+        var totalsData = is3PMatch ? globalMatchModel : globalModelOfData
+        for(var i = 0; i < totalsData.count; i++)
         {
-            var relativeVal = globalModelOfData.get(i).calculatedscore*1
-            var direction = globalModelOfData.get(i).direction*1
-            var timeConsumed = globalModelOfData.get(i).timeComsumed
+            var relativeVal = totalsData.get(i).calculatedscore*1
+            var direction = totalsData.get(i).direction*1
+            var timeConsumed = totalsData.get(i).timeComsumed
 
             grandTotal = ( grandTotal*1 + scoreCutoffTofirstDecimal(relativeVal)*1)
             grandTotalExculdeDec = ( grandTotalExculdeDec*1 + Math.floor(relativeVal))
-            totalTimeConsume = totalTimeConsume*1 + (timeInSec - lastUsedTime)
+            // 3P: sum the per-shot times stored on the record; the legacy
+            // timeInSec-based line re-added the same live delta per iteration
+            // and reset the match time at every position change.
+            totalTimeConsume = is3PMatch ? (totalTimeConsume*1 + timeConsumed*1)
+                                         : (totalTimeConsume*1 + (timeInSec - lastUsedTime))
 
             if(relativeVal > 10)
                 ++totalStars
@@ -1246,12 +1254,12 @@ Item {
         //        stop_over.
     }
 
-    // png text for translation — folded into seriesText ("SERIES N OF 6")
+    // png text for translation
     Text {
-        visible: false
         anchors.right: seriesText.left
         anchors.rightMargin: 5
         anchors.top: seriesText.top
+        //anchors.horizontalCenter: parent.horizontalCenter
         text: qsTr("SERIES")
         color: "white"
         width: implicitWidth
@@ -1380,110 +1388,127 @@ Item {
         anchors.bottom: series_sum.top
         anchors.bottomMargin: 8
         radius: 10
-        color: "transparent"; border.width: 0
+        color: "#1a1a1f"; border.color: "#2a2b30"; border.width: 1
 
         property int shots: globalModelOfData.count
 
-        Row {
-            anchors.fill: parent
-            spacing: 8
-
-            // ── Session summary: 2×2 metric cards ─────────────────────────
-            Grid {
-                id: summaryGrid
-                width: parent.width - 148
-                height: parent.height
-                columns: 2; rows: 2
-                columnSpacing: 8; rowSpacing: 8
-                property real cw: (width - columnSpacing) / 2
-                property real ch: (height - rowSpacing) / 2
-
-                Repeater {
-                    model: [
-                        { l: qsTr("TOTAL"),    v: scoreCutoffTofirstDecimal(grandTotal)*1 + "", sub: "(" + grandTotalExculdeDec + ")", col: "#ffffff" },
-                        { l: qsTr("AVERAGE"),  v: totalCard.shots > 0 ? (grandTotal / totalCard.shots).toFixed(2) : "—", sub: "", col: "#ffffff" },
-                        { l: qsTr("INNER 10"), v: "★ " + totalStars, sub: "", col: "#ffb020" },
-                        { l: qsTr("TIME"),     v: minutesToseconds(totalTimeConsume), sub: "", col: "#ffffff" }
-                    ]
-                    delegate: Rectangle {
-                        width: summaryGrid.cw; height: summaryGrid.ch
-                        radius: 8; color: "#1a1a1f"; border.color: "#2a2b30"; border.width: 1
-                        Column {
-                            anchors.left: parent.left; anchors.leftMargin: 10
-                            anchors.right: parent.right; anchors.rightMargin: 8
-                            anchors.verticalCenter: parent.verticalCenter
-                            spacing: 2
-                            Text {
-                                text: modelData.l
-                                color: "#8a8a92"; font.family: theme.fontFamily
-                                font.pixelSize: 9; font.letterSpacing: 1
-                            }
-                            Row {
-                                spacing: 4
-                                Text {
-                                    id: valTxt
-                                    text: modelData.v
-                                    color: modelData.col; font.family: theme.fontFamily
-                                    font.pixelSize: 17; font.bold: true
-                                }
-                                Text {
-                                    visible: modelData.sub.length > 0
-                                    anchors.baseline: valTxt.baseline
-                                    text: modelData.sub
-                                    color: "#8a8a92"; font.family: theme.fontFamily; font.pixelSize: 10
-                                }
-                            }
-                        }
+        // Top row: TOTAL label + big score (int) · inner-10s · time
+        Item {
+            id: totalTopRow
+            anchors.top: parent.top; anchors.topMargin: 8
+            anchors.left: parent.left; anchors.leftMargin: 14
+            anchors.right: parent.right; anchors.rightMargin: 14
+            height: 40
+            Column {
+                anchors.left: parent.left
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 5
+                Text {
+                    text: qsTr("TOTAL SCORE")
+                    color: "#8a8a92"; font.family: theme.fontFamily
+                    font.pixelSize: 10; font.letterSpacing: 1.5
+                }
+                Row {
+                    spacing: 5
+                    Text {
+                        anchors.baseline: totalInt.baseline
+                        // 3P (ISSF): integer total is the headline, decimal in brackets.
+                        text: is3PMatch ? ("" + grandTotalExculdeDec) : (scoreCutoffTofirstDecimal(grandTotal)*1)
+                        color: "white"; font.family: theme.fontFamily
+                        font.pixelSize: 24; font.bold: true
+                    }
+                    Text {
+                        id: totalInt
+                        text: is3PMatch ? ("(" + scoreCutoffTofirstDecimal(grandTotal)*1 + ")") : ("(" + grandTotalExculdeDec + ")")
+                        color: "#8a8a92"; font.family: theme.fontFamily
+                        font.pixelSize: 13
                     }
                 }
             }
-
-            // ── Distribution: colour-coded ring-band tallies ──────────────
-            Rectangle {
-                width: 140; height: parent.height
-                radius: 8; color: "#1a1a1f"; border.color: "#2a2b30"; border.width: 1
+            Row {
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 18
                 Column {
-                    anchors.fill: parent; anchors.margins: 8
-                    spacing: 4
-                    Repeater {
-                        model: [{ lbl: "10", b: 10, c: "#2ecc71" },
-                                { lbl: "9",  b: 9,  c: "#3aa0ff" },
-                                { lbl: "8",  b: 8,  c: "#ffb020" },
-                                { lbl: "≤7", b: 7,  c: "#e8003d" }]
-                        delegate: Item {
-                            width: parent.width
-                            height: (parent.height - 12) / 4
-                            property int cnt: bandCount(modelData.b, totalCard.shots)
-                            Text {
-                                id: bandLbl2
-                                anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
-                                width: 18
-                                text: modelData.lbl
-                                color: "#9a9ba0"; font.family: theme.fontFamily; font.pixelSize: 10
-                                horizontalAlignment: Text.AlignRight
-                            }
-                            Rectangle {
-                                anchors.left: bandLbl2.right; anchors.leftMargin: 6
-                                anchors.right: bandCnt2.left; anchors.rightMargin: 6
-                                anchors.verticalCenter: parent.verticalCenter
-                                height: 8; radius: 4; color: "#141519"
-                                Rectangle {
-                                    anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
-                                    height: parent.height; radius: 4
-                                    width: parent.width * (parent.parent.cnt / maxBandCount(totalCard.shots))
-                                    color: modelData.c
-                                    visible: parent.parent.cnt > 0
-                                }
-                            }
-                            Text {
-                                id: bandCnt2
-                                anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
-                                width: 14
-                                text: parent.cnt
-                                color: "white"; font.family: theme.fontFamily; font.pixelSize: 10; font.bold: true
-                                horizontalAlignment: Text.AlignRight
-                            }
+                    Text {
+                        anchors.right: parent.right
+                        text: qsTr("INNER 10s")
+                        color: "#8a8a92"; font.family: theme.fontFamily; font.pixelSize: 10
+                    }
+                    Text {
+                        anchors.right: parent.right
+                        text: "★ " + totalStars
+                        color: "#ffb020"; font.family: theme.fontFamily
+                        font.pixelSize: 15; font.bold: true
+                    }
+                }
+                Column {
+                    Text {
+                        anchors.right: parent.right
+                        text: qsTr("TIME")
+                        color: "#8a8a92"; font.family: theme.fontFamily; font.pixelSize: 10
+                    }
+                    Text {
+                        anchors.right: parent.right
+                        text: minutesToseconds(totalTimeConsume)
+                        color: "white"; font.family: theme.fontFamily
+                        font.pixelSize: 15; font.bold: true
+                    }
+                }
+            }
+        }
+
+        // Distribution: horizontal bars, one per ring band, width proportional
+        // to the tally. Colour-coded so quality reads at a glance.
+        Column {
+            anchors.top: totalTopRow.bottom; anchors.topMargin: 6
+            anchors.left: parent.left; anchors.leftMargin: 14
+            anchors.right: parent.right; anchors.rightMargin: 14
+            anchors.bottom: parent.bottom; anchors.bottomMargin: 8
+            spacing: 3
+            Repeater {
+                model: [{ lbl: "10", b: 10, c: "#2ecc71" },
+                        { lbl: "9",  b: 9,  c: "#3aa0ff" },
+                        { lbl: "8",  b: 8,  c: "#ffb020" },
+                        { lbl: "≤7", b: 7,  c: "#e8003d" }]
+                delegate: Item {
+                    width: parent.width
+                    height: (parent.height - 9) / 4
+                    property int cnt: bandCount(modelData.b, totalCard.shots)
+                    Text {
+                        id: bandLbl
+                        anchors.left: parent.left
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 20
+                        text: modelData.lbl
+                        color: "#9a9ba0"; font.family: theme.fontFamily; font.pixelSize: 11
+                        horizontalAlignment: Text.AlignRight
+                    }
+                    Rectangle {   // track
+                        id: bandTrack
+                        anchors.left: bandLbl.right; anchors.leftMargin: 8
+                        anchors.right: bandCnt.left; anchors.rightMargin: 8
+                        anchors.verticalCenter: parent.verticalCenter
+                        height: 9; radius: 4
+                        color: "#141519"
+                        Rectangle {   // fill
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            height: parent.height; radius: 4
+                            width: parent.width * (parent.parent.cnt / maxBandCount(totalCard.shots))
+                            color: modelData.c
+                            visible: parent.parent.cnt > 0
                         }
+                    }
+                    Text {
+                        id: bandCnt
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 16
+                        text: parent.cnt
+                        color: "white"; font.family: theme.fontFamily
+                        font.pixelSize: 11; font.bold: true
+                        horizontalAlignment: Text.AlignRight
                     }
                 }
             }
@@ -1506,115 +1531,139 @@ Item {
         visible: true
         color: "transparent"   // redesign: themed cells below draw the look
 
-        // Series overview as mini cards: completed = green edge, current =
-        // maroon outline, pending = grey. The int-score text keeps the exact
-        // MODREADER backend push it had before (unchanged).
         Row {
             id: firstRow
-            anchors.fill: parent
-            spacing: 6
+            anchors.top: parent.top
             Repeater {
                 model: 6
-                delegate: Rectangle {
-                    width: (series_sum.width - 30) / 6
-                    height: series_sum.height
-                    radius: 8
-                    // Full-match state so the six series persist across 3P
-                    // positions (kneeling S1-2, prone S3-4, standing S5-6).
-                    property bool started: matchSeriesStarted(index)
-                    property bool current: index === currentMatchSeries
-                    property bool complete: matchSeriesComplete(index)
-                    color: current ? "#241016" : "#1a1a1f"
-                    border.width: current ? 2 : 1
-                    border.color: current ? "#a80038" : (complete ? "#2f6b3f" : "#2a2b30")
+                Rectangle {
+                    width: series_sum.width/6; height: series_sum.height/5*1
+                    color: "transparent"
 
-                    Column {
+                    Text {
                         anchors.centerIn: parent
-                        spacing: 3
+                        text: "S"+(index+1)
+                        color: "#8a8a92"
+                        font.pixelSize: dafaultFontSize
+                    }
+                }
+            }
+        }
+
+        Column {
+            anchors.top: firstRow.bottom
+            anchors.bottom: parent.bottom
+            Row {
+                id: secondRow
+                Repeater {
+                    model: 6
+                    Rectangle {
+                        width: series_sum.width/6; height: series_sum.height/5*2
+                        border.width: 1
+                        border.color: "#2a2b30"
+                        radius: 6
+                        color: "#1a1a1f"
+
                         Text {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            text: "S" + (index + 1)
-                            color: current ? "#e0708f" : "#8a8a92"
-                            font.family: theme.fontFamily; font.pixelSize: 13; font.bold: true
-                        }
-                        Text {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            text: started ? getMatchSeriesTotal(index + 1) : "—"
-                            color: started ? "white" : "#55555e"
-                            font.family: theme.fontFamily; font.pixelSize: 17; font.bold: true
-                        }
-                        Text {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            text: started ? "(" + getMatchSeriesInt(index + 1) + ")" : ""
-                            color: "#9a9ba0"
-                            font.family: theme.fontFamily; font.pixelSize: 12
+                            anchors.centerIn: parent
+                            // 3P (ISSF) shows the integer series score as the headline;
+                            // other disciplines keep the decimal headline.
+                            text: isValidSeries(index) ? (is3PMatch ? getSeriesTotalNonDecimal(index+1) : getSeriesTotal(index+1)) : "—"
+                            color: isValidSeries(index) ? "white" : "#55555e"
+                            font.pointSize: parent.height*0.25 //parent.height*0.3
+//                            font.pointSize: isSingleDecimal ? parent.height*0.37 : parent.height*0.32
+//                            font.bold: true
 
                             onTextChanged: {
-                                //record each full-match series score (persists across positions)
-                                if (matchSeriesStarted(index)) {
-                                    MODREADER.updateSeriesScore(index+1, getMatchSeriesInt(index+1))
-                                    MODREADER.updateSeriesScoreWD(index+1, (getMatchSeriesTotal(index+1)))
+                                var textLength = text.length
+                                if (textLength == 5)
+                                    font.pointSize = parent.height*0.2
+                                console.log("sssssssssssssssssssssssssssssssssssss-------------------", textLength)
+                            }
+                        }
+                    }
+                }
+            }
+
+            Row {
+                id: thirdRow
+                Repeater {
+                    model: 6
+                    Rectangle {
+                        width: series_sum.width/6; height: series_sum.height/5*2
+                        border.width: 1
+                        color: "#141519"
+                        border.color: "#2a2b30"
+                        radius: 6
+
+                        Text {
+                            anchors.centerIn: parent
+                            // 3P shows the decimal in brackets under the integer headline;
+                            // other disciplines keep the plain integer sub-total.
+                            text: isValidSeries(index) ? (is3PMatch ? "(" + getSeriesTotal(index+1) + ")" : getSeriesTotalNonDecimal(index+1)) : ""
+                            color: "#9a9ba0"
+                            font.pointSize: parent.height*0.25//parent.height*0.3
+//                            font.bold: true
+
+                            onTextChanged: {
+                                //update the backend variables and file
+                                if (isValidSeries(index)) {
+                                    MODREADER.updateSeriesScore(index+1, getSeriesTotalNonDecimal(index+1))
+                                    MODREADER.updateSeriesScoreWD(index+1, (getSeriesTotal(index+1)))
                                     MODREADER.setTotalScoreWOD(seriesSubTotalED.text)
                                     MODREADER.setTotalScoreWD(seriesSubTotal.text)
                                     MODREADER.updateSetaShootSummaryData()
+
+//                                    seriesSubTotal.text = scoreCutoffTofirstDecimal(grandTotal)*1 //scoreCutoffTofirstDecimal(subTotal)*1
+//                                    seriesSubTotalED.text = grandTotalExculdeDec.toFixed(0)*1 //subTotalExculdeDec.toFixed(0)*1
+
                                 }
                             }
-                        }
-                        Text {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            visible: complete && !current
-                            text: "✓"
-                            color: "#2ecc71"; font.pixelSize: 11; font.bold: true
                         }
                     }
                 }
             }
         }
+
+        Rectangle {
+            x: firstRowX
+            y: firstRowY
+            width: firstRowWidth
+            height: firstRowHeight
+            color: "transparent"
+            border.width: 1
+            border.color: "grey"
+        }
     }
 
     function isValidSeries(index) {
+        // 3P: the six series map to the whole match (K=S1,2 · P=S3,4 · S=S5,6),
+        // so validity follows the continuous match record — not the per-position
+        // display buffer, which resets to 20 shots on each position change and
+        // made S1,S2 re-appear for prone/standing. Non-3P behaviour is unchanged.
+        if (is3PMatch)
+            return globalMatchModel.count > index*10
         if (currentShootIndex >= index*10)
             return true
         else
             return false
     }
 
-    // ── Full-match series helpers (read globalMatchModel, the whole-match
-    //    record) so the S1..S6 overview accumulates across 3P positions and
-    //    persists until the match ends. For non-3P globalMatchModel equals the
-    //    per-target model, so these behave identically there.
-    function matchSeriesStarted(idx0) {           // idx0 is 0-based (0..5)
-        return globalMatchModel.count > idx0 * 10
-    }
-    function matchSeriesComplete(idx0) {
-        return globalMatchModel.count >= (idx0 + 1) * 10
-    }
-    function getMatchSeriesTotal(seriesIndex) {    // seriesIndex is 1-based
-        if (globalMatchModel.count === 0) return 0
-        var s = 0
-        for (var i = (seriesIndex - 1) * 10; i < globalMatchModel.count && i < seriesIndex * 10; ++i)
-            s = s * 1 + (globalMatchModel.get(i).calculatedscore * 1).toFixed(1) * 1
-        return s.toFixed(1)
-    }
-    function getMatchSeriesInt(seriesIndex) {
-        if (globalMatchModel.count === 0) return 0
-        var s = 0
-        for (var i = (seriesIndex - 1) * 10; i < globalMatchModel.count && i < seriesIndex * 10; ++i)
-            s = s * 1 + Math.floor(globalMatchModel.get(i).calculatedscore * 1)
-        return s
-    }
-
     function getSeriesTotal(seriesIndex)
     {
-        if(globalModelOfData.count === 0)
+        // 3P sums the continuous match record so S3-S6 carry prone/standing;
+        // other disciplines keep the per-position display buffer. Per-shot
+        // calculatedscore values are untouched — only which shots are summed.
+        var seriesData = is3PMatch ? globalMatchModel : globalModelOfData
+        if(seriesData.count === 0)
             return 0
         var seriesScore = 0
-        for(var i=(seriesIndex-1)*10; i<globalModelOfData.count; i++)
+        for(var i=(seriesIndex-1)*10; i<seriesData.count; i++)
         {
             if (i >=seriesIndex*10)
                 break;
 
-            var scoreatIndex = globalModelOfData.get(i).calculatedscore*1
+            var scoreatIndex = seriesData.get(i).calculatedscore*1
             seriesScore = seriesScore*1  +  (scoreatIndex.toFixed(1))*1
             //            console.log("Total score and score at current Index is",seriesScore,scoreatIndex)
 
@@ -1647,15 +1696,18 @@ Item {
 
     function getSeriesTotalNonDecimal(seriesIndex)
     {
-        if(globalModelOfData.count === 0)
+        // Integer series total. 3P reads the continuous match record (so the
+        // bracketed integer series match K/P/S), non-3P the per-position buffer.
+        var seriesData = is3PMatch ? globalMatchModel : globalModelOfData
+        if(seriesData.count === 0)
             return 0
         var seriesScore = 0
-        for(var i=(seriesIndex-1)*10; i<globalModelOfData.count; i++)
+        for(var i=(seriesIndex-1)*10; i<seriesData.count; i++)
         {
             if (i >=seriesIndex*10)
                 break;
 
-            var scoreatIndex = Math.floor(globalModelOfData.get(i).calculatedscore*1)
+            var scoreatIndex = Math.floor(seriesData.get(i).calculatedscore*1)
             seriesScore = seriesScore*1  +  (scoreatIndex)*1
         }
         return seriesScore

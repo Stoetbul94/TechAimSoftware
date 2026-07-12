@@ -2,14 +2,22 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtCharts 2.15
 
-Dialog {
+// Embeddable Match Summary report view (hosted inside a FloatingWindow).
+// Was a Dialog; now a plain Item so the FloatingWindow supplies the chrome
+// (title bar, footer actions). The A4 print page + print_region grab and every
+// value are unchanged.
+Item {
     id:screenPresence
-    title: "Match Summary"
-    header: null
-    footer: null
 
-    property double screenContentWidth: 0
-    property double screenContentHeight: 0
+    // Pure content view — no window logic. The host FloatingWindow owns the
+    // chrome (title bar, tabs, scrolling) and the actions. This view only
+    // exposes its natural height and intent signals, plus exportPdf() which
+    // owns the print_region grab. Every report value is unchanged.
+    signal requestClose()
+    signal requestExportPdf()
+    signal requestPrint()
+
+    implicitHeight: 1163      // A4 page (1123) + 40 top/bottom margin; window scrolls it
 
     property int fontSize: 12
     property int tick: 0   // bumped in update() to refresh MPI/Group metric cards
@@ -25,36 +33,18 @@ Dialog {
         }
     }
 
-    contentItem:Rectangle {
+    Rectangle {
         id:contentRect
         anchors.fill: parent
         color: "#dcdad3"                     // grey backdrop; the A4 page sits on top
 
-        // Scrollable print-preview area (same pattern as the Coach Print view).
-        Flickable {
-            id: flick
-            anchors.top: parent.top
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.bottom: buttonBar.top
-            clip: true
-            contentWidth: width
-            contentHeight: pageWrap.height
-            boundsBehavior: Flickable.StopAtBounds
-            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AlwaysOn }
-
-            Item {
-                id: pageWrap
-                width: flick.width
-                height: print_region.height + 40
-
-                // Fixed portrait A4-ratio page so the grab (and the PDF) are
-                // portrait and undistorted.
-                Rectangle {
+        // A4 print page, centred. The host FloatingWindow owns the scrolling
+        // (scrollableContent), so this view has NO Flickable of its own.
+        Rectangle {
                     id: print_region
                     width: 794           // A4 width @ 96 dpi
                     height: 1123         // A4 height @ 96 dpi
-                    x: (pageWrap.width - width) / 2
+                    anchors.horizontalCenter: parent.horizontalCenter
                     y: 20
                     color: "white"
                     border.color: "#e6e8ec"
@@ -87,7 +77,10 @@ Dialog {
                             rowSpacing: 12
                             property real cw: (width - 2 * columnSpacing) / 3
 
-                            MetricCard { width: metricGrid.cw; label: "Total Score"; value: "" + totalScore; unit: "(" + totalScoreWithoutDecimal + ")" }
+                            // 3P (ISSF): integer total primary, decimal in brackets; others decimal-primary.
+                            MetricCard { width: metricGrid.cw; label: "Total Score"
+                                value: "" + (shootingPage.is3PMatch ? totalScoreWithoutDecimal : totalScore)
+                                unit: "(" + (shootingPage.is3PMatch ? totalScore : totalScoreWithoutDecimal) + ")" }
                             MetricCard { width: metricGrid.cw; label: "Average Shot"; value: globalMatchModel.count > 0 ? (totalScore / globalMatchModel.count).toFixed(2) : "—" }
                             MetricCard { width: metricGrid.cw; label: "Total Shots"; value: "" + globalMatchModel.count }
                             MetricCard { width: metricGrid.cw; label: "Inner 10"; value: "" + rightPanel.totalStars }
@@ -95,6 +88,10 @@ Dialog {
                                 value: (screenPresence.tick, MODREADER.getXMPI().toFixed(1) + " / " + MODREADER.getYMPI().toFixed(1)) }
                             MetricCard { width: metricGrid.cw; label: "Group"; unit: "mm²"; valueSize: 20
                                 value: (screenPresence.tick, "" + MODREADER.getGroup(-1).toFixed(1)) }
+                            MetricCard { width: metricGrid.cw; label: "Teiler"; valueSize: 20
+                                value: (screenPresence.tick, MODREADER.getTeiler(-1).toFixed(1)) }
+                            MetricCard { width: metricGrid.cw; label: "Total Time"; unit: "min"; valueSize: 20
+                                value: converSecondToMins(totalTime) }
                             MetricCard { width: metricGrid.cw; label: "Avg Time / Shot"; unit: "min"; valueSize: 20
                                 value: globalMatchModel.count > 0 ? converSecondToMins(totalTime / globalMatchModel.count) : "—" }
                         }
@@ -105,7 +102,7 @@ Dialog {
                         // verbatim, reframed in a clean white card.
                         Rectangle {
                             width: parent.width
-                            height: 300
+                            height: shootingPage.is3PMatch ? 200 : 300   // shorter for 3P to fit the position breakdown
                             radius: 12
                             color: "white"
                             border.color: "#e6e8ec"
@@ -192,6 +189,47 @@ Dialog {
                             }
                         }
 
+                        // ── Position breakdown (3P only; auto-hidden otherwise) ──
+                        SectionTitle {
+                            width: parent.width; title: "Position Breakdown"
+                            visible: shootingPage.is3PMatch
+                        }
+                        Row {
+                            width: parent.width; spacing: 12
+                            visible: shootingPage.is3PMatch
+                            Repeater {
+                                model: shootingPage.is3PMatch
+                                       ? [{ n: "Kneeling", p: 0 }, { n: "Prone", p: 1 }, { n: "Standing", p: 2 }]
+                                       : []
+                                delegate: Rectangle {
+                                    width: (parent.width - 24) / 3
+                                    height: 72
+                                    radius: 12
+                                    color: "white"; border.color: "#e6e8ec"; border.width: 1
+                                    Rectangle { width: 4; radius: 2; height: parent.height * 0.5; color: "#a80038"
+                                        anchors.left: parent.left; anchors.leftMargin: 12; anchors.verticalCenter: parent.verticalCenter }
+                                    Column {
+                                        anchors.left: parent.left; anchors.leftMargin: 26
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        spacing: 3
+                                        Text { text: modelData.n; color: "#6b7280"; font.family: "Segoe UI"; font.pixelSize: 12; font.letterSpacing: 0.4 }
+                                        // ISSF 3P: integer position total primary, decimal in brackets.
+                                        Text {
+                                            text: (screenPresence.tick, getPositionTotalInt(modelData.p) + " (" + getPositionTotal(modelData.p) + ")")
+                                            color: "#191b1f"; font.family: "Segoe UI"; font.pixelSize: 20; font.bold: true
+                                        }
+                                        Text {
+                                            // Depend on `tick` (like the score above) so the count/stars
+                                            // re-evaluate as shots land — the delegate is built before any
+                                            // shots exist, so without this it stays stuck at "0 shots".
+                                            text: (screenPresence.tick, getPositionCount(modelData.p) + " shots · ★ " + getPositionInner(modelData.p))
+                                            color: "#8a8f98"; font.family: "Segoe UI"; font.pixelSize: 11
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
                         SectionTitle { width: parent.width; title: "Series Breakdown" }
 
                         // Per-series scores across the full match (10 shots per
@@ -238,60 +276,7 @@ Dialog {
                         generatedText: "Generated " + new Date().toLocaleString(Qt.locale(""), "ddd yyyy-MM-dd hh:mm")
                     }
                 }
-            }
-        }
 
-        Rectangle {
-            id: buttonBar
-            width:parent.width
-            height:parent.height*0.1
-            anchors.bottom: contentRect.bottom
-            color: "#2a2a2e"
-
-            Rectangle {
-                id: dummyRectCenter
-                width: 5
-                height: parent.height
-                color: "transparent"
-                anchors.centerIn: parent
-            }
-
-            Button {
-                text:"Close"
-                anchors.left: dummyRectCenter.right
-                anchors.verticalCenter: parent.verticalCenter
-                onClicked:
-                {
-                    close()
-                }
-            }
-
-            Button {
-                text:"Save PDF"
-                anchors.right: dummyRectCenter.left
-                anchors.verticalCenter: parent.verticalCenter
-                onClicked:
-                {
-                    printImage()
-                }
-            }
-
-            // Run the offline Coach Report on the just-finished match and open
-            // the report overlay. gameSubMode/coachReportVisible resolve via the
-            // main.qml context (same pattern as gameRange/theme).
-            Button {
-                text: "Coach Report"
-                anchors.left: parent.left
-                anchors.leftMargin: 10
-                anchors.verticalCenter: parent.verticalCenter
-                onClicked:
-                {
-                    COACHFEED.analyzeCurrentMatch(loginPage.gameSubMode)
-                    coachReportVisible = true
-                    close()
-                }
-            }
-        }
     }
 
     function updateModel()
@@ -366,11 +351,15 @@ Dialog {
     // Per-series (10-shot) score across the full match record.
     function getSeriesScoreVal(s)
     {
-        if (globalMatchModel.count === 0) return "0.0"
-        var sum = 0
-        for (var i = (s-1)*10; i < globalMatchModel.count && i < s*10; ++i)
-            sum += globalMatchModel.get(i).calculatedscore * 1
-        return sum.toFixed(1)
+        if (globalMatchModel.count === 0) return shootingPage.is3PMatch ? "0 (0.0)" : "0.0"
+        var sum = 0, sumInt = 0
+        for (var i = (s-1)*10; i < globalMatchModel.count && i < s*10; ++i) {
+            var v = globalMatchModel.get(i).calculatedscore * 1
+            sum += v
+            sumInt += Math.floor(v)
+        }
+        // ISSF 3P: integer series score primary, decimal in brackets.
+        return shootingPage.is3PMatch ? sumInt + " (" + sum.toFixed(1) + ")" : sum.toFixed(1)
     }
 
     // Per-series inner-10 count, same rule the app uses for totalStars
@@ -381,11 +370,55 @@ Dialog {
         var cnt = 0
         for (var i = (s-1)*10; i < globalMatchModel.count && i < s*10; ++i) {
             var v = globalMatchModel.get(i).calculatedscore * 1
-            if ((gameMode === 0 && v >= rightPanel.star_limit_value_pistol)
-                    || (gameMode === 1 && v >= rightPanel.star_limit_value_rifle))
+            // Qualified via loginPage: main.qml declares gameRange but NOT
+            // gameMode, so a bare `gameMode` here is a ReferenceError that
+            // silently aborts the binding once shots exist (blank column).
+            if ((loginPage.gameMode === 0 && v >= rightPanel.star_limit_value_pistol)
+                    || (loginPage.gameMode === 1 && v >= rightPanel.star_limit_value_rifle))
                 ++cnt
         }
         return cnt
+    }
+
+    // 3P position subtotals from the full match record (position role:
+    // 0 = kneeling, 1 = prone, 2 = standing).
+    function getPositionTotal(p)
+    {
+        var s = 0
+        for (var i = 0; i < globalMatchModel.count; ++i)
+            if (globalMatchModel.get(i).position === p)
+                s = s * 1 + (globalMatchModel.get(i).calculatedscore * 1).toFixed(1) * 1
+        return s.toFixed(1)
+    }
+    function getPositionTotalInt(p)
+    {
+        var s = 0
+        for (var i = 0; i < globalMatchModel.count; ++i)
+            if (globalMatchModel.get(i).position === p)
+                s += Math.floor(globalMatchModel.get(i).calculatedscore * 1)
+        return s
+    }
+    function getPositionCount(p)
+    {
+        var c = 0
+        for (var i = 0; i < globalMatchModel.count; ++i)
+            if (globalMatchModel.get(i).position === p) ++c
+        return c
+    }
+    function getPositionInner(p)
+    {
+        var c = 0
+        for (var i = 0; i < globalMatchModel.count; ++i) {
+            if (globalMatchModel.get(i).position !== p) continue
+            var v = globalMatchModel.get(i).calculatedscore * 1
+            // loginPage.gameMode, not bare gameMode — see getSeriesInnerVal.
+            // The bare lookup threw once shots existed, aborting the binding
+            // and freezing the card at its creation-time "0 shots · ★ 0".
+            if ((loginPage.gameMode === 0 && v >= rightPanel.star_limit_value_pistol)
+                    || (loginPage.gameMode === 1 && v >= rightPanel.star_limit_value_rifle))
+                ++c
+        }
+        return c
     }
 
     function update()
@@ -395,7 +428,9 @@ Dialog {
         screenPresence.tick++
     }
 
-    function printImage()
+    // Owns the grab: same print_region.grabToImage -> createSummryPdf path as
+    // before. The host window's Save PDF action calls this.
+    function exportPdf()
     {
         CUSTOMPRINT.clearImagesList()
         var stat = print_region.grabToImage(function(result) {

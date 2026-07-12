@@ -17,6 +17,10 @@ Rectangle {
     signal dashboardRequested()
     signal detailsRequested()
 
+    // Pure content view — no window chrome. The hosting CoachReportWindow owns
+    // the title bar, tabs and the Export PDF / Save Diary footer actions (which
+    // call exportPdf()/saveDiary() here). Content, diary and PDF export unchanged.
+
     // ---- print palette ----
     readonly property color cPage:   "#ffffff"
     readonly property color cInk:    "#161616"
@@ -125,26 +129,21 @@ Rectangle {
         function onExportFinished(path){ if(path && path.length){ savedFlash.text="✓ PDF exported"; savedFlash.visible=true; flashTimer.restart() } }
     }
 
-    // ================= toolbar (screen only) =================
+    // Save/export confirmation chip. Was buried in the old screen-only toolbar
+    // (hidden in the floating window, so the feedback never showed); now floats
+    // over the page so "✓ diary saved" / "✓ PDF exported" is actually visible.
     Rectangle {
-        id: bar; anchors.top: parent.top; width: parent.width; height: 44; color: "#2a2a2e"
-        Row {
-            anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left; anchors.leftMargin: 12; spacing: 10
-            Text { text: "PRINT PREVIEW"; color: "#f0f0f0"; font.bold: true; font.pixelSize: 14; font.family: pg.fam; anchors.verticalCenter: parent.verticalCenter }
-            Text { id: savedFlash; visible: false; text: "✓ diary saved"; color: "#7fd18f"; font.pixelSize: 13; font.family: pg.fam; anchors.verticalCenter: parent.verticalCenter }
-        }
-        Row {
-            anchors.verticalCenter: parent.verticalCenter; anchors.right: parent.right; anchors.rightMargin: 12; spacing: 10
-            Button { text: "⤓ Export PDF"; onClicked: pg.exportPdf() }
-            Button { text: "Save Diary"; onClicked: pg.saveDiary() }
-            Button { text: "Dashboard"; onClicked: pg.dashboardRequested() }
-            Button { text: "Detailed"; onClicked: pg.detailsRequested() }
-            Button { text: "Close"; onClicked: pg.closed() }
-        }
+        z: 10
+        visible: savedFlash.visible
+        anchors.top: parent.top; anchors.topMargin: 10
+        anchors.horizontalCenter: parent.horizontalCenter
+        width: savedFlash.implicitWidth + 24; height: 26; radius: 13
+        color: "#243428"; border.color: "#2e9e5b"; border.width: 1
+        Text { id: savedFlash; visible: false; anchors.centerIn: parent; text: "✓ diary saved"; color: "#7fd18f"; font.pixelSize: 13; font.family: pg.fam }
     }
 
     Flickable {
-        anchors.top: bar.bottom; anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom
+        anchors.fill: parent
         clip: true; contentWidth: width; contentHeight: pageWrap.height + 40
         boundsBehavior: Flickable.StopAtBounds
         ScrollBar.vertical: ScrollBar { policy: ScrollBar.AlwaysOn }

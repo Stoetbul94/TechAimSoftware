@@ -399,7 +399,7 @@ Item {
                 hoverEnabled: true
                 onClicked: {
                     if (actionBar.barMode === 2)
-                        matchReportPage.visible = true
+                        windowManager.openMatchReport()
                     else if (actionBar.barMode === 1)
                         matchFinishConfirmation.visible = true
                     else
@@ -484,6 +484,17 @@ Item {
 
 
         onPointAddedToSeries: {
+            // Hard cap at the match shot count. The auto-finish watcher polls
+            // every 500ms, so a shot arriving in that window (an extra demo
+            // click, or a late hardware report) used to register as shot 61
+            // and pollute the totals. Free practice (matchShootCount -1) is
+            // unaffected; sighters are unaffected (they don't fill the record).
+            if (!sligterMode && matchShootCount > 0
+                    && globalMatchModel.count >= matchShootCount) {
+                MODREADER.appendToLogFile("Ignoring shot beyond match limit ("
+                                          + globalMatchModel.count + "/" + matchShootCount + ")")
+                return
+            }
             rightPanel.addToSeries(xPosition,yPosition,currentCalculatedScore,
                                    centerPanel.lastShotXmm, centerPanel.lastShotYmm)
             console.log("x ", xPosition, " y ", yPosition, " score ", currentCalculatedScore, " matchShootCount ", matchShootCount)
@@ -523,38 +534,85 @@ Item {
     }
 
 
-    SummaryPage {
-        id:showSummaryPage
-        visible: false
-        width:parent.width*3/4
-        height:parent.height*3/4
-
-        contentWidth: parent.width*3/4
-        contentHeight: parent.height*3/4
-
-        onVisibleChanged: {
-            if (visible)
-                centerPanel.pauseGameTimer()
-            else
-                centerPanel.unPauseGameTimer()
+    // Map a globalMatchModel position role (0=K 1=P 2=S for 3P, -1 otherwise) to
+    // the coach engine's position token. Non-3P disciplines carry a single body
+    // position derived from the discipline, matching the old feeder's mapping.
+    function coachPositionName(pos) {
+        if (is3PMatch) {
+            if (pos === 0) return "Kneeling"
+            if (pos === 1) return "Prone"
+            if (pos === 2) return "Standing"
+            return "Unknown"
         }
-        //z: 20
+        if (gameRange === 10) return gameMode ? "AirPistol" : "AirRifle"
+        if (gameRange === 50 && gameMode === 0) return "Prone"   // 50m rifle prone
+        return "Unknown"                                         // 50m pistol etc.
     }
 
-    MatchReport
-    {
-        id:matchReportPage
-        visible: false
-        width:parent.width*3/4
-        height:parent.height*3/4
+    // Feed the Coach analytics from the authoritative match record. globalMatchModel
+    // holds, per MATCH shot in order, the correct display coordinate (xmm/ymm), the
+    // decimal score and the REAL per-shot position — the same data the Match report
+    // plots. This replaces COACHFEED.analyzeCurrentMatch, whose C++ path read a
+    // coordinate list polluted by each position's sighter shots (so getXCord and the
+    // match-only getScore drifted out of alignment after position 1) and guessed the
+    // 3P positions by an equal-thirds split. No scores/coords are recomputed here —
+    // the model values are passed straight through to the (unchanged) analytics engine.
+    function feedCoachReport() {
+        var n = globalMatchModel.count
+        var shotsPerSeries = 10   // ISSF series size, as used throughout the app
 
-        onVisibleChanged: {
-            if (visible)
-                centerPanel.pauseGameTimer()
-            else
-                centerPanel.unPauseGameTimer()
+        // Cumulative per-shot timestamps, all-or-nothing like the old feeder: any
+        // missing/invalid interval disables timing rather than fabricating it.
+        var ts = []
+        var timingOk = n >= 1
+        var t = 0
+        for (var k = 0; k < n; ++k) {
+            if (k > 0) {
+                var iv = globalMatchModel.get(k).timeComsumed * 1
+                if (iv > 0) t += iv
+                else timingOk = false
+            }
+            ts.push(t)
+        }
+
+        var list = []
+        for (var i = 0; i < n; ++i) {
+            var e = globalMatchModel.get(i)
+            list.push({
+                "shotNumber": i + 1,
+                "seriesNumber": Math.floor(i / shotsPerSeries) + 1,
+                "decimalScore": e.calculatedscore * 1,
+                "x": e.xmm * 1,
+                "y": e.ymm * 1,
+                "position": coachPositionName(e.position * 1),
+                "timestamp": ts[i],
+                "hasTimestamp": timingOk,
+                "isValid": true,
+                "isSighter": false,
+                "isCompetitionShot": true
+            })
+        }
+        COACHREPORT.analyzeShots(list)
+    }
+
+    // Floating Report window (Summary now, Match next). Declared here so the
+    // embedded SummaryReportView can resolve rightPanel/centerPanel/shootingPage,
+    // but registered with the single app WindowManager. Non-blocking.
+    ReportWindow {
+        id: reportWindow
+        Component.onCompleted: windowManager.register("report", reportWindow)
+        // Tab is chosen by the opener via prepare(): Stats -> Summary (0),
+        // Report -> Match (1). Do NOT reset it in onAboutToOpen — that fires
+        // after prepare() on first open and would force both buttons to Summary.
+        onCoachRequestedFromReport: {
+            windowManager.dismiss(reportWindow)
+            feedCoachReport()
+            windowManager.openCoach()
         }
     }
+
+    // Match report now lives in the floating Report window (Match tab); see the
+    // ReportWindow instance below. The old standalone MatchReport dialog is gone.
 
     Connections {
         target: APPSETTINGS
@@ -562,10 +620,11 @@ Item {
             if (leftPanel.playVisible)
                 return;
 
-            matchReportPage.isAutoPrintOn = true
-            matchReportPage.visible = true
+            // Kiosk auto-export: open the Report window on the Match tab and let it
+            // write the PDF to the configured network path, then close on save.
+            windowManager.openMatchReport()
+            reportWindow.startMatchAutoExport()
             console.log("-APPSETTINGS-----------------------------onPrintPDF--------------------------")
-//            matchReportPage.printImageInNetworkPath()
         }
     }
     ConnectionError {
@@ -740,6 +799,11 @@ Item {
         centerPanel.stopMatchClock()
         MODREADER.appendToLogFile("Match finished: " + globalMatchModel.count
                                   + "/" + matchShootCount + " match shots")
+        // 3P: open the right-panel table + face on the final series for review of
+        // all six series. Deferred so the matchFinished-driven paging bindings
+        // have settled before we re-page.
+        if (is3PMatch)
+            Qt.callLater(rightPanel.showLastSeriesForReview)
     }
 
     function minutesToseconds(totalSecs)

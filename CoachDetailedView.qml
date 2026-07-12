@@ -2,10 +2,10 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtCharts 2.15
 
-// Visual Coach Report screen. DISPLAY ONLY — no analytics, no recomputation,
+// Detailed Coach Report view. DISPLAY ONLY — no analytics, no recomputation,
 // no fabricated values. Charts/targets are drawn from what COACHREPORT already
-// computed (+ COACHREPORT.shots() for the target map). `theme`, `gameSubMode`,
-// COACHREPORT and COACHFEED resolve via main.qml's context.
+// computed (+ COACHREPORT.shots() for the target map). `theme` and COACHREPORT
+// resolve via main.qml's context.
 Rectangle {
     id: reportPage
     color: theme.bgBase
@@ -17,6 +17,8 @@ Rectangle {
     property var  targets: []
     property real sharedExtent: 0
 
+    // Pure content view — no window chrome. The hosting CoachReportWindow owns
+    // the title bar, tabs and footer actions; these intent signals let it react.
     signal closed()
     signal dashboardRequested()
     signal printRequested()
@@ -251,45 +253,13 @@ Rectangle {
         axY.min = Math.max(0, Math.floor(lo) - 0.2); axY.max = Math.min(10.9, Math.ceil(hi) + 0.1)
     }
 
-    // ================= top bar =================
-    Rectangle {
-        id: topBar
-        width: parent.width; height: 52; color: theme.bgSurface
-        anchors.top: parent.top
-        Text {
-            anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left; anchors.leftMargin: 16
-            text: "COACH REPORT"; color: theme.textPrimary; font.bold: true; font.pixelSize: 20; font.family: theme.fontFamily
-        }
-        Rectangle {
-            id: ratingChip
-            visible: reportPage.rep && reportPage.rep.coachConclusion && reportPage.rep.coachConclusion.available
-            anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left; anchors.leftMargin: 190
-            width: ratingText.width + 20; height: 26; radius: 13; color: theme.brandPrimary
-            Text {
-                id: ratingText; anchors.centerIn: parent
-                text: (reportPage.rep && reportPage.rep.coachConclusion) ? (reportPage.rep.coachConclusion.rating || "") : ""
-                color: theme.textOnBrand; font.pixelSize: 13; font.bold: true; font.family: theme.fontFamily
-            }
-        }
-        Row {
-            anchors.verticalCenter: parent.verticalCenter; anchors.right: parent.right; anchors.rightMargin: 12; spacing: 12
-            Text { anchors.verticalCenter: parent.verticalCenter; text: "Flip Y"; color: theme.textSecondary; font.pixelSize: 13; font.family: theme.fontFamily }
-            Switch {
-                id: flipSwitch; anchors.verticalCenter: parent.verticalCenter
-                checked: COACHFEED.coordinatesFlipY
-                onToggled: { COACHFEED.coordinatesFlipY = checked; COACHFEED.analyzeCurrentMatch(reportPage.gameSubMode) }
-            }
-            Button { anchors.verticalCenter: parent.verticalCenter; text: "Re-run"; onClicked: COACHFEED.analyzeCurrentMatch(reportPage.gameSubMode) }
-            Button { anchors.verticalCenter: parent.verticalCenter; text: "◂ Dashboard"; onClicked: reportPage.dashboardRequested() }
-            Button { anchors.verticalCenter: parent.verticalCenter; text: "🖶 Print"; onClicked: reportPage.printRequested() }
-            Button { anchors.verticalCenter: parent.verticalCenter; text: "Close"; onClicked: reportPage.closed() }
-        }
-    }
-
     // ================= body =================
+    // (The old screen-only top bar — title, rating chip, Flip Y / Re-run / nav
+    // buttons — is gone: the window owns the chrome, and the analysis is fed by
+    // ShootingPage.feedCoachReport() before every open.)
     Flickable {
         id: scroller
-        anchors.top: topBar.bottom; anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom
+        anchors.fill: parent
         anchors.margins: 12
         clip: true
         contentWidth: width
