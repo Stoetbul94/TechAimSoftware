@@ -366,3 +366,43 @@ completion wording, totals unchanged) -> prone sighters (marked S, excluded)
 SIGHTERS -> unlimited standing sighters on the continuous 22:00 clock, no
 qualification clock/START MATCH interference -> at STOP the target goes
 Match/Ready for Series 1.
+
+## Phase C — implemented (commits C1 `22277c0` · C2 `ae422ef` · C3 `31aca14` · C4)
+
+Standing series/singles command cycles, 250 s/50 s windows, exact numbering
+(21-25 / 26-30 / 31-35), MissingShot records, elimination info events and
+per-window duplicate reset were already implemented and test-covered in
+Phases A/B and the FIX phase; Phase C added the persistence and verification
+the spec requires:
+
+- **Stage status** per official stage (NotStarted/InProgress/Complete/
+  Incomplete/Aborted), persisted in the controller (`stageStatus(id)` /
+  `stageStatuses()` + `stageStatusChanged`), journalled, never downgraded
+  once finished, and never inferred from the current stage after a
+  transition. Complete lands the moment the limit is reached; Incomplete
+  accompanies the MissingShot records at expiry; Aborted marks a final
+  aborted mid-stage.
+- **Per-stage decimal subtotals** persisted (`stageSubtotals()`) — accepted
+  official shots only; the Phase-D report's data source.
+- **`stageShotCapacity`** property: the controller owns expected-shot
+  capacity; the HUD performance block formats `n / N` from it and gained a
+  NEXT-official-shot row (series/stage-1 fire only).
+- **Journal** now covers, in controller order: every CRO command,
+  windowOpened/windowClosed (windowId), accepted shots, rejected shots,
+  MissingShot, stageStatus verdicts, stage entries, final start/completion.
+- **Tests: 140 checks, 0 failures** — completion-driven (full 35, all stages
+  Complete, no MissingShots) AND timeout-driven (stage-1 expiry verdicts,
+  series-1 expiry with MissingShot 23-25/TimeExpired, single-31/33-35
+  expiries, progression to Complete only after stage 35, STOP once per
+  window (9), ending STOP→UNLOAD→RESULTS ARE FINAL, cumulative exactness,
+  journal command order == controller order).
+
+**Schema note (flagged):** the Phase-C brief mentioned `finalsSeriesIndex`
+1/2 for the standing series; the approved Phase-B values (0=K, 1=P, 2=S1,
+3=S2, 4-8=singles) are retained — renumbering is a one-line change if wanted.
+
+**Right panel:** the accepted FIX4 architecture is unchanged (same accepted
+records, SN from `finalsShotNumber`, sighters "S", controller totals, finals
+group header, no qualification S1-S6 assumptions). Stage completion verdicts
+surface via the HUD progress indicator (green/amber) and the status API/
+journal; no second shot store exists.
