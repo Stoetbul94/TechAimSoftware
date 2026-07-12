@@ -26,6 +26,13 @@ Window {
         property real cumulativeTotal: 0
         property string advanceLabel: ""
         property bool paused: false
+        property int stageShotCapacity: 0
+        property int nextShotNumber: 0
+        property bool primaryActionVisible: false
+        property bool primaryActionEnabled: false
+        property string primaryActionLabel: ""
+        function executePrimaryAction() {}
+        function devForceAdvanceStage1() {}
         signal commandIssued(var ev)
         signal shotRejected(var rej)
         signal advanceConfirmationRequired(int fired, int limit)

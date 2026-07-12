@@ -13,9 +13,8 @@ Rectangle {
     readonly property int sid: ctl ? ctl.stageId : 0
     readonly property bool officialStage: sid === 3 || sid === 5 || (sid >= 7 && sid <= 13)
     readonly property bool isSingle: sid >= 9 && sid <= 13
-    // Stage shot capacity for the "n / N" caption (presentation mirror of the
-    // rule constants; the controller enforces the real limits).
-    readonly property int stageCap: (sid === 3 || sid === 5) ? 10 : (sid === 7 || sid === 8) ? 5 : 1
+    // Stage shot capacity comes from the controller (single source, Phase C).
+    readonly property int stageCap: ctl ? ctl.stageShotCapacity : 0
     readonly property string stageCaption:
         sid === 3 ? "KNEELING" : sid === 5 ? "PRONE"
         : sid === 7 ? "SERIES 1" : sid === 8 ? "SERIES 2"
@@ -48,6 +47,13 @@ Rectangle {
                font.pixelSize: 10; font.letterSpacing: 1.2 }
         Text { visible: !perf.isSingle; text: perf.ctl ? perf.ctl.stageSubtotal.toFixed(1) : ""
                color: "white"; font.family: "Segoe UI"; font.pixelSize: 22; font.bold: true }
+
+        Text { visible: !perf.isSingle && perf.ctl && perf.ctl.nextShotNumber > 0
+               text: "NEXT"; color: "#8a8a92"; font.family: "Segoe UI"
+               font.pixelSize: 10; font.letterSpacing: 1.2 }
+        Text { visible: !perf.isSingle && perf.ctl && perf.ctl.nextShotNumber > 0
+               text: perf.ctl ? perf.ctl.nextShotNumber : ""
+               color: "#c8c9cf"; font.family: "Segoe UI"; font.pixelSize: 16; font.bold: true }
 
         Text { text: "TOTAL"; color: "#8a8a92"; font.family: "Segoe UI"
                font.pixelSize: 10; font.letterSpacing: 1.2 }
