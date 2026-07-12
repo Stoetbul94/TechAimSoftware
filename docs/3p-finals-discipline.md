@@ -1,137 +1,223 @@
 # 50m Rifle 3P FINAL — workflow map and roadmap (design doc)
 
 Single-athlete **Finals Training Mode** for one TechAim lane unit, implementing
-the ISSF 50m Rifle 3-Positions Final (2025 edition rules, effective 07/2026)
-as a training simulation. **Everything here is gated on `isFinalsMatch` and is
-fully separate from the 3P qualification logic (`is3PMatch`,
-`docs/3p-discipline.md`) and from every other discipline.**
+the 50m Rifle 3-Positions Final per the **ISSF Rule Book 2026 Edition 2025,
+Second Print 07/2026, effective 1 July 2026**, as a training simulation.
 
-Written and agreed BEFORE implementation. Decisions below were confirmed by
-the user on 2026-07-12; items marked **[PROVISIONAL]** are still open.
+**Everything here is gated on `isFinalsMatch` and is a fully separate domain**
+from 3P qualification (`is3PMatch`, `docs/3p-discipline.md`), 50m Prone, the
+air disciplines, and the future RMS multi-athlete final. Finals is NOT
+implemented by scattering if-statements through qualification code: it has a
+dedicated controller (below). Approved for implementation 2026-07-12 with the
+clarifications integrated below. Items marked **[P1 — UNRESOLVED]** are
+disabled by default until confirmed.
+
+## Architecture: dedicated finals controller
+
+```
+src/finals/
+    Finals3PController.h/.cpp   — QObject state machine, single time authority
+    Finals3PTypes.h             — stage/window/command enums, event structs
+    Finals3PConfig.h            — configuration (ceremonyMode, flags, timeScale)
+```
+
+Exposed to QML as the `FINALS3P` context property. The shooting page **binds**
+to the controller; it never owns finals timing logic.
+
+Main API: `startFinal() / skipCeremony() / setTargetMode(Sighter|Match) /
+registerShot(shot) / abortFinal() / pauseTrainingSimulation() /
+resumeTrainingSimulation()`.
+Signals: `phaseChanged / commandIssued / countdownChanged / shotAccepted /
+shotRejected / stageCompleted / finalCompleted`.
+
+### Timer architecture (single time authority)
+
+No web of loosely coordinated QML Timers. The controller owns one **monotonic
+clock** (`QElapsedTimer`); a 50–100 ms UI tick recomputes
+`remaining = duration − monotonicElapsed` — never a once-per-second integer
+decrement (UI stalls must not drift the clock). Exposed: `remainingMs`,
+`remainingFormatted`, `elapsedMs`, `isFiringWindowOpen`.
+Developer-only accelerated mode `timeScale` (1.0 normal, e.g. 60.0 for tests)
+— never exposed in production UI.
+RMS hooks so a server can later replace the local time authority:
+`startPhaseFromServer(cmd) / stopPhaseFromServer(cmd) /
+synchroniseClock(serverTimestamp, offset) / applyAuthoritativeState(snapshot)`.
+
+### Command events
+
+Every CRO command is a **structured event**, not just text:
+`FinalsCommandEvent { commandId, commandType, text, issuedAt, effectiveAt,
+stage, sequenceNumber, audioCueId }`, with command types
+`AthletesToLine, TakeYourPositions, PreparationSightingStart, ThirtySeconds,
+Stop, StageOneAnnouncement, MatchFiringStart, FiveMinutes, LoadSeries,
+StartSeries, LoadSingle, StartSingle, Unload, ResultsFinal` — essential for
+RMS integration and audio playback.
+
+### Audio
+
+Phase A baseline: on-screen command text + system beep + structured
+`audioCueId` emitted. The state machine is **decoupled from any voice engine**
+via `FinalsAudioService { playCue(cueId), stop(), isAvailable }`; Phase D may
+implement prerecorded WAV clips or Qt TextToSpeech. The machine works
+identically without voice.
 
 ## Scope decisions (locked)
 
 | # | Decision |
 |---|---|
-| 1 | Single athlete on one unit shoots the **full 35-shot program**. No ranking, no elimination — those arrive with the future Range Management System (RMS; see below). |
-| 2 | The **app plays the CRO**: auto-running phase timers with command prompts — "LOAD… START… STOP" etc. — shown on screen with **voice/beep cues**. (Under the RMS, a human range officer takes this role.) |
-| 3 | Ceremony (introductions, "TAKE YOUR POSITIONS") is simulated by voice — kept simple and skippable. |
-| 4 | In Stage 1 the **athlete switches the target Match↔Sighter on screen** (their responsibility, per the rules). |
-| 5 | **Decimal scoring only**, start-from-zero, cumulative — no integer-primary anywhere in finals mode. |
-| 6 | Penalties (green card −2 etc.) are **out of scope** until asked; they belong to the RMS rules layer. |
-| 7 | Entry point: a new event card in the 50m Rifle → 3 Positions flow — **"FINAL (35)"** beside MATCH-60. |
-| 8 | Finals report: simple per-stage breakdown (see Report section). |
-| 9 | A **large dedicated shot-time countdown** is always visible during timed fire, with a voice counter. |
-| 10 | Tie-breaking machinery: deferred entirely to the RMS phase. |
-| P1 | **[PROVISIONAL]** Match shots unfired when a clock expires score **0.0**, and the app hard-blocks an 11th match shot per position in Stage 1. User was uncertain — revisit before Phase B is finalised. |
+| 1 | Single athlete, one unit, **full 35-shot program**. No ranking, elimination, tie-breaking or penalties — RMS territory. Elimination points are announced as **information only**. |
+| 2 | The **app plays the CRO**: auto-running timers issue the commands with voice/beep cues. |
+| 3 | Ceremony simulated, configurable `ceremonyMode: Full | Short | Skip`. |
+| 4 | Stage 1: the **athlete switches the target Match↔Sighter on screen**; legal transitions enforced; the software never auto-switches prone/standing sighting back to MATCH without athlete confirmation. |
+| 5 | **Decimal scoring only**, start-from-zero, cumulative. |
+| 6 | Penalties out of scope until asked. |
+| 7 | Entry point: **"FINAL (35)"** event card in the 50m Rifle → 3 Positions flow. |
+| 8 | Report: finals-specific data model (below). |
+| 9 | Large dedicated shot-time countdown always visible during timed fire; voice counter later. |
+| 10 | `stopSeriesWhenAthleteCompletes: true` for training (a real CRO waits for all finalists; the RMS server will own that later). |
 
 ## The 35-shot program (shot accounting)
 
-| Shots | Phase | Time authority |
+| Shots | Stage | Time authority |
 |---|---|---|
 | 1–10 | Kneeling match | shared 22:00 Stage-1 clock, athlete-paced |
 | 11–20 | Prone match | same 22:00 clock |
-| 21–25 | Standing series 1 | 250 s, on command |
-| 26–30 | Standing series 2 | 250 s, on command |
-| 31–35 | Standing single shots | 50 s each, on command |
+| 21–25 | Standing Series 1 | 250 s, on command |
+| 26–30 | Standing Series 2 | 250 s, on command |
+| 31–35 | Standing Singles 1–5 | 50 s each, on command |
 
-Numbering is continuous 1–35. Under the real rules, eliminations happen after
-shots 30, 31, 32, 33, 34 — on a single lane the athlete simply fires all 35;
-the elimination points are announced (voice/text) as information only.
+Official numbering is continuous 1–35; **sighting shots never consume official
+shot numbers**. Stage enum:
+
+```
+FinalsStage { Ceremony, KneelingPrepSight, KneelingMatch, ProneSighting,
+              ProneMatch, StandingSighting, StandingSeries1, StandingSeries2,
+              StandingSingle1..StandingSingle5, Complete, Aborted }
+```
+
+Each accepted match shot carries: `finalShotNumber, stage, position,
+seriesIndex, shotWithinStage, decimalScore, xMm, yMm, timestamp,
+phaseStartTimestamp, timeUsedInWindow, commandWindowId, targetModeAtReceipt,
+accepted/rejected status`. Model roles are finals-specific
+(`finalsStageId, finalsStageLabel, finalsShotNumber, finalsWindowId`) — not
+overloaded onto the qualification `position` role. Because ListModel role sets
+lock at first append, **every finals role is declared in the first inserted
+record**.
 
 ## State machine
 
 ```
-IDLE
- └─ startFinals()
-CEREMONY (skippable)                      voice: "ATHLETES TO THE LINE", intro,
- └─ 30 s hold, kneeling, no dry fire      "TAKE YOUR POSITIONS"
-PREP_SIGHT (kneeling)                     "FIVE MINUTES PREPARATION AND
- ├─ 5:00 countdown, unlimited sighters     SIGHTING TIME… START"
- ├─ 4:30 → voice "30 SECONDS"
- └─ 5:00 → "STOP"; target auto-resets to MATCH (app = EST officer)
-STAGE1 (22:00 countdown, athlete-paced)   "FINALISTS HAVE TWENTY-TWO MINUTES…",
- ├─ K_MATCH   shots 1–10  (block #11)      +5 s → "MATCH FIRING START"
- ├─ athlete taps SIGHT → P_SIGHT (unlimited sighters, prone)
- ├─ athlete taps MATCH → P_MATCH  shots 11–20 (block #21)
- ├─ athlete taps SIGHT → S_SIGHT (unlimited sighters, standing, time remaining)
- ├─ 17:00 → "FIVE MINUTES" · 21:30 → "THIRTY SECONDS"
- └─ 22:00 → "STOP"; unfired match shots → 0.0 [P1]; target → MATCH
-SERIES(n) for n = 1,2                     30 s gap, then "FOR THE NEXT
- ├─ LOAD (5 s) → START → 250 s countdown   COMPETITION SERIES… LOAD", "START"
- ├─ 5 shots max; shots gated outside the window
- └─ STOP at 250 s or 5th shot; brief announcer note (after series 2:
-    "8th and 7th would be eliminated here")
-SINGLE(k) for k = 31…35                   "FOR THE NEXT COMPETITION SHOT…
- ├─ LOAD (5 s) → START → 50 s countdown    LOAD", "START"
- └─ STOP at 50 s or when the shot fires; elimination note after each
-FINALS_COMPLETE                           "STOP… UNLOAD", "RESULTS ARE FINAL"
- └─ finals report available
+IDLE ── startFinal()
+CEREMONY (ceremonyMode: Full = intro + hold · Short = hold only · Skip = none)
+ ├─ "ATHLETES TO THE LINE", athlete introduction        [Full]
+ ├─ "TAKE YOUR POSITIONS" → 30 s kneeling hold          [Full/Short]
+ │    holding/aiming allowed; dry firing and safety-flag removal PROHIBITED
+ │    (the 30 s hold is NOT part of the 5-minute timer)
+KNEELING PREP+SIGHT — 5:00, window SightingOpen
+ ├─ "FIVE MINUTES PREPARATION AND SIGHTING TIME…START"
+ ├─ 4:30 → "30 SECONDS" · 5:00 → "STOP", window Closed
+ └─ software auto-switches target to MATCH (= EST Technical Officer role).
+     This is the ONLY automatic Match switch in the final.
+STAGE 1 — one continuous 22:00 clock (never paused/restarted by changeovers)
+ ├─ "FINALISTS HAVE TWENTY-TWO MINUTES…" → +5 s → "MATCH FIRING START"
+ ├─ KneelingMatch  shots 1–10  (max 10, window MatchOpen)
+ ├─ athlete: flags in, change to prone, taps SIGHT → ProneSighting (unlimited)
+ ├─ athlete taps MATCH → ProneMatch  shots 11–20 (max 10)
+ ├─ athlete: change to standing, taps SIGHT → StandingSighting (unlimited,
+ │    in whatever time remains)
+ ├─ elapsed 17:00 → "FIVE MINUTES" · 21:30 → "THIRTY SECONDS"
+ └─ 22:00 → "STOP", window Closed. Standing target must be in MATCH before
+     the first commanded series (athlete confirms; prompt if still SIGHT).
+STANDING SERIES n = 1, 2
+ ├─ gap/announcer period → "FOR THE NEXT COMPETITION SERIES…LOAD" → 5 s →
+ │   "START" → window MatchOpen, 250 s countdown
+ ├─ close on 5 accepted shots (stopSeriesWhenAthleteCompletes) or 250 s
+ └─ "STOP", stage completion stored. After series 2: info notice
+     "8th and 7th places would be eliminated here".
+STANDING SINGLES k = 31…35
+ ├─ "FOR THE NEXT COMPETITION SHOT…LOAD" → 5 s → "START" → one-shot window,
+ │   50 s countdown, always-visible
+ ├─ close on 1 accepted shot or 50 s → "STOP"
+ └─ info notices: after 31 → 6th · 32 → 5th · 33 → 4th · 34 → bronze decided ·
+     35 → silver and gold decided (informational only — no rank assumptions)
+COMPLETE — "STOP…UNLOAD" → "RESULTS ARE FINAL" → finals report available
 ```
 
-Hard rules encoded in the machine:
-- **Shots only register inside an open firing window** (sighting phases, Stage-1
-  match fire, a running series/single-shot window). Anything outside is ignored
-  with a log line — same guard pattern as the qualification 60-shot cap.
-- Phase transitions in Stage 1 are athlete-driven (SIGHT/MATCH buttons); series
-  and single-shot windows are clock-driven by the auto-CRO.
-- Timers are countdowns owned by the finals state machine; the qualification
-  match clock is not used.
+### Firing-window gating
 
-## Data model
+Explicit window states `Closed | SightingOpen | MatchOpen`:
+- **SightingOpen** → append to `globalSlighterModel`; official total unaffected.
+- **MatchOpen** → validate stage limit, append to `globalMatchModel`, update
+  cumulative decimal total.
+- **Closed** → reject official registration, log, show
+  "SHOT OUTSIDE FIRING WINDOW".
+A unique local shot/event id guards against the same raw event being appended
+twice on hardware retry.
 
-- Record shots append to `globalMatchModel` exactly as qualification does
-  (score, xmm/ymm, direction, timestamps, time consumed) **plus a finals phase
-  tag** per shot (K, P, S1, S2, X1…X5) — stored in the existing `position`-style
-  role pattern so ListModel role-locking is respected.
-- Sighters go to `globalSlighterModel` as usual; the display buffer
-  (`globalModelOfData`) is cleared per phase (clean face per position/series),
-  mirroring the qualification pattern that all the 3P fixes rely on.
-- Cumulative decimal total = sum of `calculatedscore` over the record —
-  start-from-zero by construction (fresh session).
-- Every phase change / command is emitted as a discrete event (function +
-  log line) so the future RMS can drive or mirror the same machine (the
-  `*FromServer` hooks and the UDP `shootdata` broadcast already exist).
+### Extra-shot blocking
+
+Hard limits: Kneeling 10 · Prone 10 · each series 5 · each single window 1.
+An extra shot is **never silently ignored**: it is excluded from the official
+model, logged as `ShotRejected { reason: StageShotLimitReached, stage,
+rawShot, timestamp }`, surfaced as a clear warning, with raw coordinates
+retained for diagnostics.
+
+### [P1 — UNRESOLVED] Unfired shots at window expiry
+
+`fillUnfiredShotsWithZero: false` (default, and Phase B ships with it off).
+When a timed stage expires: close the window, preserve the actual shots fired,
+mark the stage incomplete, and record `MissingShot { expectedShotNumber,
+stage, reason: TimeExpired }` — **no synthetic shot records are inserted into
+`globalMatchModel`**. The report may display
+"Shot 24 — DNS / Not fired — 0.0 provisional", but the raw model always
+distinguishes a missing shot from a detected one. Final behaviour to be
+confirmed against the rule interpretation and desired training feel.
 
 ## Display rules
 
-- **Decimal only** — `10.4`, total `104.7`. No integer brackets (opposite of
-  qualification 3P; both gated on their own flags, so they never interact).
-- Header phase stepper for finals: `PREP · KNEEL · PRONE · STAND · S1 · S2 ·
-  SHOT-OFF` style progression (final naming at implementation).
-- **Big countdown** — per-phase remaining time (22:00 / 250 s / 50 s) rendered
-  large (placement chosen during implementation; no user preference), with
-  voice/beep cues at the rule-mandated warnings and a short voice count near
-  zero.
-- Command banner — the current CRO prompt ("LOAD", "START", "STOP") always
-  visible while relevant.
-- SIGHT/MATCH toggle — visible only during Stage 1, only when legal.
-- Right-panel shot list numbers 1–35 continuously; series grouping K / P / S1 /
-  S2 / singles.
+Finals UI is clearly distinct from qualification: **FINAL 35** event label ·
+decimal-only scores · continuous shot number 1–35 · current stage + position ·
+target mode (SIGHTER/MATCH) · command banner · large remaining-time display ·
+firing-window status · stage subtotal · cumulative total · phase stepper:
 
-## Report (keep simple)
+```
+PREP · KNEEL · PRONE · STAND SIGHT · S1 · S2 · 31 · 32 · 33 · 34 · 35 · DONE
+```
 
-Per-stage breakdown: Kneeling 10 · Prone 10 · Series 1 (5) · Series 2 (5) ·
-Singles 31–35 — each with decimal subtotal — plus cumulative total, shot-by-shot
-list with per-shot time used, and the standard target plot. Reuses the Report
-window/components (`ReportWindow` tab or its own `FinalsReportView`).
+Standing singles 31–35 are **normal commanded final shots** — the label
+"SHOOT-OFF" is reserved for future tie-breaking shots (RMS phase) and must not
+be used for the single-shot progression.
 
-## Audio
+## Report
 
-Command prompts and warnings are voice cues (with beep fallback). Implementation
-choice — pre-recorded clips vs Qt TextToSpeech — is a Phase D decision (depends
-on what the Qt 6.5.3 MinGW kit ships). Until then, on-screen prompts + system
-beeps are the functional baseline.
+`FinalsReportData` (finals-specific — none of the qualification assumptions:
+no six 10-shot series, no integer-primary totals, no qualification position
+grouping, no 60-shot completion rules; visual components may be reused):
+athlete · event · date/time · completion status · cumulative decimal total ·
+Kneeling subtotal (10 expected) · Prone subtotal (10 expected) · Series 1 and
+Series 2 subtotals (5 expected each) · singles 31–35 individually · missing
+shots · rejected/out-of-window incidents · shot-by-shot time used · target
+plots · stage timeline.
+
+## Persistence and recovery (lands with Phase B)
+
+After each accepted shot and phase transition, persist: `isFinalsMatch`,
+current stage, stage start time, accepted shots, sighting shots, command
+sequence, target mode, cumulative total, missing-shot records, completion
+status. On restart: offer **Resume Final** or explicitly mark the interrupted
+final abandoned — never silently restart at zero while retaining old shots.
 
 ## Roadmap
 
-| Phase | Deliverable | Notes |
-|---|---|---|
-| A | Finals state machine + timers + prompts skeleton | New event card, `isFinalsMatch`, phase stepper, countdowns, text prompts + beeps. Dry-runnable end-to-end without scoring changes. |
-| B | Stage-1 shot handling | 10+10 enforcement, SIGHT/MATCH toggle, window gating, 0.0 fill at STOP **[P1 to confirm]**, decimal totals. |
-| C | Standing series + single shots | LOAD/START/STOP cycle, 250 s/50 s windows, elimination-point announcements. |
-| D | Finals report + audio + ceremony polish | Voice implementation decision here. |
-| E | RMS integration (separate software, later) | Ranking, eliminations, tie-breaking, penalties, range-wide control. Out of scope for this app. |
+| Phase | Deliverable |
+|---|---|
+| **A** | Skeleton only — **no shot scoring changes**: FINAL (35) event entry, finals session flag, dedicated controller, complete state machine, phase transitions, countdown framework, command events, command banner, phase stepper, beep fallback, dry-run controls, abort/reset, RMS `FromServer` hooks, developer `timeScale`. Tests verify: state sequence, command order, warning timing, 5-s LOAD→START delay, 22-min warnings, two 250-s series, five 50-s singles, completion, no qualification-timer usage, no shot totals affected. |
+| **B** | Stage-1 shot handling: window gating into the models, 10+10 enforcement, SIGHT/MATCH legality, decimal totals, persistence/recovery, [P1] left disabled. |
+| **C** | Standing series + singles shot handling with the LOAD/START/STOP cadence. |
+| **D** | Finals report + audio implementation (WAV clips or TextToSpeech behind FinalsAudioService) + ceremony polish. |
+| **E** | RMS (separate software): ranking, eliminations, tie-breaking, penalties, range-wide control. |
 
-One commit (or small series) per phase, each build- and launch-verified, on
-branch `feature/3p-finals`.
+Phase A commit plan on `feature/3p-finals` (no Phase B work mixed in):
+**A1** finals types, controller and configuration · **A2** event entry and
+finals UI skeleton · **A3** timers, commands, stepper and accelerated test
+mode · **A4** Phase-A test suite and documentation update.
