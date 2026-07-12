@@ -701,6 +701,7 @@ Item {
         z: 30
         anchors.fill: centerPanel
         ctl: FINALS3P
+        developerMode: APPSETTINGS.getDeveloperMode()
     }
 
     // Match report now lives in the floating Report window (Match tab); see the

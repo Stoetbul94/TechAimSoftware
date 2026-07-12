@@ -35,6 +35,8 @@
         <file>FinalsCommandOverlay.qml</file>
         <file>FinalsPerformanceBlock.qml</file>
         <file>FinalsAdvanceControl.qml</file>
+        <file>FinalsIncidentToast.qml</file>
+        <file>FinalsDeveloperDrawer.qml</file>
         <file>MatchReportView.qml</file>
         <file>Report3P.qml</file>
         <file>Report3PSeries.qml</file>

@@ -49,5 +49,21 @@ Item {
         anchors.bottomMargin: 14
     }
 
-    // Incident toasts and the developer drawer are added in HUD3.
+    // ── Incident toasts (slide from under the strip, fade away) ─────────
+    FinalsIncidentToast {
+        ctl: hud.ctl
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.top: strip.bottom
+        anchors.topMargin: 8
+    }
+
+    // ── Developer drawer — config-gated, never in production ─────────────
+    FinalsDeveloperDrawer {
+        ctl: hud.ctl
+        visible: hud.developerMode
+        anchors.right: parent.right
+        anchors.top: strip.bottom
+        anchors.topMargin: 8
+        anchors.rightMargin: 8
+    }
 }
