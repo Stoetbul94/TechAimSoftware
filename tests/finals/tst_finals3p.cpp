@@ -57,6 +57,8 @@ struct Recorder {
     QVariantList accepted;         // shotAccepted maps
     QVariantList rejected;         // shotRejected maps
     int finalCompletedCount = 0;
+    int transitionRejectedCount = 0;
+    QVariantMap lastTransitionRejected;
 
     void attach(Finals3PController* c)
     {
@@ -75,6 +77,10 @@ struct Recorder {
             rejected << r;
         });
         QObject::connect(c, &Finals3PController::finalCompleted, [this]() { ++finalCompletedCount; });
+        QObject::connect(c, &Finals3PController::transitionRejected, [this](const QVariantMap& i) {
+            ++transitionRejectedCount;
+            lastTransitionRejected = i;
+        });
     }
 
     qint64 issuedAt(const QString& type, int occurrence = 1) const
@@ -164,9 +170,15 @@ static void runFullFinal()
 
     // Kneeling 1-10, then the 11th is hard-blocked.
     for (int i = 0; i < 10; ++i) c.simulateShot();
+    check(c.stageLabel().endsWith("COMPLETE"),
+          "HUD label flips to KNEELING COMPLETE on shot 10", c.stageLabel());
+    check(c.primaryActionEnabled() && c.primaryActionLabel().startsWith("CHANGE TO PRONE"),
+          "primary action ready the moment shot 10 lands", c.primaryActionLabel());
     c.simulateShot();   // 11th
     check(r.rejected.last().toMap().value("reason") == "StageShotLimitReached",
           "11th kneeling shot rejected StageShotLimitReached");
+    check(r.rejected.last().toMap().value("displayText").toString().startsWith("KNEELING COMPLETE"),
+          "post-completion rejection guides next action (athlete wording)");
     check(c.shotsInStage() == 10, "kneeling limited to 10");
 
     // Athlete-controlled transitions via the single stage-aware action.
@@ -184,24 +196,33 @@ static void runFullFinal()
           "advance -> ProneMatch (MatchOpen)");
     for (int i = 0; i < 10; ++i) c.simulateShot();
     check(c.shotsInStage() == 10, "prone limited to 10");
+    c.simulateShot();   // 21st in Prone Match
+    check(r.rejected.last().toMap().value("displayText").toString().startsWith("PRONE COMPLETE"),
+          "post-completion prone rejection guides next action");
     check(c.advanceLabel().startsWith("CHANGE TO STANDING") && c.advanceLabel().endsWith("SIGHTERS"),
           "advance label: prone match", c.advanceLabel());
     c.advanceStage1();
     check(inStage(c, Stage::StandingSighting), "advance -> StandingSighting");
     c.simulateShot();
     check(r.accepted.last().toMap().value("sighter").toBool(), "standing sighter accepted");
-    check(c.advanceLabel().startsWith("TARGET TO MATCH") && c.advanceLabel().endsWith("READY"),
-          "advance label: standing sighting", c.advanceLabel());
-    c.advanceStage1();   // athlete readies MATCH for the commanded series
-    check(inStage(c, Stage::StandingSighting) && c.windowState() == 0,
-          "standing MATCH ready: window closed, stage unchanged");
+    check(c.advanceLabel().isEmpty(), "standing sighting: no manual advance", c.advanceLabel());
+    check(!c.primaryActionEnabled() && c.primaryActionLabel().contains("WAIT FOR STOP"),
+          "standing sighting: WAIT FOR STOP status", c.primaryActionLabel());
+    {
+        const int trBefore = r.transitionRejectedCount;
+        c.advanceStage1();
+        check(r.transitionRejectedCount == trBefore + 1
+                  && inStage(c, Stage::StandingSighting) && c.windowState() == 1,
+              "standing sighting: manual advance rejected, sighting stays open");
+    }
     c.simulateShot();
-    check(r.rejected.last().toMap().value("reason") == "WindowClosed",
-          "shot outside firing window rejected");
+    check(r.accepted.last().toMap().value("sighter").toBool(),
+          "unlimited standing sighters until 22:00");
 
     // Stage-1 warnings and STOP on the continuous 22:00 clock.
     check(waitUntil([&]{ return inStage(c, Stage::StandingSeries1); }, 40000),
           "stage-1 STOP -> StandingSeries1");
+    check(c.targetMode() == 1, "controller sets Match/Ready at the 22:00 STOP");
     const qint64 tW5  = r.issuedAt("FiveMinutes");
     const qint64 tW30 = r.issuedAt("ThirtySeconds", 2);
     check(tW5 - tStart >= 1020000 && tW5 - tStart < 1020000 + tolMs,
@@ -241,6 +262,7 @@ static void runFullFinal()
 
     check(waitUntil([&]{ return inStage(c, Stage::Complete); }, 5000), "reached Complete");
     check(r.finalCompletedCount == 1, "finalCompleted emitted once");
+    check(c.officialShotCount() == 35, "officialShotCount is 35 at completion");
 
     // Exact command ordering (structured events, not just final state).
     const QStringList expected = {
@@ -285,7 +307,7 @@ static void runFullFinal()
     QList<int> expectNums;
     for (int i = 1; i <= 35; ++i) expectNums << i;
     check(numbers == expectNums, "official shot numbers 1..35 continuous");
-    check(sighters == 3, "3 sighting shots accepted without numbers");
+    check(sighters == 4, "4 sighting shots accepted without numbers");
     check(allSimulated, "no scoring: every Phase-A event flagged simulated");
 
     // B1: schema completeness — every plan-§2 role on the FIRST accepted record.
@@ -407,27 +429,57 @@ static void runSecondaryChecks()
         check(r.rejected.last().toMap().value("reason") == "InvalidShotData",
               "invalid score rejected InvalidShotData");
 
+        // Hard-block workflow (FIX2): under-limit advance is rejected; there
+        // is no production confirmation; devForceAdvanceStage1 is the only
+        // (developer) bypass.
+        check(c.primaryActionVisible() && !c.primaryActionEnabled()
+                  && c.primaryActionLabel().startsWith("KNEELING")
+                  && c.primaryActionLabel().contains("1 / 10"),
+              "primary action shows progress, disabled under limit",
+              c.primaryActionLabel());
         c.advanceStage1();
-        check(confirmAsks == 1 && c.stageId() == static_cast<int>(Stage::KneelingMatch),
-              "under-limit advance asks for confirmation, stage unchanged");
-        c.advanceStage1();
-        check(confirmAsks == 2 && c.stageId() == static_cast<int>(Stage::KneelingMatch),
-              "repeated advance re-asks, never self-confirms");
-        c.cancelStage1Advance();
+        check(r.transitionRejectedCount == 1
+                  && r.lastTransitionRejected.value("reason") == "StageIncomplete"
+                  && c.stageId() == static_cast<int>(Stage::KneelingMatch),
+              "under-limit advance hard-blocked (StageIncomplete)");
+        c.executePrimaryAction();
+        check(c.stageId() == static_cast<int>(Stage::KneelingMatch),
+              "disabled primary action is a no-op");
         c.confirmStage1Advance();
         check(c.stageId() == static_cast<int>(Stage::KneelingMatch),
-              "confirm after cancel is inert");
-        c.advanceStage1();
-        c.confirmStage1Advance();
+              "confirmStage1Advance inert under hard block");
+        check(confirmAsks == 0, "no confirmation flow exists in production");
+
+        // Duplicate identity (FIX1): a replayed id changes nothing; identical
+        // coordinates with a NEW id are a new shot.
+        {
+            const int cntBefore = c.officialShotCount();
+            const double totBefore = c.cumulativeTotal();
+            c.registerShot(1.5, -2.0, 9.6, 100);   // replayed id
+            check(c.officialShotCount() == cntBefore
+                      && qFuzzyCompare(c.cumulativeTotal(), totBefore),
+                  "duplicate rejection alters neither count nor total");
+        }
+        c.registerShot(1.5, -2.0, 9.6, 103);       // same coords, new id
+        check(r.accepted.last().toMap().value("finalsShotNumber").toInt() == 2,
+              "identical coordinates with a new event id accepted");
+        check(r.accepted.last().toMap().value("xmm").toDouble() == 1.5
+                  && r.accepted.last().toMap().value("ymm").toDouble() == -2.0,
+              "xmm/ymm passthrough exact (no substitution, no inversion)");
+        check(c.officialShotCount() == 2, "officialShotCount tracks accepts");
+
+        c.devForceAdvanceStage1();
         check(c.stageId() == static_cast<int>(Stage::ProneSighting),
-              "confirmed under-limit advance -> ProneSighting");
+              "developer force-advance bypasses the hard block");
+        // New sighting window resets the per-window duplicate guard: id 102
+        // (lower than 103) is accepted because the window changed.
         c.registerShot(0.5, 0.5, 9.9, 102);
         check(r.accepted.last().toMap().value("isSighter").toBool()
                   && r.accepted.last().toMap().value("finalsShotNumber").toInt() == 0,
-              "prone sighter accepted unnumbered via registerShot");
+              "window-scoped duplicate state: new window accepts a new sequence");
 
         // B4: decimal totals over ACCEPTED OFFICIAL shots only.
-        check(qFuzzyCompare(c.cumulativeTotal(), 10.4),
+        check(qFuzzyCompare(c.cumulativeTotal(), 20.0),
               "cumulative total exact (sighters excluded)",
               QString::number(c.cumulativeTotal()));
         check(qFuzzyCompare(c.stageSubtotal() + 1.0, 1.0),
@@ -454,7 +506,7 @@ static void runSecondaryChecks()
             QFile jf(QStringLiteral("finals_session.jsonl"));
             bool okOpen = jf.open(QIODevice::ReadOnly | QIODevice::Text);
             const QString all = okOpen ? QString::fromUtf8(jf.readAll()) : QString();
-            check(okOpen && all.count(QStringLiteral("\"journalType\":\"shotAccepted\"")) == 2
+            check(okOpen && all.count(QStringLiteral("\"journalType\":\"shotAccepted\"")) == 3
                        && all.contains(QStringLiteral("\"journalType\":\"stageEntered\""))
                        && all.contains(QStringLiteral("\"journalType\":\"finalStarted\"")),
               "journal: one line per accepted shot + stage entries");

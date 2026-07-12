@@ -306,3 +306,63 @@ fire only: shots n/N, STAGE, TOTAL — decimal) · `FinalsAdvanceControl`
 State harness + screenshot capture: `tests/finals/hud_harness.qml` (mock
 controller, saves `docs/img/finals-hud-*.png`: prep, kneeling match, series
 START, single with incident toast).
+
+## Correctness/workflow fix phase (FIX1-FIX5, post-HUD live test)
+
+**Part-1 audit result (one demo click, end to end):** click px -> mm in
+`CenterPane.onClicked` (centre-origin, +x right, +y high; mm-per-px from the
+face size / `shootingMianRect`) -> `uxShoot(mm)` (50m passthrough) -> backend
+list -> `getXCord/getYCord(count)` -> `calculateShootingSocre` (shared engine;
+sets `lastShotXmm/Ymm`, emits `pointAddedToSeries(angle, radius, score)`) ->
+finals branch -> `registerShot(xmm, ymm, score, seq)` -> accepted record ->
+router -> models -> display. The mm record was always correct; the DISPLAY was
+wrong because the target overlay plots via the POLAR roles
+(`mapToPosition(direction, score)`) and the finals record carried the decimal
+score in `score` instead of the engine's polar radius.
+
+Fixes (each finals-gated; qualification untouched):
+- **FIX1 `825ebf1`** — router injects the engine's polar radius into `score`
+  (shots now land exactly where clicked, same pipeline demo/live; xmm/ymm stay
+  the canonical mm record, centre 0,0/+x right/+y high). Duplicate identity
+  redefined: a session-scoped strictly-increasing detection sequence
+  (`finalsShotSeq`, one increment per processed detection event) replaces
+  `MODREADER.getShootCount()` (which does not advance on demo clicks and
+  caused false DuplicateShot). The controller's per-window guard still rejects
+  replayed ids; a new firing window resets the guard. Finals session start
+  resets `backEndShootCount`/`sligterMode`/`matchFinished`/right-panel state.
+- **FIX2 `869846b`** — HARD BLOCK (user decision, supersedes the Phase-B
+  confirmation flow): K/P Match cannot advance below 10 accepted shots
+  (`transitionRejected: StageIncomplete`); `confirmStage1Advance()` inert;
+  developer bypass `devForceAdvanceStage1()` (drawer FORCE ADVANCE).
+  StandingSighting has no manual action — the controller sets Match/Ready at
+  the 22:00 STOP. Bottom-bar API: `primaryActionVisible/Enabled/Label` +
+  `executePrimaryAction()`. Completion UX: stage label flips to
+  `KNEELING/PRONE · COMPLETE` on shot 10/20; post-completion shots reject with
+  athlete wording `KNEELING COMPLETE — CHANGE TO PRONE` (green guidance
+  toast); `STAGE SHOT LIMIT REACHED` stays diagnostic-only.
+- **FIX3 `a669112`** — qualification match clock, sighting countdown, and
+  sighter-corner indicator hidden in finals; the HUD strip
+  (`FINALS3P.remainingFormatted`) is the only time source. Face filtering:
+  clean face per firing window (already in place); **singles = option A**
+  (each single window starts clean; history stays in the right panel/models).
+- **FIX4 `f05d7c4`** — right panel fed from the SAME accepted records
+  (`finalsOnShotAccepted`): SN column shows official 1-35 (sighters "S",
+  excluded from totals), TOTAL card shows controller cumulative + stage
+  subtotal, S1-S6 qualification grouping hidden, series header names the
+  finals group (K/P/S1/S2/SINGLES/DONE). Dev-mode single-source assertions:
+  official rows + sum in `globalMatchModel` == `officialShotCount` /
+  `cumulativeTotal`. Bottom action bar repurposed finals-only.
+- **FIX5** — suite extended to **104 checks, 0 failures**: hard block,
+  primary-action states, completion labels/wording, duplicate identity
+  (replay rejected without altering totals; same coords + new id accepted;
+  window-scoped guard reset), xmm/ymm passthrough exactness, auto Match/Ready
+  at STOP, officialShotCount, unlimited standing sighters.
+
+**Live validation (user, Part 12):** start FINAL 35 -> three known clicks land
+exactly where clicked -> 10 kneeling shots (right panel rows 1-10, totals
+match HUD; bar flips to CHANGE TO PRONE — SIGHTERS; 11th shot rejected with
+completion wording, totals unchanged) -> prone sighters (marked S, excluded)
+-> START PRONE MATCH (face clears) -> shots 11-20 -> CHANGE TO STANDING —
+SIGHTERS -> unlimited standing sighters on the continuous 22:00 clock, no
+qualification clock/START MATCH interference -> at STOP the target goes
+Match/Ready for Series 1.
