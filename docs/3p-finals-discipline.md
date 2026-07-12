@@ -9,8 +9,10 @@ from 3P qualification (`is3PMatch`, `docs/3p-discipline.md`), 50m Prone, the
 air disciplines, and the future RMS multi-athlete final. Finals is NOT
 implemented by scattering if-statements through qualification code: it has a
 dedicated controller (below). Approved for implementation 2026-07-12 with the
-clarifications integrated below. Items marked **[P1 — UNRESOLVED]** are
-disabled by default until confirmed.
+clarifications integrated below. [P1] is RESOLVED as **Option B** (missing
+expected shots become MissingShot records rendered as DNS/0.0 provisional in
+the report layer only; detected-shot models never receive synthetic entries;
+`fillUnfiredShotsWithZero` stays false).
 
 ## Architecture: dedicated finals controller
 
@@ -24,11 +26,16 @@ src/finals/
 Exposed to QML as the `FINALS3P` context property. The shooting page **binds**
 to the controller; it never owns finals timing logic.
 
-Main API: `startFinal() / skipCeremony() / setTargetMode(Sighter|Match) /
-registerShot(shot) / abortFinal() / pauseTrainingSimulation() /
-resumeTrainingSimulation()`.
-Signals: `phaseChanged / commandIssued / countdownChanged / shotAccepted /
-shotRejected / stageCompleted / finalCompleted`.
+Main API: `startFinal() / skipCeremony() / advanceStage1() /
+confirmStage1Advance() / cancelStage1Advance() /
+registerShot(xMm, yMm, decimalScore, externalShotId) / abortFinal() /
+resetFinal() / pauseTrainingSimulation() / resumeTrainingSimulation()`.
+Stage-1 position transitions use the ONE stage-aware `advanceStage1()` action
+(Decision 1) — the controller owns legality; there is no public SIGHT/MATCH
+toggle. Signals: `phaseChanged / commandIssued / countdownChanged /
+shotAccepted / shotRejected / missingShotRecorded / totalsChanged /
+advanceConfirmationRequired / transitionRejected / stageCompleted /
+finalCompleted`.
 
 ### Timer architecture (single time authority)
 

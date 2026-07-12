@@ -16,6 +16,8 @@
 #include <QDebug>
 #include <cstdio>
 
+#include <QFile>
+
 #include "Finals3PController.h"
 #include "Finals3PTypes.h"
 
@@ -423,6 +425,40 @@ static void runSecondaryChecks()
         check(r.accepted.last().toMap().value("isSighter").toBool()
                   && r.accepted.last().toMap().value("finalsShotNumber").toInt() == 0,
               "prone sighter accepted unnumbered via registerShot");
+
+        // B4: decimal totals over ACCEPTED OFFICIAL shots only.
+        check(qFuzzyCompare(c.cumulativeTotal(), 10.4),
+              "cumulative total exact (sighters excluded)",
+              QString::number(c.cumulativeTotal()));
+        check(qFuzzyCompare(c.stageSubtotal() + 1.0, 1.0),
+              "stage subtotal reset on stage entry",
+              QString::number(c.stageSubtotal()));
+
+        // B4: template record carries the complete role union.
+        {
+            const QVariantMap tpl = c.templateShotRecord();
+            const QStringList roles = {
+                "calculatedscore","score","xmm","ymm","direction","timestamp",
+                "timeComsumed","position","finalsStageId","finalsStageLabel",
+                "finalsPosition","finalsShotNumber","finalsWindowId",
+                "finalsSeriesIndex","shotWithinStage","targetModeAtReceipt",
+                "isSighter","isFinalsShot" };
+            bool ok = true; QString missing;
+            for (const QString& role : roles)
+                if (!tpl.contains(role)) { ok = false; missing += role + " "; }
+            check(ok, "templateShotRecord covers the full role union", missing);
+        }
+
+        // B4: session journal exists and recorded the accepted shots.
+        {
+            QFile jf(QStringLiteral("finals_session.jsonl"));
+            bool okOpen = jf.open(QIODevice::ReadOnly | QIODevice::Text);
+            const QString all = okOpen ? QString::fromUtf8(jf.readAll()) : QString();
+            check(okOpen && all.count(QStringLiteral("\"journalType\":\"shotAccepted\"")) == 2
+                       && all.contains(QStringLiteral("\"journalType\":\"stageEntered\""))
+                       && all.contains(QStringLiteral("\"journalType\":\"finalStarted\"")),
+              "journal: one line per accepted shot + stage entries");
+        }
         c.abortFinal();
     }
 }

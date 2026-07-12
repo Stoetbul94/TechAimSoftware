@@ -1,8 +1,17 @@
-# 3P FINAL — Phase-B implementation plan (plan only, no code yet)
+# 3P FINAL — Phase-B implementation plan
 
-Prerequisites for starting Phase B: approval of (a) the **Stage-1 transition
-mechanism** (§4) and (b) the **[P1] decision** (§10). Everything else below is
-ready to implement as specified.
+**STATUS: IMPLEMENTED.** Both review gates were approved (Decision 1:
+`advanceStage1()`; Decision 2: [P1] = Option B). Commits: **B1** `dccff03`
+(schema, record builder, rejection reasons, advanceStage1 mechanism),
+**B2+B3** `c18574d` (Stage-1 ingestion, model routing, role-union pre-lock,
+finals UI totals/shot feed/incident banner, session journal), **B4** (tests +
+this doc). Test suite: **91 checks, 0 failures** (`tests/finals/`).
+Implementation notes vs plan: the duplicate key is the backend cumulative
+detection counter (`MODREADER.getShootCount()` at receipt, strictly
+increasing per firing window); the finals shot list/totals live on the finals
+panel rather than a right-panel reskin (full right-panel treatment deferred
+to Phase C/D polish); restart-recovery UI remains deferred (journal is
+written).
 
 ## 1. Shot-ingestion data path
 
