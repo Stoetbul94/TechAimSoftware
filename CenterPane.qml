@@ -1244,12 +1244,10 @@ Item {
         {
             if (!appMode) // for demo
             {
-                // 3P FINAL (Phase A): clicks drive the finals dry-run through the
-                // controller's acceptance path — no scoring, no model writes.
-                if (shootingPage.isFinalsMatch) {
-                    FINALS3P.simulateShot()
-                    return
-                }
+                // 3P FINAL (Phase B): demo clicks flow through the REAL
+                // detection + scoring pipeline (uxShoot -> calculateShootingSocre
+                // -> pointAddedToSeries); the finals branch lives at the
+                // registration junction in ShootingPage. No shortcut here.
 
                 if (!shootingPanelRect.visible)
                     return

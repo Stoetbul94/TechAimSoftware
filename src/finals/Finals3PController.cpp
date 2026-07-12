@@ -4,11 +4,45 @@
 #include <QDateTime>
 #include <QProcessEnvironment>
 #include <QDebug>
+#include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 using namespace techaim::finals;
 
 namespace {
 const int kTickMs = 50;   // UI refresh; time itself is monotonic, not tick-counted
+const char kJournalPath[] = "finals_session.jsonl";
+}
+
+// ── session journal (plan §9): append-only, crash-safe ──────────────────
+
+void Finals3PController::archiveExistingJournal()
+{
+    // Never silently reuse or zero a previous session's journal.
+    if (QFile::exists(QLatin1String(kJournalPath))) {
+        const QString archived = QStringLiteral("finals_session_%1.jsonl")
+            .arg(QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss_zzz")));
+        QFile::rename(QLatin1String(kJournalPath), archived);
+    }
+}
+
+void Finals3PController::writeJournal(const QString& type, const QVariantMap& payload)
+{
+    if (!m_journalEnabled)
+        return;
+    QVariantMap line = payload;
+    line[QStringLiteral("journalType")] = type;
+    line[QStringLiteral("stage")] = stageName(m_stage);
+    line[QStringLiteral("targetMode")] = targetMode();
+    line[QStringLiteral("nextShotNumber")] = nextShotNumber();
+    line[QStringLiteral("stageSubtotal")] = m_stageSubtotal;
+    line[QStringLiteral("cumulativeTotal")] = m_cumulativeTotal;
+    QFile f(QString::fromLatin1(kJournalPath));
+    if (f.open(QIODevice::Append | QIODevice::Text)) {
+        f.write(QJsonDocument(QJsonObject::fromVariantMap(line)).toJson(QJsonDocument::Compact));
+        f.write("\n");
+    }
 }
 
 Finals3PController::Finals3PController(QObject* parent)
@@ -101,6 +135,11 @@ void Finals3PController::startFinal()
     m_lastAcceptScaled = 0;
     m_events.clear();
     m_missingShots.clear();
+    m_cumulativeTotal = 0.0;
+    m_stageSubtotal = 0.0;
+    emit totalsChanged();
+    archiveExistingJournal();
+    writeJournal(QStringLiteral("finalStarted"), QVariantMap());
     m_tick.start();
 
     if (m_cfg.ceremonyMode == CeremonyMode::Skip)
@@ -328,6 +367,18 @@ void Finals3PController::simulateShot()
     acceptShot(false, 0, 0, 0, true, -1);
 }
 
+QVariantMap Finals3PController::templateShotRecord() const
+{
+    // Role union used to pre-lock the shared ListModels at startup: the full
+    // finals schema (which already reuses every qualification role name) plus
+    // any extra qualification-only role.
+    techaim::finals::ShotContext ctx;
+    QVariantMap m = techaim::finals::acceptedShotRecord(ctx, 0, 0, 0, false,
+                                                        0, 0, 0, -1, true);
+    m[QStringLiteral("finalShotNumber")] = 0;
+    return m;
+}
+
 techaim::finals::ShotContext Finals3PController::currentShotContext() const
 {
     techaim::finals::ShotContext ctx;
@@ -352,6 +403,9 @@ void Finals3PController::acceptShot(bool sighter, double xMm, double yMm,
         if (m_stage == Stage::ProneMatch)    m_proneFired = m_shotsInStage;
         withinStage = m_shotsInStage;
         finalNumber = stageShotNumberBase() + m_shotsInStage;
+        m_stageSubtotal += score;
+        m_cumulativeTotal += score;
+        emit totalsChanged();
         emit shotCountsChanged();
     }
     m_lastAcceptScaled = scaledNow();
@@ -359,6 +413,7 @@ void Finals3PController::acceptShot(bool sighter, double xMm, double yMm,
         ctx, xMm, yMm, score, sighter, finalNumber, withinStage,
         ++m_shotEventId, externalShotId, simulated);
     shot[QStringLiteral("finalShotNumber")] = finalNumber;   // Phase-A compat key
+    writeJournal(QStringLiteral("shotAccepted"), shot);
     emit shotAccepted(shot);
 
     // Window auto-close rules (commanded stages only).
@@ -393,6 +448,7 @@ void Finals3PController::recordMissingShots()
         for (int i = fired + 1; i <= limit; ++i) {
             const QVariantMap rec = techaim::finals::missingShotRecord(s, base + i);
             m_missingShots.append(rec);
+            writeJournal(QStringLiteral("missingShot"), rec);
             emit missingShotRecorded(rec);
         }
     };
@@ -463,6 +519,8 @@ void Finals3PController::enterStage(Stage s)
     m_phaseStartScaled = scaledNow();
     m_seqStep = 0;
     m_shotsInStage = 0;
+    m_stageSubtotal = 0.0;
+    emit totalsChanged();
     m_warn1Fired = m_warn2Fired = false;
 
     switch (s) {
@@ -530,6 +588,7 @@ void Finals3PController::enterStage(Stage s)
         m_segmentEndScaled = 0;
         issueCommand(CommandType::Unload, QStringLiteral("STOP…UNLOAD"));
         issueCommand(CommandType::ResultsFinal, QStringLiteral("RESULTS ARE FINAL"));
+        writeJournal(QStringLiteral("finalCompleted"), QVariantMap());
         emit phaseChanged();
         emit countdownChanged();
         emit finalCompleted();
@@ -540,6 +599,7 @@ void Finals3PController::enterStage(Stage s)
         m_segmentEndScaled = 0;
         break;
     }
+    writeJournal(QStringLiteral("stageEntered"), QVariantMap());
     emit phaseChanged();
     emit advanceLabelChanged();
     emit shotCountsChanged();

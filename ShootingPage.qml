@@ -33,6 +33,9 @@ Item {
     property bool is3PMatch: false
     // 3P FINAL (35) — separate finals domain; FINALS3P owns all finals timing.
     property bool isFinalsMatch: false
+    // Shot direction (angle) of the shot currently being registered with the
+    // finals controller; injected into the record by the router (display role).
+    property real finalsLastDirection: 0
     // Highest shot-count boundary (20/40) already handled — without it the
     // watcher re-fires after the athlete resumes, because the count is still
     // exactly at the boundary, bouncing them straight back into sighting.
@@ -153,6 +156,26 @@ Item {
             console.log("******globalSlighterModel****"+count)
         }
     }
+
+    // Pre-lock the shared shot models to the ROLE UNION (qualification +
+    // finals schema) before any real append: QML ListModel locks its role set
+    // at the first append, so without this a finals session would lock the
+    // models to whichever mode appended first and silently drop the other
+    // mode's roles. The template comes from the C++ schema builder, so it can
+    // never drift from the real records. Appended once, then cleared — role
+    // locks survive clear(). Qualification rows simply leave the finals-*
+    // roles unset; qualification behaviour is unchanged.
+    Component.onCompleted: {
+        var tpl = FINALS3P.templateShotRecord()
+        globalMatchModel.append(tpl);    globalMatchModel.clear()
+        globalSlighterModel.append(tpl); globalSlighterModel.clear()
+        globalModelOfData.append(tpl);   globalModelOfData.clear()
+    }
+
+    // Rejected finals shots (never in the official models) — plan §8.
+    ListModel { id: finalsIncidentModel }
+    // Compact accepted-shot feed for the finals panel list (display only).
+    ListModel { id: finalsShotListModel }
 
     ListModel
     {
@@ -496,6 +519,19 @@ Item {
 
 
         onPointAddedToSeries: {
+            // 3P FINAL: shots reach here through the SAME detection + scoring
+            // pipeline as qualification; only the registration differs. The
+            // controller validates (window, limits, duplicates) and emits the
+            // complete record; the router below appends to the models.
+            // Duplicate key: the backend's cumulative detection counter
+            // (MODREADER.getShootCount() at receipt) — strictly increasing
+            // per firing window; a repeated value is a retransmission.
+            if (isFinalsMatch) {
+                shootingPage.finalsLastDirection = xPosition
+                FINALS3P.registerShot(centerPanel.lastShotXmm, centerPanel.lastShotYmm,
+                                      currentCalculatedScore, MODREADER.getShootCount())
+                return
+            }
             // Hard cap at the match shot count. The auto-finish watcher polls
             // every 500ms, so a shot arriving in that window (an extra demo
             // click, or a late hardware report) used to register as shot 61
@@ -623,6 +659,41 @@ Item {
         }
     }
 
+    // ── 3P FINAL shot router (Phase B) ───────────────────────────────────
+    // Thin, bind-only: the controller has already validated and built the
+    // complete record. Sighters -> globalSlighterModel; accepted match shots
+    // -> globalMatchModel; rejections -> finalsIncidentModel only. The
+    // official models NEVER receive synthetic or rejected shots.
+    Connections {
+        target: FINALS3P
+        enabled: isFinalsMatch
+
+        function onShotAccepted(shot) {
+            var rec = shot
+            rec.direction = shootingPage.finalsLastDirection.toFixed(2)
+            if (rec.isSighter)
+                globalSlighterModel.append(rec)
+            else
+                globalMatchModel.append(rec)
+            // Display buffer drives the target face (cleared per window below).
+            globalModelOfData.append(rec)
+            finalsShotListModel.append(rec)
+        }
+
+        function onShotRejected(rej) {
+            finalsIncidentModel.append(rej)
+            finalsIncidentBanner.show(rej.reason)
+        }
+
+        function onWindowStateChanged() {
+            // Clean face per firing window (mirrors qualification's
+            // clean-face-per-position). Deferred: model resets from inside
+            // signal handlers with live delegates crash (see 3P doc gotchas).
+            if (FINALS3P.isFiringWindowOpen)
+                Qt.callLater(function() { globalModelOfData.clear() })
+        }
+    }
+
     // ── 3P FINAL panel (Phase A skeleton) ────────────────────────────────
     // Pure binding surface over FINALS3P: stepper, command banner, countdown,
     // window/target-mode status and dry-run controls. No scoring involvement.
@@ -633,7 +704,7 @@ Item {
         anchors.left: centerPanel.left
         anchors.right: centerPanel.right
         anchors.top: centerPanel.top
-        height: 148
+        height: 196
         color: "#e61a1a1f"
         border.color: "#33353d"; border.width: 1
 
@@ -682,7 +753,51 @@ Item {
                     Text { text: "TARGET: " + (FINALS3P.targetMode === 1 ? "MATCH" : "SIGHTER")
                                  + (FINALS3P.nextShotNumber > 0 ? "   ·   NEXT SHOT " + FINALS3P.nextShotNumber : "")
                            color: "#c8c9cf"; font.family: theme.fontFamily; font.pixelSize: 11 }
+                    // Decimal-only totals over accepted official shots (plan §5).
+                    Text { text: "STAGE " + FINALS3P.stageSubtotal.toFixed(1)
+                                 + "   ·   TOTAL " + FINALS3P.cumulativeTotal.toFixed(1)
+                           color: "white"; font.family: theme.fontFamily
+                           font.pixelSize: 13; font.bold: true }
                 }
+
+                // Compact accepted-shot feed: continuous 1-35 numbering from the
+                // record's finalsShotNumber; sighters shown as grey "S" rows.
+                ListView {
+                    width: 120; height: 96; clip: true
+                    model: finalsShotListModel
+                    verticalLayoutDirection: ListView.BottomToTop
+                    delegate: Row {
+                        spacing: 6
+                        Text { text: isSighter ? "S" : finalsShotNumber
+                               width: 24; color: isSighter ? "#8a8a92" : "white"
+                               font.family: theme.fontFamily; font.pixelSize: 11; font.bold: !isSighter }
+                        Text { text: calculatedscore
+                               color: isSighter ? "#8a8a92" : "#3ddc84"
+                               font.family: theme.fontFamily; font.pixelSize: 11 }
+                    }
+                }
+            }
+
+            // Non-blocking incident warning (plan §8): auto-dismissing banner.
+            Rectangle {
+                id: finalsIncidentBanner
+                property string message: ""
+                function show(reason) {
+                    message = reason === "StageShotLimitReached" ? "SHOT LIMIT REACHED — SHOT NOT COUNTED"
+                            : reason === "WindowClosed" ? "SHOT OUTSIDE FIRING WINDOW"
+                            : reason === "DuplicateShot" ? "DUPLICATE SHOT EVENT IGNORED"
+                            : reason === "WrongTargetMode" ? "WRONG TARGET MODE — SHOT NOT COUNTED"
+                            : reason === "FinalsNotActive" ? "FINAL NOT ACTIVE — SHOT IGNORED"
+                            : "SHOT REJECTED — " + reason
+                    visible = true
+                    bannerTimer.restart()
+                }
+                visible: false
+                width: bannerTxt.implicitWidth + 24; height: 22; radius: 5
+                color: "#4a1a1a"; border.color: "#a80038"; border.width: 1
+                Text { id: bannerTxt; anchors.centerIn: parent; text: finalsIncidentBanner.message
+                       color: "#ff9aa8"; font.family: theme.fontFamily; font.pixelSize: 10; font.bold: true }
+                Timer { id: bannerTimer; interval: 4000; onTriggered: finalsIncidentBanner.visible = false }
             }
 
             // Athlete transition + simulation controls. Stage-1 position changes
@@ -829,6 +944,14 @@ Item {
                      && matchShootCount === 35
         if (isFinalsMatch) {
             is3PMatch = false
+            // Fresh, start-from-zero session: the finals path returns before
+            // the qualification clearing flows run, so clear the shot models
+            // here (role locks survive clear()).
+            globalMatchModel.clear()
+            globalSlighterModel.clear()
+            globalModelOfData.clear()
+            finalsIncidentModel.clear()
+            finalsShotListModel.clear()
             MODREADER.appendToLogFile("3P FINAL: session start (FINALS3P owns timing)")
             FINALS3P.resetFinal()
             FINALS3P.startFinal()

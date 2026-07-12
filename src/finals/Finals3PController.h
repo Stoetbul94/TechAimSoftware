@@ -42,6 +42,8 @@ class Finals3PController : public QObject
     Q_PROPERTY(int shotsInStage READ shotsInStage NOTIFY shotCountsChanged)
     Q_PROPERTY(int nextShotNumber READ nextShotNumber NOTIFY shotCountsChanged)
     Q_PROPERTY(QString advanceLabel READ advanceLabel NOTIFY advanceLabelChanged)
+    Q_PROPERTY(double cumulativeTotal READ cumulativeTotal NOTIFY totalsChanged)
+    Q_PROPERTY(double stageSubtotal READ stageSubtotal NOTIFY totalsChanged)
     Q_PROPERTY(double timeScale READ timeScale WRITE setTimeScale NOTIFY timeScaleChanged)
     Q_PROPERTY(int ceremonyMode READ ceremonyMode WRITE setCeremonyMode NOTIFY configChanged)
 
@@ -74,6 +76,10 @@ public:
     // [P1 = Option B] Missing expected shots (report layer renders them as
     // DNS / 0.0 provisional); never entries in the detected-shot models.
     Q_INVOKABLE QVariantList missingShots() const { return m_missingShots; }
+    // Complete role-schema template (all roles, default values). Appended once
+    // and cleared at startup to LOCK the shared ListModels to the role union
+    // before any qualification or finals append (plan §2 / role locking).
+    Q_INVOKABLE QVariantMap templateShotRecord() const;
 
     // ── RMS hooks (stubs until the Range Management System exists) ──────
     Q_INVOKABLE void startPhaseFromServer(const QVariantMap& command);
@@ -98,6 +104,8 @@ public:
     int shotsInStage() const { return m_shotsInStage; }
     int nextShotNumber() const;
     QString advanceLabel() const;
+    double cumulativeTotal() const { return m_cumulativeTotal; }
+    double stageSubtotal() const { return m_stageSubtotal; }
     double timeScale() const { return m_timeScale; }
     void setTimeScale(double s);
     int ceremonyMode() const { return static_cast<int>(m_cfg.ceremonyMode); }
@@ -109,6 +117,7 @@ signals:
     void advanceConfirmationRequired(int shotsFired, int stageLimit);
     void transitionRejected(const QVariantMap& info);
     void missingShotRecorded(const QVariantMap& record);
+    void totalsChanged();
     void commandIssued(const QVariantMap& event);
     void countdownChanged();
     void shotAccepted(const QVariantMap& shot);
@@ -195,6 +204,16 @@ private:
     qint64 m_windowOpenedScaled = 0;
     qint64 m_lastAcceptScaled = 0;
     QVariantList m_missingShots;
+    // Decimal totals over ACCEPTED official shots only (plan §5); the model
+    // sum is the cross-check, this is the incremental source for the UI.
+    double m_cumulativeTotal = 0.0;
+    double m_stageSubtotal = 0.0;
+
+    // Append-only session journal (plan §9): one JSON line per accepted shot
+    // and phase transition. Crash-safe; restart-recovery UI deferred.
+    void archiveExistingJournal();
+    void writeJournal(const QString& type, const QVariantMap& payload);
+    bool m_journalEnabled = true;
 
     // Command events.
     int m_commandSeq = 0;
