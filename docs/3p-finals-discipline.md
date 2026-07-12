@@ -221,3 +221,41 @@ Phase A commit plan on `feature/3p-finals` (no Phase B work mixed in):
 **A1** finals types, controller and configuration · **A2** event entry and
 finals UI skeleton · **A3** timers, commands, stepper and accelerated test
 mode · **A4** Phase-A test suite and documentation update.
+
+## Phase A — IMPLEMENTED (commits A1 `07b8527`, A2+A3 `c707611`, A4)
+
+What exists and is verified:
+
+- `src/finals/` controller domain registered as `FINALS3P`; the **FINAL (35)**
+  event card appears only in the 50m Rifle → 3 Positions flow; selecting it
+  hands the session to the finals controller — the qualification prep/sighting
+  machinery and timers never run (`isFinalsMatch` forces `is3PMatch` false).
+- Finals panel on the shooting page: stepper, command banner, large countdown,
+  window/target-mode status, next official shot number, and dry-run controls
+  (SIGHT/MATCH, SKIP CEREMONY, PAUSE/RESUME, ABORT, RESET). In demo mode a
+  click on the target drives `FINALS3P.simulateShot()` — the real acceptance
+  path with **no scoring and no model writes** (every Phase-A shot event is
+  flagged `simulated`; structurally the controller has no access to
+  `globalMatchModel`/`globalSlighterModel` or any qualification timer).
+- **Acceptance test suite: `tests/finals/` — 70 checks, 0 failures.**
+  Standalone console harness (`qmake finals_tests.pro`, run with the Qt bin
+  directory on PATH). Runs the controller end-to-end at
+  `TECHAIM_FINALS_TIMESCALE=60` and asserts: the exact command-event ordering
+  (all 39 commands from ATHLETES TO THE LINE to RESULTS ARE FINAL) and exact
+  stage-entry ordering; ceremony Full/Short/Skip; the 30 s hold separate from
+  the 5:00 prep timer; prep 4:30 warning; auto-MATCH only at prep end; the
+  continuous 22:00 Stage-1 clock with 17:00/21:30 warnings; athlete
+  SIGHT/MATCH legality (legal and illegal transitions); both 250 s series and
+  all five 50 s singles with the 5 s LOAD→START delay each; continuous
+  numbering 1–35 with sighters unnumbered; per-stage limits + rejection events
+  (11th shot, out-of-window); elimination info notices in sequence; final
+  STOP→UNLOAD→RESULTS ARE FINAL order; pause freezing remaining time; abort →
+  Aborted; reset → Idle; repeated/invalid commands harmless; RMS hook stubs
+  callable without state damage; no synthetic shots at window expiry
+  ([P1] disabled).
+- Timing assertions use a tolerance of a few controller ticks (50 ms real ×
+  timeScale), since scaled time advances in tick-sized steps; ordering
+  assertions are exact.
+
+Phase B starts from here: window gating into the real shot models, decimal
+totals, persistence/recovery — [P1] to be reconfirmed first.
