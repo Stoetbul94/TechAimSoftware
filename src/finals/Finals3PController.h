@@ -20,6 +20,7 @@
 
 #include "Finals3PTypes.h"
 #include "Finals3PConfig.h"
+#include "Finals3PShotRecord.h"
 
 class Finals3PController : public QObject
 {
@@ -40,17 +41,25 @@ class Finals3PController : public QObject
     Q_PROPERTY(bool paused READ paused NOTIFY pausedChanged)
     Q_PROPERTY(int shotsInStage READ shotsInStage NOTIFY shotCountsChanged)
     Q_PROPERTY(int nextShotNumber READ nextShotNumber NOTIFY shotCountsChanged)
+    Q_PROPERTY(QString advanceLabel READ advanceLabel NOTIFY advanceLabelChanged)
     Q_PROPERTY(double timeScale READ timeScale WRITE setTimeScale NOTIFY timeScaleChanged)
     Q_PROPERTY(int ceremonyMode READ ceremonyMode WRITE setCeremonyMode NOTIFY configChanged)
 
 public:
     explicit Finals3PController(QObject* parent = nullptr);
 
-    // ── Main API (design doc §1) ─────────────────────────────────────────
+    // ── Main API (design doc §1; Phase-B plan §4) ────────────────────────
     Q_INVOKABLE void startFinal();
     Q_INVOKABLE void skipCeremony();
-    Q_INVOKABLE void setTargetMode(int mode);          // TargetMode: 0 Sighter, 1 Match
-    Q_INVOKABLE void registerShot(double xMm, double yMm, double decimalScore);
+    // Stage-1 position transitions: ONE stage-aware action. The controller
+    // decides which transition is legal; QML only ever calls advanceStage1().
+    // Advancing below the stage shot limit first emits
+    // advanceConfirmationRequired and waits for confirmStage1Advance().
+    Q_INVOKABLE void advanceStage1();
+    Q_INVOKABLE void confirmStage1Advance();
+    Q_INVOKABLE void cancelStage1Advance();
+    Q_INVOKABLE void registerShot(double xMm, double yMm, double decimalScore,
+                                  int externalShotId = -1);
     Q_INVOKABLE void abortFinal();
     Q_INVOKABLE void resetFinal();
     Q_INVOKABLE void pauseTrainingSimulation();
@@ -62,6 +71,9 @@ public:
     // Structured command history (FinalsCommandEvent maps, design doc §12).
     Q_INVOKABLE QVariantList commandEvents() const { return m_events; }
     Q_INVOKABLE QStringList stepLabels() const;
+    // [P1 = Option B] Missing expected shots (report layer renders them as
+    // DNS / 0.0 provisional); never entries in the detected-shot models.
+    Q_INVOKABLE QVariantList missingShots() const { return m_missingShots; }
 
     // ── RMS hooks (stubs until the Range Management System exists) ──────
     Q_INVOKABLE void startPhaseFromServer(const QVariantMap& command);
@@ -85,6 +97,7 @@ public:
     bool paused() const { return m_paused; }
     int shotsInStage() const { return m_shotsInStage; }
     int nextShotNumber() const;
+    QString advanceLabel() const;
     double timeScale() const { return m_timeScale; }
     void setTimeScale(double s);
     int ceremonyMode() const { return static_cast<int>(m_cfg.ceremonyMode); }
@@ -92,6 +105,10 @@ public:
 
 signals:
     void phaseChanged();
+    void advanceLabelChanged();
+    void advanceConfirmationRequired(int shotsFired, int stageLimit);
+    void transitionRejected(const QVariantMap& info);
+    void missingShotRecorded(const QVariantMap& record);
     void commandIssued(const QVariantMap& event);
     void countdownChanged();
     void shotAccepted(const QVariantMap& shot);
@@ -123,12 +140,17 @@ private:
     void issueCommand(CommandType type, const QString& text);
     void setWindow(WindowState w);
     void applyTargetModeInternal(TargetMode m);
+    void performStage1Advance();                      // stage-checked transition
     void openCommandWindow(qint64 durationMs);       // series/single firing window
     void beginCommandSequence(qint64 gapMs);          // gap -> LOAD -> START steps
     void closeWindowAndStop();
+    void recordMissingShots();                        // [P1=B] shortfall -> MissingShot records
     void advanceAfterCommandStage();
-    void acceptShot(bool sighter, double xMm, double yMm, double score, bool simulated);
-    void rejectShot(RejectReason reason, double xMm, double yMm, bool simulated);
+    techaim::finals::ShotContext currentShotContext() const;
+    void acceptShot(bool sighter, double xMm, double yMm, double score,
+                    bool simulated, qint64 externalShotId);
+    void rejectShot(RejectReason reason, double xMm, double yMm,
+                    bool simulated, qint64 externalShotId);
     int stageShotLimit() const;
     int stageShotNumberBase() const;
     bool inStage1() const;
@@ -162,11 +184,17 @@ private:
     qint64 m_stage1StartScaled = 0;
     bool m_s1Warn1 = false, m_s1Warn2 = false;
 
-    // Shots (Phase A: counters only — no model writes until Phase B).
+    // Shots. The controller itself never writes models; it validates and
+    // emits complete records (the QML router appends — Phase-B plan §1).
     int m_shotsInStage = 0;
     int m_kneelingFired = 0, m_proneFired = 0;
     int m_windowId = 0;
     quint64 m_shotEventId = 0;
+    bool m_pendingAdvance = false;
+    qint64 m_lastExternalId = -1;      // per-window duplicate guard
+    qint64 m_windowOpenedScaled = 0;
+    qint64 m_lastAcceptScaled = 0;
+    QVariantList m_missingShots;
 
     // Command events.
     int m_commandSeq = 0;

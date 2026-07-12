@@ -109,8 +109,8 @@ static void runFullFinal()
     // Idle: shots rejected, no state corruption from invalid calls.
     c.simulateShot();
     check(r.rejected.size() == 1 && c.stageId() == 0, "Idle: shot rejected, state intact");
-    c.setTargetMode(1);
-    check(c.targetMode() == 0, "Idle: target-mode change ignored");
+    c.advanceStage1();
+    check(c.targetMode() == 0, "Idle: advance ignored (transition rejected)");
 
     c.startFinal();
     check(inStage(c, Stage::Ceremony), "startFinal -> Ceremony (Full)");
@@ -140,8 +140,9 @@ static void runFullFinal()
     c.simulateShot();
     check(r.accepted.size() == 1 && r.accepted.last().toMap().value("sighter").toBool(),
           "prep sighter accepted without official number");
-    c.setTargetMode(1);
-    check(c.targetMode() == 0, "prep: athlete MATCH switch illegal (ignored)");
+    c.advanceStage1();
+    check(c.targetMode() == 0 && inStage(c, Stage::KneelingPrepSight),
+          "prep: advance illegal (transition rejected, stage intact)");
 
     // Prep warning + end (auto-MATCH = the only automatic switch).
     check(waitUntil([&]{ return inStage(c, Stage::KneelingMatch); }, 10000),
@@ -166,23 +167,30 @@ static void runFullFinal()
           "11th kneeling shot rejected StageShotLimitReached");
     check(c.shotsInStage() == 10, "kneeling limited to 10");
 
-    // Athlete-controlled transitions (legal + illegal).
-    c.setTargetMode(0);
+    // Athlete-controlled transitions via the single stage-aware action.
+    check(c.advanceLabel().startsWith("CHANGE TO PRONE") && c.advanceLabel().endsWith("SIGHTERS"),
+          "advance label: kneeling", c.advanceLabel());
+    c.advanceStage1();
     check(inStage(c, Stage::ProneSighting) && c.windowState() == 1,
-          "SIGHT -> ProneSighting (SightingOpen)");
+          "advance -> ProneSighting (SightingOpen)");
     c.simulateShot();
     check(r.accepted.last().toMap().value("sighter").toBool(), "prone sighter accepted");
-    c.setTargetMode(0);   // no-op
-    c.setTargetMode(1);
+    check(c.advanceLabel() == QStringLiteral("START PRONE MATCH"),
+          "advance label: prone sighting", c.advanceLabel());
+    c.advanceStage1();
     check(inStage(c, Stage::ProneMatch) && c.windowState() == 2,
-          "MATCH -> ProneMatch (MatchOpen)");
+          "advance -> ProneMatch (MatchOpen)");
     for (int i = 0; i < 10; ++i) c.simulateShot();
     check(c.shotsInStage() == 10, "prone limited to 10");
-    c.setTargetMode(0);
-    check(inStage(c, Stage::StandingSighting), "SIGHT -> StandingSighting");
+    check(c.advanceLabel().startsWith("CHANGE TO STANDING") && c.advanceLabel().endsWith("SIGHTERS"),
+          "advance label: prone match", c.advanceLabel());
+    c.advanceStage1();
+    check(inStage(c, Stage::StandingSighting), "advance -> StandingSighting");
     c.simulateShot();
     check(r.accepted.last().toMap().value("sighter").toBool(), "standing sighter accepted");
-    c.setTargetMode(1);   // athlete readies MATCH for the commanded series
+    check(c.advanceLabel().startsWith("TARGET TO MATCH") && c.advanceLabel().endsWith("READY"),
+          "advance label: standing sighting", c.advanceLabel());
+    c.advanceStage1();   // athlete readies MATCH for the commanded series
     check(inStage(c, Stage::StandingSighting) && c.windowState() == 0,
           "standing MATCH ready: window closed, stage unchanged");
     c.simulateShot();
@@ -278,6 +286,23 @@ static void runFullFinal()
     check(sighters == 3, "3 sighting shots accepted without numbers");
     check(allSimulated, "no scoring: every Phase-A event flagged simulated");
 
+    // B1: schema completeness — every plan-§2 role on the FIRST accepted record.
+    {
+        const QVariantMap first = r.accepted.first().toMap();
+        const QStringList roles = {
+            "calculatedscore","score","xmm","ymm","direction","timestamp",
+            "timeComsumed","position","finalsStageId","finalsStageLabel",
+            "finalsPosition","finalsShotNumber","finalsWindowId",
+            "finalsSeriesIndex","shotWithinStage","targetModeAtReceipt",
+            "isSighter","isFinalsShot" };
+        bool allPresent = true;
+        QString missing;
+        for (const QString& role : roles)
+            if (!first.contains(role)) { allPresent = false; missing += role + " "; }
+        check(allPresent, "shot record schema complete on first record", missing);
+    }
+    check(c.missingShots().isEmpty(), "complete final: no MissingShot records");
+
     // RMS hooks exist and do not disturb local state.
     const int stageBefore = c.stageId();
     c.startPhaseFromServer(QVariantMap());
@@ -344,7 +369,60 @@ static void runSecondaryChecks()
         check(waitUntil([&]{ return c.stageId() == static_cast<int>(Stage::StandingSeries1); }, 30000),
               "stage-1 expiry with unfired shots -> series 1");
         check(r.accepted.size() == acceptedBefore,
-              "no synthetic shots created at expiry (P1 disabled)");
+              "no synthetic shots created at expiry (P1=B: no model entries)");
+        check(c.missingShots().size() == 17,
+              "MissingShot records for 7 kneeling + 10 prone unfired",
+              QString::number(c.missingShots().size()));
+        c.abortFinal();
+        c.registerShot(1, 1, 9.0, 50);
+        check(r.rejected.last().toMap().value("reason") == "FinalsNotActive",
+              "shot after abort rejected FinalsNotActive");
+    }
+
+    // Under-limit advance confirmation + registerShot validation chain.
+    {
+        Finals3PController c;
+        c.setTimeScale(240.0);
+        c.setCeremonyMode(2);
+        Recorder r; r.attach(&c);
+        int confirmAsks = 0;
+        QObject::connect(&c, &Finals3PController::advanceConfirmationRequired,
+                         [&confirmAsks](int, int) { ++confirmAsks; });
+        c.startFinal();
+        check(waitUntil([&]{ return c.stageId() == static_cast<int>(Stage::KneelingMatch)
+                                    && c.windowState() == 2; }, 10000),
+              "B1 run reached kneeling match window");
+
+        c.registerShot(1.5, -2.0, 10.4, 100);
+        check(!r.accepted.isEmpty()
+                  && r.accepted.last().toMap().value("finalsShotNumber").toInt() == 1
+                  && r.accepted.last().toMap().value("calculatedscore").toString() == "10.4",
+              "registerShot accepted with schema values");
+        c.registerShot(2.0, 2.0, 9.6, 100);
+        check(r.rejected.last().toMap().value("reason") == "DuplicateShot",
+              "repeated externalShotId rejected DuplicateShot");
+        c.registerShot(0, 0, -1.0, 101);
+        check(r.rejected.last().toMap().value("reason") == "InvalidShotData",
+              "invalid score rejected InvalidShotData");
+
+        c.advanceStage1();
+        check(confirmAsks == 1 && c.stageId() == static_cast<int>(Stage::KneelingMatch),
+              "under-limit advance asks for confirmation, stage unchanged");
+        c.advanceStage1();
+        check(confirmAsks == 2 && c.stageId() == static_cast<int>(Stage::KneelingMatch),
+              "repeated advance re-asks, never self-confirms");
+        c.cancelStage1Advance();
+        c.confirmStage1Advance();
+        check(c.stageId() == static_cast<int>(Stage::KneelingMatch),
+              "confirm after cancel is inert");
+        c.advanceStage1();
+        c.confirmStage1Advance();
+        check(c.stageId() == static_cast<int>(Stage::ProneSighting),
+              "confirmed under-limit advance -> ProneSighting");
+        c.registerShot(0.5, 0.5, 9.9, 102);
+        check(r.accepted.last().toMap().value("isSighter").toBool()
+                  && r.accepted.last().toMap().value("finalsShotNumber").toInt() == 0,
+              "prone sighter accepted unnumbered via registerShot");
         c.abortFinal();
     }
 }

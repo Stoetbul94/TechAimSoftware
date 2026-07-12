@@ -96,7 +96,11 @@ void Finals3PController::startFinal()
     m_commandSeq = 0;
     m_windowId = 0;
     m_shotEventId = 0;
+    m_pendingAdvance = false;
+    m_lastExternalId = -1;
+    m_lastAcceptScaled = 0;
     m_events.clear();
+    m_missingShots.clear();
     m_tick.start();
 
     if (m_cfg.ceremonyMode == CeremonyMode::Skip)
@@ -164,32 +168,90 @@ bool Finals3PController::running() const
     return m_stage != Stage::Idle && m_stage != Stage::Complete && m_stage != Stage::Aborted;
 }
 
-// ── athlete target-mode control (Stage 1 only; design doc §2) ────────────
+// ── athlete Stage-1 transitions (single stage-aware action; plan §4) ─────
+// The controller decides legality; QML only ever calls advanceStage1(). The
+// legal chain is linear: K_MATCH -> P_SIGHT -> P_MATCH -> S_SIGHT -> ready.
+// The ONLY automatic Match switch remains the EST-officer reset at prep end.
 
-void Finals3PController::setTargetMode(int mode)
+QString Finals3PController::advanceLabel() const
 {
-    const TargetMode want = mode == 1 ? TargetMode::Match : TargetMode::Sighter;
-    if (want == m_targetMode)
-        return;
+    switch (m_stage) {
+    case Stage::KneelingMatch:
+        return m_stage1Started ? QStringLiteral("CHANGE TO PRONE — SIGHTERS") : QString();
+    case Stage::ProneSighting: return QStringLiteral("START PRONE MATCH");
+    case Stage::ProneMatch:    return QStringLiteral("CHANGE TO STANDING — SIGHTERS");
+    case Stage::StandingSighting:
+        return m_targetMode == TargetMode::Sighter
+            ? QStringLiteral("TARGET TO MATCH — READY") : QString();
+    default:                   return QString();
+    }
+}
 
-    // Legal athlete transitions only. The ONLY automatic Match switch is the
-    // EST-officer reset at the end of the 5-minute preparation/sighting.
-    if (m_stage == Stage::KneelingMatch && want == TargetMode::Sighter && m_stage1Started) {
-        applyTargetModeInternal(want);
+void Finals3PController::advanceStage1()
+{
+    const bool legal = (m_stage == Stage::KneelingMatch && m_stage1Started)
+        || m_stage == Stage::ProneSighting
+        || m_stage == Stage::ProneMatch
+        || (m_stage == Stage::StandingSighting && m_targetMode == TargetMode::Sighter);
+    if (!legal) {
+        QVariantMap info;
+        info[QStringLiteral("reason")] = QStringLiteral("IllegalTransition");
+        info[QStringLiteral("stageId")] = stageId();
+        info[QStringLiteral("stageLabel")] = stageName(m_stage);
+        qInfo() << "FINALS3P: illegal stage-1 advance ignored in" << stageName(m_stage);
+        emit transitionRejected(info);
+        return;
+    }
+    // Advancing below the stage shot limit costs the unfired shots at 22:00
+    // ([P1] Option B): require explicit confirmStage1Advance() — repeated
+    // ADVANCE taps only re-raise the confirmation, they never self-confirm.
+    const bool underLimit = (m_stage == Stage::KneelingMatch || m_stage == Stage::ProneMatch)
+                            && m_shotsInStage < stageShotLimit();
+    if (underLimit) {
+        m_pendingAdvance = true;
+        emit advanceConfirmationRequired(m_shotsInStage, stageShotLimit());
+        return;
+    }
+    m_pendingAdvance = false;
+    performStage1Advance();
+}
+
+void Finals3PController::confirmStage1Advance()
+{
+    if (!m_pendingAdvance)
+        return;
+    m_pendingAdvance = false;
+    performStage1Advance();
+}
+
+void Finals3PController::cancelStage1Advance()
+{
+    m_pendingAdvance = false;
+}
+
+void Finals3PController::performStage1Advance()
+{
+    switch (m_stage) {
+    case Stage::KneelingMatch:
+        applyTargetModeInternal(TargetMode::Sighter);
         enterStage(Stage::ProneSighting);
-    } else if (m_stage == Stage::ProneSighting && want == TargetMode::Match) {
-        applyTargetModeInternal(want);
+        break;
+    case Stage::ProneSighting:
+        applyTargetModeInternal(TargetMode::Match);
         enterStage(Stage::ProneMatch);
-    } else if (m_stage == Stage::ProneMatch && want == TargetMode::Sighter) {
-        applyTargetModeInternal(want);
+        break;
+    case Stage::ProneMatch:
+        applyTargetModeInternal(TargetMode::Sighter);
         enterStage(Stage::StandingSighting);
-    } else if (m_stage == Stage::StandingSighting && want == TargetMode::Match) {
+        break;
+    case Stage::StandingSighting:
         // Ready for the commanded series: sighting closes, no stage change.
-        applyTargetModeInternal(want);
+        applyTargetModeInternal(TargetMode::Match);
         setWindow(WindowState::Closed);
-    } else {
-        qInfo() << "FINALS3P: illegal target-mode change ignored in stage"
-                << stageName(m_stage) << "want" << mode;
+        emit advanceLabelChanged();
+        break;
+    default:
+        break;
     }
 }
 
@@ -199,71 +261,104 @@ void Finals3PController::applyTargetModeInternal(TargetMode m)
         return;
     m_targetMode = m;
     emit targetModeChanged();
+    emit advanceLabelChanged();
 }
 
 // ── shots ────────────────────────────────────────────────────────────────
 
-void Finals3PController::registerShot(double xMm, double yMm, double decimalScore)
+void Finals3PController::registerShot(double xMm, double yMm, double decimalScore,
+                                      int externalShotId)
 {
-    if (m_window == WindowState::Closed) {
-        rejectShot(RejectReason::WindowClosed, xMm, yMm, false);
+    // Validation chain (plan §8). Order: active -> data -> window -> duplicate
+    // -> defensive mode check -> stage limit.
+    if (!running()) {
+        rejectShot(RejectReason::FinalsNotActive, xMm, yMm, false, externalShotId);
         return;
     }
+    if (!(decimalScore >= 0.0) || decimalScore > 11.0
+            || !(xMm > -500.0 && xMm < 500.0) || !(yMm > -500.0 && yMm < 500.0)) {
+        rejectShot(RejectReason::InvalidShotData, xMm, yMm, false, externalShotId);
+        return;
+    }
+    if (m_window == WindowState::Closed) {
+        rejectShot(RejectReason::WindowClosed, xMm, yMm, false, externalShotId);
+        return;
+    }
+    if (externalShotId >= 0 && externalShotId <= m_lastExternalId) {
+        rejectShot(RejectReason::DuplicateShot, xMm, yMm, false, externalShotId);
+        return;
+    }
+    if ((m_window == WindowState::MatchOpen && m_targetMode != TargetMode::Match)
+            || (m_window == WindowState::SightingOpen && m_targetMode != TargetMode::Sighter)) {
+        rejectShot(RejectReason::WrongTargetMode, xMm, yMm, false, externalShotId);
+        return;
+    }
+    if (externalShotId >= 0)
+        m_lastExternalId = externalShotId;
     if (m_window == WindowState::SightingOpen) {
-        acceptShot(true, xMm, yMm, decimalScore, false);
+        acceptShot(true, xMm, yMm, decimalScore, false, externalShotId);
         return;
     }
     if (m_shotsInStage >= stageShotLimit()) {
-        rejectShot(RejectReason::StageShotLimitReached, xMm, yMm, false);
+        rejectShot(RejectReason::StageShotLimitReached, xMm, yMm, false, externalShotId);
         return;
     }
-    acceptShot(false, xMm, yMm, decimalScore, false);
+    acceptShot(false, xMm, yMm, decimalScore, false, externalShotId);
 }
 
 void Finals3PController::simulateShot()
 {
-    // Phase A dry-run control: identical acceptance path, flagged simulated.
+    // Dry-run control: identical acceptance path, flagged simulated.
+    if (!running()) {
+        rejectShot(RejectReason::FinalsNotActive, 0, 0, true, -1);
+        return;
+    }
     if (m_window == WindowState::Closed) {
-        rejectShot(RejectReason::WindowClosed, 0, 0, true);
+        rejectShot(RejectReason::WindowClosed, 0, 0, true, -1);
         return;
     }
     if (m_window == WindowState::SightingOpen) {
-        acceptShot(true, 0, 0, 0, true);
+        acceptShot(true, 0, 0, 0, true, -1);
         return;
     }
     if (m_shotsInStage >= stageShotLimit()) {
-        rejectShot(RejectReason::StageShotLimitReached, 0, 0, true);
+        rejectShot(RejectReason::StageShotLimitReached, 0, 0, true, -1);
         return;
     }
-    acceptShot(false, 0, 0, 0, true);
+    acceptShot(false, 0, 0, 0, true, -1);
+}
+
+techaim::finals::ShotContext Finals3PController::currentShotContext() const
+{
+    techaim::finals::ShotContext ctx;
+    ctx.stage = m_stage;
+    ctx.windowId = m_windowId;
+    ctx.targetMode = targetMode();
+    const qint64 now = scaledNow();
+    ctx.windowElapsedMs = m_window != WindowState::Closed ? (now - m_windowOpenedScaled) : 0;
+    ctx.stageElapsedMs = now - m_phaseStartScaled;
+    ctx.sincePrevShotMs = m_lastAcceptScaled > 0 ? (now - m_lastAcceptScaled) : 0;
+    return ctx;
 }
 
 void Finals3PController::acceptShot(bool sighter, double xMm, double yMm,
-                                    double score, bool simulated)
+                                    double score, bool simulated, qint64 externalShotId)
 {
-    QVariantMap shot;
-    shot[QStringLiteral("eventId")] = ++m_shotEventId;
-    shot[QStringLiteral("sighter")] = sighter;
-    shot[QStringLiteral("simulated")] = simulated;
-    shot[QStringLiteral("stageId")] = stageId();
-    shot[QStringLiteral("stageLabel")] = stageName(m_stage);
-    shot[QStringLiteral("position")] = positionLabel();
-    shot[QStringLiteral("windowId")] = m_windowId;
-    shot[QStringLiteral("targetModeAtReceipt")] = targetMode();
-    shot[QStringLiteral("xMm")] = xMm;
-    shot[QStringLiteral("yMm")] = yMm;
-    shot[QStringLiteral("decimalScore")] = score;
-    shot[QStringLiteral("timestamp")] = QDateTime::currentDateTime().toString(Qt::ISODateWithMs);
-    shot[QStringLiteral("timeUsedInWindow")] = scaledNow() - m_phaseStartScaled;
-
+    const techaim::finals::ShotContext ctx = currentShotContext();
+    int finalNumber = 0, withinStage = 0;
     if (!sighter) {
         ++m_shotsInStage;
         if (m_stage == Stage::KneelingMatch) m_kneelingFired = m_shotsInStage;
         if (m_stage == Stage::ProneMatch)    m_proneFired = m_shotsInStage;
-        shot[QStringLiteral("finalShotNumber")] = stageShotNumberBase() + m_shotsInStage;
-        shot[QStringLiteral("shotWithinStage")] = m_shotsInStage;
+        withinStage = m_shotsInStage;
+        finalNumber = stageShotNumberBase() + m_shotsInStage;
         emit shotCountsChanged();
     }
+    m_lastAcceptScaled = scaledNow();
+    QVariantMap shot = techaim::finals::acceptedShotRecord(
+        ctx, xMm, yMm, score, sighter, finalNumber, withinStage,
+        ++m_shotEventId, externalShotId, simulated);
+    shot[QStringLiteral("finalShotNumber")] = finalNumber;   // Phase-A compat key
     emit shotAccepted(shot);
 
     // Window auto-close rules (commanded stages only).
@@ -280,24 +375,33 @@ void Finals3PController::acceptShot(bool sighter, double xMm, double yMm,
 }
 
 void Finals3PController::rejectShot(RejectReason reason, double xMm, double yMm,
-                                    bool simulated)
+                                    bool simulated, qint64 externalShotId)
 {
-    QVariantMap rej;
-    rej[QStringLiteral("eventId")] = ++m_shotEventId;
-    rej[QStringLiteral("reason")] = reason == RejectReason::WindowClosed
-        ? QStringLiteral("WindowClosed")
-        : reason == RejectReason::StageShotLimitReached
-            ? QStringLiteral("StageShotLimitReached")
-            : QStringLiteral("DuplicateEvent");
-    rej[QStringLiteral("stageId")] = stageId();
-    rej[QStringLiteral("stageLabel")] = stageName(m_stage);
-    rej[QStringLiteral("xMm")] = xMm;
-    rej[QStringLiteral("yMm")] = yMm;
-    rej[QStringLiteral("simulated")] = simulated;
-    rej[QStringLiteral("timestamp")] = QDateTime::currentDateTime().toString(Qt::ISODateWithMs);
-    qInfo() << "FINALS3P: shot rejected —" << rej.value(QStringLiteral("reason")).toString()
+    const QVariantMap rej = techaim::finals::rejectionRecord(
+        currentShotContext(), reason, xMm, yMm, ++m_shotEventId,
+        externalShotId, simulated);
+    qInfo() << "FINALS3P: shot rejected —" << rejectReasonName(reason)
             << "in" << stageName(m_stage);
     emit shotRejected(rej);
+}
+
+// [P1 = Option B] Record the shortfall of expected match shots when a firing
+// window/stage expires. MissingShot records only — never model entries.
+void Finals3PController::recordMissingShots()
+{
+    auto addRange = [this](Stage s, int fired, int limit, int base) {
+        for (int i = fired + 1; i <= limit; ++i) {
+            const QVariantMap rec = techaim::finals::missingShotRecord(s, base + i);
+            m_missingShots.append(rec);
+            emit missingShotRecorded(rec);
+        }
+    };
+    if (inStage1()) {
+        addRange(Stage::KneelingMatch, m_kneelingFired, m_cfg.kneelingShots, 0);
+        addRange(Stage::ProneMatch, m_proneFired, m_cfg.proneShots, 10);
+    } else if (isSeriesStage() || isSingleStage()) {
+        addRange(m_stage, m_shotsInStage, stageShotLimit(), stageShotNumberBase());
+    }
 }
 
 int Finals3PController::stageShotLimit() const
@@ -437,6 +541,7 @@ void Finals3PController::enterStage(Stage s)
         break;
     }
     emit phaseChanged();
+    emit advanceLabelChanged();
     emit shotCountsChanged();
     emit countdownChanged();
 }
@@ -558,9 +663,9 @@ void Finals3PController::tick()
             if (s1 >= m_cfg.stage1Ms) {
                 setWindow(WindowState::Closed);
                 issueCommand(CommandType::Stop, QStringLiteral("STOP"));
-                // [P1 — UNRESOLVED] fillUnfiredShotsWithZero is disabled by
-                // default: no synthetic shots; Phase B records MissingShot
-                // entries instead. Phase A just closes the window.
+                // [P1 = Option B] no synthetic shots — the kneeling/prone
+                // shortfall becomes MissingShot records for the report layer.
+                recordMissingShots();
                 emit stageCompleted(stageId());
                 enterStage(Stage::StandingSeries1);
             }
@@ -578,6 +683,7 @@ void Finals3PController::tick()
             issueCommand(CommandType::StartSeries, QStringLiteral("START"));
             openCommandWindow(m_cfg.seriesMs);
         } else if (m_seqStep == 2 && now >= m_segmentEndScaled) {
+            recordMissingShots();   // [P1=B] series expired with shots unfired
             closeWindowAndStop();
             advanceAfterCommandStage();
         }
@@ -597,6 +703,7 @@ void Finals3PController::tick()
             issueCommand(CommandType::StartSingle, QStringLiteral("START"));
             openCommandWindow(m_cfg.singleMs);
         } else if (m_seqStep == 2 && now >= m_segmentEndScaled) {
+            recordMissingShots();   // [P1=B] single expired unfired
             closeWindowAndStop();
             advanceAfterCommandStage();
         }
@@ -635,6 +742,11 @@ void Finals3PController::setWindow(WindowState w)
     if (m_window == w)
         return;
     m_window = w;
+    if (w != WindowState::Closed) {
+        m_windowOpenedScaled = scaledNow();
+        m_lastExternalId = -1;      // duplicate guard is per firing window
+        m_lastAcceptScaled = 0;
+    }
     emit windowStateChanged();
 }
 

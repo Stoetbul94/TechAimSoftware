@@ -162,7 +162,7 @@ model, logged as `ShotRejected { reason: StageShotLimitReached, stage,
 rawShot, timestamp }`, surfaced as a clear warning, with raw coordinates
 retained for diagnostics.
 
-### [P1 — UNRESOLVED] Unfired shots at window expiry
+### [P1 — RESOLVED: Option B] Unfired shots at window expiry
 
 `fillUnfiredShotsWithZero: false` (default, and Phase B ships with it off).
 When a timed stage expires: close the window, preserve the actual shots fired,

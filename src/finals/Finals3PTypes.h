@@ -66,9 +66,55 @@ enum class CeremonyMode {
 
 enum class RejectReason {
     WindowClosed = 0,
+    WrongTargetMode,
     StageShotLimitReached,
-    DuplicateEvent
+    DuplicateShot,
+    InvalidShotData,
+    FinalsNotActive
 };
+
+inline QString rejectReasonName(RejectReason r)
+{
+    switch (r) {
+    case RejectReason::WindowClosed:          return QStringLiteral("WindowClosed");
+    case RejectReason::WrongTargetMode:       return QStringLiteral("WrongTargetMode");
+    case RejectReason::StageShotLimitReached: return QStringLiteral("StageShotLimitReached");
+    case RejectReason::DuplicateShot:         return QStringLiteral("DuplicateShot");
+    case RejectReason::InvalidShotData:       return QStringLiteral("InvalidShotData");
+    case RejectReason::FinalsNotActive:       return QStringLiteral("FinalsNotActive");
+    }
+    return QStringLiteral("Unknown");
+}
+
+// Position role value compatible with the qualification models (0=K 1=P 2=S).
+inline int positionRoleFor(Stage s)
+{
+    switch (s) {
+    case Stage::Ceremony:
+    case Stage::KneelingPrepSight:
+    case Stage::KneelingMatch:     return 0;
+    case Stage::ProneSighting:
+    case Stage::ProneMatch:        return 1;
+    default:                       return 2;
+    }
+}
+
+// Finals series index: 0 K, 1 P, 2 S1, 3 S2, 4..8 singles 31..35 (-1 sighting).
+inline int seriesIndexFor(Stage s)
+{
+    switch (s) {
+    case Stage::KneelingMatch:     return 0;
+    case Stage::ProneMatch:        return 1;
+    case Stage::StandingSeries1:   return 2;
+    case Stage::StandingSeries2:   return 3;
+    case Stage::StandingSingle1:   return 4;
+    case Stage::StandingSingle2:   return 5;
+    case Stage::StandingSingle3:   return 6;
+    case Stage::StandingSingle4:   return 7;
+    case Stage::StandingSingle5:   return 8;
+    default:                       return -1;
+    }
+}
 
 inline QString stageName(Stage s)
 {

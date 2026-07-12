@@ -685,13 +685,61 @@ Item {
                 }
             }
 
-            // Dry-run controls (athlete SIGHT/MATCH + simulation controls)
+            // Athlete transition + simulation controls. Stage-1 position changes
+            // use ONE stage-aware action: the controller decides which
+            // transition is legal; QML only calls FINALS3P.advanceStage1().
             Row {
                 spacing: 6
+
+                // The single ADVANCE action — label always names the exact
+                // transition ("CHANGE TO PRONE — SIGHTERS", "START PRONE
+                // MATCH", ...). Hidden when no transition is available.
+                Rectangle {
+                    visible: isFinalsMatch && FINALS3P.advanceLabel !== "" && !finalsConfirm.pending
+                    width: advTxt.implicitWidth + 22; height: 24; radius: 5
+                    color: advMA.pressed ? "#8a002f" : "#a80038"
+                    Text { id: advTxt; anchors.centerIn: parent; text: FINALS3P.advanceLabel
+                           color: "white"; font.family: theme.fontFamily; font.pixelSize: 10; font.bold: true }
+                    MouseArea { id: advMA; anchors.fill: parent; onClicked: FINALS3P.advanceStage1() }
+                }
+
+                // One-tap confirmation when advancing below the stage shot limit.
+                Row {
+                    id: finalsConfirm
+                    property bool pending: false
+                    property string prompt: ""
+                    visible: pending
+                    spacing: 6
+                    Connections {
+                        target: FINALS3P
+                        function onAdvanceConfirmationRequired(fired, limit) {
+                            finalsConfirm.prompt = (limit - fired) + " shots unfired — change position anyway?"
+                            finalsConfirm.pending = true
+                        }
+                        function onPhaseChanged() { finalsConfirm.pending = false }
+                    }
+                    Text { text: finalsConfirm.prompt; anchors.verticalCenter: parent.verticalCenter
+                           color: "#e8b93d"; font.family: theme.fontFamily; font.pixelSize: 10 }
+                    Rectangle {
+                        width: cfTxt.implicitWidth + 18; height: 24; radius: 5
+                        color: cfMA.pressed ? "#8a002f" : "#a80038"
+                        Text { id: cfTxt; anchors.centerIn: parent; text: "CONFIRM"; color: "white"
+                               font.family: theme.fontFamily; font.pixelSize: 10; font.bold: true }
+                        MouseArea { id: cfMA; anchors.fill: parent
+                                    onClicked: { finalsConfirm.pending = false; FINALS3P.confirmStage1Advance() } }
+                    }
+                    Rectangle {
+                        width: cnTxt.implicitWidth + 18; height: 24; radius: 5
+                        color: cnMA.pressed ? "#2a2b30" : "#26272c"; border.color: "#3a3b42"; border.width: 1
+                        Text { id: cnTxt; anchors.centerIn: parent; text: "CANCEL"; color: "#d7d8dd"
+                               font.family: theme.fontFamily; font.pixelSize: 10 }
+                        MouseArea { id: cnMA; anchors.fill: parent
+                                    onClicked: { finalsConfirm.pending = false; FINALS3P.cancelStage1Advance() } }
+                    }
+                }
+
                 Repeater {
                     model: [
-                        { l: "SIGHT",  a: function() { FINALS3P.setTargetMode(0) } },
-                        { l: "MATCH",  a: function() { FINALS3P.setTargetMode(1) } },
                         { l: "SKIP CEREMONY", a: function() { FINALS3P.skipCeremony() } },
                         { l: "PAUSE",  a: function() { FINALS3P.paused ? FINALS3P.resumeTrainingSimulation()
                                                                        : FINALS3P.pauseTrainingSimulation() } },

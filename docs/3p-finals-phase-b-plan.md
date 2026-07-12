@@ -69,7 +69,7 @@ models are accepted-only by design. Rejections live in `finalsIncidentModel`
   and is assigned by the controller from **accepted** shots only — raw
   detections never advance the counter.
 
-## 4. Target-mode / position transitions ← REVIEW GATE
+## 4. Target-mode / position transitions ← APPROVED (Decision 1)
 
 Legal chain (already enforced in the controller):
 
@@ -156,7 +156,7 @@ later without schema change); on a fresh finals start an existing journal is
 archived with a timestamp — never silently reused or zeroed while old shots
 remain.
 
-## 10. [P1] decision support ← REVIEW GATE
+## 10. [P1] decision — RESOLVED: Option B (Decision 2)
 
 Both options keep raw models clean (no synthetic entries — `MissingShot
 { expectedShotNumber, stage, reason: TimeExpired }` records either way):
