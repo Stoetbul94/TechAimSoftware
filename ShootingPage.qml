@@ -31,6 +31,8 @@ Item {
     // prone, 40-59 standing. The overall 105-min match clock runs through
     // position changes; only shot tagging switches to sighter during them.
     property bool is3PMatch: false
+    // 3P FINAL (35) — separate finals domain; FINALS3P owns all finals timing.
+    property bool isFinalsMatch: false
     // Highest shot-count boundary (20/40) already handled — without it the
     // watcher re-fires after the athlete resumes, because the count is still
     // exactly at the boundary, bouncing them straight back into sighting.
@@ -162,9 +164,19 @@ Item {
 
     function loadGameInMatchMode() {
         is3PMatch = false   // restored sessions bypass beginPreparationPhase
+        isFinalsMatch = false
         rightPanel.startClickedThroughLoad()
         sligterMode = false
         centerPanel.showSlighter(false)
+    }
+
+    // 3P FINAL (35) — the finals event bypasses the qualification event models.
+    function setFinalsGameType()
+    {
+        matchShootCount = 35
+        currentGameDisplay1 = "FINAL"
+        currentGameDisplay2 = "35"
+        currentmatchDisplay = "FINAL 35"
     }
 
     function setCurrentGameType(index)
@@ -611,6 +623,95 @@ Item {
         }
     }
 
+    // ── 3P FINAL panel (Phase A skeleton) ────────────────────────────────
+    // Pure binding surface over FINALS3P: stepper, command banner, countdown,
+    // window/target-mode status and dry-run controls. No scoring involvement.
+    Rectangle {
+        id: finalsPanel
+        visible: isFinalsMatch
+        z: 30
+        anchors.left: centerPanel.left
+        anchors.right: centerPanel.right
+        anchors.top: centerPanel.top
+        height: 148
+        color: "#e61a1a1f"
+        border.color: "#33353d"; border.width: 1
+
+        Column {
+            anchors.fill: parent
+            anchors.margins: 8
+            spacing: 6
+
+            // Stepper: PREP … 31-35 … DONE (SHOOT-OFF reserved for ties, RMS phase)
+            Row {
+                spacing: 4
+                Repeater {
+                    model: isFinalsMatch ? FINALS3P.stepLabels() : []
+                    delegate: Rectangle {
+                        width: stepTxt.implicitWidth + 12; height: 20; radius: 4
+                        color: index === FINALS3P.stepIndex ? "#a80038"
+                             : index < FINALS3P.stepIndex ? "#2f3138" : "transparent"
+                        border.color: "#3a3b42"; border.width: 1
+                        Text { id: stepTxt; anchors.centerIn: parent; text: modelData
+                               color: index <= FINALS3P.stepIndex ? "white" : "#8a8a92"
+                               font.family: theme.fontFamily; font.pixelSize: 10 }
+                    }
+                }
+            }
+
+            // Command banner + big countdown + status chips
+            Row {
+                spacing: 14
+                Text {
+                    width: finalsPanel.width * 0.42
+                    text: FINALS3P.stageLabel + "\n" + FINALS3P.commandText
+                    color: "white"; font.family: theme.fontFamily
+                    font.pixelSize: 14; font.bold: true; wrapMode: Text.WordWrap
+                }
+                Text {
+                    text: FINALS3P.remainingFormatted
+                    color: FINALS3P.isFiringWindowOpen ? "#3ddc84" : "#e8b93d"
+                    font.family: theme.fontFamily; font.pixelSize: 34; font.bold: true
+                }
+                Column {
+                    spacing: 3
+                    Text { text: FINALS3P.windowState === 2 ? "MATCH FIRING OPEN"
+                                : FINALS3P.windowState === 1 ? "SIGHTING OPEN" : "WINDOW CLOSED"
+                           color: FINALS3P.isFiringWindowOpen ? "#3ddc84" : "#9a9ba0"
+                           font.family: theme.fontFamily; font.pixelSize: 11; font.bold: true }
+                    Text { text: "TARGET: " + (FINALS3P.targetMode === 1 ? "MATCH" : "SIGHTER")
+                                 + (FINALS3P.nextShotNumber > 0 ? "   ·   NEXT SHOT " + FINALS3P.nextShotNumber : "")
+                           color: "#c8c9cf"; font.family: theme.fontFamily; font.pixelSize: 11 }
+                }
+            }
+
+            // Dry-run controls (athlete SIGHT/MATCH + simulation controls)
+            Row {
+                spacing: 6
+                Repeater {
+                    model: [
+                        { l: "SIGHT",  a: function() { FINALS3P.setTargetMode(0) } },
+                        { l: "MATCH",  a: function() { FINALS3P.setTargetMode(1) } },
+                        { l: "SKIP CEREMONY", a: function() { FINALS3P.skipCeremony() } },
+                        { l: "PAUSE",  a: function() { FINALS3P.paused ? FINALS3P.resumeTrainingSimulation()
+                                                                       : FINALS3P.pauseTrainingSimulation() } },
+                        { l: "ABORT",  a: function() { FINALS3P.abortFinal() } },
+                        { l: "RESET",  a: function() { FINALS3P.resetFinal(); FINALS3P.startFinal() } }
+                    ]
+                    delegate: Rectangle {
+                        width: btnTxt.implicitWidth + 18; height: 24; radius: 5
+                        color: btnMA.pressed ? "#2a2b30" : "#26272c"
+                        border.color: "#3a3b42"; border.width: 1
+                        Text { id: btnTxt; anchors.centerIn: parent
+                               text: modelData.l === "PAUSE" && FINALS3P.paused ? "RESUME" : modelData.l
+                               color: "#d7d8dd"; font.family: theme.fontFamily; font.pixelSize: 10 }
+                        MouseArea { id: btnMA; anchors.fill: parent; onClicked: modelData.a() }
+                    }
+                }
+            }
+        }
+    }
+
     // Match report now lives in the floating Report window (Match tab); see the
     // ReportWindow instance below. The old standalone MatchReport dialog is gone.
 
@@ -671,6 +772,20 @@ Item {
     // zeroed until the match starts (play button or countdown expiry).
     function beginPreparationPhase()
     {
+        // 3P FINAL: a separate domain — the FINALS3P controller owns ALL finals
+        // timing and phases; none of the qualification prep/sighter machinery
+        // (or its timers) runs. Phase A: skeleton + dry-run only, no scoring.
+        isFinalsMatch = APPSETTINGS.getGameMode() === 1
+                     && APPSETTINGS.get10or50mRange() === 50
+                     && APPSETTINGS.getGameSubMode() === 1
+                     && matchShootCount === 35
+        if (isFinalsMatch) {
+            is3PMatch = false
+            MODREADER.appendToLogFile("3P FINAL: session start (FINALS3P owns timing)")
+            FINALS3P.resetFinal()
+            FINALS3P.startFinal()
+            return
+        }
         MODREADER.appendToLogFile("beginPreparationPhase: prep seconds = " + APPSETTINGS.getPrepTimeCount())
         is3PMatch = APPSETTINGS.getGameMode() === 1
                  && APPSETTINGS.get10or50mRange() === 50

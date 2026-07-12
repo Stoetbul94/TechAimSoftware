@@ -1244,6 +1244,13 @@ Item {
         {
             if (!appMode) // for demo
             {
+                // 3P FINAL (Phase A): clicks drive the finals dry-run through the
+                // controller's acceptance path — no scoring, no model writes.
+                if (shootingPage.isFinalsMatch) {
+                    FINALS3P.simulateShot()
+                    return
+                }
+
                 if (!shootingPanelRect.visible)
                     return
 
