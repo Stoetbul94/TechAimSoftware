@@ -27,6 +27,7 @@
 #include "src/bridge/coachreportbridge.h"
 #include "src/bridge/coachreportfeeder.h"
 #include "src/bridge/pdfexporter.h"
+#include "src/finals/Finals3PController.h"
 #include <QLockFile>
 #include <QDir>
 #include <QMessageBox>
@@ -136,6 +137,10 @@ int main(int argc, char *argv[])
     // A4 PDF export of the Coach Report Print view (grabbed sections -> QPdfWriter).
     PdfExporter pdfExport;
     engine.rootContext()->setContextProperty("PDFEXPORT", &pdfExport);
+    // 3P FINAL — dedicated finals state machine / time authority (fully
+    // separate from qualification). QML binds to it; it owns all finals timing.
+    Finals3PController finalsController;
+    engine.rootContext()->setContextProperty("FINALS3P", &finalsController);
     engine.load(QUrl(QLatin1String("qrc:/main.qml")));
     if (engine.rootObjects().isEmpty())
         return -1;
