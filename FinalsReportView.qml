@@ -1,4 +1,5 @@
 import QtQuick 2.15
+import QtCharts 2.15
 
 // 3P FINAL — report view (Phase D2). Pure content, hosted like the other
 // report views inside the floating Report window: no window chrome, no
@@ -33,6 +34,32 @@ Item {
         }
         finalsReport.report = FINALS3P.buildReport(meta)
         finalsReport.generatedStamp = now.toLocaleString(Qt.locale(""), "ddd yyyy-MM-dd hh:mm")
+        finalsReport.rebuildCharts()
+    }
+
+    // Chart population is imperative in QtCharts; the values plotted are the
+    // report's shot rows verbatim (score / runningTotal). Axis bounds only
+    // frame the data — no report value is derived here.
+    function rebuildCharts() {
+        if (typeof momSeries === "undefined" || !momSeries)
+            return
+        momSeries.clear()
+        cumSeries.clear()
+        var shots = finalsReport.report ? finalsReport.report.shots : []
+        var minScore = 10.9
+        var maxTotal = 0
+        for (var i = 0; i < shots.length; ++i) {
+            var s = shots[i]
+            if (!s.provisional) {
+                momSeries.append(s.number, s.score)
+                if (s.score < minScore) minScore = s.score
+            }
+            cumSeries.append(s.number, s.runningTotal)
+            if (s.runningTotal > maxTotal) maxTotal = s.runningTotal
+        }
+        momY.min = Math.max(0, Math.floor(minScore) - 1)
+        momY.max = 11
+        cumY.max = Math.max(50, Math.ceil(maxTotal / 50) * 50)
     }
 
     // ── display-only mappings ────────────────────────────────────────────
@@ -380,13 +407,92 @@ Item {
                     anchors.leftMargin: 34; anchors.rightMargin: 34; anchors.bottomMargin: 20
                     softwareVersion: "Seta 4.0"
                     generatedText: "Generated " + finalsReport.generatedStamp
-                    pageText: "Page 1 / 3"
+                    pageText: "Page 1 / 4"
                 }
             }
 
-            // ── Page 2: shot by shot (35 rows incl. provisional DNS) ─────
+            // ── Page 2: target plots · momentum · cumulative ─────────────
             Rectangle {
                 id: page2
+                width: 794; height: 1123
+                color: "white"; border.color: "#e6e8ec"; border.width: 1
+
+                Column {
+                    id: page2Col
+                    anchors.top: parent.top
+                    anchors.left: parent.left; anchors.right: parent.right
+                    anchors.margins: 34
+                    spacing: 12
+
+                    SectionTitle { width: parent.width; title: "Momentum — Shot Score" }
+
+                    ChartView {
+                        width: parent.width; height: 330
+                        antialiasing: true; legend.visible: false
+                        backgroundColor: "transparent"; plotAreaColor: "transparent"
+                        theme: ChartView.ChartThemeLight
+                        margins.top: 2; margins.bottom: 2; margins.left: 2; margins.right: 2
+                        ValueAxis {
+                            id: momX
+                            min: 1; max: 35; tickCount: 18; labelFormat: "%d"
+                            titleText: "Shot"; labelsColor: "#6b7280"
+                            gridLineColor: "#eceef1"; color: "#e6e8ec"
+                        }
+                        ValueAxis {
+                            id: momY
+                            min: 8; max: 11; labelFormat: "%.1f"
+                            titleText: "Decimal score"; labelsColor: "#6b7280"
+                            gridLineColor: "#eceef1"; color: "#e6e8ec"
+                        }
+                        LineSeries {
+                            id: momSeries
+                            axisX: momX; axisY: momY
+                            color: "#a80038"; width: 2
+                            pointsVisible: true
+                        }
+                    }
+
+                    SectionTitle { width: parent.width; title: "Cumulative Score" }
+
+                    ChartView {
+                        width: parent.width; height: 330
+                        antialiasing: true; legend.visible: false
+                        backgroundColor: "transparent"; plotAreaColor: "transparent"
+                        theme: ChartView.ChartThemeLight
+                        margins.top: 2; margins.bottom: 2; margins.left: 2; margins.right: 2
+                        ValueAxis {
+                            id: cumX
+                            min: 1; max: 35; tickCount: 18; labelFormat: "%d"
+                            titleText: "Shot"; labelsColor: "#6b7280"
+                            gridLineColor: "#eceef1"; color: "#e6e8ec"
+                        }
+                        ValueAxis {
+                            id: cumY
+                            min: 0; max: 400; labelFormat: "%d"
+                            titleText: "Running total"; labelsColor: "#6b7280"
+                            gridLineColor: "#eceef1"; color: "#e6e8ec"
+                        }
+                        LineSeries {
+                            id: cumSeries
+                            axisX: cumX; axisY: cumY
+                            color: "#2f6fd0"; width: 2
+                        }
+                    }
+                }
+
+                ReportFooter {
+                    anchors.left: parent.left; anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    anchors.leftMargin: 34; anchors.rightMargin: 34; anchors.bottomMargin: 20
+                    softwareVersion: "Seta 4.0"
+                    generatedText: "Generated " + finalsReport.generatedStamp
+                    pageText: "Page 2 / 4"
+                }
+            }
+
+            // ── Page 3: shot by shot (35 rows incl. provisional DNS) ─────
+            Rectangle {
+                id: page3
                 width: 794; height: 1123
                 color: "white"; border.color: "#e6e8ec"; border.width: 1
 
@@ -439,13 +545,13 @@ Item {
                     anchors.leftMargin: 34; anchors.rightMargin: 34; anchors.bottomMargin: 20
                     softwareVersion: "Seta 4.0"
                     generatedText: "Generated " + finalsReport.generatedStamp
-                    pageText: "Page 2 / 3"
+                    pageText: "Page 3 / 4"
                 }
             }
 
-            // ── Page 3: incidents · command timeline ─────────────────────
+            // ── Page 4: incidents · command timeline ─────────────────────
             Rectangle {
-                id: page3
+                id: page4
                 width: 794; height: 1123
                 color: "white"; border.color: "#e6e8ec"; border.width: 1
 
@@ -532,7 +638,7 @@ Item {
                     anchors.leftMargin: 34; anchors.rightMargin: 34; anchors.bottomMargin: 20
                     softwareVersion: "Seta 4.0"
                     generatedText: "Generated " + finalsReport.generatedStamp
-                    pageText: "Page 3 / 3"
+                    pageText: "Page 4 / 4"
                 }
             }
         }
@@ -548,6 +654,8 @@ Item {
         page2.grabToImage(function(result) { CUSTOMPRINT.addImage(result.image) },
                           Qt.size(8917/4, 13033/4))
         page3.grabToImage(function(result) { CUSTOMPRINT.addImage(result.image) },
+                          Qt.size(8917/4, 13033/4))
+        page4.grabToImage(function(result) { CUSTOMPRINT.addImage(result.image) },
                           Qt.size(8917/4, 13033/4))
         CUSTOMPRINT.setServerPath(APPSETTINGS.getPrintPDFFilePath())
         CUSTOMPRINT.createFinalsPdf()
