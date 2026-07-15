@@ -1,9 +1,17 @@
 import QtQuick 2.15
 import QtCharts 2.15
 
-// 3P FINAL — report view (Phase D2). Pure content, hosted like the other
-// report views inside the floating Report window: no window chrome, no
-// scrolling of its own; exposes implicitHeight + refresh() + exportPdf().
+// 3P FINAL — professional finals report (redesign D1-D6). Pure content,
+// hosted like the other report views inside the floating Report window: no
+// window chrome, no scrolling of its own; exposes implicitHeight +
+// refresh() + exportPdf().
+//
+// Four A4 pages: (1) identity header · match validation · executive summary
+// · stage breakdown · position comparison; (2) K/P/S target plots ·
+// momentum · cumulative score; (3) shot-by-shot with hold/split/running
+// total; (4) incident log · CRO command timeline · performance summary ·
+// coach notes. Layout leaves room for RMS-era additions (lane/target in the
+// header, rankings/eliminations/penalties as future page sections).
 //
 // Every value comes from FINALS3P.buildReport() — the immutable report
 // assembled from the controller's stored session state (D1). The view only
@@ -781,7 +789,7 @@ Item {
     }
 
     // Owns the grab: same grabToImage -> CUSTOMPRINT path as the other report
-    // views (one image per A4 page). D3 swaps the writer for the finals PDF.
+    // views (one image per A4 page, four pages -> finals_report.pdf).
     function exportPdf() {
         finalsReport.refresh()
         CUSTOMPRINT.clearImagesList()
