@@ -1229,7 +1229,14 @@ Item {
             }
 
             radius: width/2
-            visible: globalModelOfData.count <= 1 ? false : true
+            // 3P FINAL (FIX-R1): hidden — currentShootIndex tracks the finals
+            // table (ALL records incl. sighters), which exceeds the per-window
+            // display buffer, so refreshPosition() bailed and left this marker
+            // frozen at a stale position with an inflated number (the
+            // "phantom shot"). The finals face highlights the last shot red
+            // via the overlay itself; cross-window review needs the full
+            // record and is out of this marker's reach by design.
+            visible: !shootingPage.isFinalsMatch && globalModelOfData.count > 1
             //            border.width: 1
             //            border.color: "red"
             z: 100
