@@ -16,6 +16,15 @@ Rectangle {
     // Target shot-map data (refreshed on each analysis).
     property var  targets: []
     property real sharedExtent: 0
+    // TRUE ISSF ring geometry for the shot maps (mm) — the same per-discipline
+    // constants the scoring face uses (10-ring radius; radial step per ring).
+    // loginPage.gameMode: 0 = pistol, 1 = rifle; gameRange resolves via main.
+    readonly property real ringTenMm: gameRange == 10
+                                      ? (loginPage.gameMode === 0 ? 5.75 : 0.25)
+                                      : (loginPage.gameMode === 0 ? 25.0 : 5.2)
+    readonly property real ringStepMm: gameRange == 10
+                                       ? (loginPage.gameMode === 0 ? 8.0 : 2.5)
+                                       : (loginPage.gameMode === 0 ? 25.0 : 8.0)
 
     // Pure content view — no window chrome. The hosting CoachReportWindow owns
     // the title bar, tabs and footer actions; these intent signals let it react.
@@ -309,7 +318,15 @@ Rectangle {
                     width: parent.width; spacing: 18
                     Repeater {
                         model: reportPage.targets
-                        delegate: ShotTargetCanvas { title: modelData.title; shots: modelData.shots; side: 240; extentMm: reportPage.sharedExtent }
+                        delegate: ShotTargetCanvas {
+                            title: modelData.title; shots: modelData.shots; side: 240
+                            extentMm: reportPage.sharedExtent
+                            // True ring geometry + true hole size: dot-vs-ring
+                            // is the shot's real position on the card.
+                            tenRingRadiusMm: reportPage.ringTenMm
+                            ringStepMm: reportPage.ringStepMm
+                            bulletDiameterMm: APPSETTINGS.bullet_diameter()
+                        }
                     }
                 }
             }

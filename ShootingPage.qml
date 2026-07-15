@@ -676,6 +676,22 @@ Item {
             })
         }
         COACHREPORT.analyzeShots(list)
+
+        // Transfer guarantee: every shot in the match record must be held by
+        // the engine — count AND total must survive the bridge round-trip.
+        var held = COACHREPORT.shots()
+        if (held.length !== n) {
+            console.warn("COACH ASSERT: fed", n, "shots but engine holds", held.length)
+        } else if (n > 0) {
+            var fedSum = 0, heldSum = 0
+            for (var c = 0; c < n; ++c) {
+                fedSum += globalMatchModel.get(c).calculatedscore * 1
+                heldSum += held[c].decimalScore
+            }
+            if (Math.abs(fedSum - heldSum) > 0.05)
+                console.warn("COACH ASSERT: fed total", fedSum.toFixed(1),
+                             "!= engine total", heldSum.toFixed(1))
+        }
     }
 
     // Floating Report window (Summary now, Match next). Declared here so the
