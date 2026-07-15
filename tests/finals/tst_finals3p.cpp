@@ -640,11 +640,38 @@ static void runTimeoutFinal()
           "cumulative exact after series-1 timeout", QString::number(c.cumulativeTotal()));
 
     // Series 2: completion-driven inside the timeout run (26-30, Complete).
+    // Shot 27 fires ~72 scaled-seconds after 26 to pin the FIX-R3 per-shot
+    // split semantics (26 = since window open; 27 = the gap; 28-30 ≈ 0 —
+    // the old cumulative definition would give 28-30 the same large value).
     check(waitUntil([&]{ return c.windowState() == 2; }, 10000), "series 2 window opened");
-    for (int i = 0; i < 5; ++i) c.registerShot(0.2, -0.2, 10.0, ++id);
+    c.registerShot(0.2, -0.2, 10.0, ++id);                          // shot 26
+    {
+        QElapsedTimer gap; gap.start();
+        while (gap.elapsed() < 300) QCoreApplication::processEvents(QEventLoop::AllEvents, 10);
+    }
+    for (int i = 0; i < 4; ++i) c.registerShot(0.2, -0.2, 10.0, ++id);   // 27-30
     check(r.accepted.last().toMap().value("finalsShotNumber").toInt() == 30,
           "series 2 numbering 26-30");
     check(c.stageStatus(8) == 2, "series 2 persisted Complete");
+    {
+        auto splitOf = [&r](int shotNumber) {
+            for (const QVariant& v : r.accepted) {
+                const QVariantMap m = v.toMap();
+                if (m.value("finalsShotNumber").toInt() == shotNumber)
+                    return m.value("timeComsumed").toInt();
+            }
+            return -1;
+        };
+        check(splitOf(26) >= 0 && splitOf(26) <= 40,
+              "FIX-R3: first shot of a window counts from window open",
+              QString::number(splitOf(26)));
+        check(splitOf(27) >= 48 && splitOf(27) <= 120,
+              "FIX-R3: split measures the gap to the previous shot",
+              QString::number(splitOf(27)));
+        check(splitOf(30) >= 0 && splitOf(30) <= 30,
+              "FIX-R3: per-shot split does NOT accumulate window time",
+              QString::number(splitOf(30)));
+    }
 
     // Single 31: no shot -> expiry -> Incomplete + one MissingShot; progresses.
     check(waitUntil([&]{ return c.stageId() == static_cast<int>(Stage::StandingSingle2); }, 15000),

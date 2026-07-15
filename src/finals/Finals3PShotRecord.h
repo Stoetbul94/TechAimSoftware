@@ -6,8 +6,10 @@
 //
 // Existing qualification role names are reused (calculatedscore, score, xmm,
 // ymm, direction, timestamp, timeComsumed, position); finals-specific roles
-// are prefixed. For finals, `timeComsumed` is DEFINED as whole seconds since
-// the current firing window opened (plan §6).
+// are prefixed. For finals, `timeComsumed` is DEFINED as the per-shot split
+// in whole seconds: time since the previous accepted shot in this firing
+// window, or since the window opened for the window's first shot (FIX-R3 —
+// matches the qualification column semantic; was cumulative window time).
 
 #include <QVariantMap>
 #include <QDateTime>
@@ -25,6 +27,7 @@ struct ShotContext {
     qint64 windowElapsedMs = 0;      // since the current firing window opened
     qint64 stageElapsedMs = 0;       // since stage entry
     qint64 sincePrevShotMs = 0;      // since previous accepted shot in window
+    bool hasPrevInWindow = false;    // false for the first shot of a window
 };
 
 inline QVariantMap acceptedShotRecord(const ShotContext& c,
@@ -45,7 +48,11 @@ inline QVariantMap acceptedShotRecord(const ShotContext& c,
     m[QStringLiteral("ymm")]             = yMm;
     m[QStringLiteral("direction")]       = QStringLiteral("0.00");   // set by ingestion when available
     m[QStringLiteral("timestamp")]       = QDateTime::currentDateTime().toString(Qt::ISODateWithMs);
-    m[QStringLiteral("timeComsumed")]    = int((c.windowElapsedMs + 999) / 1000);
+    // FIX-R3: per-shot split, not cumulative window time. First shot of a
+    // window counts from the window opening; hasPrevInWindow (not a zero
+    // split) distinguishes it — two shots in one tick give a real 0 s split.
+    m[QStringLiteral("timeComsumed")]    = int(((c.hasPrevInWindow ? c.sincePrevShotMs
+                                                                   : c.windowElapsedMs) + 999) / 1000);
     m[QStringLiteral("position")]        = positionRoleFor(c.stage);
     // ── finals roles ──
     m[QStringLiteral("finalsStageId")]      = static_cast<int>(c.stage);

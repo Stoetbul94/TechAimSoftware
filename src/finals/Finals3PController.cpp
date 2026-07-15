@@ -517,6 +517,9 @@ techaim::finals::ShotContext Finals3PController::currentShotContext() const
     ctx.windowElapsedMs = m_window != WindowState::Closed ? (now - m_windowOpenedScaled) : 0;
     ctx.stageElapsedMs = now - m_phaseStartScaled;
     ctx.sincePrevShotMs = m_lastAcceptScaled > 0 ? (now - m_lastAcceptScaled) : 0;
+    // m_lastAcceptScaled is reset on every window open, so this is precisely
+    // "a shot was already accepted in THIS window" (FIX-R3 split semantics).
+    ctx.hasPrevInWindow = m_lastAcceptScaled > 0;
     return ctx;
 }
 
