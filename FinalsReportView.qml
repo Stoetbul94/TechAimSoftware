@@ -1,0 +1,403 @@
+import QtQuick 2.15
+
+// 3P FINAL — report view (Phase D2). Pure content, hosted like the other
+// report views inside the floating Report window: no window chrome, no
+// scrolling of its own; exposes implicitHeight + refresh() + exportPdf().
+//
+// Every value comes from FINALS3P.buildReport() — the immutable report
+// assembled from the controller's stored session state (D1). The view only
+// formats; it never reads the shot models, never computes scores, and shows
+// DECIMAL scoring only (no qualification integer-primary rules).
+//
+// Display-only naming: the persisted finalsSeriesIndex schema (0=K, 1=P,
+// 2=S1, 3=S2, 4-8=singles) is LOCKED; this view maps it to human-facing
+// "Standing Series 1/2" / "Standing Single 31-35" purely for presentation.
+Item {
+    id: finalsReport
+
+    signal requestClose()
+
+    property var report: null
+    property string generatedStamp: ""
+
+    implicitHeight: pagesCol.height + 40
+
+    // Rebuild the immutable report from the controller's stored state. Called
+    // by the host window before presenting (and by Save PDF for freshness).
+    function refresh() {
+        var now = new Date()
+        var meta = {
+            "athlete": (typeof userName !== "undefined" && userName) ? userName : "",
+            "eventName": "50m Rifle 3 Positions — FINAL (35)",
+            "dateTime": now.toLocaleString(Qt.locale(""), "ddd yyyy-MM-dd hh:mm")
+        }
+        finalsReport.report = FINALS3P.buildReport(meta)
+        finalsReport.generatedStamp = now.toLocaleString(Qt.locale(""), "ddd yyyy-MM-dd hh:mm")
+    }
+
+    // ── display-only mappings ────────────────────────────────────────────
+    function stageDisplay(stageId) {
+        if (stageId === 3) return "Kneeling"
+        if (stageId === 5) return "Prone"
+        if (stageId === 7) return "Standing Series 1"
+        if (stageId === 8) return "Standing Series 2"
+        if (stageId >= 9 && stageId <= 13) return "Standing Single " + (22 + stageId)
+        return ""
+    }
+    function seriesDisplay(si) {
+        if (si === 0) return "Kneeling"
+        if (si === 1) return "Prone"
+        if (si === 2) return "Standing Series 1"
+        if (si === 3) return "Standing Series 2"
+        if (si >= 4 && si <= 8) return "Standing Single " + (27 + si)
+        return ""
+    }
+    function statusDisplay(name) {
+        if (name === "Complete")   return "COMPLETE"
+        if (name === "Incomplete") return "INCOMPLETE"
+        if (name === "Aborted")    return "ABORTED"
+        if (name === "InProgress") return "IN PROGRESS"
+        return "—"
+    }
+    function statusColor(name) {
+        if (name === "Complete")   return "#1f8a4c"
+        if (name === "Incomplete") return "#c77700"
+        if (name === "Aborted")    return "#a80038"
+        return "#8a8f98"
+    }
+    function completionColor(s) {
+        if (s === "COMPLETE")   return "#1f8a4c"
+        if (s === "INCOMPLETE") return "#c77700"
+        if (s === "ABORTED")    return "#a80038"
+        return "#8a8f98"
+    }
+    // Timeline stamps are scaled ms since the final started (controller clock).
+    function fmtClock(ms) {
+        var s = Math.floor(ms / 1000)
+        var m = Math.floor(s / 60)
+        return (m < 10 ? "0" : "") + m + ":" + ((s % 60) < 10 ? "0" : "") + (s % 60)
+    }
+    function summaryVal(key, dflt) {
+        return (finalsReport.report && finalsReport.report.summary)
+                ? finalsReport.report.summary[key] : dflt
+    }
+
+    // How many rows page 3 can show before pointing at the session journal —
+    // the cap is stated on the page, never silent.
+    readonly property int maxIncidentRows: 10
+    readonly property int maxTimelineRows: 34
+
+    Rectangle {
+        anchors.fill: parent
+        color: "#dcdad3"                 // grey backdrop; A4 pages sit on top
+
+        Column {
+            id: pagesCol
+            anchors.horizontalCenter: parent.horizontalCenter
+            y: 20
+            spacing: 20
+
+            // ── Page 1: header · result summary · stage breakdown ────────
+            Rectangle {
+                id: page1
+                width: 794; height: 1123          // A4 @ 96 dpi
+                color: "white"; border.color: "#e6e8ec"; border.width: 1
+
+                Column {
+                    anchors.top: parent.top
+                    anchors.left: parent.left; anchors.right: parent.right
+                    anchors.margins: 34
+                    spacing: 14
+
+                    ReportHeader {
+                        width: parent.width
+                        reportTitle: "3P Final Report"
+                        athlete: (typeof userName !== "undefined" && userName) ? userName : ""
+                        discipline: "50m Rifle 3 Positions"
+                        sessionType: "Final (Training)"
+                        dateText: finalsReport.generatedStamp
+                    }
+
+                    // Completion banner — the persisted verdict, not a guess.
+                    Rectangle {
+                        width: parent.width; height: 44; radius: 10
+                        color: "white"
+                        border.width: 1
+                        border.color: finalsReport.completionColor(
+                            finalsReport.report ? finalsReport.report.completionStatus : "")
+                        Row {
+                            anchors.left: parent.left; anchors.leftMargin: 14
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 10
+                            Rectangle {
+                                width: 10; height: 10; radius: 5
+                                anchors.verticalCenter: parent.verticalCenter
+                                color: finalsReport.completionColor(
+                                    finalsReport.report ? finalsReport.report.completionStatus : "")
+                            }
+                            Text {
+                                text: "FINAL " + (finalsReport.report
+                                                  ? finalsReport.report.completionStatus : "—")
+                                color: finalsReport.completionColor(
+                                    finalsReport.report ? finalsReport.report.completionStatus : "")
+                                font.family: "Segoe UI"; font.pixelSize: 15; font.bold: true
+                                font.letterSpacing: 0.6
+                            }
+                        }
+                        Text {
+                            anchors.right: parent.right; anchors.rightMargin: 14
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: "35-shot ISSF Final program · decimal scoring"
+                            color: "#8a8f98"; font.family: "Segoe UI"; font.pixelSize: 11
+                        }
+                    }
+
+                    SectionTitle { width: parent.width; title: "Result Summary" }
+
+                    Grid {
+                        id: finalsMetricGrid
+                        width: parent.width
+                        columns: 3; columnSpacing: 12; rowSpacing: 12
+                        property real cw: (width - 2 * columnSpacing) / 3
+
+                        MetricCard { width: finalsMetricGrid.cw; label: "Total Score"
+                            value: Number(finalsReport.summaryVal("cumulativeTotal", 0)).toFixed(1) }
+                        MetricCard { width: finalsMetricGrid.cw; label: "Official Shots"
+                            value: finalsReport.summaryVal("officialShotCount", 0) + " / 35" }
+                        MetricCard { width: finalsMetricGrid.cw; label: "Average / Shot"
+                            value: finalsReport.summaryVal("officialShotCount", 0) > 0
+                                   ? (finalsReport.summaryVal("cumulativeTotal", 0)
+                                      / finalsReport.summaryVal("officialShotCount", 0)).toFixed(2)
+                                   : "—" }
+                        MetricCard { width: finalsMetricGrid.cw; label: "Sighting Shots"
+                            value: "" + finalsReport.summaryVal("sighterCount", 0) }
+                        MetricCard { width: finalsMetricGrid.cw; label: "Missing (DNS)"
+                            value: "" + finalsReport.summaryVal("missingCount", 0) }
+                        MetricCard { width: finalsMetricGrid.cw; label: "Incidents"
+                            value: "" + finalsReport.summaryVal("incidentCount", 0) }
+                    }
+
+                    SectionTitle { width: parent.width; title: "Stage Breakdown" }
+
+                    Column {
+                        width: parent.width
+                        spacing: 0
+                        Rectangle {
+                            width: parent.width; height: 26; color: "#f1f3f5"
+                            Row {
+                                anchors.fill: parent
+                                Text { width: parent.width*0.34; height: parent.height; text: "Stage";  leftPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 11; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.18; height: parent.height; text: "Shots";  horizontalAlignment: Text.AlignRight; rightPadding: 12; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 11; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.22; height: parent.height; text: "Score";  horizontalAlignment: Text.AlignRight; rightPadding: 12; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 11; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.26; height: parent.height; text: "Status"; horizontalAlignment: Text.AlignRight; rightPadding: 12; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 11; font.bold: true; font.family: "Segoe UI" }
+                            }
+                            Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 2; color: "#a80038" }
+                        }
+                        Repeater {
+                            model: finalsReport.report ? finalsReport.report.stages : []
+                            delegate: Rectangle {
+                                width: parent.width; height: 30
+                                color: index % 2 ? "#f7f8fa" : "#ffffff"
+                                Row {
+                                    anchors.fill: parent
+                                    Text { width: parent.width*0.34; height: parent.height; text: finalsReport.stageDisplay(modelData.stageId); leftPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 12; font.family: "Segoe UI" }
+                                    Text { width: parent.width*0.18; height: parent.height; text: modelData.fired + " / " + modelData.expected; horizontalAlignment: Text.AlignRight; rightPadding: 12; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 12; font.family: "Segoe UI" }
+                                    Text { width: parent.width*0.22; height: parent.height; text: Number(modelData.subtotal).toFixed(1); horizontalAlignment: Text.AlignRight; rightPadding: 12; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 12; font.bold: true; font.family: "Segoe UI" }
+                                    Text { width: parent.width*0.26; height: parent.height; text: finalsReport.statusDisplay(modelData.statusName); horizontalAlignment: Text.AlignRight; rightPadding: 12; verticalAlignment: Text.AlignVCenter; color: finalsReport.statusColor(modelData.statusName); font.pixelSize: 11; font.bold: true; font.family: "Segoe UI" }
+                                }
+                                Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: "#eceef1" }
+                            }
+                        }
+                        // Cumulative total row
+                        Rectangle {
+                            width: parent.width; height: 32; color: "#f1f3f5"
+                            Row {
+                                anchors.fill: parent
+                                Text { width: parent.width*0.52; height: parent.height; text: "TOTAL"; leftPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 12; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.22; height: parent.height; text: Number(finalsReport.summaryVal("cumulativeTotal", 0)).toFixed(1); horizontalAlignment: Text.AlignRight; rightPadding: 12; verticalAlignment: Text.AlignVCenter; color: "#a80038"; font.pixelSize: 13; font.bold: true; font.family: "Segoe UI" }
+                                Item { width: parent.width*0.26; height: 1 }
+                            }
+                            Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: "#a80038" }
+                        }
+                    }
+                }
+
+                ReportFooter {
+                    anchors.left: parent.left; anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    anchors.leftMargin: 34; anchors.rightMargin: 34; anchors.bottomMargin: 20
+                    softwareVersion: "Seta 4.0"
+                    generatedText: "Generated " + finalsReport.generatedStamp
+                    pageText: "Page 1 / 3"
+                }
+            }
+
+            // ── Page 2: shot by shot (35 rows incl. provisional DNS) ─────
+            Rectangle {
+                id: page2
+                width: 794; height: 1123
+                color: "white"; border.color: "#e6e8ec"; border.width: 1
+
+                Column {
+                    anchors.top: parent.top
+                    anchors.left: parent.left; anchors.right: parent.right
+                    anchors.margins: 34
+                    spacing: 10
+
+                    SectionTitle { width: parent.width; title: "Shot by Shot" }
+
+                    Column {
+                        width: parent.width
+                        spacing: 0
+                        Rectangle {
+                            width: parent.width; height: 26; color: "#f1f3f5"
+                            Row {
+                                anchors.fill: parent
+                                Text { width: parent.width*0.08; height: parent.height; text: "#";        leftPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 11; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.34; height: parent.height; text: "Stage";    verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 11; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.16; height: parent.height; text: "Score";    horizontalAlignment: Text.AlignRight; rightPadding: 12; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 11; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.18; height: parent.height; text: "Time (s)"; horizontalAlignment: Text.AlignRight; rightPadding: 12; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 11; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.24; height: parent.height; text: "Note";     horizontalAlignment: Text.AlignRight; rightPadding: 12; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 11; font.bold: true; font.family: "Segoe UI" }
+                            }
+                            Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 2; color: "#a80038" }
+                        }
+                        Repeater {
+                            model: finalsReport.report ? finalsReport.report.shots : []
+                            delegate: Rectangle {
+                                width: parent.width; height: 24
+                                color: modelData.provisional ? "#fdf6ec"
+                                                             : (index % 2 ? "#f7f8fa" : "#ffffff")
+                                Row {
+                                    anchors.fill: parent
+                                    Text { width: parent.width*0.08; height: parent.height; text: modelData.number; leftPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 11; font.bold: true; font.family: "Segoe UI" }
+                                    Text { width: parent.width*0.34; height: parent.height; text: finalsReport.seriesDisplay(modelData.seriesIndex); verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 11; font.family: "Segoe UI" }
+                                    Text { width: parent.width*0.16; height: parent.height; text: Number(modelData.score).toFixed(1); horizontalAlignment: Text.AlignRight; rightPadding: 12; verticalAlignment: Text.AlignVCenter; color: modelData.provisional ? "#c77700" : "#191b1f"; font.pixelSize: 11; font.bold: true; font.family: "Segoe UI" }
+                                    Text { width: parent.width*0.18; height: parent.height; text: modelData.provisional ? "—" : modelData.timeUsedSec; horizontalAlignment: Text.AlignRight; rightPadding: 12; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 11; font.family: "Segoe UI" }
+                                    Text { width: parent.width*0.24; height: parent.height; text: modelData.provisional ? "DNS — not fired (0.0 provisional)" : ""; horizontalAlignment: Text.AlignRight; rightPadding: 12; verticalAlignment: Text.AlignVCenter; color: "#c77700"; font.pixelSize: 10; font.family: "Segoe UI" }
+                                }
+                                Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: "#eceef1" }
+                            }
+                        }
+                    }
+                }
+
+                ReportFooter {
+                    anchors.left: parent.left; anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    anchors.leftMargin: 34; anchors.rightMargin: 34; anchors.bottomMargin: 20
+                    softwareVersion: "Seta 4.0"
+                    generatedText: "Generated " + finalsReport.generatedStamp
+                    pageText: "Page 2 / 3"
+                }
+            }
+
+            // ── Page 3: incidents · command timeline ─────────────────────
+            Rectangle {
+                id: page3
+                width: 794; height: 1123
+                color: "white"; border.color: "#e6e8ec"; border.width: 1
+
+                Column {
+                    anchors.top: parent.top
+                    anchors.left: parent.left; anchors.right: parent.right
+                    anchors.margins: 34
+                    spacing: 10
+
+                    SectionTitle { width: parent.width; title: "Incidents" }
+
+                    Text {
+                        visible: !finalsReport.report
+                                 || finalsReport.report.incidents.length === 0
+                        text: "No incidents — no shots were rejected during this final."
+                        color: "#8a8f98"; font.family: "Segoe UI"; font.pixelSize: 12
+                    }
+                    Column {
+                        width: parent.width
+                        spacing: 0
+                        Repeater {
+                            model: finalsReport.report
+                                   ? finalsReport.report.incidents.slice(0, finalsReport.maxIncidentRows)
+                                   : []
+                            delegate: Rectangle {
+                                width: parent.width; height: 24
+                                color: index % 2 ? "#f7f8fa" : "#ffffff"
+                                Row {
+                                    anchors.fill: parent
+                                    Text { width: parent.width*0.30; height: parent.height; text: modelData.stageLabel; leftPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 11; font.family: "Segoe UI" }
+                                    Text { width: parent.width*0.30; height: parent.height; text: modelData.reason; verticalAlignment: Text.AlignVCenter; color: "#a80038"; font.pixelSize: 11; font.bold: true; font.family: "Segoe UI" }
+                                    Text { width: parent.width*0.40; height: parent.height; text: modelData.displayText.length ? modelData.displayText : ""; horizontalAlignment: Text.AlignRight; rightPadding: 12; verticalAlignment: Text.AlignVCenter; color: "#6b7280"; font.pixelSize: 10; font.family: "Segoe UI"; elide: Text.ElideRight }
+                                }
+                                Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: "#eceef1" }
+                            }
+                        }
+                        Text {
+                            visible: finalsReport.report
+                                     && finalsReport.report.incidents.length > finalsReport.maxIncidentRows
+                            text: "+ " + (finalsReport.report
+                                          ? finalsReport.report.incidents.length - finalsReport.maxIncidentRows : 0)
+                                  + " further incidents — see the session journal (finals_session.jsonl)"
+                            color: "#8a8f98"; font.family: "Segoe UI"; font.pixelSize: 10
+                            topPadding: 6
+                        }
+                    }
+
+                    SectionTitle { width: parent.width; title: "Command Timeline" }
+
+                    Column {
+                        width: parent.width
+                        spacing: 0
+                        Repeater {
+                            model: finalsReport.report
+                                   ? finalsReport.report.timeline.slice(0, finalsReport.maxTimelineRows)
+                                   : []
+                            delegate: Rectangle {
+                                width: parent.width; height: 20
+                                color: index % 2 ? "#f7f8fa" : "#ffffff"
+                                Row {
+                                    anchors.fill: parent
+                                    Text { width: parent.width*0.12; height: parent.height; text: finalsReport.fmtClock(modelData.issuedAtMs); leftPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#6b7280"; font.pixelSize: 10; font.family: "Segoe UI" }
+                                    Text { width: parent.width*0.24; height: parent.height; text: modelData.type; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
+                                    Text { width: parent.width*0.64; height: parent.height; text: modelData.text; verticalAlignment: Text.AlignVCenter; color: "#6b7280"; font.pixelSize: 10; font.family: "Segoe UI"; elide: Text.ElideRight; rightPadding: 12 }
+                                }
+                                Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: "#eceef1" }
+                            }
+                        }
+                        Text {
+                            visible: finalsReport.report
+                                     && finalsReport.report.timeline.length > finalsReport.maxTimelineRows
+                            text: "+ " + (finalsReport.report
+                                          ? finalsReport.report.timeline.length - finalsReport.maxTimelineRows : 0)
+                                  + " further events — see the session journal (finals_session.jsonl)"
+                            color: "#8a8f98"; font.family: "Segoe UI"; font.pixelSize: 10
+                            topPadding: 6
+                        }
+                    }
+                }
+
+                ReportFooter {
+                    anchors.left: parent.left; anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    anchors.leftMargin: 34; anchors.rightMargin: 34; anchors.bottomMargin: 20
+                    softwareVersion: "Seta 4.0"
+                    generatedText: "Generated " + finalsReport.generatedStamp
+                    pageText: "Page 3 / 3"
+                }
+            }
+        }
+    }
+
+    // Owns the grab: same grabToImage -> CUSTOMPRINT path as the other report
+    // views (one image per A4 page). D3 swaps the writer for the finals PDF.
+    function exportPdf() {
+        finalsReport.refresh()
+        CUSTOMPRINT.clearImagesList()
+        page1.grabToImage(function(result) { CUSTOMPRINT.addImage(result.image) },
+                          Qt.size(8917/4, 13033/4))
+        page2.grabToImage(function(result) { CUSTOMPRINT.addImage(result.image) },
+                          Qt.size(8917/4, 13033/4))
+        page3.grabToImage(function(result) { CUSTOMPRINT.addImage(result.image) },
+                          Qt.size(8917/4, 13033/4))
+        CUSTOMPRINT.setServerPath(APPSETTINGS.getPrintPDFFilePath())
+        CUSTOMPRINT.createFinalsPdf()
+    }
+}
