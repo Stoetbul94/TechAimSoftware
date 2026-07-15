@@ -59,6 +59,7 @@ Item {
 
     function openReport()      { manager.open("report", 0) }   // Summary tab
     function openMatchReport() { manager.open("report", 1) }   // Match tab
+    function openFinalsReport(){ manager.open("report", 2) }   // Finals tab (3P FINAL)
     function openCoach()       { manager.open("coach") }
     // Reserved for upcoming tools — register the window, then these just work:
     function openStatistics() { manager.open("statistics") }

@@ -291,12 +291,15 @@ bool Finals3PController::primaryActionVisible() const
     case Stage::ProneSighting:
     case Stage::ProneMatch:
     case Stage::StandingSighting: return true;
+    case Stage::Complete:         return true;   // D3: VIEW REPORT
     default:                      return false;
     }
 }
 
 bool Finals3PController::primaryActionEnabled() const
 {
+    if (m_stage == Stage::Complete)
+        return true;
     return !advanceLabel().isEmpty();
 }
 
@@ -312,6 +315,8 @@ QString Finals3PController::primaryActionLabel() const
         return QStringLiteral("PRONE — %1 / %2").arg(m_shotsInStage).arg(m_cfg.proneShots);
     case Stage::StandingSighting:
         return QStringLiteral("STANDING SIGHTING — WAIT FOR STOP");
+    case Stage::Complete:
+        return QStringLiteral("VIEW REPORT  →");
     default:
         return QString();
     }
@@ -356,8 +361,15 @@ void Finals3PController::advanceStage1()
 
 void Finals3PController::executePrimaryAction()
 {
-    if (primaryActionVisible() && primaryActionEnabled())
-        advanceStage1();
+    if (!primaryActionVisible() || !primaryActionEnabled())
+        return;
+    // After RESULTS ARE FINAL the action opens the finals report; the
+    // controller stays UI-independent — QML routes the intent signal.
+    if (m_stage == Stage::Complete) {
+        emit reportRequested();
+        return;
+    }
+    advanceStage1();
 }
 
 void Finals3PController::devForceAdvanceStage1()
@@ -745,6 +757,9 @@ void Finals3PController::enterStage(Stage s)
         issueCommand(CommandType::ResultsFinal, QStringLiteral("RESULTS ARE FINAL"));
         writeJournal(QStringLiteral("finalCompleted"), QVariantMap());
         emit phaseChanged();
+        // The primary action flips to VIEW REPORT on completion (D3); its
+        // properties notify via advanceLabelChanged.
+        emit advanceLabelChanged();
         emit countdownChanged();
         emit finalCompleted();
         return;

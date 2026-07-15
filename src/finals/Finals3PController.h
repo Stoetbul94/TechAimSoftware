@@ -160,6 +160,9 @@ signals:
     void stageCompleted(int stageId);
     void stageStatusChanged(int stageId, int status);
     void finalCompleted();
+    // D3: emitted by executePrimaryAction() in Complete — QML opens the
+    // finals report window; the controller never touches UI.
+    void reportRequested();
     void targetModeChanged();
     void windowStateChanged();
     void pausedChanged();

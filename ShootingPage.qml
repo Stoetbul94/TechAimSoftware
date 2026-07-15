@@ -744,6 +744,11 @@ Item {
             // Toast presentation listens to FINALS3P.shotRejected itself (HUD3).
         }
 
+        // D3: RESULTS ARE FINAL -> bottom-bar VIEW REPORT -> finals report tab.
+        function onReportRequested() {
+            windowManager.openFinalsReport()
+        }
+
         function onWindowStateChanged() {
             // Clean face per firing window (mirrors qualification's
             // clean-face-per-position). Deferred: model resets from inside
@@ -771,6 +776,13 @@ Item {
         onPrintPDF: {
             if (leftPanel.playVisible)
                 return;
+
+            // 3P FINAL: the qualification Match auto-export must never be fed
+            // finals data — open the finals report instead (manual Save PDF).
+            if (isFinalsMatch) {
+                windowManager.openFinalsReport()
+                return;
+            }
 
             // Kiosk auto-export: open the Report window on the Match tab and let it
             // write the PDF to the configured network path, then close on save.

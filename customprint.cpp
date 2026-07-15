@@ -182,6 +182,43 @@ void CustomPrint::createTablePdf()
     painter.end();
 }
 
+// 3P FINAL report (Phase D3). Same writer behaviour as the redesigned
+// createSummryPdf — each grabbed A4 page image fitted within the printable
+// page, aspect preserved, centred, one image per PDF page — with a finals
+// default filename. No qualification path is touched.
+void CustomPrint::createFinalsPdf()
+{
+    QString fileName = QFileDialog::getSaveFileName(0, tr("Save File"),
+                                                    "finals_report.pdf",
+                                                    tr("*.pdf"));
+    qDebug() << __FUNCTION__ << fileName;
+    if (fileName.isEmpty())
+        return;
+    QPdfWriter pdfWriter(fileName);
+    pdfWriter.setPageSize(QPageSize(QPageSize::A4));
+    pdfWriter.setPageMargins(QMargins(30, 30, 30, 30));
+    QPainter painter(&pdfWriter);
+    quint32 iWidth = pdfWriter.width();
+    quint32 iHeight = pdfWriter.height();
+
+    for (int i = 0; i < m_images.count(); ++i)
+    {
+        if (i >= 1)
+            pdfWriter.newPage();
+        QImage img1 = m_images.at(i);
+        if (!img1.isNull())
+        {
+            QImage img = img1.scaled(iWidth, iHeight, Qt::KeepAspectRatio,
+                                     Qt::SmoothTransformation);
+            qreal xOff = (iWidth - img.width()) / 2.0;
+            painter.drawImage(QRectF(xOff, 0, img.width(), img.height()),
+                              img1, img1.rect());
+        }
+    }
+    painter.end();
+    emit saveComplete();
+}
+
 void CustomPrint::createSummryPdf()
 {
     QString fileName = QFileDialog::getSaveFileName(0, tr("Save File"),

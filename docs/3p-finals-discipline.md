@@ -443,3 +443,45 @@ above. No qualification `SummaryReport`/`MatchReport` assumptions.
   history, meta passthrough) and the timeout-driven run (11 real + 24
   provisional DNS rows ordered 1-35, per-stage fired/subtotal/status,
   incidents == rejections, rebuild-identity).
+
+## Phase D2 + D3 — Finals report view, window integration, PDF (implemented)
+
+**FinalsReportView.qml (D2)** — pure-content view in the Tech Aim Report
+System style (ReportHeader/SectionTitle/MetricCard/ReportFooter), fed
+exclusively by `FINALS3P.buildReport()`. Three A4 pages: (1) result summary
++ completion banner + stage breakdown (decimal subtotals, persisted status
+verdicts, TOTAL row); (2) shot-by-shot 1-35 with provisional DNS rows
+highlighted amber ("DNS — not fired (0.0 provisional)"); (3) incidents +
+command timeline (row caps stated on the page and pointed at
+`finals_session.jsonl`, never silent). Decimal-only. Human-facing stage
+names (Standing Series 1/2, Standing Single 31-35) are mapped from the
+LOCKED `finalsSeriesIndex` schema for display only.
+
+**Report-window integration (D3)** — the floating Report window gains a
+Finals tab (tab id 2). In finals mode the Summary/Match tabs are hidden
+entirely (they carry qualification assumptions and must never be fed finals
+data) and `prepare()` pins the window to the Finals tab whatever was
+requested; the Coach Report footer button hides on the finals tab.
+`windowManager.openFinalsReport()` is the intent. The report is rebuilt
+from controller state on every open (`onAboutToOpen`/`onTabChanged` →
+`finalsView.refresh()`).
+
+**VIEW REPORT (D3)** — after RESULTS ARE FINAL the controller's contextual
+primary action becomes `VIEW REPORT →` (visible+enabled in
+`Stage::Complete`); `executePrimaryAction()` emits the new
+`reportRequested()` signal and the ShootingPage router opens the finals
+report tab. The controller stays UI-independent. The kiosk `onPrintPDF`
+auto-export is finals-gated: in finals mode it opens the finals report
+instead of driving the qualification Match auto-export.
+
+**Finals PDF (D3)** — `CUSTOMPRINT.createFinalsPdf()`: same writer
+behaviour as the redesigned summary path (each grabbed A4 page fitted
+aspect-true and centred, one image per PDF page), default filename
+`finals_report.pdf`, cancel-safe, emits `saveComplete()`. The view's
+`exportPdf()` refreshes the report, grabs the three pages and calls it —
+the existing grabToImage → CUSTOMPRINT path, no qualification writer
+touched.
+
+**Tests: 157 checks, 0 failures** — adds the D3 completion-action checks
+(VIEW REPORT label/visibility/enabled after Complete; executePrimaryAction
+emits reportRequested exactly once and leaves the state machine intact).

@@ -58,6 +58,7 @@ struct Recorder {
     QVariantList rejected;         // shotRejected maps
     int finalCompletedCount = 0;
     int transitionRejectedCount = 0;
+    int reportRequestedCount = 0;
     QVariantMap lastTransitionRejected;
 
     void attach(Finals3PController* c)
@@ -77,6 +78,7 @@ struct Recorder {
             rejected << r;
         });
         QObject::connect(c, &Finals3PController::finalCompleted, [this]() { ++finalCompletedCount; });
+        QObject::connect(c, &Finals3PController::reportRequested, [this]() { ++reportRequestedCount; });
         QObject::connect(c, &Finals3PController::transitionRejected, [this](const QVariantMap& i) {
             ++transitionRejectedCount;
             lastTransitionRejected = i;
@@ -262,6 +264,17 @@ static void runFullFinal()
 
     check(waitUntil([&]{ return inStage(c, Stage::Complete); }, 5000), "reached Complete");
     check(r.finalCompletedCount == 1, "finalCompleted emitted once");
+
+    // D3: the primary action flips to VIEW REPORT on completion; executing it
+    // emits the reportRequested intent (QML opens the finals report tab) and
+    // never re-enters the stage machine.
+    check(c.primaryActionVisible() && c.primaryActionEnabled()
+              && c.primaryActionLabel().startsWith("VIEW REPORT"),
+          "D3: VIEW REPORT primary action after RESULTS ARE FINAL",
+          c.primaryActionLabel());
+    c.executePrimaryAction();
+    check(r.reportRequestedCount == 1 && inStage(c, Stage::Complete),
+          "D3: executePrimaryAction emits reportRequested, state intact");
     check(c.officialShotCount() == 35, "officialShotCount is 35 at completion");
     {
         // Phase C: every official stage carries a persisted Complete verdict.
