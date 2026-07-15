@@ -398,6 +398,35 @@ static void runFullFinal()
               "D1 complete run: timeline mirrors the full command history");
         check(c.officialShotRecords().size() == 35 && c.sighterCount() == 4,
               "D1: controller retained 35 official records + sighter count");
+
+        // D1 expansion: validation panel all-green on a complete run.
+        const QVariantMap val = rep.value("validation").toMap();
+        bool allOk = val.value("valid").toBool();
+        const QVariantList vchecks = val.value("checks").toList();
+        for (const QVariant& v : vchecks)
+            if (!v.toMap().value("ok").toBool()) allOk = false;
+        check(allOk && vchecks.size() == 6,
+              "D1x complete run: 6 validation checks, all green",
+              QString::number(vchecks.size()));
+        // Running total is monotone and ends at the cumulative total.
+        const QVariantList shots2 = rep.value("shots").toList();
+        bool runOk = shots2.size() == 35;
+        double prev = -1;
+        for (const QVariant& v : shots2) {
+            const double rt = v.toMap().value("runningTotal").toDouble();
+            if (rt < prev) runOk = false;
+            prev = rt;
+        }
+        runOk = runOk && qFuzzyCompare(prev + 1.0,
+                    rep.value("summary").toMap().value("cumulativeTotal").toDouble() + 1.0);
+        check(runOk, "D1x: runningTotal monotone, ends at cumulative total");
+        // Position plots: every real shot lands in exactly one plot group.
+        const QVariantList plots = rep.value("positionPlots").toList();
+        int plotShots = 0;
+        for (const QVariant& v : plots) plotShots += v.toMap().value("shots").toList().size();
+        check(plots.size() == 3 && plotShots == 35,
+              "D1x: 3 position plots covering all 35 real shots",
+              QString::number(plotShots));
     }
 }
 
@@ -784,6 +813,62 @@ static void runTimeoutFinal()
               QString::number(rep.value("incidents").toList().size()));
         // Immutable output: rebuilding from the same stored state is identical.
         check(c.buildReport() == rep, "D1: rebuild from unchanged state is identical");
+
+        // D1 expansion checks on the incomplete run.
+        {
+            const QVariantMap val = rep.value("validation").toMap();
+            bool missFailed = false, completedFailed = false;
+            for (const QVariant& v : val.value("checks").toList()) {
+                const QVariantMap m = v.toMap();
+                if (m.value("label") == "No Missing Shots" && !m.value("ok").toBool()
+                        && m.value("detail").toString().contains("missing"))
+                    missFailed = true;
+                if (m.value("label") == "Final Completed" && !m.value("ok").toBool())
+                    completedFailed = true;
+            }
+            check(!val.value("valid").toBool() && missFailed && completedFailed,
+                  "D1x timeout run: validation flags incompleteness with detail");
+
+            // Stage stats over real shots: kneeling 3 x 9.5.
+            bool kneelOk2 = false;
+            for (const QVariant& v : rep.value("stages").toList()) {
+                const QVariantMap st = v.toMap();
+                if (st.value("stageId").toInt() != 3) continue;
+                kneelOk2 = qFuzzyCompare(st.value("average").toDouble(), 9.5)
+                        && qFuzzyCompare(st.value("bestShot").toDouble(), 9.5)
+                        && qFuzzyCompare(st.value("worstShot").toDouble(), 9.5)
+                        && st.value("innerTens").toInt() == 0;
+            }
+            check(kneelOk2, "D1x: kneeling avg/best/worst/inner from real shots");
+
+            // Summary extremes + inner tens (10.6 and 10.2 count; 9.5 lowest).
+            const QVariantMap sum = rep.value("summary").toMap();
+            check(qFuzzyCompare(sum.value("highestShot").toDouble(), 10.6)
+                      && sum.value("highestShotNumber").toInt() == 32
+                      && qFuzzyCompare(sum.value("lowestShot").toDouble(), 9.5),
+                  "D1x: summary extremes with shot numbers");
+            check(sum.value("innerTens").toInt() == 2,   // 10.2 + 10.6 only
+                  "D1x: inner tens counted at the 10.2 convention",
+                  QString::number(sum.value("innerTens").toInt()));
+
+            // Position comparison: 3 rows, standing carries series+singles.
+            const QVariantList cmpL = rep.value("positionComparison").toList();
+            bool cmpOk = cmpL.size() == 3;
+            double standing = 0;
+            for (const QVariant& v : cmpL) {
+                const QVariantMap m = v.toMap();
+                if (m.value("label") == "STANDING") standing = m.value("score").toDouble();
+                if (m.value("barPct").toInt() > 100) cmpOk = false;
+            }
+            check(cmpOk && qFuzzyCompare(standing, 10.2 + 10.1 + 5 * 10.0 + 10.6),
+                  "D1x: position comparison (standing = series + singles)",
+                  QString::number(standing));
+
+            // Performance summary present with hold placeholders on shots.
+            check(rep.value("performance").toMap().value("available").toBool()
+                      && rep.value("shots").toList().first().toMap().value("holdSec").toInt() == -1,
+                  "D1x: performance summary available; holdSec is a placeholder");
+        }
     }
 }
 
