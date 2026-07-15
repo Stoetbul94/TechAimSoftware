@@ -21,8 +21,24 @@ Item {
     readonly property int snBase: sligterMode ? 0 : Math.max(0, globalMatchModel.count - pagingModel.count)
     // Series navigation state (drives the new chevron buttons; auto-updates).
     readonly property int maxSeriesPage: pagingModel.count > 0 ? Math.floor((pagingModel.count - 1) / 10) : 0
-    readonly property bool canPrevSeries: currentPageIndex > 0
-    readonly property bool canNextSeries: currentPageIndex < maxSeriesPage
+    readonly property bool canPrevSeries: shootingPage.isFinalsMatch
+                                          ? finalsPageIndex > 0
+                                          : currentPageIndex > 0
+    readonly property bool canNextSeries: shootingPage.isFinalsMatch
+                                          ? finalsPageIndex < finalsMaxPage
+                                          : currentPageIndex < maxSeriesPage
+
+    // ── 3P FINAL table paging (FIX-R5) ──────────────────────────────────
+    // The finals table pages by STAGE GROUP (K / P / S1 / S2 / SINGLES), not
+    // by qualification's 10-shot series. All accepted rows live in the plain
+    // JS array finalsRows (page tag included — kept off the ListModel so the
+    // locked role set is untouched); listModel is rebuilt per viewed page.
+    // Navigation uses finalsPageIndex ONLY — currentPageIndex and the
+    // qualification page machinery (centerPanel refresh chain) never run.
+    property var finalsRows: []
+    property int finalsPageIndex: 0
+    property int finalsMaxPage: 0
+    readonly property var finalsPageLabels: ["K", "P", "S1", "S2", "SINGLES"]
     property int totalStars : 0
     property int seriesStars : 0
     property int totalTimeConsume: 0
@@ -105,6 +121,12 @@ Item {
     }
 
     onCurrentShootIndexChanged: {
+        // 3P FINAL (FIX-R5): the finals table indexes rows within a STAGE
+        // page, which does not map onto the per-window display buffer —
+        // reading pagingModel here would feed the score bubble a wrong
+        // record. The finals bubble is driven by the accept pipeline.
+        if (shootingPage.isFinalsMatch)
+            return
         // Read from the record being paged (full match in 3P review, current
         // display buffer otherwise). In review currentShootIndex is
         // match-absolute, so indexing the 20-shot position buffer here returned
@@ -575,14 +597,11 @@ Item {
         anchors.left: series_text_field.left
         //anchors.topMargin: -3
         //        anchors.horizontalCenter: series_text_field.horizontalCenter
-        // FINALS: the header names the stage group (K/P/S1/S2/SINGLES);
-        // qualification keeps its continuous series number.
+        // FINALS (FIX-R5): the header names the stage page being VIEWED
+        // (K/P/S1/S2/SINGLES \u2014 chevrons page through them); qualification
+        // keeps its continuous series number.
         text : shootingPage.isFinalsMatch
-               ? (FINALS3P.stageId === 3 ? "K" : FINALS3P.stageId === 4 ? "K \u00b7 P SIGHT"
-                  : FINALS3P.stageId === 5 ? "P" : FINALS3P.stageId === 6 ? "P \u00b7 S SIGHT"
-                  : FINALS3P.stageId === 7 ? "S1" : FINALS3P.stageId === 8 ? "S2"
-                  : FINALS3P.stageId >= 9 && FINALS3P.stageId <= 13 ? "SINGLES"
-                  : FINALS3P.stageId >= 14 ? "DONE" : "SIGHT")
+               ? finalsPageLabels[Math.min(finalsPageIndex, finalsPageLabels.length - 1)]
                : (Math.floor(snBase/10) + currentPageIndex + 1)
         color: "white"
         font.pixelSize: dafaultFontSize
@@ -802,6 +821,10 @@ Item {
         anchors.fill: num
         model: listModel
         delegate: matchSeriesDelegate
+        // FIX-R2: without clipping, rows scrolled past the viewport paint over
+        // the table header (qualification never scrolls — it rebuilds the
+        // model per 10-shot page — but the finals table accumulates rows).
+        clip: true
 
         onCountChanged: {
             if (count != 0)
@@ -974,20 +997,73 @@ Item {
         listModel.clear()
     }
 
+    // FIX-R5: stage id -> table page. Sighting stages group with the official
+    // stage they precede (prep+K, P sight+P, S sight+S1); singles share one.
+    function finalsStagePage(stageId)
+    {
+        if (stageId <= 3) return 0        // Ceremony/prep/sight + KneelingMatch
+        if (stageId <= 5) return 1        // ProneSighting + ProneMatch
+        if (stageId <= 7) return 2        // StandingSighting + Series 1
+        if (stageId === 8) return 3       // Series 2
+        return 4                          // Singles 31-35
+    }
+
+    // Rebuild the visible table from the master row store for the page being
+    // viewed. The `page` tag stays on the JS objects — listModel's role set
+    // was locked at startup and never learns it.
+    function rebuildFinalsTablePage()
+    {
+        listModel.clear()
+        for (var i = 0; i < finalsRows.length; ++i) {
+            var row = finalsRows[i]
+            if (row.page !== finalsPageIndex)
+                continue
+            listModel.append({ "direction": row.direction,
+                               "score": row.score,
+                               "timeComsumed": row.timeComsumed,
+                               "calculatedscore": row.calculatedscore,
+                               "sn": row.sn,
+                               "isSighterRow": row.isSighterRow })
+        }
+        matchScore.model = listModel
+    }
+
     // FIX4: finals rows come from the SAME accepted records the controller
     // emitted (single source). Official shots carry their finals shot number;
     // sighters appear marked "S" and never touch official totals.
+    // FIX-R5: rows accumulate in finalsRows grouped by stage page; the live
+    // view always follows the newest shot's page (chevrons page back through
+    // K / P / S1 / S2 / SINGLES for review).
     function finalsOnShotAccepted(rec)
     {
         if (!isFinalsMatch)
             return
-        listModel.append({ "direction": rec.direction,
-                           "score": rec.score,
-                           "timeComsumed": rec.timeComsumed,
-                           "calculatedscore": rec.calculatedscore,
-                           "sn": rec.isSighter ? 0 : rec.finalsShotNumber,
-                           "isSighterRow": rec.isSighter === true })
-        matchScore.model = listModel
+        var row = { "direction": rec.direction,
+                    "score": rec.score,
+                    "timeComsumed": rec.timeComsumed,
+                    "calculatedscore": rec.calculatedscore,
+                    "sn": rec.isSighter ? 0 : rec.finalsShotNumber,
+                    "isSighterRow": rec.isSighter === true,
+                    "page": finalsStagePage(rec.finalsStageId) }
+        finalsRows.push(row)
+        if (row.page > finalsMaxPage)
+            finalsMaxPage = row.page
+        if (finalsPageIndex === row.page) {
+            // Same page: append in place. A full rebuild (ListModel.clear)
+            // inside the shot-accepted signal chain with live delegates is
+            // the known crash pattern (see 3P doc gotchas) — avoid it here.
+            listModel.append({ "direction": row.direction,
+                               "score": row.score,
+                               "timeComsumed": row.timeComsumed,
+                               "calculatedscore": row.calculatedscore,
+                               "sn": row.sn,
+                               "isSighterRow": row.isSighterRow })
+            matchScore.model = listModel
+        } else {
+            // New stage: follow it, deferring the rebuild out of the handler.
+            finalsPageIndex = row.page
+            Qt.callLater(rebuildFinalsTablePage)
+        }
     }
 
     function addToSeries(angle,radius,calScore,xmm,ymm)
@@ -1129,6 +1205,15 @@ Item {
 
     function leftClicked()
     {
+        // FIX-R5: finals pages by stage group, never through currentPageIndex
+        // (whose change handler drives the qualification face-refresh chain).
+        if (shootingPage.isFinalsMatch) {
+            if (finalsPageIndex > 0) {
+                --finalsPageIndex
+                rebuildFinalsTablePage()
+            }
+            return
+        }
         listNavigationON = true
         --currentPageIndex
         var maxPageIndex = Math.floor(pagingModel.count/10)
@@ -1144,6 +1229,14 @@ Item {
 
     function rightClicked()
     {
+        // FIX-R5: see leftClicked().
+        if (shootingPage.isFinalsMatch) {
+            if (finalsPageIndex < finalsMaxPage) {
+                ++finalsPageIndex
+                rebuildFinalsTablePage()
+            }
+            return
+        }
         listNavigationON = true
         ++currentPageIndex
         var maxPageIndex = Math.floor(pagingModel.count/10)
@@ -1230,6 +1323,10 @@ Item {
         globalModelOfData.clear()
         seriesModelScore.clear()
         currentPageIndex = 0
+        // FIX-R5: finals stage-paging state
+        finalsRows = []
+        finalsPageIndex = 0
+        finalsMaxPage = 0
         totalStars = 0
         seriesStars = 0
         totalTimeConsume = 0

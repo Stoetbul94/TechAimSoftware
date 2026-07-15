@@ -536,3 +536,40 @@ formatting, and the lower-case `audioCueId` contract on command events.
 | D2 | FinalsReportView (pure content, 3 A4 pages) | DONE (`e8ce907`) |
 | D3 | Report-window Finals tab · VIEW REPORT action · createFinalsPdf | DONE (`84a10a9`) |
 | D4 | FinalsAudioService · ceremony introduction · end-to-end validation | DONE |
+
+## Display fix phase FIX-R1..R5 (post-Phase-D manual test)
+
+Manual testing surfaced a "phantom shot" and a cumulative Times column.
+Root causes were all display-layer; controller totals, models and journal
+were verified correct throughout (TOTAL 208.9 == controller for 20 shots).
+
+- **FIX-R1 — phantom marker**: the qualification selected-shot marker
+  (`selectedRect`, CenterPane) froze at a stale position with number
+  `snBase(0) + currentShootIndex + 1` — currentShootIndex tracked the
+  finals table (all records incl. sighters, e.g. 24/28), exceeding the
+  per-window display buffer so `refreshPosition()` bailed. Hidden in
+  finals; the overlay's own last-shot red highlight remains.
+- **FIX-R2 — table clipping**: `matchScore` ListView had no `clip`;
+  qualification rebuilds the model per 10-shot page and never scrolls, but
+  the finals table scrolls — overflow rows painted over the Score/Times
+  header. `clip: true`.
+- **FIX-R3 — per-shot time**: finals `timeComsumed` redefined from
+  "seconds since window open" (cumulative — the 2,3,4… column) to the
+  per-shot split (first shot of a window counts from window open;
+  `ShotContext.hasPrevInWindow` distinguishes a genuine 0 s split). Applies
+  to the table, journal and report Time column from now on; older journals
+  carry the old semantic.
+- **FIX-R5 — stage paging**: the finals table now pages by stage group —
+  K / P / S1 / S2 / SINGLES (sighting stages group with the stage they
+  precede; header shows the viewed page label). Rows accumulate in a plain
+  JS master store (`finalsRows`, page tag kept off the role-locked
+  ListModel); the visible model appends in place on the live page and only
+  rebuilds — deferred via `Qt.callLater` — on a stage change (ListModel
+  reset inside a signal chain with live delegates is the known crash
+  pattern). Chevrons drive `finalsPageIndex` only; `currentPageIndex` and
+  the qualification face-refresh chain never run in finals. The score
+  bubble no longer reads `pagingModel` from table selection in finals
+  (page-relative indices don't map onto the per-window buffer).
+- **FIX-R4 — validation**: 169 checks, 0 failures (adds the three FIX-R3
+  split-semantics checks); app rebuilt with regenerated qrc and
+  launch-verified clean.
