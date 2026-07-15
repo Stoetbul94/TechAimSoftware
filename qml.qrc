@@ -38,6 +38,7 @@
         <file>FinalsIncidentToast.qml</file>
         <file>FinalsDeveloperDrawer.qml</file>
         <file>FinalsReportView.qml</file>
+        <file>FinalsReportTarget.qml</file>
         <file>MatchReportView.qml</file>
         <file>Report3P.qml</file>
         <file>Report3PSeries.qml</file>

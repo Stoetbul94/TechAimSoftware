@@ -20,6 +20,10 @@ Item {
 
     property var report: null
     property string generatedStamp: ""
+    // Shared mm extent for the three target plots so K/P/S render at the SAME
+    // zoom (comparable groups). Presentation scaling only — the max radius of
+    // the report's stored coordinates, like the coach maps' shared extent.
+    property real plotExtentMm: 0
 
     implicitHeight: pagesCol.height + 40
 
@@ -34,6 +38,16 @@ Item {
         }
         finalsReport.report = FINALS3P.buildReport(meta)
         finalsReport.generatedStamp = now.toLocaleString(Qt.locale(""), "ddd yyyy-MM-dd hh:mm")
+        // Shared plot zoom (presentation only): worst-shot radius across all
+        // three position groups.
+        var ext = 0
+        var plots = finalsReport.report ? finalsReport.report.positionPlots : []
+        for (var p = 0; p < plots.length; ++p)
+            for (var q = 0; q < plots[p].shots.length; ++q) {
+                var sh = plots[p].shots[q]
+                ext = Math.max(ext, Math.sqrt(sh.x * sh.x + sh.y * sh.y))
+            }
+        finalsReport.plotExtentMm = ext
         finalsReport.rebuildCharts()
     }
 
@@ -424,10 +438,36 @@ Item {
                     anchors.margins: 34
                     spacing: 12
 
+                    SectionTitle { width: parent.width; title: "Target Plots" }
+
+                    Item {
+                        width: parent.width
+                        height: 258
+                        Row {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            spacing: 14
+                            Repeater {
+                                model: finalsReport.report ? finalsReport.report.positionPlots : []
+                                delegate: FinalsReportTarget {
+                                    title: modelData.label
+                                    shots: modelData.shots
+                                    side: 226
+                                    extentMm: finalsReport.plotExtentMm
+                                }
+                            }
+                        }
+                    }
+                    Text {
+                        width: parent.width
+                        horizontalAlignment: Text.AlignHCenter
+                        text: "True ISSF ring geometry · holes at bullet scale · ● ≥ 10.5   ● 10.0 – 10.4   ● < 10.0"
+                        color: "#8a8f98"; font.family: "Segoe UI"; font.pixelSize: 9
+                    }
+
                     SectionTitle { width: parent.width; title: "Momentum — Shot Score" }
 
                     ChartView {
-                        width: parent.width; height: 330
+                        width: parent.width; height: 280
                         antialiasing: true; legend.visible: false
                         backgroundColor: "transparent"; plotAreaColor: "transparent"
                         theme: ChartView.ChartThemeLight
@@ -455,7 +495,7 @@ Item {
                     SectionTitle { width: parent.width; title: "Cumulative Score" }
 
                     ChartView {
-                        width: parent.width; height: 330
+                        width: parent.width; height: 280
                         antialiasing: true; legend.visible: false
                         backgroundColor: "transparent"; plotAreaColor: "transparent"
                         theme: ChartView.ChartThemeLight
