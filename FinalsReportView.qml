@@ -81,6 +81,16 @@ Item {
         return (finalsReport.report && finalsReport.report.summary)
                 ? finalsReport.report.summary[key] : dflt
     }
+    // Builder-derived validation panel (display only; verdicts never
+    // recomputed here).
+    function validationChecks() {
+        return (finalsReport.report && finalsReport.report.validation)
+                ? finalsReport.report.validation.checks : []
+    }
+    function validationValid() {
+        return (finalsReport.report && finalsReport.report.validation)
+                ? finalsReport.report.validation.valid === true : false
+    }
 
     // How many rows page 3 can show before pointing at the session journal —
     // the cap is stated on the page, never silent.
@@ -97,7 +107,7 @@ Item {
             y: 20
             spacing: 20
 
-            // ── Page 1: header · result summary · stage breakdown ────────
+            // ── Page 1: identity · validation · summary · stages · bars ──
             Rectangle {
                 id: page1
                 width: 794; height: 1123          // A4 @ 96 dpi
@@ -107,74 +117,161 @@ Item {
                     anchors.top: parent.top
                     anchors.left: parent.left; anchors.right: parent.right
                     anchors.margins: 34
-                    spacing: 14
+                    spacing: 12
 
-                    ReportHeader {
-                        width: parent.width
-                        reportTitle: "3P Final Report"
-                        athlete: (typeof userName !== "undefined" && userName) ? userName : ""
-                        discipline: "50m Rifle 3 Positions"
-                        sessionType: "Final (Training)"
-                        dateText: finalsReport.generatedStamp
+                    // ── Report header (finals-local; the shared ReportHeader
+                    //    stays untouched for qualification reports) ─────────
+                    Item {
+                        width: parent.width; height: 88
+                        Column {
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 6
+                            Image {
+                                source: "qrc:/images/logo/techaim_color.png"
+                                height: 30
+                                width: sourceSize.height > 0 ? height * sourceSize.width / sourceSize.height : 0
+                                fillMode: Image.PreserveAspectFit
+                                smooth: true; mipmap: true
+                            }
+                            Column {
+                                spacing: 1
+                                Text {
+                                    text: "3P FINAL REPORT"
+                                    color: "#191b1f"; font.family: "Segoe UI"
+                                    font.pixelSize: 20; font.bold: true; font.letterSpacing: 0.5
+                                }
+                                Text {
+                                    text: "ISSF 50m Rifle 3 Positions — Final · 35 shots · decimal scoring"
+                                    color: "#6b7280"; font.family: "Segoe UI"; font.pixelSize: 11
+                                }
+                            }
+                        }
+                        // Protocol meta block (Lane / Target ID reserved for RMS).
+                        Grid {
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            columns: 2; columnSpacing: 26; rowSpacing: 3
+                            Repeater {
+                                model: [
+                                    { l: "Athlete",    v: finalsReport.summaryVal("athlete", "") },
+                                    { l: "Discipline", v: "50m Rifle 3 Positions" },
+                                    { l: "Date",       v: finalsReport.summaryVal("dateTime", "") },
+                                    { l: "Session",    v: finalsReport.summaryVal("sessionType", "") },
+                                    { l: "Software",   v: finalsReport.summaryVal("softwareVersion", "") },
+                                    { l: "Mode",       v: "Training" },
+                                    { l: "Lane",       v: finalsReport.summaryVal("lane", "") || "—" },
+                                    { l: "Target ID",  v: finalsReport.summaryVal("targetId", "") || "—" }
+                                ]
+                                delegate: Row {
+                                    spacing: 6
+                                    Text { text: modelData.l + ":"; color: "#8a8f98"; font.pixelSize: 10; font.family: "Segoe UI" }
+                                    Text { text: String(modelData.v); color: "#33373d"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
+                                }
+                            }
+                        }
+                        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 2; color: "#a80038" }
                     }
 
-                    // Completion banner — the persisted verdict, not a guess.
+                    // ── MATCH VALIDATION ─────────────────────────────────
                     Rectangle {
-                        width: parent.width; height: 44; radius: 10
-                        color: "white"
-                        border.width: 1
-                        border.color: finalsReport.completionColor(
-                            finalsReport.report ? finalsReport.report.completionStatus : "")
-                        Row {
-                            anchors.left: parent.left; anchors.leftMargin: 14
-                            anchors.verticalCenter: parent.verticalCenter
-                            spacing: 10
-                            Rectangle {
-                                width: 10; height: 10; radius: 5
-                                anchors.verticalCenter: parent.verticalCenter
-                                color: finalsReport.completionColor(
-                                    finalsReport.report ? finalsReport.report.completionStatus : "")
+                        width: parent.width
+                        height: valCol.height + 24
+                        radius: 8
+                        color: "#f7f8fa"; border.color: "#e6e8ec"; border.width: 1
+                        Column {
+                            id: valCol
+                            x: 16; y: 12; width: parent.width - 32
+                            spacing: 8
+                            Item {
+                                width: parent.width; height: 18
+                                Text {
+                                    text: "MATCH VALIDATION"
+                                    color: "#5b6270"; font.family: "Segoe UI"
+                                    font.pixelSize: 11; font.bold: true; font.letterSpacing: 1
+                                }
+                                Text {
+                                    anchors.right: parent.right
+                                    text: finalsReport.validationValid()
+                                          ? "✓  REPORT VERIFIED" : "⚠  MATCH INCOMPLETE"
+                                    color: finalsReport.validationValid() ? "#1f8a4c" : "#c77700"
+                                    font.family: "Segoe UI"; font.pixelSize: 11; font.bold: true
+                                    font.letterSpacing: 0.5
+                                }
                             }
-                            Text {
-                                text: "FINAL " + (finalsReport.report
-                                                  ? finalsReport.report.completionStatus : "—")
-                                color: finalsReport.completionColor(
-                                    finalsReport.report ? finalsReport.report.completionStatus : "")
-                                font.family: "Segoe UI"; font.pixelSize: 15; font.bold: true
-                                font.letterSpacing: 0.6
+                            Grid {
+                                width: parent.width
+                                columns: 3; columnSpacing: 12; rowSpacing: 6
+                                Repeater {
+                                    model: finalsReport.validationChecks()
+                                    delegate: Row {
+                                        spacing: 6
+                                        Text {
+                                            text: modelData.ok ? "✓" : "✗"
+                                            color: modelData.ok ? "#1f8a4c" : "#a80038"
+                                            font.family: "Segoe UI"; font.pixelSize: 12; font.bold: true
+                                        }
+                                        Text {
+                                            text: modelData.label
+                                            color: "#191b1f"; font.family: "Segoe UI"; font.pixelSize: 11
+                                        }
+                                    }
+                                }
                             }
-                        }
-                        Text {
-                            anchors.right: parent.right; anchors.rightMargin: 14
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: "35-shot ISSF Final program · decimal scoring"
-                            color: "#8a8f98"; font.family: "Segoe UI"; font.pixelSize: 11
+                            // Failure reasons — only for failed checks with detail.
+                            Column {
+                                width: parent.width
+                                spacing: 2
+                                Repeater {
+                                    model: finalsReport.validationChecks().filter(
+                                               function (c) { return !c.ok && c.detail.length > 0 })
+                                    delegate: Text {
+                                        width: parent.width
+                                        text: "Reason — " + modelData.label + ": " + modelData.detail
+                                        color: "#c77700"; font.family: "Segoe UI"; font.pixelSize: 10
+                                        wrapMode: Text.WordWrap
+                                    }
+                                }
+                            }
                         }
                     }
 
-                    SectionTitle { width: parent.width; title: "Result Summary" }
+                    SectionTitle { width: parent.width; title: "Executive Summary" }
 
                     Grid {
                         id: finalsMetricGrid
                         width: parent.width
-                        columns: 3; columnSpacing: 12; rowSpacing: 12
+                        columns: 3; columnSpacing: 10; rowSpacing: 10
                         property real cw: (width - 2 * columnSpacing) / 3
 
                         MetricCard { width: finalsMetricGrid.cw; label: "Total Score"
                             value: Number(finalsReport.summaryVal("cumulativeTotal", 0)).toFixed(1) }
                         MetricCard { width: finalsMetricGrid.cw; label: "Official Shots"
                             value: finalsReport.summaryVal("officialShotCount", 0) + " / 35" }
-                        MetricCard { width: finalsMetricGrid.cw; label: "Average / Shot"
+                        MetricCard { width: finalsMetricGrid.cw; label: "Average Shot"
                             value: finalsReport.summaryVal("officialShotCount", 0) > 0
-                                   ? (finalsReport.summaryVal("cumulativeTotal", 0)
-                                      / finalsReport.summaryVal("officialShotCount", 0)).toFixed(2)
-                                   : "—" }
+                                   ? Number(finalsReport.summaryVal("averageShot", 0)).toFixed(2) : "—" }
+                        MetricCard { width: finalsMetricGrid.cw; label: "Highest Shot"; valueSize: 22
+                            value: finalsReport.summaryVal("officialShotCount", 0) > 0
+                                   ? Number(finalsReport.summaryVal("highestShot", 0)).toFixed(1) : "—"
+                            unit: finalsReport.summaryVal("highestShotNumber", 0) > 0
+                                  ? "shot " + finalsReport.summaryVal("highestShotNumber", 0) : "" }
+                        MetricCard { width: finalsMetricGrid.cw; label: "Lowest Shot"; valueSize: 22
+                            value: finalsReport.summaryVal("officialShotCount", 0) > 0
+                                   ? Number(finalsReport.summaryVal("lowestShot", 0)).toFixed(1) : "—"
+                            unit: finalsReport.summaryVal("lowestShotNumber", 0) > 0
+                                  ? "shot " + finalsReport.summaryVal("lowestShotNumber", 0) : "" }
+                        MetricCard { width: finalsMetricGrid.cw; label: "Inner 10s"
+                            value: "" + finalsReport.summaryVal("innerTens", 0)
+                            unit: "≥ 10.2" }
                         MetricCard { width: finalsMetricGrid.cw; label: "Sighting Shots"
                             value: "" + finalsReport.summaryVal("sighterCount", 0) }
-                        MetricCard { width: finalsMetricGrid.cw; label: "Missing (DNS)"
-                            value: "" + finalsReport.summaryVal("missingCount", 0) }
+                        MetricCard { width: finalsMetricGrid.cw; label: "Missing Shots"
+                            value: "" + finalsReport.summaryVal("missingCount", 0)
+                            unit: finalsReport.summaryVal("missingCount", 0) > 0 ? "DNS" : "" }
                         MetricCard { width: finalsMetricGrid.cw; label: "Incidents"
-                            value: "" + finalsReport.summaryVal("incidentCount", 0) }
+                            value: "" + finalsReport.summaryVal("incidentCount", 0)
+                            unit: finalsReport.summaryVal("incidentCount", 0) > 0 ? "rejected triggers" : "" }
                     }
 
                     SectionTitle { width: parent.width; title: "Stage Breakdown" }
@@ -183,41 +280,96 @@ Item {
                         width: parent.width
                         spacing: 0
                         Rectangle {
-                            width: parent.width; height: 26; color: "#f1f3f5"
+                            width: parent.width; height: 24; color: "#f1f3f5"
                             Row {
                                 anchors.fill: parent
-                                Text { width: parent.width*0.34; height: parent.height; text: "Stage";  leftPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 11; font.bold: true; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.18; height: parent.height; text: "Shots";  horizontalAlignment: Text.AlignRight; rightPadding: 12; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 11; font.bold: true; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.22; height: parent.height; text: "Score";  horizontalAlignment: Text.AlignRight; rightPadding: 12; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 11; font.bold: true; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.26; height: parent.height; text: "Status"; horizontalAlignment: Text.AlignRight; rightPadding: 12; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 11; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.17; height: parent.height; text: "Stage";   leftPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.09; height: parent.height; text: "Shots";   horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.12; height: parent.height; text: "Score";   horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.10; height: parent.height; text: "Average"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.10; height: parent.height; text: "Best";    horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.10; height: parent.height; text: "Worst";   horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.08; height: parent.height; text: "★ 10";    horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.10; height: parent.height; text: "Time";    horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.14; height: parent.height; text: "Status";  horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
                             }
                             Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 2; color: "#a80038" }
                         }
                         Repeater {
                             model: finalsReport.report ? finalsReport.report.stages : []
                             delegate: Rectangle {
-                                width: parent.width; height: 30
+                                width: parent.width; height: 24
                                 color: index % 2 ? "#f7f8fa" : "#ffffff"
                                 Row {
                                     anchors.fill: parent
-                                    Text { width: parent.width*0.34; height: parent.height; text: finalsReport.stageDisplay(modelData.stageId); leftPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 12; font.family: "Segoe UI" }
-                                    Text { width: parent.width*0.18; height: parent.height; text: modelData.fired + " / " + modelData.expected; horizontalAlignment: Text.AlignRight; rightPadding: 12; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 12; font.family: "Segoe UI" }
-                                    Text { width: parent.width*0.22; height: parent.height; text: Number(modelData.subtotal).toFixed(1); horizontalAlignment: Text.AlignRight; rightPadding: 12; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 12; font.bold: true; font.family: "Segoe UI" }
-                                    Text { width: parent.width*0.26; height: parent.height; text: finalsReport.statusDisplay(modelData.statusName); horizontalAlignment: Text.AlignRight; rightPadding: 12; verticalAlignment: Text.AlignVCenter; color: finalsReport.statusColor(modelData.statusName); font.pixelSize: 11; font.bold: true; font.family: "Segoe UI" }
+                                    Text { width: parent.width*0.17; height: parent.height; text: finalsReport.stageDisplay(modelData.stageId); leftPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.family: "Segoe UI"; elide: Text.ElideRight }
+                                    Text { width: parent.width*0.09; height: parent.height; text: modelData.fired + "/" + modelData.expected; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.family: "Segoe UI" }
+                                    Text { width: parent.width*0.12; height: parent.height; text: Number(modelData.subtotal).toFixed(1); horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
+                                    Text { width: parent.width*0.10; height: parent.height; text: modelData.fired > 0 ? Number(modelData.average).toFixed(2) : "—"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.family: "Segoe UI" }
+                                    Text { width: parent.width*0.10; height: parent.height; text: modelData.fired > 0 ? Number(modelData.bestShot).toFixed(1) : "—"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.family: "Segoe UI" }
+                                    Text { width: parent.width*0.10; height: parent.height; text: modelData.fired > 0 ? Number(modelData.worstShot).toFixed(1) : "—"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.family: "Segoe UI" }
+                                    Text { width: parent.width*0.08; height: parent.height; text: modelData.fired > 0 ? "" + modelData.innerTens : "—"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.family: "Segoe UI" }
+                                    Text { width: parent.width*0.10; height: parent.height; text: modelData.fired > 0 ? modelData.timeUsedSec + " s" : "—"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.family: "Segoe UI" }
+                                    Text { width: parent.width*0.14; height: parent.height; text: finalsReport.statusDisplay(modelData.statusName); horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: finalsReport.statusColor(modelData.statusName); font.pixelSize: 9; font.bold: true; font.family: "Segoe UI" }
                                 }
                                 Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: "#eceef1" }
                             }
                         }
-                        // Cumulative total row
+                        // TOTAL row — every figure straight from the report summary.
                         Rectangle {
-                            width: parent.width; height: 32; color: "#f1f3f5"
+                            width: parent.width; height: 28; color: "#f1f3f5"
                             Row {
                                 anchors.fill: parent
-                                Text { width: parent.width*0.52; height: parent.height; text: "TOTAL"; leftPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 12; font.bold: true; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.22; height: parent.height; text: Number(finalsReport.summaryVal("cumulativeTotal", 0)).toFixed(1); horizontalAlignment: Text.AlignRight; rightPadding: 12; verticalAlignment: Text.AlignVCenter; color: "#a80038"; font.pixelSize: 13; font.bold: true; font.family: "Segoe UI" }
-                                Item { width: parent.width*0.26; height: 1 }
+                                Text { width: parent.width*0.17; height: parent.height; text: "TOTAL"; leftPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.09; height: parent.height; text: finalsReport.summaryVal("officialShotCount", 0) + "/35"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.12; height: parent.height; text: Number(finalsReport.summaryVal("cumulativeTotal", 0)).toFixed(1); horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#a80038"; font.pixelSize: 11; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.10; height: parent.height; text: finalsReport.summaryVal("officialShotCount", 0) > 0 ? Number(finalsReport.summaryVal("averageShot", 0)).toFixed(2) : "—"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.10; height: parent.height; text: finalsReport.summaryVal("officialShotCount", 0) > 0 ? Number(finalsReport.summaryVal("highestShot", 0)).toFixed(1) : "—"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.10; height: parent.height; text: finalsReport.summaryVal("officialShotCount", 0) > 0 ? Number(finalsReport.summaryVal("lowestShot", 0)).toFixed(1) : "—"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.08; height: parent.height; text: "" + finalsReport.summaryVal("innerTens", 0); horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
+                                Item { width: parent.width*0.10; height: 1 }
+                                Text { width: parent.width*0.14; height: parent.height; text: finalsReport.report ? finalsReport.report.completionStatus : "—"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: finalsReport.completionColor(finalsReport.report ? finalsReport.report.completionStatus : ""); font.pixelSize: 9; font.bold: true; font.family: "Segoe UI" }
                             }
                             Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: "#a80038" }
+                        }
+                    }
+
+                    SectionTitle { width: parent.width; title: "Position Comparison" }
+
+                    Column {
+                        width: parent.width
+                        spacing: 8
+                        Repeater {
+                            model: finalsReport.report ? finalsReport.report.positionComparison : []
+                            delegate: Item {
+                                width: parent.width; height: 20
+                                Text {
+                                    width: parent.width * 0.15
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: modelData.label
+                                    color: "#5b6270"; font.family: "Segoe UI"
+                                    font.pixelSize: 10; font.bold: true; font.letterSpacing: 0.5
+                                }
+                                Rectangle {
+                                    x: parent.width * 0.16
+                                    width: parent.width * 0.62; height: 12; radius: 3
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    color: "#eceef1"
+                                    Rectangle {
+                                        width: parent.width * modelData.barPct / 100
+                                        height: parent.height; radius: 3
+                                        color: "#a80038"
+                                    }
+                                }
+                                Text {
+                                    anchors.right: parent.right
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: Number(modelData.score).toFixed(1)
+                                          + "   (" + modelData.firedShots + "/" + modelData.expectedShots + ")"
+                                    color: "#191b1f"; font.family: "Segoe UI"
+                                    font.pixelSize: 11; font.bold: true
+                                }
+                            }
                         }
                     }
                 }
