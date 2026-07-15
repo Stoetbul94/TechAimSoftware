@@ -20,6 +20,9 @@
 
 #include "Finals3PController.h"
 #include "Finals3PTypes.h"
+#include "FinalsAudioService.h"
+
+#include <QDir>
 
 using techaim::finals::Stage;
 
@@ -35,6 +38,9 @@ static void check(bool ok, const char* name, const QString& detail = QString())
         ++g_failures;
         std::printf("FAIL  %s  %s\n", name, qUtf8Printable(detail));
     }
+    // Crash-diagnosable output: without this, an abnormal exit loses
+    // everything after the last 4K stdio block.
+    std::fflush(stdout);
 }
 
 // Spin the event loop until pred() or timeout (real ms). Returns pred() result.
@@ -754,6 +760,72 @@ static void runTimeoutFinal()
     }
 }
 
+// ── Phase D4: deterministic audio service + ceremony polish ────────────────
+static void runD4Checks()
+{
+    // Pure cue -> clip resolution: lower-cased, stateless, no randomness.
+    check(FinalsAudioService::clipPathForCue("Stop", "C:/clips")
+              == QStringLiteral("C:/clips/stop.wav"),
+          "D4 audio: cue resolves to <dir>/<cueid>.wav (lower-case)",
+          FinalsAudioService::clipPathForCue("Stop", "C:/clips"));
+    check(FinalsAudioService::clipPathForCue("LoadSeries", "d")
+              == FinalsAudioService::clipPathForCue("LoadSeries", "d"),
+          "D4 audio: identical cue resolves identically (deterministic)");
+    check(FinalsAudioService::clipPathForCue("", "C:/clips").isEmpty(),
+          "D4 audio: empty cue resolves to nothing");
+
+    // Fallback semantics: missing clip -> beep fallback; present clip -> clip.
+    {
+        FinalsAudioService svc;
+        const QString dir = QStringLiteral("tst_audio_clips");
+        QDir().mkpath(dir);
+        QFile::remove(dir + QStringLiteral("/stop.wav"));
+        svc.setClipsDir(dir);
+        int played = 0; bool lastFb = false;
+        QObject::connect(&svc, &FinalsAudioService::cuePlayed,
+                         [&](const QString&, bool fb) { ++played; lastFb = fb; });
+        svc.playCue(QStringLiteral("stop"));
+        check(played == 1 && lastFb && svc.lastCueUsedFallback(),
+              "D4 audio: missing clip -> system-beep fallback");
+        {
+            QFile f(dir + QStringLiteral("/stop.wav"));
+            f.open(QIODevice::WriteOnly);
+            f.write("RIFF");   // existence is what resolution keys on
+        }
+        svc.playCue(QStringLiteral("stop"));
+        check(played == 2 && !lastFb && !svc.lastCueUsedFallback(),
+              "D4 audio: present clip -> clip path, no fallback");
+        svc.setEnabled(false);
+        svc.playCue(QStringLiteral("stop"));
+        check(played == 2, "D4 audio: disabled service plays nothing");
+    }
+
+    // Ceremony polish: with a configured athlete the Full ceremony announces
+    // the name right after ATHLETES TO THE LINE; the cue ids stay lower-cased
+    // command type names (the audio contract).
+    {
+        Finals3PController c;
+        c.setTimeScale(240.0);
+        c.setAthleteName(QStringLiteral("  Jane Doe "));
+        Recorder r; r.attach(&c);
+        c.startFinal();
+        check(r.commands.size() >= 2
+                  && r.commands.at(0) == "AthletesToLine"
+                  && r.commands.at(1) == "InfoNotice",
+              "D4 ceremony: introduction announced after ATHLETES TO THE LINE",
+              r.commands.join(","));
+        const QString intro = r.commandEvents.at(1).toMap().value("text").toString();
+        check(intro.startsWith("INTRODUCING") && intro.endsWith("JANE DOE"),
+              "D4 ceremony: athlete name announced upper-case, trimmed", intro);
+        check(r.commandEvents.at(0).toMap().value("audioCueId").toString()
+                  == "athletestoline",
+              "D4 audio: command events carry lower-case audioCueId");
+        c.abortFinal();
+    }
+    // No-name runs are covered by runFullFinal's exact command ordering: the
+    // ceremony sequence there is byte-identical to Phase A (no InfoNotice).
+}
+
 int main(int argc, char** argv)
 {
     qputenv("TECHAIM_FINALS_TIMESCALE", "60");
@@ -764,7 +836,9 @@ int main(int argc, char** argv)
     runFullFinal();
     runSecondaryChecks();
     runTimeoutFinal();
+    runD4Checks();
 
     std::printf("=== %d checks, %d failures ===\n", g_checks, g_failures);
+    std::fflush(stdout);
     return g_failures == 0 ? 0 : 1;
 }

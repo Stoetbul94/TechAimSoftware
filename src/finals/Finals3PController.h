@@ -56,6 +56,9 @@ class Finals3PController : public QObject
     Q_PROPERTY(double stageSubtotal READ stageSubtotal NOTIFY totalsChanged)
     Q_PROPERTY(double timeScale READ timeScale WRITE setTimeScale NOTIFY timeScaleChanged)
     Q_PROPERTY(int ceremonyMode READ ceremonyMode WRITE setCeremonyMode NOTIFY configChanged)
+    // D4 ceremony polish: announced during the Full-ceremony introduction
+    // ("INTRODUCING — <NAME>") when non-empty. Set by QML before startFinal().
+    Q_PROPERTY(QString athleteName READ athleteName WRITE setAthleteName NOTIFY configChanged)
 
 public:
     explicit Finals3PController(QObject* parent = nullptr);
@@ -145,6 +148,9 @@ public:
     void setTimeScale(double s);
     int ceremonyMode() const { return static_cast<int>(m_cfg.ceremonyMode); }
     void setCeremonyMode(int m);
+    QString athleteName() const { return m_athleteName; }
+    void setAthleteName(const QString& n)
+        { if (n != m_athleteName) { m_athleteName = n; emit configChanged(); } }
 
 signals:
     void phaseChanged();
@@ -209,6 +215,7 @@ private:
     void infoNoticeForCompletedStage(Stage s);
 
     techaim::finals::Finals3PConfig m_cfg;
+    QString m_athleteName;   // D4: Full-ceremony introduction (optional)
 
     QTimer m_tick;
     QElapsedTimer m_mono;

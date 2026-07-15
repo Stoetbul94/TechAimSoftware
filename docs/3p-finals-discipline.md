@@ -485,3 +485,54 @@ touched.
 **Tests: 157 checks, 0 failures** — adds the D3 completion-action checks
 (VIEW REPORT label/visibility/enabled after Complete; executePrimaryAction
 emits reportRequested exactly once and leaves the state machine intact).
+
+## Phase D4 — deterministic audio service + ceremony polish (implemented)
+
+**FinalsAudioService** (`src/finals/FinalsAudioService.h/.cpp`, exposed as
+`FINALSAUDIO`) — Option 1 as approved: one pre-recorded WAV clip per command
+cue, played via QSoundEffect, with a system-beep fallback per missing clip.
+
+- **Deterministic by construction**: clip resolution is the pure static
+  mapping `clipPathForCue(cueId, dir)` → `<dir>/<cueid>.wav` — no state, no
+  randomness; the same cue always resolves to the same clip. Cue ids are the
+  lower-cased command type names already carried on every command event
+  (`audioCueId`: athletestoline, preparationsightingstart, thirtyseconds,
+  stop, stageoneannouncement, matchfiringstart, fiveminutes, loadseries,
+  startseries, loadsingle, startsingle, infonotice, unload, resultsfinal).
+- **Shipping voices = dropping files**: put `<cueId>.wav` clips in
+  `<appDir>/audio/finals/`; nothing else to configure. Missing clips beep,
+  so every command stays audible.
+- **Controller decoupled**: `QApplication::beep()` was removed from
+  `issueCommand`; main.cpp connects `commandIssued` → the service. The
+  controller has no audio dependency (tests run silent).
+- `enabled`/`volume` properties + `cuePlayed(cueId, usedFallback)` signal
+  (developer drawer / diagnostics).
+- Deployment note: the app now links `QT += multimedia` — a deployed
+  release directory needs `Qt6Multimedia.dll` plus the
+  `multimedia/` backend plugins (ffmpeg/windows) next to Seta.exe.
+
+**Ceremony polish** — new controller property `athleteName` (set by the
+ShootingPage from the logged-in user before `startFinal()`): the Full
+ceremony announces "INTRODUCING — <NAME>" (InfoNotice, upper-cased,
+trimmed) right after ATHLETES TO THE LINE. With no name configured the
+command sequence is identical to Phase A — the exact-ordering test pins
+this. Short/Skip ceremonies are unchanged.
+
+**Test-harness robustness** — the Qt multimedia backend hard-exits the
+process at teardown without flushing stdio; `check()` and the summary now
+`fflush(stdout)` so no output can be lost.
+
+**Tests: 166 checks, 0 failures** — D4 adds: pure/deterministic cue
+resolution (lower-case mapping, identical input → identical output, empty
+cue → nothing), fallback semantics (missing clip → beep, present clip → no
+fallback, disabled service silent), ceremony introduction ordering and
+formatting, and the lower-case `audioCueId` contract on command events.
+
+## Phase D — status
+
+| Step | Deliverable | Status |
+|------|-------------|--------|
+| D1 | FinalsReportData + FinalsReportBuilder + controller retention + buildReport() | DONE (`4c28b8d`) |
+| D2 | FinalsReportView (pure content, 3 A4 pages) | DONE (`e8ce907`) |
+| D3 | Report-window Finals tab · VIEW REPORT action · createFinalsPdf | DONE (`84a10a9`) |
+| D4 | FinalsAudioService · ceremony introduction · end-to-end validation | DONE |

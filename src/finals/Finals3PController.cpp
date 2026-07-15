@@ -694,6 +694,14 @@ void Finals3PController::enterStage(Stage s)
     case Stage::Ceremony:
         if (m_cfg.ceremonyMode == CeremonyMode::Full) {
             issueCommand(CommandType::AthletesToLine, QStringLiteral("ATHLETES TO THE LINE"));
+            // D4 ceremony polish: announce the athlete by name during the
+            // introduction window (single-athlete training simulation). Only
+            // when a name is configured — command ordering is otherwise
+            // identical to Phase A.
+            if (!m_athleteName.trimmed().isEmpty())
+                issueCommand(CommandType::InfoNotice,
+                             QStringLiteral("INTRODUCING — %1")
+                                 .arg(m_athleteName.trimmed().toUpper()));
             m_segmentEndScaled = m_phaseStartScaled + m_cfg.introMs;
             m_seqStep = 0;
         } else { // Short: straight to the hold
@@ -967,8 +975,8 @@ void Finals3PController::issueCommand(CommandType type, const QString& text)
     writeJournal(QStringLiteral("command"), ev);
     m_commandText = text;
     qInfo() << "FINALS3P cmd" << m_commandSeq << commandTypeName(type) << text;
-    // Phase A audio baseline: system beep (FinalsAudioService lands in Phase D).
-    QApplication::beep();
+    // Audio: FinalsAudioService listens to commandIssued (D4) — the
+    // controller itself has no audio dependency.
     emit commandIssued(ev);
 }
 

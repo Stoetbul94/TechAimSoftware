@@ -864,6 +864,8 @@ Item {
             finalsShotSeq = 0
             rightPanel.resetRightPanelModels()   // clears the shot table + totals
             MODREADER.appendToLogFile("3P FINAL: session start (FINALS3P owns timing)")
+            // D4 ceremony polish: the Full ceremony announces the athlete.
+            FINALS3P.athleteName = (typeof userName !== "undefined" && userName) ? userName : ""
             FINALS3P.resetFinal()
             FINALS3P.startFinal()
             return

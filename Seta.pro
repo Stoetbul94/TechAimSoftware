@@ -20,7 +20,8 @@ SOURCES += main.cpp \
     src/bridge/coachreportfeeder.cpp \
     src/bridge/pdfexporter.cpp \
     src/finals/Finals3PController.cpp \
-    src/finals/FinalsReportBuilder.cpp
+    src/finals/FinalsReportBuilder.cpp \
+    src/finals/FinalsAudioService.cpp
 
 # Offline coach-analytics module (pure C++, independent from Qt/QML).
 HEADERS += \
@@ -47,8 +48,11 @@ HEADERS += \
     src/finals/Finals3PConfig.h \
     src/finals/Finals3PController.h \
     src/finals/FinalsReportData.h \
-    src/finals/FinalsReportBuilder.h
+    src/finals/FinalsReportBuilder.h \
+    src/finals/FinalsAudioService.h
 INCLUDEPATH += src/finals
+# QSoundEffect for the finals audio cues (FinalsAudioService).
+QT += multimedia
 
 RESOURCES += qml.qrc \
     images.qrc \

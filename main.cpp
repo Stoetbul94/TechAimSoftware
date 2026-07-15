@@ -28,6 +28,7 @@
 #include "src/bridge/coachreportfeeder.h"
 #include "src/bridge/pdfexporter.h"
 #include "src/finals/Finals3PController.h"
+#include "src/finals/FinalsAudioService.h"
 #include <QLockFile>
 #include <QDir>
 #include <QMessageBox>
@@ -141,6 +142,13 @@ int main(int argc, char *argv[])
     // separate from qualification). QML binds to it; it owns all finals timing.
     Finals3PController finalsController;
     engine.rootContext()->setContextProperty("FINALS3P", &finalsController);
+    // D4: deterministic audio — one WAV clip per command cue from
+    // <appDir>/audio/finals/<cueId>.wav, system-beep fallback per missing
+    // clip. The controller has no audio dependency; the service listens.
+    FinalsAudioService finalsAudio;
+    QObject::connect(&finalsController, &Finals3PController::commandIssued,
+                     &finalsAudio, &FinalsAudioService::onCommandIssued);
+    engine.rootContext()->setContextProperty("FINALSAUDIO", &finalsAudio);
     engine.load(QUrl(QLatin1String("qrc:/main.qml")));
     if (engine.rootObjects().isEmpty())
         return -1;
