@@ -64,6 +64,10 @@ bool PdfExporter::composeToFile(const QString& fileName)
     writer.setPageSize(QPageSize(QPageSize::A4));
     writer.setPageOrientation(QPageLayout::Portrait);
     writer.setPageMargins(QMarginsF(12, 12, 12, 12), QPageLayout::Millimeter);
+    // 300 dpi: the default 1200 dpi made the content width ~8800 device px, a
+    // 6x upscale of the ~1500 px section grabs (blurry and slow to compose).
+    // At 300 dpi the grabs land close to 1:1.
+    writer.setResolution(300);
 
     QPainter painter(&writer);
     if (!painter.isActive()) return false;

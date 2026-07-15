@@ -44,11 +44,16 @@ Item {
         spacing: 12
         Rectangle { width: 6; height: 44; radius: 3; color: header.accent; anchors.verticalCenter: parent.verticalCenter }
         Column {
-            anchors.verticalCenter: parent.verticalCenter; spacing: 2
-            Row {
-                spacing: 6
-                Text { text: "TECH AIM"; color: header.accent; font.bold: true; font.pixelSize: 20; font.family: "Segoe UI"; font.letterSpacing: 1 }
-                Text { text: "· Electronic Target"; color: "#9aa0aa"; font.pixelSize: 12; font.family: "Segoe UI"; anchors.baseline: parent.children[0].baseline }
+            anchors.verticalCenter: parent.verticalCenter; spacing: 4
+            // Brand logo (replaces the text wordmark). Color variant — report
+            // pages are always white. mipmap keeps the PDF grab (3-4x) crisp.
+            Image {
+                source: "qrc:/images/logo/techaim_color.png"
+                height: 26
+                width: sourceSize.height > 0 ? height * sourceSize.width / sourceSize.height : 0
+                fillMode: Image.PreserveAspectFit
+                smooth: true
+                mipmap: true
             }
             Text { text: header.reportTitle; color: "#191b1f"; font.pixelSize: 22; font.bold: true; font.family: "Segoe UI" }
         }

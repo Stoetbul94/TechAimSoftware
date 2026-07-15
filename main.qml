@@ -583,7 +583,8 @@ ApplicationWindow {
                     shootingPage.setCurrentGameType(4)
                 else if (gameEvent === 4)
                     shootingPage.setCurrentGameType(5)
-
+                else if (gameEvent === 6)
+                    shootingPage.setFinalsGameType()   // 3P FINAL (35)
                 else
                     shootingPage.setCurrentGameType(0)
             }

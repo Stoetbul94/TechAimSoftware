@@ -1,4 +1,6 @@
-import QtQuick 2.0
+// QtQuick 2.15 (was 2.0): Image.mipmap — used by the brand logo — needs a
+// newer import; matches the other report components (ReportHeader/Footer).
+import QtQuick 2.15
 
 // A4 series-detail page. Carries two series cards. Because series 1 now lives
 // here (not on the cover), the first slot starts at series 1:
@@ -32,11 +34,20 @@ Item {
                 Row {
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
-                    spacing: 6
-                    Text { text: "TECH AIM"; color: "#a80038"; font.bold: true; font.pixelSize: 15; font.letterSpacing: 1; font.family: "Segoe UI" }
+                    spacing: 8
+                    // Brand logo (replaces the text wordmark; see ReportHeader).
+                    Image {
+                        source: "qrc:/images/logo/techaim_color.png"
+                        height: 20
+                        width: sourceSize.height > 0 ? height * sourceSize.width / sourceSize.height : 0
+                        fillMode: Image.PreserveAspectFit
+                        smooth: true
+                        mipmap: true
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
                     Text {
                         text: "· Match Report — Series Detail"; color: "#9aa0aa"; font.pixelSize: 12; font.family: "Segoe UI"
-                        anchors.baseline: parent.children[0].baseline
+                        anchors.verticalCenter: parent.verticalCenter
                     }
                 }
                 Text {

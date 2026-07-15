@@ -111,18 +111,28 @@ Rectangle {
         }
         if(secs.length===0) return
         PDFEXPORT.clear()
-        var results=new Array(secs.length); var remaining=secs.length
-        for(var j=0;j<secs.length;j++){
-            (function(idx){
-                secs[idx].grabToImage(function(res){
-                    results[idx]=res; remaining--
-                    if(remaining===0){
-                        for(var k=0;k<results.length;k++) if(results[k]) PDFEXPORT.addSection(results[k].image)
-                        PDFEXPORT.exportToFile(PDFEXPORT.suggestFileName(pg.athleteName(), pg.disciplineLabel(), Qt.formatDateTime(new Date(),"yyyy-MM-dd")))
-                    }
-                }, Qt.size(secs[idx].width*2, secs[idx].height*2))
-            })(j)
+        // Sequential grabs, harvesting res.image INSIDE each callback: a
+        // grabToImage result is only valid for its callback's duration. The
+        // old collect-all-then-read pattern handed PDFEXPORT stale results
+        // (null images) for every section but the last — a blank PDF.
+        function grabNext(idx){
+            if(idx >= secs.length){
+                if(PDFEXPORT.sectionCount() !== secs.length)
+                    console.warn("Coach PDF: grabbed", PDFEXPORT.sectionCount(),
+                                 "of", secs.length, "sections")
+                PDFEXPORT.exportToFile(PDFEXPORT.suggestFileName(pg.athleteName(), pg.disciplineLabel(), Qt.formatDateTime(new Date(),"yyyy-MM-dd")))
+                return
+            }
+            var started = secs[idx].grabToImage(function(res){
+                PDFEXPORT.addSection(res.image)
+                grabNext(idx+1)
+            }, Qt.size(secs[idx].width*2, secs[idx].height*2))
+            if(!started){
+                console.warn("Coach PDF: grab could not start for section", idx)
+                grabNext(idx+1)
+            }
         }
+        grabNext(0)
     }
     Connections {
         target: PDFEXPORT

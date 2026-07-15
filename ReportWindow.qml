@@ -13,17 +13,25 @@ FloatingWindow {
     subtitle: (typeof userName !== "undefined" && userName) ? userName : ""
     minW: 900; minH: 620
 
-    property int tab: 0                 // 0 = Summary · 1 = Match
+    property int tab: 0                 // 0 = Summary · 1 = Match · 2 = Finals
+
+    // 3P FINAL: the finals report replaces the qualification tabs entirely —
+    // Summary/Match carry qualification assumptions that must never be fed
+    // finals data, so in finals mode the window shows only the Finals tab.
+    readonly property bool finalsMode: (typeof shootingPage !== "undefined")
+                                       && shootingPage.isFinalsMatch
 
     signal coachRequestedFromReport()
 
     // The window owns the scrolling; each view exposes its natural height.
     scrollableContent: true
-    contentNaturalHeight: tab === 0 ? summaryView.implicitHeight : matchView.implicitHeight
+    contentNaturalHeight: tab === 2 ? finalsView.implicitHeight
+                        : tab === 0 ? summaryView.implicitHeight : matchView.implicitHeight
 
     // Set the tab before the manager presents the window (works whether opening
     // fresh or re-focusing an already-open window). Called via WindowManager.
-    function prepare(t) { reportWin.tab = t }
+    // Finals mode pins the window to the Finals tab whatever was requested.
+    function prepare(t) { reportWin.tab = reportWin.finalsMode ? 2 : t }
 
     // Kiosk auto-export: open on the Match tab and write the PDF to the network
     // path, then close on save. Driven by ShootingPage's onPrintPDF handler.
@@ -32,10 +40,17 @@ FloatingWindow {
         matchView.startNetworkAutoExport()
     }
 
-    onTabChanged: if (tab === 1) matchView.refresh3P()
+    onTabChanged: {
+        if (tab === 1) matchView.refresh3P()
+        if (tab === 2) finalsView.refresh()
+    }
     // Runs after prepare() has set the tab, so reopening straight onto Match
-    // (no tab change) still refreshes the 3P report tables.
-    onAboutToOpen: if (tab === 1) matchView.refresh3P()
+    // (no tab change) still refreshes the 3P report tables — and the finals
+    // report is rebuilt from the controller's stored state on every open.
+    onAboutToOpen: {
+        if (tab === 1) matchView.refresh3P()
+        if (tab === 2) finalsView.refresh()
+    }
 
     // ── Toolbar: Summary / Match tabs ───────────────────────────────────
     toolbarItem: Rectangle {
@@ -47,7 +62,9 @@ FloatingWindow {
             anchors.verticalCenter: parent.verticalCenter
             spacing: 2
             Repeater {
-                model: [{ l: "Summary", t: 0 }, { l: "Match", t: 1 }]
+                model: reportWin.finalsMode
+                       ? [{ l: "Finals", t: 2 }]
+                       : [{ l: "Summary", t: 0 }, { l: "Match", t: 1 }]
                 delegate: Rectangle {
                     width: tt.implicitWidth + 30; height: 30; radius: 6
                     color: reportWin.tab === modelData.t ? "#2f3138" : (ma.containsMouse ? "#26272c" : "transparent")
@@ -80,6 +97,12 @@ FloatingWindow {
         visible: reportWin.tab === 1
         onRequestClose: reportWin.close()
     }
+    FinalsReportView {
+        id: finalsView
+        anchors.fill: parent
+        visible: reportWin.tab === 2
+        onRequestClose: reportWin.close()
+    }
 
     // ── Footer: Coach Report + Save PDF ─────────────────────────────────
     footerItem: Rectangle {
@@ -92,6 +115,9 @@ FloatingWindow {
             anchors.verticalCenter: parent.verticalCenter
             spacing: 8
             Rectangle {
+                // Coach analytics consume the qualification pipeline — hidden
+                // on the finals report (no qualification-report assumptions).
+                visible: reportWin.tab !== 2
                 width: crTxt.implicitWidth + 26; height: 28; radius: 6
                 color: crMA.pressed ? "#2a2b30" : "#26272c"; border.color: "#3a3b42"; border.width: 1
                 Text { id: crTxt; anchors.centerIn: parent; text: "Coach Report"; color: "#d7d8dd"; font.family: "Segoe UI"; font.pixelSize: 12 }
@@ -103,7 +129,8 @@ FloatingWindow {
                 Text { id: spTxt; anchors.centerIn: parent; text: "⤓  Save PDF"; color: "white"; font.family: "Segoe UI"; font.pixelSize: 12; font.bold: true }
                 MouseArea {
                     id: spMA; anchors.fill: parent
-                    onClicked: reportWin.tab === 0 ? summaryView.exportPdf() : matchView.exportPdf()
+                    onClicked: reportWin.tab === 2 ? finalsView.exportPdf()
+                             : reportWin.tab === 0 ? summaryView.exportPdf() : matchView.exportPdf()
                 }
             }
         }

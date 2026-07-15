@@ -117,6 +117,8 @@ public:
     void setGame_mode_string(const QString &game_mode_string);
 
     Q_INVOKABLE bool getIs15Shoot() const;
+    // Read-only developer/testing gate from config.ini (developer_mode=1).
+    Q_INVOKABLE bool getDeveloperMode() const;
 
     Q_INVOKABLE bool getIsSingleDecimal() const;
     Q_INVOKABLE void setIsSingleDecimal(bool isSingleDecimal);
@@ -216,6 +218,7 @@ private:
     QString m_game_mode_string;
     bool m_isLaneStatusFileAvailalble;
     bool m_internalStatusFileModification = false;
+    bool m_developerMode = false;
     bool m_is15Shoot = false;
     bool m_isSingleDecimal = true;
     double m_match_meter = 10;

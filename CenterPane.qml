@@ -1229,7 +1229,14 @@ Item {
             }
 
             radius: width/2
-            visible: globalModelOfData.count <= 1 ? false : true
+            // 3P FINAL (FIX-R1): hidden — currentShootIndex tracks the finals
+            // table (ALL records incl. sighters), which exceeds the per-window
+            // display buffer, so refreshPosition() bailed and left this marker
+            // frozen at a stale position with an inflated number (the
+            // "phantom shot"). The finals face highlights the last shot red
+            // via the overlay itself; cross-window review needs the full
+            // record and is out of this marker's reach by design.
+            visible: !shootingPage.isFinalsMatch && globalModelOfData.count > 1
             //            border.width: 1
             //            border.color: "red"
             z: 100
@@ -1244,6 +1251,11 @@ Item {
         {
             if (!appMode) // for demo
             {
+                // 3P FINAL (Phase B): demo clicks flow through the REAL
+                // detection + scoring pipeline (uxShoot -> calculateShootingSocre
+                // -> pointAddedToSeries); the finals branch lives at the
+                // registration junction in ShootingPage. No shortcut here.
+
                 if (!shootingPanelRect.visible)
                     return
 
@@ -1306,6 +1318,9 @@ Item {
         source: "qrc:/images/centerPanel/corner-tri.png"
         anchors.top: parent.top
         anchors.right: parent.right
+        // 3P FINAL: qualification sighter-corner indicator hidden — the HUD
+        // strip shows SIGHTING/MATCH state.
+        visible: !shootingPage.isFinalsMatch
 
         width: 0.2*parent.width
         height: width
@@ -1419,7 +1434,9 @@ Item {
         anchors.topMargin: 20
         width: 0.2*parent.width
         height: 40
-        visible: APPSETTINGS.timer()/*!sighter.visible*/ /*&& !isSaveGame*/
+        // 3P FINAL: the qualification match clock never shows — the Finals
+        // HUD strip is the only time source (FINALS3P.remainingFormatted).
+        visible: APPSETTINGS.timer() && !shootingPage.isFinalsMatch
         color: "transparent"
 
         Row {
@@ -1511,7 +1528,9 @@ Item {
         // Show the sighting countdown whenever the match clock is hidden —
         // it takes the match clock's top-right spot (they are mutually
         // exclusive), keeping clear of the shot counter at top-left.
-        visible: !timerNotification.visible
+        // 3P FINAL: no qualification clocks at all (FINALS3P HUD is the only
+        // time source), so this must not appear when the match clock hides.
+        visible: !timerNotification.visible && !shootingPage.isFinalsMatch
 
         Row {
             id:stRow

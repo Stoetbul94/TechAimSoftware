@@ -40,6 +40,7 @@ public:
     Q_INVOKABLE void createPdf();
     Q_INVOKABLE void createTablePdf();
     Q_INVOKABLE void createSummryPdf();
+    Q_INVOKABLE void createFinalsPdf();
     Q_INVOKABLE void setServerPath(QString path);
     Q_INVOKABLE void createPdf(QString filePath);
 

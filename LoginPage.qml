@@ -272,6 +272,7 @@ Item {
     }
 
     function getGameEventText(index) {
+        if (index === 6) return qsTr("FINAL")   // 3P FINAL (35) — isFinalsMatch domain
         if (APPSETTINGS.getIs15Shoot()) {
             if (index === 0) return qsTr("10")
             else if (index === 1) return qsTr("15")
@@ -301,18 +302,21 @@ Item {
 
     function getEventCardTitle(index) {
         var shots = getGameEventText(index)
+        if (shots === "FINAL") return getDisciplineName() + " — FINAL (35)"
         if (shots === "Free Practice") return getDisciplineName() + " — Free Practice"
         return getDisciplineName() + " — " + shots + " Shots"
     }
 
     function getEventCardSubtitle(index) {
         var shots = getGameEventText(index)
+        if (shots === "FINAL") return "ISSF Final · 35 shots · decimal · on command"
         if (shots === "Free Practice") return "Flexible training · no time limit"
         return "ISSF 2026 · " + shots + " shots"
     }
 
     function getEventCardBadge(index) {
         var shots = getGameEventText(index)
+        if (shots === "FINAL") return "F35"
         return shots === "Free Practice" ? "FP" : shots
     }
 
@@ -1162,6 +1166,11 @@ Item {
                     }
                     // Official: 60 shots — Pistol, 10m Rifle, 50m Prone, 50m 3 Pos (20+20+20)
                     EventCard { eventIndex: 4 }
+
+                    // 3P FINAL (35) — ISSF final training mode; only offered in
+                    // the 50m Rifle 3 Positions flow. Separate finals domain
+                    // (isFinalsMatch) — see docs/3p-finals-discipline.md.
+                    EventCard { eventIndex: 6; visible: gameMode === 1 && gameRange === 50 && gameSubMode === 1 }
                     Item { width: 1; height: 2 }
 
                     // ── TRAINING SESSIONS ──────────────────────────────────────

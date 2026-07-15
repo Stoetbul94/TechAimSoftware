@@ -40,6 +40,9 @@ AppSettings::AppSettings(QString fileName)
     m_is15Shoot = false;
     m_bullet_diameter = m_settings->value("bullet_size", 5.6).toDouble();
     qDebug() << " m_bullet_diameter " << m_bullet_diameter;
+    // Developer/testing controls gate (finals HUD dev drawer etc.).
+    // config.ini [App_Settings] developer_mode=1 — default OFF in production.
+    m_developerMode = m_settings->value("developer_mode", 0).toInt() != 0;
 
 #ifndef BRAND_TACHUS
     m_is15Shoot = m_settings->value("15_shoot_match", 0).toInt() == 0 ? false : true;
@@ -927,6 +930,11 @@ void AppSettings::setIsSingleDecimal(bool isSingleDecimal)
 bool AppSettings::getIs15Shoot() const
 {
     return m_is15Shoot;
+}
+
+bool AppSettings::getDeveloperMode() const
+{
+    return m_developerMode;
 }
 
 QString AppSettings::getGame_mode_string() const

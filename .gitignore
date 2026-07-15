@@ -15,3 +15,13 @@ Seta_resource.rc
 
 .qtcreator/
 .qtc_clangd/
+# finals test-harness build artifacts
+tests/finals/release/
+tests/finals/debug/
+tests/finals/Makefile*
+tests/finals/.qmake.stash
+# finals test-harness run artifacts (journals, logs, audio fixtures)
+tests/finals/finals_session*.jsonl
+tests/finals/harness.log
+tests/finals/full_out.txt
+tests/finals/tst_audio_clips/

@@ -11,6 +11,11 @@ machine, ISSF integer-primary display format, and hard invariants are all
 documented there, along with the full fix history. Everything 3P-specific is
 gated on `is3PMatch`; other disciplines must remain untouched by 3P logic.
 
+The **3P FINAL** (35-shot ISSF final, single-athlete training mode) is a
+separate discipline again — gated on `isFinalsMatch`, decimal-only scoring,
+command-driven timing. Design doc + roadmap: `docs/3p-finals-discipline.md`
+(branch `feature/3p-finals`). It shares nothing with `is3PMatch` logic.
+
 ## Architecture, in short
 
 - `ModReader/qModMaster.pro` is `include()`d directly into `Seta.pro` - one binary, not two.

@@ -18,7 +18,10 @@ SOURCES += main.cpp \
     src/bridge/coachreportvariant.cpp \
     src/bridge/coachreportbridge.cpp \
     src/bridge/coachreportfeeder.cpp \
-    src/bridge/pdfexporter.cpp
+    src/bridge/pdfexporter.cpp \
+    src/finals/Finals3PController.cpp \
+    src/finals/FinalsReportBuilder.cpp \
+    src/finals/FinalsAudioService.cpp
 
 # Offline coach-analytics module (pure C++, independent from Qt/QML).
 HEADERS += \
@@ -36,6 +39,20 @@ HEADERS += \
     src/bridge/coachreportfeeder.h \
     src/bridge/pdfexporter.h
 INCLUDEPATH += src/bridge
+
+# 3P FINAL — dedicated finals domain (ISSF Rule Book 2026 Edition 2025,
+# Second Print 07/2026). Separate from qualification; see
+# docs/3p-finals-discipline.md.
+HEADERS += \
+    src/finals/Finals3PTypes.h \
+    src/finals/Finals3PConfig.h \
+    src/finals/Finals3PController.h \
+    src/finals/FinalsReportData.h \
+    src/finals/FinalsReportBuilder.h \
+    src/finals/FinalsAudioService.h
+INCLUDEPATH += src/finals
+# QSoundEffect for the finals audio cues (FinalsAudioService).
+QT += multimedia
 
 RESOURCES += qml.qrc \
     images.qrc \
