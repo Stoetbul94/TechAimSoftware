@@ -77,7 +77,8 @@ public:
     Q_INVOKABLE void confirmStage1Advance();
     Q_INVOKABLE void cancelStage1Advance();
     Q_INVOKABLE void registerShot(double xMm, double yMm, double decimalScore,
-                                  int externalShotId = -1);
+                                  int externalShotId = -1,
+                                  double direction = 0.0);
     Q_INVOKABLE void abortFinal();
     Q_INVOKABLE void resetFinal();
     Q_INVOKABLE void pauseTrainingSimulation();
@@ -103,6 +104,13 @@ public:
         { return m_stageStatus.value(stageId, 0); }
     Q_INVOKABLE QVariantMap stageStatuses() const;
     Q_INVOKABLE QVariantMap stageSubtotals() const;
+    // Phase D1: retained session records + immutable report assembly. The
+    // controller is the single source of truth; the report is built from
+    // stored state only (FinalsReportBuilder), never from UI models.
+    Q_INVOKABLE QVariantList officialShotRecords() const { return m_officialShotRecords; }
+    Q_INVOKABLE QVariantList rejectionRecords() const { return m_rejectionRecords; }
+    Q_INVOKABLE int sighterCount() const { return m_sighterCount; }
+    Q_INVOKABLE QVariantMap buildReport(const QVariantMap& meta = QVariantMap()) const;
 
     // ── RMS hooks (stubs until the Range Management System exists) ──────
     Q_INVOKABLE void startPhaseFromServer(const QVariantMap& command);
@@ -186,7 +194,8 @@ private:
     void advanceAfterCommandStage();
     techaim::finals::ShotContext currentShotContext() const;
     void acceptShot(bool sighter, double xMm, double yMm, double score,
-                    bool simulated, qint64 externalShotId);
+                    bool simulated, qint64 externalShotId,
+                    double direction = 0.0);
     void rejectShot(RejectReason reason, double xMm, double yMm,
                     bool simulated, qint64 externalShotId);
     int stageShotLimit() const;
@@ -233,6 +242,12 @@ private:
     qint64 m_windowOpenedScaled = 0;
     qint64 m_lastAcceptScaled = 0;
     QVariantList m_missingShots;
+    // Phase D1 report sources: accepted official records (pre-router copies —
+    // decimal score/direction as registered, not the polar display overrides)
+    // and rejection/incident records, retained for FinalsReportBuilder.
+    QVariantList m_officialShotRecords;
+    QVariantList m_rejectionRecords;
+    int m_sighterCount = 0;
     // Decimal totals over ACCEPTED official shots only (plan §5); the model
     // sum is the cross-check, this is the incremental source for the UI.
     double m_cumulativeTotal = 0.0;

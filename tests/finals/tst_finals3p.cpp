@@ -343,6 +343,43 @@ static void runFullFinal()
     c.synchroniseClock(0, 0);
     c.applyAuthoritativeState(QVariantMap());
     check(c.stageId() == stageBefore, "RMS hook stubs do not break local state");
+
+    // D1: report assembled from controller-stored state only (complete run).
+    {
+        QVariantMap meta;
+        meta[QStringLiteral("athlete")] = QStringLiteral("TEST ATHLETE");
+        const QVariantMap rep = c.buildReport(meta);
+        const QVariantMap sum = rep.value("summary").toMap();
+        check(rep.value("completionStatus") == "COMPLETE",
+              "D1 complete run: completionStatus COMPLETE",
+              rep.value("completionStatus").toString());
+        check(sum.value("officialShotCount").toInt() == 35
+                  && sum.value("sighterCount").toInt() == 4
+                  && sum.value("missingCount").toInt() == 0
+                  && sum.value("athlete") == "TEST ATHLETE",
+              "D1 complete run: summary counts + meta passthrough");
+        const QVariantList shots = rep.value("shots").toList();
+        bool ordered = shots.size() == 35;
+        for (int i = 0; ordered && i < 35; ++i) {
+            const QVariantMap s = shots.at(i).toMap();
+            if (s.value("number").toInt() != i + 1 || s.value("provisional").toBool())
+                ordered = false;
+        }
+        check(ordered, "D1 complete run: 35 real shot rows ordered 1..35");
+        const QVariantList stages = rep.value("stages").toList();
+        bool stagesOk = stages.size() == 9;
+        for (const QVariant& v : stages) {
+            const QVariantMap st = v.toMap();
+            if (st.value("fired").toInt() != st.value("expected").toInt()
+                    || st.value("statusName") != "Complete")
+                stagesOk = false;
+        }
+        check(stagesOk, "D1 complete run: 9 stages, fired==expected, all Complete");
+        check(rep.value("timeline").toList().size() == r.commands.size(),
+              "D1 complete run: timeline mirrors the full command history");
+        check(c.officialShotRecords().size() == 35 && c.sighterCount() == 4,
+              "D1: controller retained 35 official records + sighter count");
+    }
 }
 
 // ── Ceremony modes, pause/resume, abort/reset, unfired shots ────────────────
@@ -642,6 +679,65 @@ static void runTimeoutFinal()
         }
         check(journalCmds == r.commands, "journal command order matches controller order",
               QString::number(journalCmds.size()) + " vs " + QString::number(r.commands.size()));
+    }
+
+    // D1: report over an incomplete run — DNS rows merged per [P1 = Option B].
+    {
+        const QVariantMap rep = c.buildReport();
+        const QVariantMap sum = rep.value("summary").toMap();
+        check(rep.value("completionStatus") == "INCOMPLETE",
+              "D1 timeout run: completionStatus INCOMPLETE",
+              rep.value("completionStatus").toString());
+        check(sum.value("officialShotCount").toInt() == 11
+                  && sum.value("missingCount").toInt() == 24,
+              "D1 timeout run: 11 official / 24 missing in summary");
+        check(qFuzzyCompare(sum.value("cumulativeTotal").toDouble(),
+                            3 * 9.5 + 10.2 + 10.1 + 5 * 10.0 + 10.6),
+              "D1 timeout run: summary total matches controller total");
+        const QVariantList shots = rep.value("shots").toList();
+        bool ordered = shots.size() == 35;
+        int provisional = 0;
+        for (int i = 0; ordered && i < 35; ++i) {
+            const QVariantMap s = shots.at(i).toMap();
+            if (s.value("number").toInt() != i + 1)
+                ordered = false;
+            if (s.value("provisional").toBool()) {
+                ++provisional;
+                if (!qFuzzyIsNull(s.value("score").toDouble()))
+                    ordered = false;   // DNS rows are 0.0 provisional
+            }
+        }
+        check(ordered && provisional == 24,
+              "D1 timeout run: 35 rows 1..35 with 24 provisional 0.0 DNS rows",
+              QString("%1 rows, %2 provisional").arg(shots.size()).arg(provisional));
+        // Real row values survive assembly: shot 32 was 10.6 decimal.
+        bool shot32Ok = false;
+        for (const QVariant& v : shots) {
+            const QVariantMap s = v.toMap();
+            if (s.value("number").toInt() == 32)
+                shot32Ok = !s.value("provisional").toBool()
+                        && qFuzzyCompare(s.value("score").toDouble(), 10.6);
+        }
+        check(shot32Ok, "D1 timeout run: real shot 32 keeps its 10.6 decimal score");
+        const QVariantList stages = rep.value("stages").toList();
+        bool kneelOk = false, s2Ok = false;
+        for (const QVariant& v : stages) {
+            const QVariantMap st = v.toMap();
+            if (st.value("stageId").toInt() == 3)
+                kneelOk = st.value("fired").toInt() == 3
+                       && st.value("statusName") == "Incomplete"
+                       && qFuzzyCompare(st.value("subtotal").toDouble(), 3 * 9.5);
+            if (st.value("stageId").toInt() == 8)
+                s2Ok = st.value("fired").toInt() == 5
+                    && st.value("statusName") == "Complete";
+        }
+        check(kneelOk, "D1 timeout run: kneeling stage 3/10 Incomplete, subtotal 28.5");
+        check(s2Ok, "D1 timeout run: series 2 stage 5/5 Complete");
+        check(rep.value("incidents").toList().size() == r.rejected.size(),
+              "D1 timeout run: every rejection appears as a report incident",
+              QString::number(rep.value("incidents").toList().size()));
+        // Immutable output: rebuilding from the same stored state is identical.
+        check(c.buildReport() == rep, "D1: rebuild from unchanged state is identical");
     }
 }
 

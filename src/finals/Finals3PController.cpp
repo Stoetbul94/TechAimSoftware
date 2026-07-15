@@ -1,4 +1,5 @@
 #include "Finals3PController.h"
+#include "FinalsReportBuilder.h"
 
 #include <QApplication>
 #include <QDateTime>
@@ -31,6 +32,20 @@ QVariantMap Finals3PController::stageSubtotals() const
     for (auto it = m_stageSubtotalsMap.constBegin(); it != m_stageSubtotalsMap.constEnd(); ++it)
         m[stageName(static_cast<Stage>(it.key()))] = it.value();
     return m;
+}
+
+// Phase D1: immutable report assembled from the controller's stored session
+// state only. `meta` may carry athlete / eventName / dateTime; sighterCount is
+// filled in from the controller unless the caller overrides it.
+QVariantMap Finals3PController::buildReport(const QVariantMap& meta) const
+{
+    QVariantMap m = meta;
+    if (!m.contains(QStringLiteral("sighterCount")))
+        m[QStringLiteral("sighterCount")] = m_sighterCount;
+    const FinalsReportData data = FinalsReportBuilder::build(
+        m_officialShotRecords, m_missingShots, m_rejectionRecords,
+        stageStatuses(), stageSubtotals(), m_cumulativeTotal, m_events, m);
+    return FinalsReportBuilder::toVariant(data);
 }
 
 void Finals3PController::setStageStatus(Stage st, techaim::finals::StageStatus status)
@@ -168,6 +183,9 @@ void Finals3PController::startFinal()
     m_lastAcceptScaled = 0;
     m_events.clear();
     m_missingShots.clear();
+    m_officialShotRecords.clear();
+    m_rejectionRecords.clear();
+    m_sighterCount = 0;
     m_cumulativeTotal = 0.0;
     m_stageSubtotal = 0.0;
     m_officialShotCount = 0;
@@ -404,7 +422,7 @@ void Finals3PController::applyTargetModeInternal(TargetMode m)
 // ── shots ────────────────────────────────────────────────────────────────
 
 void Finals3PController::registerShot(double xMm, double yMm, double decimalScore,
-                                      int externalShotId)
+                                      int externalShotId, double direction)
 {
     // Validation chain (plan §8). Order: active -> data -> window -> duplicate
     // -> defensive mode check -> stage limit.
@@ -433,14 +451,14 @@ void Finals3PController::registerShot(double xMm, double yMm, double decimalScor
     if (externalShotId >= 0)
         m_lastExternalId = externalShotId;
     if (m_window == WindowState::SightingOpen) {
-        acceptShot(true, xMm, yMm, decimalScore, false, externalShotId);
+        acceptShot(true, xMm, yMm, decimalScore, false, externalShotId, direction);
         return;
     }
     if (m_shotsInStage >= stageShotLimit()) {
         rejectShot(RejectReason::StageShotLimitReached, xMm, yMm, false, externalShotId);
         return;
     }
-    acceptShot(false, xMm, yMm, decimalScore, false, externalShotId);
+    acceptShot(false, xMm, yMm, decimalScore, false, externalShotId, direction);
 }
 
 void Finals3PController::simulateShot()
@@ -491,7 +509,8 @@ techaim::finals::ShotContext Finals3PController::currentShotContext() const
 }
 
 void Finals3PController::acceptShot(bool sighter, double xMm, double yMm,
-                                    double score, bool simulated, qint64 externalShotId)
+                                    double score, bool simulated, qint64 externalShotId,
+                                    double direction)
 {
     const techaim::finals::ShotContext ctx = currentShotContext();
     int finalNumber = 0, withinStage = 0;
@@ -519,6 +538,13 @@ void Finals3PController::acceptShot(bool sighter, double xMm, double yMm,
         ctx, xMm, yMm, score, sighter, finalNumber, withinStage,
         ++m_shotEventId, externalShotId, simulated);
     shot[QStringLiteral("finalShotNumber")] = finalNumber;   // Phase-A compat key
+    shot[QStringLiteral("direction")] = QString::number(direction, 'f', 2);
+    // Phase D1: retain the pre-router record (decimal score, real direction —
+    // the QML router's polar-display overrides never reach this copy).
+    if (sighter)
+        ++m_sighterCount;
+    else
+        m_officialShotRecords.append(shot);
     writeJournal(QStringLiteral("shotAccepted"), shot);
     emit shotAccepted(shot);
 
@@ -549,6 +575,7 @@ void Finals3PController::rejectShot(RejectReason reason, double xMm, double yMm,
         else if (m_stage == Stage::ProneMatch)
             rej[QStringLiteral("displayText")] = QStringLiteral("PRONE COMPLETE — CHANGE TO STANDING");
     }
+    m_rejectionRecords.append(rej);   // Phase D1: incident source for the report
     writeJournal(QStringLiteral("shotRejected"), rej);
     qInfo() << "FINALS3P: shot rejected —" << rejectReasonName(reason)
             << "in" << stageName(m_stage);

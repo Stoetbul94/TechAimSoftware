@@ -19,7 +19,8 @@ SOURCES += main.cpp \
     src/bridge/coachreportbridge.cpp \
     src/bridge/coachreportfeeder.cpp \
     src/bridge/pdfexporter.cpp \
-    src/finals/Finals3PController.cpp
+    src/finals/Finals3PController.cpp \
+    src/finals/FinalsReportBuilder.cpp
 
 # Offline coach-analytics module (pure C++, independent from Qt/QML).
 HEADERS += \
@@ -44,7 +45,9 @@ INCLUDEPATH += src/bridge
 HEADERS += \
     src/finals/Finals3PTypes.h \
     src/finals/Finals3PConfig.h \
-    src/finals/Finals3PController.h
+    src/finals/Finals3PController.h \
+    src/finals/FinalsReportData.h \
+    src/finals/FinalsReportBuilder.h
 INCLUDEPATH += src/finals
 
 RESOURCES += qml.qrc \

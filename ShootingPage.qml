@@ -563,7 +563,8 @@ Item {
                 shootingPage.finalsLastDirection = xPosition
                 shootingPage.finalsLastRadius = yPosition
                 FINALS3P.registerShot(centerPanel.lastShotXmm, centerPanel.lastShotYmm,
-                                      currentCalculatedScore, ++shootingPage.finalsShotSeq)
+                                      currentCalculatedScore, ++shootingPage.finalsShotSeq,
+                                      shootingPage.finalsLastDirection)
                 return
             }
             // Hard cap at the match shot count. The auto-finish watcher polls

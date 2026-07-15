@@ -8,9 +8,12 @@ INCLUDEPATH += ../../src/finals
 
 SOURCES += \
     tst_finals3p.cpp \
-    ../../src/finals/Finals3PController.cpp
+    ../../src/finals/Finals3PController.cpp \
+    ../../src/finals/FinalsReportBuilder.cpp
 
 HEADERS += \
     ../../src/finals/Finals3PController.h \
     ../../src/finals/Finals3PTypes.h \
-    ../../src/finals/Finals3PConfig.h
+    ../../src/finals/Finals3PConfig.h \
+    ../../src/finals/FinalsReportData.h \
+    ../../src/finals/FinalsReportBuilder.h

@@ -406,3 +406,40 @@ records, SN from `finalsShotNumber`, sighters "S", controller totals, finals
 group header, no qualification S1-S6 assumptions). Stage completion verdicts
 surface via the HUD progress indicator (green/amber) and the status API/
 journal; no second shot store exists.
+
+## Phase D1 — Finals report data model (implemented)
+
+`src/finals/FinalsReportData.h` + `FinalsReportBuilder.h/.cpp` (QtCore only,
+unit-testable): the finals-specific report assembler from the Report section
+above. No qualification `SummaryReport`/`MatchReport` assumptions.
+
+- **Immutable output**: `FinalsReportData { summary; stages[9]; officialShots
+  (35 rows, real + provisional, ordered 1-35); missingShots; incidents;
+  timeline; completionStatus }` — rebuilt from the same stored state, the
+  result is byte-identical (asserted in tests).
+- **[P1 = Option B] at the report layer**: MissingShot records become
+  provisional `0.0` DNS rows merged into the 1-35 shot table (flagged
+  `provisional: true`); real detected rows are never synthesised.
+- **Controller is the only source** (`Finals3PController`): it now retains
+  the pre-router accepted official records (`officialShotRecords()`),
+  rejection records (`rejectionRecords()`), and `sighterCount()` — cleared
+  in `startFinal()`, surviving `Complete` so the report outlives the final.
+  The retained copies keep the decimal `score` and real `direction`; the QML
+  router's polar-display overrides (`score` = polar radius) never reach them.
+- **`registerShot` gained an optional 5th arg** `direction` (default 0.0);
+  the ShootingPage finals branch passes the engine angle so controller-side
+  records carry the true direction. Existing call compatibility unchanged.
+- **QML entry point**: `FINALS3P.buildReport(meta)` returns the QVariant
+  report (`summary` / `stages` / `shots` / `incidents` / `timeline` /
+  `completionStatus`); `meta` may carry athlete/eventName/dateTime.
+- **completionStatus verdict**: ABORTED if any stage Aborted, else INCOMPLETE
+  if any Incomplete, else COMPLETE when all nine official stages are
+  Complete (else IN PROGRESS).
+- **`finalsSeriesIndex` schema locked** (0=K, 1=P, 2=S1, 3=S2, 4-8=singles) —
+  carried through to report rows unchanged; UI may display human-facing
+  series numbering independently.
+- **Tests: 155 checks, 0 failures** — adds D1 assembly checks on both the
+  completion-driven run (35 real rows, 9× Complete, timeline == command
+  history, meta passthrough) and the timeout-driven run (11 real + 24
+  provisional DNS rows ordered 1-35, per-stage fired/subtotal/status,
+  incidents == rejections, rebuild-identity).
