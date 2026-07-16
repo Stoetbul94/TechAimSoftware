@@ -51,6 +51,5 @@
         <file>SeriesComponent.qml</file>
         <file>PdfSeriesPage.qml</file>
         <file>ConnectionError.qml</file>
-        <file>qml_resouceTest.qml</file>
     </qresource>
 </RCC>

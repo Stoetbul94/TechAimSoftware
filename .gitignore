@@ -25,3 +25,8 @@ tests/finals/finals_session*.jsonl
 tests/finals/harness.log
 tests/finals/full_out.txt
 tests/finals/tst_audio_clips/
+
+# IDE-local project state (S2.2)
+*.pro.user
+*.pro.user.*
+build-*/
