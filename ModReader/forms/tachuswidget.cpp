@@ -1178,7 +1178,7 @@ bool TachusWidget::checkAutoFeedMode(bool showPopup)
     int data_0 = dest16[0];
     LogFile::instance().appendToLogFile(QString("checkAutoFeedMode data[0] = %1, data[1] = %2").arg(data_0).arg(data_1), LogType::interfaceLevel);
     if (data_1 == 0 && data_0 == 0 && m_currentShootsCount <= 1 && showPopup) {
-        showMessage("Connection Error, Please reconnect");
+        showMessage("The connection to the target hardware was lost.\n\nPlease reconnect and try again.");
     }
 
     return (data_1 == 0 && data_0 == 0) ? false : true;
@@ -1186,10 +1186,11 @@ bool TachusWidget::checkAutoFeedMode(bool showPopup)
 
 void TachusWidget::showMessage(QString string)
 {
-    QMessageBox msgBox;
-    msgBox.setWindowTitle("Error !");
-    msgBox.setText(string);
-    msgBox.exec();
+    // TechAim dialog framework (C5): rendered by the QML dialogManager —
+    // no native QMessageBox anywhere in the app. (Non-blocking; the single
+    // caller never used the exec() return value.)
+    emit uiDialogRequested(QStringLiteral("error"),
+                           QStringLiteral("Connection Error"), string);
 }
 
 void TachusWidget::changeSighterMode(bool flag)

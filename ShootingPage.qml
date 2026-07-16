@@ -1,5 +1,4 @@
 import QtQuick 2.15
-import QtQuick.Dialogs
 import QtQuick.Controls 2.15
 
 //import Qt.labs.platform 1.0
@@ -64,24 +63,16 @@ Item {
         return (is3PMatch ? phase + " · " + p3Names[p3Position] : phase) + phaseDebug
     }
 
-    property string messageText: "Match is completed, restart to stimulate"
-    property string sighterSummaryText: "You are in Sighter. You can't generate Match Summary"
-    property string sighterMatchText: "You are in Sighter. You can't generate Match Report"
     property string minimumShotsSummary: "Minimum 10 shots required to generate Summary"
     property string minimumShotsMatchReport: "Minimum 10 shots required to generate Match Report"
 
     onTotalScoreChanged: {
-        console.log("Total score changed ............................"+ totalScore)
+        if (APPSETTINGS.getDeveloperMode()) console.log("Total score changed ............................"+ totalScore)
 
     }
 
-    MessageDialog
-    {
-        id: matchInfoDialog
-        text: messageText
-        visible: false
-    }
-
+    // Popup messages migrated to the TechAim dialog framework
+    // (dialogManager in main.qml) — no QtQuick.Dialogs MessageDialog left.
 
     Rectangle {
         id:settingsMask
@@ -114,39 +105,16 @@ Item {
     }
 
 
-    Dialog
-    {
-        id:matchFinishConfirmation
-        width: 200//parent.width*0.2
-        height: 75//parent.height*0.2
-        Label{
-            text: "Are you sure you want to finish the match ?"
-            anchors.centerIn: parent
-        }
-
-        standardButtons: StandardButton.Ok | StandardButton.Cancel
-
-        onAccepted: {
-            changedToMatchFinish()
-        }
-    }
-
-    MessageDialog
-    {
-        id: matchNotStarted
-        title: "Warning"
-        text: "Match Not Started"
-        visible: false
-    }
-
-
-
-    MessageDialog
-    {
-        id: cannotGenerate
-        text: sighterSummaryText
-        title: "Warning"
-        visible: false
+    // The finish-match confirmation now runs through dialogManager (see
+    // confirmMatchFinish below). The legacy Dialog's StandardButton enum was
+    // never in scope under the QtQuick.Dialogs import (ReferenceError at
+    // runtime), so its OK/Cancel buttons never rendered — this migration also
+    // fixes that.
+    function confirmMatchFinish() {
+        dialogManager.showConfirmation(qsTr("Finish Match"),
+            qsTr("Are you sure you want to finish this match?\n\nOnce finished, no further shots can be recorded."),
+            function (ok) { if (ok) changedToMatchFinish() },
+            qsTr("Finish Match"), qsTr("Cancel"))
     }
 
     ListModel
@@ -155,7 +123,7 @@ Item {
         onCountChanged: {
             centerPanel.disableMotorMovement = false
             centerPanel.currentPageIndexChanged()
-            console.log("globalModelOfData count changes ", count)
+            if (APPSETTINGS.getDeveloperMode()) console.log("globalModelOfData count changes ", count)
         }
     }
 
@@ -163,7 +131,7 @@ Item {
     {
         id:globalSlighterModel
         onCountChanged: {
-            console.log("******globalSlighterModel****"+count)
+            if (APPSETTINGS.getDeveloperMode()) console.log("******globalSlighterModel****"+count)
         }
     }
 
@@ -191,7 +159,7 @@ Item {
     {
         id:globalMatchModel
         onCountChanged: {
-            console.log("******globalMatchModel****"+count)
+            if (APPSETTINGS.getDeveloperMode()) console.log("******globalMatchModel****"+count)
         }
     }
 
@@ -214,7 +182,7 @@ Item {
 
     function setCurrentGameType(index)
     {
-        console.log("setCurrentGameType  ", index)
+        if (APPSETTINGS.getDeveloperMode()) console.log("setCurrentGameType  ", index)
         if (gameRange === 10)
         {
             // if 15 shoots
@@ -469,7 +437,7 @@ Item {
                     if (actionBar.barMode === 2)
                         windowManager.openMatchReport()
                     else if (actionBar.barMode === 1)
-                        matchFinishConfirmation.visible = true
+                        confirmMatchFinish()
                     else
                         rightPanel.startClicked()
                 }
@@ -580,7 +548,7 @@ Item {
             }
             rightPanel.addToSeries(xPosition,yPosition,currentCalculatedScore,
                                    centerPanel.lastShotXmm, centerPanel.lastShotYmm)
-            console.log("x ", xPosition, " y ", yPosition, " score ", currentCalculatedScore, " matchShootCount ", matchShootCount)
+            if (APPSETTINGS.getDeveloperMode()) console.log("x ", xPosition, " y ", yPosition, " score ", currentCalculatedScore, " matchShootCount ", matchShootCount)
 
             // 3P: after the 20th and 40th match shots, switch to the next
             // position (kneeling -> prone -> standing) via a sighting break.
@@ -789,7 +757,7 @@ Item {
 
     Connections {
         target: APPSETTINGS
-        onPrintPDF: {
+        function onPrintPDF() {
             if (leftPanel.playVisible)
                 return;
 
@@ -804,7 +772,7 @@ Item {
             // write the PDF to the configured network path, then close on save.
             windowManager.openMatchReport()
             reportWindow.startMatchAutoExport()
-            console.log("-APPSETTINGS-----------------------------onPrintPDF--------------------------")
+            if (APPSETTINGS.getDeveloperMode()) console.log("-APPSETTINGS-----------------------------onPrintPDF--------------------------")
         }
     }
     ConnectionError {

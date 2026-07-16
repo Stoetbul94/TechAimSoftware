@@ -50,8 +50,7 @@ Item {
     Connections {
         target: loginPage
 
-        onBackHomeFromServer : {
-            console.log("*************************************************************************************")
+        function onBackHomeFromServer() {
 
             homeButtonClicked()
         }
@@ -273,22 +272,22 @@ Item {
         function navAction(key) {
             if (key === "stats") {
                 if (sligterMode) {
-                    cannotGenerate.text = sighterSummaryText
-                    cannotGenerate.visible = true
+                    dialogManager.showWarning(qsTr("Match Summary Unavailable"),
+                        qsTr("You are currently in Sighter mode.\n\nA Match Summary can only be generated after official Match shots have been recorded. Switch to Match mode and fire at least one shot before generating the report."))
                 } else if (!isSaveGame) {
                     showSummary()
                 }
             } else if (key === "report") {
                 if (sligterMode) {
-                    cannotGenerate.text = sighterMatchText
-                    cannotGenerate.visible = true
+                    dialogManager.showWarning(qsTr("Match Report Unavailable"),
+                        qsTr("You are currently in Sighter mode.\n\nA Match Report can only be generated after official Match shots have been recorded. Switch to Match mode and fire at least one shot before generating the report."))
                 } else {
                     showMatchReport()
                 }
             } else if (key === "coach") {
                 if (sligterMode) {
-                    cannotGenerate.text = sighterMatchText
-                    cannotGenerate.visible = true
+                    dialogManager.showWarning(qsTr("Coach Report Unavailable"),
+                        qsTr("You are currently in Sighter mode.\n\nThe Coach Report analyses official Match shots. Switch to Match mode and fire at least one shot before opening it."))
                 } else {
                     // Re-analyse the current match from the authoritative match
                     // record (real coords + positions), then open the Coach window.

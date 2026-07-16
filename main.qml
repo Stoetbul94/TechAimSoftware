@@ -477,8 +477,31 @@ ApplicationWindow {
             {
                 window.close()
                 Qt.quit()
-            } else
-                closeDia.visible = true
+            } else {
+                dialogManager.show({
+                    "type": "question",
+                    "title": qsTr("Save Match?"),
+                    "message": qsTr("The match is finished.\n\nDo you want to save this match before closing the application?"),
+                    "buttons": [
+                        { "label": qsTr("Cancel"),  "result": "cancel",  "accent": false },
+                        { "label": qsTr("Discard"), "result": "discard", "accent": false },
+                        { "label": qsTr("Save"),    "result": "save",    "accent": true }
+                    ],
+                    "defaultResult": "save",
+                    "cancelResult": "cancel",
+                    "onResult": function (r) {
+                        // Same actions the legacy ClosePopupDialog performed.
+                        if (r === "discard") {
+                            window.close()
+                            Qt.quit()
+                        } else if (r === "save") {
+                            APPSETTINGS.saveMatch()
+                            window.close()
+                            Qt.quit()
+                        }
+                    }
+                })
+            }
         }
     }
 
@@ -538,6 +561,35 @@ ApplicationWindow {
         }
     }
 
+    // TechAim dialog framework: the ONE modal message/confirmation surface for
+    // the whole app (id resolves everywhere via ancestor scope, like
+    // windowManager). Above every window/HUD so modality is real.
+    TechAimDialogManager {
+        id: dialogManager
+        anchors.fill: parent
+        z: 4000
+    }
+
+    // C++ -> dialog-framework bridges: backend messages render in the same
+    // TechAim dialogs as QML ones (no native message boxes anywhere).
+    Connections {
+        target: MODREADER
+        function onUiDialogRequested(type, title, message) {
+            if (type === "warning") dialogManager.showWarning(title, message)
+            else if (type === "info") dialogManager.showInformation(title, message)
+            else dialogManager.showError(title, message)
+        }
+    }
+    Connections {
+        target: CUSTOMPRINT
+        function onPrintingNotice(message, timeoutMs) {
+            dialogManager.show({ "type": "info",
+                                 "title": qsTr("Exporting Report"),
+                                 "message": message,
+                                 "autoDismissMs": timeoutMs })
+        }
+    }
+
     LoginPage {
         id: loginPage
 
@@ -594,29 +646,8 @@ ApplicationWindow {
 
 
 
-    ClosePopupDialog {
-        id: closeDia
-        visible: false
-
-        width: 300
-        height: 100
-
-        onCancel: {
-            closeDia.visible = false
-        }
-
-        onDiscard: {
-            window.close()
-            Qt.quit()
-        }
-
-        onSave: {
-            APPSETTINGS.saveMatch()
-            closeDia.visible = false
-            window.close()
-            Qt.quit()
-        }
-    }
+    // The exit/save confirmation now runs through dialogManager (TechAim
+    // dialog framework); the legacy grey ClosePopupDialog is gone.
 
 }
 }

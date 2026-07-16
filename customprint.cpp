@@ -11,65 +11,10 @@
 #include <QDebug>
 #include <QDateTime>
 
-#include <QMessageBox>
-#include <QTableView>
 
 CustomPrint::CustomPrint(TachusWidget *tachus, QObject *parent) : QObject(parent), m_tachus(tachus)
 {
 
-}
-
-void CustomPrint::printPNG(QVariant data)
-{
-    return;
-//    QString fileName = QFileDialog::getSaveFileName(0, tr("Save File"),
-//                                                    "untitled.png",
-//                                                    tr("Images (*.png *.xpm *.jpg)"));
-    QString fileName = QString("test_pdf_%1.png").arg(QDateTime::currentDateTime().toString("ddMMyyyy-hhmmss"));
-    QImage img = qvariant_cast<QImage>(data);
-    if(img.isNull())
-    {
-        qDebug() << "In valid image" ;
-    }
-    img.save(fileName);
-    emit saveComplete();
-}
-
-void CustomPrint::printTest()
-{
-    //    const QString fileName("test1.pdf");
-    //    QPdfWriter pdfWriter(fileName);
-    //    pdfWriter.setPageSize(QPageSize(QPageSize::A4));
-    //    QPainter painter(&pdfWriter);
-
-    //    painter.drawPixmap(QRect(0,0,pdfWriter.logicalDpiX()*8.3,pdfWriter.logicalDpiY()*11.7), QPixmap("test.png"));
-
-    QPdfWriter pdfWriter("mytest.pdf");
-    QPainter painter(&pdfWriter);
-    quint32 iYPos = 10;
-
-    QPixmap pxPic;
-    pxPic.load("test.png", "PNG");
-    //painter.drawPixmap(0, iYPos, pxPic.width(), pxPic.height(), pxPic);
-    //iYPos += pxPic.height() + 250;
-
-    quint32 iWidth = pdfWriter.width();
-    quint32 iHeight = pdfWriter.height();
-    qDebug() << "************************************************* pdf resolution" <<pdfWriter.resolution();
-    QSize s(iWidth, iHeight);
-    QPixmap pxScaledPic = pxPic.scaled(s, Qt::KeepAspectRatio, Qt::FastTransformation);
-    painter.drawPixmap(0, iYPos, pxScaledPic.width(), pxScaledPic.height(), pxScaledPic);
-    iYPos += pxScaledPic.height() + 250;
-
-    pdfWriter.setResolution(2400);
-    qDebug() << "************************************************* 2 pdf resolution" <<pdfWriter.resolution();
-    painter.drawPixmap(0, iYPos, pxScaledPic.width(), pxScaledPic.height(), pxScaledPic);
-    iYPos += pxScaledPic.height() + 250;
-
-    pdfWriter.setResolution(600);
-    qDebug() << "************************************************* 3 pdf resolution" <<pdfWriter.resolution();
-    painter.drawPixmap(0, iYPos, pxScaledPic.width(), pxScaledPic.height(), pxScaledPic);
-    iYPos += pxScaledPic.height() + 250;
 }
 
 void CustomPrint::clearImagesList()
@@ -84,7 +29,6 @@ void CustomPrint::addImage(QVariant data)
     {
         m_images.append(img);
     }
-    printPNG(data);
 }
 
 void CustomPrint::createPdf()
@@ -120,66 +64,6 @@ void CustomPrint::createPdf()
     painter.end();
     emit saveComplete();
 
-}
-
-void CustomPrint::createTablePdf()
-{
-    QString fileName = QFileDialog::getSaveFileName(0, tr("Save File"),
-                                                    "summary_report.pdf",
-                                                    tr("*.pdf"));
-    qDebug() << __FUNCTION__ << fileName;
-
-    TestModel* pTableModel = new TestModel(this);
-    QList<QString> contactNames;
-    QList<QString> contactPhoneNums;
-
-    // Create some data that is tabular in nature:
-    contactNames.append("Thomas");
-    contactNames.append("Richard");
-    contactNames.append("Harrison");
-    contactPhoneNums.append("123-456-7890");
-    contactPhoneNums.append("222-333-4444");
-    contactPhoneNums.append("333-444-5555");
-
-    pTableModel->populateData(contactNames, contactPhoneNums);
-
-    QTableView* pTableView = new QTableView;
-    pTableView->setModel(pTableModel);
-
-    int width = 0;
-    int height = 0;
-//    pTableView->setFont(QFont("Courier New", 24, QFont::Bold));
-    int columns = pTableModel->columnCount();
-    int rows = pTableModel->rowCount();
-
-    pTableView->resizeColumnsToContents();
-
-    for( int i = 0; i < columns; ++i ) {
-        width += pTableView->columnWidth(i);
-    }
-
-    for( int i = 0; i < rows; ++i ) {
-        height += pTableView->rowHeight(i);
-    }
-
-    pTableView->setFixedSize(width, height);
-    pTableView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    pTableView->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-
-    QPdfWriter pdfWriter(fileName);
-    pdfWriter.setPageSize(QPageSize(QPageSize::A4));
-    pdfWriter.setPageMargins(QMargins(30, 30, 30, 30));
-    QPainter painter(&pdfWriter);
-
-    //pTableView->render(&painter);
-    QPixmap pixmap(pTableView->size());
-    pTableView->render(&pixmap);
-    quint32 iWidth = pdfWriter.width();
-    quint32 iHeight = pdfWriter.height();
-    pixmap = pixmap.scaledToWidth(iWidth);
-//    painter.drawPixmap(100, 100, iWidth, iHeight/2, pixmap);
-    painter.drawPixmap(QPointF(100, 100), pixmap, pixmap.rect());
-    painter.end();
 }
 
 // 3P FINAL report (Phase D3). Same writer behaviour as the redesigned
@@ -690,14 +574,10 @@ void CustomPrint::setServerPath(QString path)
 
 void CustomPrint::createPdf(QString filePath)
 {
-//    QMessageBox msgBox;
-//    msgBox.setText(QString("Creating report pdf @ %1.").arg(filePath));
-//    msgBox.exec();
-    QString msg = QString("Creating report pdf @ %1.").arg(filePath);
-    TimedMessageBox * tmb = new TimedMessageBox(5, tr("Printing"), msg, QMessageBox::Warning, QMessageBox::Ok | QMessageBox::Default, QMessageBox::Cancel, QMessageBox::NoButton,nullptr);
-    int ret = tmb->exec();
-    delete tmb;
-    printf("ret=%i\n", ret);
+    // TechAim dialog framework (C5): the legacy TimedMessageBox blocked this
+    // thread for up to 5 s before the PDF was written; the QML notice is
+    // non-blocking (auto-dismisses) and the export proceeds immediately.
+    emit printingNotice(QString("Creating report PDF at %1").arg(filePath), 5000);
 
 
     QPdfWriter pdfWriter(filePath);
@@ -761,58 +641,7 @@ void CustomPrint::print(QVariant data)
 //////////////////////////////////////////////////////////////////////////////////////////////
 ///
 
-TestModel::TestModel(QObject *parent) : QAbstractTableModel(parent)
-{
-}
-
 // Create a method to populate the model with data:
-void TestModel::populateData(const QList<QString> &contactName,const QList<QString> &contactPhone)
-{
-    tm_contact_name.clear();
-    tm_contact_name = contactName;
-    tm_contact_phone.clear();
-    tm_contact_phone = contactPhone;
-    return;
-}
-
-int TestModel::rowCount(const QModelIndex &parent) const
-{
-    Q_UNUSED(parent);
-    return tm_contact_name.length();
-}
-
-int TestModel::columnCount(const QModelIndex &parent) const
-{
-    Q_UNUSED(parent);
-    return 2;
-}
-
-QVariant TestModel::data(const QModelIndex &index, int role) const
-{
-    if (!index.isValid() || role != Qt::DisplayRole) {
-        return QVariant();
-    } else if(index.isValid() && role==Qt::FontRole)
-        return QFont("Courier New", 80, QFont::Bold);
-
-    if (index.column() == 0) {
-        return tm_contact_name[index.row()];
-    } else if (index.column() == 1) {
-        return tm_contact_phone[index.row()];
-    }
-    return QVariant();
-}
-
-QVariant TestModel::headerData(int section, Qt::Orientation orientation, int role) const
-{
-    if (role == Qt::DisplayRole && orientation == Qt::Horizontal) {
-        if (section == 0) {
-            return QString("Name");
-        } else if (section == 1) {
-            return QString("Phone");
-        }
-    }
-    return QVariant();
-}
 /////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////
 ///

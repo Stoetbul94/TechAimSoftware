@@ -31,7 +31,12 @@
 #include "src/finals/FinalsAudioService.h"
 #include <QLockFile>
 #include <QDir>
-#include <QMessageBox>
+#include <QDialog>
+#include <QFrame>
+#include <QLabel>
+#include <QPushButton>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
 #include <QQuickWindow>
 #include <QSGRendererInterface>
 
@@ -62,11 +67,46 @@ int main(int argc, char *argv[])
          / Therefore, we throw a warning and close the program
          * */
     if(!lockFile.tryLock(100)){
-        QMessageBox msgBox;
-        msgBox.setIcon(QMessageBox::Warning);
-        msgBox.setText("The application is already running.\n"
-                       "Allowed to run only one instance of the application.");
-        msgBox.exec();
+        // TechAim dialog framework (C5): this fires BEFORE the QML engine
+        // exists, so it cannot use dialogManager — a small frameless
+        // TechAim-styled widget dialog replaces the native QMessageBox.
+        QDialog box(nullptr, Qt::FramelessWindowHint | Qt::Dialog);
+        box.setAttribute(Qt::WA_TranslucentBackground);
+        QVBoxLayout* outer = new QVBoxLayout(&box);
+        outer->setContentsMargins(0, 0, 0, 0);
+        QFrame* card = new QFrame(&box);
+        card->setObjectName("card");
+        card->setStyleSheet(
+            "#card { background-color: #1f2026; border: 1px solid #3a3b42;"
+            " border-radius: 13px; }");
+        outer->addWidget(card);
+        QVBoxLayout* lay = new QVBoxLayout(card);
+        lay->setContentsMargins(24, 20, 24, 18);
+        lay->setSpacing(10);
+        QLabel* title = new QLabel("Already Running", card);
+        title->setStyleSheet("color: #f2f3f5; font-family: 'Segoe UI';"
+                             " font-size: 16px; font-weight: bold;"
+                             " background: transparent; border: none;");
+        QLabel* body = new QLabel("Another instance of TechAim is already open.\n"
+                                  "Only one instance can run at a time.", card);
+        body->setStyleSheet("color: #b6b9c0; font-family: 'Segoe UI';"
+                            " font-size: 12px; background: transparent; border: none;");
+        QPushButton* ok = new QPushButton("Close", card);
+        ok->setCursor(Qt::PointingHandCursor);
+        ok->setDefault(true);
+        ok->setStyleSheet(
+            "QPushButton { background-color: #a80038; color: white;"
+            " font-family: 'Segoe UI'; font-size: 12px; font-weight: bold;"
+            " border: none; border-radius: 8px; padding: 7px 24px; }"
+            "QPushButton:pressed { background-color: #8a002f; }");
+        QObject::connect(ok, &QPushButton::clicked, &box, &QDialog::accept);
+        QHBoxLayout* btnRow = new QHBoxLayout();
+        btnRow->addStretch(1);
+        btnRow->addWidget(ok);
+        lay->addWidget(title);
+        lay->addWidget(body);
+        lay->addLayout(btnRow);
+        box.exec();
         return 1;
     }
     ///////////////////////////////////////////////////////////

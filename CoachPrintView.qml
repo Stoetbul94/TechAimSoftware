@@ -1,5 +1,10 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
+// Basic-style controls for the diary inputs only (S6): the native Windows
+// style does not support background/indicator customisation and warned at
+// startup while IGNORING the print styling. Scoped import — the global
+// application style is untouched.
+import QtQuick.Controls.Basic 2.15 as Basic
 import QtCharts 2.15
 
 // Printable A4-style Coach Report (light, clean). Display of the single
@@ -347,45 +352,45 @@ Rectangle {
                             property real fw: (width - 16) / 2
                             Column { width: diaryGrid.fw; spacing: 2
                                 Text { text: "Equipment changes"; color: pg.cSub; font.pixelSize: 11; font.family: pg.fam }
-                                TextField { id: dfEquip; width: parent.width; font.pixelSize: 12; font.family: pg.fam; color: pg.cInk
+                                Basic.TextField { id: dfEquip; width: parent.width; font.pixelSize: 12; font.family: pg.fam; color: pg.cInk
                                     background: Rectangle { color: "#fbfbf9"; border.color: pg.cRule; border.width: 1; radius: 3 } } }
                             Column { width: diaryGrid.fw; spacing: 2
                                 Text { text: "Sight changes"; color: pg.cSub; font.pixelSize: 11; font.family: pg.fam }
-                                TextField { id: dfSight; width: parent.width; font.pixelSize: 12; font.family: pg.fam; color: pg.cInk
+                                Basic.TextField { id: dfSight; width: parent.width; font.pixelSize: 12; font.family: pg.fam; color: pg.cInk
                                     background: Rectangle { color: "#fbfbf9"; border.color: pg.cRule; border.width: 1; radius: 3 } } }
                             Column { width: diaryGrid.fw; spacing: 2
                                 Text { text: "Ammunition / pellets"; color: pg.cSub; font.pixelSize: 11; font.family: pg.fam }
-                                TextField { id: dfAmmo; width: parent.width; font.pixelSize: 12; font.family: pg.fam; color: pg.cInk
+                                Basic.TextField { id: dfAmmo; width: parent.width; font.pixelSize: 12; font.family: pg.fam; color: pg.cInk
                                     background: Rectangle { color: "#fbfbf9"; border.color: pg.cRule; border.width: 1; radius: 3 } } }
                             Column { width: diaryGrid.fw; spacing: 2
                                 Text { text: "Weather"; color: pg.cSub; font.pixelSize: 11; font.family: pg.fam }
-                                TextField { id: dfWeather; width: parent.width; font.pixelSize: 12; font.family: pg.fam; color: pg.cInk
+                                Basic.TextField { id: dfWeather; width: parent.width; font.pixelSize: 12; font.family: pg.fam; color: pg.cInk
                                     background: Rectangle { color: "#fbfbf9"; border.color: pg.cRule; border.width: 1; radius: 3 } } }
                             Column { width: diaryGrid.fw; spacing: 2
                                 Text { text: "Wind direction"; color: pg.cSub; font.pixelSize: 11; font.family: pg.fam }
-                                TextField { id: dfWind; width: parent.width; font.pixelSize: 12; font.family: pg.fam; color: pg.cInk
+                                Basic.TextField { id: dfWind; width: parent.width; font.pixelSize: 12; font.family: pg.fam; color: pg.cInk
                                     background: Rectangle { color: "#fbfbf9"; border.color: pg.cRule; border.width: 1; radius: 3 } } }
                             Column { width: diaryGrid.fw; spacing: 2
                                 Text { text: "Lighting"; color: pg.cSub; font.pixelSize: 11; font.family: pg.fam }
-                                TextField { id: dfLight; width: parent.width; font.pixelSize: 12; font.family: pg.fam; color: pg.cInk
+                                Basic.TextField { id: dfLight; width: parent.width; font.pixelSize: 12; font.family: pg.fam; color: pg.cInk
                                     background: Rectangle { color: "#fbfbf9"; border.color: pg.cRule; border.width: 1; radius: 3 } } }
                             Column { width: diaryGrid.fw; spacing: 2
                                 Text { text: "Physical state"; color: pg.cSub; font.pixelSize: 11; font.family: pg.fam }
-                                TextField { id: dfPhys; width: parent.width; font.pixelSize: 12; font.family: pg.fam; color: pg.cInk
+                                Basic.TextField { id: dfPhys; width: parent.width; font.pixelSize: 12; font.family: pg.fam; color: pg.cInk
                                     background: Rectangle { color: "#fbfbf9"; border.color: pg.cRule; border.width: 1; radius: 3 } } }
                             Column { width: diaryGrid.fw; spacing: 2
                                 Text { text: "Mental state"; color: pg.cSub; font.pixelSize: 11; font.family: pg.fam }
-                                TextField { id: dfMental; width: parent.width; font.pixelSize: 12; font.family: pg.fam; color: pg.cInk
+                                Basic.TextField { id: dfMental; width: parent.width; font.pixelSize: 12; font.family: pg.fam; color: pg.cInk
                                     background: Rectangle { color: "#fbfbf9"; border.color: pg.cRule; border.width: 1; radius: 3 } } }
                         }
                         Column { width: parent.width; spacing: 2
                             Text { text: "Coach notes"; color: pg.cSub; font.pixelSize: 11; font.family: pg.fam }
-                            TextArea { id: dfCoach; width: parent.width; height: 46; font.pixelSize: 12; font.family: pg.fam; color: pg.cInk
+                            Basic.TextArea { id: dfCoach; width: parent.width; height: 46; font.pixelSize: 12; font.family: pg.fam; color: pg.cInk
                                 background: Rectangle { color: "#fbfbf9"; border.color: pg.cRule; border.width: 1; radius: 3 } }
                         }
                         Column { width: parent.width; spacing: 2
                             Text { text: "Athlete notes"; color: pg.cSub; font.pixelSize: 11; font.family: pg.fam }
-                            TextArea { id: dfAthlete; width: parent.width; height: 46; font.pixelSize: 12; font.family: pg.fam; color: pg.cInk
+                            Basic.TextArea { id: dfAthlete; width: parent.width; height: 46; font.pixelSize: 12; font.family: pg.fam; color: pg.cInk
                                 background: Rectangle { color: "#fbfbf9"; border.color: pg.cRule; border.width: 1; radius: 3 } }
                         }
                         Text { text: "Next training focus"; color: pg.cSub; font.pixelSize: 11; font.family: pg.fam }
@@ -405,7 +410,7 @@ Rectangle {
                         }
                         Column { width: parent.width; spacing: 2
                             Text { text: "Free-text next-session focus"; color: pg.cSub; font.pixelSize: 11; font.family: pg.fam }
-                            TextField { id: dfNext; width: parent.width; font.pixelSize: 12; font.family: pg.fam; color: pg.cInk
+                            Basic.TextField { id: dfNext; width: parent.width; font.pixelSize: 12; font.family: pg.fam; color: pg.cInk
                                 background: Rectangle { color: "#fbfbf9"; border.color: pg.cRule; border.width: 1; radius: 3 } }
                         }
                     }

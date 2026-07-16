@@ -24,7 +24,7 @@ Item {
 
     Connections {
         target: MODREADER
-        onShootCountChanged: {
+        function onShootCountChanged(count) {
             // ignore on sighter mode
             if (shootingPage.sligterMode)
                 return;
@@ -329,12 +329,11 @@ Item {
 
     function getXMPI()
     {
-        console.log("-----------------*******************__________________")
         return MODREADER.getXMPI()
     }
     function getYMPI()
     {
-        console.log("-----------------*******************__________________1")
+        if (APPSETTINGS.getDeveloperMode()) console.log("-----------------*******************__________________1")
         return MODREADER.getYMPI()
     }
     function converSecondToMins(seconds)

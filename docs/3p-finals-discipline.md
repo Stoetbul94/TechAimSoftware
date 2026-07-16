@@ -573,3 +573,41 @@ were verified correct throughout (TOTAL 208.9 == controller for 20 shots).
 - **FIX-R4 — validation**: 169 checks, 0 failures (adds the three FIX-R3
   split-semantics checks); app rebuilt with regenerated qrc and
   launch-verified clean.
+
+## Finals report redesign (presentation-only, D1-D6)
+
+Benchmarked against SIUS/Meyton finals reporting (information hierarchy,
+protocol headers, dense ruled tables, plots beside numbers, versioned and
+paginated output) — TechAim visual identity retained (white pages, light
+grey cards, maroon accents, Segoe UI).
+
+**Architecture rule enforced**: every displayed value originates in
+`FinalsReportData` (builder-derived); QML only formats. Controller, scoring,
+routing, journal, timers, qualification reports all untouched — every
+redesign commit touched finals-only files.
+
+- **D1** (`8552387`): model expansion — summary stats (avg/highest/lowest
+  with shot numbers, inner tens at the 10.2 convention), per-stage
+  avg/best/worst/inner/time, per-shot running total + hold placeholder +
+  note, MATCH VALIDATION checks (6, with per-stage timeout details),
+  performance summary, position comparison (barPct), incident severity,
+  positionPlots groups. 178 harness checks, 0 failures.
+- **D2** (`7e0ece3`): Page 1 — finals-local protocol header (logo, event
+  line, Athlete/Discipline/Date/Session/Software/Mode + Lane/Target ID
+  reserved for RMS), validation panel replacing the status banner, 3×3
+  executive summary, 9-column stage breakdown + TOTAL row, position bars.
+- **D3** (`de9150f`): Page 2 charts — Momentum (decimal score per shot) and
+  Cumulative Score (running total) line charts, QtCharts light theme.
+- **D4** (`2bd7140`): `FinalsReportTarget.qml` — print-palette miniature
+  targets with TRUE ISSF 50m-rifle ring geometry and bullet-scale holes,
+  one shared zoom across K/P/S; stored X/Y verbatim.
+- **D5** (`bff1811`): shot table expanded (#/Stage/Score★/Hold/Split/
+  Running Total/Notes), severity-coloured incident log, refined CRO
+  timeline, 4×2 performance summary, ruled Coach Notes block (~20% of the
+  last page).
+- **D6**: typography/spacing pass; 4-page PDF (same grab path ->
+  `createFinalsPdf`, one image per page).
+
+PDF export is dialog-driven — verify manually: complete a final → VIEW
+REPORT → Save PDF (all four pages, logo header, charts and targets render
+in the grab).

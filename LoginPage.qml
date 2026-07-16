@@ -48,24 +48,27 @@ Item {
     onGameEventChanged: { APPSETTINGS.setGameEvent(gameEvent) }
     onGameSubModeChanged: { APPSETTINGS.setGameSubMode(gameSubMode) }
     onUsername_loginPageChanged: {
-        console.log("**********??????????????????????*********", username_loginPage)
         APPSETTINGS.setUsername(username_loginPage)
     }
     onGameTypeChanged: {
-        console.log("***************************************** ", gameType)
         if (gameType === 0) shootingPage.loadGameInMatchMode()
     }
 
     Component.onCompleted: {
         if (gameRange == 10) {
             if (APPSETTINGS.getGame_distance() < 5 || APPSETTINGS.getGame_distance() > 10) {
-                gameDistanceDia.visible = true
+                dialogManager.show({ "type": "error",
+                    "title": qsTr("Invalid Distance"),
+                    "message": qsTr("The configured distance is outside the supported range of 5 m to 10 m.\n\nThe application will now close."),
+                    "onResult": function () { Qt.quit() } })
             }
         }
         MODREADER.connectedModbus()
         mod_connected = MODREADER.isModBusConnected()
         if (!MODREADER.isValidLicence()) {
-            // invalidLicence.visible = true
+            // dialogManager.show({ "type": "error", "title": qsTr("Licence Expired"),
+            //     "message": qsTr("The software licence has expired.\n\nPlease contact TechAim support to renew."),
+            //     "onResult": function () { Qt.quit() } })
         } else if (!mod_connected && popupMode) {
             modBusConnector.visible = true
         }
@@ -85,43 +88,8 @@ Item {
         visible: false
     }
 
-    MessageDialog {
-        id: invalidUserName; title: "Warning"
-        text: qsTr("Please enter user name to login")
-        visible: false
-    }
-
-    MessageDialog {
-        id: invalidLicence; title: "Error"
-        text: "Licence has expired, Please contact raosrinu2004@gmail.com or rahul.mishra@tachustechnology.com"
-        visible: false
-        onAccepted: { Qt.quit() }
-    }
-
-    MessageDialog {
-        id: gameDistanceDia; title: "Error"
-        text: "Entered distance is not in the range of 5m to 10 m."
-        visible: false
-        onAccepted: { Qt.quit() }
-    }
-
-    MessageDialog {
-        id: masterConnection; title: "Error"
-        text: "Master system is not connected, Please Click \"Connect\" button."
-        visible: false
-    }
-
-    MessageDialog {
-        id: validateLogin; title: "Error"
-        text: "Srinu"; visible: false
-    }
-
-    MessageDialog {
-        id: contactUsDia; title: "Info"
-        text: isDefaultIcon ? "Please contact us contact@tachustechnology.com"
-                            : " Contact us on contact@seta-online.com"
-        visible: false
-    }
+    // Popup messages migrated to the TechAim dialog framework
+    // (dialogManager in main.qml) — no QtQuick.Dialogs MessageDialog left.
 
     Popup {
         id: popup
@@ -135,45 +103,43 @@ Item {
 
     Connections {
         target: APPSETTINGS
-        onUserNameChanged: {
+        function onUserNameChanged(name) {
             username_loginPage = name
-            console.log("*******************", name)
             name_text_field.text = name
         }
-        onPortNumberChanged: { port_name_text_field.text = port }
-        onLaneNumberChanged: { lane_number_text = lane_number }
-        onStartSighter: {
+        function onPortNumberChanged(port) { port_name_text_field.text = port }
+        function onLaneNumberChanged(lane_number) { lane_number_text = lane_number }
+        function onStartSighter() {
             if (visible) perfromStart()
             sighterStartedFromServer()
         }
-        onStartMatch: {
+        function onStartMatch() {
             if (visible) perfromStart()
             matchStartedFromServer()
         }
-        onBackHome: {
-            console.log("********************************", visible)
+        function onBackHome() {
             if (!visible) backHomeFromServer()
         }
     }
 
     Connections {
         target: MODREADER
-        onMasterConnectionChanged: {
-            console.log("Master connection changed .....,", isConnected)
+        function onMasterConnectionChanged(isConnected) {
+            if (APPSETTINGS.getDeveloperMode()) console.log("Master connection changed .....,", isConnected)
             disableControls()
         }
-        onMatchDetails: {
-            console.log("Match Details in qml .....", gametype, matchmode, sighterTime, matchtime, sigherTime, matchpf)
+        function onMatchDetails(gametype, matchmode, sighterTime, matchtime, sigherTime, matchpf) {
+            if (APPSETTINGS.getDeveloperMode()) console.log("Match Details in qml .....", gametype, matchmode, sighterTime, matchtime, sigherTime, matchpf)
             gameEvent = matchmode
             gameMode = gametype
             shootingPage.applyServerSettings(sighterTime, matchtime, sigherTime, matchpf)
         }
-        onStartMatchFromServer: {
-            console.log("Match Started .............")
+        function onStartMatchFromServer() {
+            if (APPSETTINGS.getDeveloperMode()) console.log("Match Started .............")
             perfromStart()
         }
-        onMatchDetailsSetaModification: {
-            console.log("Match Details in qml onMatchDetailsSetaModification .....", gametype, matchmode)
+        function onMatchDetailsSetaModification(gametype, matchmode) {
+            if (APPSETTINGS.getDeveloperMode()) console.log("Match Details in qml onMatchDetailsSetaModification .....", gametype, matchmode)
             gameEvent = matchmode
             gameMode = gametype
         }
@@ -258,7 +224,8 @@ Item {
 
     function validate() {
         if (username_loginPage === "" && !isSaveGame) {
-            invalidUserName.visible = true
+            dialogManager.showWarning(qsTr("User Name Required"),
+                qsTr("Please enter a user name before logging in."))
             return false
         }
         return true
@@ -338,7 +305,7 @@ Item {
     }
 
     function disableControls() {
-        console.log("Inside disable controls ....")
+        if (APPSETTINGS.getDeveloperMode()) console.log("Inside disable controls ....")
         pistolMouse.visible   = false
         rifleMouse.visible    = false
         rifle50Mouse.visible  = false
@@ -349,7 +316,7 @@ Item {
     }
 
     function startButtonClickedOnLoadGame() {
-        console.log("app mode " + appMode)
+        if (APPSETTINGS.getDeveloperMode()) console.log("app mode " + appMode)
         if (!appMode) {
             rootItem.visible = false
         } else {
@@ -365,8 +332,8 @@ Item {
         if (!appMode) {
             MODREADER.appendToLogFile("Application running in demo mode")
             if (connectToMaster && !MODREADER.isMasterSystemConnected()) {
-                masterConnection.text = "Master system is not connected, Please Click \"Connect\" button."
-                masterConnection.visible = true
+                dialogManager.showError(qsTr("Master Not Connected"),
+                    qsTr("The master system is not connected.\n\nPlease press \u201CConnect\u201D and try again."))
                 return
             }
             rootItem.visible = false
@@ -374,8 +341,8 @@ Item {
             MODREADER.appendToLogFile("Application running in Live mode")
             if (connectToMaster && !MODREADER.isMasterSystemConnected()) {
                 MODREADER.appendToLogFile("Master application required")
-                masterConnection.text = "Master system is not connected, Please Click \"Connect\" button."
-                masterConnection.visible = true
+                dialogManager.showError(qsTr("Master Not Connected"),
+                    qsTr("The master system is not connected.\n\nPlease press \u201CConnect\u201D and try again."))
                 return
             }
             if (masterConnectBtn && port_name_text_field.text != "") {
@@ -385,14 +352,14 @@ Item {
             }
             if (!MODREADER.isModBusConnected()) {
                 MODREADER.appendToLogFile("Com port not connected")
-                validateLogin.text = "Com port not connected"
-                validateLogin.visible = true
+                dialogManager.showError(qsTr("COM Port Not Connected"),
+                    qsTr("No connection to the target COM port was found.\n\nPlease connect the target hardware and try again."))
             } else if (!MODREADER.isHardwareConnected()) {
-                validateLogin.text = "Hardware not connected."
-                validateLogin.visible = true
+                dialogManager.showError(qsTr("Hardware Not Connected"),
+                    qsTr("The target hardware is not responding.\n\nPlease check the target connection and try again."))
             } else if (!MODREADER.checkAutoFeedMode()) {
-                validateLogin.text = "Auto feed mode is off"
-                validateLogin.visible = false
+                // Auto-feed notice was never shown (the legacy dialog was
+                // set visible = false) — preserved as a silent branch.
             } else if (validate()) {
                 MODREADER.appendToLogFile("Validation was successful")
                 rootItem.visible = false
@@ -842,16 +809,16 @@ Item {
                             if (!appMode) {
                                 MODREADER.appendToLogFile("Application running in demo mode")
                                 if (connectToMaster && !MODREADER.isMasterSystemConnected()) {
-                                    masterConnection.text = "Master system is not connected, Please Click \"Connect\" button."
-                                    masterConnection.visible = true; return
+                                    dialogManager.showError(qsTr("Master Not Connected"),
+                                        qsTr("The master system is not connected.\n\nPlease press \u201CConnect\u201D and try again.")); return
                                 }
                                 rootItem.visible = false
                             } else {
                                 MODREADER.appendToLogFile("Application running in Live mode")
                                 if (connectToMaster && !MODREADER.isMasterSystemConnected()) {
                                     MODREADER.appendToLogFile("Master application required")
-                                    masterConnection.text = "Master system is not connected, Please Click \"Connect\" button."
-                                    masterConnection.visible = true; return
+                                    dialogManager.showError(qsTr("Master Not Connected"),
+                                        qsTr("The master system is not connected.\n\nPlease press \u201CConnect\u201D and try again.")); return
                                 }
                                 if (masterConnectBtn && port_name_text_field.text != "") {
                                     MODREADER.appendToLogFile("Application with port text field")

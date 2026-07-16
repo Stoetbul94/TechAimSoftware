@@ -17,7 +17,7 @@ Item {
 
     Connections {
         target: MODREADER
-        onShootCountChanged: {
+        function onShootCountChanged(count) {
             update()
         }
     }
