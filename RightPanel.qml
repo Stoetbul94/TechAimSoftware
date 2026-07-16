@@ -9,7 +9,12 @@ Item {
     // filter keys off currentPageIndex (see CenterPane numberOverlayRepeater).
     // During live shooting (and every non-3P discipline) this stays the current
     // display buffer, so the live per-position face/counter behaviour is unchanged.
-    readonly property var pagingModel: (is3PMatch && shootingPage.matchFinished) ? globalMatchModel : globalModelOfData
+    // Sighter-time series review: the athlete can page BACK through the
+    // completed match series while sighting (e.g. review Kneeling during the
+    // 3P position-change sighters). Table-only — the live face, score bubble
+    // and totals are untouched; a new shot auto-exits back to the live view.
+    property bool browseHistory: false
+    readonly property var pagingModel: ((is3PMatch && shootingPage.matchFinished) || browseHistory) ? globalMatchModel : globalModelOfData
     // Shot-number base so numbering runs continuously through a live 3P match
     // (Kneeling 1-20, Prone 21-40, Standing 41-60) even though the table pages
     // the per-position buffer. Derived from the DATA, not from position state:
@@ -23,10 +28,12 @@ Item {
     readonly property int maxSeriesPage: pagingModel.count > 0 ? Math.floor((pagingModel.count - 1) / 10) : 0
     readonly property bool canPrevSeries: shootingPage.isFinalsMatch
                                           ? finalsPageIndex > 0
-                                          : currentPageIndex > 0
+                                          : (currentPageIndex > 0
+                                             || (sligterMode && !shootingPage.matchFinished
+                                                 && !browseHistory && globalMatchModel.count > 0))
     readonly property bool canNextSeries: shootingPage.isFinalsMatch
                                           ? finalsPageIndex < finalsMaxPage
-                                          : currentPageIndex < maxSeriesPage
+                                          : (browseHistory ? true : currentPageIndex < maxSeriesPage)
 
     // ── 3P FINAL table paging (FIX-R5) ──────────────────────────────────
     // The finals table pages by STAGE GROUP (K / P / S1 / S2 / SINGLES), not
@@ -92,6 +99,10 @@ Item {
 
     onCurrentPageIndexChanged:
     {
+        // History browsing is table-only: never drive the centerPanel
+        // review-refresh chain while the athlete is sighting live.
+        if (browseHistory)
+            return
         var maxPageIndex = Math.floor((pagingModel.count-1)/10)
         if (APPSETTINGS.getDeveloperMode()) console.log("Current Page Index and Max page Index " , currentPageIndex,maxPageIndex)
         if(currentPageIndex < maxPageIndex)
@@ -121,6 +132,9 @@ Item {
     }
 
     onCurrentShootIndexChanged: {
+        // History browsing is table-only — see onCurrentPageIndexChanged.
+        if (browseHistory)
+            return
         // 3P FINAL (FIX-R5): the finals table indexes rows within a STAGE
         // page, which does not map onto the per-window display buffer —
         // reading pagingModel here would feed the score bubble a wrong
@@ -1199,6 +1213,13 @@ Item {
             return
         currentPageIndex = Math.floor((globalMatchModel.count - 1) / 10)
         updateListModel(currentPageIndex * 10, globalMatchModel.count)
+        // Repoint the selection at the REAL last shot. pagingModel switched
+        // to the full match record the moment matchFinished flipped, but
+        // currentShootIndex still held a live-buffer index — the selected-
+        // shot marker plotted a different shot (a phantom dot) until the
+        // athlete clicked a row.
+        matchScore.currentIndex = Math.max(0, (globalMatchModel.count - 1) % 10)
+        currentShootIndex = globalMatchModel.count - 1
     }
 
     function leftClicked()
@@ -1210,6 +1231,16 @@ Item {
                 --finalsPageIndex
                 rebuildFinalsTablePage()
             }
+            return
+        }
+        // Enter history browsing from live sighting: jump to the last
+        // completed match series (pagingModel switches to the full record).
+        if (sligterMode && !shootingPage.matchFinished && !browseHistory
+                && globalMatchModel.count > 0) {
+            browseHistory = true
+            currentPageIndex = Math.floor((globalMatchModel.count - 1) / 10)
+            var bs = currentPageIndex * 10
+            updateListModel(bs, Math.min(bs + 10, globalMatchModel.count))
             return
         }
         listNavigationON = true
@@ -1235,6 +1266,12 @@ Item {
             }
             return
         }
+        // Paging right past the last match series exits history browsing
+        // back to the live sighter view.
+        if (browseHistory && currentPageIndex >= maxSeriesPage) {
+            exitHistoryBrowse()
+            return
+        }
         listNavigationON = true
         ++currentPageIndex
         var maxPageIndex = Math.floor(pagingModel.count/10)
@@ -1246,6 +1283,13 @@ Item {
         listNavigationON = true
     }
 
+    function exitHistoryBrowse()
+    {
+        browseHistory = false
+        currentPageIndex = Math.max(0, Math.floor((globalModelOfData.count - 1) / 10))
+        updateTotal()   // rebuild the live view from the display buffer
+    }
+
     function updateTotal()
     {
         // Refreshing the score views while the shooting page is hidden (Home
@@ -1254,6 +1298,12 @@ Item {
         // the full refresh chain anyway.
         if (!visible)
             return
+        // A new shot while reviewing history returns the table to the live
+        // view (otherwise this rebuild would read the wrong record pages).
+        if (browseHistory) {
+            browseHistory = false
+            currentPageIndex = Math.max(0, Math.floor((globalModelOfData.count - 1) / 10))
+        }
         updateGrandTotal()
         // Clamp to 0: with an empty model, floor((0-1)/10) = -1 and the
         // resulting negative indices make ListModel.get() return undefined,
