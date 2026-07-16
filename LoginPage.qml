@@ -103,42 +103,42 @@ Item {
 
     Connections {
         target: APPSETTINGS
-        onUserNameChanged: {
+        function onUserNameChanged(name) {
             username_loginPage = name
             name_text_field.text = name
         }
-        onPortNumberChanged: { port_name_text_field.text = port }
-        onLaneNumberChanged: { lane_number_text = lane_number }
-        onStartSighter: {
+        function onPortNumberChanged(port) { port_name_text_field.text = port }
+        function onLaneNumberChanged(lane_number) { lane_number_text = lane_number }
+        function onStartSighter() {
             if (visible) perfromStart()
             sighterStartedFromServer()
         }
-        onStartMatch: {
+        function onStartMatch() {
             if (visible) perfromStart()
             matchStartedFromServer()
         }
-        onBackHome: {
+        function onBackHome() {
             if (!visible) backHomeFromServer()
         }
     }
 
     Connections {
         target: MODREADER
-        onMasterConnectionChanged: {
+        function onMasterConnectionChanged(isConnected) {
             if (APPSETTINGS.getDeveloperMode()) console.log("Master connection changed .....,", isConnected)
             disableControls()
         }
-        onMatchDetails: {
+        function onMatchDetails(gametype, matchmode, sighterTime, matchtime, sigherTime, matchpf) {
             if (APPSETTINGS.getDeveloperMode()) console.log("Match Details in qml .....", gametype, matchmode, sighterTime, matchtime, sigherTime, matchpf)
             gameEvent = matchmode
             gameMode = gametype
             shootingPage.applyServerSettings(sighterTime, matchtime, sigherTime, matchpf)
         }
-        onStartMatchFromServer: {
+        function onStartMatchFromServer() {
             if (APPSETTINGS.getDeveloperMode()) console.log("Match Started .............")
             perfromStart()
         }
-        onMatchDetailsSetaModification: {
+        function onMatchDetailsSetaModification(gametype, matchmode) {
             if (APPSETTINGS.getDeveloperMode()) console.log("Match Details in qml onMatchDetailsSetaModification .....", gametype, matchmode)
             gameEvent = matchmode
             gameMode = gametype

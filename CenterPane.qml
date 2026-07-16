@@ -245,7 +245,7 @@ Item {
 
     Connections {
         target: MODREADER
-        onShootCountChanged: {
+        function onShootCountChanged(count) {
             //            var logData1 = "onShootCountChanged window visibilty changed.............................."+ windowVisibleMode
             //            MODREADER.appendToLogFile(logData1)
 
@@ -333,7 +333,7 @@ Item {
             APPSETTINGS.saveMatch()
         }
 
-        onHardwareDisconnected: {
+        function onHardwareDisconnected() {
             gameTimer.stop()
             //            conError.visible = true
             conErrorDia.visible = true
@@ -345,7 +345,7 @@ Item {
             //            hardwareDisconnected.visible = true
         }
 
-        onHardwareReconnected: {
+        function onHardwareReconnected() {
             //            hardwareDisconnected.visible = false
             //            hardwareDisconnected.text = "Reconnection successfully, Resuming the Game."
             //            hardwareDisconnected.inDisconnectedMode = false
@@ -360,7 +360,7 @@ Item {
 
     Connections {
         target: window
-        onAppVisiblityModeChanged: {
+        function onAppVisiblityModeChanged(mode) {
             var logData = "window visibilty changed.............................."+ mode
             MODREADER.appendToLogFile(logData)
 

@@ -50,7 +50,7 @@ Item {
     Connections {
         target: loginPage
 
-        onBackHomeFromServer : {
+        function onBackHomeFromServer() {
 
             homeButtonClicked()
         }

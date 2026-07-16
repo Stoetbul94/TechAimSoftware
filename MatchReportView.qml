@@ -67,7 +67,7 @@ Item {
     // by scoping it to saves this view initiated (guarded by _pendingClose).
     Connections {
         target: CUSTOMPRINT
-        onSaveComplete: {
+        function onSaveComplete() {
             if (APPSETTINGS.getDeveloperMode()) console.log("Match report saved")
             if (screenPresence._pendingClose) {
                 screenPresence._pendingClose = false

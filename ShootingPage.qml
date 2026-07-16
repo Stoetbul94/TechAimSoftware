@@ -757,7 +757,7 @@ Item {
 
     Connections {
         target: APPSETTINGS
-        onPrintPDF: {
+        function onPrintPDF() {
             if (leftPanel.playVisible)
                 return;
 

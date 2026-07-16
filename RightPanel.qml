@@ -80,11 +80,11 @@ Item {
     Connections {
         target: loginPage
 
-        onSighterStartedFromServer : {
+        function onSighterStartedFromServer() {
             pauseClicked()
         }
 
-        onMatchStartedFromServer : {
+        function onMatchStartedFromServer() {
             startClicked()
         }
 

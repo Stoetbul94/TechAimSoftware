@@ -19,7 +19,7 @@ Item {
 
     Connections {
         target: MODREADER
-        onShootCountChanged: {
+        function onShootCountChanged(count) {
             // ignore on sighter mode
             if (shootingPage.sligterMode)
                 return;
