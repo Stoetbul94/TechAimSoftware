@@ -477,8 +477,31 @@ ApplicationWindow {
             {
                 window.close()
                 Qt.quit()
-            } else
-                closeDia.visible = true
+            } else {
+                dialogManager.show({
+                    "type": "question",
+                    "title": qsTr("Save Match?"),
+                    "message": qsTr("The match is finished.\n\nDo you want to save this match before closing the application?"),
+                    "buttons": [
+                        { "label": qsTr("Cancel"),  "result": "cancel",  "accent": false },
+                        { "label": qsTr("Discard"), "result": "discard", "accent": false },
+                        { "label": qsTr("Save"),    "result": "save",    "accent": true }
+                    ],
+                    "defaultResult": "save",
+                    "cancelResult": "cancel",
+                    "onResult": function (r) {
+                        // Same actions the legacy ClosePopupDialog performed.
+                        if (r === "discard") {
+                            window.close()
+                            Qt.quit()
+                        } else if (r === "save") {
+                            APPSETTINGS.saveMatch()
+                            window.close()
+                            Qt.quit()
+                        }
+                    }
+                })
+            }
         }
     }
 
@@ -603,29 +626,8 @@ ApplicationWindow {
 
 
 
-    ClosePopupDialog {
-        id: closeDia
-        visible: false
-
-        width: 300
-        height: 100
-
-        onCancel: {
-            closeDia.visible = false
-        }
-
-        onDiscard: {
-            window.close()
-            Qt.quit()
-        }
-
-        onSave: {
-            APPSETTINGS.saveMatch()
-            closeDia.visible = false
-            window.close()
-            Qt.quit()
-        }
-    }
+    // The exit/save confirmation now runs through dialogManager (TechAim
+    // dialog framework); the legacy grey ClosePopupDialog is gone.
 
 }
 }

@@ -1,5 +1,4 @@
 import QtQuick 2.15
-import QtQuick.Dialogs
 import QtQuick.Controls 2.15
 
 //import Qt.labs.platform 1.0
@@ -106,21 +105,16 @@ Item {
     }
 
 
-    Dialog
-    {
-        id:matchFinishConfirmation
-        width: 200//parent.width*0.2
-        height: 75//parent.height*0.2
-        Label{
-            text: "Are you sure you want to finish the match ?"
-            anchors.centerIn: parent
-        }
-
-        standardButtons: StandardButton.Ok | StandardButton.Cancel
-
-        onAccepted: {
-            changedToMatchFinish()
-        }
+    // The finish-match confirmation now runs through dialogManager (see
+    // confirmMatchFinish below). The legacy Dialog's StandardButton enum was
+    // never in scope under the QtQuick.Dialogs import (ReferenceError at
+    // runtime), so its OK/Cancel buttons never rendered — this migration also
+    // fixes that.
+    function confirmMatchFinish() {
+        dialogManager.showConfirmation(qsTr("Finish Match"),
+            qsTr("Are you sure you want to finish this match?\n\nOnce finished, no further shots can be recorded."),
+            function (ok) { if (ok) changedToMatchFinish() },
+            qsTr("Finish Match"), qsTr("Cancel"))
     }
 
     ListModel
@@ -443,7 +437,7 @@ Item {
                     if (actionBar.barMode === 2)
                         windowManager.openMatchReport()
                     else if (actionBar.barMode === 1)
-                        matchFinishConfirmation.visible = true
+                        confirmMatchFinish()
                     else
                         rightPanel.startClicked()
                 }

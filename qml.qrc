@@ -46,7 +46,6 @@
         <file>Report3PSeries.qml</file>
         <file>SettingsPage.qml</file>
         <file>ModConnectorDialog.qml</file>
-        <file>ClosePopupDialog.qml</file>
         <file>MatchReportInfo.qml</file>
         <file>PdfPage.qml</file>
         <file>SeriesComponent.qml</file>
