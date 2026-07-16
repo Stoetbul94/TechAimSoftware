@@ -5,7 +5,6 @@
 #include <QTimer>
 #include <QThread>
 #include <QDebug>
-#include <QMessageBox>
 #include <QTcpServer>
 #include <QElapsedTimer>
 
