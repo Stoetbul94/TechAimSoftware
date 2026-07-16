@@ -1091,30 +1091,21 @@ Item {
                 var centerX = shootingPanelRect.width/2 //* offset
                 var centerY = shootingPanelRect.height/2 //* offset
 
-                var bulletSize = 0//4.5/2
-
-                x = centerX+((xCor+bulletSize)*offsetX) - radius
-                y = centerY-((yCor+bulletSize)*offsetY) - radius
-
-                // for 10m
-                // pistol -> target size = 155.5 and bulletSize = 4.5
-                // rifle -> target size = 45.5 and bulletSize = 4.5
-                // for 50m
-                // pistol -> target size = 500 and bulletSize = 5.6
-                // rifle -> target size = 154.4 and bulletSize = 5.6
-                width = gameRange == 10 ? (centerPanel.gameMode ? shootingcanvas.height/155.5 : shootingcanvas.height/45.5 )
-                                        : (centerPanel.gameMode ? shootingcanvas.height/500 /*size 500 pallet 5.6*/
-                                                                : shootingcanvas.height/154.4 /*size 154.4 pallet 5.6*/)
-
-                var gameRatio = gameRange == 10 ? (gameMode ? 155.5/APPSETTINGS.bullet_diameter() : 45.5/APPSETTINGS.bullet_diameter())
-                                                : (gameMode ? 500/APPSETTINGS.bullet_diameter() : 154.4/APPSETTINGS.bullet_diameter())
-
-//                var palletSize = gameRange == 10 ? (centerPanel.gameMode ? shootingcanvas.height/34.55 : shootingcanvas.height/10.11 )
-//                                                 : (centerPanel.gameMode ? shootingcanvas.height/89.29 /*size 500 pallet 5.6*/
-//                                                                         : shootingcanvas.height/27.57 /*size 154.4 pallet 5.6*/)
-                var palletSize = shootingcanvas.height/gameRatio
-                width = width*distance + palletSize
-                height = width
+                // Group circle: outside-edge diameter of the widest displayed
+                // pair. group_distance (mm, computed above) already includes
+                // one bullet diameter; offsetX/offsetY are this canvas's
+                // px-per-mm scale. The legacy sizing multiplied by a
+                // `distance` variable that never existed — the ReferenceError
+                // aborted this function here on every refresh and left the
+                // circle stuck near bullet size. Size is set BEFORE the
+                // centre placement (the old code positioned with the stale
+                // radius), clamped to the canvas so a wild pair can never
+                // paint outside the face.
+                var groupPx = Math.min(group_distance * offsetX, shootingcanvas.height)
+                width = groupPx
+                height = groupPx
+                x = centerX + (xCor * offsetX) - groupPx / 2
+                y = centerY - (yCor * offsetY) - groupPx / 2
 
                 //
                 var org_palletSize = gameRange == 10 ? 4.5 : 5.6

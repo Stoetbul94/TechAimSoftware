@@ -12,6 +12,14 @@ Rectangle {
 
     property int gameSubMode: 0
     property var rep: COACHREPORT.report
+    // Safe availability (S1.4): COACHREPORT.report exists before any analysis
+    // but its sections are unpopulated then — the deep recovery/fatigue chains
+    // threw TypeErrors at startup. Sections resolve to null until a VALID
+    // report is loaded; the cards already show a clean empty state via their
+    // rep.valid visibility. No analysis is triggered here.
+    readonly property bool reportAvailable: rep !== undefined && rep !== null && rep.valid === true
+    readonly property var recovery: (reportAvailable && rep.recoveryAnalysis !== undefined) ? rep.recoveryAnalysis : null
+    readonly property var fatigue: (reportAvailable && rep.fatigueAnalysis !== undefined) ? rep.fatigueAnalysis : null
 
     // Target shot-map data (refreshed on each analysis).
     property var  targets: []
@@ -375,22 +383,22 @@ Rectangle {
                     spacing: 8
                     Rectangle {
                         width: 12; height: 12; radius: 6; anchors.verticalCenter: parent.verticalCenter
-                        color: reportPage.sevColor((reportPage.rep && reportPage.rep.recoveryAnalysis.overall.available) ? reportPage.rep.recoveryAnalysis.overall.recoverySeverity : "None")
+                        color: reportPage.sevColor((reportPage.recovery && reportPage.recovery.overall.available) ? reportPage.recovery.overall.recoverySeverity : "None")
                     }
                     Text {
-                        text: reportPage.recoveryPatternLabel(reportPage.rep ? reportPage.rep.recoveryAnalysis.overall.pattern : "")
+                        text: reportPage.recoveryPatternLabel(reportPage.recovery ? reportPage.recovery.overall.pattern : "")
                         color: theme.textPrimary; font.bold: true; font.pixelSize: 15; font.family: theme.fontFamily
                     }
                 }
                 Text {
                     width: parent.width
-                    visible: reportPage.rep && reportPage.rep.recoveryAnalysis.overall.available
-                    text: "Recovery rate " + reportPage.pct(reportPage.rep ? reportPage.rep.recoveryAnalysis.overall.badShotRecoveryRate : 0)
-                          + "   •   confidence " + reportPage.pct(reportPage.rep ? reportPage.rep.recoveryAnalysis.overall.recoveryConfidence : 0)
+                    visible: reportPage.recovery && reportPage.recovery.overall.available
+                    text: "Recovery rate " + reportPage.pct(reportPage.recovery ? reportPage.recovery.overall.badShotRecoveryRate : 0)
+                          + "   •   confidence " + reportPage.pct(reportPage.recovery ? reportPage.recovery.overall.recoveryConfidence : 0)
                     color: theme.textSecondary; font.pixelSize: 13; font.family: theme.fontFamily
                 }
                 Repeater {
-                    model: (reportPage.rep && reportPage.rep.recoveryAnalysis.metrics) ? reportPage.rep.recoveryAnalysis.metrics : []
+                    model: (reportPage.recovery && reportPage.recovery.metrics) ? reportPage.recovery.metrics : []
                     delegate: Column {
                         width: parent.width; spacing: 2
                         Row {
@@ -406,9 +414,9 @@ Rectangle {
                 }
                 Text {
                     width: parent.width
-                    visible: reportPage.rep && reportPage.rep.recoveryAnalysis.comparativeAvailable
-                    text: "Best position: " + reportPage.up(reportPage.rep ? reportPage.rep.recoveryAnalysis.bestRecoveryPosition : "")
-                          + "   •   Worst: " + reportPage.up(reportPage.rep ? reportPage.rep.recoveryAnalysis.worstRecoveryPosition : "")
+                    visible: reportPage.recovery && reportPage.recovery.comparativeAvailable
+                    text: "Best position: " + reportPage.up(reportPage.recovery ? reportPage.recovery.bestRecoveryPosition : "")
+                          + "   •   Worst: " + reportPage.up(reportPage.recovery ? reportPage.recovery.worstRecoveryPosition : "")
                     color: theme.textSecondary; font.pixelSize: 13; font.family: theme.fontFamily
                 }
             }
@@ -421,22 +429,22 @@ Rectangle {
                     spacing: 8
                     Rectangle {
                         width: 12; height: 12; radius: 6; anchors.verticalCenter: parent.verticalCenter
-                        color: reportPage.indexSevColor(reportPage.rep ? reportPage.rep.fatigueAnalysis.fatigueIndex : 0)
+                        color: reportPage.indexSevColor(reportPage.fatigue ? reportPage.fatigue.fatigueIndex : 0)
                     }
                     Text {
-                        text: reportPage.fatiguePatternLabel(reportPage.rep ? reportPage.rep.fatigueAnalysis.overallPattern : "")
+                        text: reportPage.fatiguePatternLabel(reportPage.fatigue ? reportPage.fatigue.overallPattern : "")
                         color: theme.textPrimary; font.bold: true; font.pixelSize: 15; font.family: theme.fontFamily
                     }
                 }
                 Text {
                     width: parent.width
-                    visible: reportPage.rep && reportPage.rep.fatigueAnalysis.scoreTrendAvailable
-                    text: "Fatigue index " + reportPage.f(reportPage.rep ? reportPage.rep.fatigueAnalysis.fatigueIndex : 0, 2)
-                          + "   •   confidence " + reportPage.pct(reportPage.rep ? reportPage.rep.fatigueAnalysis.confidence : 0)
+                    visible: reportPage.fatigue && reportPage.fatigue.scoreTrendAvailable
+                    text: "Fatigue index " + reportPage.f(reportPage.fatigue ? reportPage.fatigue.fatigueIndex : 0, 2)
+                          + "   •   confidence " + reportPage.pct(reportPage.fatigue ? reportPage.fatigue.confidence : 0)
                     color: theme.textSecondary; font.pixelSize: 13; font.family: theme.fontFamily
                 }
                 Repeater {
-                    model: (reportPage.rep && reportPage.rep.fatigueAnalysis.metrics) ? reportPage.rep.fatigueAnalysis.metrics : []
+                    model: (reportPage.fatigue && reportPage.fatigue.metrics) ? reportPage.fatigue.metrics : []
                     delegate: Column {
                         width: parent.width; spacing: 2
                         Row {
@@ -452,8 +460,8 @@ Rectangle {
                 }
                 Text {
                     width: parent.width
-                    visible: reportPage.rep && reportPage.rep.fatigueAnalysis.hasFatiguedPosition
-                    text: "Most fatigued position: " + reportPage.up(reportPage.rep ? reportPage.rep.fatigueAnalysis.mostFatiguedPosition : "")
+                    visible: reportPage.fatigue && reportPage.fatigue.hasFatiguedPosition
+                    text: "Most fatigued position: " + reportPage.up(reportPage.fatigue ? reportPage.fatigue.mostFatiguedPosition : "")
                     color: theme.textSecondary; font.pixelSize: 13; font.family: theme.fontFamily
                 }
             }

@@ -608,8 +608,17 @@ Item {
 
     function getTimeStamp(shootIndex)
     {
+        // Guarded: ListModel.get() past count returns undefined and the
+        // .timestamp access threw a TypeError for partial series. When the
+        // shot (or its timing) doesn't exist yet, show an honest dash —
+        // never a fabricated time.
         var listIndex = ((seriesIndex-1)*10)+shootIndex
-        return globalMatchModel.get(listIndex).timestamp
+        if (listIndex < 0 || listIndex >= globalMatchModel.count)
+            return "—"
+        var row = globalMatchModel.get(listIndex)
+        if (!row || row.timestamp === undefined || row.timestamp === "")
+            return "—"
+        return row.timestamp
     }
 
     function getScoreOfShoot(shootIndex)
@@ -653,8 +662,12 @@ Item {
 
             // shot score (numeric) drives the gentle highlighting
             property real sc: getScoreOfShoot(index) * 1
-            property bool inner: (gameMode === 0 && sc >= rightPanel.star_limit_value_pistol)
-                               || (gameMode === 1 && sc >= rightPanel.star_limit_value_rifle)
+            // loginPage.gameMode, not bare gameMode: main.qml declares
+            // gameRange but NOT gameMode, so the bare lookup threw a
+            // ReferenceError that silently aborted this binding (see the
+            // identical fix in SummaryReportView.getSeriesInnerVal).
+            property bool inner: (loginPage.gameMode === 0 && sc >= rightPanel.star_limit_value_pistol)
+                               || (loginPage.gameMode === 1 && sc >= rightPanel.star_limit_value_rifle)
             property bool low: sc > 0 && sc < 9.0
 
             color: inner ? "#fbeef2" : (index % 2 ? "#f7f8fa" : "#ffffff")
@@ -730,8 +743,9 @@ Item {
         var cnt = 0
         for (var i = (sIdx-1)*10; i < globalModelOfData.count && i < sIdx*10; ++i) {
             var s = globalModelOfData.get(i).calculatedscore * 1
-            if ((gameMode === 0 && s >= rightPanel.star_limit_value_pistol)
-                    || (gameMode === 1 && s >= rightPanel.star_limit_value_rifle))
+            // loginPage.gameMode — see the inner-ten binding fix above.
+            if ((loginPage.gameMode === 0 && s >= rightPanel.star_limit_value_pistol)
+                    || (loginPage.gameMode === 1 && s >= rightPanel.star_limit_value_rifle))
                 ++cnt
         }
         return cnt
