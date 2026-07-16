@@ -389,6 +389,9 @@ private:
     void licValidated();
 
 signals:
+    // TechAim dialog framework (C5): user-facing messages render in the QML
+    // dialogManager — never a native QMessageBox. type: info|warning|error.
+    void uiDialogRequested(QString type, QString title, QString message);
     void shootCountChanged(int count);
     void hardwareDisconnected();
     void hardwareReconnected();

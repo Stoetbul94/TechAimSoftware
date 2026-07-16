@@ -11,7 +11,6 @@
 #include <QDebug>
 #include <QDateTime>
 
-#include <QMessageBox>
 #include <QTableView>
 
 CustomPrint::CustomPrint(TachusWidget *tachus, QObject *parent) : QObject(parent), m_tachus(tachus)
@@ -690,14 +689,10 @@ void CustomPrint::setServerPath(QString path)
 
 void CustomPrint::createPdf(QString filePath)
 {
-//    QMessageBox msgBox;
-//    msgBox.setText(QString("Creating report pdf @ %1.").arg(filePath));
-//    msgBox.exec();
-    QString msg = QString("Creating report pdf @ %1.").arg(filePath);
-    TimedMessageBox * tmb = new TimedMessageBox(5, tr("Printing"), msg, QMessageBox::Warning, QMessageBox::Ok | QMessageBox::Default, QMessageBox::Cancel, QMessageBox::NoButton,nullptr);
-    int ret = tmb->exec();
-    delete tmb;
-    printf("ret=%i\n", ret);
+    // TechAim dialog framework (C5): the legacy TimedMessageBox blocked this
+    // thread for up to 5 s before the PDF was written; the QML notice is
+    // non-blocking (auto-dismisses) and the export proceeds immediately.
+    emit printingNotice(QString("Creating report PDF at %1").arg(filePath), 5000);
 
 
     QPdfWriter pdfWriter(filePath);

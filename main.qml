@@ -570,6 +570,26 @@ ApplicationWindow {
         z: 4000
     }
 
+    // C++ -> dialog-framework bridges: backend messages render in the same
+    // TechAim dialogs as QML ones (no native message boxes anywhere).
+    Connections {
+        target: MODREADER
+        function onUiDialogRequested(type, title, message) {
+            if (type === "warning") dialogManager.showWarning(title, message)
+            else if (type === "info") dialogManager.showInformation(title, message)
+            else dialogManager.showError(title, message)
+        }
+    }
+    Connections {
+        target: CUSTOMPRINT
+        function onPrintingNotice(message, timeoutMs) {
+            dialogManager.show({ "type": "info",
+                                 "title": qsTr("Exporting Report"),
+                                 "message": message,
+                                 "autoDismissMs": timeoutMs })
+        }
+    }
+
     LoginPage {
         id: loginPage
 

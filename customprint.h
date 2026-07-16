@@ -46,6 +46,9 @@ public:
 
 signals:
     void saveComplete();
+    // TechAim dialog framework (C5): auto-export progress notice, rendered by
+    // the QML dialogManager (auto-dismisses after timeoutMs).
+    void printingNotice(QString message, int timeoutMs);
 
 public slots:
 private:
@@ -54,51 +57,4 @@ private:
     TachusWidget* m_tachus;
 };
 
-#include <QMessageBox>
-#include <QPushButton>
-#include <QTimer>
-
-class TimedMessageBox : public QMessageBox
-{
-Q_OBJECT
-
-public:
-   TimedMessageBox(int timeoutSeconds, const QString & title, const QString & text, Icon icon, int button0, int button1, int button2,
-                   QWidget * parent, Qt::WindowFlags flags = (Qt::WindowFlags) Qt::Dialog|Qt::MSWindowsFixedSizeDialogHint)
-      : QMessageBox(title, text, icon, button0, button1, button2, parent, flags)
-      , _timeoutSeconds(timeoutSeconds+1)
-      , _text(text)
-   {
-      connect(&_timer, SIGNAL(timeout()), this, SLOT(Tick()));
-      _timer.setInterval(1000);
-      setText(_text);
-   }
-
-   virtual void showEvent(QShowEvent * e)
-   {
-      QMessageBox::showEvent(e);
-      Tick();
-      _timer.start();
-   }
-
-   void setOkayButtonText(QString okayText) {
-       setButtonText(QMessageBox::Ok, okayText);
-   }
-
-private slots:
-   void Tick()
-   {
-      if (--_timeoutSeconds >= 0) setOkayButtonText(QString("Okay (%1)").arg(_timeoutSeconds));
-      else
-      {
-         _timer.stop();
-         defaultButton()->animateClick();
-      }
-   }
-
-private:
-   QString _text;
-   int _timeoutSeconds;
-   QTimer _timer;
-};
 #endif // CUSTOMPRINT_H
