@@ -114,7 +114,7 @@ Item {
     }
 
     onVisibleChanged: {
-        console.log(" visible ", visible, " shoot count ", APPSETTINGS.getLoadedGameShotCount())
+        if (APPSETTINGS.getDeveloperMode()) console.log(" visible ", visible, " shoot count ", APPSETTINGS.getLoadedGameShotCount())
         if (visible && APPSETTINGS.getLoadedGameShotCount()) {
             //rightPanel.startClicked() //changedToMatchMode()
             showShootingAnimation = false
@@ -125,7 +125,7 @@ Item {
                 var yCor = APPSETTINGS.getLoadedGameY(i)
                 curShootTimeSavedGame  = APPSETTINGS.getLoadedGameTime(i)
                 curShootTimeStampSavedGame = APPSETTINGS.getLoadedGameTimeStamp(i)
-                console.log("------------------time-----------------------", curShootTimeSavedGame)
+                if (APPSETTINGS.getDeveloperMode()) console.log("------------------time-----------------------", curShootTimeSavedGame)
                 totalTimeSavedGame += curShootTimeSavedGame
                 // for auto relaod after clickfF
                 //shootingItem.append({"xC": xCor, "yC": yCor})
@@ -268,7 +268,7 @@ Item {
 
             var shooutIndex = count
             var newShootCount = MODREADER.getShootCount()
-            console.log("shooutIndex ", shooutIndex, " newShootCount ", newShootCount, " backEndShootCount ", backEndShootCount)
+            if (APPSETTINGS.getDeveloperMode()) console.log("shooutIndex ", shooutIndex, " newShootCount ", newShootCount, " backEndShootCount ", backEndShootCount)
             if (backEndShootCount < shooutIndex)
             {
                 //for (var i = backEndShootCount+1; i<= newShootCount; i++)
@@ -292,8 +292,8 @@ Item {
                 itemPoint.x = centerX+((xCor+bulletSize)*offsetX)//mouseX/shootingPanelRect.scale + (mapToItem(root,0,0).x)
                 itemPoint.y = centerY-((yCor+bulletSize)*offsetY)//mouseY/shootingPanelRect.scale + (mapToItem(root,0,0).y)
 
-                console.log(" x pos ", itemPoint.x)
-                console.log(" y Pos ", itemPoint.y)
+                if (APPSETTINGS.getDeveloperMode()) console.log(" x pos ", itemPoint.x)
+                if (APPSETTINGS.getDeveloperMode()) console.log(" y Pos ", itemPoint.y)
 
                 calculateShootingSocre(xCor, yCor, itemPoint.x, itemPoint.y)
 
@@ -314,7 +314,7 @@ Item {
                 backEndShootCount = newShootCount
 
                 var curSeriesIndex = Math.floor((newShootCount-1)/shootsPerSeries)
-                console.log(newShootCount,"---***********************************************************", curSeriesIndex)
+                if (APPSETTINGS.getDeveloperMode()) console.log(newShootCount,"---***********************************************************", curSeriesIndex)
                 if (/*rightPanel.isValidSeries(curSeriesIndex)*/1) {
                     MODREADER.updateSeriesScore(curSeriesIndex+1, rightPanel.getSeriesTotalNonDecimal(curSeriesIndex+1))
                     MODREADER.updateSeriesScoreWD(curSeriesIndex+1, (rightPanel.getSeriesTotal(curSeriesIndex+1)))
@@ -386,7 +386,6 @@ Item {
         property int counter: 0
 
         onTriggered: {
-            console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!", shootingItem.count)
             if (counter >= shootingItem.count)
             {
                 shootingTimer.stop()
@@ -553,7 +552,7 @@ Item {
                 onPointAdded:
                 {
                     var temp =  polarSeries.at(index)
-                    console.log("point on main canvas "+ temp)
+                    if (APPSETTINGS.getDeveloperMode()) console.log("point on main canvas "+ temp)
                     pointAddedToSeries(temp.x,temp.y, calculatedSccore)
                     paneItem.currentScoreDegree = temp.x
                     paneItem.currentScoreValue = calculatedSccore
@@ -588,13 +587,13 @@ Item {
 
             opacity: 0
             Component.onCompleted: {
-                console.log("-----------width---", width)
+                if (APPSETTINGS.getDeveloperMode()) console.log("-----------width---", width)
                 updateExternalRectWidth()
             }
 
             onWidthChanged: {
-                console.log("-----------width########---", width)
-                console.log("co-centric circle dimension ---x---", x,"---y---", y,"-----------width########---", width)
+                if (APPSETTINGS.getDeveloperMode()) console.log("-----------width########---", width)
+                if (APPSETTINGS.getDeveloperMode()) console.log("co-centric circle dimension ---x---", x,"---y---", y,"-----------width########---", width)
             }
 
             function updateExternalRectWidth()
@@ -625,7 +624,7 @@ Item {
                 innercircle.width = root.height > root.width ?
                             (root.width/(axisRadial.tickCount))*temp:
                             (root.height/(axisRadial.tickCount))*temp
-                console.log("game ", gameMode, " --- ", temp)
+                if (APPSETTINGS.getDeveloperMode()) console.log("game ", gameMode, " --- ", temp)
             }
 
             onWidthChanged: {
@@ -988,7 +987,7 @@ Item {
             }
 
             function refreshPosition() {
-                console.log("refreshPosition")
+                if (APPSETTINGS.getDeveloperMode()) console.log("refreshPosition")
                 // Mean point of impact over the shots currently DISPLAYED —
                 // the backend lists span all positions in a 3P match, which
                 // put this marker at a stale mixed-position average.
@@ -1058,7 +1057,7 @@ Item {
             //visible: true
 
             function refreshPosition() {
-                console.log("group refreshPosition", rightPanel.currentPageIndex)
+                if (APPSETTINGS.getDeveloperMode()) console.log("group refreshPosition", rightPanel.currentPageIndex)
                 // Group over the shots currently DISPLAYED (see mpiRect) —
                 // widest pair of shots, circle centred between them.
                 var g = 0
@@ -1078,7 +1077,7 @@ Item {
                     }
                 }
                 group_distance = globalModelOfData.count > 1 ? g + APPSETTINGS.bullet_diameter() : 0
-                console.log("group refreshPosition group_distance ", group_distance)
+                if (APPSETTINGS.getDeveloperMode()) console.log("group refreshPosition group_distance ", group_distance)
 
                 var pistalWidthHeight = gameRange == 10 ? 155.5 : 500
                 var rifleWidthHeight = gameRange == 10 ? 45.5 : 154.4
@@ -1251,11 +1250,11 @@ Item {
 
                 var logData = "canvas screen clicked position x ->"+ mouseX+ " y -> " + mouseY
                 MODREADER.appendToLogFile(logData)
-                console.log("--x--", mouseX, "--y--", mouseY,"mapped points --- ", mapToItem(shootingcanvas, mouseX, mouseY))
+                if (APPSETTINGS.getDeveloperMode()) console.log("--x--", mouseX, "--y--", mouseY,"mapped points --- ", mapToItem(shootingcanvas, mouseX, mouseY))
 
                 var xPoint = mapToItem(shootingPanelRect, mouseX, mouseY).x
                 var yPoint = mapToItem(shootingPanelRect, mouseX, mouseY).y
-                console.log("x---- ", xPoint, " y---- ", yPoint)
+                if (APPSETTINGS.getDeveloperMode()) console.log("x---- ", xPoint, " y---- ", yPoint)
                 logData = "canvas mapped screen clicked position x ->"+ xPoint+ " y -> " + yPoint
                 MODREADER.appendToLogFile(logData)
 
@@ -1631,7 +1630,6 @@ Item {
             MouseArea {
                 anchors.fill: parent
                 onClicked: {
-                    console.log("*****************", shootingPanelRect.scale)
                     if (shootingPanelRect.scale > 1.1)
                         shootingPanelRect.scale -= zoom_offset
                 }
@@ -1650,7 +1648,6 @@ Item {
             MouseArea {
                 anchors.fill: parent
                 onClicked: {
-                    console.log("*****************", shootingPanelRect.scale)
                     if (shootingPanelRect.scale < 3.5)
                         shootingPanelRect.scale += zoom_offset
                 }
@@ -1728,7 +1725,7 @@ Item {
         if (!root.visible)
             return
 
-        console.log("addIfinRange x ", shootPoint.x, " y ", shootPoint.y)
+        if (APPSETTINGS.getDeveloperMode()) console.log("addIfinRange x ", shootPoint.x, " y ", shootPoint.y)
         //        if(shootPoint.x >= axisAngular.min && shootPoint.x <= axisAngular.max
         //                && shootPoint.y >= axisRadial.min && shootPoint.y <=axisRadial.max )
         //        {
@@ -1955,17 +1952,17 @@ Item {
                     }
                 }
         } else {
-            console.log("shootingcanvas ", shootingPanelRect.width, " height ", shootingPanelRect.height, " shootingMianRect ", shootingMianRect.width, " height ", shootingMianRect.height)
+            if (APPSETTINGS.getDeveloperMode()) console.log("shootingcanvas ", shootingPanelRect.width, " height ", shootingPanelRect.height, " shootingMianRect ", shootingMianRect.width, " height ", shootingMianRect.height)
             var clickedX = mapToItem(shootingcanvas, demoXPoint, demoYPoint).x
             var clcikedY = mapToItem(shootingcanvas, demoXPoint, demoYPoint).y
             var canvasMidX = shootingcanvas.width/2
 
-            console.log(shootingPanelRect.scale, " srinivas ---clickedX ", clickedX, " clickedY ", clcikedY)
-            console.log("srinivas ---XPoint ", demoXPoint, " YPOINt ", demoYPoint)
+            if (APPSETTINGS.getDeveloperMode()) console.log(shootingPanelRect.scale, " srinivas ---clickedX ", clickedX, " clickedY ", clcikedY)
+            if (APPSETTINGS.getDeveloperMode()) console.log("srinivas ---XPoint ", demoXPoint, " YPOINt ", demoYPoint)
             var radius = Math.sqrt(Math.pow(canvasMidX-clickedX, 2)+Math.pow(canvasMidX-clcikedY, 2))
             radius = radius * shootingPanelRect.scale
 
-            console.log("radius ", radius, " canvasMidX ", canvasMidX)
+            if (APPSETTINGS.getDeveloperMode()) console.log("radius ", radius, " canvasMidX ", canvasMidX)
             var mapedRadius = gameRange == 10 ? (gameMode ? (radius*155.5) / shootingcanvas.width : (radius*45.5) / shootingcanvas.width)
                                               :(gameMode ? (radius*500)/shootingcanvas.width : (radius*154.4)/shootingcanvas.width)
 
@@ -2021,10 +2018,8 @@ Item {
             calculatedSccore = 1
         }
 
-        console.log(calculatedSccore,"@@@@@@@@@@@@@@@@@@@@@@@@@@@@@", mapedRadius)
         calculatedSccore = scoreCutoffTofirstDecimal(calculatedSccore*1)
 
-        console.log(calculatedSccore,"@@@@@@@@@@@@@@@@@@@@@@@@@@@@@", mapedRadius)
         MODREADER.setScore(calculatedSccore)
     }
 

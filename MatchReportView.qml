@@ -68,7 +68,7 @@ Item {
     Connections {
         target: CUSTOMPRINT
         onSaveComplete: {
-            console.log("Match report saved")
+            if (APPSETTINGS.getDeveloperMode()) console.log("Match report saved")
             if (screenPresence._pendingClose) {
                 screenPresence._pendingClose = false
                 screenPresence.requestClose()

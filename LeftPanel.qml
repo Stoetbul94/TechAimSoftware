@@ -51,7 +51,6 @@ Item {
         target: loginPage
 
         onBackHomeFromServer : {
-            console.log("*************************************************************************************")
 
             homeButtonClicked()
         }
