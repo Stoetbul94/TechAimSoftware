@@ -538,6 +538,15 @@ ApplicationWindow {
         }
     }
 
+    // TechAim dialog framework: the ONE modal message/confirmation surface for
+    // the whole app (id resolves everywhere via ancestor scope, like
+    // windowManager). Above every window/HUD so modality is real.
+    TechAimDialogManager {
+        id: dialogManager
+        anchors.fill: parent
+        z: 4000
+    }
+
     LoginPage {
         id: loginPage
 
