@@ -48,11 +48,9 @@ Item {
     onGameEventChanged: { APPSETTINGS.setGameEvent(gameEvent) }
     onGameSubModeChanged: { APPSETTINGS.setGameSubMode(gameSubMode) }
     onUsername_loginPageChanged: {
-        console.log("**********??????????????????????*********", username_loginPage)
         APPSETTINGS.setUsername(username_loginPage)
     }
     onGameTypeChanged: {
-        console.log("***************************************** ", gameType)
         if (gameType === 0) shootingPage.loadGameInMatchMode()
     }
 
@@ -105,45 +103,43 @@ Item {
 
     Connections {
         target: APPSETTINGS
-        onUserNameChanged: {
+        function onUserNameChanged(name) {
             username_loginPage = name
-            console.log("*******************", name)
             name_text_field.text = name
         }
-        onPortNumberChanged: { port_name_text_field.text = port }
-        onLaneNumberChanged: { lane_number_text = lane_number }
-        onStartSighter: {
+        function onPortNumberChanged(port) { port_name_text_field.text = port }
+        function onLaneNumberChanged(lane_number) { lane_number_text = lane_number }
+        function onStartSighter() {
             if (visible) perfromStart()
             sighterStartedFromServer()
         }
-        onStartMatch: {
+        function onStartMatch() {
             if (visible) perfromStart()
             matchStartedFromServer()
         }
-        onBackHome: {
-            console.log("********************************", visible)
+        function onBackHome() {
             if (!visible) backHomeFromServer()
         }
     }
 
     Connections {
         target: MODREADER
-        onMasterConnectionChanged: {
-            console.log("Master connection changed .....,", isConnected)
+        function onMasterConnectionChanged(isConnected) {
+            if (APPSETTINGS.getDeveloperMode()) console.log("Master connection changed .....,", isConnected)
             disableControls()
         }
-        onMatchDetails: {
-            console.log("Match Details in qml .....", gametype, matchmode, sighterTime, matchtime, sigherTime, matchpf)
+        function onMatchDetails(gametype, matchmode, sighterTime, matchtime, sigherTime, matchpf) {
+            if (APPSETTINGS.getDeveloperMode()) console.log("Match Details in qml .....", gametype, matchmode, sighterTime, matchtime, sigherTime, matchpf)
             gameEvent = matchmode
             gameMode = gametype
             shootingPage.applyServerSettings(sighterTime, matchtime, sigherTime, matchpf)
         }
-        onStartMatchFromServer: {
-            console.log("Match Started .............")
+        function onStartMatchFromServer() {
+            if (APPSETTINGS.getDeveloperMode()) console.log("Match Started .............")
             perfromStart()
         }
-        onMatchDetailsSetaModification: {
-            console.log("Match Details in qml onMatchDetailsSetaModification .....", gametype, matchmode)
+        function onMatchDetailsSetaModification(gametype, matchmode) {
+            if (APPSETTINGS.getDeveloperMode()) console.log("Match Details in qml onMatchDetailsSetaModification .....", gametype, matchmode)
             gameEvent = matchmode
             gameMode = gametype
         }
@@ -309,7 +305,7 @@ Item {
     }
 
     function disableControls() {
-        console.log("Inside disable controls ....")
+        if (APPSETTINGS.getDeveloperMode()) console.log("Inside disable controls ....")
         pistolMouse.visible   = false
         rifleMouse.visible    = false
         rifle50Mouse.visible  = false
@@ -320,7 +316,7 @@ Item {
     }
 
     function startButtonClickedOnLoadGame() {
-        console.log("app mode " + appMode)
+        if (APPSETTINGS.getDeveloperMode()) console.log("app mode " + appMode)
         if (!appMode) {
             rootItem.visible = false
         } else {

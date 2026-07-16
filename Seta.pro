@@ -54,9 +54,10 @@ INCLUDEPATH += src/finals
 # QSoundEffect for the finals audio cues (FinalsAudioService).
 QT += multimedia
 
+# translations.qrc removed (S2.3): the file never existed and no root-level
+# translation assets do either (QModMaster's live in the vendored module).
 RESOURCES += qml.qrc \
-    images.qrc \
-    translations.qrc
+    images.qrc
 
 DISTFILES += \
     images/loginPage/combo_down.png \
@@ -114,8 +115,6 @@ SOURCES = main.qml \
         MatchReport.qml \
         MatchReportInfo.qml \
         ModConnectorDialog.qml \
-        Page1.qml \
-        Page1Form.ui.qml \
         PdfPage.qml \
         PdfSeriesPage.qml \
         RightPanel.qml \

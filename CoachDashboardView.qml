@@ -12,6 +12,8 @@ Rectangle {
 
     property int gameSubMode: 0
     property var rep: COACHREPORT.report
+    // Safe availability (S1.4) — see CoachDetailedView.
+    readonly property bool reportAvailable: rep !== undefined && rep !== null && rep.valid === true
     property var targets: []
 
     // Pure content view — no window chrome. The hosting CoachReportWindow owns
@@ -302,7 +304,7 @@ Rectangle {
                             PieSeries { id: distPie; holeSize: 0.55; size: 0.9 }
                             Text {
                                 anchors.centerIn: parent
-                                text: (dash.rep ? dash.f(dash.rep.executiveSummary.competitionShotCount, 0) : "0") + "\nShots"
+                                text: (dash.reportAvailable && dash.rep.executiveSummary !== undefined ? dash.f(dash.rep.executiveSummary.competitionShotCount, 0) : "—") + "\nShots"
                                 horizontalAlignment: Text.AlignHCenter; color: dash.cText; font.bold: true; font.pixelSize: 16; font.family: dash.fam
                             }
                             Component.onCompleted: dash.rebuildDist()

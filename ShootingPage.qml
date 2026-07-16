@@ -67,7 +67,7 @@ Item {
     property string minimumShotsMatchReport: "Minimum 10 shots required to generate Match Report"
 
     onTotalScoreChanged: {
-        console.log("Total score changed ............................"+ totalScore)
+        if (APPSETTINGS.getDeveloperMode()) console.log("Total score changed ............................"+ totalScore)
 
     }
 
@@ -123,7 +123,7 @@ Item {
         onCountChanged: {
             centerPanel.disableMotorMovement = false
             centerPanel.currentPageIndexChanged()
-            console.log("globalModelOfData count changes ", count)
+            if (APPSETTINGS.getDeveloperMode()) console.log("globalModelOfData count changes ", count)
         }
     }
 
@@ -131,7 +131,7 @@ Item {
     {
         id:globalSlighterModel
         onCountChanged: {
-            console.log("******globalSlighterModel****"+count)
+            if (APPSETTINGS.getDeveloperMode()) console.log("******globalSlighterModel****"+count)
         }
     }
 
@@ -159,7 +159,7 @@ Item {
     {
         id:globalMatchModel
         onCountChanged: {
-            console.log("******globalMatchModel****"+count)
+            if (APPSETTINGS.getDeveloperMode()) console.log("******globalMatchModel****"+count)
         }
     }
 
@@ -182,7 +182,7 @@ Item {
 
     function setCurrentGameType(index)
     {
-        console.log("setCurrentGameType  ", index)
+        if (APPSETTINGS.getDeveloperMode()) console.log("setCurrentGameType  ", index)
         if (gameRange === 10)
         {
             // if 15 shoots
@@ -548,7 +548,7 @@ Item {
             }
             rightPanel.addToSeries(xPosition,yPosition,currentCalculatedScore,
                                    centerPanel.lastShotXmm, centerPanel.lastShotYmm)
-            console.log("x ", xPosition, " y ", yPosition, " score ", currentCalculatedScore, " matchShootCount ", matchShootCount)
+            if (APPSETTINGS.getDeveloperMode()) console.log("x ", xPosition, " y ", yPosition, " score ", currentCalculatedScore, " matchShootCount ", matchShootCount)
 
             // 3P: after the 20th and 40th match shots, switch to the next
             // position (kneeling -> prone -> standing) via a sighting break.
@@ -757,7 +757,7 @@ Item {
 
     Connections {
         target: APPSETTINGS
-        onPrintPDF: {
+        function onPrintPDF() {
             if (leftPanel.playVisible)
                 return;
 
@@ -772,7 +772,7 @@ Item {
             // write the PDF to the configured network path, then close on save.
             windowManager.openMatchReport()
             reportWindow.startMatchAutoExport()
-            console.log("-APPSETTINGS-----------------------------onPrintPDF--------------------------")
+            if (APPSETTINGS.getDeveloperMode()) console.log("-APPSETTINGS-----------------------------onPrintPDF--------------------------")
         }
     }
     ConnectionError {

@@ -50,8 +50,7 @@ Item {
     Connections {
         target: loginPage
 
-        onBackHomeFromServer : {
-            console.log("*************************************************************************************")
+        function onBackHomeFromServer() {
 
             homeButtonClicked()
         }

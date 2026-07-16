@@ -80,11 +80,11 @@ Item {
     Connections {
         target: loginPage
 
-        onSighterStartedFromServer : {
+        function onSighterStartedFromServer() {
             pauseClicked()
         }
 
-        onMatchStartedFromServer : {
+        function onMatchStartedFromServer() {
             startClicked()
         }
 
@@ -93,7 +93,7 @@ Item {
     onCurrentPageIndexChanged:
     {
         var maxPageIndex = Math.floor((pagingModel.count-1)/10)
-        console.log("Current Page Index and Max page Index " , currentPageIndex,maxPageIndex)
+        if (APPSETTINGS.getDeveloperMode()) console.log("Current Page Index and Max page Index " , currentPageIndex,maxPageIndex)
         if(currentPageIndex < maxPageIndex)
         {
             enableRightNavigation(true)
@@ -139,7 +139,6 @@ Item {
         if (matchScore.count != 0)
             centerPanel.refreshSelectedShootPosition()
 
-        console.log(pagingModel.count, pagingModel.get(currentShootIndex).calculatedscore, " ***srinu ---",matchScore.count, "current shoot index changed", currentShootIndex)
     }
 
     Image {
@@ -781,7 +780,7 @@ Item {
     function resetTimer() {
         timeInSec = 0;
         lastUsedTime = 0;
-        console.log("------------------------------------------timer reset------------------------------------------")
+        if (APPSETTINGS.getDeveloperMode()) console.log("------------------------------------------timer reset------------------------------------------")
     }
 
     ListModel {
@@ -831,13 +830,13 @@ Item {
             {
                 var direction = listModel.get(count-1).direction;
                 var score = listModel.get(count-1).calculatedscore
-                console.log(direction, "-------------------", score)
+                if (APPSETTINGS.getDeveloperMode()) console.log(direction, "-------------------", score)
                 currentIndex = count - 1
             }
         }
 
         onCurrentIndexChanged: {
-            console.log(count, "right list view current index", currentIndex)
+            if (APPSETTINGS.getDeveloperMode()) console.log(count, "right list view current index", currentIndex)
             currentShootIndex = currentIndex + (currentPageIndex*10)
         }
     }
@@ -1080,7 +1079,7 @@ Item {
 
 
         var text = isGameLoaded ? centerPanel.curShootTimeSavedGame : timeInSec - lastUsedTime
-        console.log(timeInSec+"---"+lastUsedTime+"---"+text+" matchinfo------------------------------------------1-----------------"+centerPanel.curShootTimeSavedGame+ "***********"+isGameLoaded)
+        if (APPSETTINGS.getDeveloperMode()) console.log(timeInSec+"---"+lastUsedTime+"---"+text+" matchinfo------------------------------------------1-----------------"+centerPanel.curShootTimeSavedGame+ "***********"+isGameLoaded)
         lastUsedTime = timeInSec
         MODREADER.appendTimeConsumed(text)
         MODREADER.appendShotDirection(angle.toFixed(2))
@@ -1102,7 +1101,6 @@ Item {
                                            ,"calculatedscore":scoreCutoffTofirstDecimal(calScore)
                                            ,"position": shotPosition
                                            ,"xmm": shotXmm, "ymm": shotYmm})
-            console.log("Shreeraksha-----",APPSETTINGS.getScoringSystem())
         }
         else
         {
@@ -1120,8 +1118,8 @@ Item {
                                      ,"position": shotPosition
                                      ,"xmm": shotXmm, "ymm": shotYmm})
 
-        console.log("$$$$$$$$$$$$ calscore ", calScore)
-        console.log("index ",globalModelOfData.count, " timestamp ", globalModelOfData)
+        if (APPSETTINGS.getDeveloperMode()) console.log("$$$$$$$$$$$$ calscore ", calScore)
+        if (APPSETTINGS.getDeveloperMode()) console.log("index ",globalModelOfData.count, " timestamp ", globalModelOfData)
         matchScore.model =listModel
         if(minPreviewMode && radius > 4)
         {
@@ -1160,9 +1158,9 @@ Item {
                                  "score":relativeVal.toFixed(2),
                                  "timeComsumed":timeConsumed,
                                  "calculatedscore":scoreCutoffTofirstDecimal(calculatedScore),})
-            console.log("index ",i," before addition ----------------------", subTotal, " timestamp ", timeConsumed)
+            if (APPSETTINGS.getDeveloperMode()) console.log("index ",i," before addition ----------------------", subTotal, " timestamp ", timeConsumed)
             subTotal = /*Math.round*//*scoreCutoffTofirstDecimal*/( subTotal + (calculatedScore)*1)
-            console.log("index ",i," score test----------------------", subTotal, " curScore ", calculatedScore)
+            if (APPSETTINGS.getDeveloperMode()) console.log("index ",i," score test----------------------", subTotal, " curScore ", calculatedScore)
             //            subTotalExculdeDec = ( subTotalExculdeDec*1 + relativeVal.toFixed(0)*1)
             subTotalExculdeDec = ( subTotalExculdeDec*1 + Math.floor(calculatedScore))
             seriesTimeConsume = (seriesTimeConsume + timeConsumed)
@@ -1188,7 +1186,7 @@ Item {
         totalTimeConsume = isGameLoaded ? centerPanel.totalTimeSavedGame : totalTimeConsume
         totalTime.text =  minutesToseconds(totalTimeConsume)//(totalTimeConsume*1/60).toFixed(1)
 
-        console.log("last line updateListModel")
+        if (APPSETTINGS.getDeveloperMode()) console.log("last line updateListModel")
     }
 
     // Called (deferred) when a 3P match finishes: jump the table + face to the
@@ -1308,7 +1306,6 @@ Item {
         seriesTime.text = minutesToseconds(seriesTimeConsume)//(seriesTimeConsume*1 / 60).toFixed(1)
         totalTime.text = minutesToseconds(totalTimeConsume)//(totalTimeConsume*1 / 60).toFixed(1)
 
-        console.log("-----------------------------------------------------------"+scoreCutoffTofirstDecimal(subTotal))
     }
 
     // Legacy PNG arrows replaced by prevSeriesBtn/nextSeriesBtn, which bind
@@ -1720,7 +1717,6 @@ Item {
                                 var textLength = text.length
                                 if (textLength == 5)
                                     font.pointSize = parent.height*0.2
-                                console.log("sssssssssssssssssssssssssssssssssssss-------------------", textLength)
                             }
                         }
                     }
