@@ -13,6 +13,8 @@
         <file>SectionTitle.qml</file>
         <file>ReportFooter.qml</file>
         <file>SeriesCard.qml</file>
+        <file>TechAimDialog.qml</file>
+        <file>TechAimDialogManager.qml</file>
         <file>FloatingWindow.qml</file>
         <file>FloatingWindowGrip.qml</file>
         <file>WindowManager.qml</file>
@@ -44,7 +46,6 @@
         <file>Report3PSeries.qml</file>
         <file>SettingsPage.qml</file>
         <file>ModConnectorDialog.qml</file>
-        <file>ClosePopupDialog.qml</file>
         <file>MatchReportInfo.qml</file>
         <file>PdfPage.qml</file>
         <file>SeriesComponent.qml</file>

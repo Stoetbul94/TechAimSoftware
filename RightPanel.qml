@@ -1363,7 +1363,7 @@ Item {
         if(sligterMode)
             matchNotStarted.visible = true
         else
-            matchFinishConfirmation.visible = true
+            shootingPage.confirmMatchFinish()
     }
 
     function startClicked()
