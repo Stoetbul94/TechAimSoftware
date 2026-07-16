@@ -1,7 +1,6 @@
 import QtQuick 2.2
 import QtCharts 2.2
 import QtQuick.Window 2.2
-import QtQuick.Dialogs
 
 Item {
     id:paneItem
@@ -376,23 +375,9 @@ Item {
         }
     }
 
-    MessageDialog
-    {
-        id: hardwareDisconnected
-
-        property bool inDisconnectedMode: true
-
-        title: "Connection Error"
-        text: qsTr("Trying to reconnect. Please wait.")
-        visible: false
-
-        onAccepted: {
-            if (!inDisconnectedMode) {
-                inDisconnectedMode = true
-                gameTimer.start()
-            }
-        }
-    }
+    // The legacy hardwareDisconnected MessageDialog was dormant (every
+    // trigger commented out); reconnection messages now belong to
+    // dialogManager (TechAim dialog framework).
 
     Timer {
         id: shootingTimer
@@ -1261,7 +1246,8 @@ Item {
 
                 if(matchFinished)
                 {
-                    matchInfoDialog.visible = true
+                    dialogManager.showInformation(qsTr("Match Complete"),
+                        qsTr("This match has been completed and no further shots can be recorded.\n\nStart a new match to continue shooting."))
                     return
                 }
 

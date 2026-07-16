@@ -64,9 +64,6 @@ Item {
         return (is3PMatch ? phase + " · " + p3Names[p3Position] : phase) + phaseDebug
     }
 
-    property string messageText: "Match is completed, restart to stimulate"
-    property string sighterSummaryText: "You are in Sighter. You can't generate Match Summary"
-    property string sighterMatchText: "You are in Sighter. You can't generate Match Report"
     property string minimumShotsSummary: "Minimum 10 shots required to generate Summary"
     property string minimumShotsMatchReport: "Minimum 10 shots required to generate Match Report"
 
@@ -75,13 +72,8 @@ Item {
 
     }
 
-    MessageDialog
-    {
-        id: matchInfoDialog
-        text: messageText
-        visible: false
-    }
-
+    // Popup messages migrated to the TechAim dialog framework
+    // (dialogManager in main.qml) — no QtQuick.Dialogs MessageDialog left.
 
     Rectangle {
         id:settingsMask
@@ -129,24 +121,6 @@ Item {
         onAccepted: {
             changedToMatchFinish()
         }
-    }
-
-    MessageDialog
-    {
-        id: matchNotStarted
-        title: "Warning"
-        text: "Match Not Started"
-        visible: false
-    }
-
-
-
-    MessageDialog
-    {
-        id: cannotGenerate
-        text: sighterSummaryText
-        title: "Warning"
-        visible: false
     }
 
     ListModel
