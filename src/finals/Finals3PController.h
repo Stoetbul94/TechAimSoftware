@@ -169,6 +169,9 @@ signals:
     // D3: emitted by executePrimaryAction() in Complete — QML opens the
     // finals report window; the controller never touches UI.
     void reportRequested();
+    // M0 (reliability): a journal open/write/archive failure occurred. Emitted
+    // at most once per session; every failure is also logged with the path.
+    void journalWriteFailed(QString path, QString detail);
     void targetModeChanged();
     void windowStateChanged();
     void pausedChanged();
@@ -270,7 +273,10 @@ private:
     // and phase transition. Crash-safe; restart-recovery UI deferred.
     void archiveExistingJournal();
     void writeJournal(const QString& type, const QVariantMap& payload);
+    void reportJournalFailure(const QString& op, const QString& path,
+                              const QString& detail);
     bool m_journalEnabled = true;
+    bool m_journalFailureNotified = false;   // one UI signal per session (M0)
 
     // Command events.
     int m_commandSeq = 0;

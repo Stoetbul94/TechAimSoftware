@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Reliability golden fixtures are byte-exact journals: no EOL conversion
+tests/reliability/fixtures/*.jsonl -text

@@ -51,6 +51,9 @@ HEADERS += \
     src/finals/FinalsReportBuilder.h \
     src/finals/FinalsAudioService.h
 INCLUDEPATH += src/finals
+
+# Session Reliability Layer (M0) - QtCore-only storage foundation.
+include(Reliability.pri)
 # QSoundEffect for the finals audio cues (FinalsAudioService).
 QT += multimedia
 

@@ -1,5 +1,6 @@
 #include "Finals3PController.h"
 #include "FinalsReportBuilder.h"
+#include "../reliability/storage/StoragePaths.h"
 
 #include <QApplication>
 #include <QDateTime>
@@ -13,7 +14,9 @@ using namespace techaim::finals;
 
 namespace {
 const int kTickMs = 50;   // UI refresh; time itself is monotonic, not tick-counted
-const char kJournalPath[] = "finals_session.jsonl";
+// M0 (Session Reliability Layer): the journal lives under the AppData tree
+// (Sessions/Current), resolved by ta::rel::StoragePaths — never the process
+// working directory. Event schema/content/ordering are unchanged.
 }
 
 // ── session journal (plan §9): append-only, crash-safe ──────────────────
@@ -67,11 +70,16 @@ void Finals3PController::setStageStatus(Stage st, techaim::finals::StageStatus s
 
 void Finals3PController::archiveExistingJournal()
 {
-    // Never silently reuse or zero a previous session's journal.
-    if (QFile::exists(QLatin1String(kJournalPath))) {
-        const QString archived = QStringLiteral("finals_session_%1.jsonl")
-            .arg(QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss_zzz")));
-        QFile::rename(QLatin1String(kJournalPath), archived);
+    // Never silently reuse or zero a previous session's journal. Same rename
+    // semantics as always; M0 changes only the locations (Sessions/Current ->
+    // Sessions/Archive) and surfaces failures instead of ignoring them.
+    const QString live = ta::rel::StoragePaths::finalsJournalPath();
+    if (QFile::exists(live)) {
+        const QString archived = ta::rel::StoragePaths::archivedFinalsJournalPath(
+            QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss_zzz")));
+        if (!QFile::rename(live, archived))
+            reportJournalFailure(QStringLiteral("archive"), archived,
+                                 QStringLiteral("rename from %1 failed").arg(live));
     }
 }
 
@@ -86,11 +94,30 @@ void Finals3PController::writeJournal(const QString& type, const QVariantMap& pa
     line[QStringLiteral("nextShotNumber")] = nextShotNumber();
     line[QStringLiteral("stageSubtotal")] = m_stageSubtotal;
     line[QStringLiteral("cumulativeTotal")] = m_cumulativeTotal;
-    QFile f(QString::fromLatin1(kJournalPath));
-    if (f.open(QIODevice::Append | QIODevice::Text)) {
-        f.write(QJsonDocument(QJsonObject::fromVariantMap(line)).toJson(QJsonDocument::Compact));
-        f.write("\n");
+    const QString path = ta::rel::StoragePaths::finalsJournalPath();
+    QFile f(path);
+    if (!f.open(QIODevice::Append | QIODevice::Text)) {
+        reportJournalFailure(QStringLiteral("open"), path, f.errorString());
+        return;
     }
+    const QByteArray data =
+        QJsonDocument(QJsonObject::fromVariantMap(line)).toJson(QJsonDocument::Compact) + "\n";
+    if (f.write(data) != data.size())
+        reportJournalFailure(QStringLiteral("write"), path, f.errorString());
+}
+
+// M0: journal failures must be observable — log every one, raise the UI
+// signal once per session (per-line dialogs would flood the operator; the
+// full persistence-health model is M2).
+void Finals3PController::reportJournalFailure(const QString& op,
+                                              const QString& path,
+                                              const QString& detail)
+{
+    qWarning() << "FINALS3P journal" << op << "FAILED at" << path << ":" << detail;
+    if (m_journalFailureNotified)
+        return;
+    m_journalFailureNotified = true;
+    emit journalWriteFailed(path, QStringLiteral("%1 failed: %2").arg(op, detail));
 }
 
 Finals3PController::Finals3PController(QObject* parent)
@@ -182,6 +209,7 @@ void Finals3PController::startFinal()
     m_lastExternalId = -1;
     m_lastAcceptScaled = 0;
     m_events.clear();
+    m_journalFailureNotified = false;
     m_missingShots.clear();
     m_officialShotRecords.clear();
     m_rejectionRecords.clear();

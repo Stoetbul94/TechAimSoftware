@@ -29,6 +29,8 @@
 #include "src/bridge/pdfexporter.h"
 #include "src/finals/Finals3PController.h"
 #include "src/finals/FinalsAudioService.h"
+#include "src/reliability/storage/StoragePaths.h"
+#include "logfile.h"
 #include <QLockFile>
 #include <QDir>
 #include <QDialog>
@@ -41,6 +43,67 @@
 #include <QSGRendererInterface>
 
 QTranslator *Translator;
+
+// Session Reliability Layer (M0): storage-failure dialog. Fires BEFORE the
+// QML engine exists, so it cannot use dialogManager — same frameless
+// TechAim-styled widget pattern as the single-instance dialog.
+// Returns true if the operator chose Retry, false for Exit.
+static bool showStorageFailureDialog(const ta::rel::StorageResult& r)
+{
+    QDialog box(nullptr, Qt::FramelessWindowHint | Qt::Dialog);
+    box.setAttribute(Qt::WA_TranslucentBackground);
+    QVBoxLayout* outer = new QVBoxLayout(&box);
+    outer->setContentsMargins(0, 0, 0, 0);
+    QFrame* card = new QFrame(&box);
+    card->setObjectName("card");
+    card->setStyleSheet(
+        "#card { background-color: #1f2026; border: 1px solid #3a3b42;"
+        " border-radius: 13px; }");
+    outer->addWidget(card);
+    QVBoxLayout* lay = new QVBoxLayout(card);
+    lay->setContentsMargins(24, 20, 24, 18);
+    lay->setSpacing(10);
+    QLabel* title = new QLabel("Session Storage Unavailable", card);
+    title->setStyleSheet("color: #f2f3f5; font-family: 'Segoe UI';"
+                         " font-size: 16px; font-weight: bold;"
+                         " background: transparent; border: none;");
+    QLabel* body = new QLabel(
+        r.operatorMessage
+        + "\n\nPath: " + (r.affectedPath.isEmpty()
+                          ? ta::rel::StoragePaths::applicationDataRoot()
+                          : r.affectedPath)
+        + "\n\nWithout working session storage, match data cannot be saved.",
+        card);
+    body->setStyleSheet("color: #b6b9c0; font-family: 'Segoe UI';"
+                        " font-size: 12px; background: transparent; border: none;");
+    body->setWordWrap(true);
+    QPushButton* retry = new QPushButton("Retry", card);
+    retry->setCursor(Qt::PointingHandCursor);
+    retry->setDefault(true);
+    retry->setStyleSheet(
+        "QPushButton { background-color: #a80038; color: white;"
+        " font-family: 'Segoe UI'; font-size: 12px; font-weight: bold;"
+        " border: none; border-radius: 8px; padding: 7px 24px; }"
+        "QPushButton:pressed { background-color: #8a002f; }");
+    QPushButton* exitBtn = new QPushButton("Exit", card);
+    exitBtn->setCursor(Qt::PointingHandCursor);
+    exitBtn->setStyleSheet(
+        "QPushButton { background-color: #26272c; color: #d7d8dd;"
+        " font-family: 'Segoe UI'; font-size: 12px;"
+        " border: 1px solid #3a3b42; border-radius: 8px; padding: 7px 24px; }"
+        "QPushButton:pressed { background-color: #2a2b30; }");
+    QObject::connect(retry,   &QPushButton::clicked, &box, &QDialog::accept);
+    QObject::connect(exitBtn, &QPushButton::clicked, &box, &QDialog::reject);
+    QHBoxLayout* btnRow = new QHBoxLayout();
+    btnRow->addStretch(1);
+    btnRow->addWidget(exitBtn);
+    btnRow->addWidget(retry);
+    lay->addWidget(title);
+    lay->addWidget(body);
+    lay->addLayout(btnRow);
+    return box.exec() == QDialog::Accepted;
+}
+
 int main(int argc, char *argv[])
 {
     // Qt::AA_EnableHighDpiScaling is now the default in Qt6 — removed
@@ -56,6 +119,12 @@ int main(int argc, char *argv[])
 
     ///////////////////////////////
     QApplication app(argc, argv);
+    // Session Reliability Layer (M0): organization/application identity is
+    // what QStandardPaths::AppLocalDataLocation resolves against. Every
+    // existing QSettings call passes explicit org strings or filenames, so
+    // nothing else shifts.
+    QCoreApplication::setOrganizationName(QStringLiteral("TechAim"));
+    QCoreApplication::setApplicationName(QStringLiteral("TechAim"));
 
     ///////////////////////////////////////////////////////////
     /// single instance app
@@ -134,6 +203,38 @@ int main(int argc, char *argv[])
         qApp->installTranslator(&translator);
     }
     ////
+
+    // ── Session Reliability Layer (M0): storage initialization ──────────
+    // Resolve the AppData root, create the directory tree, probe that
+    // session storage is durably writable. Never silent: failure blocks
+    // with Retry/Exit (the full degraded-persistence model is M2).
+    {
+        ta::rel::StorageResult storage = ta::rel::StoragePaths::initialize();
+        while (!storage.ok) {
+            LogFile::instance().appendToLogFile(
+                QString("M0 storage init FAILED: %1 [%2]")
+                    .arg(storage.technicalDetail, storage.affectedPath),
+                LogType::interfaceLevel);
+            if (!showStorageFailureDialog(storage))
+                return 1;                       // operator chose Exit
+            storage = ta::rel::StoragePaths::initialize();
+        }
+        LogFile::instance().appendToLogFile(
+            QString("M0 storage ready: root=%1 (%2)")
+                .arg(ta::rel::StoragePaths::applicationDataRoot(),
+                     storage.technicalDetail),
+            LogType::interfaceLevel);
+
+        // Preservation-only legacy migration: journals written by pre-M0
+        // builds into the process CWD move to Sessions/Archive/Legacy.
+        const ta::rel::StorageResult legacy =
+            ta::rel::StoragePaths::migrateLegacyJournals(QDir::currentPath());
+        LogFile::instance().appendToLogFile(
+            QString("M0 legacy journal scan: %1%2")
+                .arg(legacy.ok ? QString() : QStringLiteral("FAILED - "),
+                     legacy.technicalDetail),
+            LogType::interfaceLevel);
+    }
 
     AppSettings *appsettings = new AppSettings("config.ini");
     QScreen *srn = QApplication::screens().at(0);
