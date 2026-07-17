@@ -21,6 +21,7 @@
 #include "Finals3PController.h"
 #include "Finals3PTypes.h"
 #include "FinalsAudioService.h"
+#include "reliability/storage/StoragePaths.h"
 
 #include <QDir>
 
@@ -597,7 +598,7 @@ static void runSecondaryChecks()
 
         // B4: session journal exists and recorded the accepted shots.
         {
-            QFile jf(QStringLiteral("finals_session.jsonl"));
+            QFile jf(ta::rel::StoragePaths::finalsJournalPath());
             bool okOpen = jf.open(QIODevice::ReadOnly | QIODevice::Text);
             const QString all = okOpen ? QString::fromUtf8(jf.readAll()) : QString();
             check(okOpen && all.count(QStringLiteral("\"journalType\":\"shotAccepted\"")) == 3
@@ -738,7 +739,7 @@ static void runTimeoutFinal()
 
     // Journal order matches controller event order (commands as recorded).
     {
-        QFile jf(QStringLiteral("finals_session.jsonl"));
+        QFile jf(ta::rel::StoragePaths::finalsJournalPath());
         QStringList journalCmds;
         if (jf.open(QIODevice::ReadOnly | QIODevice::Text)) {
             while (!jf.atEnd()) {
@@ -943,6 +944,22 @@ int main(int argc, char** argv)
     qputenv("TECHAIM_FINALS_TIMESCALE", "60");
     qputenv("QT_QPA_PLATFORM", "minimal");
     QApplication app(argc, argv);
+
+    // M0: journals resolve through StoragePaths. Tests run against an
+    // isolated per-run root (never the developer AppData, never the CWD).
+    const QString testRoot = QDir::temp().filePath(
+        QStringLiteral("techaim_finals_tests_%1")
+            .arg(QCoreApplication::applicationPid()));
+    QDir(testRoot).removeRecursively();
+    ta::rel::StoragePaths::setRootOverrideForTesting(testRoot);
+    {
+        const ta::rel::StorageResult init = ta::rel::StoragePaths::initialize();
+        if (!init.ok) {
+            std::printf("FATAL: test storage init failed: %s\n",
+                        qUtf8Printable(init.technicalDetail));
+            return 2;
+        }
+    }
 
     std::printf("=== Finals3PController Phase A acceptance tests ===\n");
     runFullFinal();

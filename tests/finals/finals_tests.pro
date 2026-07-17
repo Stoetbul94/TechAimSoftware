@@ -6,6 +6,10 @@ TARGET = finals_tests
 
 INCLUDEPATH += ../../src/finals
 
+# Session Reliability Layer (M0): the controller resolves its journal path
+# through StoragePaths.
+include(../../Reliability.pri)
+
 SOURCES += \
     tst_finals3p.cpp \
     ../../src/finals/Finals3PController.cpp \

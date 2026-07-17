@@ -589,6 +589,18 @@ ApplicationWindow {
                                  "autoDismissMs": timeoutMs })
         }
     }
+    // Session Reliability Layer (M0): a finals journal open/write/archive
+    // failure is never silent — the controller emits once per session.
+    Connections {
+        target: FINALS3P
+        function onJournalWriteFailed(path, detail) {
+            dialogManager.showError(qsTr("Session Journal Error"),
+                qsTr("The session journal could not be written. Shots continue "
+                     + "to be scored, but this session may not be recoverable "
+                     + "after a crash."),
+                detail + "\n" + path)
+        }
+    }
 
     LoginPage {
         id: loginPage

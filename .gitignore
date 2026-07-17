@@ -18,6 +18,8 @@ Seta_resource.rc
 # finals test-harness build artifacts
 tests/finals/release/
 tests/finals/debug/
+tests/reliability/release/
+tests/reliability/debug/
 tests/finals/Makefile*
 tests/finals/.qmake.stash
 # finals test-harness run artifacts (journals, logs, audio fixtures)
