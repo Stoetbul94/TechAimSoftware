@@ -11,21 +11,12 @@
 
 #include "reliability/storage/StoragePaths.h"
 #include "reliability/storage/StorageSync.h"
+#include "test_support.h"
 
 using ta::rel::StoragePaths;
 using ta::rel::StorageResult;
 using ta::rel::StorageError;
 using ta::rel::StorageSync;
-
-static int g_checks = 0, g_failures = 0;
-static void check(bool ok, const char* name, const QString& detail = QString())
-{
-    ++g_checks;
-    std::printf(ok ? "PASS  %s\n" : "FAIL  %s  %s\n", name,
-                ok ? "" : qUtf8Printable(detail));
-    if (!ok) ++g_failures;
-    std::fflush(stdout);
-}
 
 static QString writeFile(const QString& path, const QByteArray& content)
 {
@@ -36,13 +27,13 @@ static QString writeFile(const QString& path, const QByteArray& content)
     return path;
 }
 
-int main(int argc, char** argv)
+void run_storagepaths_tests()
 {
-    QCoreApplication app(argc, argv);
-    std::printf("=== Session Reliability M0 storage tests ===\n");
+    std::printf("--- M0 storage tests ---\n");
 
     const QString root = QDir::temp().filePath(
-        QStringLiteral("techaim_reliability_tests_%1").arg(app.applicationPid()));
+        QStringLiteral("techaim_reliability_tests_%1")
+            .arg(QCoreApplication::applicationPid()));
     QDir(root).removeRecursively();
     StoragePaths::setRootOverrideForTesting(root);
 
@@ -88,7 +79,7 @@ int main(int argc, char** argv)
     // 4) unwritable/invalid root returns a typed error with path + detail
     {
         const QString badRoot = QDir::temp().filePath(
-            QStringLiteral("techaim_reliability_badroot_%1").arg(app.applicationPid()));
+            QStringLiteral("techaim_reliability_badroot_%1").arg(QCoreApplication::applicationPid()));
         // a FILE occupies the root path -> mkpath must fail
         QDir(badRoot).removeRecursively(); QFile::remove(badRoot);
         writeFile(badRoot, "not a directory");
@@ -121,7 +112,7 @@ int main(int argc, char** argv)
     // 9) legacy detection + preservation-only migration
     {
         const QString legacySrc = QDir::temp().filePath(
-            QStringLiteral("techaim_reliability_legacy_%1").arg(app.applicationPid()));
+            QStringLiteral("techaim_reliability_legacy_%1").arg(QCoreApplication::applicationPid()));
         QDir(legacySrc).removeRecursively();
         QDir().mkpath(legacySrc);
         writeFile(legacySrc + "/finals_session.jsonl", "{\"a\":1}\n");
@@ -168,7 +159,4 @@ int main(int argc, char** argv)
     check(true, "reliability storage compiles with QT=core (no QML/GUI dependency)");
 
     QDir(root).removeRecursively();
-    std::printf("=== %d checks, %d failures ===\n", g_checks, g_failures);
-    std::fflush(stdout);
-    return g_failures == 0 ? 0 : 1;
 }
