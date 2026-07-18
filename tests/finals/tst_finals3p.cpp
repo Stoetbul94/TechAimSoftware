@@ -22,6 +22,8 @@
 #include "Finals3PTypes.h"
 #include "FinalsAudioService.h"
 #include "reliability/storage/StoragePaths.h"
+#include "reliability/journal/JournalValidator.h"
+#include "reliability/store/SessionStore.h"
 
 #include <QDir>
 
@@ -596,15 +598,42 @@ static void runSecondaryChecks()
             check(ok, "templateShotRecord covers the full role union", missing);
         }
 
-        // B4: session journal exists and recorded the accepted shots.
+        // B4: session journal (M2 SRL envelope format) recorded the shots.
+        // The envelope format distinguishes official ShotAccepted from
+        // SighterAccepted (the legacy format lumped both as "shotAccepted").
+        // This run fired 2 official shots + 1 sighter.
         {
-            QFile jf(ta::rel::StoragePaths::finalsJournalPath());
+            QFile jf(c.sessionJournalPath());
             bool okOpen = jf.open(QIODevice::ReadOnly | QIODevice::Text);
             const QString all = okOpen ? QString::fromUtf8(jf.readAll()) : QString();
-            check(okOpen && all.count(QStringLiteral("\"journalType\":\"shotAccepted\"")) == 3
-                       && all.contains(QStringLiteral("\"journalType\":\"stageEntered\""))
-                       && all.contains(QStringLiteral("\"journalType\":\"finalStarted\"")),
-              "journal: one line per accepted shot + stage entries");
+            const int officials = all.count(QStringLiteral("\"t\":\"ShotAccepted\""));
+            const int sighters = all.count(QStringLiteral("\"t\":\"SighterAccepted\""));
+            check(okOpen && officials == 2 && sighters == 1
+                       && all.contains(QStringLiteral("\"t\":\"StageEntered\""))
+                       && all.contains(QStringLiteral("\"t\":\"SessionStarted\"")),
+              "journal: typed envelope per accepted shot + stage entries",
+              QStringLiteral("official=%1 sighter=%2").arg(officials).arg(sighters));
+
+            // M2: the live controller's journal validates Clean end-to-end
+            // through the SRL validator (hash chain, sequencing, everything).
+            const ta::rel::ValidationReport rep =
+                ta::rel::JournalValidator::validateBytes(all.toUtf8());
+            check(rep.classification == ta::rel::JournalClassification::Clean,
+                  "live finals journal validates Clean via the SRL validator",
+                  QLatin1String(ta::rel::journalClassificationName(rep.classification)));
+        }
+
+        // M2 dual-state invariant: the store's reduced totals equal the
+        // controller's own authoritative totals (integer tenths vs decimal).
+        {
+            const ta::rel::SessionState& st = c.sessionStore()->state();
+            const int controllerTenths = qRound(c.cumulativeTotal() * 10.0);
+            check(st.totalTenths == controllerTenths
+                      && st.officials.size() == c.officialShotCount(),
+                  "dual-state invariant: reducer totals == controller totals",
+                  QStringLiteral("reducer=%1/%2 controller=%3/%4")
+                      .arg(st.totalTenths).arg(st.officials.size())
+                      .arg(controllerTenths).arg(c.officialShotCount()));
         }
         c.abortFinal();
     }
@@ -737,24 +766,33 @@ static void runTimeoutFinal()
               && r.commands.at(r.commands.size() - 2) == "Unload",
           "ending order STOP -> UNLOAD -> RESULTS ARE FINAL");
 
-    // Journal order matches controller event order (commands as recorded).
+    // Journal order matches controller event order. In the M2 envelope
+    // format each command is a CommandIssued envelope carrying a 1-based
+    // sequenceNumber; in journal order those must read 1,2,...,N with N ==
+    // the number of commands the controller emitted.
     {
-        QFile jf(ta::rel::StoragePaths::finalsJournalPath());
-        QStringList journalCmds;
+        QFile jf(c.sessionJournalPath());
+        QList<int> journalCmdSeqs;
         if (jf.open(QIODevice::ReadOnly | QIODevice::Text)) {
             while (!jf.atEnd()) {
                 const QString line = QString::fromUtf8(jf.readLine());
-                if (line.contains(QStringLiteral("\"journalType\":\"command\""))) {
-                    const int i = line.indexOf(QStringLiteral("\"typeName\":\""));
+                if (line.contains(QStringLiteral("\"t\":\"CommandIssued\""))) {
+                    const int i = line.indexOf(QStringLiteral("\"sequenceNumber\":"));
                     if (i >= 0) {
-                        const int st = i + 12;
-                        journalCmds << line.mid(st, line.indexOf('"', st) - st);
+                        const int st = i + 17;
+                        int end = st;
+                        while (end < line.size() && line[end].isDigit()) ++end;
+                        journalCmdSeqs << line.mid(st, end - st).toInt();
                     }
                 }
             }
         }
-        check(journalCmds == r.commands, "journal command order matches controller order",
-              QString::number(journalCmds.size()) + " vs " + QString::number(r.commands.size()));
+        bool monotonic = journalCmdSeqs.size() == r.commands.size();
+        for (int i = 0; i < journalCmdSeqs.size(); ++i)
+            if (journalCmdSeqs[i] != i + 1) monotonic = false;
+        check(monotonic, "journal command order matches controller order",
+              QString::number(journalCmdSeqs.size()) + " vs "
+                  + QString::number(r.commands.size()));
     }
 
     // D1: report over an incomplete run — DNS rows merged per [P1 = Option B].

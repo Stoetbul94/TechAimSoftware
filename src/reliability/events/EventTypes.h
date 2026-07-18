@@ -122,10 +122,12 @@ struct ShotCore {
             return ReliabilityResult::failure(ReliabilityError::InvalidEvent,
                 QStringLiteral("Invalid shot payload."),
                 QStringLiteral("shotNumber %1 < 0").arg(shotNumber));
-        if (scoreTenths < 0 || scoreTenths > 109)
+        // 110 admits the controller's defensive 11.0 acceptance ceiling
+        // (ISSF decimal maximum is 10.9; registerShot validates <= 11.0).
+        if (scoreTenths < 0 || scoreTenths > 110)
             return ReliabilityResult::failure(ReliabilityError::InvalidEvent,
                 QStringLiteral("Invalid shot payload."),
-                QStringLiteral("scoreTenths %1 outside 0..109").arg(scoreTenths));
+                QStringLiteral("scoreTenths %1 outside 0..110").arg(scoreTenths));
         if (splitMs < 0)
             return ReliabilityResult::failure(ReliabilityError::InvalidEvent,
                 QStringLiteral("Invalid shot payload."),
@@ -497,6 +499,172 @@ struct SessionClosed {
     static constexpr const char* kType = "SessionClosed";
     static constexpr qint32 kVersion = 1;
     CloseReason reason = CloseReason::Clean;
+    ReliabilityResult validate() const { return ReliabilityResult::success(); }
+};
+
+// ── M2 additions — finals flow + persistence markers ──────────────────
+// Appended AFTER every M1 type so existing variant indexes never move.
+
+struct StageEntered {
+    static constexpr const char* kType = "StageEntered";
+    static constexpr qint32 kVersion = 1;
+    qint16 stageId = 0;
+    ReliabilityResult validate() const
+    {
+        if (stageId < 0)
+            return evdetail::invalid(QStringLiteral("StageEntered.stageId < 0"));
+        return ReliabilityResult::success();
+    }
+};
+
+struct StageStatusChanged {
+    static constexpr const char* kType = "StageStatusChanged";
+    static constexpr qint32 kVersion = 1;
+    qint16 stageId = 0;
+    qint8 status = 0;
+    ReliabilityResult validate() const
+    {
+        if (stageId < 0)
+            return evdetail::invalid(QStringLiteral("StageStatusChanged.stageId < 0"));
+        return ReliabilityResult::success();
+    }
+};
+
+struct TargetModeChanged {
+    static constexpr const char* kType = "TargetModeChanged";
+    static constexpr qint32 kVersion = 1;
+    qint8 mode = 0;
+    ReliabilityResult validate() const { return ReliabilityResult::success(); }
+};
+
+struct WindowOpened {
+    static constexpr const char* kType = "WindowOpened";
+    static constexpr qint32 kVersion = 1;
+    qint16 windowId = 0;
+    ReliabilityResult validate() const
+    {
+        if (windowId < 0)
+            return evdetail::invalid(QStringLiteral("WindowOpened.windowId < 0"));
+        return ReliabilityResult::success();
+    }
+};
+
+struct WindowClosed {
+    static constexpr const char* kType = "WindowClosed";
+    static constexpr qint32 kVersion = 1;
+    qint16 windowId = 0;
+    ReliabilityResult validate() const
+    {
+        if (windowId < 0)
+            return evdetail::invalid(QStringLiteral("WindowClosed.windowId < 0"));
+        return ReliabilityResult::success();
+    }
+};
+
+struct CommandIssued {
+    static constexpr const char* kType = "CommandIssued";
+    static constexpr qint32 kVersion = 1;
+    qint32 commandId = 0;
+    qint16 commandType = 0;
+    QString text;
+    qint16 sequenceNumber = 0;
+    QString audioCueId;
+    qint64 issuedAtMs = 0;
+    qint64 effectiveAtMs = 0;
+    ReliabilityResult validate() const
+    {
+        if (text.isEmpty())
+            return evdetail::invalid(QStringLiteral("CommandIssued.text empty"));
+        if (issuedAtMs < 0 || effectiveAtMs < 0)
+            return evdetail::invalid(
+                QStringLiteral("CommandIssued negative timestamps"));
+        return ReliabilityResult::success();
+    }
+};
+
+struct ShotRejected {
+    static constexpr const char* kType = "ShotRejected";
+    static constexpr qint32 kVersion = 1;
+    QString reason;
+    qint64 externalId = 0;
+    qint32 xHundredthMm = 0;
+    qint32 yHundredthMm = 0;
+    bool simulated = false;
+    ReliabilityResult validate() const
+    {
+        if (reason.isEmpty())
+            return evdetail::invalid(QStringLiteral("ShotRejected.reason empty"));
+        return ReliabilityResult::success();
+    }
+};
+
+struct MissingShotRecorded {
+    static constexpr const char* kType = "MissingShotRecorded";
+    static constexpr qint32 kVersion = 1;
+    qint16 expectedNumber = 0;
+    qint16 stageId = 0;
+    QString reason;
+    ReliabilityResult validate() const
+    {
+        if (expectedNumber < 1)
+            return evdetail::invalid(
+                QStringLiteral("MissingShotRecorded.expectedNumber < 1"));
+        if (reason.isEmpty())
+            return evdetail::invalid(
+                QStringLiteral("MissingShotRecorded.reason empty"));
+        return ReliabilityResult::success();
+    }
+};
+
+// Persistence health markers (spec §9C–E). Written by the SessionStore
+// itself; validator allows sequence GAPS only between a Degraded/Restored
+// pair (recorded aux drops are the only source of gaps).
+struct PersistenceDegraded {
+    static constexpr const char* kType = "PersistenceDegraded";
+    static constexpr qint32 kVersion = 1;
+    qint32 queuedCount = 0;
+    ReliabilityResult validate() const
+    {
+        if (queuedCount < 0)
+            return evdetail::invalid(
+                QStringLiteral("PersistenceDegraded.queuedCount < 0"));
+        return ReliabilityResult::success();
+    }
+};
+
+struct PersistenceRestored {
+    static constexpr const char* kType = "PersistenceRestored";
+    static constexpr qint32 kVersion = 1;
+    qint32 queuedCount = 0;
+    ReliabilityResult validate() const
+    {
+        if (queuedCount < 0)
+            return evdetail::invalid(
+                QStringLiteral("PersistenceRestored.queuedCount < 0"));
+        return ReliabilityResult::success();
+    }
+};
+
+struct AuxEventsDropped {
+    static constexpr const char* kType = "AuxEventsDropped";
+    static constexpr qint32 kVersion = 1;
+    quint64 firstSeq = 0;
+    quint64 lastSeq = 0;
+    qint32 count = 0;
+    ReliabilityResult validate() const
+    {
+        if (count < 1)
+            return evdetail::invalid(QStringLiteral("AuxEventsDropped.count < 1"));
+        if (lastSeq < firstSeq)
+            return evdetail::invalid(
+                QStringLiteral("AuxEventsDropped.lastSeq < firstSeq"));
+        return ReliabilityResult::success();
+    }
+};
+
+struct CleanShutdown {
+    static constexpr const char* kType = "CleanShutdown";
+    static constexpr qint32 kVersion = 1;
     ReliabilityResult validate() const { return ReliabilityResult::success(); }
 };
 

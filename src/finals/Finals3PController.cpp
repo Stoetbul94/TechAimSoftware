@@ -1,14 +1,17 @@
 #include "Finals3PController.h"
 #include "FinalsReportBuilder.h"
 #include "../reliability/storage/StoragePaths.h"
+#include "../reliability/core/FixedPoint.h"
 
 #include <QApplication>
+#include <QCoreApplication>
 #include <QDateTime>
 #include <QProcessEnvironment>
 #include <QDebug>
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QUuid>
 
 using namespace techaim::finals;
 
@@ -60,71 +63,161 @@ void Finals3PController::setStageStatus(Stage st, techaim::finals::StageStatus s
             || cur >= static_cast<int>(techaim::finals::StageStatus::Complete))
         return;
     m_stageStatus[id] = static_cast<int>(status);
-    QVariantMap payload;
-    payload[QStringLiteral("statusStage")] = stageName(st);
-    payload[QStringLiteral("statusStageId")] = id;
-    payload[QStringLiteral("status")] = stageStatusName(status);
-    writeJournal(QStringLiteral("stageStatus"), payload);
+    submitEvent(ta::rel::DomainEvent(ta::rel::StageStatusChanged{
+        static_cast<qint16>(id), static_cast<qint8>(status)}));
     emit stageStatusChanged(id, static_cast<int>(status));
 }
 
-void Finals3PController::archiveExistingJournal()
+// ── Session Reliability Layer persistence (M2) ──────────────────────────
+// The controller submits typed domain events to its SessionStore; the store
+// owns the journal, hash chain, retry queue and degraded-mode machinery.
+
+QString Finals3PController::sessionJournalPath() const
 {
-    // Never silently reuse or zero a previous session's journal. Same rename
-    // semantics as always; M0 changes only the locations (Sessions/Current ->
-    // Sessions/Archive) and surfaces failures instead of ignoring them.
-    const QString live = ta::rel::StoragePaths::finalsJournalPath();
-    if (QFile::exists(live)) {
-        const QString archived = ta::rel::StoragePaths::archivedFinalsJournalPath(
-            QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss_zzz")));
-        if (!QFile::rename(live, archived))
-            reportJournalFailure(QStringLiteral("archive"), archived,
-                                 QStringLiteral("rename from %1 failed").arg(live));
+    return m_store ? m_store->currentJournalPath() : QString();
+}
+
+int Finals3PController::persistenceHealth() const
+{
+    return m_store ? static_cast<int>(m_store->persistenceHealth())
+                   : static_cast<int>(ta::rel::Health::Healthy);
+}
+
+void Finals3PController::beginJournalSession()
+{
+    if (!m_store)
+        return;
+    // Archive any still-open previous session before opening a new one (the
+    // old archiveExistingJournal semantic, now handled by the store).
+    if (m_store->active())
+        m_store->closeSession(ta::rel::CloseReason::Archive);
+
+    ta::rel::SessionHeader header;
+    header.sessionId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    header.appVersion = QCoreApplication::applicationVersion().isEmpty()
+        ? QStringLiteral("dev") : QCoreApplication::applicationVersion();
+    header.athlete = m_athleteName.trimmed();
+    header.matchType = QStringLiteral("FINAL 35");
+    header.discipline = ta::rel::Discipline::Finals3P;
+    header.config.officialShots =
+        m_cfg.kneelingShots + m_cfg.proneShots
+        + 2 * m_cfg.seriesShots + 5 * m_cfg.singleShots;
+    header.config.seriesSize = m_cfg.seriesShots;
+    header.config.matchMs = m_cfg.stage1Ms;
+
+    const ta::rel::ReliabilityResult r = m_store->beginSession(header);
+    m_journalFailureNotified = false;
+    if (!r.ok) {
+        qWarning() << "FINALS3P: beginSession failed:" << r.error.technicalDetail;
+        m_journalFailureNotified = true;
+        emit journalWriteFailed(sessionJournalPath(), r.error.technicalDetail);
     }
 }
 
-void Finals3PController::writeJournal(const QString& type, const QVariantMap& payload)
+void Finals3PController::submitEvent(const ta::rel::DomainEvent& event)
 {
-    if (!m_journalEnabled)
+    if (!m_store || !m_store->active())
         return;
-    QVariantMap line = payload;
-    line[QStringLiteral("journalType")] = type;
-    line[QStringLiteral("stage")] = stageName(m_stage);
-    line[QStringLiteral("targetMode")] = targetMode();
-    line[QStringLiteral("nextShotNumber")] = nextShotNumber();
-    line[QStringLiteral("stageSubtotal")] = m_stageSubtotal;
-    line[QStringLiteral("cumulativeTotal")] = m_cumulativeTotal;
-    const QString path = ta::rel::StoragePaths::finalsJournalPath();
-    QFile f(path);
-    if (!f.open(QIODevice::Append | QIODevice::Text)) {
-        reportJournalFailure(QStringLiteral("open"), path, f.errorString());
-        return;
-    }
-    const QByteArray data =
-        QJsonDocument(QJsonObject::fromVariantMap(line)).toJson(QJsonDocument::Compact) + "\n";
-    if (f.write(data) != data.size())
-        reportJournalFailure(QStringLiteral("write"), path, f.errorString());
+    const ta::rel::SubmitResult r = m_store->submit(event);
+    // A reducer rejection is a journal-fidelity diagnostic — the controller's
+    // own state machine remains authoritative for scoring/behaviour. Log it;
+    // never let it alter the final.
+    if (!r.ok)
+        qWarning() << "FINALS3P: event" << ta::rel::eventTypeId(event)
+                   << "rejected by reducer:" << r.error.technicalDetail;
 }
 
-// M0: journal failures must be observable — log every one, raise the UI
-// signal once per session (per-line dialogs would flood the operator; the
-// full persistence-health model is M2).
-void Finals3PController::reportJournalFailure(const QString& op,
-                                              const QString& path,
-                                              const QString& detail)
+// Map a finals stage entry to the reducer's coarse phase (so shot/sighter
+// acceptance is legal in the reduced state), then record the specific stage.
+void Finals3PController::submitStagePhase(Stage s)
 {
-    qWarning() << "FINALS3P journal" << op << "FAILED at" << path << ":" << detail;
-    if (m_journalFailureNotified)
-        return;
-    m_journalFailureNotified = true;
-    emit journalWriteFailed(path, QStringLiteral("%1 failed: %2").arg(op, detail));
+    using namespace ta::rel;
+    const qint16 id = static_cast<qint16>(s);
+    switch (s) {
+    case Stage::KneelingPrepSight:
+        submitEvent(DomainEvent(PreparationStarted{id}));
+        submitEvent(DomainEvent(SightingStarted{id}));
+        break;
+    case Stage::ProneSighting:
+    case Stage::StandingSighting:
+        submitEvent(DomainEvent(SightingStarted{id}));
+        break;
+    case Stage::KneelingMatch:
+    case Stage::ProneMatch:
+    case Stage::StandingSeries1:
+    case Stage::StandingSeries2:
+    case Stage::StandingSingle1:
+    case Stage::StandingSingle2:
+    case Stage::StandingSingle3:
+    case Stage::StandingSingle4:
+    case Stage::StandingSingle5:
+        submitEvent(DomainEvent(OfficialMatchStarted{id}));
+        break;
+    default:
+        break;   // Ceremony et al.: no shots, no phase change
+    }
+}
+
+ta::rel::ShotCore Finals3PController::buildShotCore(
+    const techaim::finals::ShotContext& ctx, double xMm, double yMm,
+    double score, int finalNumber, int withinStage, qint64 externalShotId,
+    double direction, bool simulated) const
+{
+    using namespace ta::rel;
+    ShotCore s;
+    s.shotNumber = static_cast<qint16>(finalNumber);
+    s.withinStage = static_cast<qint16>(withinStage);
+    s.stageId = static_cast<qint16>(stageId());
+    s.seriesIndex = static_cast<qint8>(seriesIndexFor(ctx.stage));
+    CoordinateHundredthMm cx, cy;
+    CoordinateHundredthMm::fromDouble(xMm, &cx);
+    CoordinateHundredthMm::fromDouble(yMm, &cy);
+    s.xHundredthMm = cx.raw();
+    s.yHundredthMm = cy.raw();
+    ScoreTenths st;
+    ScoreTenths::fromDouble(score, &st);
+    s.scoreTenths = st.raw();
+    CentiDegrees cd;
+    CentiDegrees::fromDouble(direction, &cd);
+    s.directionCentiDeg = cd.raw();
+    // Per-shot split in ms (same source as the display's timeComsumed).
+    s.splitMs = static_cast<qint32>(
+        ctx.hasPrevInWindow ? ctx.sincePrevShotMs : ctx.windowElapsedMs);
+    s.windowId = static_cast<qint16>(ctx.windowId);
+    s.targetMode = static_cast<qint8>(ctx.targetMode);
+    // A negative external id (simulated / no hardware id) must not collide in
+    // the reducer's duplicate check — normalise to 0 (no external id).
+    s.externalId = externalShotId < 0 ? 0 : externalShotId;
+    s.simulated = simulated;
+    return s;
 }
 
 Finals3PController::Finals3PController(QObject* parent)
     : QObject(parent)
+    , m_store(std::make_unique<ta::rel::SessionStore>())
 {
     m_tick.setInterval(kTickMs);
     connect(&m_tick, &QTimer::timeout, this, &Finals3PController::tick);
+
+    // Route the store's persistence signals to the controller's, so main.qml
+    // can drive the persistence banner / error dialog without knowing about
+    // the reliability layer directly (one integration point per §18).
+    connect(m_store.get(), &ta::rel::SessionStore::journalWriteFailed,
+            this, [this](QString path, QString detail) {
+        qWarning() << "FINALS3P journal write failed at" << path << ":" << detail;
+        if (m_journalFailureNotified)
+            return;
+        m_journalFailureNotified = true;
+        emit journalWriteFailed(path, detail);
+    });
+    connect(m_store.get(), &ta::rel::SessionStore::persistenceHealthChanged,
+            this, [this](ta::rel::Health h) {
+        emit persistenceHealthChanged(static_cast<int>(h));
+    });
+    connect(m_store.get(), &ta::rel::SessionStore::criticalPersistenceFailure,
+            this, [this](QString msg) {
+        emit journalWriteFailed(sessionJournalPath(), msg);
+    });
 
     // Developer-only accelerated mode (never exposed in production UI).
     bool ok = false;
@@ -220,8 +313,7 @@ void Finals3PController::startFinal()
     m_stageStatus.clear();
     m_stageSubtotalsMap.clear();
     emit totalsChanged();
-    archiveExistingJournal();
-    writeJournal(QStringLiteral("finalStarted"), QVariantMap());
+    beginJournalSession();
     m_tick.start();
 
     if (m_cfg.ceremonyMode == CeremonyMode::Skip)
@@ -588,7 +680,14 @@ void Finals3PController::acceptShot(bool sighter, double xMm, double yMm,
         ++m_sighterCount;
     else
         m_officialShotRecords.append(shot);
-    writeJournal(QStringLiteral("shotAccepted"), shot);
+    // M2: persist through the reliability store as a typed shot event.
+    const ta::rel::ShotCore core = buildShotCore(
+        ctx, xMm, yMm, score, finalNumber, withinStage, externalShotId,
+        direction, simulated);
+    if (sighter)
+        submitEvent(ta::rel::DomainEvent(ta::rel::SighterAccepted{core}));
+    else
+        submitEvent(ta::rel::DomainEvent(ta::rel::ShotAccepted{core}));
     emit shotAccepted(shot);
 
     // Window auto-close rules (commanded stages only).
@@ -619,7 +718,18 @@ void Finals3PController::rejectShot(RejectReason reason, double xMm, double yMm,
             rej[QStringLiteral("displayText")] = QStringLiteral("PRONE COMPLETE — CHANGE TO STANDING");
     }
     m_rejectionRecords.append(rej);   // Phase D1: incident source for the report
-    writeJournal(QStringLiteral("shotRejected"), rej);
+    {
+        ta::rel::ShotRejected ev;
+        ev.reason = rejectReasonName(reason);
+        ev.externalId = externalShotId < 0 ? 0 : externalShotId;
+        ta::rel::CoordinateHundredthMm cx, cy;
+        ta::rel::CoordinateHundredthMm::fromDouble(xMm, &cx);
+        ta::rel::CoordinateHundredthMm::fromDouble(yMm, &cy);
+        ev.xHundredthMm = cx.raw();
+        ev.yHundredthMm = cy.raw();
+        ev.simulated = simulated;
+        submitEvent(ta::rel::DomainEvent(ev));
+    }
     qInfo() << "FINALS3P: shot rejected —" << rejectReasonName(reason)
             << "in" << stageName(m_stage);
     emit shotRejected(rej);
@@ -633,7 +743,11 @@ void Finals3PController::recordMissingShots()
         for (int i = fired + 1; i <= limit; ++i) {
             const QVariantMap rec = techaim::finals::missingShotRecord(s, base + i);
             m_missingShots.append(rec);
-            writeJournal(QStringLiteral("missingShot"), rec);
+            ta::rel::MissingShotRecorded ev;
+            ev.expectedNumber = static_cast<qint16>(base + i);
+            ev.stageId = static_cast<qint16>(s);
+            ev.reason = QStringLiteral("TimeExpired");
+            submitEvent(ta::rel::DomainEvent(ev));
             emit missingShotRecorded(rec);
         }
     };
@@ -794,7 +908,13 @@ void Finals3PController::enterStage(Stage s)
         m_segmentEndScaled = 0;
         issueCommand(CommandType::Unload, QStringLiteral("STOP…UNLOAD"));
         issueCommand(CommandType::ResultsFinal, QStringLiteral("RESULTS ARE FINAL"));
-        writeJournal(QStringLiteral("finalCompleted"), QVariantMap());
+        // MatchCompleted must agree with the reduced totals — pass the
+        // store's own reduced values so the reducer's equality check holds.
+        if (m_store && m_store->active()) {
+            const ta::rel::SessionState& st = m_store->state();
+            submitEvent(ta::rel::DomainEvent(ta::rel::MatchCompleted{
+                st.totalTenths, static_cast<qint16>(st.officials.size())}));
+        }
         emit phaseChanged();
         // The primary action flips to VIEW REPORT on completion (D3); its
         // properties notify via advanceLabelChanged.
@@ -808,7 +928,10 @@ void Finals3PController::enterStage(Stage s)
         m_segmentEndScaled = 0;
         break;
     }
-    writeJournal(QStringLiteral("stageEntered"), QVariantMap());
+    // Set the reducer phase for this stage, then record the stage entry.
+    submitStagePhase(s);
+    submitEvent(ta::rel::DomainEvent(ta::rel::StageEntered{
+        static_cast<qint16>(s)}));
     emit phaseChanged();
     emit advanceLabelChanged();
     emit shotCountsChanged();
@@ -875,6 +998,12 @@ void Finals3PController::tick()
 {
     if (m_paused || !running())
         return;
+    // M2: opportunistically drain the persistence retry queue on the UI tick
+    // whenever storage has recovered (the degraded->restored path, §9D). The
+    // shot path itself never waits on retries (never-refuse-to-score, §9C).
+    if (m_store && m_store->active()
+            && m_store->persistenceHealth() != ta::rel::Health::Healthy)
+        m_store->pumpRetryQueue();
     const qint64 now = scaledNow();
 
     switch (m_stage) {
@@ -1003,7 +1132,17 @@ void Finals3PController::issueCommand(CommandType type, const QString& text)
     ev[QStringLiteral("sequenceNumber")] = m_commandSeq;
     ev[QStringLiteral("audioCueId")] = commandTypeName(type).toLower();
     m_events.append(ev);
-    writeJournal(QStringLiteral("command"), ev);
+    {
+        ta::rel::CommandIssued ce;
+        ce.commandId = m_commandSeq;
+        ce.commandType = static_cast<qint16>(type);
+        ce.text = text;
+        ce.sequenceNumber = static_cast<qint16>(m_commandSeq);
+        ce.audioCueId = commandTypeName(type).toLower();
+        ce.issuedAtMs = scaledNow();
+        ce.effectiveAtMs = scaledNow();
+        submitEvent(ta::rel::DomainEvent(ce));
+    }
     m_commandText = text;
     qInfo() << "FINALS3P cmd" << m_commandSeq << commandTypeName(type) << text;
     // Audio: FinalsAudioService listens to commandIssued (D4) — the
@@ -1021,11 +1160,12 @@ void Finals3PController::setWindow(WindowState w)
         m_lastExternalId = -1;      // duplicate guard is per firing window
         m_lastAcceptScaled = 0;
     }
-    QVariantMap payload;
-    payload[QStringLiteral("window")] = static_cast<int>(w);
-    payload[QStringLiteral("windowId")] = m_windowId;
-    writeJournal(w == WindowState::Closed ? QStringLiteral("windowClosed")
-                                          : QStringLiteral("windowOpened"), payload);
+    if (w == WindowState::Closed)
+        submitEvent(ta::rel::DomainEvent(ta::rel::WindowClosed{
+            static_cast<qint16>(m_windowId)}));
+    else
+        submitEvent(ta::rel::DomainEvent(ta::rel::WindowOpened{
+            static_cast<qint16>(m_windowId)}));
     emit windowStateChanged();
 }
 

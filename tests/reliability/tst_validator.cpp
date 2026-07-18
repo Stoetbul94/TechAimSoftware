@@ -178,4 +178,63 @@ void run_validator_tests()
               "unreadable file reported typed",
               QLatin1String(reliabilityErrorName(rep.error.code)));
     }
+
+    // §9D/§9E degraded-gap reconciliation, exercised directly with explicit-
+    // seq writes so the physical seqs are controlled precisely.
+    {
+        // Build a journal with a real gap at seq 3 (skipped) using a valid
+        // chain, WITHOUT declaring it -> unexplained gap -> CorruptInternal.
+        MemoryJournalFile file;
+        JournalWriter writer(testjournal::identity(), &file);
+        const QString wall = QString::fromLatin1(testjournal::kWall);
+        writer.appendSeq(0, testjournal::sessionStarted(Discipline::Prone50m,
+                             QStringLiteral("60"), QStringLiteral("A")),
+                         wall, 0, DurabilityClass::Sync);
+        writer.appendSeq(1, DomainEvent(OfficialMatchStarted{1}), wall, 1,
+                         DurabilityClass::Sync);
+        writer.appendSeq(2, DomainEvent(ShotAccepted{testjournal::shot(1, 104)}),
+                         wall, 2, DurabilityClass::Sync);
+        // seq 3 skipped, seq 4 next — a forward gap with an intact chain
+        writer.appendSeq(4, DomainEvent(ShotAccepted{testjournal::shot(2, 99)}),
+                         wall, 4, DurabilityClass::Sync);
+        const ValidationReport undeclared = JournalValidator::validateBytes(file.data);
+        check(undeclared.classification == JournalClassification::CorruptInternal
+                  && undeclared.error.code == ReliabilityError::CorruptJournal,
+              "undeclared seq gap rejected (never-silent reconciliation)",
+              QLatin1String(journalClassificationName(undeclared.classification)));
+
+        // Now the SAME gap, but declared by an AuxEventsDropped{3,3,1} -> Clean.
+        MemoryJournalFile file2;
+        JournalWriter w2(testjournal::identity(), &file2);
+        w2.appendSeq(0, testjournal::sessionStarted(Discipline::Prone50m,
+                         QStringLiteral("60"), QStringLiteral("A")),
+                     wall, 0, DurabilityClass::Sync);
+        w2.appendSeq(1, DomainEvent(OfficialMatchStarted{1}), wall, 1,
+                     DurabilityClass::Sync);
+        w2.appendSeq(2, DomainEvent(ShotAccepted{testjournal::shot(1, 104)}),
+                     wall, 2, DurabilityClass::Sync);
+        w2.appendSeq(4, DomainEvent(ShotAccepted{testjournal::shot(2, 99)}),
+                     wall, 4, DurabilityClass::Sync);
+        w2.appendSeq(5, DomainEvent(AuxEventsDropped{3, 3, 1}), wall, 5,
+                     DurabilityClass::Sync);
+        const ValidationReport declared = JournalValidator::validateBytes(file2.data);
+        check(declared.classification == JournalClassification::Clean,
+              "declared drop reconciles the gap -> Clean",
+              QStringLiteral("%1: %2")
+                  .arg(QLatin1String(journalClassificationName(declared.classification)))
+                  .arg(declared.error.technicalDetail));
+
+        // A declared drop with NO corresponding gap is also rejected (phantom).
+        MemoryJournalFile file3;
+        JournalWriter w3(testjournal::identity(), &file3);
+        w3.appendSeq(0, testjournal::sessionStarted(Discipline::Prone50m,
+                         QStringLiteral("60"), QStringLiteral("A")),
+                     wall, 0, DurabilityClass::Sync);
+        w3.appendSeq(1, DomainEvent(AuxEventsDropped{99, 99, 1}), wall, 1,
+                     DurabilityClass::Sync);
+        const ValidationReport phantom = JournalValidator::validateBytes(file3.data);
+        check(phantom.classification == JournalClassification::CorruptInternal,
+              "phantom drop declaration (no gap) rejected",
+              QLatin1String(journalClassificationName(phantom.classification)));
+    }
 }

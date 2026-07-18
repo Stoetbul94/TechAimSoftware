@@ -28,6 +28,7 @@ int main(int argc, char** argv)
     run_validator_tests();
     run_reducer_tests();
     run_snapshot_tests();
+    run_store_tests();
     run_fixture_tests(writeFixtures);
 
     std::printf("=== %d checks, %d failures ===\n", g_checks, g_failures);

@@ -70,9 +70,15 @@ void run_event_tests()
         SighterAccepted sighterOfficialNumber{testjournal::shot(3, 104)};
         check(!validateEvent(DomainEvent(sighterOfficialNumber)).ok,
               "SighterAccepted with shotNumber != 0 rejected");
-        ShotCore outOfRange = testjournal::shot(1, 110);
+        // 110 (11.0) is admitted — the finals controller's defensive
+        // acceptance ceiling is 11.0; the SRL must never reject a shot the
+        // controller accepted. 111 is out of range.
+        ShotCore atCeiling = testjournal::shot(1, 110);
+        check(validateEvent(DomainEvent(ShotAccepted{atCeiling})).ok,
+              "scoreTenths 110 (11.0 controller ceiling) accepted");
+        ShotCore outOfRange = testjournal::shot(1, 111);
         check(!validateEvent(DomainEvent(ShotAccepted{outOfRange})).ok,
-              "scoreTenths 110 rejected (max 109)");
+              "scoreTenths 111 rejected (max 110)");
         PositionChanged badPos;
         badPos.positionIndex = 3;
         check(!validateEvent(DomainEvent(badPos)).ok,

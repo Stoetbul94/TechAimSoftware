@@ -88,6 +88,28 @@ QString StoragePaths::legacyWorkingDirectoryJournalPath()
     return QDir::currentPath() + QStringLiteral("/finals_session.jsonl");
 }
 
+QString StoragePaths::sessionJournalFileName(const QString& utcCompact,
+                                             const QString& uuid8)
+{
+    return QStringLiteral("session_%1_%2.jsonl").arg(utcCompact, uuid8);
+}
+
+QString StoragePaths::currentSessionJournalPath(const QString& fileName)
+{
+    return currentSessionsDirectory() + QLatin1Char('/') + fileName;
+}
+
+QString StoragePaths::archivedSessionMonthPath(const QString& utcYear,
+                                               const QString& utcMonth,
+                                               const QString& fileName)
+{
+    const QString monthDir = archivedSessionsDirectory()
+            + QLatin1Char('/') + utcYear + QLatin1Char('/') + utcMonth;
+    if (!QDir().mkpath(monthDir))
+        return QString();
+    return monthDir + QLatin1Char('/') + fileName;
+}
+
 StorageResult StoragePaths::ensureRequiredDirectories()
 {
     const QString root = applicationDataRoot();

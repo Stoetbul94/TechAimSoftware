@@ -501,6 +501,91 @@ ReduceResult SessionReducer::apply(const SessionState& current,
                 return;
             }
             next.lifecycle = Lifecycle::Closed;
+        },
+        // ── M2 finals flow + persistence markers ─────────────────────
+        [&](const StageEntered& e) {
+            if (!active) {
+                failure = illegal("StageEntered");
+                return;
+            }
+            next.currentStageId = e.stageId;
+            if (auto* f = std::get_if<Finals3PState>(&next.disc)) {
+                f->stageId = e.stageId;
+                f->shotsInStage = 0;
+            }
+        },
+        [&](const StageStatusChanged& e) {
+            if (!active) {
+                failure = illegal("StageStatusChanged");
+                return;
+            }
+            next.stageStatuses.insert(e.stageId, e.status);
+        },
+        [&](const TargetModeChanged&) {
+            if (!active)
+                failure = illegal("TargetModeChanged");
+            // marker: target mode is carried per shot (ShotCore.targetMode)
+        },
+        [&](const WindowOpened& e) {
+            if (!active) {
+                failure = illegal("WindowOpened");
+                return;
+            }
+            if (auto* f = std::get_if<Finals3PState>(&next.disc))
+                f->windowId = e.windowId;
+        },
+        [&](const WindowClosed&) {
+            if (!active)
+                failure = illegal("WindowClosed");
+            // marker: the id of the last window stays in Finals3PState
+        },
+        [&](const CommandIssued&) {
+            if (!active)
+                failure = illegal("CommandIssued");
+            // marker: command history is journal-level evidence
+        },
+        [&](const ShotRejected& e) {
+            if (!active) {
+                failure = illegal("ShotRejected");
+                return;
+            }
+            IncidentEntry i;
+            i.kind = QStringLiteral("ShotRejected");
+            i.note = e.reason;
+            i.allowedTimeMs = -1;
+            i.seq = seq;
+            next.incidents.append(i);
+        },
+        [&](const MissingShotRecorded& e) {
+            if (!active) {
+                failure = illegal("MissingShotRecorded");
+                return;
+            }
+            IncidentEntry i;
+            i.kind = QStringLiteral("MissingShot");
+            i.note = QStringLiteral("shot %1: %2")
+                         .arg(e.expectedNumber).arg(e.reason);
+            i.allowedTimeMs = -1;
+            i.seq = seq;
+            next.incidents.append(i);
+        },
+        [&](const PersistenceDegraded&) {
+            if (!current.started)
+                failure = illegal("PersistenceDegraded");
+            // marker: health history lives in the journal
+        },
+        [&](const PersistenceRestored&) {
+            if (!current.started)
+                failure = illegal("PersistenceRestored");
+        },
+        [&](const AuxEventsDropped&) {
+            if (!current.started)
+                failure = illegal("AuxEventsDropped");
+            // marker: recorded data loss (spec §9E) — journal evidence
+        },
+        [&](const CleanShutdown&) {
+            if (!current.started)
+                failure = illegal("CleanShutdown");
         }
     }, envelope.payload);
 

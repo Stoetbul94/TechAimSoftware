@@ -19,9 +19,13 @@
 #include <QStringList>
 #include <QHash>
 
+#include <memory>
+
 #include "Finals3PTypes.h"
 #include "Finals3PConfig.h"
 #include "Finals3PShotRecord.h"
+
+#include "reliability/store/SessionStore.h"
 
 class Finals3PController : public QObject
 {
@@ -56,6 +60,9 @@ class Finals3PController : public QObject
     Q_PROPERTY(double stageSubtotal READ stageSubtotal NOTIFY totalsChanged)
     Q_PROPERTY(double timeScale READ timeScale WRITE setTimeScale NOTIFY timeScaleChanged)
     Q_PROPERTY(int ceremonyMode READ ceremonyMode WRITE setCeremonyMode NOTIFY configChanged)
+    // M2 (reliability): persistence health for the PersistenceBanner (int
+    // mirrors ta::rel::Health: 0 Healthy … 5 Failed).
+    Q_PROPERTY(int persistenceHealth READ persistenceHealth NOTIFY persistenceHealthChanged)
     // D4 ceremony polish: announced during the Full-ceremony introduction
     // ("INTRODUCING — <NAME>") when non-empty. Set by QML before startFinal().
     Q_PROPERTY(QString athleteName READ athleteName WRITE setAthleteName NOTIFY configChanged)
@@ -152,6 +159,17 @@ public:
     void setAthleteName(const QString& n)
         { if (n != m_athleteName) { m_athleteName = n; emit configChanged(); } }
 
+    // ── Session Reliability Layer (M2) ───────────────────────────────────
+    // The controller owns the SessionStore and routes every persistence
+    // event through it (the legacy per-line writeJournal is gone). main.cpp
+    // reaches the store to drive the persistence banner + retry pump.
+    ta::rel::SessionStore* sessionStore() { return m_store.get(); }
+    // Current live session journal path (Sessions/Current/session_*.jsonl),
+    // empty when no session is active. Used by tests and diagnostics.
+    QString sessionJournalPath() const;
+    // Persistence health as an int for QML binding (ta::rel::Health order).
+    int persistenceHealth() const;
+
 signals:
     void phaseChanged();
     void advanceLabelChanged();
@@ -172,6 +190,9 @@ signals:
     // M0 (reliability): a journal open/write/archive failure occurred. Emitted
     // at most once per session; every failure is also logged with the path.
     void journalWriteFailed(QString path, QString detail);
+    // M2: persistence health changed (int mirrors ta::rel::Health). QML binds
+    // the persistence banner to this + persistenceHealth().
+    void persistenceHealthChanged(int health);
     void targetModeChanged();
     void windowStateChanged();
     void pausedChanged();
@@ -269,14 +290,22 @@ private:
     QHash<int, int> m_stageStatus;        // stageId -> StageStatus
     QHash<int, double> m_stageSubtotalsMap;
 
-    // Append-only session journal (plan §9): one JSON line per accepted shot
-    // and phase transition. Crash-safe; restart-recovery UI deferred.
-    void archiveExistingJournal();
-    void writeJournal(const QString& type, const QVariantMap& payload);
-    void reportJournalFailure(const QString& op, const QString& path,
-                              const QString& detail);
-    bool m_journalEnabled = true;
-    bool m_journalFailureNotified = false;   // one UI signal per session (M0)
+    // ── Session Reliability Layer persistence (M2) ───────────────────────
+    // The controller submits typed events to its SessionStore; the store
+    // owns the journal, the retry queue and the degraded-mode machinery. The
+    // controller's own state machine stays authoritative for behaviour — a
+    // rejected submit is a journal-fidelity diagnostic, never a scoring
+    // change (never-refuse-to-score lives in the store, §9C).
+    std::unique_ptr<ta::rel::SessionStore> m_store;
+    bool m_journalFailureNotified = false;   // one UI signal per session
+    void beginJournalSession();              // startFinal: open a new session
+    void submitEvent(const ta::rel::DomainEvent& event);
+    void submitStagePhase(Stage s);          // Prep/Sighting/OfficialMatch
+    ta::rel::ShotCore buildShotCore(const techaim::finals::ShotContext& ctx,
+                                    double xMm, double yMm, double score,
+                                    int finalNumber, int withinStage,
+                                    qint64 externalShotId, double direction,
+                                    bool simulated) const;
 
     // Command events.
     int m_commandSeq = 0;

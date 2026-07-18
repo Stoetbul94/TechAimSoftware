@@ -21,7 +21,11 @@ HEADERS += \
     $$PWD/src/reliability/journal/JournalReader.h \
     $$PWD/src/reliability/journal/JournalValidator.h \
     $$PWD/src/reliability/reducer/SessionState.h \
-    $$PWD/src/reliability/reducer/SessionReducer.h
+    $$PWD/src/reliability/reducer/SessionReducer.h \
+    $$PWD/src/reliability/store/MonotonicClock.h \
+    $$PWD/src/reliability/store/JournalManager.h \
+    $$PWD/src/reliability/store/PersistenceRetryQueue.h \
+    $$PWD/src/reliability/store/SessionStore.h
 
 SOURCES += \
     $$PWD/src/reliability/storage/StoragePaths.cpp \
@@ -33,4 +37,7 @@ SOURCES += \
     $$PWD/src/reliability/journal/JournalReader.cpp \
     $$PWD/src/reliability/journal/JournalValidator.cpp \
     $$PWD/src/reliability/reducer/SessionState.cpp \
-    $$PWD/src/reliability/reducer/SessionReducer.cpp
+    $$PWD/src/reliability/reducer/SessionReducer.cpp \
+    $$PWD/src/reliability/store/JournalManager.cpp \
+    $$PWD/src/reliability/store/PersistenceRetryQueue.cpp \
+    $$PWD/src/reliability/store/SessionStore.cpp

@@ -370,6 +370,18 @@ Item {
     // same place (range feedback: the floating resume strip and the small
     // play icon were not ergonomic). Feed-paper stays as a jam-recovery
     // fallback — the motor is otherwise automatic after every shot.
+    // M2 (reliability): persistence-health banner, docked directly above the
+    // action bar. Only visible while persistence is degraded; shots keep
+    // scoring regardless (§9C). Finals only — qualification persistence is M4.
+    PersistenceBanner {
+        id: persistenceBanner
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: actionBar.top
+        visible: shootingPage.isFinalsMatch && height > 0
+        z: 41
+    }
+
     Rectangle {
         id: actionBar
         anchors.bottom: parent.bottom
