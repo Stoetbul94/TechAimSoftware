@@ -114,6 +114,169 @@ void Finals3PController::beginJournalSession()
     }
 }
 
+// M3: rebuild a display shot-record (QVariantMap) from a reducer shot record
+// so the UI models + report sources can be refilled on recovery. This is a
+// pure projection of reducer state — no controller internals are read.
+static QVariantMap recordFromReducerShot(const ta::rel::StateShotRecord& r,
+                                         bool sighter)
+{
+    using namespace techaim::finals;
+    ShotContext ctx;
+    ctx.stage = static_cast<Stage>(r.shot.stageId);
+    ctx.windowId = r.shot.windowId;
+    ctx.targetMode = r.shot.targetMode;
+    const double xMm = r.shot.xHundredthMm / 100.0;
+    const double yMm = r.shot.yHundredthMm / 100.0;
+    const double score = r.effectiveTenths() / 10.0;
+    QVariantMap m = acceptedShotRecord(ctx, xMm, yMm, score, sighter,
+                                       r.shot.shotNumber, r.shot.withinStage,
+                                       r.seq, r.shot.externalId, r.shot.simulated);
+    m[QStringLiteral("finalShotNumber")] = r.shot.shotNumber;
+    m[QStringLiteral("direction")] =
+        QString::number(r.shot.directionCentiDeg / 100.0, 'f', 2);
+    return m;
+}
+
+void Finals3PController::loadRecoveredState(const ta::rel::RecoveredMatchState& recovered)
+{
+    using namespace ta::rel;
+    const SessionState& s = recovered.state;
+
+    // 1) Reopen the SAME journal in append mode and adopt the reducer-rebuilt
+    //    state (the store writes RecoveryStarted/RecoveryCompleted).
+    const ReliabilityResult rr = m_store->resumeSession(recovered);
+    m_journalFailureNotified = false;
+    if (!rr.ok) {
+        qWarning() << "FINALS3P: resumeSession failed:" << rr.error.technicalDetail;
+        emit journalWriteFailed(sessionJournalPath(), rr.error.technicalDetail);
+        return;
+    }
+
+    // 2) Restore controller data — EXCLUSIVELY from the reducer state.
+    m_athleteName = s.athlete;
+    m_stage = static_cast<Stage>(s.currentStageId >= 0 ? s.currentStageId
+                                                       : static_cast<int>(Stage::Idle));
+    m_officialShotCount = s.officials.size();
+    m_sighterCount = s.sighters.size();
+    m_cumulativeTotal = s.totalTenths / 10.0;
+
+    m_stageStatus.clear();
+    for (auto it = s.stageStatuses.constBegin(); it != s.stageStatuses.constEnd(); ++it)
+        m_stageStatus.insert(it.key(), it.value());
+    m_stageSubtotalsMap.clear();
+    for (auto it = s.stageSubtotalTenths.constBegin();
+         it != s.stageSubtotalTenths.constEnd(); ++it)
+        m_stageSubtotalsMap.insert(it.key(), it.value() / 10.0);
+
+    // per-stage fired counts derived from the official records
+    m_kneelingFired = m_proneFired = 0;
+    int shotsInCurrentStage = 0;
+    qint64 maxExternalId = -1;
+    for (const StateShotRecord& r : s.officials) {
+        if (r.shot.stageId == static_cast<int>(Stage::KneelingMatch)) ++m_kneelingFired;
+        if (r.shot.stageId == static_cast<int>(Stage::ProneMatch))    ++m_proneFired;
+        if (r.shot.stageId == static_cast<int>(m_stage))              ++shotsInCurrentStage;
+        maxExternalId = qMax(maxExternalId, r.shot.externalId);
+    }
+    m_shotsInStage = shotsInCurrentStage;
+    m_stageSubtotal = m_stageSubtotalsMap.value(static_cast<int>(m_stage), 0.0);
+    m_lastExternalId = maxExternalId;
+    // event-id / window counters continue past what is already journalled
+    m_shotEventId = static_cast<quint64>(s.officials.size() + s.sighters.size()
+                                         + s.incidents.size());
+    if (const auto* f = std::get_if<Finals3PState>(&s.disc))
+        m_windowId = f->windowId;
+
+    // 3) Rebuild report sources + refill the UI models (display-only; the
+    //    store is active but these are signals, NOT submits — no re-journaling).
+    m_officialShotRecords.clear();
+    m_rejectionRecords.clear();
+    m_missingShots.clear();
+    m_events.clear();
+    for (const StateShotRecord& r : s.sighters)
+        emit shotAccepted(recordFromReducerShot(r, /*sighter*/ true));
+    for (const StateShotRecord& r : s.officials) {
+        const QVariantMap rec = recordFromReducerShot(r, /*sighter*/ false);
+        m_officialShotRecords.append(rec);
+        emit shotAccepted(rec);
+    }
+
+    // 4) Re-establish a FIRING-READY window + target mode for the recovered
+    //    stage so the athlete can continue immediately. The stage COUNTDOWN
+    //    RESUMES from the remaining time at the crash (spec §16): elapsed =
+    //    lastEventTm − stageClockStart (journal monotonic-ms), scaled into the
+    //    controller's clock domain. Interruption time does not count; the timer
+    //    is never restarted. These are live controller members — set directly,
+    //    NOT via setWindow/issueCommand, so recovery adds no journal events.
+    m_mono.start();
+    m_monoStarted = true;
+    m_paused = false;
+    m_pausedTotalRaw = 0;
+    m_phaseStartScaled = 0;
+    qint64 elapsedScaledMs = 0;
+    if (recovered.stageClockStartMonoMs > 0
+            && recovered.lastEventMonoMs >= recovered.stageClockStartMonoMs) {
+        const qint64 elapsedReal =
+            recovered.lastEventMonoMs - recovered.stageClockStartMonoMs;
+        elapsedScaledMs = static_cast<qint64>(elapsedReal * m_timeScale);
+    }
+    restoreStageFiringState(elapsedScaledMs);
+    m_tick.start();
+
+    emit totalsChanged();
+    emit shotCountsChanged();
+    emit phaseChanged();
+    emit advanceLabelChanged();
+    emit countdownChanged();
+    qInfo() << "FINALS3P: recovered session" << recovered.sessionId
+            << "stage" << stageName(m_stage)
+            << "officials" << m_officialShotCount
+            << "total" << m_cumulativeTotal;
+}
+
+QVariantList Finals3PController::scanForRecovery()
+{
+    if (!m_recovery)
+        m_recovery = std::make_unique<ta::rel::RecoveryCoordinator>();
+    // Only surface finals sessions for resume in the finals controller; other
+    // disciplines are ignored here (they adopt the same coordinator later).
+    QVariantList out;
+    for (const QVariant& v : m_recovery->scanForQml()) {
+        const QVariantMap m = v.toMap();
+        // The candidate's discipline label already tells the operator; we
+        // leave filtering to the dialog, but finals-resume only injects finals.
+        out.append(m);
+    }
+    return out;
+}
+
+bool Finals3PController::resumeFromRecovery(const QString& sessionId)
+{
+    if (!m_recovery)
+        return false;
+    ta::rel::RecoveredMatchState rec;
+    ta::rel::ErrorInfo err;
+    if (!m_recovery->buildRecoveredState(sessionId, &rec, &err)) {
+        qWarning() << "FINALS3P: resumeFromRecovery failed:" << err.technicalDetail;
+        emit journalWriteFailed(rec.journalPath, err.technicalDetail);
+        return false;
+    }
+    if (rec.state.discipline != ta::rel::Discipline::Finals3P) {
+        qWarning() << "FINALS3P: refusing to resume a non-finals session";
+        return false;
+    }
+    loadRecoveredState(rec);
+    return true;
+}
+
+void Finals3PController::discardRecovery(const QString& sessionId)
+{
+    if (!m_recovery)
+        m_recovery = std::make_unique<ta::rel::RecoveryCoordinator>();
+    m_recovery->scan();   // ensure the candidate is known
+    m_recovery->archiveOrDiscard(sessionId, /*discarded*/ true);
+}
+
 void Finals3PController::submitEvent(const ta::rel::DomainEvent& event)
 {
     if (!m_store || !m_store->active())
@@ -156,6 +319,89 @@ void Finals3PController::submitStagePhase(Stage s)
     default:
         break;   // Ceremony et al.: no shots, no phase change
     }
+}
+
+// M3: put the controller into a firing-ready window for the recovered stage.
+// Mirrors how each stage establishes its window in enterStage()/tick(), but
+// REBASED by elapsedScaledMs so the countdown resumes from where it was at the
+// crash (spec §16, never restarted), and WITHOUT journaling (recovery injects
+// no new events; the window/mode are live display+acceptance state only).
+void Finals3PController::restoreStageFiringState(qint64 elapsedScaledMs)
+{
+    const qint64 now = scaledNow();
+    if (elapsedScaledMs < 0)
+        elapsedScaledMs = 0;
+    m_windowOpenedScaled = now;
+    m_lastExternalId = -1;        // per-window duplicate guard reset
+    m_lastAcceptScaled = 0;
+    m_stage1Started = false;
+    m_s1Warn1 = m_s1Warn2 = false;
+    m_warn1Fired = m_warn2Fired = false;
+
+    // Clamp elapsed to a stage duration so a bad anchor can never push the
+    // deadline into the past (which would instantly expire the window).
+    auto rebasedEnd = [now](qint64 elapsed, qint64 duration) {
+        const qint64 remaining = duration - qBound<qint64>(0, elapsed, duration);
+        return now + remaining;
+    };
+    // For the shared stage-1 clock, place its START in the past by `elapsed`
+    // so `segmentEnd = start + stage1Ms` yields the correct remaining time.
+    auto rebasedStart = [now](qint64 elapsed, qint64 duration) {
+        return now - qBound<qint64>(0, elapsed, duration);
+    };
+
+    switch (m_stage) {
+    case Stage::KneelingPrepSight:
+        m_targetMode = TargetMode::Sighter;
+        m_window = WindowState::SightingOpen;
+        m_seqStep = 0;
+        m_segmentEndScaled = rebasedEnd(elapsedScaledMs, m_cfg.prepSightMs);
+        break;
+    case Stage::ProneSighting:
+    case Stage::StandingSighting:
+        m_targetMode = TargetMode::Sighter;
+        m_window = WindowState::SightingOpen;
+        m_stage1Started = true;
+        m_stage1StartScaled = rebasedStart(elapsedScaledMs, m_cfg.stage1Ms);
+        m_segmentEndScaled = m_stage1StartScaled + m_cfg.stage1Ms;
+        break;
+    case Stage::KneelingMatch:
+    case Stage::ProneMatch:
+        // Stage-1 shared 22:00 clock; seqStep 1 = past the announcement so the
+        // tick runs the clock (not the LOAD/START sequence) and holds the
+        // window open. Start is rebased so the shared clock resumes.
+        m_targetMode = TargetMode::Match;
+        m_window = WindowState::MatchOpen;
+        m_seqStep = 1;
+        m_stage1Started = true;
+        m_stage1StartScaled = rebasedStart(elapsedScaledMs, m_cfg.stage1Ms);
+        m_segmentEndScaled = m_stage1StartScaled + m_cfg.stage1Ms;
+        break;
+    case Stage::StandingSeries1:
+    case Stage::StandingSeries2:
+        m_targetMode = TargetMode::Match;
+        m_window = WindowState::MatchOpen;
+        m_seqStep = 2;            // firing
+        m_segmentEndScaled = rebasedEnd(elapsedScaledMs, m_cfg.seriesMs);
+        break;
+    case Stage::StandingSingle1:
+    case Stage::StandingSingle2:
+    case Stage::StandingSingle3:
+    case Stage::StandingSingle4:
+    case Stage::StandingSingle5:
+        m_targetMode = TargetMode::Match;
+        m_window = WindowState::MatchOpen;
+        m_seqStep = 2;            // firing
+        m_segmentEndScaled = rebasedEnd(elapsedScaledMs, m_cfg.singleMs);
+        break;
+    default:                       // Ceremony/Idle/Complete/Aborted: no firing
+        m_window = WindowState::Closed;
+        m_segmentEndScaled = 0;
+        break;
+    }
+    emit windowStateChanged();
+    emit targetModeChanged();
+    emit countdownChanged();
 }
 
 ta::rel::ShotCore Finals3PController::buildShotCore(

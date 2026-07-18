@@ -1,0 +1,131 @@
+import QtQuick 2.15
+import QtQuick.Controls 2.15
+
+// Session Reliability Layer (M3) — recovery dialog. Shown BEFORE LoginPage
+// when the RecoveryCoordinator finds an unfinished match in Sessions/Current.
+// View-only over the recovery metadata; all rebuild/replay happens in C++
+// (Journal → Validator → Reducer). Resume is offered only for a resumable
+// (Clean/Recoverable) session; otherwise the operator gets Discard + details.
+Rectangle {
+    id: root
+    anchors.fill: parent
+    color: "#e6000000"          // dim the app behind
+    visible: false
+    z: 2000
+
+    // The list of candidate maps from FINALS3P.scanForRecovery().
+    property var candidates: []
+    readonly property var current: (candidates && candidates.length > 0)
+                                   ? candidates[0] : null
+    readonly property bool resumable: current ? current.resumable === true : false
+
+    signal resumeRequested(string sessionId)
+    signal discardRequested(string sessionId)
+    signal dismissed()
+
+    function open(list) {
+        candidates = list
+        visible = (list && list.length > 0)
+    }
+
+    // block clicks to the app behind
+    MouseArea { anchors.fill: parent; onClicked: {} }
+
+    Rectangle {
+        id: card
+        anchors.centerIn: parent
+        width: 520
+        height: contentCol.implicitHeight + 48
+        radius: 12
+        color: "#1b1c22"
+        border.color: "#d0392b"
+        border.width: 2
+
+        Column {
+            id: contentCol
+            anchors.fill: parent
+            anchors.margins: 24
+            spacing: 12
+
+            Text {
+                text: qsTr("Unfinished Match Found")
+                color: "white"; font.pixelSize: 22; font.bold: true
+            }
+            Rectangle { width: parent.width; height: 1; color: "#333" }
+
+            Grid {
+                columns: 2; columnSpacing: 18; rowSpacing: 8
+                visible: root.current !== null
+                property var c: root.current
+                Text { text: qsTr("Discipline"); color: "#9aa0aa"; font.pixelSize: 13 }
+                Text { text: parent.c ? (parent.c.disciplineLabel || "") : ""
+                       color: "white"; font.pixelSize: 13; font.bold: true }
+                Text { text: qsTr("Athlete"); color: "#9aa0aa"; font.pixelSize: 13 }
+                Text { text: parent.c ? (parent.c.athlete || "—") : ""
+                       color: "white"; font.pixelSize: 13; font.bold: true }
+                Text { text: qsTr("Shots"); color: "#9aa0aa"; font.pixelSize: 13 }
+                Text { text: parent.c ? (parent.c.officialShots + " / " + parent.c.expectedShots) : ""
+                       color: "white"; font.pixelSize: 13; font.bold: true }
+                Text { text: qsTr("Total"); color: "#9aa0aa"; font.pixelSize: 13 }
+                Text { text: parent.c ? (parent.c.totalTenths / 10.0).toFixed(1) : ""
+                       color: "white"; font.pixelSize: 13; font.bold: true }
+                Text { text: qsTr("Saved"); color: "#9aa0aa"; font.pixelSize: 13 }
+                Text { text: parent.c ? (parent.c.lastEventWallIso || parent.c.lastModifiedIso || "") : ""
+                       color: "white"; font.pixelSize: 13 }
+                Text { text: qsTr("Journal"); color: "#9aa0aa"; font.pixelSize: 13 }
+                Text { text: parent.c ? (parent.c.recoveryClass || "") : ""
+                       color: root.resumable ? "#43b581" : "#d0392b"
+                       font.pixelSize: 13; font.bold: true }
+            }
+
+            Text {
+                width: parent.width
+                visible: !root.resumable && root.current !== null
+                text: root.current
+                      ? qsTr("This session cannot be resumed cleanly: ")
+                        + (root.current.validationDetail || "")
+                      : ""
+                color: "#d0392b"; font.pixelSize: 12; wrapMode: Text.WordWrap
+            }
+
+            Row {
+                spacing: 12
+                anchors.right: parent.right
+
+                Rectangle {
+                    width: 120; height: 40; radius: 8; color: "#2a2b33"
+                    Text { anchors.centerIn: parent; text: qsTr("Discard")
+                           color: "white"; font.pixelSize: 14 }
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: {
+                            if (root.current)
+                                root.discardRequested(root.current.sessionId)
+                            root.visible = false
+                            root.dismissed()
+                        }
+                    }
+                }
+                Rectangle {
+                    width: 160; height: 40; radius: 8
+                    color: root.resumable ? "#e8003d" : "#3a3b44"
+                    Text { anchors.centerIn: parent
+                           text: root.resumable ? qsTr("Resume Match")
+                                                : qsTr("Recovery Wizard")
+                           color: "white"; font.pixelSize: 14; font.bold: true }
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: {
+                            if (root.resumable && root.current) {
+                                root.resumeRequested(root.current.sessionId)
+                                root.visible = false
+                            }
+                            // Recovery Wizard (non-resumable) is deferred; the
+                            // detail text already explains why Resume is off.
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

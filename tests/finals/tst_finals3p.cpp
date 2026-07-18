@@ -24,6 +24,8 @@
 #include "reliability/storage/StoragePaths.h"
 #include "reliability/journal/JournalValidator.h"
 #include "reliability/store/SessionStore.h"
+#include "reliability/recovery/RecoveryCoordinator.h"
+#include "reliability/core/FixedPoint.h"
 
 #include <QDir>
 
@@ -977,6 +979,121 @@ static void runD4Checks()
     // ceremony sequence there is byte-identical to Phase A (no InfoNotice).
 }
 
+// Local helpers: build a reducer ShotCore / ShotAccepted from a decimal score.
+static ta::rel::ShotCore makeShot(qint16 number, double decimalScore, Stage stage)
+{
+    ta::rel::ShotCore s;
+    s.shotNumber = number;
+    s.withinStage = number;
+    s.stageId = static_cast<qint16>(stage);
+    ta::rel::ScoreTenths st;
+    ta::rel::ScoreTenths::fromDouble(decimalScore, &st);
+    s.scoreTenths = st.raw();
+    s.windowId = 2;
+    s.targetMode = number == 0 ? 0 : 1;
+    s.externalId = 1000 + number;
+    s.simulated = true;
+    return s;
+}
+static ta::rel::DomainEvent makeShotEvent(qint16 number, double decimalScore, Stage stage)
+{
+    return ta::rel::DomainEvent(ta::rel::ShotAccepted{makeShot(number, decimalScore, stage)});
+}
+
+// M3: controller-level recovery. Build a finals journal through a raw
+// SessionStore (a "crashed" mid-match session — never closed), then recover
+// it via the RecoveryCoordinator and inject it into a FRESH controller with
+// loadRecoveredState. The controller's projected state must match the crashed
+// match exactly — indistinguishable from one that never crashed.
+static void runRecoveryChecks()
+{
+    using namespace ta::rel;
+    const QString sid = QStringLiteral("aaaaaaaa-0000-4000-8000-00000000fee1");
+
+    int expectedOfficials = 0, expectedStage = 0;
+    double expectedTotal = 0.0;
+    QString path;
+    {   // ── build a crashed finals journal (store scoped out = "crash") ──
+        SessionStore builder;
+        SessionHeader h;
+        h.sessionId = sid;
+        h.appVersion = QStringLiteral("test");
+        h.athlete = QStringLiteral("Recovered Athlete");
+        h.matchType = QStringLiteral("FINAL 35");
+        h.discipline = Discipline::Finals3P;
+        h.config.officialShots = 35;
+        builder.beginSession(h);
+        builder.submit(DomainEvent(StageEntered{
+            static_cast<qint16>(Stage::KneelingPrepSight)}));
+        builder.submit(DomainEvent(PreparationStarted{
+            static_cast<qint16>(Stage::KneelingPrepSight)}));
+        builder.submit(DomainEvent(SightingStarted{
+            static_cast<qint16>(Stage::KneelingPrepSight)}));
+        builder.submit(DomainEvent(WindowOpened{1}));
+        builder.submit(DomainEvent(SighterAccepted{makeShot(0, 10.1, Stage::KneelingPrepSight)}));
+        builder.submit(DomainEvent(WindowClosed{1}));
+        builder.submit(DomainEvent(StageEntered{
+            static_cast<qint16>(Stage::KneelingMatch)}));
+        builder.submit(DomainEvent(OfficialMatchStarted{
+            static_cast<qint16>(Stage::KneelingMatch)}));
+        builder.submit(DomainEvent(WindowOpened{2}));
+        builder.submit(DomainEvent(makeShotEvent(1, 10.4, Stage::KneelingMatch)));
+        builder.submit(DomainEvent(makeShotEvent(2, 9.8, Stage::KneelingMatch)));
+        builder.submit(DomainEvent(makeShotEvent(3, 10.6, Stage::KneelingMatch)));
+        path = builder.currentJournalPath();
+        expectedOfficials = builder.state().officials.size();
+        expectedTotal = builder.state().totalTenths / 10.0;
+        expectedStage = builder.state().currentStageId;
+    }
+
+    RecoveryCoordinator coord;
+    const QVector<RecoveryCandidate> cands = coord.scan();
+    const RecoveryCandidate* mine = nullptr;
+    for (const RecoveryCandidate& c : cands)
+        if (c.sessionId == sid) mine = &c;
+    check(mine != nullptr, "M3: crashed finals session discovered by coordinator");
+    if (mine) {
+        check(mine->recoveryClass == RecoveryClass::Clean && mine->resumable,
+              "M3: crashed finals journal is Clean + resumable",
+              QLatin1String(recoveryClassName(mine->recoveryClass)));
+        check(mine->athlete == QLatin1String("Recovered Athlete")
+                  && mine->discipline == Discipline::Finals3P,
+              "M3: candidate metadata from the reducer state");
+
+        RecoveredMatchState rec;
+        ErrorInfo err;
+        const bool built = coord.buildRecoveredState(sid, &rec, &err);
+        check(built, "M3: recovered state rebuilt via the reducer",
+              err.technicalDetail);
+
+        Finals3PController c2;
+        c2.loadRecoveredState(rec);
+        check(c2.officialShotCount() == expectedOfficials,
+              "M3: recovered controller official count matches",
+              QStringLiteral("%1 vs %2").arg(c2.officialShotCount())
+                  .arg(expectedOfficials));
+        check(qFuzzyCompare(c2.cumulativeTotal() + 1.0, expectedTotal + 1.0),
+              "M3: recovered controller total matches (indistinguishable)",
+              QStringLiteral("%1 vs %2").arg(c2.cumulativeTotal()).arg(expectedTotal));
+        check(c2.stageId() == expectedStage,
+              "M3: recovered controller stage matches",
+              QStringLiteral("%1 vs %2").arg(c2.stageId()).arg(expectedStage));
+
+        // the resumed journal continues Clean and carries the recovery markers
+        const ValidationReport rep = JournalValidator::validateFile(path);
+        check(rep.classification == JournalClassification::Clean,
+              "M3: resumed finals journal validates Clean",
+              QLatin1String(journalClassificationName(rep.classification)));
+        bool sawStart = false, sawDone = false;
+        for (const EventEnvelope& e : rep.validEnvelopes) {
+            if (std::holds_alternative<RecoveryStarted>(e.payload)) sawStart = true;
+            if (std::holds_alternative<RecoveryCompleted>(e.payload)) sawDone = true;
+        }
+        check(sawStart && sawDone,
+              "M3: resumed finals journal records recovery markers");
+    }
+}
+
 int main(int argc, char** argv)
 {
     qputenv("TECHAIM_FINALS_TIMESCALE", "60");
@@ -1004,6 +1121,7 @@ int main(int argc, char** argv)
     runSecondaryChecks();
     runTimeoutFinal();
     runD4Checks();
+    runRecoveryChecks();
 
     std::printf("=== %d checks, %d failures ===\n", g_checks, g_failures);
     std::fflush(stdout);

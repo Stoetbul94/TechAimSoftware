@@ -25,6 +25,9 @@ ApplicationWindow {
     property bool isDefaultIcon: false //APPSETTINGS.getBrandName() == "tachus" ? true : false // true for tachus and false for seta
     property bool appMode: APPSETTINGS.getAppMode() // false for demo and true for live
     property bool isSaveGame: false
+    // M3 (reliability): set while resuming a crashed match so ShootingPage
+    // does NOT run a fresh preparation phase — the state is already restored.
+    property bool isRecoveredGame: false
     property int gameRange: APPSETTINGS.get10or50mRange()   // 10 for 10m 50 for 50m
     property int shootsPerSeries: 10
     property string greenColor: "#00ff00" //"lightgreen"
@@ -532,7 +535,7 @@ ApplicationWindow {
                 shootingPage.refreshMatchTime()
                 // ISSF sequence: every fresh session opens in the preparation/
                 // sighting phase. Loaded sessions restore straight into match.
-                if (!isSaveGame)
+                if (!isSaveGame && !isRecoveredGame)
                     shootingPage.beginPreparationPhase()
                 APPSETTINGS.updateStatusFeedbackFile(2)
             } else {
@@ -542,6 +545,61 @@ ApplicationWindow {
     }
 
     // Single floating-window overlay + registry for the whole app. Windows
+    // M3 (reliability): recovery dialog + startup scan. Before the operator
+    // reaches LoginPage, the RecoveryCoordinator (via FINALS3P) scans
+    // Sessions/Current for an unfinished match. If one exists, this dialog
+    // offers Resume (Clean/Recoverable) or Discard; all rebuild/replay is done
+    // in C++ exclusively through the reducer.
+    RecoveryDialog {
+        id: recoveryDialog
+        onResumeRequested: function(sessionId) {
+            // Recovery enters the SAME finals flow as a fresh start — via the
+            // shared enterFinalsMode() — not a parallel path. isRecoveredGame
+            // suppresses the duplicate beginPreparationPhase() in
+            // onVisibleChanged so no fresh session is started.
+            window.isRecoveredGame = true
+            // Configure the existing finals selectors/settings (labels + the
+            // discipline mapping used by onVisibleChanged.updateGameType()).
+            loginPage.gameMode = 1     // rifle
+            gameRange = 50             // window-scope (per scope gotcha)
+            loginPage.gameSubMode = 1  // 3 positions
+            loginPage.gameEvent = 6    // 3P FINAL (35)
+            shootingPage.setFinalsGameType()
+            loginPage.visible = false          // reveal the ShootingPage
+            // Engage finals mode (isFinalsMatch = true) BEFORE resume: the C++
+            // loadRecoveredState() re-emits the recovered shot signals, which
+            // are only routed while the `enabled: isFinalsMatch` connection is
+            // active. startFresh = false → no new session is started.
+            shootingPage.enterFinalsMode(false)
+            // Guard the target face: restoreStageFiringState() re-opens the
+            // current firing window, whose handler would otherwise defer-clear
+            // the face and erase the shots we are about to replay.
+            shootingPage.suppressFaceClearOnce = true
+            // While replaying, keep past-window sighters off the current face
+            // (they still populate the shot list), so shot numbering on the face
+            // matches a never-crashed match: recovered officials 1,2,3 then 4 live.
+            shootingPage.recoveryReplayInProgress = true
+            var resumed = FINALS3P.resumeFromRecovery(sessionId)
+            shootingPage.recoveryReplayInProgress = false
+            if (!resumed) {
+                loginPage.visible = true
+                window.isRecoveredGame = false
+                dialogManager.showError(qsTr("Recovery Failed"),
+                    qsTr("The unfinished match could not be resumed."))
+            }
+        }
+        onDiscardRequested: function(sessionId) { FINALS3P.discardRecovery(sessionId) }
+    }
+    Timer {
+        // Run once after load so FINALS3P + QML are fully ready.
+        interval: 200; running: true; repeat: false
+        onTriggered: {
+            var list = FINALS3P.scanForRecovery()
+            if (list && list.length > 0)
+                recoveryDialog.open(list)
+        }
+    }
+
     // register by key; pages open them via windowManager.openReport()/openCoach()
     // etc. (they never touch instances). Click-through except the window frames,
     // so the live target is never blocked.

@@ -19,6 +19,7 @@
 #include "MonotonicClock.h"
 #include "PersistenceRetryQueue.h"
 #include "reliability/reducer/SessionState.h"
+#include "reliability/recovery/RecoveryTypes.h"
 
 #include <QObject>
 
@@ -66,6 +67,13 @@ public:
     // Starts the monotonic clock, opens the journal, writes SessionStarted at
     // seq 0 (must be durable — returns failure otherwise).
     ReliabilityResult beginSession(const SessionHeader& header);
+    // M3 resume: reopen an existing (recovered) journal in append mode, adopt
+    // the reducer-rebuilt state, seed the hash chain + sequence from the last
+    // valid line (truncating any torn tail first), and record RecoveryStarted
+    // / RecoveryCompleted. After this the session continues exactly as a live
+    // one — submit() appends onto the recovered file.
+    ReliabilityResult resumeSession(const RecoveredMatchState& recovered);
+
     // The main path. Never refuses to score.
     SubmitResult submit(const DomainEvent& event);
     // Writes MatchCompleted is the caller's job; this writes SessionClosed +

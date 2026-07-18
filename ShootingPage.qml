@@ -32,6 +32,15 @@ Item {
     property bool is3PMatch: false
     // 3P FINAL (35) — separate finals domain; FINALS3P owns all finals timing.
     property bool isFinalsMatch: false
+    // M3 recovery: one-shot guard so the window-open re-established during a
+    // recovery resume does not clear the recovered shots off the target face.
+    property bool suppressFaceClearOnce: false
+    // M3 recovery: true while loadRecoveredState re-emits the recovered shots.
+    // Sighters belong to a PAST (sighting) window and would normally have been
+    // cleared off the current firing-window face at window-open — so during the
+    // replay the router keeps them out of the face buffer (they still populate
+    // the shot list). Officials of the current window populate the face as usual.
+    property bool recoveryReplayInProgress: false
     // Shot direction (angle) and polar display radius of the shot currently
     // being registered with the finals controller; injected into the record by
     // the router. `score`/`direction` are the qualification polar-display
@@ -711,7 +720,13 @@ Item {
             else
                 globalMatchModel.append(rec)
             // Display buffer drives the target face (cleared per window below).
-            globalModelOfData.append(rec)
+            // M3 recovery: a replayed SIGHTER belongs to a past sighting window
+            // and, in a never-crashed match, would already have been cleared off
+            // the current firing-window face at window-open — so keep it out of
+            // the face buffer here. Officials of the current window populate the
+            // face exactly as in live firing, preserving shot numbering.
+            if (!(shootingPage.recoveryReplayInProgress && rec.isSighter))
+                globalModelOfData.append(rec)
             finalsShotListModel.append(rec)
             // Right panel consumes the SAME accepted record (FIX4).
             rightPanel.finalsOnShotAccepted(rec)
@@ -749,8 +764,17 @@ Item {
             // Clean face per firing window (mirrors qualification's
             // clean-face-per-position). Deferred: model resets from inside
             // signal handlers with live delegates crash (see 3P doc gotchas).
-            if (FINALS3P.isFiringWindowOpen)
+            if (FINALS3P.isFiringWindowOpen) {
+                // M3 recovery: the window re-established by restoreStageFiringState
+                // must NOT erase the shots just replayed onto the face — consume
+                // the one-shot guard and skip this clear (normal firing windows
+                // still clear the face as before).
+                if (shootingPage.suppressFaceClearOnce) {
+                    shootingPage.suppressFaceClearOnce = false
+                    return
+                }
                 Qt.callLater(function() { globalModelOfData.clear() })
+            }
         }
     }
 
@@ -829,6 +853,44 @@ Item {
     // ISSF flow: enter the preparation/sighting phase at session start.
     // The 15-min sighting countdown runs; the match clock stays hidden and
     // zeroed until the match starts (play button or countdown expiry).
+    // 3P FINAL mode-engagement — the SINGLE way the finals view is entered
+    // (canonical fresh start AND recovery resume). It sets isFinalsMatch (which
+    // drives the finals RightPanel/HUD and the `enabled: isFinalsMatch` shot
+    // router) and prepares the finals models. Only when startFresh is true does
+    // it also start a brand-new session — recovery passes false and injects the
+    // recovered state instead (M3). Steps (a)–(c) are byte-identical to the old
+    // inline finals branch; (d)–(e) are gated on startFresh.
+    function enterFinalsMode(startFresh)
+    {
+        isFinalsMatch = true
+        is3PMatch = false
+        // Fresh, start-from-zero session: the finals path returns before the
+        // qualification clearing flows run, so clear the shot models here
+        // (role locks survive clear()).
+        globalMatchModel.clear()
+        globalSlighterModel.clear()
+        globalModelOfData.clear()
+        finalsIncidentModel.clear()
+        finalsShotListModel.clear()
+        // FIX1: deterministic session state. Qualification resets these in
+        // changedToSigherMode/changedToMatchMode, which finals never runs:
+        // stale backEndShootCount made the shot processor read wrong backend
+        // indices after a prior session; stale sligterMode/matchFinished leak
+        // previous-session behaviour into the shared display pipeline.
+        centerPanel.backEndShootCount = 0
+        sligterMode = true            // face shows all current-window shots
+        matchFinished = false
+        finalsShotSeq = 0
+        rightPanel.resetRightPanelModels()   // clears the shot table + totals
+        if (startFresh) {
+            MODREADER.appendToLogFile("3P FINAL: session start (FINALS3P owns timing)")
+            // D4 ceremony polish: the Full ceremony announces the athlete.
+            FINALS3P.athleteName = (typeof userName !== "undefined" && userName) ? userName : ""
+            FINALS3P.resetFinal()
+            FINALS3P.startFinal()
+        }
+    }
+
     function beginPreparationPhase()
     {
         // 3P FINAL: a separate domain — the FINALS3P controller owns ALL finals
@@ -839,31 +901,7 @@ Item {
                      && APPSETTINGS.getGameSubMode() === 1
                      && matchShootCount === 35
         if (isFinalsMatch) {
-            is3PMatch = false
-            // Fresh, start-from-zero session: the finals path returns before
-            // the qualification clearing flows run, so clear the shot models
-            // here (role locks survive clear()).
-            globalMatchModel.clear()
-            globalSlighterModel.clear()
-            globalModelOfData.clear()
-            finalsIncidentModel.clear()
-            finalsShotListModel.clear()
-            // FIX1: deterministic session state. Qualification resets these in
-            // changedToSigherMode/changedToMatchMode, which finals never runs:
-            // stale backEndShootCount made the shot processor read wrong
-            // backend indices after a prior session; stale sligterMode/
-            // matchFinished leak previous-session behaviour into the shared
-            // display pipeline. rightPanel paging state likewise.
-            centerPanel.backEndShootCount = 0
-            sligterMode = true            // face shows all current-window shots
-            matchFinished = false
-            finalsShotSeq = 0
-            rightPanel.resetRightPanelModels()   // clears the shot table + totals
-            MODREADER.appendToLogFile("3P FINAL: session start (FINALS3P owns timing)")
-            // D4 ceremony polish: the Full ceremony announces the athlete.
-            FINALS3P.athleteName = (typeof userName !== "undefined" && userName) ? userName : ""
-            FINALS3P.resetFinal()
-            FINALS3P.startFinal()
+            enterFinalsMode(true)            // canonical fresh finals start
             return
         }
         MODREADER.appendToLogFile("beginPreparationPhase: prep seconds = " + APPSETTINGS.getPrepTimeCount())

@@ -29,4 +29,5 @@ SOURCES += \
     tst_reducer.cpp \
     tst_snapshot.cpp \
     tst_store.cpp \
+    tst_recovery.cpp \
     tst_fixtures.cpp

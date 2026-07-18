@@ -103,6 +103,7 @@ void run_validator_tests();
 void run_reducer_tests();
 void run_snapshot_tests();
 void run_store_tests();
+void run_recovery_tests();
 void run_fixture_tests(bool regenerate);
 
 #endif // TA_REL_TEST_SUPPORT_H
