@@ -101,27 +101,40 @@ public:
     // `file` is injected and NOT owned (caller controls lifetime — DI seam).
     JournalWriter(const JournalIdentity& identity, IJournalFile* file);
 
-    // Append with the registry durability class for the event type.
+    // Auto-sequence append (M1 callers): the writer assigns the next dense
+    // sequence itself. Registry durability class for the event type.
     AppendOutcome append(const DomainEvent& event,
                          const QString& wallIso, qint64 monoMs);
-    // Append with an explicit durability override (tests, special cases).
+    // Auto-sequence append with an explicit durability override.
     AppendOutcome append(const DomainEvent& event,
                          const QString& wallIso, qint64 monoMs,
                          DurabilityClass durability);
 
-    quint64 nextSequence() const { return m_nextSeq; }
+    // Explicit-sequence append (M2 SessionStore): the CALLER owns logical
+    // sequence assignment (needed for the degraded retry queue, where the
+    // logical seq is fixed at submit time but the write order — and thus the
+    // hash chain — reflects drain order). The writer still owns the write-
+    // order hash chain (m_lastHash) and poisoning. The seq the store passes
+    // need not be contiguous with the previous WRITTEN line (a gap means aux
+    // events were dropped, §9D); the writer accepts any seq and records it.
+    AppendOutcome appendSeq(quint64 seq, const DomainEvent& event,
+                            const QString& wallIso, qint64 monoMs,
+                            DurabilityClass durability);
+
+    quint64 nextSequence() const { return m_autoSeq; }
     QByteArray lastHash() const { return m_lastHash; }
     bool failed() const { return m_poisoned; }
     const WriterMetrics& metrics() const { return m_metrics; }
 
 private:
     AppendOutcome fail(ReliabilityError code, const QString& detail,
-                       bool lineAppended);
+                       bool lineAppended, quint64 seq);
 
     JournalIdentity m_identity;
     IJournalFile* m_file = nullptr;
-    quint64 m_nextSeq = 0;
-    QByteArray m_lastHash;         // ph for the next line
+    quint64 m_autoSeq = 0;         // auto-sequence counter (M1 append path)
+    bool m_headerWritten = false;  // seq-0 header seen (explicit-seq path)
+    QByteArray m_lastHash;         // ph for the next WRITTEN line
     bool m_poisoned = false;
     WriterMetrics m_metrics;
 };

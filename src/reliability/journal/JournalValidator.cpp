@@ -3,6 +3,8 @@
 #include "HashChain.h"
 #include "reliability/events/EventSerializer.h"
 
+#include <QSet>
+
 namespace ta {
 namespace rel {
 
@@ -57,6 +59,19 @@ ValidationReport JournalValidator::validate(const JournalReadResult& read,
     QString sid = expectedSessionId;
     quint64 expectedSeq = 0;
     Failure failure;
+
+    // §9D/§9E degraded-gap allowance. A forward seq gap is provisionally
+    // accepted while scanning; the HARD gate is end-of-journal reconciliation:
+    // every gapped seq MUST be declared by an AuxEventsDropped marker, and
+    // every declared drop must correspond to a real gap ("loss is recorded,
+    // never silent"). AuxEventsDropped is only ever emitted inside a
+    // PersistenceDegraded → PersistenceRestored episode, so this rule implies
+    // "gaps only inside a degraded window" without depending on the physical
+    // order of the bracketing markers relative to the gap.
+    QSet<quint64> gappedSeqs;
+    QSet<quint64> declaredDroppedSeqs;
+    qint64 firstGapLine = -1;
+    qint64 firstGapSeq = -1;
 
     auto failAt = [&](const JournalLine& line, ReliabilityError code,
                       const QString& detail, qint64 seq) {
@@ -128,23 +143,28 @@ ValidationReport JournalValidator::validate(const JournalReadResult& read,
             break;
         }
 
-        // (4) sequence discipline: strictly seq == line index (M1 — the
-        // degraded-gap allowance arrives with M2's markers)
+        // (4) sequence discipline. A forward gap is provisionally recorded
+        // (reconciled against declared drops at the end); a backward/repeat
+        // seq is an immediate, unambiguous error.
         if (env.seq != expectedSeq) {
-            if (expectedSeq > 0 && env.seq == expectedSeq - 1) {
+            if (env.seq > expectedSeq) {
+                for (quint64 s = expectedSeq; s < env.seq; ++s)
+                    gappedSeqs.insert(s);
+                if (firstGapLine < 0) {
+                    firstGapLine = line.lineNumber;
+                    firstGapSeq = static_cast<qint64>(expectedSeq);
+                }
+            } else if (expectedSeq > 0 && env.seq == expectedSeq - 1) {
                 failAt(line, ReliabilityError::DuplicateSequence,
                        QStringLiteral("seq %1 repeated").arg(env.seq),
                        seqAsSigned);
-            } else if (env.seq > expectedSeq) {
-                failAt(line, ReliabilityError::SequenceGap,
-                       QStringLiteral("seq %1, expected %2 (gap)")
-                           .arg(env.seq).arg(expectedSeq), seqAsSigned);
+                break;
             } else {
                 failAt(line, ReliabilityError::InvalidSequence,
                        QStringLiteral("seq %1, expected %2")
                            .arg(env.seq).arg(expectedSeq), seqAsSigned);
+                break;
             }
-            break;
         }
 
         // (5) hash chain: ph must equal the previous line's h
@@ -191,15 +211,39 @@ ValidationReport JournalValidator::validate(const JournalReadResult& read,
             report.sawMatchCompleted = true;
         if (std::holds_alternative<SessionClosed>(env.payload))
             report.sawSessionClosed = true;
+        // Every AuxEventsDropped declares the seqs it legitimately removed.
+        if (const auto* dropped = std::get_if<AuxEventsDropped>(&env.payload)) {
+            for (quint64 s = dropped->firstSeq; s <= dropped->lastSeq; ++s)
+                declaredDroppedSeqs.insert(s);
+        }
         report.validEnvelopes.append(env);
         report.lastValidSeq = env.seq;
         ++report.validPrefixCount;
         prevHash = env.currentHash;
-        ++expectedSeq;
+        expectedSeq = env.seq + 1;
     }
 
     report.sessionId = sid;
     if (!failure.failed) {
+        // never-silent reconciliation (§9E): every gapped seq must have been
+        // declared dropped, and every declared drop must correspond to a gap.
+        if (gappedSeqs != declaredDroppedSeqs) {
+            const QSet<quint64> undeclared = gappedSeqs - declaredDroppedSeqs;
+            const QSet<quint64> phantom = declaredDroppedSeqs - gappedSeqs;
+            report.classification = JournalClassification::CorruptInternal;
+            report.corruptionInternal = true;
+            report.firstInvalidLine = firstGapLine;
+            report.firstInvalidSeq = firstGapSeq;
+            report.error = ReliabilityResult::failure(
+                ReliabilityError::CorruptJournal,
+                QStringLiteral("The session journal has an unexplained "
+                               "sequence gap."),
+                QStringLiteral("gapped seqs not declared dropped: %1; declared "
+                               "drops with no gap: %2")
+                    .arg(undeclared.size()).arg(phantom.size()),
+                QString(), firstGapSeq).error;
+            return report;
+        }
         report.classification = JournalClassification::Clean;
         return report;
     }

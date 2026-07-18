@@ -169,6 +169,15 @@ void run_serializer_tests()
             PenaltyIssued{-20, QStringLiteral("7.4.5"), Authority::Jury},
             RecoveryStarted{41}, RecoveryCompleted{41, true},
             SessionClosed{CloseReason::Clean},
+            // M2 additions
+            StageEntered{5}, StageStatusChanged{5, 2}, TargetModeChanged{1},
+            WindowOpened{4}, WindowClosed{4},
+            CommandIssued{7, 3, QStringLiteral("START"), 7,
+                          QStringLiteral("start"), 1000, 1000},
+            ShotRejected{QStringLiteral("WindowClosed"), 99, 10, -20, false},
+            MissingShotRecorded{14, 5, QStringLiteral("TimeExpired")},
+            PersistenceDegraded{3}, PersistenceRestored{0},
+            AuxEventsDropped{50, 52, 3}, CleanShutdown{},
         };
         check(catalogue.size() == static_cast<int>(std::variant_size_v<DomainEvent>),
               "round-trip covers every event type",
@@ -207,7 +216,7 @@ void run_serializer_tests()
                 break;
             }
         }
-        check(all, "all 27 event types round-trip byte-identically", failedType);
+        check(all, "all event types round-trip byte-identically", failedType);
     }
 
     // malformed JSON / missing field / wrong type are typed

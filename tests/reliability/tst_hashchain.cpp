@@ -128,9 +128,14 @@ void run_hashchain_tests()
         lines.removeAt(2);
         const ValidationReport rep =
             JournalValidator::validateBytes(joinLines(lines));
+        // A removed interior line manifests as both a forward seq gap and a
+        // broken chain; the chain break is checked first (§9D makes the gap
+        // provisional pending drop-declaration). Either way: CorruptInternal.
         check(rep.classification == JournalClassification::CorruptInternal
-                  && rep.error.code == ReliabilityError::SequenceGap,
-              "removed line detected as sequence gap",
+                  && (rep.error.code == ReliabilityError::BrokenHashChain
+                      || rep.error.code == ReliabilityError::SequenceGap
+                      || rep.error.code == ReliabilityError::CorruptJournal),
+              "removed line detected as internal corruption",
               QLatin1String(reliabilityErrorName(rep.error.code)));
     }
 

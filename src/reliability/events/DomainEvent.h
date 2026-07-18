@@ -41,7 +41,21 @@ using DomainEvent = std::variant<
     PenaltyIssued,
     RecoveryStarted,
     RecoveryCompleted,
-    SessionClosed>;
+    SessionClosed,
+    // M2 — finals flow + persistence markers (appended at the END so M1
+    // variant indexes never move)
+    StageEntered,
+    StageStatusChanged,
+    TargetModeChanged,
+    WindowOpened,
+    WindowClosed,
+    CommandIssued,
+    ShotRejected,
+    MissingShotRecorded,
+    PersistenceDegraded,
+    PersistenceRestored,
+    AuxEventsDropped,
+    CleanShutdown>;
 
 // Stable type identifier of the alternative currently held.
 inline const char* eventTypeId(const DomainEvent& event)

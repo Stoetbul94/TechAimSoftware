@@ -28,4 +28,5 @@ SOURCES += \
     tst_validator.cpp \
     tst_reducer.cpp \
     tst_snapshot.cpp \
+    tst_store.cpp \
     tst_fixtures.cpp

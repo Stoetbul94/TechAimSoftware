@@ -85,6 +85,20 @@ public:
     // Where the pre-M0 application wrote journals (process CWD).
     static QString legacyWorkingDirectoryJournalPath();
 
+    // ── M2 session-identity filenames (spec §14) ─────────────────────────
+    // The SessionStore writes one file per session, named
+    // session_<utcCompact>_<uuid8>.jsonl inside Sessions/Current. The
+    // timestamp is a sortable UTC prefix; the 8-char uuid suffix makes it
+    // collision-free. lane id lives in the header, not the filename.
+    static QString sessionJournalFileName(const QString& utcCompact,
+                                          const QString& uuid8);
+    static QString currentSessionJournalPath(const QString& fileName); // Sessions/Current/<fileName>
+    // Month-partitioned archive path (Sessions/Archive/<yyyy>/<MM>/<fileName>);
+    // the month directory is created if absent (returns empty on failure).
+    static QString archivedSessionMonthPath(const QString& utcYear,
+                                            const QString& utcMonth,
+                                            const QString& fileName);
+
     // ── operations ───────────────────────────────────────────────────────
     static StorageResult ensureRequiredDirectories();
     static StorageResult probeWritableStorage();

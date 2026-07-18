@@ -306,6 +306,57 @@ void EventSerializer::serializePayloadInto(const DomainEvent& event,
         },
         [&](const SessionClosed& e) {
             w.field("reason", static_cast<qint64>(e.reason));
+        },
+        [&](const StageEntered& e) {
+            w.field("stageId", static_cast<qint64>(e.stageId));
+        },
+        [&](const StageStatusChanged& e) {
+            w.field("stageId", static_cast<qint64>(e.stageId));
+            w.field("status", static_cast<qint64>(e.status));
+        },
+        [&](const TargetModeChanged& e) {
+            w.field("mode", static_cast<qint64>(e.mode));
+        },
+        [&](const WindowOpened& e) {
+            w.field("windowId", static_cast<qint64>(e.windowId));
+        },
+        [&](const WindowClosed& e) {
+            w.field("windowId", static_cast<qint64>(e.windowId));
+        },
+        [&](const CommandIssued& e) {
+            w.field("commandId", static_cast<qint64>(e.commandId));
+            w.field("commandType", static_cast<qint64>(e.commandType));
+            w.field("text", e.text);
+            w.field("sequenceNumber", static_cast<qint64>(e.sequenceNumber));
+            w.field("audioCueId", e.audioCueId);
+            w.field("issuedAtMs", e.issuedAtMs);
+            w.field("effectiveAtMs", e.effectiveAtMs);
+        },
+        [&](const ShotRejected& e) {
+            w.field("reason", e.reason);
+            w.field("externalId", e.externalId);
+            w.field("xHundredthMm", static_cast<qint64>(e.xHundredthMm));
+            w.field("yHundredthMm", static_cast<qint64>(e.yHundredthMm));
+            w.field("simulated", e.simulated);
+        },
+        [&](const MissingShotRecorded& e) {
+            w.field("expectedNumber", static_cast<qint64>(e.expectedNumber));
+            w.field("stageId", static_cast<qint64>(e.stageId));
+            w.field("reason", e.reason);
+        },
+        [&](const PersistenceDegraded& e) {
+            w.field("queuedCount", static_cast<qint64>(e.queuedCount));
+        },
+        [&](const PersistenceRestored& e) {
+            w.field("queuedCount", static_cast<qint64>(e.queuedCount));
+        },
+        [&](const AuxEventsDropped& e) {
+            w.fieldU("firstSeq", e.firstSeq);
+            w.fieldU("lastSeq", e.lastSeq);
+            w.field("count", static_cast<qint64>(e.count));
+        },
+        [&](const CleanShutdown&) {
+            // no fields
         }
     }, event);
 }
@@ -682,6 +733,78 @@ ReliabilityResult EventSerializer::deserializePayload(const QString& typeId,
         SessionClosed e;
         e.reason = static_cast<CloseReason>(r.reqInt("reason", 0, 2));
         *out = e;
+    } else if (typeId == QLatin1String(StageEntered::kType)) {
+        StageEntered e;
+        e.stageId = static_cast<qint16>(r.reqInt("stageId", INT16_MIN, INT16_MAX));
+        *out = e;
+    } else if (typeId == QLatin1String(StageStatusChanged::kType)) {
+        StageStatusChanged e;
+        e.stageId = static_cast<qint16>(r.reqInt("stageId", INT16_MIN, INT16_MAX));
+        e.status = static_cast<qint8>(r.reqInt("status", INT8_MIN, INT8_MAX));
+        *out = e;
+    } else if (typeId == QLatin1String(TargetModeChanged::kType)) {
+        TargetModeChanged e;
+        e.mode = static_cast<qint8>(r.reqInt("mode", INT8_MIN, INT8_MAX));
+        *out = e;
+    } else if (typeId == QLatin1String(WindowOpened::kType)) {
+        WindowOpened e;
+        e.windowId = static_cast<qint16>(r.reqInt("windowId", INT16_MIN, INT16_MAX));
+        *out = e;
+    } else if (typeId == QLatin1String(WindowClosed::kType)) {
+        WindowClosed e;
+        e.windowId = static_cast<qint16>(r.reqInt("windowId", INT16_MIN, INT16_MAX));
+        *out = e;
+    } else if (typeId == QLatin1String(CommandIssued::kType)) {
+        CommandIssued e;
+        e.commandId = static_cast<qint32>(r.reqInt("commandId", INT32_MIN, INT32_MAX));
+        e.commandType = static_cast<qint16>(
+            r.reqInt("commandType", INT16_MIN, INT16_MAX));
+        e.text = r.reqString("text");
+        e.sequenceNumber = static_cast<qint16>(
+            r.reqInt("sequenceNumber", INT16_MIN, INT16_MAX));
+        e.audioCueId = r.optString("audioCueId");
+        e.issuedAtMs = r.reqInt("issuedAtMs", std::numeric_limits<qint64>::min(),
+                                std::numeric_limits<qint64>::max());
+        e.effectiveAtMs = r.reqInt("effectiveAtMs",
+                                   std::numeric_limits<qint64>::min(),
+                                   std::numeric_limits<qint64>::max());
+        *out = e;
+    } else if (typeId == QLatin1String(ShotRejected::kType)) {
+        ShotRejected e;
+        e.reason = r.reqString("reason");
+        e.externalId = r.reqInt("externalId", std::numeric_limits<qint64>::min(),
+                                std::numeric_limits<qint64>::max());
+        e.xHundredthMm = static_cast<qint32>(
+            r.reqInt("xHundredthMm", INT32_MIN, INT32_MAX));
+        e.yHundredthMm = static_cast<qint32>(
+            r.reqInt("yHundredthMm", INT32_MIN, INT32_MAX));
+        e.simulated = r.reqBool("simulated");
+        *out = e;
+    } else if (typeId == QLatin1String(MissingShotRecorded::kType)) {
+        MissingShotRecorded e;
+        e.expectedNumber = static_cast<qint16>(
+            r.reqInt("expectedNumber", INT16_MIN, INT16_MAX));
+        e.stageId = static_cast<qint16>(r.reqInt("stageId", INT16_MIN, INT16_MAX));
+        e.reason = r.reqString("reason");
+        *out = e;
+    } else if (typeId == QLatin1String(PersistenceDegraded::kType)) {
+        PersistenceDegraded e;
+        e.queuedCount = static_cast<qint32>(
+            r.reqInt("queuedCount", INT32_MIN, INT32_MAX));
+        *out = e;
+    } else if (typeId == QLatin1String(PersistenceRestored::kType)) {
+        PersistenceRestored e;
+        e.queuedCount = static_cast<qint32>(
+            r.reqInt("queuedCount", INT32_MIN, INT32_MAX));
+        *out = e;
+    } else if (typeId == QLatin1String(AuxEventsDropped::kType)) {
+        AuxEventsDropped e;
+        e.firstSeq = r.reqUInt("firstSeq");
+        e.lastSeq = r.reqUInt("lastSeq");
+        e.count = static_cast<qint32>(r.reqInt("count", INT32_MIN, INT32_MAX));
+        *out = e;
+    } else if (typeId == QLatin1String(CleanShutdown::kType)) {
+        *out = CleanShutdown{};
     } else {
         return ReliabilityResult::failure(ReliabilityError::UnsupportedEventType,
             QStringLiteral("Unknown event type in journal."),

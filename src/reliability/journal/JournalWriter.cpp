@@ -67,7 +67,7 @@ JournalWriter::JournalWriter(const JournalIdentity& identity, IJournalFile* file
 }
 
 AppendOutcome JournalWriter::fail(ReliabilityError code, const QString& detail,
-                                  bool lineAppended)
+                                  bool lineAppended, quint64 seq)
 {
     ++m_metrics.failureCount;
     AppendOutcome out;
@@ -76,7 +76,7 @@ AppendOutcome JournalWriter::fail(ReliabilityError code, const QString& detail,
     out.error = ReliabilityResult::failure(code,
         QStringLiteral("The session journal could not be written."),
         detail, m_file ? m_file->path() : QString(),
-        static_cast<qint64>(m_nextSeq)).error;
+        static_cast<qint64>(seq)).error;
     return out;
 }
 
@@ -92,31 +92,45 @@ AppendOutcome JournalWriter::append(const DomainEvent& event,
                                     const QString& wallIso, qint64 monoMs,
                                     DurabilityClass durability)
 {
+    const AppendOutcome out = appendSeq(m_autoSeq, event, wallIso, monoMs,
+                                        durability);
+    // The seq is consumed the moment a line is physically appended — even if
+    // the subsequent flush/fsync failed the bytes (and their seq) are on disk.
+    // A clean failure (nothing written) leaves the seq reusable on retry.
+    if (out.lineAppended)
+        ++m_autoSeq;
+    return out;
+}
+
+AppendOutcome JournalWriter::appendSeq(quint64 seq, const DomainEvent& event,
+                                       const QString& wallIso, qint64 monoMs,
+                                       DurabilityClass durability)
+{
     if (m_poisoned)
         return fail(ReliabilityError::CorruptJournal,
                     QStringLiteral("writer poisoned by an earlier partial write; "
                                    "the on-disk tail is torn"),
-                    false);
+                    false, seq);
     if (!m_file)
         return fail(ReliabilityError::InvalidArgument,
-                    QStringLiteral("no journal file injected"), false);
+                    QStringLiteral("no journal file injected"), false, seq);
     if (!m_file->isOpen() && !m_file->open())
         return fail(ReliabilityError::FileOpenFailed,
-                    m_file->lastErrorDetail(), false);
+                    m_file->lastErrorDetail(), false, seq);
 
     // The header rule: seq 0 must be SessionStarted with a matching sid.
-    if (m_nextSeq == 0) {
+    if (seq == 0) {
         const auto* started = std::get_if<SessionStarted>(&event);
         if (!started)
             return fail(ReliabilityError::InvalidEvent,
                         QStringLiteral("first event must be SessionStarted, got %1")
                             .arg(QLatin1String(eventTypeId(event))),
-                        false);
+                        false, seq);
         if (started->sessionId != m_identity.sessionId)
             return fail(ReliabilityError::SessionMismatch,
                         QStringLiteral("header sessionId '%1' != writer identity '%2'")
                             .arg(started->sessionId, m_identity.sessionId),
-                        false);
+                        false, seq);
     }
 
     EventEnvelope env;
@@ -124,14 +138,15 @@ AppendOutcome JournalWriter::append(const DomainEvent& event,
     env.payloadVersion = eventPayloadVersion(event);
     env.sessionId = m_identity.sessionId;
     env.lane = m_identity.lane;
-    env.seq = m_nextSeq;
+    env.seq = seq;
     env.wallTimestampIso = wallIso;
     env.monotonicMs = monoMs;
     env.eventType = QString::fromLatin1(eventTypeId(event));
     env.payload = event;
-    if (m_nextSeq == 0) {
+    if (seq == 0) {
         env.appVersion = m_identity.appVersion;
         env.deviceId = m_identity.deviceId;
+        m_headerWritten = true;
     }
     env.previousHash = m_lastHash;
 
@@ -145,7 +160,7 @@ AppendOutcome JournalWriter::append(const DomainEvent& event,
         out.ok = false;
         out.lineAppended = false;
         out.error = sr.error;
-        out.error.sequence = static_cast<qint64>(m_nextSeq);
+        out.error.sequence = static_cast<qint64>(seq);
         return out;
     }
     env.currentHash = HashChain::computeLineHash(env.previousHash, core);
@@ -178,17 +193,16 @@ AppendOutcome JournalWriter::append(const DomainEvent& event,
                         QStringLiteral("partial write: %1 of %2 bytes (%3)")
                             .arg(written).arg(line.size())
                             .arg(m_file->lastErrorDetail()),
-                        false);
+                        false, seq);
         }
         return fail(ReliabilityError::FileWriteFailed,
                     QStringLiteral("write failed: %1").arg(m_file->lastErrorDetail()),
-                    false);
+                    false, seq);
     }
 
-    // The line is fully appended: the chain and sequence advance even if
-    // durability below fails (the bytes exist; M2's health model reacts).
+    // The line is fully appended: the write-order hash chain advances even if
+    // durability below fails (the bytes exist; the health model reacts).
     m_lastHash = env.currentHash;
-    ++m_nextSeq;
     ++m_metrics.appendCount;
     m_metrics.lastFlushMicros = -1;
     m_metrics.lastSyncMicros = -1;
@@ -200,9 +214,8 @@ AppendOutcome JournalWriter::append(const DomainEvent& event,
         m_metrics.totalFlushMicros += m_metrics.lastFlushMicros;
         if (!flushed) {
             AppendOutcome out = fail(ReliabilityError::FlushFailed,
-                                     m_file->lastErrorDetail(), true);
+                                     m_file->lastErrorDetail(), true, env.seq);
             out.envelope = env;
-            out.error.sequence = static_cast<qint64>(env.seq);
             return out;
         }
     }
@@ -215,9 +228,8 @@ AppendOutcome JournalWriter::append(const DomainEvent& event,
             m_metrics.maxSyncMicros = m_metrics.lastSyncMicros;
         if (!synced) {
             AppendOutcome out = fail(ReliabilityError::SyncFailed,
-                                     m_file->lastErrorDetail(), true);
+                                     m_file->lastErrorDetail(), true, env.seq);
             out.envelope = env;
-            out.error.sequence = static_cast<qint64>(env.seq);
             return out;
         }
     }
