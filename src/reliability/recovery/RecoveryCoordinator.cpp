@@ -145,6 +145,11 @@ QVariantList RecoveryCoordinator::scanForQml()
         m[QStringLiteral("sessionId")] = c.sessionId;
         m[QStringLiteral("journalPath")] = c.journalPath;
         m[QStringLiteral("athlete")] = c.athlete;
+        // Stable machine id (AR10 / AP10 / PRONE50 / 3P50 / FINAL3P / ...) for
+        // the QML recovery dispatcher to select the discipline restorer. The
+        // human label stays separate for display.
+        m[QStringLiteral("disciplineId")] =
+            QString::fromLatin1(disciplineId(c.discipline));
         m[QStringLiteral("disciplineLabel")] = c.disciplineLabel;
         m[QStringLiteral("matchType")] = c.matchType;
         m[QStringLiteral("startedAtIso")] = c.startedAtIso;

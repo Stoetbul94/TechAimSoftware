@@ -48,6 +48,14 @@ StateShotRecord* findOfficialBySeq(SessionState& s, quint64 targetSeq)
     return nullptr;
 }
 
+EstIncidentRecord* findIncidentById(SessionState& s, const QString& id)
+{
+    for (EstIncidentRecord& r : s.estIncidents)
+        if (r.incidentId == id)
+            return &r;
+    return nullptr;
+}
+
 } // namespace
 
 qint32 SessionReducer::deriveTotalTenths(const SessionState& state)
@@ -586,6 +594,107 @@ ReduceResult SessionReducer::apply(const SessionState& current,
         [&](const CleanShutdown&) {
             if (!current.started)
                 failure = illegal("CleanShutdown");
+        },
+        // ── M3 Phase A — generic EST incident + Jury-decision events ──
+        // These record incident/Jury data ONLY. They deliberately never
+        // touch next.timer or next.totalTenths: a Jury-authorised allowance
+        // is data the controller applies on resume, never an automatic
+        // clock change (est-malfunctions.md §5, "no automatic time
+        // allowance"). Legal whenever the session has started (an incident
+        // may span Active/Suspended/Complete).
+        [&](const EstIncidentRaised& e) {
+            if (!current.started) {
+                failure = illegal("EstIncidentRaised");
+                return;
+            }
+            if (findIncidentById(next, e.incidentId)) {
+                failure = rejected(current, ReliabilityError::ReducerRejected,
+                    QStringLiteral("duplicate incidentId '%1'").arg(e.incidentId),
+                    seq);
+                return;
+            }
+            EstIncidentRecord rec;
+            rec.incidentId = e.incidentId;
+            rec.incidentType = static_cast<quint8>(e.incidentType);
+            rec.scope = static_cast<quint8>(e.scope);
+            rec.firingPoint = e.firingPoint;
+            rec.relayId = e.relayId;
+            rec.interruptionStartUtc = e.interruptionStartUtc;
+            rec.reason = e.reason;
+            rec.status = static_cast<quint8>(IncidentStatus::Open);
+            rec.raisedSeq = seq;
+            next.estIncidents.append(rec);
+        },
+        [&](const TimeCreditGranted& e) {
+            if (!current.started) {
+                failure = illegal("TimeCreditGranted");
+                return;
+            }
+            EstIncidentRecord* inc = findIncidentById(next, e.incidentId);
+            if (!inc) {
+                failure = rejected(current, ReliabilityError::ReducerRejected,
+                    QStringLiteral("TimeCreditGranted for unknown incident '%1'")
+                        .arg(e.incidentId), seq);
+                return;
+            }
+            inc->timeCreditMs += e.durationMs;   // recorded, NOT applied to timer
+            inc->authorisedBy = e.authorisedBy;
+        },
+        [&](const RecoveryPhaseEntered& e) {
+            if (!current.started) {
+                failure = illegal("RecoveryPhaseEntered");
+                return;
+            }
+            EstIncidentRecord* inc = findIncidentById(next, e.incidentId);
+            if (!inc) {
+                failure = rejected(current, ReliabilityError::ReducerRejected,
+                    QStringLiteral("RecoveryPhaseEntered for unknown incident '%1'")
+                        .arg(e.incidentId), seq);
+                return;
+            }
+            switch (e.phase) {
+            case RecoveryPhaseKind::Preparation:
+                inc->preparationGranted = true;
+                break;
+            case RecoveryPhaseKind::Sighting:
+                inc->sightingGranted = true;
+                break;
+            case RecoveryPhaseKind::OfficialResume:
+                inc->officialResumeAuthorised = true;
+                break;
+            }
+            inc->authorisedBy = e.authorisedBy;
+        },
+        [&](const EstIncidentResolved& e) {
+            if (!current.started) {
+                failure = illegal("EstIncidentResolved");
+                return;
+            }
+            EstIncidentRecord* inc = findIncidentById(next, e.incidentId);
+            if (!inc) {
+                failure = rejected(current, ReliabilityError::ReducerRejected,
+                    QStringLiteral("EstIncidentResolved for unknown incident '%1'")
+                        .arg(e.incidentId), seq);
+                return;
+            }
+            if (inc->status == static_cast<quint8>(IncidentStatus::Resolved)
+                || inc->status == static_cast<quint8>(IncidentStatus::Abandoned)) {
+                failure = rejected(current, ReliabilityError::ReducerRejected,
+                    QStringLiteral("incident '%1' already closed").arg(e.incidentId),
+                    seq);
+                return;
+            }
+            inc->status = static_cast<quint8>(e.status);
+            inc->calculatedDurationMs = e.calculatedDurationMs;
+            inc->officiallyAcceptedDurationMs = e.officiallyAcceptedDurationMs;
+            inc->systemRestoredUtc = e.systemRestoredUtc;
+            inc->targetMoved = e.targetMoved;
+            inc->originalTarget = e.originalTarget;
+            inc->reserveTarget = e.reserveTarget;
+            inc->backupScoreReviewed = e.backupScoreReviewed;
+            inc->juryNote = e.juryNote;
+            inc->rangeOfficerNote = e.rangeOfficerNote;
+            inc->incidentReportRef = e.incidentReportRef;
         }
     }, envelope.payload);
 

@@ -55,7 +55,13 @@ using DomainEvent = std::variant<
     PersistenceDegraded,
     PersistenceRestored,
     AuxEventsDropped,
-    CleanShutdown>;
+    CleanShutdown,
+    // M3 Phase A — generic EST incident + Jury-decision events (appended at
+    // the END so all prior variant indexes never move)
+    EstIncidentRaised,
+    TimeCreditGranted,
+    RecoveryPhaseEntered,
+    EstIncidentResolved>;
 
 // Stable type identifier of the alternative currently held.
 inline const char* eventTypeId(const DomainEvent& event)

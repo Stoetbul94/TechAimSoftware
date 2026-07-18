@@ -550,43 +550,78 @@ ApplicationWindow {
     // Sessions/Current for an unfinished match. If one exists, this dialog
     // offers Resume (Clean/Recoverable) or Discard; all rebuild/replay is done
     // in C++ exclusively through the reducer.
+    // ── Discipline recovery dispatcher (M3 Phase A) ──────────────────────
+    // Selects the discipline restorer from the recovered session's stable
+    // discipline id. The core recovery engine (RecoveryCoordinator/ReplayEngine/
+    // reducer) is discipline-agnostic; discipline knowledge lives ONLY here and
+    // in each restorer. Finals3P is wired; the qualification disciplines return
+    // a clear "not yet implemented" result (their restorers land in Phase D).
+    // Rules: never silently fall back to Finals; an unknown discipline fails
+    // safe. See docs/issf-rules/README.md.
+    function dispatchRecovery(sessionId, disciplineId) {
+        if (disciplineId === "FINAL3P")
+            return window.restoreFinals3P(sessionId)
+        if (disciplineId === "AR10" || disciplineId === "AP10"
+                || disciplineId === "PRONE50" || disciplineId === "3P50") {
+            dialogManager.showError(qsTr("Recovery Not Yet Available"),
+                qsTr("Crash recovery for this discipline is not implemented in "
+                     + "this build yet.\n\nThe unfinished session has been left "
+                     + "intact and can be resumed by a later TechAim version."))
+            return false
+        }
+        // Unknown / unsupported discipline: fail safe — never enter the Finals
+        // restorer for a non-Finals session.
+        dialogManager.showError(qsTr("Recovery Not Supported"),
+            qsTr("This session's discipline (%1) cannot be recovered by this "
+                 + "build.").arg(disciplineId && disciplineId.length
+                                 ? disciplineId : qsTr("unknown")))
+        return false
+    }
+
+    // The existing, verified Finals3P restorer — behaviour unchanged from M3;
+    // now reached ONLY via dispatchRecovery() for FINAL3P sessions. Recovery
+    // enters the SAME finals flow as a fresh start (shared enterFinalsMode()),
+    // not a parallel path.
+    function restoreFinals3P(sessionId) {
+        // isRecoveredGame suppresses the duplicate beginPreparationPhase() in
+        // onVisibleChanged so no fresh session is started.
+        window.isRecoveredGame = true
+        // Configure the existing finals selectors/settings (labels + the
+        // discipline mapping used by onVisibleChanged.updateGameType()).
+        loginPage.gameMode = 1     // rifle
+        gameRange = 50             // window-scope (per scope gotcha)
+        loginPage.gameSubMode = 1  // 3 positions
+        loginPage.gameEvent = 6    // 3P FINAL (35)
+        shootingPage.setFinalsGameType()
+        loginPage.visible = false          // reveal the ShootingPage
+        // Engage finals mode (isFinalsMatch = true) BEFORE resume: the C++
+        // loadRecoveredState() re-emits the recovered shot signals, which are
+        // only routed while the `enabled: isFinalsMatch` connection is active.
+        // startFresh = false → no new session is started.
+        shootingPage.enterFinalsMode(false)
+        // Guard the target face: restoreStageFiringState() re-opens the current
+        // firing window, whose handler would otherwise defer-clear the face and
+        // erase the shots we are about to replay.
+        shootingPage.suppressFaceClearOnce = true
+        // While replaying, keep past-window sighters off the current face (they
+        // still populate the shot list), so shot numbering on the face matches a
+        // never-crashed match: recovered officials 1,2,3 then 4 live.
+        shootingPage.recoveryReplayInProgress = true
+        var resumed = FINALS3P.resumeFromRecovery(sessionId)
+        shootingPage.recoveryReplayInProgress = false
+        if (!resumed) {
+            loginPage.visible = true
+            window.isRecoveredGame = false
+            dialogManager.showError(qsTr("Recovery Failed"),
+                qsTr("The unfinished match could not be resumed."))
+        }
+        return resumed
+    }
+
     RecoveryDialog {
         id: recoveryDialog
-        onResumeRequested: function(sessionId) {
-            // Recovery enters the SAME finals flow as a fresh start — via the
-            // shared enterFinalsMode() — not a parallel path. isRecoveredGame
-            // suppresses the duplicate beginPreparationPhase() in
-            // onVisibleChanged so no fresh session is started.
-            window.isRecoveredGame = true
-            // Configure the existing finals selectors/settings (labels + the
-            // discipline mapping used by onVisibleChanged.updateGameType()).
-            loginPage.gameMode = 1     // rifle
-            gameRange = 50             // window-scope (per scope gotcha)
-            loginPage.gameSubMode = 1  // 3 positions
-            loginPage.gameEvent = 6    // 3P FINAL (35)
-            shootingPage.setFinalsGameType()
-            loginPage.visible = false          // reveal the ShootingPage
-            // Engage finals mode (isFinalsMatch = true) BEFORE resume: the C++
-            // loadRecoveredState() re-emits the recovered shot signals, which
-            // are only routed while the `enabled: isFinalsMatch` connection is
-            // active. startFresh = false → no new session is started.
-            shootingPage.enterFinalsMode(false)
-            // Guard the target face: restoreStageFiringState() re-opens the
-            // current firing window, whose handler would otherwise defer-clear
-            // the face and erase the shots we are about to replay.
-            shootingPage.suppressFaceClearOnce = true
-            // While replaying, keep past-window sighters off the current face
-            // (they still populate the shot list), so shot numbering on the face
-            // matches a never-crashed match: recovered officials 1,2,3 then 4 live.
-            shootingPage.recoveryReplayInProgress = true
-            var resumed = FINALS3P.resumeFromRecovery(sessionId)
-            shootingPage.recoveryReplayInProgress = false
-            if (!resumed) {
-                loginPage.visible = true
-                window.isRecoveredGame = false
-                dialogManager.showError(qsTr("Recovery Failed"),
-                    qsTr("The unfinished match could not be resumed."))
-            }
+        onResumeRequested: function(sessionId, disciplineId) {
+            window.dispatchRecovery(sessionId, disciplineId)
         }
         onDiscardRequested: function(sessionId) { FINALS3P.discardRecovery(sessionId) }
     }

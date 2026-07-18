@@ -92,6 +92,62 @@ struct IncidentEntry {
     }
 };
 
+// Generic EST incident record (M3 Phase A). Discipline-agnostic — built and
+// updated by the reducer from the EstIncident* / TimeCreditGranted /
+// RecoveryPhaseEntered events. Carries the full data set the official Range
+// Incident Report needs (est-malfunctions.md §7/§9). Enum-typed fields are
+// stored as their raw quint8 for a QtCore-plain value type.
+struct EstIncidentRecord {
+    QString incidentId;
+    quint8 incidentType = 0;          // IncidentType
+    quint8 scope = 0;                 // IncidentScope
+    QString firingPoint;
+    QString relayId;
+    QString interruptionStartUtc;     // ISO-8601 UTC (persisted wall-clock)
+    QString systemRestoredUtc;        // set at resolve
+    qint64 calculatedDurationMs = -1; // system estimate (-1 = unknown)
+    qint64 officiallyAcceptedDurationMs = -1;  // Jury-accepted (-1 = none yet)
+    bool targetMoved = false;
+    QString originalTarget;
+    QString reserveTarget;
+    bool backupScoreReviewed = false;
+    qint64 timeCreditMs = 0;          // accumulated authorised credit
+    bool preparationGranted = false;
+    bool sightingGranted = false;
+    bool officialResumeAuthorised = false;
+    QString authorisedBy;             // last authorising official
+    QString juryNote;
+    QString rangeOfficerNote;
+    QString incidentReportRef;
+    quint8 status = 0;                // IncidentStatus (Open at raise)
+    QString reason;
+    quint64 raisedSeq = 0;            // seq of the EstIncidentRaised envelope
+
+    bool operator==(const EstIncidentRecord& o) const
+    {
+        return incidentId == o.incidentId && incidentType == o.incidentType
+            && scope == o.scope && firingPoint == o.firingPoint
+            && relayId == o.relayId
+            && interruptionStartUtc == o.interruptionStartUtc
+            && systemRestoredUtc == o.systemRestoredUtc
+            && calculatedDurationMs == o.calculatedDurationMs
+            && officiallyAcceptedDurationMs == o.officiallyAcceptedDurationMs
+            && targetMoved == o.targetMoved
+            && originalTarget == o.originalTarget
+            && reserveTarget == o.reserveTarget
+            && backupScoreReviewed == o.backupScoreReviewed
+            && timeCreditMs == o.timeCreditMs
+            && preparationGranted == o.preparationGranted
+            && sightingGranted == o.sightingGranted
+            && officialResumeAuthorised == o.officialResumeAuthorised
+            && authorisedBy == o.authorisedBy && juryNote == o.juryNote
+            && rangeOfficerNote == o.rangeOfficerNote
+            && incidentReportRef == o.incidentReportRef && status == o.status
+            && reason == o.reason && raisedSeq == o.raisedSeq;
+    }
+    bool operator!=(const EstIncidentRecord& o) const { return !(*this == o); }
+};
+
 struct TimerState {
     bool active = false;
     TimerId timerId = TimerId::Preparation;
@@ -142,7 +198,9 @@ using DisciplineState =
     std::variant<std::monostate, QualificationState, Finals3PState, TrainingState>;
 
 // Serialized state format version (StateSnapshot payloads).
-inline constexpr qint32 kSessionStateVersion = 1;
+// v2 (M3 Phase A): adds the `estIncidents` array. Backward compatible — a v1
+// snapshot has no `estIncidents` key and deserializes to an empty vector.
+inline constexpr qint32 kSessionStateVersion = 2;
 
 struct SessionState {
     // identity & configuration
@@ -164,6 +222,7 @@ struct SessionState {
     QVector<CorrectionEntry> corrections;
     QVector<AdjustmentEntry> adjustments;
     QVector<IncidentEntry> incidents;
+    QVector<EstIncidentRecord> estIncidents;   // generic EST incidents (M3 A)
     // totals — reducer-owned, always derived from the records above
     qint32 totalTenths = 0;
     QMap<qint16, qint32> stageSubtotalTenths;

@@ -101,6 +101,7 @@ void run_writer_tests();
 void run_reader_tests();
 void run_validator_tests();
 void run_reducer_tests();
+void run_incident_tests();
 void run_snapshot_tests();
 void run_store_tests();
 void run_recovery_tests();

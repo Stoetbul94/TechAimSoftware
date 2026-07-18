@@ -19,7 +19,9 @@ Rectangle {
                                    ? candidates[0] : null
     readonly property bool resumable: current ? current.resumable === true : false
 
-    signal resumeRequested(string sessionId)
+    // disciplineId is the stable machine id (e.g. FINAL3P / AR10 / AP10 /
+    // PRONE50); main.qml's recovery dispatcher selects the restorer from it.
+    signal resumeRequested(string sessionId, string disciplineId)
     signal discardRequested(string sessionId)
     signal dismissed()
 
@@ -117,7 +119,8 @@ Rectangle {
                         anchors.fill: parent
                         onClicked: {
                             if (root.resumable && root.current) {
-                                root.resumeRequested(root.current.sessionId)
+                                root.resumeRequested(root.current.sessionId,
+                                                     root.current.disciplineId || "")
                                 root.visible = false
                             }
                             // Recovery Wizard (non-resumable) is deferred; the

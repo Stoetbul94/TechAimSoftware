@@ -27,6 +27,7 @@ SOURCES += \
     tst_reader.cpp \
     tst_validator.cpp \
     tst_reducer.cpp \
+    tst_incidents.cpp \
     tst_snapshot.cpp \
     tst_store.cpp \
     tst_recovery.cpp \

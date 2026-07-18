@@ -357,6 +357,43 @@ void EventSerializer::serializePayloadInto(const DomainEvent& event,
         },
         [&](const CleanShutdown&) {
             // no fields
+        },
+        [&](const EstIncidentRaised& e) {
+            w.field("incidentId", e.incidentId);
+            w.field("incidentType", static_cast<qint64>(e.incidentType));
+            w.field("scope", static_cast<qint64>(e.scope));
+            w.field("firingPoint", e.firingPoint);
+            w.field("relayId", e.relayId);
+            w.field("interruptionStartUtc", e.interruptionStartUtc);
+            w.field("reason", e.reason);
+        },
+        [&](const TimeCreditGranted& e) {
+            w.field("incidentId", e.incidentId);
+            w.field("durationMs", e.durationMs);
+            w.field("authority", static_cast<qint64>(e.authority));
+            w.field("authorisedBy", e.authorisedBy);
+            w.field("reason", e.reason);
+        },
+        [&](const RecoveryPhaseEntered& e) {
+            w.field("incidentId", e.incidentId);
+            w.field("phase", static_cast<qint64>(e.phase));
+            w.field("durationMs", e.durationMs);
+            w.field("authority", static_cast<qint64>(e.authority));
+            w.field("authorisedBy", e.authorisedBy);
+        },
+        [&](const EstIncidentResolved& e) {
+            w.field("incidentId", e.incidentId);
+            w.field("status", static_cast<qint64>(e.status));
+            w.field("calculatedDurationMs", e.calculatedDurationMs);
+            w.field("officiallyAcceptedDurationMs", e.officiallyAcceptedDurationMs);
+            w.field("systemRestoredUtc", e.systemRestoredUtc);
+            w.field("targetMoved", e.targetMoved);
+            w.field("originalTarget", e.originalTarget);
+            w.field("reserveTarget", e.reserveTarget);
+            w.field("backupScoreReviewed", e.backupScoreReviewed);
+            w.field("juryNote", e.juryNote);
+            w.field("rangeOfficerNote", e.rangeOfficerNote);
+            w.field("incidentReportRef", e.incidentReportRef);
         }
     }, event);
 }
@@ -368,7 +405,7 @@ namespace {
 // Accumulating field reader: first failure wins, typed.
 struct FieldReader {
     const QJsonObject& o;
-    ErrorInfo err;
+    ErrorInfo err{};
     bool failed = false;
 
     void fail(ReliabilityError code, const QString& detail)
@@ -805,6 +842,54 @@ ReliabilityResult EventSerializer::deserializePayload(const QString& typeId,
         *out = e;
     } else if (typeId == QLatin1String(CleanShutdown::kType)) {
         *out = CleanShutdown{};
+    } else if (typeId == QLatin1String(EstIncidentRaised::kType)) {
+        EstIncidentRaised e;
+        e.incidentId = r.reqString("incidentId");
+        e.incidentType = static_cast<IncidentType>(r.reqInt("incidentType", 0, 9));
+        e.scope = static_cast<IncidentScope>(r.reqInt("scope", 0, 2));
+        e.firingPoint = r.optString("firingPoint");
+        e.relayId = r.optString("relayId");
+        e.interruptionStartUtc = r.reqString("interruptionStartUtc");
+        e.reason = r.optString("reason");
+        *out = e;
+    } else if (typeId == QLatin1String(TimeCreditGranted::kType)) {
+        TimeCreditGranted e;
+        e.incidentId = r.reqString("incidentId");
+        e.durationMs = r.reqInt("durationMs", std::numeric_limits<qint64>::min(),
+                                std::numeric_limits<qint64>::max());
+        e.authority = readAuthority(r);
+        e.authorisedBy = r.reqString("authorisedBy");
+        e.reason = r.optString("reason");
+        *out = e;
+    } else if (typeId == QLatin1String(RecoveryPhaseEntered::kType)) {
+        RecoveryPhaseEntered e;
+        e.incidentId = r.reqString("incidentId");
+        e.phase = static_cast<RecoveryPhaseKind>(r.reqInt("phase", 0, 2));
+        e.durationMs = r.reqInt("durationMs", std::numeric_limits<qint64>::min(),
+                                std::numeric_limits<qint64>::max());
+        e.authority = readAuthority(r);
+        e.authorisedBy = r.reqString("authorisedBy");
+        *out = e;
+    } else if (typeId == QLatin1String(EstIncidentResolved::kType)) {
+        EstIncidentResolved e;
+        e.incidentId = r.reqString("incidentId");
+        e.status = static_cast<IncidentStatus>(r.reqInt("status", 0, 3));
+        e.calculatedDurationMs = r.reqInt("calculatedDurationMs",
+                                          std::numeric_limits<qint64>::min(),
+                                          std::numeric_limits<qint64>::max());
+        e.officiallyAcceptedDurationMs =
+            r.reqInt("officiallyAcceptedDurationMs",
+                     std::numeric_limits<qint64>::min(),
+                     std::numeric_limits<qint64>::max());
+        e.systemRestoredUtc = r.optString("systemRestoredUtc");
+        e.targetMoved = r.reqBool("targetMoved");
+        e.originalTarget = r.optString("originalTarget");
+        e.reserveTarget = r.optString("reserveTarget");
+        e.backupScoreReviewed = r.reqBool("backupScoreReviewed");
+        e.juryNote = r.optString("juryNote");
+        e.rangeOfficerNote = r.optString("rangeOfficerNote");
+        e.incidentReportRef = r.optString("incidentReportRef");
+        *out = e;
     } else {
         return ReliabilityResult::failure(ReliabilityError::UnsupportedEventType,
             QStringLiteral("Unknown event type in journal."),

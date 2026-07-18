@@ -21,6 +21,19 @@ timing, owned end-to-end by `Finals3PController` (`FINALS3P`). Spec + full
 fix history: `docs/3p-finals-discipline.md`. It shares nothing with
 `is3PMatch` logic.
 
+**Before modifying any discipline's scoring, timing, shot counting, match
+phases, EST malfunction handling, recovery, or resume behaviour:** read
+`docs/issf-rules/README.md` and the applicable discipline file under
+`docs/issf-rules/`. That directory is the maintained authority for ISSF
+discipline requirements. Do not implement behaviour that conflicts with those
+files. If the applicable rules file is incomplete, ambiguous, outdated, or
+marked *Awaiting official rule confirmation*, **stop and request the missing
+official rule** before changing discipline-specific behaviour. When an approved
+rule changes, update the rules document, the tests, and the implementation
+**together**. Do not put the full rules in CLAUDE.md — the rules docs are the
+detailed reference. Cross-discipline EST/interruption rules live in
+`docs/issf-rules/est-malfunctions.md`.
+
 ## Architecture, in short
 
 - `ModReader/qModMaster.pro` is `include()`d directly into `Seta.pro` — one

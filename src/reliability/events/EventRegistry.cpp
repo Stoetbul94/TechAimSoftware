@@ -111,6 +111,16 @@ const EventMeta kRows[] = {
                           ReducerClass::Marker),
     row<CleanShutdown>(DurabilityClass::Sync, BroadcastClass::Internal,
                        ReducerClass::Marker),
+    // M3 Phase A — generic EST incident + Jury-decision events. Durability
+    // Sync: an incident/adjustment must be on disk before acting on it.
+    row<EstIncidentRaised>(DurabilityClass::Sync, BroadcastClass::Broadcast,
+                           ReducerClass::Mutating),
+    row<TimeCreditGranted>(DurabilityClass::Sync, BroadcastClass::Broadcast,
+                           ReducerClass::Mutating),
+    row<RecoveryPhaseEntered>(DurabilityClass::Sync, BroadcastClass::Broadcast,
+                              ReducerClass::Mutating),
+    row<EstIncidentResolved>(DurabilityClass::Sync, BroadcastClass::Broadcast,
+                             ReducerClass::Mutating),
 };
 
 struct RegistryIndex {

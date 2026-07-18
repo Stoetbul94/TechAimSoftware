@@ -62,6 +62,27 @@ enum class SuspendReason : quint8 { AppSuspend = 0, UserHide = 1 };
 enum class CloseReason : quint8 { Clean = 0, Abort = 1, Archive = 2 };
 enum class Authority : quint8 { Jury = 0, Operator = 1 };
 
+// EST incident domain (M3 Phase A). Generic across every discipline —
+// no discipline-specific values live here. See
+// docs/issf-rules/est-malfunctions.md.
+enum class IncidentScope : quint8 {
+    IndividualTarget = 0, SelectedFiringPoints = 1, RelayWide = 2
+};
+enum class IncidentType : quint8 {
+    TargetNotRegistering = 0, ContinuousTargetFault = 1,
+    ScoringComputerFailure = 2, TargetNetworkFailure = 3,
+    ApplicationCrash = 4, ComputerCrash = 5, PowerFailure = 6,
+    CommunicationFailure = 7, TargetMove = 8, OtherEstFailure = 9
+};
+enum class IncidentStatus : quint8 {
+    Open = 0, AwaitingAuthorisation = 1, Resolved = 2, Abandoned = 3
+};
+// The three authorised post-interruption transitions (est-malfunctions §5/§6).
+// One parameterized event carries all three (anti-proliferation).
+enum class RecoveryPhaseKind : quint8 {
+    Preparation = 0, Sighting = 1, OfficialResume = 2
+};
+
 // Registry classifications (spec §12 / §20 / §8).
 enum class DurabilityClass : quint8 { Append, Flush, Sync };
 enum class BroadcastClass : quint8 { Internal, Broadcast };
@@ -666,6 +687,117 @@ struct CleanShutdown {
     static constexpr const char* kType = "CleanShutdown";
     static constexpr qint32 kVersion = 1;
     ReliabilityResult validate() const { return ReliabilityResult::success(); }
+};
+
+// ── M3 Phase A — generic EST incident + Jury-decision events ───────────
+// Appended AFTER every prior type so existing variant indexes never move.
+// These are DISCIPLINE-AGNOSTIC (est-malfunctions.md §7/§8). None of them
+// mutate the competition timer or official totals — a Jury-authorised
+// allowance is recorded as data; the controller applies it on resume
+// (est-malfunctions.md §5: no automatic time allowance).
+
+// Opens an EST/range-caused incident. `interruptionStartUtc` is a persisted
+// UTC wall-clock instant (survives reboot) — distinct from the envelope's
+// tw (when this event was journalled).
+struct EstIncidentRaised {
+    static constexpr const char* kType = "EstIncidentRaised";
+    static constexpr qint32 kVersion = 1;
+    QString incidentId;
+    IncidentType incidentType = IncidentType::OtherEstFailure;
+    IncidentScope scope = IncidentScope::IndividualTarget;
+    QString firingPoint;              // may be empty
+    QString relayId;                  // may be empty
+    QString interruptionStartUtc;     // ISO-8601 UTC (persisted wall-clock)
+    QString reason;
+    ReliabilityResult validate() const
+    {
+        if (incidentId.isEmpty())
+            return evdetail::invalid(QStringLiteral("EstIncidentRaised.incidentId empty"));
+        if (interruptionStartUtc.isEmpty())
+            return evdetail::invalid(
+                QStringLiteral("EstIncidentRaised.interruptionStartUtc empty"));
+        return ReliabilityResult::success();
+    }
+};
+
+// A distinct, authorised time-credit action (est-malfunctions.md §5.3). Does
+// NOT auto-extend the clock — recorded against the incident for the
+// controller to apply on resume.
+struct TimeCreditGranted {
+    static constexpr const char* kType = "TimeCreditGranted";
+    static constexpr qint32 kVersion = 1;
+    QString incidentId;
+    qint64 durationMs = 0;            // >= 0
+    Authority authority = Authority::Jury;
+    QString authorisedBy;            // official identifier, non-empty
+    QString reason;
+    ReliabilityResult validate() const
+    {
+        if (incidentId.isEmpty())
+            return evdetail::invalid(QStringLiteral("TimeCreditGranted.incidentId empty"));
+        if (durationMs < 0)
+            return evdetail::invalid(
+                QStringLiteral("TimeCreditGranted.durationMs %1 < 0").arg(durationMs));
+        if (authorisedBy.isEmpty())
+            return evdetail::invalid(
+                QStringLiteral("TimeCreditGranted.authorisedBy empty"));
+        return ReliabilityResult::success();
+    }
+};
+
+// One authorised post-interruption phase transition: the 5-minute prep, the
+// unlimited recovery-sighting period, or the official-resume gate
+// (est-malfunctions.md §6). durationMs: prep = allowance ms; sighting = 0
+// (unlimited); officialResume = 0.
+struct RecoveryPhaseEntered {
+    static constexpr const char* kType = "RecoveryPhaseEntered";
+    static constexpr qint32 kVersion = 1;
+    QString incidentId;
+    RecoveryPhaseKind phase = RecoveryPhaseKind::Preparation;
+    qint64 durationMs = 0;            // >= 0
+    Authority authority = Authority::Jury;
+    QString authorisedBy;            // non-empty (authorised action)
+    ReliabilityResult validate() const
+    {
+        if (incidentId.isEmpty())
+            return evdetail::invalid(
+                QStringLiteral("RecoveryPhaseEntered.incidentId empty"));
+        if (durationMs < 0)
+            return evdetail::invalid(
+                QStringLiteral("RecoveryPhaseEntered.durationMs %1 < 0").arg(durationMs));
+        if (authorisedBy.isEmpty())
+            return evdetail::invalid(
+                QStringLiteral("RecoveryPhaseEntered.authorisedBy empty"));
+        return ReliabilityResult::success();
+    }
+};
+
+// Closes an incident with the official record (est-malfunctions.md §7/§9).
+// Carries the target-move + backup-review + Jury/RO note fields folded in.
+struct EstIncidentResolved {
+    static constexpr const char* kType = "EstIncidentResolved";
+    static constexpr qint32 kVersion = 1;
+    QString incidentId;
+    IncidentStatus status = IncidentStatus::Resolved;   // Resolved | Abandoned
+    qint64 calculatedDurationMs = -1;         // system estimate (-1 = unknown)
+    qint64 officiallyAcceptedDurationMs = 0;  // Jury-accepted, >= 0
+    QString systemRestoredUtc;                // ISO-8601 UTC (may be empty)
+    bool targetMoved = false;
+    QString originalTarget;
+    QString reserveTarget;
+    bool backupScoreReviewed = false;
+    QString juryNote;
+    QString rangeOfficerNote;
+    QString incidentReportRef;
+    ReliabilityResult validate() const
+    {
+        if (incidentId.isEmpty())
+            return evdetail::invalid(QStringLiteral("EstIncidentResolved.incidentId empty"));
+        if (officiallyAcceptedDurationMs < 0)
+            return evdetail::invalid(
+                QStringLiteral("EstIncidentResolved.officiallyAcceptedDurationMs < 0"));
+        return ReliabilityResult::success();
+    }
 };
 
 } // namespace rel
