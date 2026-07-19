@@ -267,4 +267,44 @@ void run_qualification_tests()
                   && rr.state.officials.first().shot.yHundredthMm == -130,
               "AP10 target coordinates preserved (2.10, -1.30 mm)");
     }
+
+    // 8) B3 — 50m Rifle Prone: DECIMAL scoring, distinct discipline, 50-minute
+    //    match clock carried as config. Single-stage qualification — no Final,
+    //    no 3P position transitions.
+    {
+        MemoryJournalFile file;
+        ManualClock clock;
+        QualificationController qc;
+        qc.storeForTesting()->setClockForTesting(&clock);
+        qc.storeForTesting()->setJournalFileForTesting(&file);
+        // 50-min match clock (3_000_000 ms), 60 officials.
+        check(qc.startSession(QStringLiteral("PRONE50"), QStringLiteral("60"),
+                              QStringLiteral("A"), 60, 3000000, 900000, -1,
+                              QString(), QString()),
+              "PRONE50 session starts");
+        qc.beginPreparation();
+        qc.beginSighting();
+        check(qc.submitSighter(0, 0, 10.4, 1, 0, true), "PRONE50 sighter");
+        qc.beginOfficialMatch();
+        check(qc.submitOfficial(1.11, -2.22, 10.9, 101, 0, true),
+              "PRONE50 official 1 (decimal, with coords)");
+        check(qc.submitOfficial(0, 0, 10.3, 102, 0, true), "PRONE50 official 2");
+        check(qRound(qc.totalDecimal() * 10) == 212,
+              "PRONE50 decimal total 21.2 (10.9 + 10.3)",
+              QString::number(qc.totalDecimal()));
+
+        const ReplayResult rr = ReplayEngine::replayBytes(file.data);
+        check(rr.ok && rr.state.discipline == Discipline::Prone50m,
+              "PRONE50 replays to Prone50m — not 3P, not generic 50m");
+        check(std::holds_alternative<QualificationState>(rr.state.disc),
+              "PRONE50 disc is QualificationState (no finals/3P state)");
+        check(rr.state.officials.size() == 2 && rr.state.totalTenths == 212,
+              "PRONE50 replay: 2 officials, total 212 tenths",
+              QString::number(rr.state.totalTenths));
+        check(!rr.state.officials.isEmpty()
+                  && rr.state.officials.first().shot.scoreTenths == 109,
+              "PRONE50 decimal preserved (10.9 -> 109 tenths)");
+        check(rr.state.config.matchMs == 3000000,
+              "PRONE50 50-minute match clock carried in config");
+    }
 }

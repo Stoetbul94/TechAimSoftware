@@ -6,13 +6,27 @@ interruption rules.
 
 ## Document status
 
-- **Implementation status:** 🔧 Scoring implemented in legacy QML (decimal). **No
-  journal write-path, no reducer coverage confirmed, no recovery restorer** yet.
+- **Implementation status:** ✅ **Persistence implemented (Phase B3).** 50m Prone
+  live scoring is journalled through `QUAL` → `SessionStore` with **decimal**
+  scores and the **50-minute** match clock carried in `config`. No Final
+  transition, no 3P position transition (single-stage qualification). ⚠️
+  **Recovery UI (restoration) NOT implemented** — a crashed Prone session is
+  detected/preserved by the recovery dialog, but rebuilding the UI on resume is
+  **Phase D**. Reducer coverage: ✅ (generic `QualificationState`).
 - **Rules verification status:** 📋 User-supplied ISSF rule extract (edition/page
   not supplied).
 - **Last reviewed:** 2026-07-19
 - **Applicable ISSF rulebook edition:** ⏳ not supplied
-- **Supported by TechAim:** Partial (scores; not recoverable).
+- **Supported by TechAim:** Scoring ✅ · Persistence ✅ · Recovery restore ❌ (Phase D).
+
+## Durability boundary (Phase B3)
+
+Same durable route as [Air Rifle](10m-air-rifle.md#durability-boundary-phase-b1),
+extended to Prone via the shared `QUAL` seam (gate: 50m rifle, sub-mode 0). Prone
+uses **decimal** scoring (no full-ring floor). The journal identifies
+`Discipline::Prone50m` — never generic 50m or 3P — and contains **no** finals
+command-window or 3P position events. Verified: a Prone journal replays into
+`Prone50m` with decimal `scoreTenths` and `config.matchMs = 3_000_000` (50 min).
 
 ## Event overview
 
@@ -131,3 +145,4 @@ As Air Rifle, **plus**:
 | Date | Change | Source | Components |
 |---|---|---|---|
 | 2026-07-19 | Populated from supplied Prone rules; recorded no-Final constraint and 50-min match clock. | Project owner (📋) | ShootingPage restorer, reducer, tests |
+| 2026-07-19 | **B3: persistence implemented.** 50m Prone live scoring journalled via `QUAL` (decimal, 50-min clock, no Final, no 3P transition); tests + manual verified (journal discipline=PRONE50, no finals/3P events, crash→restart detected as 50m Rifle Prone). Recovery restore = Phase D. | Implementation (🛠) | ShootingPage gate, tst_qualification |

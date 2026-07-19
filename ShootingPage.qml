@@ -990,6 +990,14 @@ Item {
                 qualDisciplineId = "AR10"        // 10m Air Rifle  (decimal)
             else if (APPSETTINGS.getGameMode() === 0)
                 qualDisciplineId = "AP10"        // 10m Air Pistol (integer)
+        } else if (APPSETTINGS.get10or50mRange() === 50) {
+            // 50m Rifle Prone: rifle, sub-mode 0 (Prone), decimal. 50m 3P
+            // qualification (sub-mode 1 / is3PMatch) is NOT migrated — its rules
+            // are pending; 50m pistol is out of scope. Prone must never enter
+            // Finals or a 3P position transition (both already excluded above).
+            if (APPSETTINGS.getGameMode() === 1
+                    && APPSETTINGS.getGameSubMode() === 0 && !is3PMatch)
+                qualDisciplineId = "PRONE50"     // 50m Rifle Prone (decimal)
         }
         if (qualDisciplineId !== "") {
             qualShotSeq = 0
