@@ -8,6 +8,12 @@ TARGET = reliability_tests
 
 include(../../Reliability.pri)
 
+# Phase B0: the qualification write-path seam. QtCore-only — compiling it in
+# this GUI-free harness proves it carries no QML/GUI dependency.
+INCLUDEPATH += $$PWD/../../src
+SOURCES += $$PWD/../../src/qualification/QualificationController.cpp
+HEADERS += $$PWD/../../src/qualification/QualificationController.h
+
 # Committed golden fixtures live next to the sources (byte-exact, -text in
 # .gitattributes). The harness reads them from the source tree.
 DEFINES += RELIABILITY_FIXTURES_DIR=\\\"$$PWD/fixtures\\\"
@@ -28,6 +34,7 @@ SOURCES += \
     tst_validator.cpp \
     tst_reducer.cpp \
     tst_incidents.cpp \
+    tst_qualification.cpp \
     tst_snapshot.cpp \
     tst_store.cpp \
     tst_recovery.cpp \

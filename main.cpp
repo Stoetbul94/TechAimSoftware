@@ -28,6 +28,7 @@
 #include "src/bridge/coachreportfeeder.h"
 #include "src/bridge/pdfexporter.h"
 #include "src/finals/Finals3PController.h"
+#include "src/qualification/QualificationController.h"
 #include "src/finals/FinalsAudioService.h"
 #include "src/reliability/storage/StoragePaths.h"
 #include "logfile.h"
@@ -290,6 +291,11 @@ int main(int argc, char *argv[])
     QObject::connect(&finalsController, &Finals3PController::commandIssued,
                      &finalsAudio, &FinalsAudioService::onCommandIssued);
     engine.rootContext()->setContextProperty("FINALSAUDIO", &finalsAudio);
+    // Phase B — shared qualification persistence seam (QUAL). Idle until a
+    // qualification discipline drives it (wired per-discipline in B1–B3); like
+    // FINALS3P it owns a reliability SessionStore for its match record.
+    QualificationController qualController;
+    engine.rootContext()->setContextProperty("QUAL", &qualController);
     engine.load(QUrl(QLatin1String("qrc:/main.qml")));
     if (engine.rootObjects().isEmpty())
         return -1;
