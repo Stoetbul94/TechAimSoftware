@@ -25,6 +25,24 @@ Item {
 
     property bool matchFinished :false
 
+    // ── Phase B1: 10m Air Rifle qualification durable journaling ─────────────
+    // Non-empty when the current qualification session is journalled through the
+    // QUAL seam (B1: "AR10" only; AP10/Prone follow in B2/B3). Empty => the
+    // legacy direct-to-model path. Gates the QUAL routing so no second parallel
+    // scoring path exists for the un-migrated disciplines.
+    property string qualDisciplineId: ""
+    // Per-session strictly-increasing shot identity for the durable seam. One
+    // per processed detection event (the C++ backEndShootCount guard already
+    // dedupes repeated hardware deliveries upstream, so a value is never
+    // consumed twice); carried as the event externalId for reducer-level dedup
+    // and future resume seeding. NOT the visible model count.
+    property int qualShotSeq: 0
+    // The polar display (angle, radius) of the shot in flight, stashed so the
+    // QUAL.onShotAccepted projection reuses the EXACT existing addToSeries args
+    // (the signal fires synchronously inside submit, so these stay valid).
+    property real qualPendingAngle: 0
+    property real qualPendingRadius: 0
+
     // ── 50m Rifle 3 Positions (ISSF 3x20 qualification) ──────────────────────
     // Position is derived from the match-shot count: 0-19 kneeling, 20-39
     // prone, 40-59 standing. The overall 105-min match clock runs through
@@ -556,6 +574,25 @@ Item {
                                       shootingPage.finalsLastDirection)
                 return
             }
+            // B1: 10m Air Rifle qualification — the DURABLE acceptance route.
+            // No UI append happens here; the shot is submitted to QUAL first and
+            // the QUAL.onShotAccepted signal drives the (existing) projection, so
+            // a shot becomes visible only after it is journalled. If QUAL refuses
+            // it (cap / duplicate / wrong phase) nothing is projected — the shot
+            // is never shown as accepted. sligterMode classifies sighter vs
+            // official (same source addToSeries would use).
+            if (qualDisciplineId === "AR10") {
+                shootingPage.qualPendingAngle = xPosition
+                shootingPage.qualPendingRadius = yPosition
+                var extId = ++shootingPage.qualShotSeq
+                if (sligterMode)
+                    QUAL.submitSighter(centerPanel.lastShotXmm, centerPanel.lastShotYmm,
+                                       currentCalculatedScore, extId, xPosition, false)
+                else
+                    QUAL.submitOfficial(centerPanel.lastShotXmm, centerPanel.lastShotYmm,
+                                        currentCalculatedScore, extId, xPosition, false)
+                return
+            }
             // Hard cap at the match shot count. The auto-finish watcher polls
             // every 500ms, so a shot arriving in that window (an extra demo
             // click, or a late hardware report) used to register as shot 61
@@ -778,6 +815,24 @@ Item {
         }
     }
 
+    // ── B1: 10m Air Rifle durable-shot projection router ─────────────────
+    // The ONLY route that appends an AR10 shot to the visible models. It fires
+    // (synchronously) after QUAL has durably submitted the SighterAccepted /
+    // ShotAccepted event, so the journal — not the UI — is authoritative. It
+    // reuses the EXACT existing qualification projection (rightPanel.addToSeries)
+    // with the shot's polar display args, stashed just before submit. The
+    // reducer-authoritative decimal score/coords come from the accepted record.
+    Connections {
+        target: QUAL
+        enabled: shootingPage.qualDisciplineId === "AR10"
+        function onShotAccepted(record) {
+            rightPanel.addToSeries(shootingPage.qualPendingAngle,
+                                   shootingPage.qualPendingRadius,
+                                   record.calculatedscore * 1,
+                                   record.xmm * 1, record.ymm * 1)
+        }
+    }
+
     // ── 3P FINAL HUD (Option A: top strip + contextual layers) ───────────
     // Pure presentation over FINALS3P — see docs/3p-finals-discipline.md.
     FinalsHud {
@@ -913,6 +968,36 @@ Item {
         centerPanel.totalSighterTime = APPSETTINGS.getPrepTimeCount()
         changedToSigherMode()
         centerPanel.startPreparationCountdown()
+
+        // Phase B1: 10m Air Rifle qualification is journalled through the QUAL
+        // seam so the journal + reducer become authoritative. Only air rifle
+        // (gameMode 1 = rifle, 10m range) migrates in B1; AP10/Prone keep the
+        // legacy path until B2/B3. is3PMatch/isFinalsMatch are already excluded
+        // above. See docs/issf-rules/10m-air-rifle.md.
+        qualDisciplineId = ""
+        if (APPSETTINGS.getGameMode() === 1 && APPSETTINGS.get10or50mRange() === 10) {
+            qualDisciplineId = "AR10"
+            qualShotSeq = 0
+            var athlete = (typeof userName !== "undefined" && userName) ? userName : ""
+            // ISSF course parameters are CONFIG the caller supplies (not rules
+            // in the engine): official count + match/prep clocks as timer
+            // anchors. matchShootCount = the selected count (60 for the full
+            // event); getTimeCount/getPrepTimeCount return seconds.
+            var matchMs = APPSETTINGS.getTimeCount(matchShootCount) * 1000
+            var prepMs = APPSETTINGS.getPrepTimeCount() * 1000
+            var started = QUAL.startSession("AR10", String(matchShootCount), athlete,
+                                            matchShootCount, matchMs, prepMs, -1, "", "")
+            if (started) {
+                QUAL.beginPreparation()
+                QUAL.beginSighting()   // combined ISSF prep+sighting phase
+                MODREADER.appendToLogFile("B1: AR10 session journalling started ("
+                                          + QUAL.journalPath() + ")")
+            } else {
+                qualDisciplineId = ""
+                MODREADER.appendToLogFile("B1: AR10 QUAL.startSession failed — "
+                                          + "falling back to the legacy path")
+            }
+        }
         MODREADER.appendToLogFile("beginPreparationPhase: done, totalSighterTime = "
                                   + centerPanel.totalSighterTime + " is3P = " + is3PMatch)
     }
@@ -1024,12 +1109,24 @@ Item {
         centerPanel.currentPageIndexChanged()
         MODREADER.appendToLogFile("play: page index refreshed")
         centerPanel.disableMotorMovement = false
+
+        // B1: the official match clock has begun — journal the transition so a
+        // recovered AR10 session knows it is past sighting.
+        if (qualDisciplineId === "AR10")
+            QUAL.beginOfficialMatch()
     }
 
     function changedToMatchFinish()
     {
         matchFinished = true
         centerPanel.stopMatchClock()
+
+        // B1: record the qualification total and close the session cleanly so
+        // it validates as a finished (non-recoverable) journal.
+        if (qualDisciplineId === "AR10") {
+            QUAL.completeMatch()
+            QUAL.closeSession()
+        }
         MODREADER.appendToLogFile("Match finished: " + globalMatchModel.count
                                   + "/" + matchShootCount + " match shots")
         // 3P: open the right-panel table + face on the final series for review of

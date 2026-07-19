@@ -6,13 +6,32 @@ interruption rules referenced below.
 
 ## Document status
 
-- **Implementation status:** 🔧 Scoring implemented in legacy QML. **No journal
-  write-path, no reducer coverage confirmed, no recovery restorer** yet.
+- **Implementation status:** ✅ **Persistence implemented (Phase B1).** Air Rifle
+  live scoring is journalled through `QUAL` (`QualificationController`) →
+  `SessionStore`; the journal + reducer are authoritative for shot acceptance.
+  ⚠️ **Recovery UI (restoration) NOT implemented** — the recovery dialog detects
+  and preserves a crashed AR10 session, but rebuilding the AR10 UI on resume is
+  **Phase D**. Reducer coverage: ✅ (generic `QualificationState`).
 - **Rules verification status:** 📋 User-supplied ISSF rule extract (edition/page
   not supplied).
 - **Last reviewed:** 2026-07-19
 - **Applicable ISSF rulebook edition:** ⏳ not supplied
-- **Supported by TechAim:** Partial (scores; not recoverable).
+- **Supported by TechAim:** Scoring ✅ · Persistence ✅ · Recovery restore ❌ (Phase D).
+
+## Durability boundary (Phase B1)
+
+An AR10 shot is **not** added to the visible UI models until its
+`SighterAccepted`/`ShotAccepted` event has been durably submitted to
+`SessionStore`. Flow: raw measurement → `calculateShootingSocre` (decimal) →
+`ShootingPage.onPointAddedToSeries` (AR10 branch) → `QUAL.submitSighter/
+submitOfficial` → `SessionStore` (never-refuse-to-score) → reducer →
+`QUAL.shotAccepted` signal → the existing `rightPanel.addToSeries` projection.
+There is **one** acceptance route; if the submit is refused (cap / duplicate
+`externalId` / wrong phase) nothing is projected. Duplicate prevention:
+`CenterPane.backEndShootCount` dedupes repeated hardware deliveries upstream; a
+per-session monotonic `qualShotSeq` is carried as the event `externalId` for
+reducer-level dedup and future resume seeding (details:
+[../session-reliability-phaseB-qualification.md](../session-reliability-phaseB-qualification.md)).
 
 ## Event overview
 
@@ -126,11 +145,12 @@ Official/sighter separation, next-shot calculation, and continuation must come
 
 | Event | Status |
 |---|---|
-| `SessionStarted`, `PreparationStarted`, `SightingStarted`, `OfficialMatchStarted` | existing |
-| `SighterAccepted`, `ShotAccepted` | existing (carry decimal `scoreTenths`) |
-| `TimerStarted` / `TimerExpired` (phase clocks) | existing |
-| `MatchCompleted`, `SessionClosed` / `CleanShutdown` | existing |
-| EST incident + credit + recovery-phase events | **needs implementation** (see EST doc §8) |
+| `SessionStarted` (discipline `AR10`, config officialShots/matchMs) | ✅ produced (B1) |
+| `PreparationStarted`, `SightingStarted`, `OfficialMatchStarted` | ✅ produced (B1) |
+| `SighterAccepted`, `ShotAccepted` (decimal `scoreTenths`, coords, `externalId`) | ✅ produced (B1) |
+| `MatchCompleted`, `SessionClosed` / `CleanShutdown` | ✅ produced (B1, on clean finish) |
+| `TimerStarted` / `TimerExpired` (explicit phase-clock anchors) | ⏳ Phase D (match/prep durations currently carried in `config`; explicit timer anchors added when UI restore needs them) |
+| EST incident + credit + recovery-phase events | ⏳ Phase E (see EST doc §8) |
 
 No `AirRifleShotAccepted` — the generic `ShotAccepted` carries all required
 data. 🛠
@@ -184,3 +204,4 @@ validate journal + hash chain → close cleanly. Plus one simulated EST incident
 | Date | Change | Source | Components |
 |---|---|---|---|
 | 2026-07-19 | Populated from supplied AR10 rules; recorded scoring-only implementation status. | Project owner (📋) | ShootingPage restorer, reducer, tests |
+| 2026-07-19 | **B1: persistence implemented.** AR10 live scoring journalled via `QUAL`/`SessionStore`; durability boundary + duplicate prevention wired; tests + manual scoring/crash verified (journal Clean, AR10 detected as unfinished). Recovery restore remains Phase D. | Implementation (🛠) | QualificationController, ShootingPage, main.qml wiring, tst_qualification |

@@ -109,6 +109,11 @@ private:
     std::unique_ptr<ta::rel::SessionStore> m_store;
     ta::rel::Discipline m_discipline = ta::rel::Discipline::None;
     bool m_journalFailureNotified = false;
+    // Configured official-shot cap (from startSession; <= 0 = uncapped/free
+    // practice). Enforced at the durable boundary so a shot beyond the cap is
+    // never journalled — the ISSF count is a caller-supplied config value, not
+    // a rule hardcoded in the engine.
+    int m_officialShots = 0;
 
     // Qualification is a single official stage; sighting is stage 0.
     static constexpr qint16 kSightingStageId = 0;

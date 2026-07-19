@@ -148,4 +148,81 @@ void run_qualification_tests()
                                QString(), QString()),
               "3P50 refused (rules pending)");
     }
+
+    // 5) AR10 cap of 60: unlimited sighters, officials 1..60 accepted, 61st
+    //    refused at the durable boundary; target coordinates survive replay.
+    {
+        MemoryJournalFile file;
+        ManualClock clock;
+        QualificationController qc;
+        qc.storeForTesting()->setClockForTesting(&clock);
+        qc.storeForTesting()->setJournalFileForTesting(&file);
+        qc.startSession(QStringLiteral("AR10"), QStringLiteral("60"),
+                        QStringLiteral("A"), 60, 4500000, 900000, -1,
+                        QString(), QString());
+        qc.beginPreparation();
+        qc.beginSighting();
+        bool allSighters = true;
+        for (int i = 0; i < 15; ++i)
+            allSighters = allSighters
+                && qc.submitSighter(0, 0, 10.5, 6000 + i, 0, true);
+        check(allSighters, "15 sighters all accepted (unlimited sighting)");
+        check(qc.officialShotCount() == 0,
+              "sighters never increment the official count");
+        check(qc.sighterCount() == 15, "15 sighters recorded");
+
+        qc.beginOfficialMatch();
+        check(qc.submitOfficial(3.21, -4.56, 10.9, 7000, 0.0, true),
+              "official 1 accepted (with coordinates)");
+        bool restOk = true;
+        for (int n = 2; n <= 60; ++n)
+            restOk = restOk && qc.submitOfficial(0, 0, 9.0, 7000 + n, 0, true);
+        check(restOk, "officials 2..60 all accepted");
+        check(qc.officialShotCount() == 60, "official count reaches exactly 60");
+        check(!qc.submitOfficial(0, 0, 10.0, 9999, 0, true),
+              "61st official refused at the cap");
+        check(qc.officialShotCount() == 60,
+              "official count stays 60 after the refused 61st");
+
+        const ReplayResult rr = ReplayEngine::replayBytes(file.data);
+        check(rr.ok && rr.state.officials.size() == 60,
+              "replay reconstructs 60 officials");
+        check(!rr.state.officials.isEmpty()
+                  && rr.state.officials.first().shot.xHundredthMm == 321
+                  && rr.state.officials.first().shot.yHundredthMm == -456,
+              "replay: target coordinates preserved (3.21, -4.56 mm)");
+        check(rr.state.discipline == Discipline::AirRifle10m,
+              "replay discipline stays AR10");
+    }
+
+    // 6) An interrupted (unclosed) AR10 journal is valid and replays with its
+    //    officials intact — enough for future deterministic restoration
+    //    (Phase D). No CleanShutdown → not marked closed (recoverable).
+    {
+        MemoryJournalFile file;
+        ManualClock clock;
+        QualificationController qc;
+        qc.storeForTesting()->setClockForTesting(&clock);
+        qc.storeForTesting()->setJournalFileForTesting(&file);
+        qc.startSession(QStringLiteral("AR10"), QStringLiteral("60"),
+                        QStringLiteral("A"), 60, 4500000, 900000, -1,
+                        QString(), QString());
+        qc.beginPreparation();
+        qc.beginSighting();
+        qc.submitSighter(0, 0, 10.0, 8001, 0, true);
+        qc.beginOfficialMatch();
+        qc.submitOfficial(0, 0, 10.9, 8101, 0, true);
+        qc.submitOfficial(1, 1, 10.2, 8102, 0, true);
+        // Simulate a crash: no closeSession.
+        const ValidationReport rep = JournalValidator::validateBytes(file.data);
+        check(rep.classification == JournalClassification::Clean,
+              "interrupted AR10 journal validates (hash chain intact)",
+              QLatin1String(journalClassificationName(rep.classification)));
+        const ReplayResult rr = ReplayEngine::replayBytes(file.data);
+        check(rr.ok && rr.state.officials.size() == 2
+                  && rr.state.sighters.size() == 1,
+              "interrupted journal replays 2 officials + 1 sighter");
+        check(rr.state.lifecycle != Lifecycle::Closed,
+              "interrupted session not marked closed (recoverable)");
+    }
 }

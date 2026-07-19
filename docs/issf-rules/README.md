@@ -53,7 +53,7 @@ fixed (after reporting the conflict — never silently).
 | Discipline | Supported in TechAim | Persistence | Reducer | Recovery | Rules complete | Last verified | Unresolved Qs |
 |---|---|---|---|---|---|---|---|
 | [50m Rifle 3 Positions Final](50m-rifle-3p-final.md) | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes (M3) | 📋 Partial | 2026-07-19 | Finals-specific EST allowance mapping |
-| [10m Air Rifle Qualification](10m-air-rifle.md) | 🔧 Scoring only | ❌ No | ⚠️ Partial (generic) | ❌ No | 📋 Yes | 2026-07-19 | EST boundary at exactly 3:00 / 5:00 |
+| [10m Air Rifle Qualification](10m-air-rifle.md) | ✅ Scoring + persistence | ✅ **Yes (B1)** | ✅ Yes (generic) | ❌ Restore = Phase D | 📋 Yes | 2026-07-19 | EST boundary at exactly 3:00 / 5:00 |
 | [10m Air Pistol Qualification](10m-air-pistol.md) | 🔧 Scoring only | ❌ No | ⚠️ Partial (generic) | ❌ No | 📋 Yes | 2026-07-19 | EST boundary at exactly 3:00 / 5:00 |
 | [50m Rifle Prone](50m-rifle-prone.md) | 🔧 Scoring only | ❌ No | ⚠️ Partial (generic) | ❌ No | 📋 Yes | 2026-07-19 | EST boundary at exactly 3:00 / 5:00 |
 | [50m Rifle 3 Positions Qualification](50m-rifle-3p-qualification.md) | 🔧 Scoring only | ❌ No | ⚠️ Partial (generic) | ❌ No | ⏳ **INCOMPLETE** | — | Course of fire, timing, position structure |
@@ -96,3 +96,4 @@ silent fallback into the Finals restorer.
 |---|---|---|---|
 | 2026-07-19 | Created rules reference: README, EST malfunctions, AR10/AP10/Prone50 populated, 3P Final populated, 3P-Qual + 25m Pistol placeholders. | Project owner (📋) | docs/issf-rules/* |
 | 2026-07-19 | M3 Phase A landed: recovery dispatcher + generic EST incident domain (4 events, reducer record, state v2). Docs synced. | Implementation (🛠) | main.qml, reliability layer, tests |
+| 2026-07-19 | Phase B0: shared qualification persistence seam (`QualificationController`/`QUAL`). B1: 10m Air Rifle live scoring journalled (persistence ✅, recovery restore = Phase D). | Implementation (🛠) | src/qualification, ShootingPage, tests |

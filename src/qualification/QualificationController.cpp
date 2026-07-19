@@ -50,6 +50,13 @@ bool QualificationController::startSession(const QString& disciplineId,
         return false;
     }
 
+    // A previous session that never closed cleanly is archived out of the way
+    // before opening the new one (mirrors the finals controller).
+    if (m_store->active())
+        m_store->closeSession(CloseReason::Archive);
+
+    m_officialShots = officialShots;
+
     SessionHeader header;
     header.sessionId = QUuid::createUuid().toString(QUuid::WithoutBraces);
     header.appVersion = QCoreApplication::applicationVersion().isEmpty()
@@ -116,6 +123,13 @@ bool QualificationController::submitShot(bool sighter, double xMm, double yMm,
                                          double directionDeg, bool simulated)
 {
     if (!m_store || !m_store->active())
+        return false;
+
+    // Configured official cap: a shot beyond the cap is refused here, so the
+    // journal never contains a 61st (for a 60-shot event). Sighters are
+    // unlimited. m_officialShots <= 0 means uncapped (free practice).
+    if (!sighter && m_officialShots > 0
+            && m_store->state().officials.size() >= m_officialShots)
         return false;
 
     // Official shot number is authoritative from the reducer (never the UI

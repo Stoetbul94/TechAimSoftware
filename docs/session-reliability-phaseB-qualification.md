@@ -140,7 +140,31 @@ Duplicate prevention (identical to finals):
 (`docs/issf-rules/50m-rifle-3p-qualification.md`, `25m-pistol.md`). 25m Rapid
 Fire Pistol is excluded entirely.
 
+## B1 — 10m Air Rifle (implemented)
+
+- **Interception point:** `ShootingPage.onPointAddedToSeries` (the same point
+  the finals branch uses — no second parallel path), gated on
+  `qualDisciplineId === "AR10"`.
+- **Lifecycle wiring:** `beginPreparationPhase` → `QUAL.startSession` +
+  `beginPreparation` + `beginSighting`; `changedToMatchMode` →
+  `beginOfficialMatch`; `changedToMatchFinish` → `completeMatch` +
+  `closeSession`.
+- **Projection:** a `Connections{ target: QUAL } onShotAccepted` calls the
+  existing `rightPanel.addToSeries` with the shot's stashed polar display args —
+  the model append happens ONLY after a durable submit.
+- **Cap:** the controller enforces the caller-supplied official count (60), so a
+  61st official is refused at the durable boundary (never journalled).
+- **Verified:** reliability harness (qualification block, incl. 60/61 cap,
+  coord preservation, interrupted-recoverable), finals regression, full app
+  build, and a manual Demo AR10 session — 3 sighters (officials stayed 0/60) +
+  4 officials (10.9/10.9/10.8/10.9 = 43.5, numbered 1–4, each once), journal
+  `discipline=AR10`, 3 sighters + 4 officials, hash chain VALID; hard-kill →
+  restart detected the session as *10m Air Rifle, 4/60, Clean*; Resume routed to
+  the Phase-A "recovery not yet implemented" branch (AR10 never enters the
+  finals restorer). Full AR10 UI restore = **Phase D**.
+
 ## Change history
 | Date | Change | Components |
 |---|---|---|
 | 2026-07-19 | B0: traced qualification scoring path; specified the shared `QualificationController` seam + durability boundary. | CenterPane, ShootingPage, RightPanel (trace); src/qualification (planned) |
+| 2026-07-19 | B1: 10m Air Rifle live scoring journalled through `QUAL`. Persistence ✅; recovery restore = Phase D. | QualificationController (cap), ShootingPage wiring, tst_qualification |
