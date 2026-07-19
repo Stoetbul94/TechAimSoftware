@@ -114,6 +114,13 @@ private:
     // never journalled — the ISSF count is a caller-supplied config value, not
     // a rule hardcoded in the engine.
     int m_officialShots = 0;
+    // Phase-clock durations (ms) supplied at startSession, journalled as
+    // TimerStarted anchors (Phase C) so a recovered session can rebase the
+    // competition clock to its frozen remaining value: remaining = durationMs −
+    // (lastEventMonoMs − timer.startedAtMonoMs). <= 0 means no timed clock
+    // (free practice) and no TimerStarted is emitted.
+    qint64 m_prepMs = 0;
+    qint64 m_matchMs = 0;
 
     // Qualification is a single official stage; sighting is stage 0.
     static constexpr qint16 kSightingStageId = 0;

@@ -135,6 +135,51 @@ Duplicate prevention (identical to finals):
   decimal/integer separation tests.
 - **B3** 50m Rifle Prone: decimal, 50-min clock, **no Final transition**.
 
+## Phase C — reducer/replay readiness audit
+
+Recovery-state matrix for the three disciplines (all identical unless noted).
+`A` = available directly in the replayed `SessionState`; `D` = derivable
+deterministically; `+` = added by Phase C; `N/A` = not applicable.
+
+| Field | AR10 | AP10 | PRONE50 | Source |
+|---|---|---|---|---|
+| discipline | A | A | A | `SessionStarted.discipline` |
+| athlete | A | A | A | header |
+| firing point | A | A | A | header `lane`/`targetId` (empty until RMS) |
+| current phase | A | A | A | `SessionState.phase` |
+| prep/sighting duration | **+** | **+** | **+** | `TimerStarted(Preparation).durationMs` (Phase C) |
+| prep/sighting elapsed | **+**/D | " | " | `lastEventMonoMs − timer.startedAtMonoMs` |
+| prep/sighting remaining | **+**/D | " | " | `durationMs − elapsed` |
+| match duration | A | A | A | `config.matchMs` + `TimerStarted(Match)` |
+| match elapsed | **+**/D | " | " | anchor from `TimerStarted(Match)` |
+| match remaining | **+**/D | " | " | `durationMs − elapsed` |
+| sighters | A | A | A | `SessionState.sighters` |
+| official shots | A | A | A | `SessionState.officials` |
+| official numbering | A | A | A | `shot.shotNumber` |
+| official total | A | A | A | `totalTenths` (reducer-derived) |
+| coordinates | A | A | A | `shot.x/yHundredthMm` |
+| integer/decimal mode | D | D | D | from discipline (AP10 integer; AR10/PRONE50 decimal) |
+| next official shot | D | D | D | `officials.size() + 1` |
+| completion state | A | A | A | `lifecycle` (Complete iff `MatchCompleted`) |
+| incident state | A | A | A | `estIncidents` (Phase A) |
+| target reassignment | A | A | A | `EstIncidentRecord` (N/A normally) |
+| Jury time credit | A | A | A | `EstIncidentRecord.timeCreditMs` (N/A normally) |
+| recovery phase | A | A | A | `EstIncidentRecord` flags (N/A normally) |
+
+**Gap found & fixed (Phase C):** the qualification write-path emitted no timer
+events, so the recovered `timer` state was empty and the prep duration was not
+journalled (`buildRecoveredState` only anchors on finals `WindowOpened`). Fix —
+the **minimum** change, reusing the existing `TimerStarted` event (no new event,
+no serialization/snapshot change): `QUAL` now emits
+`TimerStarted(Preparation, prepMs)` at prep start and `TimerStarted(Match,
+matchMs)` at official-match start. The reducer's `TimerState`
+(`durationMs`/`startedAtMonoMs`) is now authoritative; recovery computes the
+**frozen remaining** = `durationMs − (lastEventMonoMs − startedAtMonoMs)` — never
+the full duration. Live UI behaviour is unchanged (the QML countdown still runs
+independently). Verified by 15 replay checks (crash in sighting / just after
+match start / mid-match / after shot 59 / 60 / AP10+PRONE50 anchors), all
+asserting frozen remaining < full and correct next-shot state.
+
 ## Not in scope (STOP conditions)
 50m 3P Qualification and 25m Pistol persistence/recovery are blocked on rules
 (`docs/issf-rules/50m-rifle-3p-qualification.md`, `25m-pistol.md`). 25m Rapid

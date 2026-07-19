@@ -16,6 +16,62 @@
 
 using namespace ta::rel;
 
+namespace {
+
+// Phase C helper: build a crashed (never-closed) qualification journal via the
+// controller, advancing an injected ManualClock so elapsed time > 0. Fires
+// `sighters` sighters, then — if `startMatch` — begins the official match
+// (anchoring the match clock) and fires `officials` officials. prep=15m,
+// match=75m. Leaves the session un-closed (a crash).
+void buildCrashed(MemoryJournalFile& file, ManualClock& clock,
+                  const char* disciplineId, int sighters,
+                  bool startMatch, int officials)
+{
+    QualificationController qc;
+    qc.storeForTesting()->setClockForTesting(&clock);
+    qc.storeForTesting()->setJournalFileForTesting(&file);
+    qc.startSession(QString::fromLatin1(disciplineId), QStringLiteral("60"),
+                    QStringLiteral("A"), 60, 4500000, 900000, -1,
+                    QString(), QString());
+    qc.beginPreparation();       // TimerStarted(Preparation, 900000) at tm now
+    clock.advance(30000);
+    qc.beginSighting();
+    for (int i = 0; i < sighters; ++i) {
+        clock.advance(5000);
+        qc.submitSighter(0, 0, 10.5, 1000 + i, 0, true);
+    }
+    if (!startMatch)
+        return;                  // crash during Preparation+Sighting
+    clock.advance(20000);
+    qc.beginOfficialMatch();     // TimerStarted(Match, 4500000) at tm now
+    for (int n = 1; n <= officials; ++n) {
+        clock.advance(10000);
+        qc.submitOfficial(0, 0, 10.0 + (n % 2) * 0.5, 2000 + n, 0, true);
+    }
+    // no closeSession — simulated crash.
+}
+
+// Replay a crashed journal and return its rebuilt state.
+ReplayResult replayOf(const MemoryJournalFile& file)
+{
+    const ValidationReport rep = JournalValidator::validateBytes(file.data);
+    return ReplayEngine::replay(rep.validEnvelopes);
+}
+
+// Recovered frozen remaining for the current phase clock:
+// remaining = durationMs − (lastEventMonoMs − startedAtMonoMs).
+qint64 recoveredRemaining(const MemoryJournalFile& file)
+{
+    const ValidationReport rep = JournalValidator::validateBytes(file.data);
+    const ReplayResult rr = ReplayEngine::replay(rep.validEnvelopes);
+    const qint64 lastMono = rep.validEnvelopes.isEmpty()
+        ? 0 : rep.validEnvelopes.last().monotonicMs;
+    return rr.state.timer.durationMs
+        - (lastMono - rr.state.timer.startedAtMonoMs);
+}
+
+} // namespace
+
 void run_qualification_tests()
 {
     std::printf("--- qualification persistence tests (Phase B0) ---\n");
@@ -306,5 +362,98 @@ void run_qualification_tests()
               "PRONE50 decimal preserved (10.9 -> 109 tenths)");
         check(rr.state.config.matchMs == 3000000,
               "PRONE50 50-minute match clock carried in config");
+    }
+
+    // 9) Phase C — recovered timer anchors + crash-phase scenarios. A crashed
+    //    journal must carry the frozen remaining competition time (never the
+    //    full duration) and the correct next-shot state, for every phase.
+    {
+        // (a) crash during Preparation+Sighting after sighters: no officials,
+        //     Sighting phase, the PREP clock is the active timer.
+        {
+            MemoryJournalFile file; ManualClock clock;
+            buildCrashed(file, clock, "AR10", 3, /*startMatch*/false, 0);
+            const ReplayResult rr = replayOf(file);
+            check(rr.ok && rr.state.phase == MatchPhase::Sighting,
+                  "crash in sighting: phase = Sighting");
+            check(rr.state.officials.isEmpty() && rr.state.sighters.size() == 3,
+                  "crash in sighting: 3 sighters, 0 officials");
+            check(rr.state.timer.active
+                      && rr.state.timer.timerId == TimerId::Preparation,
+                  "crash in sighting: prep clock is the active timer");
+            // elapsed = 30000 (to sighting) + 3*5000 = 45000; remaining 855000.
+            check(recoveredRemaining(file) == 900000 - 45000,
+                  "crash in sighting: frozen prep remaining (14:15), not full 15:00",
+                  QString::number(recoveredRemaining(file)));
+        }
+        // (b) crash immediately after OfficialMatchStarted: match clock anchored,
+        //     0 officials, next official is 1.
+        {
+            MemoryJournalFile file; ManualClock clock;
+            buildCrashed(file, clock, "AR10", 2, /*startMatch*/true, 0);
+            const ReplayResult rr = replayOf(file);
+            check(rr.state.phase == MatchPhase::OfficialMatch
+                      && rr.state.officials.isEmpty(),
+                  "crash just after match start: OfficialMatch, 0 officials");
+            check(rr.state.timer.active && rr.state.timer.timerId == TimerId::Match
+                      && rr.state.timer.durationMs == 4500000,
+                  "crash just after match start: 75-min match clock anchored");
+        }
+        // (c) crash mid-match (after shot 5): frozen match remaining < full,
+        //     next official = 6, no duplicate on replay.
+        {
+            MemoryJournalFile file; ManualClock clock;
+            buildCrashed(file, clock, "AR10", 3, true, 5);
+            const ReplayResult rr = replayOf(file);
+            check(rr.state.officials.size() == 5,
+                  "crash mid-match: 5 officials recovered");
+            check(rr.state.officials.size() + 1 == 6,
+                  "crash mid-match: recovered next official number is 6");
+            check(recoveredRemaining(file) < 4500000
+                      && recoveredRemaining(file) > 0,
+                  "crash mid-match: match remaining is frozen (< full, > 0)",
+                  QString::number(recoveredRemaining(file)));
+            // replay is idempotent: re-fold the same envelopes → identical state
+            const ReplayResult rr2 = replayOf(file);
+            check(rr2.state.officials.size() == 5
+                      && rr2.state.totalTenths == rr.state.totalTenths,
+                  "replay is idempotent: no duplicate accepted shot");
+        }
+        // (d) crash after shot 59 and after shot 60 (before clean close).
+        {
+            MemoryJournalFile f59; ManualClock c59;
+            buildCrashed(f59, c59, "AR10", 2, true, 59);
+            check(replayOf(f59).state.officials.size() == 59,
+                  "crash after shot 59: 59 officials, next is 60");
+
+            MemoryJournalFile f60; ManualClock c60;
+            buildCrashed(f60, c60, "AR10", 2, true, 60);
+            const ReplayResult rr60 = replayOf(f60);
+            check(rr60.state.officials.size() == 60,
+                  "crash after shot 60 (before close): 60 officials");
+            // The match is at capacity — a recovered session must treat it as
+            // complete-able and NOT accept a 61st (the controller cap enforces
+            // this; see block 5). Lifecycle is still Active (no MatchCompleted
+            // was journalled before the crash), so recovery routes to the
+            // completion path rather than reopening for shot 61.
+            check(rr60.state.lifecycle == Lifecycle::Active,
+                  "crash after shot 60: lifecycle Active (completion pending)");
+        }
+        // (e) AP10 integer + PRONE50 decimal recover their timer anchors too.
+        {
+            MemoryJournalFile fp; ManualClock cp;
+            buildCrashed(fp, cp, "AP10", 1, true, 3);
+            const ReplayResult rp = replayOf(fp);
+            check(rp.state.discipline == Discipline::AirPistol10m
+                      && rp.state.timer.timerId == TimerId::Match,
+                  "AP10 crash: match clock anchored, discipline AP10");
+
+            MemoryJournalFile fr; ManualClock cr;
+            buildCrashed(fr, cr, "PRONE50", 1, true, 3);
+            const ReplayResult rpr = replayOf(fr);
+            check(rpr.state.discipline == Discipline::Prone50m
+                      && rpr.state.timer.active,
+                  "PRONE50 crash: match clock anchored, discipline PRONE50");
+        }
     }
 }

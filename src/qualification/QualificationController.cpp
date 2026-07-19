@@ -56,6 +56,8 @@ bool QualificationController::startSession(const QString& disciplineId,
         m_store->closeSession(CloseReason::Archive);
 
     m_officialShots = officialShots;
+    m_prepMs = prepMs;
+    m_matchMs = matchMs;
 
     SessionHeader header;
     header.sessionId = QUuid::createUuid().toString(QUuid::WithoutBraces);
@@ -90,6 +92,11 @@ bool QualificationController::startSession(const QString& disciplineId,
 void QualificationController::beginPreparation()
 {
     submitEvent(DomainEvent(PreparationStarted{kSightingStageId}));
+    // Anchor the combined 15-min Preparation+Sighting clock (Phase C). The
+    // reducer records durationMs + startedAtMonoMs so a crash during sighting
+    // recovers the frozen remaining prep time.
+    if (m_prepMs > 0)
+        submitEvent(DomainEvent(TimerStarted{TimerId::Preparation, m_prepMs}));
 }
 
 void QualificationController::beginSighting()
@@ -100,6 +107,11 @@ void QualificationController::beginSighting()
 void QualificationController::beginOfficialMatch()
 {
     submitEvent(DomainEvent(OfficialMatchStarted{kOfficialStageId}));
+    // Anchor the official match clock (Phase C): TimerStarted resets the
+    // reducer timer to the match duration, so a crash during the match recovers
+    // the frozen remaining match time (never the full duration).
+    if (m_matchMs > 0)
+        submitEvent(DomainEvent(TimerStarted{TimerId::Match, m_matchMs}));
 }
 
 // ── shots ────────────────────────────────────────────────────────────────
