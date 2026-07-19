@@ -168,3 +168,4 @@ Fire Pistol is excluded entirely.
 |---|---|---|
 | 2026-07-19 | B0: traced qualification scoring path; specified the shared `QualificationController` seam + durability boundary. | CenterPane, ShootingPage, RightPanel (trace); src/qualification (planned) |
 | 2026-07-19 | B1: 10m Air Rifle live scoring journalled through `QUAL`. Persistence ✅; recovery restore = Phase D. | QualificationController (cap), ShootingPage wiring, tst_qualification |
+| 2026-07-19 | B2: 10m Air Pistol journalled through the same seam with **integer/full-ring** scoring (QML floors before submit; engine stays scoring-agnostic). Gate generalized AR10→any migrated qual discipline. Manual verified (journal scoreTenths all ×10, distinct AP10 discipline). | ShootingPage AP10 branch, tst_qualification |

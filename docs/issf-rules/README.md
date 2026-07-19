@@ -54,7 +54,7 @@ fixed (after reporting the conflict — never silently).
 |---|---|---|---|---|---|---|---|
 | [50m Rifle 3 Positions Final](50m-rifle-3p-final.md) | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes (M3) | 📋 Partial | 2026-07-19 | Finals-specific EST allowance mapping |
 | [10m Air Rifle Qualification](10m-air-rifle.md) | ✅ Scoring + persistence | ✅ **Yes (B1)** | ✅ Yes (generic) | ❌ Restore = Phase D | 📋 Yes | 2026-07-19 | EST boundary at exactly 3:00 / 5:00 |
-| [10m Air Pistol Qualification](10m-air-pistol.md) | 🔧 Scoring only | ❌ No | ⚠️ Partial (generic) | ❌ No | 📋 Yes | 2026-07-19 | EST boundary at exactly 3:00 / 5:00 |
+| [10m Air Pistol Qualification](10m-air-pistol.md) | ✅ Scoring + persistence | ✅ **Yes (B2, integer)** | ✅ Yes (generic) | ❌ Restore = Phase D | 📋 Yes | 2026-07-19 | EST boundary at exactly 3:00 / 5:00 |
 | [50m Rifle Prone](50m-rifle-prone.md) | 🔧 Scoring only | ❌ No | ⚠️ Partial (generic) | ❌ No | 📋 Yes | 2026-07-19 | EST boundary at exactly 3:00 / 5:00 |
 | [50m Rifle 3 Positions Qualification](50m-rifle-3p-qualification.md) | 🔧 Scoring only | ❌ No | ⚠️ Partial (generic) | ❌ No | ⏳ **INCOMPLETE** | — | Course of fire, timing, position structure |
 | [25m Pistol](25m-pistol.md) | ❌ No | ❌ No | ❌ No | ❌ No | ⏳ **INCOMPLETE** | — | Entire discipline unmodelled |

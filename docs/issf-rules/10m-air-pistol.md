@@ -6,13 +6,30 @@ interruption rules.
 
 ## Document status
 
-- **Implementation status:** 🔧 Scoring implemented in legacy QML (integer). **No
-  journal write-path, no reducer coverage confirmed, no recovery restorer** yet.
+- **Implementation status:** ✅ **Persistence implemented (Phase B2).** Air
+  Pistol live scoring is journalled through `QUAL` → `SessionStore` with
+  **integer/full-ring** scores. ⚠️ **Recovery UI (restoration) NOT implemented**
+  — a crashed AP10 session is detected/preserved by the recovery dialog, but
+  rebuilding the AP10 UI on resume is **Phase D**. Reducer coverage: ✅ (generic
+  `QualificationState`).
 - **Rules verification status:** 📋 User-supplied ISSF rule extract (edition/page
   not supplied).
 - **Last reviewed:** 2026-07-19
 - **Applicable ISSF rulebook edition:** ⏳ not supplied
-- **Supported by TechAim:** Partial (scores; not recoverable).
+- **Supported by TechAim:** Scoring ✅ · Persistence ✅ · Recovery restore ❌ (Phase D).
+
+## Durability boundary + integer scoring (Phase B2)
+
+Same durable route as [Air Rifle](10m-air-rifle.md#durability-boundary-phase-b1),
+extended to AP10 via the shared `QUAL` seam. The **only** AP10-specific
+difference: the `ShootingPage.onPointAddedToSeries` AP10 branch **floors** the
+decimal ring position to the integer ring value (`Math.floor`) *before* it is
+submitted, so the reducer total is integer-based (a 10.x measurement is
+persisted as `scoreTenths = 100`, i.e. integer 10 — never 104/109). AR10 stays
+decimal. The full-ring rule lives in QML; the reliability engine remains
+scoring-agnostic (it stores whatever tenths it is given). Verified: an AP10
+journal's official `scoreTenths` are all multiples of 10 and replay into
+`Discipline::AirPistol10m`, distinct from an AR10 session.
 
 ## Event overview
 
@@ -138,3 +155,4 @@ As Air Rifle, **plus**:
 | Date | Change | Source | Components |
 |---|---|---|---|
 | 2026-07-19 | Populated from supplied AP10 rules; flagged mandatory integer/decimal separation from AR10. | Project owner (📋) | ShootingPage restorer, reducer/report, tests |
+| 2026-07-19 | **B2: persistence implemented.** AP10 live scoring journalled via `QUAL` with integer/full-ring scores (QML floors before submit); tests + manual verified (journal `scoreTenths` all ×10, discipline AP10, crash→restart detected as 10m Air Pistol). Recovery restore = Phase D. | Implementation (🛠) | ShootingPage wiring, tst_qualification |

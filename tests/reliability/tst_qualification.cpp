@@ -225,4 +225,46 @@ void run_qualification_tests()
         check(rr.state.lifecycle != Lifecycle::Closed,
               "interrupted session not marked closed (recoverable)");
     }
+
+    // 7) B2 — 10m Air Pistol INTEGER scoring: a distinct discipline, integer
+    //    totals, coordinates retained. (The QML seam floors the decimal ring
+    //    position to the integer ring value before submit; the harness submits
+    //    the already-floored integer values the seam would produce.)
+    {
+        MemoryJournalFile file;
+        ManualClock clock;
+        QualificationController qc;
+        qc.storeForTesting()->setClockForTesting(&clock);
+        qc.storeForTesting()->setJournalFileForTesting(&file);
+        check(qc.startSession(QStringLiteral("AP10"), QStringLiteral("60"),
+                              QStringLiteral("A"), 60, 4500000, 900000, -1,
+                              QString(), QString()),
+              "AP10 session starts");
+        qc.beginPreparation();
+        qc.beginSighting();
+        qc.beginOfficialMatch();
+        check(qc.submitOfficial(2.10, -1.30, 10, 9001, 0, true),
+              "AP10 official persisted as integer 10");
+        check(qc.submitOfficial(0, 0, 9, 9002, 0, true), "AP10 official 9");
+        check(qc.submitOfficial(0, 0, 8, 9003, 0, true), "AP10 official 8");
+        check(qRound(qc.totalDecimal() * 10) == 270,
+              "AP10 integer total is 27.0 (10+9+8, no decimal leakage)",
+              QString::number(qc.totalDecimal()));
+
+        const ReplayResult rr = ReplayEngine::replayBytes(file.data);
+        check(rr.ok && rr.state.discipline == Discipline::AirPistol10m,
+              "AP10 replays to AirPistol10m — distinct from AR10");
+        check(std::holds_alternative<QualificationState>(rr.state.disc),
+              "AP10 disc is QualificationState");
+        check(rr.state.officials.size() == 3 && rr.state.totalTenths == 270,
+              "AP10 replay: 3 officials, total 270 tenths",
+              QString::number(rr.state.totalTenths));
+        check(!rr.state.officials.isEmpty()
+                  && rr.state.officials.first().shot.scoreTenths == 100,
+              "AP10 first official scoreTenths == 100 (integer 10.0, not decimal)");
+        check(!rr.state.officials.isEmpty()
+                  && rr.state.officials.first().shot.xHundredthMm == 210
+                  && rr.state.officials.first().shot.yHundredthMm == -130,
+              "AP10 target coordinates preserved (2.10, -1.30 mm)");
+    }
 }
