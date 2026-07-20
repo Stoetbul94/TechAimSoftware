@@ -561,11 +561,13 @@ ApplicationWindow {
     function dispatchRecovery(sessionId, disciplineId) {
         if (disciplineId === "FINAL3P")
             return window.restoreFinals3P(sessionId)
-        // Phase D1/D2: qualification recovery via the shared restorer —
-        // AR10 (decimal) and AP10 (integer/full-ring). PRONE50 follows in D3.
-        if (disciplineId === "AR10" || disciplineId === "AP10")
+        // Phase D1-D3: qualification recovery via the shared restorer — AR10
+        // (decimal), AP10 (integer/full-ring), PRONE50 (decimal, 50-min clock,
+        // no Final / no 3P transition). 3P qualification stays blocked on rules.
+        if (disciplineId === "AR10" || disciplineId === "AP10"
+                || disciplineId === "PRONE50")
             return window.restoreQualification(sessionId, disciplineId)
-        if (disciplineId === "PRONE50" || disciplineId === "3P50") {
+        if (disciplineId === "3P50") {
             dialogManager.showError(qsTr("Recovery Not Yet Available"),
                 qsTr("Crash recovery for this discipline is not implemented in "
                      + "this build yet.\n\nThe unfinished session has been left "

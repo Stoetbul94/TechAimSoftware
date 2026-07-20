@@ -55,7 +55,7 @@ fixed (after reporting the conflict — never silently).
 | [50m Rifle 3 Positions Final](50m-rifle-3p-final.md) | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes (M3) | 📋 Partial | 2026-07-19 | Finals-specific EST allowance mapping |
 | [10m Air Rifle Qualification](10m-air-rifle.md) | ✅ Scoring + persistence + recovery | ✅ Yes (B1) | ✅ Yes (C) | ✅ **Yes (D1)** — EST workflow = Phase E | 📋 Yes | 2026-07-20 | EST boundary at exactly 3:00 / 5:00 |
 | [10m Air Pistol Qualification](10m-air-pistol.md) | ✅ Scoring + persistence + recovery | ✅ Yes (B2, integer) | ✅ Yes (C) | ✅ **Yes (D2)** — EST workflow = Phase E | 📋 Yes | 2026-07-20 | EST boundary at exactly 3:00 / 5:00 |
-| [50m Rifle Prone](50m-rifle-prone.md) | ✅ Scoring + persistence | ✅ **Yes (B3, decimal)** | ✅ Yes (generic) | ❌ Restore = Phase D | 📋 Yes | 2026-07-19 | EST boundary at exactly 3:00 / 5:00 |
+| [50m Rifle Prone](50m-rifle-prone.md) | ✅ Scoring + persistence + recovery | ✅ Yes (B3, decimal) | ✅ Yes (C) | ✅ **Yes (D3)** — EST workflow = Phase E | 📋 Yes | 2026-07-20 | EST boundary at exactly 3:00 / 5:00 |
 | [50m Rifle 3 Positions Qualification](50m-rifle-3p-qualification.md) | 🔧 Scoring only | ❌ No | ⚠️ Partial (generic) | ❌ No | ⏳ **INCOMPLETE** | — | Course of fire, timing, position structure |
 | [25m Pistol](25m-pistol.md) | ❌ No | ❌ No | ❌ No | ❌ No | ⏳ **INCOMPLETE** | — | Entire discipline unmodelled |
 | [Shared: EST malfunctions](est-malfunctions.md) | Domain ✅ / workflow ❌ | ✅ events+reducer (Phase A) | ✅ `EstIncidentRecord` | n/a | 📋 Yes | 2026-07-19 | 3:00 / 5:00 boundary interpretation |
@@ -81,12 +81,14 @@ See [est-malfunctions.md](est-malfunctions.md) for the cross-discipline
 interruption/malfunction rules; each discipline file references it and adds only
 its discipline-specific effects.
 
-**Recovery dispatch (M3 Phase A):** on resume, `main.qml`'s `dispatchRecovery()`
+**Recovery dispatch (Phase A + D):** on resume, `main.qml`'s `dispatchRecovery()`
 selects the discipline restorer from the recovered session's stable
-`disciplineId`. `FINAL3P` is wired to the (unchanged) `Finals3PController`
-restorer; qualification disciplines return a clear "recovery not yet
-implemented" result and unknown disciplines fail safe — there is **never** a
-silent fallback into the Finals restorer.
+`disciplineId`. `FINAL3P` → the (unchanged) `Finals3PController` restorer;
+`AR10`/`AP10`/`PRONE50` → the shared qualification restorer
+(`enterQualificationMode(config, startFresh)` + `restoreQualificationSession`,
+Phase D1–D3); `3P50` returns a clear "recovery not yet implemented" result and
+unknown disciplines fail safe — there is **never** a silent fallback into the
+Finals restorer.
 
 ---
 
@@ -97,3 +99,4 @@ silent fallback into the Finals restorer.
 | 2026-07-19 | Created rules reference: README, EST malfunctions, AR10/AP10/Prone50 populated, 3P Final populated, 3P-Qual + 25m Pistol placeholders. | Project owner (📋) | docs/issf-rules/* |
 | 2026-07-19 | M3 Phase A landed: recovery dispatcher + generic EST incident domain (4 events, reducer record, state v2). Docs synced. | Implementation (🛠) | main.qml, reliability layer, tests |
 | 2026-07-19 | Phase B0: shared qualification persistence seam (`QualificationController`/`QUAL`). B1: 10m Air Rifle live scoring journalled (persistence ✅, recovery restore = Phase D). | Implementation (🛠) | src/qualification, ShootingPage, tests |
+| 2026-07-20 | Phase C (replay readiness + timer anchors) and Phase D1–D3 (AR10/AP10/PRONE50 crash recovery via the shared qualification restorer). EST workflow remains Phase E. | Implementation (🛠) | QUAL, ShootingPage/CenterPane, main.qml, RecoveryDialog |

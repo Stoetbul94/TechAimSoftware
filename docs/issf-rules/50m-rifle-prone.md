@@ -6,13 +6,14 @@ interruption rules.
 
 ## Document status
 
-- **Implementation status:** ✅ **Persistence implemented (Phase B3).** 50m Prone
-  live scoring is journalled through `QUAL` → `SessionStore` with **decimal**
-  scores and the **50-minute** match clock carried in `config`. No Final
-  transition, no 3P position transition (single-stage qualification). ⚠️
-  **Recovery UI (restoration) NOT implemented** — a crashed Prone session is
-  detected/preserved by the recovery dialog, but rebuilding the UI on resume is
-  **Phase D**. Reducer coverage: ✅ (generic `QualificationState`).
+- **Implementation status:** ✅ Persistence (B3, decimal) · ✅ Reducer/replay
+  (Phase C timer anchors) · ✅ **Recovery implemented (Phase D3)** — a crashed
+  Prone session resumes via the shared qualification restorer: Prone-only
+  layout (never 3P mode, position transitions, a Finals controller, or a
+  post-60 Final), decimal totals, target face + shot sequence restored, and
+  the frozen **50-minute** clock rebased (never 75/90, never restarted). The
+  60/60-crash edge resumes as complete and refuses a 61st official. ⏳ **EST
+  malfunction workflow pending (Phase E).**
 - **Rules verification status:** 📋 User-supplied ISSF rule extract (edition/page
   not supplied).
 - **Last reviewed:** 2026-07-19
@@ -146,3 +147,4 @@ As Air Rifle, **plus**:
 |---|---|---|---|
 | 2026-07-19 | Populated from supplied Prone rules; recorded no-Final constraint and 50-min match clock. | Project owner (📋) | ShootingPage restorer, reducer, tests |
 | 2026-07-19 | **B3: persistence implemented.** 50m Prone live scoring journalled via `QUAL` (decimal, 50-min clock, no Final, no 3P transition); tests + manual verified (journal discipline=PRONE50, no finals/3P events, crash→restart detected as 50m Rifle Prone). Recovery restore = Phase D. | Implementation (🛠) | ShootingPage gate, tst_qualification |
+| 2026-07-20 | **D3: recovery implemented.** Prone resumes via the shared restorer (manual: officials 1–3 decimal restored, live shot 4 = 9.6, total 41.9, 50-min clock 49:53→resumed 49:47, chain VALID, no finals/3P events; 60/60 crash refuses a 61st). | Implementation (🛠) | main.qml dispatcher, tst_qualification |

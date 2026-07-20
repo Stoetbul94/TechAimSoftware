@@ -579,4 +579,73 @@ void run_qualification_tests()
         c2.closeSession();
         QDir(root).removeRecursively();
     }
+
+    // 12) D3 — PRONE50 resume: decimal values, the 50-minute (not 75/90) clock
+    //     config, no finals/3P discipline state, and the completed-session
+    //     edge case (crash after shot 60 → cap refuses a 61st on resume).
+    {
+        const QString root = QDir::temp().filePath(
+            QStringLiteral("ta_qual_recovery_prone"));
+        QDir(root).removeRecursively();
+        StoragePaths::setRootOverrideForTesting(root);
+        StoragePaths::initialize();
+
+        QString sid;
+        {
+            QualificationController builder;
+            builder.startSession(QStringLiteral("PRONE50"), QStringLiteral("60"),
+                                 QStringLiteral("A"), 60, 3000000, 900000, -1,
+                                 QString(), QString());
+            builder.beginPreparation();
+            builder.beginSighting();
+            builder.submitSighter(0, 0, 10.6, 11, 0, true);
+            builder.beginOfficialMatch();
+            builder.submitOfficial(0.5, 0.5, 10.7, 21, 0, true);
+            builder.submitOfficial(0, 0, 10.8, 22, 0, true);
+            sid = builder.sessionId();
+        }
+
+        QualificationController c2;
+        check(c2.resumeFromRecovery(sid), "PRONE50 resume succeeds");
+        check(c2.storeForTesting()->state().discipline == Discipline::Prone50m,
+              "PRONE50 resume: discipline stays Prone50m (not 3P/generic)");
+        check(std::holds_alternative<QualificationState>(
+                  c2.storeForTesting()->state().disc),
+              "PRONE50 resume: no finals/3P discipline state");
+        check(c2.storeForTesting()->state().config.matchMs == 3000000,
+              "PRONE50 resume: 50-minute clock config (not 75/90)");
+        check(qRound(c2.totalDecimal() * 10) == 215,
+              "PRONE50 resume: decimal total 21.5 (10.7+10.8)");
+        check(c2.submitOfficial(0, 0, 10.9, 900, 0, true)
+                  && c2.officialShotCount() == 3,
+              "PRONE50 resume: next live decimal official is shot 3");
+        c2.closeSession();
+
+        // Completed-session edge: crash right after the 60th official — the
+        // resumed controller must refuse a 61st (match complete, not reopened).
+        QString sid60;
+        {
+            QualificationController b60;
+            b60.startSession(QStringLiteral("PRONE50"), QStringLiteral("60"),
+                             QStringLiteral("A"), 60, 3000000, 900000, -1,
+                             QString(), QString());
+            b60.beginPreparation();
+            b60.beginSighting();
+            b60.beginOfficialMatch();
+            for (int n = 1; n <= 60; ++n)
+                b60.submitOfficial(0, 0, 10.0, 1000 + n, 0, true);
+            sid60 = b60.sessionId();
+            // crash before completeMatch/close
+        }
+        QualificationController c60;
+        check(c60.resumeFromRecovery(sid60),
+              "PRONE50 60/60 crash: session resumes for completion");
+        check(c60.officialShotCount() == 60,
+              "PRONE50 60/60 crash: all 60 officials recovered");
+        check(!c60.submitOfficial(0, 0, 10.0, 9999, 0, true),
+              "PRONE50 60/60 crash: 61st official refused after resume");
+        c60.completeMatch();   // canonical completion path
+        c60.closeSession();
+        QDir(root).removeRecursively();
+    }
 }
