@@ -96,6 +96,19 @@ RecoveryCandidate RecoveryCoordinator::classifyFile(const QString& path)
         c.officialShots = s.officials.size();
         c.expectedShots = s.config.officialShots;
         c.totalTenths = s.totalTenths;
+        // Generic dialog metadata (Phase D): the reducer phase and — when the
+        // session anchored a phase clock via TimerStarted — the FROZEN
+        // remaining time at the last valid event. Discipline-agnostic: pure
+        // reducer/envelope values; -1 = no active clock (e.g. finals, which
+        // anchors on command windows instead).
+        c.phaseId = static_cast<qint8>(s.phase);
+        if (s.timer.active && s.timer.durationMs > 0
+                && !rep.validEnvelopes.isEmpty()) {
+            const qint64 lastMono = rep.validEnvelopes.last().monotonicMs;
+            const qint64 remaining =
+                s.timer.durationMs - (lastMono - s.timer.startedAtMonoMs);
+            c.remainingMs = remaining > 0 ? remaining : 0;
+        }
     }
     if (!rep.validEnvelopes.isEmpty())
         c.lastEventWallIso = rep.validEnvelopes.last().wallTimestampIso;
@@ -159,6 +172,8 @@ QVariantList RecoveryCoordinator::scanForQml()
         m[QStringLiteral("officialShots")] = c.officialShots;
         m[QStringLiteral("expectedShots")] = c.expectedShots;
         m[QStringLiteral("totalTenths")] = c.totalTenths;
+        m[QStringLiteral("phaseId")] = static_cast<int>(c.phaseId);
+        m[QStringLiteral("remainingMs")] = static_cast<qlonglong>(c.remainingMs);
         m[QStringLiteral("recoveryClass")] =
             QString::fromLatin1(recoveryClassName(c.recoveryClass));
         m[QStringLiteral("validationDetail")] = c.validationDetail;

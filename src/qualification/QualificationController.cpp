@@ -223,6 +223,135 @@ void QualificationController::submitEvent(const DomainEvent& event)
     m_store->submit(event);
 }
 
+// ── Phase D: crash recovery / resume ────────────────────────────────────────
+
+QVariantList QualificationController::scanForRecovery()
+{
+    if (!m_recovery)
+        m_recovery = std::make_unique<RecoveryCoordinator>();
+    return m_recovery->scanForQml();
+}
+
+bool QualificationController::resumeFromRecovery(const QString& sessionId)
+{
+    if (!m_recovery)
+        m_recovery = std::make_unique<RecoveryCoordinator>();
+    // Ensure the candidate is cached before we build its recovered state — the
+    // scan that populated the dialog may have run on a DIFFERENT controller's
+    // coordinator (e.g. the startup scan), so scan here too. Idempotent.
+    m_recovery->scan();
+    RecoveredMatchState rec;
+    ErrorInfo err;
+    if (!m_recovery->buildRecoveredState(sessionId, &rec, &err)) {
+        emit journalWriteFailed(rec.journalPath, err.technicalDetail);
+        return false;
+    }
+    // Only the three qualification disciplines this seam owns. Anything else
+    // (finals, 3P-qual, 25m) is refused — never resumed here.
+    const Discipline d = rec.state.discipline;
+    if (d != Discipline::AirRifle10m && d != Discipline::AirPistol10m
+            && d != Discipline::Prone50m)
+        return false;
+    loadRecoveredState(rec);
+    return true;
+}
+
+void QualificationController::discardRecovery(const QString& sessionId)
+{
+    if (!m_recovery)
+        m_recovery = std::make_unique<RecoveryCoordinator>();
+    m_recovery->scan();   // ensure the candidate is known
+    m_recovery->archiveOrDiscard(sessionId, /*discarded*/ true);
+}
+
+void QualificationController::loadRecoveredState(const RecoveredMatchState& recovered)
+{
+    const SessionState& s = recovered.state;
+    // Reopen the SAME journal in append mode and adopt the reducer-rebuilt
+    // state (the store writes RecoveryStarted/RecoveryCompleted). No new
+    // session, no archive of the interrupted journal.
+    const ReliabilityResult rr = m_store->resumeSession(recovered);
+    if (!rr.ok) {
+        emit journalWriteFailed(journalPath(), rr.error.technicalDetail);
+        return;
+    }
+    // Restore controller config EXCLUSIVELY from the reducer state.
+    m_discipline = s.discipline;
+    m_officialShots = s.config.officialShots;
+    m_matchMs = s.config.matchMs;
+    m_recoveredLastEventMonoMs = recovered.lastEventMonoMs;
+    m_recovered = true;
+    emit sessionChanged();
+    emit shotCountsChanged();
+    emit totalsChanged();
+    emit persistenceHealthChanged(persistenceHealth());
+}
+
+namespace {
+QVariantMap recordFromReducerShot(const StateShotRecord& r, bool sighter)
+{
+    QVariantMap m;
+    m[QStringLiteral("isSighter")] = sighter;
+    m[QStringLiteral("shotNumber")] = r.shot.shotNumber;
+    m[QStringLiteral("calculatedscore")] = r.effectiveTenths() / 10.0;
+    m[QStringLiteral("xmm")] = r.shot.xHundredthMm / 100.0;
+    m[QStringLiteral("ymm")] = r.shot.yHundredthMm / 100.0;
+    m[QStringLiteral("direction")] =
+        QString::number(r.shot.directionCentiDeg / 100.0, 'f', 2);
+    m[QStringLiteral("externalId")] = static_cast<qlonglong>(r.shot.externalId);
+    m[QStringLiteral("simulated")] = r.shot.simulated;
+    return m;
+}
+} // namespace
+
+QVariantList QualificationController::recoveredShots() const
+{
+    QVariantList out;
+    if (!m_store)
+        return out;
+    const SessionState& s = m_store->state();
+    for (const StateShotRecord& r : s.sighters)
+        out.append(recordFromReducerShot(r, /*sighter*/ true));
+    for (const StateShotRecord& r : s.officials)
+        out.append(recordFromReducerShot(r, /*sighter*/ false));
+    return out;
+}
+
+qint64 QualificationController::recoveredRemainingMs() const
+{
+    if (!m_store)
+        return 0;
+    const TimerState& t = m_store->state().timer;
+    if (!t.active || t.durationMs <= 0)
+        return 0;
+    const qint64 elapsed = m_recoveredLastEventMonoMs - t.startedAtMonoMs;
+    const qint64 remaining = t.durationMs - (elapsed > 0 ? elapsed : 0);
+    return remaining > 0 ? remaining : 0;
+}
+
+int QualificationController::recoveredPhaseId() const
+{
+    return m_store ? static_cast<int>(m_store->state().phase) : 0;
+}
+
+int QualificationController::recoveredTimerId() const
+{
+    return m_store ? static_cast<int>(m_store->state().timer.timerId) : 0;
+}
+
+qint64 QualificationController::recoveredMaxExternalId() const
+{
+    if (!m_store)
+        return 0;
+    qint64 mx = 0;
+    const SessionState& s = m_store->state();
+    for (const StateShotRecord& r : s.sighters)
+        mx = qMax(mx, r.shot.externalId);
+    for (const StateShotRecord& r : s.officials)
+        mx = qMax(mx, r.shot.externalId);
+    return mx;
+}
+
 // ── reads ──────────────────────────────────────────────────────────────────
 
 int QualificationController::persistenceHealth() const
@@ -234,6 +363,11 @@ int QualificationController::persistenceHealth() const
 QString QualificationController::journalPath() const
 {
     return m_store ? m_store->currentJournalPath() : QString();
+}
+
+QString QualificationController::sessionId() const
+{
+    return m_store ? m_store->state().sessionId : QString();
 }
 
 bool QualificationController::active() const

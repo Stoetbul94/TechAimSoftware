@@ -30,6 +30,28 @@ Rectangle {
         visible = (list && list.length > 0)
     }
 
+    // Presentation helpers over the candidate's generic reducer metadata.
+    function phaseName(id) {
+        if (id === 1) return qsTr("Preparation")
+        if (id === 2) return qsTr("Sighting")
+        if (id === 3) return qsTr("Official match")
+        return "—"
+    }
+    function remainingText(ms) {
+        if (ms === undefined || ms < 0) return ""
+        var totalSecs = Math.floor(ms / 1000)
+        var m = Math.floor(totalSecs / 60)
+        var s = totalSecs - m * 60
+        return (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s)
+    }
+    // Score format follows the discipline: AP10 is integer/full-ring, the
+    // decimal disciplines show one decimal.
+    function totalText(c) {
+        if (!c) return ""
+        return c.disciplineId === "AP10" ? String(Math.round(c.totalTenths / 10))
+                                         : (c.totalTenths / 10.0).toFixed(1)
+    }
+
     // block clicks to the app behind
     MouseArea { anchors.fill: parent; onClicked: {} }
 
@@ -69,7 +91,17 @@ Rectangle {
                 Text { text: parent.c ? (parent.c.officialShots + " / " + parent.c.expectedShots) : ""
                        color: "white"; font.pixelSize: 13; font.bold: true }
                 Text { text: qsTr("Total"); color: "#9aa0aa"; font.pixelSize: 13 }
-                Text { text: parent.c ? (parent.c.totalTenths / 10.0).toFixed(1) : ""
+                Text { text: root.totalText(parent.c)
+                       color: "white"; font.pixelSize: 13; font.bold: true }
+                Text { text: qsTr("Phase"); color: "#9aa0aa"; font.pixelSize: 13
+                       visible: parent.c ? parent.c.phaseId > 0 : false }
+                Text { text: parent.c ? root.phaseName(parent.c.phaseId) : ""
+                       visible: parent.c ? parent.c.phaseId > 0 : false
+                       color: "white"; font.pixelSize: 13; font.bold: true }
+                Text { text: qsTr("Time left"); color: "#9aa0aa"; font.pixelSize: 13
+                       visible: parent.c ? parent.c.remainingMs >= 0 : false }
+                Text { text: parent.c ? root.remainingText(parent.c.remainingMs) : ""
+                       visible: parent.c ? parent.c.remainingMs >= 0 : false
                        color: "white"; font.pixelSize: 13; font.bold: true }
                 Text { text: qsTr("Saved"); color: "#9aa0aa"; font.pixelSize: 13 }
                 Text { text: parent.c ? (parent.c.lastEventWallIso || parent.c.lastModifiedIso || "") : ""

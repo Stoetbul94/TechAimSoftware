@@ -561,7 +561,11 @@ ApplicationWindow {
     function dispatchRecovery(sessionId, disciplineId) {
         if (disciplineId === "FINAL3P")
             return window.restoreFinals3P(sessionId)
-        if (disciplineId === "AR10" || disciplineId === "AP10"
+        // Phase D1: 10m Air Rifle qualification recovery (shared qualification
+        // restorer; AP10/PRONE50 follow in D2/D3).
+        if (disciplineId === "AR10")
+            return window.restoreQualification(sessionId, disciplineId)
+        if (disciplineId === "AP10"
                 || disciplineId === "PRONE50" || disciplineId === "3P50") {
             dialogManager.showError(qsTr("Recovery Not Yet Available"),
                 qsTr("Crash recovery for this discipline is not implemented in "
@@ -609,6 +613,46 @@ ApplicationWindow {
         shootingPage.recoveryReplayInProgress = true
         var resumed = FINALS3P.resumeFromRecovery(sessionId)
         shootingPage.recoveryReplayInProgress = false
+        if (!resumed) {
+            loginPage.visible = true
+            window.isRecoveredGame = false
+            dialogManager.showError(qsTr("Recovery Failed"),
+                qsTr("The unfinished match could not be resumed."))
+        }
+        return resumed
+    }
+
+    // Phase D: shared qualification restorer (AR10/AP10/PRONE50). Configures
+    // the SAME selectors/labels a fresh start uses, then enters qualification
+    // mode via the canonical enterQualificationMode(config, false) seam and
+    // injects the recovered session — never a parallel recovery-only UI.
+    function restoreQualification(sessionId, disciplineId) {
+        window.isRecoveredGame = true
+        // Discipline-specific configuration: mode / distance / sub-mode.
+        // (gameMode 0 = pistol, 1 = rifle; gameRange is window-scope.)
+        if (disciplineId === "AR10") {
+            loginPage.gameMode = 1; gameRange = 10; loginPage.gameSubMode = 0
+        } else if (disciplineId === "AP10") {
+            loginPage.gameMode = 0; gameRange = 10; loginPage.gameSubMode = 0
+        } else {                                        // PRONE50
+            loginPage.gameMode = 1; gameRange = 50; loginPage.gameSubMode = 0
+        }
+        // Event selection from the recovered course size, in LOGIN-space
+        // (gameEvent 0..4 = 10/20/30/40/60 for both modes; the canonical
+        // loginPage.updateGameType() translates to the per-mode event-model
+        // index — rifle 1..5, pistol 7..11 — and runs both on assignment and
+        // on the visibility flip). Defaults to the 60-shot official event.
+        var expected = recoveryDialog.current ? recoveryDialog.current.expectedShots * 1 : 60
+        var evIndex = {10: 0, 20: 1, 30: 2, 40: 3, 60: 4}[expected]
+        if (evIndex === undefined) evIndex = 4
+        loginPage.gameEvent = evIndex
+        // Fresh-start parity: LoginPage.perfromStart() creates the legacy
+        // .tch save-match file; without it setGame_is_sighter_mode()
+        // dereferences a null QFile when the match phase engages.
+        APPSETTINGS.saveMatch(true)
+        loginPage.visible = false   // reveal ShootingPage; isRecoveredGame
+                                    // suppresses beginPreparationPhase()
+        var resumed = shootingPage.restoreQualificationSession(sessionId, disciplineId)
         if (!resumed) {
             loginPage.visible = true
             window.isRecoveredGame = false

@@ -563,6 +563,14 @@ void AppSettings::setGame_is_sighter_mode(int value)
     qDebug() << __FUNCTION__ << value;
     game_is_sighter_mode = value;
 
+    // No legacy save-match file yet (e.g. a session entered outside the
+    // LoginPage start flow): keep the flag in memory and skip the XML update
+    // instead of dereferencing a null QFile.
+    if (m_matchSavedFile == NULL) {
+        qDebug("setGame_is_sighter_mode: no save-match file, skipping XML update");
+        return;
+    }
+
     //update xml file
     QDomDocument xmlDocument;
     if(!m_matchSavedFile->open(QIODevice::ReadWrite | QIODevice::Text))

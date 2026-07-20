@@ -6,12 +6,14 @@ interruption rules referenced below.
 
 ## Document status
 
-- **Implementation status:** ✅ **Persistence implemented (Phase B1).** Air Rifle
-  live scoring is journalled through `QUAL` (`QualificationController`) →
-  `SessionStore`; the journal + reducer are authoritative for shot acceptance.
-  ⚠️ **Recovery UI (restoration) NOT implemented** — the recovery dialog detects
-  and preserves a crashed AR10 session, but rebuilding the AR10 UI on resume is
-  **Phase D**. Reducer coverage: ✅ (generic `QualificationState`).
+- **Implementation status:** ✅ Persistence (B1) · ✅ Reducer/replay (Phase C:
+  `TimerStarted` anchors, frozen-remaining derivation) · ✅ **Recovery
+  implemented (Phase D1)** — a crashed AR10 session resumes via the shared
+  qualification restorer: AR10 layout, decimal scoring, sighters + officials
+  restored through the live projection path, frozen 75-min clock rebased (never
+  restarted), next official continues the sequence, duplicate hardware identity
+  refused. ⏳ **EST malfunction workflow pending (Phase E)** — normal crash
+  recovery only; Jury credits/allowances are not implemented.
 - **Rules verification status:** 📋 User-supplied ISSF rule extract (edition/page
   not supplied).
 - **Last reviewed:** 2026-07-19
@@ -205,3 +207,4 @@ validate journal + hash chain → close cleanly. Plus one simulated EST incident
 |---|---|---|---|
 | 2026-07-19 | Populated from supplied AR10 rules; recorded scoring-only implementation status. | Project owner (📋) | ShootingPage restorer, reducer, tests |
 | 2026-07-19 | **B1: persistence implemented.** AR10 live scoring journalled via `QUAL`/`SessionStore`; durability boundary + duplicate prevention wired; tests + manual scoring/crash verified (journal Clean, AR10 detected as unfinished). Recovery restore remains Phase D. | Implementation (🛠) | QualificationController, ShootingPage, main.qml wiring, tst_qualification |
+| 2026-07-20 | **D1: recovery implemented.** Shared qualification restorer (`enterQualificationMode(config, startFresh)` + `restoreQualificationSession`); QUAL resume adopts the journal (no new session); recovered shots projected through the live `addToSeries` path; frozen 75-min clock rebased; manual drill verified (officials 1–4 → live shot 5, timer 74:52→resumed, chain VALID, no re-anchor). Fixed a latent null `m_matchSavedFile` crash for non-LoginPage entry. | Implementation (🛠) | ShootingPage/CenterPane restorer, main.qml dispatcher, RecoveryDialog, appsettings |

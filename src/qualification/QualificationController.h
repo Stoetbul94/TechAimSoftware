@@ -23,11 +23,13 @@
 // is exercised by the QtCore reliability harness.
 
 #include <QObject>
+#include <QVariantList>
 #include <QVariantMap>
 
 #include <memory>
 
 #include "reliability/store/SessionStore.h"
+#include "reliability/recovery/RecoveryCoordinator.h"
 
 class QualificationController : public QObject
 {
@@ -79,9 +81,41 @@ public:
 
     Q_INVOKABLE void pumpRetryQueue();  // drive the store's retry drain
 
+    // ── Phase D: crash recovery / resume ─────────────────────────────────
+    // Scan Sessions/Current for unfinished sessions (QVariantList of candidate
+    // maps for the recovery dialog). Discipline-agnostic — the dialog/dispatcher
+    // routes by disciplineId.
+    Q_INVOKABLE QVariantList scanForRecovery();
+    // Resume a crashed qualification session: reopen its journal in append
+    // mode, adopt the reducer-rebuilt state, and prime the recovered shots /
+    // timer for QML projection. Refuses non-qualification (AR10/AP10/PRONE50)
+    // sessions — it never creates a new session or archives the interrupted
+    // journal. Returns false if the session cannot be resumed.
+    Q_INVOKABLE bool resumeFromRecovery(const QString& sessionId);
+    Q_INVOKABLE void discardRecovery(const QString& sessionId);
+
+    // Recovered shots for the QML projection (sighters first, then officials,
+    // each in the same shape as the live shotAccepted record). Read-only
+    // projection of reducer state — nothing is re-journalled.
+    Q_INVOKABLE QVariantList recoveredShots() const;
+    // Frozen remaining competition time (ms) for the recovered phase clock:
+    // durationMs − (lastEventMonoMs − timer.startedAtMonoMs). 0 if no timer.
+    Q_INVOKABLE qint64 recoveredRemainingMs() const;
+    // Recovered MatchPhase as int (0 None, 1 Preparation, 2 Sighting,
+    // 3 OfficialMatch) and TimerId (0 Preparation … 3 Window).
+    Q_INVOKABLE int recoveredPhaseId() const;
+    Q_INVOKABLE int recoveredTimerId() const;
+    // Largest external shot id seen — used to rebase live shot identity so a
+    // re-reported hardware measurement after resume is not double-counted.
+    Q_INVOKABLE qint64 recoveredMaxExternalId() const;
+    // True once a session has been resumed (drives the recovery-projection
+    // path in QML).
+    Q_INVOKABLE bool recovered() const { return m_recovered; }
+
     // ── reads (all derived from the reducer's authoritative state) ─────────
     int persistenceHealth() const;
     QString journalPath() const;
+    QString sessionId() const;
     bool active() const;
     int officialShotCount() const;
     int sighterCount() const;
@@ -105,8 +139,14 @@ private:
     bool submitShot(bool sighter, double xMm, double yMm, double score,
                     qint64 externalId, double directionDeg, bool simulated);
     void submitEvent(const ta::rel::DomainEvent& event);
+    void loadRecoveredState(const ta::rel::RecoveredMatchState& recovered);
 
     std::unique_ptr<ta::rel::SessionStore> m_store;
+    std::unique_ptr<ta::rel::RecoveryCoordinator> m_recovery;
+    bool m_recovered = false;
+    // tm of the last valid recovered event (for the timer rebase). Set only on
+    // resume; the reducer stays the sole authority for everything else.
+    qint64 m_recoveredLastEventMonoMs = 0;
     ta::rel::Discipline m_discipline = ta::rel::Discipline::None;
     bool m_journalFailureNotified = false;
     // Configured official-shot cap (from startSession; <= 0 = uncapped/free

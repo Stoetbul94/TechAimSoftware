@@ -51,6 +51,8 @@ struct RecoveryCandidate {
     qint32 officialShots = 0;     // recovered so far
     qint32 expectedShots = 0;     // from config
     qint32 totalTenths = 0;
+    qint8 phaseId = 0;            // reducer MatchPhase at the crash
+    qint64 remainingMs = -1;      // frozen phase-clock remaining (-1 = none)
     quint64 lastValidSeq = 0;
     RecoveryClass recoveryClass = RecoveryClass::Fatal;
     QString validationDetail;     // human-facing reason when not Clean

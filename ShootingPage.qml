@@ -42,6 +42,12 @@ Item {
     // (the signal fires synchronously inside submit, so these stay valid).
     property real qualPendingAngle: 0
     property real qualPendingRadius: 0
+    // Phase D: true while restoreQualificationSession() replays a recovered
+    // session into the UI. Guards the canonical transitions it reuses
+    // (changedToMatchMode) from RE-journalling phase events — the recovered
+    // journal already contains OfficialMatchStarted + its TimerStarted anchor,
+    // and re-anchoring would restart the frozen match clock.
+    property bool qualRecoveryInProgress: false
 
     // ── 50m Rifle 3 Positions (ISSF 3x20 qualification) ──────────────────────
     // Position is derived from the match-shot count: 0-19 kneeling, 20-39
@@ -982,14 +988,14 @@ Item {
         // legacy path until B2/B3. is3PMatch/isFinalsMatch are already excluded
         // above. See docs/issf-rules/10m-air-rifle.md.
         // Which migrated qualification discipline is this? (B1: AR10 decimal;
-        // B2: AP10 integer). 10m rifle => Air Rifle; 10m pistol => Air Pistol.
-        // AP10 uses INTEGER/full-ring scoring — never the AR10 decimal path.
-        qualDisciplineId = ""
+        // B2: AP10 integer; B3: PRONE50 decimal). Pure detection — the actual
+        // mode engagement is the shared enterQualificationMode() seam below.
+        var freshQualId = ""
         if (APPSETTINGS.get10or50mRange() === 10) {
             if (APPSETTINGS.getGameMode() === 1)
-                qualDisciplineId = "AR10"        // 10m Air Rifle  (decimal)
+                freshQualId = "AR10"             // 10m Air Rifle  (decimal)
             else if (APPSETTINGS.getGameMode() === 0)
-                qualDisciplineId = "AP10"        // 10m Air Pistol (integer)
+                freshQualId = "AP10"             // 10m Air Pistol (integer)
         } else if (APPSETTINGS.get10or50mRange() === 50) {
             // 50m Rifle Prone: rifle, sub-mode 0 (Prone), decimal. 50m 3P
             // qualification (sub-mode 1 / is3PMatch) is NOT migrated — its rules
@@ -997,34 +1003,127 @@ Item {
             // Finals or a 3P position transition (both already excluded above).
             if (APPSETTINGS.getGameMode() === 1
                     && APPSETTINGS.getGameSubMode() === 0 && !is3PMatch)
-                qualDisciplineId = "PRONE50"     // 50m Rifle Prone (decimal)
+                freshQualId = "PRONE50"          // 50m Rifle Prone (decimal)
         }
-        if (qualDisciplineId !== "") {
-            qualShotSeq = 0
-            var athlete = (typeof userName !== "undefined" && userName) ? userName : ""
-            // ISSF course parameters are CONFIG the caller supplies (not rules
-            // in the engine): official count + match/prep clocks as timer
-            // anchors. matchShootCount = the selected count (60 for the full
-            // event); getTimeCount/getPrepTimeCount return seconds.
-            var matchMs = APPSETTINGS.getTimeCount(matchShootCount) * 1000
-            var prepMs = APPSETTINGS.getPrepTimeCount() * 1000
-            var started = QUAL.startSession(qualDisciplineId, String(matchShootCount),
-                                            athlete, matchShootCount, matchMs,
-                                            prepMs, -1, "", "")
-            if (started) {
-                QUAL.beginPreparation()
-                QUAL.beginSighting()   // combined ISSF prep+sighting phase
-                MODREADER.appendToLogFile("B1/B2: " + qualDisciplineId
-                                          + " session journalling started ("
-                                          + QUAL.journalPath() + ")")
-            } else {
-                qualDisciplineId = ""
-                MODREADER.appendToLogFile("B1/B2: QUAL.startSession failed — "
-                                          + "falling back to the legacy path")
-            }
-        }
+        if (freshQualId !== "")
+            enterQualificationMode(freshQualId, true)   // canonical fresh start
+        else
+            qualDisciplineId = ""                       // unmigrated: legacy path
         MODREADER.appendToLogFile("beginPreparationPhase: done, totalSighterTime = "
                                   + centerPanel.totalSighterTime + " is3P = " + is3PMatch)
+    }
+
+    // Phase D: single qualification mode-engagement for the MIGRATED
+    // disciplines (AR10/AP10/PRONE50) — the canonical fresh start AND the
+    // recovery resume enter here; there is no parallel recovery-only setup.
+    // Part A (always): discipline routing + shot-identity reset. Part B
+    // (startFresh only): begin a brand-new journalled QUAL session and its
+    // original preparation+sighting phase. Recovery passes false and injects
+    // the recovered session instead — it must never create a new session,
+    // archive the interrupted journal, or restart the phase clock.
+    function enterQualificationMode(disciplineId, startFresh)
+    {
+        if (!startFresh) {
+            // Recovery arrives without beginPreparationPhase(): establish the
+            // qualification mode it would have, in the same order the fresh
+            // path runs (mode flags → models → sighter routing). Fresh-path
+            // callers arrive with all of this already done.
+            isFinalsMatch = false
+            is3PMatch = false
+            resetDataModels()                    // clear stale fresh models
+            centerPanel.totalSighterTime = APPSETTINGS.getPrepTimeCount()
+            changedToSigherMode()                // sighter routing + clean face
+        }
+        qualDisciplineId = disciplineId
+        qualShotSeq = 0
+        if (!startFresh)
+            return
+        var athlete = (typeof userName !== "undefined" && userName) ? userName : ""
+        // ISSF course parameters are CONFIG the caller supplies (not rules in
+        // the engine): official count + match/prep clocks as timer anchors.
+        // matchShootCount = the selected count (60 for the full event);
+        // getTimeCount/getPrepTimeCount return seconds.
+        var matchMs = APPSETTINGS.getTimeCount(matchShootCount) * 1000
+        var prepMs = APPSETTINGS.getPrepTimeCount() * 1000
+        var started = QUAL.startSession(disciplineId, String(matchShootCount),
+                                        athlete, matchShootCount, matchMs,
+                                        prepMs, -1, "", "")
+        if (started) {
+            QUAL.beginPreparation()
+            QUAL.beginSighting()   // combined ISSF prep+sighting phase
+            MODREADER.appendToLogFile("QUAL: " + disciplineId
+                                      + " session journalling started ("
+                                      + QUAL.journalPath() + ")")
+        } else {
+            qualDisciplineId = ""
+            MODREADER.appendToLogFile("QUAL: startSession failed — "
+                                      + "falling back to the legacy path")
+        }
+    }
+
+    // Phase D: restore a crashed qualification session (AR10/AP10/PRONE50).
+    // Deterministic order (docs/session-reliability-phaseB-qualification.md):
+    // the journal was already validated + reducer-replayed in C++; here we
+    // (1) configure the qualification mode WITHOUT starting a session,
+    // (2) adopt the recovered journal/state, (3) project the recovered shots
+    // through the SAME rightPanel.addToSeries used after a durable live
+    // acceptance, (4) re-establish the recovered phase via the canonical
+    // sighting→match transition, (5) rebase the frozen phase clock, and
+    // (6) seed the live shot identity so a re-reported pre-crash measurement
+    // is refused by the reducer's externalId guard.
+    function restoreQualificationSession(sessionId, disciplineId)
+    {
+        enterQualificationMode(disciplineId, false)
+        if (!QUAL.resumeFromRecovery(sessionId)) {
+            qualDisciplineId = ""
+            return false
+        }
+        qualRecoveryInProgress = true
+        var shots = QUAL.recoveredShots()
+        var i, s, p
+        // Sighters first, while sligterMode is true — the exact classification
+        // addToSeries applies to a live sighting-phase shot.
+        for (i = 0; i < shots.length; ++i) {
+            s = shots[i]
+            if (s.isSighter !== true)
+                continue
+            p = centerPanel.polarForMm(s.xmm * 1, s.ymm * 1)
+            rightPanel.addToSeries(p.x, p.y, s.calculatedscore * 1,
+                                   s.xmm * 1, s.ymm * 1)
+        }
+        var remainSecs = Math.floor(QUAL.recoveredRemainingMs() / 1000)
+        if (QUAL.recoveredPhaseId() === 3) {   // MatchPhase::OfficialMatch
+            // Canonical sighting→match transition (clean face, officials-only
+            // totals, match clock running). qualRecoveryInProgress suppresses
+            // its QUAL.beginOfficialMatch() so the recovered journal is not
+            // re-anchored — the frozen clock is rebased below instead.
+            changedToMatchMode()
+            for (i = 0; i < shots.length; ++i) {
+                s = shots[i]
+                if (s.isSighter === true)
+                    continue
+                p = centerPanel.polarForMm(s.xmm * 1, s.ymm * 1)
+                rightPanel.addToSeries(p.x, p.y, s.calculatedscore * 1,
+                                       s.xmm * 1, s.ymm * 1)
+            }
+            centerPanel.restoreMatchClockRemaining(remainSecs)
+        } else {
+            // Preparation+Sighting: resume the countdown from the frozen
+            // remaining prep time (never the full 15 minutes).
+            centerPanel.startPreparationCountdown()
+            centerPanel.restorePrepCountdownRemaining(remainSecs)
+        }
+        // Live shot identity continues past every recovered externalId, so the
+        // next live measurement becomes recovered-max+1 (and a duplicate
+        // retransmission of the final pre-crash shot is refused by identity).
+        qualShotSeq = Math.max(qualShotSeq, QUAL.recoveredMaxExternalId())
+        qualRecoveryInProgress = false
+        MODREADER.appendToLogFile("QUAL: recovered " + disciplineId + " session "
+                                  + sessionId + " — officials "
+                                  + QUAL.officialShotCount() + ", sighters "
+                                  + QUAL.sighterCount() + ", remaining "
+                                  + remainSecs + "s")
+        return true
     }
 
     // 3P mid-match position change: shots become sighters for the new position
@@ -1136,8 +1235,11 @@ Item {
         centerPanel.disableMotorMovement = false
 
         // B1/B2: the official match clock has begun — journal the transition so
-        // a recovered qualification session knows it is past sighting.
-        if (qualDisciplineId !== "")
+        // a recovered qualification session knows it is past sighting. Phase D:
+        // suppressed during recovery replay — the recovered journal already
+        // holds OfficialMatchStarted + its TimerStarted anchor, and re-emitting
+        // them would restart the frozen match clock.
+        if (qualDisciplineId !== "" && !qualRecoveryInProgress)
             QUAL.beginOfficialMatch()
     }
 

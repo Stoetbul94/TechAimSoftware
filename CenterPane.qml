@@ -1814,6 +1814,48 @@ Item {
         sighterTimer.stop()
     }
 
+    // ── Phase D: qualification crash-recovery helpers ────────────────────────
+    // Map authoritative target-face millimetres to the polar-chart (angle,
+    // radius) the display pipeline uses — the IDENTICAL transform live shots go
+    // through in onShootCountChanged (mm → pixel via the per-discipline face
+    // span, then mapToValue on the polar series). Recovered shots projected
+    // with this land exactly where the same live shot would have.
+    function polarForMm(xmm, ymm)
+    {
+        var pistalWidthHeight = gameRange == 10 ? 155.5 : 500
+        var rifleWidthHeight = gameRange == 10 ? 45.5 : 154.4
+        var shootingWidth = gameMode ? pistalWidthHeight : rifleWidthHeight
+        var shootingHeight = gameMode ? pistalWidthHeight : rifleWidthHeight
+
+        var offsetX = shootingMianRect.width/shootingWidth
+        var offsetY = shootingMianRect.height/shootingHeight
+
+        var centerX = shootingPanelRect.width/2
+        var centerY = shootingPanelRect.height/2
+
+        itemPoint.x = centerX+((xmm)*offsetX)
+        itemPoint.y = centerY-((ymm)*offsetY)
+
+        return root.mapToValue(paneItem.itemPoint, polarSeries)
+    }
+
+    // Rebase the running phase clocks to a recovered FROZEN remaining value
+    // (seconds) — spec: application downtime never consumes competition time,
+    // and the phase never restarts from its full duration. The elapsed counter
+    // is set so remaining = total − elapsed; the normal 1s tick continues the
+    // countdown from there. No Jury credit / recovery allowance is applied here
+    // (those are explicit Phase-E actions).
+    function restoreMatchClockRemaining(remainSecs)
+    {
+        gameTime = Math.max(0, totalGameTime - remainSecs)
+        stopTimer.text = minutesToseconds(Math.max(0, remainSecs))
+    }
+    function restorePrepCountdownRemaining(remainSecs)
+    {
+        sighterTime = Math.max(0, totalSighterTime - remainSecs)
+        stStopTimer.text = minutesToseconds(Math.max(0, remainSecs))
+    }
+
     function calculateShootingSocre(xPoint, yPoint, demoXPoint, demoYPoint)
     {
         lastShotXmm = xPoint

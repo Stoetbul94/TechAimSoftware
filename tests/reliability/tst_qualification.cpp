@@ -10,8 +10,11 @@
 #include "qualification/QualificationController.h"
 #include "reliability/journal/JournalValidator.h"
 #include "reliability/replay/ReplayEngine.h"
+#include "reliability/storage/StoragePaths.h"
 #include "test_support.h"
 
+#include <QDir>
+#include <QVariantList>
 #include <QVariantMap>
 
 using namespace ta::rel;
@@ -455,5 +458,68 @@ void run_qualification_tests()
                       && rpr.state.timer.active,
                   "PRONE50 crash: match clock anchored, discipline PRONE50");
         }
+    }
+
+    // 10) Phase D — controller-level resume through the real recovery path
+    //     (disk journal + coordinator). A fresh controller reopens a crashed
+    //     AR10 journal, projects the recovered shots, continues numbering, and
+    //     refuses a duplicate hardware id after resume.
+    {
+        const QString root = QDir::temp().filePath(
+            QStringLiteral("ta_qual_recovery_test"));
+        QDir(root).removeRecursively();
+        StoragePaths::setRootOverrideForTesting(root);
+        StoragePaths::initialize();
+
+        QString sid;
+        const qint64 lastOfficialExtId = 23;
+        {   // build a crashed AR10 session (real journal); scope-out = crash
+            QualificationController builder;
+            check(builder.startSession(QStringLiteral("AR10"),
+                    QStringLiteral("60"), QStringLiteral("A"), 60,
+                    4500000, 900000, -1, QString(), QString()),
+                  "resume: crashed builder session starts");
+            builder.beginPreparation();
+            builder.beginSighting();
+            builder.submitSighter(0, 0, 10.5, 10, 0, true);
+            builder.beginOfficialMatch();
+            builder.submitOfficial(1.0, 1.0, 10.9, 21, 0, true);
+            builder.submitOfficial(0, 0, 10.2, 22, 0, true);
+            builder.submitOfficial(-1.0, 2.0, 9.8, lastOfficialExtId, 0, true);
+            sid = builder.sessionId();
+            // no closeSession — simulated crash.
+        }
+
+        QualificationController c2;
+        const bool ok = c2.resumeFromRecovery(sid);
+        check(ok, "resume: crashed AR10 session resumed by a fresh controller");
+        check(c2.recovered() && c2.active(),
+              "resume: controller is active and marked recovered");
+        check(c2.officialShotCount() == 3 && c2.sighterCount() == 1,
+              "resume: 3 officials + 1 sighter recovered from the journal");
+        check(c2.nextOfficialShotNumber() == 4,
+              "resume: recovered next official number is 4");
+        check(c2.recoveredShots().size() == 4,
+              "resume: recoveredShots() projects 4 rows (1 sighter + 3 officials)");
+        check(qRound(c2.totalDecimal() * 10) == 309,
+              "resume: recovered official total 30.9 (10.9+10.2+9.8)",
+              QString::number(c2.totalDecimal()));
+
+        // Duplicate hardware input after resume: a re-reported final pre-crash
+        // shot (same external identity) must NOT be accepted again.
+        check(!c2.submitOfficial(0, 0, 9.0, lastOfficialExtId, 0, true),
+              "resume: duplicate recovered externalId refused (no double-count)");
+        check(c2.officialShotCount() == 3,
+              "resume: official count unchanged after the duplicate");
+
+        // A genuinely new official continues the sequence as shot 4.
+        check(c2.submitOfficial(0, 0, 10.6, 900, 0, true),
+              "resume: a new official is accepted after resume");
+        check(c2.officialShotCount() == 4,
+              "resume: the new live official is shot 4 (not 1/5/duplicate 3)");
+
+        // The resumed journal continues and still validates.
+        c2.closeSession();
+        QDir(root).removeRecursively();
     }
 }
