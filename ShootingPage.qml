@@ -846,6 +846,63 @@ Item {
         }
     }
 
+    // ── Phase E: qualification reactions to the EST incident workflow ────
+    // Edge-triggered on the reducer-derived statusKey. The authoritative
+    // state and every authorised action live in INCIDENTS/the journal; this
+    // block only adjusts the qualification presentation: freeze the QML match
+    // clock at raise, switch to sighter routing for the authorised
+    // recovery-sighting phase (QML-side only, like the 3P position change —
+    // no MODREADER.changeSighterMode swap), and on authorised resumption
+    // restore match routing with the clock rebased to frozen + credit.
+    // Finals sessions are untouched (guarded by qualDisciplineId).
+    property string incidentPhaseSeen: ""
+    Connections {
+        target: INCIDENTS
+        enabled: shootingPage.qualDisciplineId !== ""
+        function onIncidentChanged() {
+            var m = INCIDENTS.activeIncident()
+            var key = (m && m.statusKey !== undefined) ? m.statusKey : ""
+            if (key === shootingPage.incidentPhaseSeen)
+                return
+            var prev = shootingPage.incidentPhaseSeen
+            shootingPage.incidentPhaseSeen = key
+            if (key === "awaiting-jury-decision") {
+                // Incident raised: competition clock frozen (journalled
+                // TimerPaused); stop the visible countdowns too.
+                centerPanel.stopMatchClock()
+                MODREADER.appendToLogFile("EST incident raised — match clock frozen")
+            } else if (key === "recovery-sighting") {
+                // Authorised unlimited recovery sighting: classify incoming
+                // shots as sighters (journal + models) without touching the
+                // C++ list swap; face keeps the current shots for reference.
+                sligterMode = true
+                centerPanel.setSighterIndicator(true)
+                MODREADER.appendToLogFile("EST recovery sighting active")
+            } else if (key === "resumed" || (key === "" && prev !== ""
+                       && prev !== "resumed" && prev !== "resolved")) {
+                // Official resumption authorised (or the incident was
+                // cancelled/closed while frozen): back to match routing, face
+                // shows the official record, clock rebased to frozen+credit.
+                if (!sligterMode || prev === "recovery-sighting"
+                        || prev === "awaiting-jury-decision"
+                        || prev === "awaiting-official-resume") {
+                    sligterMode = false
+                    centerPanel.setSighterIndicator(false)
+                    globalModelOfData.clear()
+                    for (var i = 0; i < globalMatchModel.count; ++i)
+                        globalModelOfData.append(globalMatchModel.get(i))
+                    rightPanel.updateTotal()
+                    centerPanel.currentPageIndexChanged()
+                    var remainSecs = Math.floor(INCIDENTS.remainingCompetitionMs() / 1000)
+                    centerPanel.showSlighter(false)   // restarts the match tick
+                    centerPanel.restoreMatchClockRemaining(remainSecs)
+                    MODREADER.appendToLogFile("EST resume authorised — clock "
+                                              + remainSecs + "s (frozen + credit)")
+                }
+            }
+        }
+    }
+
     // ── 3P FINAL HUD (Option A: top strip + contextual layers) ───────────
     // Pure presentation over FINALS3P — see docs/3p-finals-discipline.md.
     FinalsHud {
@@ -1053,7 +1110,7 @@ Item {
             QUAL.beginSighting()   // combined ISSF prep+sighting phase
             MODREADER.appendToLogFile("QUAL: " + disciplineId
                                       + " session journalling started ("
-                                      + QUAL.journalPath() + ")")
+                                      + QUAL.journalPath + ")")
         } else {
             qualDisciplineId = ""
             MODREADER.appendToLogFile("QUAL: startSession failed — "
@@ -1118,6 +1175,25 @@ Item {
         // retransmission of the final pre-crash shot is refused by identity).
         qualShotSeq = Math.max(qualShotSeq, QUAL.recoveredMaxExternalId())
         qualRecoveryInProgress = false
+        // Phase E: incident-aware resume gating. If an unresolved incident
+        // survived the crash, the clock stays frozen and the Jury workflow
+        // opens for review — officials remain refused at the controller
+        // regardless of any UI state (no bypass via ordinary Resume).
+        var incState = INCIDENTS.activeIncident()
+        if (incState && incState.statusKey !== undefined) {
+            incidentPhaseSeen = incState.statusKey
+            centerPanel.stopMatchClock()
+            if (incState.statusKey === "recovery-sighting") {
+                sligterMode = true
+                centerPanel.setSighterIndicator(true)
+            }
+            centerPanel.restoreMatchClockRemaining(
+                Math.floor(INCIDENTS.remainingCompetitionMs() / 1000))
+            Qt.callLater(windowManager.openIncidents)
+            MODREADER.appendToLogFile("QUAL: resumed with unresolved EST "
+                                      + "incident (" + incState.statusKey
+                                      + ") — officials blocked")
+        }
         MODREADER.appendToLogFile("QUAL: recovered " + disciplineId + " session "
                                   + sessionId + " — officials "
                                   + QUAL.officialShotCount() + ", sighters "

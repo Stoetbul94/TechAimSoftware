@@ -12,14 +12,23 @@ hierarchy.
 
 ## Document status
 
-- **Implementation status:** Finals recovery restores competition time (M3).
-  **M3 Phase A (done):** the generic EST incident *domain* is implemented in
-  the reliability layer — 4 typed events, a reducer-owned incident record, and
-  full serialize/journal/replay/snapshot coverage (`tests/reliability/
-  tst_incidents.cpp`). The reducer records Jury decisions as data and **never**
-  auto-applies a time allowance. **Not yet implemented:** the operator-facing
-  incident *workflow* UI (Phase E) and any discipline write-path that raises
-  incidents (Phase B/D).
+- **Implementation status:** ✅ **Workflow implemented (Phase E)** on top of the
+  Phase A domain. `EstIncidentController` (INCIDENTS) is the application seam:
+  raise (freezes the competition clock via the existing `TimerPaused`),
+  Jury decisions (`EstDecisionRecorded` — accepted duration, explicit
+  no-allowance tri-state, backup review), single-application `TimeCreditGranted`,
+  authorised recovery phases (`RecoveryPhaseEntered`: 5-min preparation,
+  unlimited recovery sighting — sighters bracketed by `sightingGrantedSeq`),
+  live `TargetReassigned`, official-resume gate (journalled + `TimerResumed`;
+  officials are refused at BOTH controllers while unresolved), resolution, and
+  the per-session incident history. Operator UI: `IncidentWindow.qml`
+  ("Range incident" in the left menu — never on the athlete face). Crash
+  recovery is incident-aware: the dialog warns on an unresolved incident and
+  resume keeps the clock frozen + officials blocked until authorisation.
+  ONE authoritative clock: remaining = duration − elapsedRunning(pause-aware)
+  + Σcredits; replay-deterministic; a credit may push remaining past the
+  original duration. Score corrections remain outside this workflow (official
+  correction architecture only). State v3 records the decision tri-state.
 - **Rules verification status:** 📋 User-supplied ISSF rule extract. Rule
   numbers (6.11.2, 6.21.3, 6.21.4) were provided by the project owner. **Edition,
   year, and page were not supplied** and are not verified against a published
@@ -327,3 +336,4 @@ Interruption-boundary tests (must be explicit about the threshold, not hidden):
 |---|---|---|---|
 | 2026-07-19 | Created shared EST malfunction reference from supplied 6.11.2 / 6.21.3 / 6.21.4 extracts. | Project owner (📋) | Incident model, EST events, recovery UI |
 | 2026-07-19 | M3 Phase A: implemented the generic EST incident domain — 4 events (`EstIncidentRaised`/`TimeCreditGranted`/`RecoveryPhaseEntered`/`EstIncidentResolved`), reducer-owned `EstIncidentRecord`, state v2, `tst_incidents.cpp`. No auto-allowance. | Implementation (🛠) | events, reducer, SessionState, tests |
+| 2026-07-21 | **Phase E: operator workflow implemented** (service + UI + resume gating + incident-aware recovery). 2 new events (`EstDecisionRecorded`, `TargetReassigned`); state v3; boundary cases (exactly 3:00/5:00) surface for manual Jury decision — still no auto-classification. Manual drills: AR10 full workflow incl. crash mid-sighting; AP10 no-allowance; PRONE50 reassignment; FINAL3P regression. | Implementation (🛠) | INCIDENTS service, IncidentWindow, controllers, RecoveryDialog |

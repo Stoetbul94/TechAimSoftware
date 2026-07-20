@@ -104,10 +104,35 @@ RecoveryCandidate RecoveryCoordinator::classifyFile(const QString& path)
         c.phaseId = static_cast<qint8>(s.phase);
         if (s.timer.active && s.timer.durationMs > 0
                 && !rep.validEnvelopes.isEmpty()) {
+            // Pause-aware frozen remaining plus authorised credits (Phase E):
+            // pure reducer-state math — an incident freezes the clock via
+            // TimerPaused, and Jury credit is separate generic incident data.
             const qint64 lastMono = rep.validEnvelopes.last().monotonicMs;
+            const qint64 stopAt = s.timer.paused ? s.timer.pausedAtMonoMs
+                                                 : lastMono;
+            qint64 elapsedRunning =
+                stopAt - s.timer.startedAtMonoMs - s.timer.pausedAccumMs;
+            if (elapsedRunning < 0)
+                elapsedRunning = 0;
+            qint64 credit = 0;
+            for (const EstIncidentRecord& r : s.estIncidents)
+                credit += r.timeCreditMs;
             const qint64 remaining =
-                s.timer.durationMs - (lastMono - s.timer.startedAtMonoMs);
+                s.timer.durationMs - elapsedRunning + credit;
             c.remainingMs = remaining > 0 ? remaining : 0;
+        }
+        // Unresolved-incident projection for the recovery dialog (Phase E):
+        // generic reducer values only.
+        for (const EstIncidentRecord& r : s.estIncidents) {
+            if (r.status == static_cast<quint8>(IncidentStatus::Open)
+                    && !r.officialResumeAuthorised) {
+                c.openIncident = true;
+                c.incidentTypeId = static_cast<qint8>(r.incidentType);
+                c.incidentScopeId = static_cast<qint8>(r.scope);
+                c.incidentCreditDecision = static_cast<qint8>(r.creditDecision);
+                c.incidentCreditMs = r.timeCreditMs;
+                break;
+            }
         }
     }
     if (!rep.validEnvelopes.isEmpty())
@@ -174,6 +199,13 @@ QVariantList RecoveryCoordinator::scanForQml()
         m[QStringLiteral("totalTenths")] = c.totalTenths;
         m[QStringLiteral("phaseId")] = static_cast<int>(c.phaseId);
         m[QStringLiteral("remainingMs")] = static_cast<qlonglong>(c.remainingMs);
+        m[QStringLiteral("openIncident")] = c.openIncident;
+        m[QStringLiteral("incidentTypeId")] = static_cast<int>(c.incidentTypeId);
+        m[QStringLiteral("incidentScopeId")] = static_cast<int>(c.incidentScopeId);
+        m[QStringLiteral("incidentCreditDecision")] =
+            static_cast<int>(c.incidentCreditDecision);
+        m[QStringLiteral("incidentCreditMs")] =
+            static_cast<qlonglong>(c.incidentCreditMs);
         m[QStringLiteral("recoveryClass")] =
             QString::fromLatin1(recoveryClassName(c.recoveryClass));
         m[QStringLiteral("validationDetail")] = c.validationDetail;

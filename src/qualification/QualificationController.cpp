@@ -330,12 +330,11 @@ qint64 QualificationController::recoveredRemainingMs() const
 {
     if (!m_store)
         return 0;
-    const TimerState& t = m_store->state().timer;
-    if (!t.active || t.durationMs <= 0)
-        return 0;
-    const qint64 elapsed = m_recoveredLastEventMonoMs - t.startedAtMonoMs;
-    const qint64 remaining = t.durationMs - (elapsed > 0 ? elapsed : 0);
-    return remaining > 0 ? remaining : 0;
+    // Phase E: the ONE authoritative computation — pause-aware (an incident
+    // freezes the clock via TimerPaused) plus authorised credits. Crash time
+    // and incident time never consume competition time.
+    return EstIncidentController::remainingCompetitionMsFor(
+        m_store->state(), m_recoveredLastEventMonoMs);
 }
 
 int QualificationController::recoveredPhaseId() const

@@ -697,6 +697,11 @@ ApplicationWindow {
             Component.onCompleted: windowManager.register("coach", coachReportWindow)
             onAboutToOpen: viewMode = 0
         }
+        // Phase E — EST incident / Jury workflow (operator range control).
+        IncidentWindow {
+            id: incidentWindow
+            Component.onCompleted: windowManager.register("incidents", incidentWindow)
+        }
     }
 
     // TechAim dialog framework: the ONE modal message/confirmation surface for

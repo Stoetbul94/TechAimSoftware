@@ -1847,7 +1847,10 @@ Item {
     // (those are explicit Phase-E actions).
     function restoreMatchClockRemaining(remainSecs)
     {
-        gameTime = Math.max(0, totalGameTime - remainSecs)
+        // gameTime may legitimately go NEGATIVE: an authorised Jury time
+        // credit can push the remaining time above the original duration
+        // (remaining = totalGameTime − gameTime keeps counting correctly).
+        gameTime = totalGameTime - remainSecs
         stopTimer.text = minutesToseconds(Math.max(0, remainSecs))
     }
     function restorePrepCountdownRemaining(remainSecs)

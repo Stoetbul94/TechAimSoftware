@@ -53,6 +53,12 @@ struct RecoveryCandidate {
     qint32 totalTenths = 0;
     qint8 phaseId = 0;            // reducer MatchPhase at the crash
     qint64 remainingMs = -1;      // frozen phase-clock remaining (-1 = none)
+    // Phase E: unresolved-incident projection (generic reducer values).
+    bool openIncident = false;    // an incident still requires authorisation
+    qint8 incidentTypeId = 0;
+    qint8 incidentScopeId = 0;
+    qint8 incidentCreditDecision = 0;   // 0 pending | 1 none | 2 granted
+    qint64 incidentCreditMs = 0;
     quint64 lastValidSeq = 0;
     RecoveryClass recoveryClass = RecoveryClass::Fatal;
     QString validationDetail;     // human-facing reason when not Clean

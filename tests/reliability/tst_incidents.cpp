@@ -13,7 +13,10 @@
 #include "reliability/reducer/SessionReducer.h"
 #include "reliability/reducer/SessionState.h"
 #include "reliability/replay/ReplayEngine.h"
+#include "reliability/storage/StoragePaths.h"
 #include "test_support.h"
+
+#include <QDir>
 
 // Phase E workflow block (defined below, invoked from run_incident_tests).
 void run_incident_workflow_tests();
@@ -543,5 +546,71 @@ void run_incident_workflow_tests()
         check(m.value(QStringLiteral("creditDecision")).toInt() == 0
                   && m.value(QStringLiteral("timeCreditMs")).toLongLong() == 0,
               "no automatic decision at the exact boundary");
+    }
+
+    // 13) Crash DURING an incident (recovery-sighting phase active, credit
+    //     granted, resume not yet authorised): the resumed session keeps the
+    //     frozen clock + credit, officials stay blocked until the journalled
+    //     authorisation, then flow again — all through the real disk journal.
+    {
+        const QString root = QDir::temp().filePath(
+            QStringLiteral("ta_incident_crash_test"));
+        QDir(root).removeRecursively();
+        StoragePaths::setRootOverrideForTesting(root);
+        StoragePaths::initialize();
+
+        QString sid;
+        qint64 frozenPlusCredit = 0;
+        {   // crashed session: officials → incident → credit → sighting → crash
+            QualificationController b;
+            b.startSession(QStringLiteral("AR10"), QStringLiteral("60"),
+                           QStringLiteral("A"), 60, 4500000, 900000, -1,
+                           QString(), QString());
+            b.beginPreparation();
+            b.beginSighting();
+            b.beginOfficialMatch();
+            b.submitOfficial(0, 0, 10.9, 1, 0, true);
+            b.submitOfficial(0, 0, 10.2, 2, 0, true);
+            EstIncidentController bi;
+            bi.setStoreProvider([&b]() { return b.storeForTesting(); });
+            bi.raiseIncident(1, 0, QStringLiteral("1"), QString(),
+                             QStringLiteral("continuous fault"));
+            bi.recordAcceptedDuration(240000, QStringLiteral("Chair"),
+                                      QString());
+            bi.grantTimeCredit(240000, QStringLiteral("Chair"), QString());
+            bi.beginRecoveryPreparation(QStringLiteral("Chair"));
+            bi.beginRecoverySighting(QStringLiteral("Chair"));
+            b.submitSighter(0, 0, 9.5, 3, 0, true);   // recovery sighter
+            sid = b.sessionId();
+            frozenPlusCredit = bi.remainingCompetitionMs();
+            // crash — no resume authorisation, no close.
+        }
+
+        QualificationController c2;
+        EstIncidentController i2;
+        i2.setStoreProvider([&c2]() { return c2.storeForTesting(); });
+        check(c2.resumeFromRecovery(sid),
+              "crash during recovery sighting: session resumes");
+        check(i2.hasOpenIncident(),
+              "incident survives the crash (not inferred resolved)");
+        check(i2.activeIncident().value(QStringLiteral("statusKey")).toString()
+                  == QLatin1String("recovery-sighting"),
+              "recovered status: recovery sighting still active");
+        check(c2.storeForTesting()->state().timer.paused,
+              "clock still frozen after crash recovery");
+        check(c2.recoveredRemainingMs() == frozenPlusCredit,
+              "recovered remaining = frozen + credit (pause-aware)",
+              QString::number(c2.recoveredRemainingMs()));
+        check(!c2.submitOfficial(0, 0, 10.0, 10, 0, true),
+              "officials still blocked after resume (gate survives crash)");
+        check(c2.submitSighter(0, 0, 9.0, 11, 0, true),
+              "recovery sighters still allowed after resume");
+        check(i2.authoriseOfficialResume(QStringLiteral("Chair")),
+              "resume authorised after crash recovery");
+        check(c2.submitOfficial(0, 0, 10.5, 12, 0, true)
+                  && c2.officialShotCount() == 3,
+              "official 3 accepted after post-crash authorisation");
+        c2.closeSession();
+        QDir(root).removeRecursively();
     }
 }

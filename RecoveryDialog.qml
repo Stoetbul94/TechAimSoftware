@@ -122,6 +122,35 @@ Rectangle {
                 color: "#d0392b"; font.pixelSize: 12; wrapMode: Text.WordWrap
             }
 
+            // Phase E: unresolved EST incident warning. Resume restores the
+            // session, but official shots stay blocked at the controller until
+            // the Jury workflow authorises resumption (no bypass).
+            Rectangle {
+                width: parent.width; radius: 8
+                visible: root.current ? root.current.openIncident === true : false
+                color: "#33261024"
+                border.color: "#e8a13d"
+                height: incidentWarnCol.implicitHeight + 16
+                Column {
+                    id: incidentWarnCol
+                    anchors.left: parent.left; anchors.right: parent.right
+                    anchors.top: parent.top; anchors.margins: 8; spacing: 3
+                    Text {
+                        text: qsTr("⚠ Unresolved EST incident")
+                        color: "#e8a13d"; font.pixelSize: 13; font.bold: true
+                    }
+                    Text {
+                        width: parent.width; wrapMode: Text.WordWrap
+                        color: "#e8ce9d"; font.pixelSize: 12
+                        text: (root.current && root.current.incidentCreditDecision === 0
+                               ? qsTr("Jury decision pending. ")
+                               : (root.current && root.current.incidentCreditMs > 0
+                                  ? qsTr("Time credit authorised. ") : qsTr("No allowance ruled. ")))
+                              + qsTr("Official shots remain blocked after resume until the Jury workflow authorises official resumption.")
+                    }
+                }
+            }
+
             Row {
                 spacing: 12
                 anchors.right: parent.right

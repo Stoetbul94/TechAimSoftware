@@ -58,7 +58,7 @@ fixed (after reporting the conflict — never silently).
 | [50m Rifle Prone](50m-rifle-prone.md) | ✅ Scoring + persistence + recovery | ✅ Yes (B3, decimal) | ✅ Yes (C) | ✅ **Yes (D3)** — EST workflow = Phase E | 📋 Yes | 2026-07-20 | EST boundary at exactly 3:00 / 5:00 |
 | [50m Rifle 3 Positions Qualification](50m-rifle-3p-qualification.md) | 🔧 Scoring only | ❌ No | ⚠️ Partial (generic) | ❌ No | ⏳ **INCOMPLETE** | — | Course of fire, timing, position structure |
 | [25m Pistol](25m-pistol.md) | ❌ No | ❌ No | ❌ No | ❌ No | ⏳ **INCOMPLETE** | — | Entire discipline unmodelled |
-| [Shared: EST malfunctions](est-malfunctions.md) | Domain ✅ / workflow ❌ | ✅ events+reducer (Phase A) | ✅ `EstIncidentRecord` | n/a | 📋 Yes | 2026-07-19 | 3:00 / 5:00 boundary interpretation |
+| [Shared: EST malfunctions](est-malfunctions.md) | ✅ Domain + operator workflow (Phase E) | ✅ events+reducer (A+E) | ✅ `EstIncidentRecord` v3 | incident-aware (E4) | 📋 Yes | 2026-07-21 | 3:00 / 5:00 boundary interpretation |
 
 **Explicitly excluded:** 25m Rapid Fire Pistol. There is intentionally no rules
 file for it. Do not create one during EST/recovery work.
@@ -100,3 +100,4 @@ Finals restorer.
 | 2026-07-19 | M3 Phase A landed: recovery dispatcher + generic EST incident domain (4 events, reducer record, state v2). Docs synced. | Implementation (🛠) | main.qml, reliability layer, tests |
 | 2026-07-19 | Phase B0: shared qualification persistence seam (`QualificationController`/`QUAL`). B1: 10m Air Rifle live scoring journalled (persistence ✅, recovery restore = Phase D). | Implementation (🛠) | src/qualification, ShootingPage, tests |
 | 2026-07-20 | Phase C (replay readiness + timer anchors) and Phase D1–D3 (AR10/AP10/PRONE50 crash recovery via the shared qualification restorer). EST workflow remains Phase E. | Implementation (🛠) | QUAL, ShootingPage/CenterPane, main.qml, RecoveryDialog |
+| 2026-07-21 | Phase E: EST incident + Jury workflow (E0–E5) — service, operator UI, allowances, recovery phases, resume gating, incident-aware crash recovery, per-session history. EST rules edition/page still pending (📋). | Implementation (🛠) | src/incident, IncidentWindow, reliability layer |
