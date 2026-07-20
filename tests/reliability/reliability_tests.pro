@@ -12,7 +12,9 @@ include(../../Reliability.pri)
 # this GUI-free harness proves it carries no QML/GUI dependency.
 INCLUDEPATH += $$PWD/../../src
 SOURCES += $$PWD/../../src/qualification/QualificationController.cpp
+SOURCES += $$PWD/../../src/incident/EstIncidentController.cpp
 HEADERS += $$PWD/../../src/qualification/QualificationController.h
+HEADERS += $$PWD/../../src/incident/EstIncidentController.h
 
 # Committed golden fixtures live next to the sources (byte-exact, -text in
 # .gitattributes). The harness reads them from the source tree.

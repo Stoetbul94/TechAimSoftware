@@ -1,5 +1,7 @@
 #include "QualificationController.h"
 
+#include "incident/EstIncidentController.h"
+
 #include <QCoreApplication>
 #include <QUuid>
 #include <QtGlobal>
@@ -135,6 +137,13 @@ bool QualificationController::submitShot(bool sighter, double xMm, double yMm,
                                          double directionDeg, bool simulated)
 {
     if (!m_store || !m_store->active())
+        return false;
+
+    // Phase E resume gate: while an unresolved EST incident requires an
+    // authorised decision, OFFICIAL shots are refused at the controller —
+    // never merely a disabled button. Sighters stay allowed (the authorised
+    // recovery-sighting phase depends on them). See EstIncidentController.
+    if (!sighter && EstIncidentController::officialsBlocked(m_store->state()))
         return false;
 
     // Configured official cap: a shot beyond the cap is refused here, so the

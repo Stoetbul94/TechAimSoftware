@@ -92,7 +92,10 @@ enum class RejectReason {
     StageShotLimitReached,
     DuplicateShot,
     InvalidShotData,
-    FinalsNotActive
+    FinalsNotActive,
+    // Phase E: an unresolved EST incident requires an authorised decision
+    // before official shots may continue (generic authority model).
+    EstIncidentBlocked
 };
 
 inline QString rejectReasonName(RejectReason r)
@@ -104,6 +107,7 @@ inline QString rejectReasonName(RejectReason r)
     case RejectReason::DuplicateShot:         return QStringLiteral("DuplicateShot");
     case RejectReason::InvalidShotData:       return QStringLiteral("InvalidShotData");
     case RejectReason::FinalsNotActive:       return QStringLiteral("FinalsNotActive");
+    case RejectReason::EstIncidentBlocked:    return QStringLiteral("EstIncidentBlocked");
     }
     return QStringLiteral("Unknown");
 }

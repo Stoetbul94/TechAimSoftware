@@ -125,6 +125,9 @@ public:
     // Test seam: inject an in-memory journal file BEFORE startSession so the
     // controller can be exercised deterministically in the console harness.
     ta::rel::SessionStore* storeForTesting() { return m_store.get(); }
+    // Phase E: the incident workflow service submits its typed events through
+    // the ACTIVE session's store (main.cpp wires the provider).
+    ta::rel::SessionStore* store() { return m_store.get(); }
 
 signals:
     void sessionChanged();

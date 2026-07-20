@@ -2,6 +2,7 @@
 #include "FinalsReportBuilder.h"
 #include "../reliability/storage/StoragePaths.h"
 #include "../reliability/core/FixedPoint.h"
+#include "../incident/EstIncidentController.h"
 
 #include <QApplication>
 #include <QCoreApplication>
@@ -824,6 +825,15 @@ void Finals3PController::registerShot(double xMm, double yMm, double decimalScor
     if ((m_window == WindowState::MatchOpen && m_targetMode != TargetMode::Match)
             || (m_window == WindowState::SightingOpen && m_targetMode != TargetMode::Sighter)) {
         rejectShot(RejectReason::WrongTargetMode, xMm, yMm, false, externalShotId);
+        return;
+    }
+    // Phase E resume gate (generic authority model): while an unresolved EST
+    // incident requires an authorised decision, OFFICIAL shots are refused at
+    // the controller. No Finals-specific restart procedure is implied here —
+    // that behaviour awaits its official rule.
+    if (m_window == WindowState::MatchOpen && m_store && m_store->active()
+            && EstIncidentController::officialsBlocked(m_store->state())) {
+        rejectShot(RejectReason::EstIncidentBlocked, xMm, yMm, false, externalShotId);
         return;
     }
     if (externalShotId >= 0)

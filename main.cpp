@@ -29,6 +29,7 @@
 #include "src/bridge/pdfexporter.h"
 #include "src/finals/Finals3PController.h"
 #include "src/qualification/QualificationController.h"
+#include "src/incident/EstIncidentController.h"
 #include "src/finals/FinalsAudioService.h"
 #include "src/reliability/storage/StoragePaths.h"
 #include "logfile.h"
@@ -296,6 +297,19 @@ int main(int argc, char *argv[])
     // FINALS3P it owns a reliability SessionStore for its match record.
     QualificationController qualController;
     engine.rootContext()->setContextProperty("QUAL", &qualController);
+    // Phase E — EST incident workflow service (INCIDENTS). Discipline-agnostic:
+    // it submits typed incident/Jury events through whichever session store is
+    // ACTIVE (qualification or finals); the reducer record is authoritative.
+    EstIncidentController incidentController;
+    incidentController.setStoreProvider(
+        [&qualController, &finalsController]() -> ta::rel::SessionStore* {
+            if (qualController.store() && qualController.store()->active())
+                return qualController.store();
+            if (finalsController.store() && finalsController.store()->active())
+                return finalsController.store();
+            return nullptr;
+        });
+    engine.rootContext()->setContextProperty("INCIDENTS", &incidentController);
     engine.load(QUrl(QLatin1String("qrc:/main.qml")));
     if (engine.rootObjects().isEmpty())
         return -1;

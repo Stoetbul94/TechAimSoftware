@@ -61,7 +61,11 @@ using DomainEvent = std::variant<
     EstIncidentRaised,
     TimeCreditGranted,
     RecoveryPhaseEntered,
-    EstIncidentResolved>;
+    EstIncidentResolved,
+    // Phase E — Jury decision + live target reassignment (appended at the END
+    // so all prior variant indexes never move)
+    EstDecisionRecorded,
+    TargetReassigned>;
 
 // Stable type identifier of the alternative currently held.
 inline const char* eventTypeId(const DomainEvent& event)

@@ -82,6 +82,15 @@ enum class IncidentStatus : quint8 {
 enum class RecoveryPhaseKind : quint8 {
     Preparation = 0, Sighting = 1, OfficialResume = 2
 };
+// Authorised Jury/RO decisions on an incident (Phase E). One parameterized
+// decision event covers them all (anti-proliferation): NoAllowance is the
+// explicit "no additional allowance" ruling (distinct from decision-pending);
+// DurationAccepted confirms the official interruption duration; Backup* record
+// the backup-score review outcome.
+enum class EstDecisionKind : quint8 {
+    NoAllowance = 0, DurationAccepted = 1,
+    BackupAccepted = 2, BackupRejected = 3, BackupInconclusive = 4
+};
 
 // Registry classifications (spec §12 / §20 / §8).
 enum class DurabilityClass : quint8 { Append, Flush, Sync };
@@ -768,6 +777,61 @@ struct RecoveryPhaseEntered {
         if (authorisedBy.isEmpty())
             return evdetail::invalid(
                 QStringLiteral("RecoveryPhaseEntered.authorisedBy empty"));
+        return ReliabilityResult::success();
+    }
+};
+
+// An authorised Jury/RO decision on an open incident (Phase E). Records the
+// tri-state allowance ruling (a deliberate NoAllowance is journalled — the
+// absence of TimeCreditGranted never implies it), the officially accepted
+// interruption duration, and backup-score review outcomes. Never mutates
+// clocks or scores.
+struct EstDecisionRecorded {
+    static constexpr const char* kType = "EstDecisionRecorded";
+    static constexpr qint32 kVersion = 1;
+    QString incidentId;
+    EstDecisionKind decision = EstDecisionKind::NoAllowance;
+    qint64 acceptedDurationMs = -1;   // official duration (-1 = not part of
+                                      // this decision)
+    Authority authority = Authority::Jury;
+    QString authorisedBy;            // official identifier, non-empty
+    QString reason;
+    ReliabilityResult validate() const
+    {
+        if (incidentId.isEmpty())
+            return evdetail::invalid(QStringLiteral("EstDecisionRecorded.incidentId empty"));
+        if (acceptedDurationMs < -1)
+            return evdetail::invalid(
+                QStringLiteral("EstDecisionRecorded.acceptedDurationMs < -1"));
+        if (authorisedBy.isEmpty())
+            return evdetail::invalid(
+                QStringLiteral("EstDecisionRecorded.authorisedBy empty"));
+        return ReliabilityResult::success();
+    }
+};
+
+// Authorised move to a reserve target/firing point DURING an open incident
+// (Phase E — Phase A folded the move into Resolve; the live workflow records
+// it when it happens; the envelope `tw` is the time of reassignment).
+struct TargetReassigned {
+    static constexpr const char* kType = "TargetReassigned";
+    static constexpr qint32 kVersion = 1;
+    QString incidentId;
+    QString originalTarget;
+    QString reserveTarget;
+    Authority authority = Authority::Jury;
+    QString authorisedBy;
+    QString reason;
+    ReliabilityResult validate() const
+    {
+        if (incidentId.isEmpty())
+            return evdetail::invalid(QStringLiteral("TargetReassigned.incidentId empty"));
+        if (reserveTarget.isEmpty())
+            return evdetail::invalid(
+                QStringLiteral("TargetReassigned.reserveTarget empty"));
+        if (authorisedBy.isEmpty())
+            return evdetail::invalid(
+                QStringLiteral("TargetReassigned.authorisedBy empty"));
         return ReliabilityResult::success();
     }
 };

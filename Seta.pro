@@ -22,7 +22,8 @@ SOURCES += main.cpp \
     src/finals/Finals3PController.cpp \
     src/finals/FinalsReportBuilder.cpp \
     src/finals/FinalsAudioService.cpp \
-    src/qualification/QualificationController.cpp
+    src/qualification/QualificationController.cpp \
+    src/incident/EstIncidentController.cpp
 
 # Offline coach-analytics module (pure C++, independent from Qt/QML).
 HEADERS += \
@@ -51,9 +52,11 @@ HEADERS += \
     src/finals/FinalsReportData.h \
     src/finals/FinalsReportBuilder.h \
     src/finals/FinalsAudioService.h \
-    src/qualification/QualificationController.h
+    src/qualification/QualificationController.h \
+    src/incident/EstIncidentController.h
 INCLUDEPATH += src/finals
 INCLUDEPATH += src/qualification
+INCLUDEPATH += src/incident
 
 # Session Reliability Layer (M0) - QtCore-only storage foundation.
 include(Reliability.pri)

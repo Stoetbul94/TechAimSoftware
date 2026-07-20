@@ -394,6 +394,22 @@ void EventSerializer::serializePayloadInto(const DomainEvent& event,
             w.field("juryNote", e.juryNote);
             w.field("rangeOfficerNote", e.rangeOfficerNote);
             w.field("incidentReportRef", e.incidentReportRef);
+        },
+        [&](const EstDecisionRecorded& e) {
+            w.field("incidentId", e.incidentId);
+            w.field("decision", static_cast<qint64>(e.decision));
+            w.field("acceptedDurationMs", e.acceptedDurationMs);
+            w.field("authority", static_cast<qint64>(e.authority));
+            w.field("authorisedBy", e.authorisedBy);
+            w.field("reason", e.reason);
+        },
+        [&](const TargetReassigned& e) {
+            w.field("incidentId", e.incidentId);
+            w.field("originalTarget", e.originalTarget);
+            w.field("reserveTarget", e.reserveTarget);
+            w.field("authority", static_cast<qint64>(e.authority));
+            w.field("authorisedBy", e.authorisedBy);
+            w.field("reason", e.reason);
         }
     }, event);
 }
@@ -889,6 +905,25 @@ ReliabilityResult EventSerializer::deserializePayload(const QString& typeId,
         e.juryNote = r.optString("juryNote");
         e.rangeOfficerNote = r.optString("rangeOfficerNote");
         e.incidentReportRef = r.optString("incidentReportRef");
+        *out = e;
+    } else if (typeId == QLatin1String(EstDecisionRecorded::kType)) {
+        EstDecisionRecorded e;
+        e.incidentId = r.reqString("incidentId");
+        e.decision = static_cast<EstDecisionKind>(r.reqInt("decision", 0, 4));
+        e.acceptedDurationMs = r.reqInt("acceptedDurationMs", -1,
+                                        std::numeric_limits<qint64>::max());
+        e.authority = readAuthority(r);
+        e.authorisedBy = r.reqString("authorisedBy");
+        e.reason = r.optString("reason");
+        *out = e;
+    } else if (typeId == QLatin1String(TargetReassigned::kType)) {
+        TargetReassigned e;
+        e.incidentId = r.reqString("incidentId");
+        e.originalTarget = r.optString("originalTarget");
+        e.reserveTarget = r.reqString("reserveTarget");
+        e.authority = readAuthority(r);
+        e.authorisedBy = r.reqString("authorisedBy");
+        e.reason = r.optString("reason");
         *out = e;
     } else {
         return ReliabilityResult::failure(ReliabilityError::UnsupportedEventType,

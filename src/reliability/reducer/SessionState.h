@@ -122,6 +122,15 @@ struct EstIncidentRecord {
     quint8 status = 0;                // IncidentStatus (Open at raise)
     QString reason;
     quint64 raisedSeq = 0;            // seq of the EstIncidentRaised envelope
+    // Phase E additions (state v3; absent in v2 snapshots → defaults):
+    quint8 creditDecision = 0;        // 0 pending | 1 no-allowance | 2 granted
+    quint8 backupReview = 0;          // 0 not-reviewed | 1 accepted | 2 rejected
+                                      // | 3 inconclusive
+    qint64 raisedAtMonoMs = 0;        // envelope tm of the raise (frozen-clock
+                                      // derivation)
+    quint64 sightingGrantedSeq = 0;   // seq of RecoveryPhaseEntered{Sighting}
+                                      // (0 = none) — sighters after this seq
+                                      // are recovery sighters
 
     bool operator==(const EstIncidentRecord& o) const
     {
@@ -143,7 +152,10 @@ struct EstIncidentRecord {
             && authorisedBy == o.authorisedBy && juryNote == o.juryNote
             && rangeOfficerNote == o.rangeOfficerNote
             && incidentReportRef == o.incidentReportRef && status == o.status
-            && reason == o.reason && raisedSeq == o.raisedSeq;
+            && reason == o.reason && raisedSeq == o.raisedSeq
+            && creditDecision == o.creditDecision && backupReview == o.backupReview
+            && raisedAtMonoMs == o.raisedAtMonoMs
+            && sightingGrantedSeq == o.sightingGrantedSeq;
     }
     bool operator!=(const EstIncidentRecord& o) const { return !(*this == o); }
 };
@@ -200,7 +212,10 @@ using DisciplineState =
 // Serialized state format version (StateSnapshot payloads).
 // v2 (M3 Phase A): adds the `estIncidents` array. Backward compatible — a v1
 // snapshot has no `estIncidents` key and deserializes to an empty vector.
-inline constexpr qint32 kSessionStateVersion = 2;
+// v3 (Phase E): adds creditDecision / backupReview / raisedAtMonoMs /
+// sightingGrantedSeq to each incident record. Backward compatible — v2
+// records lack the keys and deserialize to the defaults above.
+inline constexpr qint32 kSessionStateVersion = 3;
 
 struct SessionState {
     // identity & configuration

@@ -198,6 +198,15 @@ void run_serializer_tests()
                                 QStringLiteral("jury note"),
                                 QStringLiteral("RO note"),
                                 QStringLiteral("IR-2026-07")},
+            // Phase E — Jury decision + live target reassignment
+            EstDecisionRecorded{QStringLiteral("inc-1"),
+                                EstDecisionKind::NoAllowance, -1,
+                                Authority::Jury, QStringLiteral("Chair"),
+                                QStringLiteral("under 3 minutes")},
+            TargetReassigned{QStringLiteral("inc-1"), QStringLiteral("T3"),
+                             QStringLiteral("T9"), Authority::Jury,
+                             QStringLiteral("Chair"),
+                             QStringLiteral("continuous fault")},
         };
         check(catalogue.size() == static_cast<int>(std::variant_size_v<DomainEvent>),
               "round-trip covers every event type",

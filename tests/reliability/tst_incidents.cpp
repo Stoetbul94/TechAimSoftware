@@ -7,10 +7,16 @@
 // through snapshot serialize→deserialize, reducer rejections, and v1→v2
 // backward compatibility. See docs/issf-rules/est-malfunctions.md.
 
+#include "incident/EstIncidentController.h"
+#include "qualification/QualificationController.h"
+#include "reliability/journal/JournalValidator.h"
 #include "reliability/reducer/SessionReducer.h"
 #include "reliability/reducer/SessionState.h"
 #include "reliability/replay/ReplayEngine.h"
 #include "test_support.h"
+
+// Phase E workflow block (defined below, invoked from run_incident_tests).
+void run_incident_workflow_tests();
 
 using namespace ta::rel;
 
@@ -180,8 +186,14 @@ void run_incident_tests()
               "replayed state carries the incident");
         bool foldOk = false;
         const SessionState direct = fold(incidentScript(), &foldOk);
-        check(foldOk && rr.state.estIncidents == direct.estIncidents,
-              "replayed incident equals folded incident");
+        // Normalize the envelope-clock anchor (Phase E: raisedAtMonoMs is
+        // stamped from tm, which differs between the journal path and this
+        // tm=0 direct fold) — everything else must match exactly.
+        QVector<EstIncidentRecord> a = rr.state.estIncidents;
+        QVector<EstIncidentRecord> b = direct.estIncidents;
+        for (EstIncidentRecord& r : a) r.raisedAtMonoMs = 0;
+        for (EstIncidentRecord& r : b) r.raisedAtMonoMs = 0;
+        check(foldOk && a == b, "replayed incident equals folded incident");
     }
 
     // 5. Survives snapshot serialize → deserialize (state v2 round-trip) and
@@ -260,5 +272,276 @@ void run_incident_tests()
               dr.error.technicalDetail);
         check(back.estIncidents.isEmpty(),
               "absent estIncidents yields an empty vector");
+    }
+
+    // ── Phase E — full incident/Jury workflow through the service ─────────
+    run_incident_workflow_tests();
+}
+
+// Phase E: exercise EstIncidentController end-to-end against a real
+// SessionStore (in-memory journal + ManualClock): raise → clock freeze →
+// decisions → recovery phases → resume gate → resolve, plus replay
+// determinism, the explicit no-allowance ruling, double-credit rejection,
+// boundary keys (no auto-decision at exactly 3:00/5:00), and the official
+// resume gate at the qualification controller.
+void run_incident_workflow_tests()
+{
+    std::printf("--- EST incident workflow tests (Phase E) ---\n");
+
+    // Harness: an AR10-style qualification store with a live 75-min match
+    // clock, driven through QualificationController + EstIncidentController.
+    MemoryJournalFile file;
+    ManualClock clock;
+    QualificationController qc;
+    qc.storeForTesting()->setClockForTesting(&clock);
+    qc.storeForTesting()->setJournalFileForTesting(&file);
+    qc.startSession(QStringLiteral("AR10"), QStringLiteral("60"),
+                    QStringLiteral("A"), 60, 4500000, 900000, -1,
+                    QString(), QString());
+    qc.beginPreparation();
+    qc.beginSighting();
+    clock.advance(10000);
+    qc.submitSighter(0, 0, 10.5, 1, 0, true);        // original sighter
+    qc.beginOfficialMatch();                          // anchors 75-min clock
+    clock.advance(60000);
+    qc.submitOfficial(0, 0, 10.9, 11, 0, true);
+    clock.advance(30000);
+    qc.submitOfficial(0, 0, 10.3, 12, 0, true);
+
+    EstIncidentController inc;
+    inc.setStoreProvider([&qc]() { return qc.storeForTesting(); });
+
+    // 1) Raise (individual target) — clock freezes at the raise instant.
+    clock.advance(15000);
+    check(inc.raiseIncident(0 /*target-not-registering*/, 0 /*individual*/,
+                            QStringLiteral("1"), QString(),
+                            QStringLiteral("no registration")),
+          "raise individual-target incident");
+    check(inc.hasOpenIncident(), "incident is open");
+    const SessionState& st = qc.storeForTesting()->state();
+    check(st.timer.paused, "competition clock frozen (TimerPaused journalled)");
+    const qint64 frozenRemaining = inc.remainingCompetitionMs();
+    // elapsed running = 60000+30000+15000 = 105000 → remaining 4'395'000.
+    check(frozenRemaining == 4500000 - 105000,
+          "frozen remaining derived pause-aware",
+          QString::number(frozenRemaining));
+    clock.advance(120000);   // 2 minutes of interruption tick by...
+    check(inc.remainingCompetitionMs() == frozenRemaining,
+          "interruption time does not consume competition time");
+
+    // 2) Official shots are blocked at the controller while unresolved.
+    check(!qc.submitOfficial(0, 0, 10.0, 13, 0, true),
+          "official shot refused while incident unresolved");
+    check(qc.officialShotCount() == 2, "official count unchanged while blocked");
+
+    // 3) No automatic allowance: nothing was granted by raising alone.
+    {
+        const QVariantMap m = inc.activeIncident();
+        check(m.value(QStringLiteral("creditDecision")).toInt() == 0,
+              "allowance decision pending (never automatic)");
+        check(m.value(QStringLiteral("timeCreditMs")).toLongLong() == 0,
+              "no automatic time credit");
+        check(m.value(QStringLiteral("statusKey")).toString()
+                  == QLatin1String("awaiting-jury-decision"),
+              "status: awaiting Jury decision");
+    }
+
+    // 4) Jury confirms the official duration (4 minutes) — persists.
+    check(inc.recordAcceptedDuration(240000, QStringLiteral("Chair"),
+                                     QStringLiteral("stopwatch")),
+          "officially accepted duration recorded");
+    check(inc.activeIncident().value(QStringLiteral("acceptedDurationMs"))
+              .toLongLong() == 240000,
+          "accepted duration persists");
+    check(inc.activeIncident().value(QStringLiteral("boundaryKey")).toString()
+              == QLatin1String("over-3"),
+          "4:00 classified as over-3 guidance");
+
+    // 5) Authorised time credit — applied exactly once.
+    check(inc.grantTimeCredit(240000, QStringLiteral("Chair"),
+                              QStringLiteral("6.11.2 over-3-min")),
+          "Jury time credit granted");
+    check(!inc.grantTimeCredit(240000, QStringLiteral("Chair"),
+                               QStringLiteral("again")),
+          "second credit for the same incident refused");
+    check(inc.remainingCompetitionMs() == frozenRemaining + 240000,
+          "remaining = frozen + authorised credit (single application)",
+          QString::number(inc.remainingCompetitionMs()));
+
+    // 6) Recovery preparation + recovery sighting (authorised phases).
+    check(inc.beginRecoveryPreparation(QStringLiteral("Chair")),
+          "recovery preparation authorised");
+    check(inc.beginRecoverySighting(QStringLiteral("Chair")),
+          "recovery sighting authorised");
+    // Recovery sighter: journalled, excluded from officials, tagged by seq.
+    const int officialsBefore = qc.officialShotCount();
+    const double totalBefore = qc.totalDecimal();
+    check(qc.submitSighter(0, 0, 9.9, 20, 0, true),
+          "recovery sighter accepted while blocked");
+    check(qc.officialShotCount() == officialsBefore
+              && qFuzzyCompare(qc.totalDecimal() + 1.0, totalBefore + 1.0),
+          "recovery sighter excluded from official count/total");
+    {
+        const SessionState& s2 = qc.storeForTesting()->state();
+        const EstIncidentRecord& r = s2.estIncidents.first();
+        check(r.sightingGrantedSeq > 0
+                  && s2.sighters.last().seq > r.sightingGrantedSeq,
+              "recovery sighter deterministically tagged (seq bracket)");
+        check(s2.sighters.first().seq < r.raisedSeq,
+              "original sighter stays outside the recovery bracket");
+    }
+
+    // 7) Official resume gate: still blocked, then authorised → unblocked and
+    //    the clock resumes from frozen+credit.
+    check(!qc.submitOfficial(0, 0, 10.0, 21, 0, true),
+          "official still refused before resume authorisation");
+    clock.advance(300000);   // prep+sighting wall time
+    check(inc.authoriseOfficialResume(QStringLiteral("Chair")),
+          "official resume authorised (journalled)");
+    check(!qc.storeForTesting()->state().timer.paused,
+          "competition clock resumed (TimerResumed journalled)");
+    check(inc.remainingCompetitionMs() == frozenRemaining + 240000,
+          "remaining unchanged at the resume instant",
+          QString::number(inc.remainingCompetitionMs()));
+    check(qc.submitOfficial(0, 0, 10.6, 22, 0, true),
+          "official accepted after authorisation");
+    check(qc.officialShotCount() == 3
+              && qc.storeForTesting()->state().officials.last().shot.shotNumber == 3,
+          "resumed official continues numbering (shot 3)");
+
+    // 8) Target reassignment + backup review persist on the record.
+    check(inc.reassignTarget(QStringLiteral("T1"), QStringLiteral("T7"),
+                             QStringLiteral("RO Smith"),
+                             QStringLiteral("continuous fault")),
+          "target reassignment recorded");
+    check(inc.recordBackupReview(1, QStringLiteral("Chair"),
+                                 QStringLiteral("printer roll matches")),
+          "backup review (accepted) recorded");
+    {
+        const QVariantMap m = inc.activeIncident();
+        check(m.value(QStringLiteral("targetMoved")).toBool()
+                  && m.value(QStringLiteral("reserveTarget")).toString()
+                         == QLatin1String("T7"),
+              "reassignment persists (original/reserve)");
+        check(m.value(QStringLiteral("backupReview")).toInt() == 1,
+              "backup decision persists");
+    }
+
+    // 9) Resolve; actions on a closed incident are refused.
+    check(inc.resolveIncident(QStringLiteral("jury note"),
+                              QStringLiteral("ro note"),
+                              QStringLiteral("IR-1")),
+          "incident resolved");
+    check(!inc.hasOpenIncident(), "no open incident after resolution");
+    check(!inc.recordNoAllowance(QStringLiteral("Chair"), QString()),
+          "decision after resolution refused");
+    check(qc.submitOfficial(0, 0, 10.0, 23, 0, true),
+          "officials keep flowing after resolution");
+
+    // 10) The full workflow replays deterministically: same incident record,
+    //     same adjusted remaining, no duplicate shots.
+    {
+        const ValidationReport rep = JournalValidator::validateBytes(file.data);
+        check(rep.classification == JournalClassification::Clean,
+              "workflow journal validates Clean (hash chain intact)");
+        const ReplayResult rr = ReplayEngine::replay(rep.validEnvelopes);
+        check(rr.ok, "workflow journal replays", rr.error.technicalDetail);
+        check(rr.state.estIncidents.size() == 1
+                  && rr.state.estIncidents == qc.storeForTesting()->state().estIncidents,
+              "replayed incident record equals live record");
+        const qint64 lastMono = rep.validEnvelopes.last().monotonicMs;
+        check(EstIncidentController::remainingCompetitionMsFor(rr.state, lastMono)
+                  == EstIncidentController::remainingCompetitionMsFor(
+                         qc.storeForTesting()->state(), lastMono),
+              "adjusted remaining clock reproduced by replay");
+        check(rr.state.officials.size() == 4,
+              "no duplicate officials after replay");
+    }
+
+    // 11) Explicit no-allowance ruling (second scenario, relay-wide) — a
+    //     journalled tri-state distinct from decision-pending; contradictory
+    //     rulings and unknown incidents are refused.
+    {
+        MemoryJournalFile f2; ManualClock c2;
+        QualificationController q2;
+        q2.storeForTesting()->setClockForTesting(&c2);
+        q2.storeForTesting()->setJournalFileForTesting(&f2);
+        q2.startSession(QStringLiteral("AP10"), QStringLiteral("60"),
+                        QStringLiteral("A"), 60, 4500000, 900000, -1,
+                        QString(), QString());
+        q2.beginPreparation(); q2.beginSighting(); q2.beginOfficialMatch();
+        q2.submitOfficial(0, 0, 10, 1, 0, true);
+        EstIncidentController i2;
+        i2.setStoreProvider([&q2]() { return q2.storeForTesting(); });
+        check(i2.raiseIncident(3 /*network*/, 2 /*relay-wide*/, QString(),
+                               QStringLiteral("R1"), QStringLiteral("network")),
+              "raise relay-wide incident");
+        check(i2.recordNoAllowance(QStringLiteral("Chair"),
+                                   QStringLiteral("under 3 minutes")),
+              "explicit no-allowance ruling journalled");
+        {
+            const QVariantMap m = i2.activeIncident();
+            check(m.value(QStringLiteral("creditDecision")).toInt() == 1,
+                  "tri-state: none-granted (distinct from pending)");
+        }
+        check(!i2.grantTimeCredit(1000, QStringLiteral("Chair"), QString()),
+              "credit after no-allowance ruling refused");
+        check(i2.remainingCompetitionMs()
+                  == EstIncidentController::remainingCompetitionMsFor(
+                         q2.storeForTesting()->state(), c2.nowMs()),
+              "no timer credit added by the no-allowance path");
+        check(i2.authoriseOfficialResume(QStringLiteral("Chair")),
+              "resume authorised after no-allowance ruling");
+        check(q2.submitOfficial(0, 0, 9, 2, 0, true),
+              "AP10 integer official resumes (no decimal leakage)");
+        check(qRound(q2.totalDecimal() * 10) % 10 == 0,
+              "AP10 total stays integer through the incident");
+        // The ruling survives crash/replay.
+        const ReplayResult rr = ReplayEngine::replayBytes(f2.data);
+        check(rr.ok && !rr.state.estIncidents.isEmpty()
+                  && rr.state.estIncidents.first().creditDecision == 1,
+              "no-allowance ruling survives replay");
+    }
+
+    // 12) Boundary guidance — exactly 3:00 and exactly 5:00 are boundary
+    //     cases requiring an authorised decision; never auto-classified.
+    check(EstIncidentController::boundaryKey(179000) == QLatin1String("under-3"),
+          "2:59 → under-3 guidance");
+    check(EstIncidentController::boundaryKey(180000)
+              == QLatin1String("exactly-3-boundary"),
+          "exactly 3:00 → boundary (manual decision, no auto-award/deny)");
+    check(EstIncidentController::boundaryKey(181000) == QLatin1String("over-3"),
+          "3:01 → over-3 guidance");
+    check(EstIncidentController::boundaryKey(299000) == QLatin1String("over-3"),
+          "4:59 → over-3 guidance");
+    check(EstIncidentController::boundaryKey(300000)
+              == QLatin1String("exactly-5-boundary"),
+          "exactly 5:00 → boundary (manual decision, no auto-award/deny)");
+    check(EstIncidentController::boundaryKey(301000) == QLatin1String("over-5"),
+          "5:01 → over-5 guidance");
+    // A boundary duration on a live incident stays decision-pending: recording
+    // exactly 3:00 as the accepted duration must not create any allowance.
+    {
+        MemoryJournalFile f3; ManualClock c3;
+        QualificationController q3;
+        q3.storeForTesting()->setClockForTesting(&c3);
+        q3.storeForTesting()->setJournalFileForTesting(&f3);
+        q3.startSession(QStringLiteral("PRONE50"), QStringLiteral("60"),
+                        QStringLiteral("A"), 60, 3000000, 900000, -1,
+                        QString(), QString());
+        q3.beginPreparation(); q3.beginSighting(); q3.beginOfficialMatch();
+        EstIncidentController i3;
+        i3.setStoreProvider([&q3]() { return q3.storeForTesting(); });
+        i3.raiseIncident(1, 0, QStringLiteral("1"), QString(),
+                         QStringLiteral("fault"));
+        i3.recordAcceptedDuration(180000, QStringLiteral("Chair"),
+                                  QStringLiteral("exact"));
+        const QVariantMap m = i3.activeIncident();
+        check(m.value(QStringLiteral("boundaryKey")).toString()
+                  == QLatin1String("exactly-3-boundary"),
+              "recorded exactly-3:00 surfaces as a boundary case");
+        check(m.value(QStringLiteral("creditDecision")).toInt() == 0
+                  && m.value(QStringLiteral("timeCreditMs")).toLongLong() == 0,
+              "no automatic decision at the exact boundary");
     }
 }

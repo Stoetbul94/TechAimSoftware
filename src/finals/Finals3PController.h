@@ -170,6 +170,9 @@ public:
     QString sessionJournalPath() const;
     // Persistence health as an int for QML binding (ta::rel::Health order).
     int persistenceHealth() const;
+    // Phase E: the incident workflow service submits its typed events through
+    // the ACTIVE session's store (main.cpp wires the provider).
+    ta::rel::SessionStore* store() { return m_store.get(); }
 
     // ── recovery (M3) ────────────────────────────────────────────────────
     // Resume a crashed match. The RecoveredMatchState was rebuilt EXCLUSIVELY

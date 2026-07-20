@@ -121,6 +121,11 @@ const EventMeta kRows[] = {
                               ReducerClass::Mutating),
     row<EstIncidentResolved>(DurabilityClass::Sync, BroadcastClass::Broadcast,
                              ReducerClass::Mutating),
+    // Phase E — authorised decisions must be on disk before acting on them.
+    row<EstDecisionRecorded>(DurabilityClass::Sync, BroadcastClass::Broadcast,
+                             ReducerClass::Mutating),
+    row<TargetReassigned>(DurabilityClass::Sync, BroadcastClass::Broadcast,
+                          ReducerClass::Mutating),
 };
 
 struct RegistryIndex {

@@ -87,6 +87,10 @@ public:
     int droppedCount() const { return m_queue ? m_queue->totalDropped() : 0; }
     quint64 nextSequence() const { return m_nextSeq; }
     bool active() const { return m_active; }
+    // Current session-monotonic ms (0 when no session clock is running).
+    // Generic clock access for application services that need "now" in the
+    // same timebase as the envelopes' tm (e.g. remaining-time projections).
+    qint64 nowMonotonicMs() const { return m_clock ? m_clock->nowMs() : 0; }
     QString currentJournalPath() const
     { return m_manager ? m_manager->currentPath() : QString(); }
     const WriterMetrics* metrics() const;

@@ -623,6 +623,7 @@ ReduceResult SessionReducer::apply(const SessionState& current,
             rec.reason = e.reason;
             rec.status = static_cast<quint8>(IncidentStatus::Open);
             rec.raisedSeq = seq;
+            rec.raisedAtMonoMs = envelope.monotonicMs;   // frozen-clock anchor
             next.estIncidents.append(rec);
         },
         [&](const TimeCreditGranted& e) {
@@ -637,7 +638,10 @@ ReduceResult SessionReducer::apply(const SessionState& current,
                         .arg(e.incidentId), seq);
                 return;
             }
-            inc->timeCreditMs += e.durationMs;   // recorded, NOT applied to timer
+            // A granted credit IS the allowance decision (Phase E): the
+            // tri-state moves to "granted". Recorded, NOT applied to a timer.
+            inc->timeCreditMs += e.durationMs;
+            inc->creditDecision = 2;             // granted
             inc->authorisedBy = e.authorisedBy;
         },
         [&](const RecoveryPhaseEntered& e) {
@@ -658,6 +662,10 @@ ReduceResult SessionReducer::apply(const SessionState& current,
                 break;
             case RecoveryPhaseKind::Sighting:
                 inc->sightingGranted = true;
+                // Sighters accepted after this seq are RECOVERY sighters —
+                // deterministically distinguishable from original pre-match
+                // sighters (Phase E).
+                inc->sightingGrantedSeq = seq;
                 break;
             case RecoveryPhaseKind::OfficialResume:
                 inc->officialResumeAuthorised = true;
@@ -695,6 +703,83 @@ ReduceResult SessionReducer::apply(const SessionState& current,
             inc->juryNote = e.juryNote;
             inc->rangeOfficerNote = e.rangeOfficerNote;
             inc->incidentReportRef = e.incidentReportRef;
+        },
+        // ── Phase E — Jury decision + live target reassignment ───────
+        // Decisions/moves record data on the incident; they never mutate
+        // clocks, totals, shot counts or numbering (authority model).
+        [&](const EstDecisionRecorded& e) {
+            if (!current.started) {
+                failure = illegal("EstDecisionRecorded");
+                return;
+            }
+            EstIncidentRecord* inc = findIncidentById(next, e.incidentId);
+            if (!inc) {
+                failure = rejected(current, ReliabilityError::ReducerRejected,
+                    QStringLiteral("EstDecisionRecorded for unknown incident '%1'")
+                        .arg(e.incidentId), seq);
+                return;
+            }
+            if (inc->status == static_cast<quint8>(IncidentStatus::Resolved)
+                || inc->status == static_cast<quint8>(IncidentStatus::Abandoned)) {
+                failure = rejected(current, ReliabilityError::ReducerRejected,
+                    QStringLiteral("decision on closed incident '%1'")
+                        .arg(e.incidentId), seq);
+                return;
+            }
+            switch (e.decision) {
+            case EstDecisionKind::NoAllowance:
+                // Deliberate, journalled "no additional allowance" — a state
+                // deliberately distinct from decision-pending. Rejected as a
+                // duplicate/contradiction if a credit was already granted.
+                if (inc->creditDecision != 0) {
+                    failure = rejected(current, ReliabilityError::ReducerRejected,
+                        QStringLiteral("allowance decision already recorded for "
+                                       "incident '%1'").arg(e.incidentId), seq);
+                    return;
+                }
+                inc->creditDecision = 1;   // none granted
+                break;
+            case EstDecisionKind::DurationAccepted:
+                inc->officiallyAcceptedDurationMs = e.acceptedDurationMs;
+                break;
+            case EstDecisionKind::BackupAccepted:
+                inc->backupReview = 1;
+                inc->backupScoreReviewed = true;
+                break;
+            case EstDecisionKind::BackupRejected:
+                inc->backupReview = 2;
+                inc->backupScoreReviewed = true;
+                break;
+            case EstDecisionKind::BackupInconclusive:
+                inc->backupReview = 3;
+                inc->backupScoreReviewed = true;
+                break;
+            }
+            inc->authorisedBy = e.authorisedBy;
+        },
+        [&](const TargetReassigned& e) {
+            if (!current.started) {
+                failure = illegal("TargetReassigned");
+                return;
+            }
+            EstIncidentRecord* inc = findIncidentById(next, e.incidentId);
+            if (!inc) {
+                failure = rejected(current, ReliabilityError::ReducerRejected,
+                    QStringLiteral("TargetReassigned for unknown incident '%1'")
+                        .arg(e.incidentId), seq);
+                return;
+            }
+            if (inc->status == static_cast<quint8>(IncidentStatus::Resolved)
+                || inc->status == static_cast<quint8>(IncidentStatus::Abandoned)) {
+                failure = rejected(current, ReliabilityError::ReducerRejected,
+                    QStringLiteral("reassignment on closed incident '%1'")
+                        .arg(e.incidentId), seq);
+                return;
+            }
+            inc->targetMoved = true;
+            inc->originalTarget = e.originalTarget;
+            inc->reserveTarget = e.reserveTarget;
+            inc->authorisedBy = e.authorisedBy;
         }
     }, envelope.payload);
 

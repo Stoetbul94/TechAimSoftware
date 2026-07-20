@@ -158,6 +158,11 @@ QByteArray serializeSessionState(const SessionState& s)
         w.field("status", static_cast<qint64>(i.status));
         w.field("reason", i.reason);
         w.fieldU("raisedSeq", i.raisedSeq);
+        // state v3 (Phase E)
+        w.field("creditDecision", static_cast<qint64>(i.creditDecision));
+        w.field("backupReview", static_cast<qint64>(i.backupReview));
+        w.field("raisedAtMonoMs", i.raisedAtMonoMs);
+        w.fieldU("sightingGrantedSeq", i.sightingGrantedSeq);
         w.endObject();
     }
     w.endArray();
@@ -312,6 +317,15 @@ struct StateReader {
             return QJsonArray();
         }
         return v.toArray();
+    }
+    // Optional integer: absent key -> `def` (backward compat for fields added
+    // in later state versions); present-but-wrong -> typed failure.
+    qint64 optIntDef(const char* key, qint64 def, qint64 min, qint64 max)
+    {
+        const QJsonValue v = o.value(QLatin1String(key));
+        if (v.isUndefined())
+            return def;
+        return reqInt(key, min, max);
     }
 };
 
@@ -542,6 +556,17 @@ ReliabilityResult deserializeSessionState(const QByteArray& json, SessionState* 
         i.reason = er.reqString("reason");
         i.raisedSeq = static_cast<quint64>(
             er.reqInt("raisedSeq", 0, std::numeric_limits<qint64>::max()));
+        // state v3 fields — absent in v2 snapshots, default there.
+        i.creditDecision = static_cast<quint8>(
+            er.optIntDef("creditDecision", 0, 0, 255));
+        i.backupReview = static_cast<quint8>(
+            er.optIntDef("backupReview", 0, 0, 255));
+        i.raisedAtMonoMs = er.optIntDef("raisedAtMonoMs", 0,
+                                        std::numeric_limits<qint64>::min(),
+                                        std::numeric_limits<qint64>::max());
+        i.sightingGrantedSeq = static_cast<quint64>(
+            er.optIntDef("sightingGrantedSeq", 0, 0,
+                         std::numeric_limits<qint64>::max()));
         if (er.failed) {
             r.failed = true;
             r.err = er.err;
