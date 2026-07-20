@@ -522,4 +522,61 @@ void run_qualification_tests()
         c2.closeSession();
         QDir(root).removeRecursively();
     }
+
+    // 11) D2 — AP10 resume: integer scores survive the round trip, the
+    //     discipline stays AirPistol10m, and the resumed live shot continues
+    //     integer scoring with the correct next number.
+    {
+        const QString root = QDir::temp().filePath(
+            QStringLiteral("ta_qual_recovery_ap10"));
+        QDir(root).removeRecursively();
+        StoragePaths::setRootOverrideForTesting(root);
+        StoragePaths::initialize();
+
+        QString sid;
+        {
+            QualificationController builder;
+            builder.startSession(QStringLiteral("AP10"), QStringLiteral("60"),
+                                 QStringLiteral("A"), 60, 4500000, 900000, -1,
+                                 QString(), QString());
+            builder.beginPreparation();
+            builder.beginSighting();
+            builder.submitSighter(0, 0, 10, 11, 0, true);   // integer sighters
+            builder.submitSighter(0, 0, 9, 12, 0, true);
+            builder.beginOfficialMatch();
+            builder.submitOfficial(1.5, -0.5, 10, 21, 0, true);
+            builder.submitOfficial(0, 0, 9, 22, 0, true);
+            builder.submitOfficial(0, 0, 10, 23, 0, true);
+            sid = builder.sessionId();
+            // crash: no close
+        }
+
+        QualificationController c2;
+        check(c2.resumeFromRecovery(sid), "AP10 resume succeeds");
+        check(c2.officialShotCount() == 3 && c2.sighterCount() == 2,
+              "AP10 resume: 3 officials + 2 sighters");
+        check(qRound(c2.totalDecimal() * 10) == 290,
+              "AP10 resume: integer total 29 (10+9+10), no decimal leakage",
+              QString::number(c2.totalDecimal()));
+        // Every recovered score is a whole ring value.
+        bool allInteger = true;
+        const QVariantList rec = c2.recoveredShots();
+        for (const QVariant& v : rec) {
+            const double s = v.toMap().value(QStringLiteral("calculatedscore")).toDouble();
+            if (qAbs(s - qRound(s)) > 1e-9)
+                allInteger = false;
+        }
+        check(allInteger && rec.size() == 5,
+              "AP10 resume: all recovered scores are integers");
+        check(!rec.isEmpty()
+                  && qAbs(rec.at(2).toMap().value(QStringLiteral("xmm")).toDouble() - 1.5) < 1e-9,
+              "AP10 resume: coordinates intact for face projection");
+        // Continued integer live scoring: next official is 4.
+        check(c2.submitOfficial(0, 0, 10, 900, 0, true),
+              "AP10 resume: next live integer official accepted");
+        check(c2.officialShotCount() == 4 && qRound(c2.totalDecimal() * 10) == 390,
+              "AP10 resume: shot 4, integer total 39");
+        c2.closeSession();
+        QDir(root).removeRecursively();
+    }
 }

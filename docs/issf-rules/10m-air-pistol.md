@@ -6,12 +6,14 @@ interruption rules.
 
 ## Document status
 
-- **Implementation status:** ✅ **Persistence implemented (Phase B2).** Air
-  Pistol live scoring is journalled through `QUAL` → `SessionStore` with
-  **integer/full-ring** scores. ⚠️ **Recovery UI (restoration) NOT implemented**
-  — a crashed AP10 session is detected/preserved by the recovery dialog, but
-  rebuilding the AP10 UI on resume is **Phase D**. Reducer coverage: ✅ (generic
-  `QualificationState`).
+- **Implementation status:** ✅ Persistence (B2, integer) · ✅ Reducer/replay
+  (Phase C timer anchors) · ✅ **Recovery implemented (Phase D2)** — a crashed
+  AP10 session resumes via the shared qualification restorer with
+  **integer/full-ring** values end-to-end: recovered officials stay integer,
+  the total stays integer-based, coordinates project onto the face, the frozen
+  75-min clock is rebased (never restarted), and the resumed live shot
+  continues integer scoring with the correct next number. ⏳ **EST malfunction
+  workflow pending (Phase E).**
 - **Rules verification status:** 📋 User-supplied ISSF rule extract (edition/page
   not supplied).
 - **Last reviewed:** 2026-07-19
@@ -156,3 +158,4 @@ As Air Rifle, **plus**:
 |---|---|---|---|
 | 2026-07-19 | Populated from supplied AP10 rules; flagged mandatory integer/decimal separation from AR10. | Project owner (📋) | ShootingPage restorer, reducer/report, tests |
 | 2026-07-19 | **B2: persistence implemented.** AP10 live scoring journalled via `QUAL` with integer/full-ring scores (QML floors before submit); tests + manual verified (journal `scoreTenths` all ×10, discipline AP10, crash→restart detected as 10m Air Pistol). Recovery restore = Phase D. | Implementation (🛠) | ShootingPage wiring, tst_qualification |
+| 2026-07-20 | **D2: recovery implemented.** AP10 resumes via the shared restorer; integer scores/total preserved end-to-end (manual: officials 1–3 integer 10 restored, live shot 4 = 9, total 39, timer 74:53→resumed, chain VALID). | Implementation (🛠) | main.qml dispatcher, tst_qualification |
