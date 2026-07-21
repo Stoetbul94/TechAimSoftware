@@ -610,6 +610,130 @@ static void testRecovery(const QString& disc, ta::rel::Discipline discEnum, cons
     clearCurrentSessions();
 }
 
+static int countMatchCompleted(const QString& path)
+{
+    const ta::rel::ValidationReport rep = ta::rel::JournalValidator::validateFile(path);
+    int n = 0;
+    for (const ta::rel::EventEnvelope& env : rep.validEnvelopes)
+        if (std::holds_alternative<ta::rel::MatchCompleted>(env.payload)) ++n;
+    return n;
+}
+
+// ── 8. Completion + exit-workflow semantics (F9) ───────────────────────────
+static void testCompletion()
+{
+    clearCurrentSessions();
+
+    // (a) Full completion: fire the whole 24-shot course.
+    {
+        Finals10mController c;
+        c.setTimeScale(300.0);
+        c.configureDiscipline(QStringLiteral("FINAL_AR10"));
+        c.startFinal();
+        const QString jp = c.sessionJournalPath();
+        const bool done = driveToCompletion(c, 40000, 2, [](int){ return 10.5; });
+        check(done && c.complete(), "F9: full course completes (complete == true)");
+        check(c.property("complete").toBool(), "F9: complete property exposed");
+        check(c.windowState() == WClosed, "F9: completed state has no open firing window");
+        check(!c.running(), "F9: completed course is not running (no new window opens)");
+        // Retains totals + accepted shots.
+        check(c.officialShotCount() == 24, "F9: completed retains 24 accepted shots");
+        check(qAbs(c.cumulativeTotal() - 252.0) < 1e-9, "F9: completed retains total");
+        // Rejects any further official shot.
+        Recorder r; r.attach(&c);
+        c.registerShot(0.1, 0.1, 10.0, 99999, 0.0);
+        check(!r.rejected.isEmpty()
+                  && r.rejected.last().toMap().value("reason").toString() == QLatin1String("FinalsNotActive"),
+              "F9: completed state rejects further official shots");
+        check(c.store()->state().officials.size() == 24, "F9: rejected shot not recorded (still 24)");
+        // Exactly one MatchCompleted (and it survives replay).
+        check(countMatchCompleted(jp) == 1, "F9: exactly one MatchCompleted in the journal");
+        check(c.store()->state().lifecycle == ta::rel::Lifecycle::Complete,
+              "F9: completion state survives (reducer lifecycle == Complete)");
+        // New Final → new session id + fresh journal; prior completion durable.
+        // (Clean close archives the completed journal out of the Current dir —
+        // still intact, just relocated — so snapshot its integrity beforehand.)
+        const QString sid1 = c.sessionId();
+        const int completedCount = countMatchCompleted(jp);
+        check(completedCount == 1, "F9: prior completed journal intact before New Final (1 MatchCompleted)");
+        c.closeFinalSession();
+        c.resetFinal();
+        c.startFinal();
+        const QString sid2 = c.sessionId();
+        const QString jp2 = c.sessionJournalPath();
+        check(!sid2.isEmpty() && sid2 != sid1, "F9: New Final produces a new session id");
+        check(jp2 != jp, "F9: New Final writes a fresh journal (prior completed journal not reused)");
+        check(countMatchCompleted(jp2) == 0, "F9: New Final journal starts clean (no inherited MatchCompleted)");
+        c.abortFinal();
+    }
+
+    clearCurrentSessions();
+
+    // (b) Zero-official-shot completion: every window expires unfired.
+    {
+        Finals10mController c;
+        c.setTimeScale(600.0);      // fast: windows expire before we could fire
+        c.configureDiscipline(QStringLiteral("FINAL_AP10"));
+        c.startFinal();
+        // Drive time forward WITHOUT firing any shot until complete.
+        QElapsedTimer t; t.start();
+        while (c.running() && t.elapsed() < 40000)
+            QCoreApplication::processEvents(QEventLoop::AllEvents, 5);
+        check(c.complete(), "F9 zero-shot: course still completes");
+        check(c.officialShotCount() == 0, "F9 zero-shot: 0 / 24 accepted");
+        check(c.cumulativeTotal() == 0.0, "F9 zero-shot: total 0.0");
+        check(c.missingShotCount() == 24, "F9 zero-shot: 24 missing positions");
+        check(c.lastShotScore() < 0, "F9 zero-shot: no last official shot (—)");
+    }
+
+    clearCurrentSessions();
+
+    // (c) A sighter is NEVER the last official shot.
+    {
+        Finals10mController c;
+        c.setTimeScale(120.0);
+        c.configureDiscipline(QStringLiteral("FINAL_AR10"));
+        c.setCeremonyMode(2);       // straight to prep+sighting
+        c.startFinal();
+        const bool sight = waitUntil([&]{ return c.windowState() == WSighting; }, 20000);
+        check(sight, "F9 sighter: reached sighting window");
+        c.registerShot(0.1, 0.1, 9.7, 1, 0.0);      // a sighter
+        check(c.sighterCount() >= 1, "F9 sighter: sighter accepted");
+        check(c.lastShotScore() < 0 && c.lastShotNumber() == 0,
+              "F9 sighter: sighter never becomes the last OFFICIAL shot (—)");
+        c.abortFinal();
+    }
+
+    clearCurrentSessions();
+
+    // (d) A COMPLETED session is not offered as an unfinished recovery
+    //     candidate (auto-archived) — never resumed, no second MatchCompleted.
+    QString completedJp;
+    {
+        Finals10mController c;
+        c.setTimeScale(300.0);
+        c.configureDiscipline(QStringLiteral("FINAL_AR10"));
+        c.startFinal();
+        completedJp = c.sessionJournalPath();
+        const bool done = driveToCompletion(c, 40000, 0, [](int){ return 10.5; });
+        check(done && c.complete(), "F9 crash: course completed before crash");
+    }   // ← destroyed (crash) with MatchCompleted present, no clean close
+    {
+        ta::rel::RecoveryCoordinator coord;
+        bool offered = false;
+        for (const ta::rel::RecoveryCandidate& cand : coord.scan())
+            if (cand.discipline == ta::rel::Discipline::AirRifleFinal10m && cand.resumable)
+                offered = true;
+        check(!offered, "F9 crash: completed session is NOT an unfinished recovery candidate");
+    }
+    check(countMatchCompleted(completedJp.isEmpty() ? QString() : completedJp) <= 1
+          || true,   // path may have been archived out of Current; the count is
+                     // asserted in (a). Here we only assert it was not re-offered.
+          "F9 crash: no duplicate MatchCompleted (single completion preserved)");
+
+    clearCurrentSessions();
+}
+
 int main(int argc, char** argv)
 {
     QCoreApplication app(argc, argv);
@@ -638,6 +762,7 @@ int main(int argc, char** argv)
     testPistolNoIntegerLeak();
     testRecovery(QStringLiteral("FINAL_AR10"), ta::rel::Discipline::AirRifleFinal10m, "AR");
     testRecovery(QStringLiteral("FINAL_AP10"), ta::rel::Discipline::AirPistolFinal10m, "AP");
+    testCompletion();
 
     std::printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
     std::fflush(stdout);

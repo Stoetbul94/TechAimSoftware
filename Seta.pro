@@ -5,6 +5,18 @@ CONFIG += c++17
 
 VERSION = 4.0
 QMAKE_TARGET_PRODUCT = "SETA"
+
+# F9B: build identity embedded at COMPILE time (no runtime git). qmake runs
+# git once at build-configuration time; the app never shells out to git and
+# the customer machine needs no Git / repo / Qt Creator. Build date/time comes
+# from the compiler (__DATE__/__TIME__ in main.cpp).
+APP_VERSION_STR = 0.9.0
+GIT_SHA = $$system(git -C \"$$PWD\" rev-parse --short HEAD)
+isEmpty(GIT_SHA): GIT_SHA = unknown
+DEFINES += APP_VERSION_STR=\\\"$$APP_VERSION_STR\\\"
+DEFINES += APP_GIT_SHA=\\\"$$GIT_SHA\\\"
+CONFIG(release, debug|release): DEFINES += APP_BUILD_CONFIG=\\\"Release\\\"
+else: DEFINES += APP_BUILD_CONFIG=\\\"Debug\\\"
 #QMAKE_TARGET_PRODUCT = "TACHUS CPU"
 
 SOURCES += main.cpp \

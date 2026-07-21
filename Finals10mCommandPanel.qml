@@ -37,7 +37,7 @@ Item {
       : _txtMut
     readonly property string statusWord:
         panel.blocked ? qsTr("FIRING BLOCKED — EST INCIDENT")
-      : _complete    ? qsTr("COURSE COMPLETE")
+      : _complete    ? qsTr("SINGLE-LANE RESULT COMPLETE")
       : _win === 2   ? qsTr("MATCH WINDOW OPEN — FIRE")
       : _win === 1   ? qsTr("SIGHTING OPEN — FIRE")
       : (ctl && ctl.running) ? qsTr("STAND BY — HOLD")
@@ -98,15 +98,27 @@ Item {
 
         Rectangle { width: parent.width; height: 1; color: "#33343c" }
 
-        // big command
+        // big command (one clean completion line — not the raw ISSF command)
         Text {
             width: parent.width
             text: panel.blocked
                   ? qsTr("OFFICIAL SHOTS BLOCKED")
-                  : (panel.ctl && panel.ctl.commandText.length ? panel.ctl.commandText : qsTr("—"))
+                  : panel._complete
+                    ? qsTr("FINAL COMPLETE")
+                    : (panel.ctl && panel.ctl.commandText.length ? panel.ctl.commandText : qsTr("—"))
             color: panel._txt
             font.pixelSize: 18; font.bold: true
             wrapMode: Text.WordWrap
+            horizontalAlignment: Text.AlignHCenter
+        }
+
+        // completed subtitle (avoids any official-placement wording)
+        Text {
+            visible: panel._complete
+            width: parent.width
+            text: qsTr("Course complete · %1 shot positions completed")
+                  .arg(panel.ctl ? panel.ctl.maximumMatchShots : 24)
+            color: panel._txtMut; font.pixelSize: 11
             horizontalAlignment: Text.AlignHCenter
         }
 
@@ -138,12 +150,13 @@ Item {
 
         Rectangle { width: parent.width; height: 1; color: "#33343c" }
 
-        // last accepted shot (authoritative — from FINALS10M)
+        // last OFFICIAL shot (authoritative — from FINALS10M; — when none, so a
+        // sighter is never shown as the Final's last official result).
         Row {
             width: parent.width
             Column {
                 width: parent.width * 0.5
-                Text { text: qsTr("LAST SHOT"); color: panel._txtMut; font.pixelSize: 9; font.letterSpacing: 1 }
+                Text { text: qsTr("LAST OFFICIAL SHOT"); color: panel._txtMut; font.pixelSize: 9; font.letterSpacing: 1 }
                 Text {
                     text: (panel.ctl && panel.ctl.lastShotScore >= 0)
                           ? panel.fmt1(panel.ctl.lastShotScore) : "—"
@@ -156,11 +169,8 @@ Item {
                        anchors.right: parent.right }
                 Text {
                     anchors.right: parent.right
-                    text: {
-                        if (!panel.ctl || panel.ctl.lastShotScore < 0) return "—"
-                        if (panel.ctl.lastShotIsSighter) return qsTr("sighter · ") + panel.ctl.lastShotTimeSec + "s"
-                        return "#" + panel.ctl.lastShotNumber + " · " + panel.ctl.lastShotTimeSec + "s"
-                    }
+                    text: (!panel.ctl || panel.ctl.lastShotScore < 0) ? "—"
+                          : ("#" + panel.ctl.lastShotNumber + " · " + panel.ctl.lastShotTimeSec + "s")
                     color: panel._txtSec; font.pixelSize: 14; font.bold: true
                 }
             }

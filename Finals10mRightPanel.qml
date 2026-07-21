@@ -26,6 +26,11 @@ Item {
         rp.blocked = (rp.ctl && rp.ctl.officialsBlockedNow()) === true
     }
 
+    // F9: mirrors the completion card's dismissed state so a "View Final
+    // Summary" reopener can appear after the operator dismisses the card.
+    property bool summaryDismissed: false
+    signal reopenSummaryRequested()
+
     function fmt1(v) { return (v === undefined || v === null || v < 0) ? "0.0" : Number(v).toFixed(1) }
 
     // Accepted-shot projection (durable). Rebuilt on recovery because
@@ -68,11 +73,30 @@ Item {
     // Cleared and refilled by the parent on fresh start / recovery via reset().
     function reset() { shotModel.clear(); rp.refreshBlocked() }
 
+    // ── F9: View Final Summary reopener (after the completion card is
+    //    dismissed) — a small bar at the top of the right column ───────────
+    Rectangle {
+        id: reopenBar
+        visible: rp.ctl && rp.ctl.complete && rp.summaryDismissed
+        anchors.left: parent.left; anchors.right: parent.right
+        anchors.top: parent.top; anchors.margins: 10
+        height: visible ? 34 : 0
+        radius: 8; color: reopenMouse.containsMouse ? "#2f3037" : "#26272c"
+        border.color: rp._red; border.width: 1
+        Text {
+            anchors.centerIn: parent
+            text: qsTr("▸ View Final Summary")
+            color: rp._txt; font.pixelSize: 12; font.bold: true
+        }
+        MouseArea { id: reopenMouse; anchors.fill: parent; hoverEnabled: true
+                    onClicked: rp.reopenSummaryRequested() }
+    }
+
     // ── command / countdown / last shot ─────────────────────────────────
     Finals10mCommandPanel {
         id: cmd
         anchors.left: parent.left; anchors.right: parent.right
-        anchors.top: parent.top
+        anchors.top: reopenBar.visible ? reopenBar.bottom : parent.top
         anchors.margins: 10
         ctl: rp.ctl
         blocked: rp.blocked

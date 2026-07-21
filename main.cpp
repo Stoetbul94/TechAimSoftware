@@ -129,6 +129,26 @@ int main(int argc, char *argv[])
     QCoreApplication::setOrganizationName(QStringLiteral("TechAim"));
     QCoreApplication::setApplicationName(QStringLiteral("TechAim"));
 
+    // F9B: build identity embedded at COMPILE time (Seta.pro DEFINES + the
+    // compiler's __DATE__/__TIME__). The app never runs git; the customer
+    // machine needs no Git / repo / Qt Creator. Exposed to QML as BUILDINFO
+    // (shown in Settings ▸ About) and logged once at startup so the operator
+    // can confirm the release executable matches the committed source.
+#ifndef APP_VERSION_STR
+#define APP_VERSION_STR "0.0.0"
+#endif
+#ifndef APP_GIT_SHA
+#define APP_GIT_SHA "unknown"
+#endif
+#ifndef APP_BUILD_CONFIG
+#define APP_BUILD_CONFIG "Unknown"
+#endif
+    QCoreApplication::setApplicationVersion(QStringLiteral(APP_VERSION_STR));
+    const QString kBuildTimestamp = QStringLiteral(__DATE__ " " __TIME__);
+    qInfo().noquote() << "TechAim" << APP_VERSION_STR
+                      << APP_BUILD_CONFIG << "build · commit" << APP_GIT_SHA
+                      << "· built" << kBuildTimestamp;
+
     ///////////////////////////////////////////////////////////
     /// single instance app
     ///////////////////////////////////////////////////////////
@@ -300,6 +320,14 @@ int main(int argc, char *argv[])
     // official 10m command cues exist). See docs/10m-finals-architecture.md.
     Finals10mController finals10mController;
     engine.rootContext()->setContextProperty("FINALS10M", &finals10mController);
+    // F9B: read-only build identity for Settings ▸ About (embedded at compile
+    // time; no runtime git). A plain QVariantMap context property.
+    QVariantMap buildInfo;
+    buildInfo[QStringLiteral("version")] = QStringLiteral(APP_VERSION_STR);
+    buildInfo[QStringLiteral("config")]  = QStringLiteral(APP_BUILD_CONFIG);
+    buildInfo[QStringLiteral("commit")]  = QStringLiteral(APP_GIT_SHA);
+    buildInfo[QStringLiteral("built")]   = kBuildTimestamp;
+    engine.rootContext()->setContextProperty("BUILDINFO", buildInfo);
     QObject::connect(&finals10mController, &Finals10mController::commandIssued,
                      &finalsAudio, &FinalsAudioService::onCommandIssued);
     // Phase B — shared qualification persistence seam (QUAL). Idle until a

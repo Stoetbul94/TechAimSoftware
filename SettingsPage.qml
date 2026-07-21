@@ -241,6 +241,44 @@ Item {
         }
     }
 
+    // ── About / build identity (F9B) — embedded at compile time; lets the
+    // operator confirm the release executable matches the committed source.
+    Rectangle {
+        id: aboutSection
+        anchors.top: motorSection.bottom
+        anchors.left: settings_popup.left
+        anchors.topMargin: 6
+        width: settings_popup.width
+        height: aboutCol.implicitHeight + 16
+        color: "#26272c"
+        border.color: "#3a3b40"; border.width: 1
+        Column {
+            id: aboutCol
+            anchors.left: parent.left; anchors.right: parent.right
+            anchors.top: parent.top; anchors.margins: 8; spacing: 3
+            Text {
+                text: qsTr("ABOUT / BUILD")
+                color: "#9a9ba0"; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1
+            }
+            Text {
+                text: "TechAim " + (typeof BUILDINFO !== "undefined" ? BUILDINFO.version : "?")
+                color: "white"; font.pixelSize: 12; font.bold: true
+            }
+            Text {
+                text: (typeof BUILDINFO !== "undefined" ? BUILDINFO.config : "?") + qsTr(" build")
+                color: "#c9ced6"; font.pixelSize: 10
+            }
+            Text {
+                text: qsTr("Commit: ") + (typeof BUILDINFO !== "undefined" ? BUILDINFO.commit : "?")
+                color: "#c9ced6"; font.pixelSize: 10
+            }
+            Text {
+                text: qsTr("Built: ") + (typeof BUILDINFO !== "undefined" ? BUILDINFO.built : "?")
+                color: "#c9ced6"; font.pixelSize: 10
+            }
+        }
+    }
+
     function startFromServer()
     {
 

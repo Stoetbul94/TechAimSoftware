@@ -18,6 +18,13 @@ Item {
     // Transient checkpoint banner state.
     property string checkpointBanner: ""
     property bool completed: false
+    // F9: the completion summary is dismissible (× / Escape / Dismiss) without
+    // leaving the completed result — the target + right panel stay; a "View
+    // Final Summary" reopener lives in the right panel. New Final / Home leave.
+    property bool dismissed: false
+    signal viewReportRequested()
+    signal newFinalRequested()
+    signal homeRequested()
     // Snapshots taken at completion — a bare ctl.checkpointTotals() /
     // ctl.seriesSubtotals() in a delegate binding is a plain function call with
     // no notify signal, so it would capture an empty map at delegate creation
@@ -36,6 +43,15 @@ Item {
     readonly property color _green:   "#43b581"
 
     function fmt1(v) { return (v === undefined || v === null) ? "0.0" : Number(v).toFixed(1) }
+
+    // Completion-panel action dispatch. View Report keeps the summary (the
+    // single-lane result IS the report — the shot-by-shot list is in the right
+    // panel); New Final / Home leave via ShootingPage (durable session close).
+    function doAction(key) {
+        if (key === "report")    hud.viewReportRequested()
+        else if (key === "new")  hud.newFinalRequested()
+        else if (key === "home") hud.homeRequested()
+    }
 
     // Group geometry / MPI / mean shot time over the accepted official shots
     // (millimetre coordinates). Single-athlete training analysis only.
@@ -76,10 +92,11 @@ Item {
                 hud.reportGroup = hud.computeGroup(hud.ctl.officialShotRecords())
             }
             hud.completed = true
+            hud.dismissed = false          // a fresh completion always shows
         }
         function onPhaseChanged() {
-            // Reset the completion panel if a fresh course is started.
-            if (hud.ctl && hud.ctl.running) hud.completed = false
+            // Reset the completion panel when a fresh course starts.
+            if (hud.ctl && hud.ctl.running) { hud.completed = false; hud.dismissed = false }
         }
     }
 
@@ -185,23 +202,41 @@ Item {
         }
     }
 
-    // ── Completion result panel ─────────────────────────────────────────
+    // ── Completion result panel (dismissible; Escape closes the card only) ──
+    FocusScope {
+        visible: hud.completed && !hud.dismissed
+        anchors.fill: parent
+        focus: visible
+        Keys.onEscapePressed: hud.dismissed = true    // dismiss card only —
+                                                       // never deletes/closes
     Rectangle {
-        visible: hud.completed
         anchors.centerIn: parent
-        width: Math.min(hud.width * 0.82, 560)
-        height: Math.min(hud.height * 0.82, doneCol.implicitHeight + 40)
+        width: Math.min(hud.width * 0.82, 580)
+        height: Math.min(hud.height * 0.86, doneCol.implicitHeight + 40)
         radius: 14; color: hud._bg; border.color: hud._red; border.width: 2
+        // Close (×) — dismiss the summary, keep the completed result + target.
+        Rectangle {
+            width: 30; height: 30; radius: 15
+            anchors.top: parent.top; anchors.right: parent.right; anchors.margins: 10
+            color: closeMouse.containsMouse ? "#3a1420" : "transparent"
+            Text { anchors.centerIn: parent; text: "✕"; color: hud._txtSec; font.pixelSize: 16 }
+            MouseArea { id: closeMouse; anchors.fill: parent; hoverEnabled: true
+                        onClicked: hud.dismissed = true }
+        }
         Column {
             id: doneCol
             anchors.left: parent.left; anchors.right: parent.right
             anchors.top: parent.top; anchors.margins: 20; spacing: 10
             Text {
-                text: qsTr("FINAL TRAINING COMPLETE")
+                width: parent.width - 30
+                text: (hud.ctl ? hud.ctl.displayName.toUpperCase() : qsTr("10M FINAL")) + qsTr(" COMPLETE")
                 color: hud._red; font.pixelSize: 18; font.bold: true; font.letterSpacing: 1
+                elide: Text.ElideRight
             }
             Text {
-                text: (hud.ctl ? hud.ctl.displayName : "") + qsTr("  ·  single-athlete course")
+                text: qsTr("Course complete · %1 · session %2")
+                      .arg(hud.ctl ? (typeof userName !== "undefined" && userName ? userName : qsTr("athlete")) : "")
+                      .arg(hud.ctl && hud.ctl.sessionId.length >= 8 ? hud.ctl.sessionId.substring(0, 8) : "—")
                 color: hud._txtMut; font.pixelSize: 11
             }
             Row {
@@ -210,6 +245,13 @@ Item {
                        anchors.verticalCenter: parent.verticalCenter }
                 Text { text: hud.fmt1(hud.ctl ? hud.ctl.cumulativeTotal : 0)
                        color: hud._green; font.pixelSize: 28; font.bold: true }
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: qsTr("   %1 / 24 accepted · %2 missing")
+                          .arg(hud.ctl ? hud.ctl.officialShotCount : 0)
+                          .arg(hud.ctl ? hud.ctl.missingShotCount : 24)
+                    color: hud._txtMut; font.pixelSize: 11
+                }
             }
             // series breakdown
             Text { text: qsTr("SERIES"); color: hud._txtMut; font.pixelSize: 9; font.letterSpacing: 2 }
@@ -293,9 +335,43 @@ Item {
             }
             Text {
                 width: parent.width; wrapMode: Text.WordWrap
-                text: qsTr("Single-athlete training result. Rank, elimination place and medals require competition-level ranking data (future range coordinator).")
+                text: qsTr("Single-lane result. Official ranking and placement require Range Management coordination.")
                 color: hud._txtMut; font.pixelSize: 9; topPadding: 4
             }
+            // ── exit actions (mouse / touch / keyboard) ──────────────────
+            Row {
+                spacing: 10; topPadding: 6
+                Repeater {
+                    model: [
+                        { key: "report", label: qsTr("View Report"),  accent: false },
+                        { key: "new",    label: qsTr("New Final"),     accent: false },
+                        { key: "home",   label: qsTr("Home"),          accent: true  }
+                    ]
+                    Rectangle {
+                        width: 132; height: 40; radius: 8
+                        color: modelData.accent
+                               ? (actMouse.containsMouse ? "#c40034" : "#e8003d")
+                               : (actMouse.containsMouse ? "#2f3037" : "#26272c")
+                        border.color: modelData.accent ? "transparent" : "#3a3b40"
+                        border.width: 1
+                        activeFocusOnTab: true
+                        Keys.onReturnPressed: hud.doAction(modelData.key)
+                        Keys.onEnterPressed: hud.doAction(modelData.key)
+                        Rectangle {   // focus ring
+                            anchors.fill: parent; anchors.margins: -2; radius: 10
+                            color: "transparent"; border.color: hud._amber
+                            border.width: 2; visible: parent.activeFocus
+                        }
+                        Text {
+                            anchors.centerIn: parent; text: modelData.label
+                            color: "white"; font.pixelSize: 13; font.bold: modelData.accent
+                        }
+                        MouseArea { id: actMouse; anchors.fill: parent; hoverEnabled: true
+                                    onClicked: hud.doAction(modelData.key) }
+                    }
+                }
+            }
         }
+    }
     }
 }

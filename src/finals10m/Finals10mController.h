@@ -63,10 +63,11 @@ class Finals10mController : public QObject
     // F7 athlete-display projections (read-only, derived — never a second
     // authoritative source). Last accepted shot for the right-hand command
     // panel, and live per-segment subtotals for the score summary.
+    // F9: LAST SHOT projections are the last OFFICIAL shot only (— when none) —
+    // a sighter must never appear as the Final's last official result.
     Q_PROPERTY(double lastShotScore READ lastShotScore NOTIFY lastShotChanged)
     Q_PROPERTY(int lastShotNumber READ lastShotNumber NOTIFY lastShotChanged)
     Q_PROPERTY(int lastShotTimeSec READ lastShotTimeSec NOTIFY lastShotChanged)
-    Q_PROPERTY(bool lastShotIsSighter READ lastShotIsSighter NOTIFY lastShotChanged)
     Q_PROPERTY(double series1Subtotal READ series1Subtotal NOTIFY totalsChanged)
     Q_PROPERTY(double series2Subtotal READ series2Subtotal NOTIFY totalsChanged)
     Q_PROPERTY(double singlesSubtotal READ singlesSubtotal NOTIFY totalsChanged)
@@ -75,6 +76,10 @@ class Finals10mController : public QObject
     Q_PROPERTY(QString disciplineId READ disciplineId NOTIFY configChanged)
     Q_PROPERTY(QString displayName READ displayName NOTIFY configChanged)
     Q_PROPERTY(int targetType READ targetType NOTIFY configChanged)
+    // F9: completion / session identity for the exit workflow + report.
+    Q_PROPERTY(bool complete READ complete NOTIFY phaseChanged)
+    Q_PROPERTY(int missingShotCount READ missingShotCount NOTIFY totalsChanged)
+    Q_PROPERTY(QString sessionId READ sessionId NOTIFY configChanged)
     Q_PROPERTY(bool primaryActionVisible READ primaryActionVisible NOTIFY advanceLabelChanged)
     Q_PROPERTY(bool primaryActionEnabled READ primaryActionEnabled NOTIFY advanceLabelChanged)
     Q_PROPERTY(QString primaryActionLabel READ primaryActionLabel NOTIFY advanceLabelChanged)
@@ -136,13 +141,19 @@ public:
     double lastShotScore() const { return m_lastShotScore; }
     int lastShotNumber() const { return m_lastShotNumber; }
     int lastShotTimeSec() const { return m_lastShotTimeSec; }
-    bool lastShotIsSighter() const { return m_lastShotIsSighter; }
     double series1Subtotal() const { return m_seriesSubtotal.value(2, 0.0); }
     double series2Subtotal() const { return m_seriesSubtotal.value(3, 0.0); }
     double singlesSubtotal() const;
+    bool complete() const { return m_stage == Stage::Complete; }
+    int missingShotCount() const { return m_cfg.maximumMatchShots - m_officialShotCount; }
+    QString sessionId() const;   // active/completed session id (empty if none)
     // True while an unresolved EST incident blocks official shots (Phase-E
     // authority model). Polled by the command panel on INCIDENTS.incidentChanged.
     Q_INVOKABLE bool officialsBlockedNow() const;
+    // F9 exit workflow: cleanly close the completed (or active) session so it is
+    // NOT offered as an unfinished recovery candidate. Idempotent — appends at
+    // most one clean close; never a second MatchCompleted.
+    Q_INVOKABLE void closeFinalSession();
     int seriesNumber() const;
     int singleIndex() const { return m_singleIndex; }
     QString disciplineId() const;
@@ -281,10 +292,9 @@ private:
     double m_cumulativeTotal = 0.0;
     int m_officialShotCount = 0;
     // F7 last-accepted-shot projection (right-hand command panel).
-    double m_lastShotScore = -1.0;      // -1 = none yet
-    int m_lastShotNumber = 0;           // official number (0 for sighter / none)
+    double m_lastShotScore = -1.0;      // -1 = no official shot yet
+    int m_lastShotNumber = 0;           // official number (0 = none)
     int m_lastShotTimeSec = 0;
-    bool m_lastShotIsSighter = false;
     QString m_lastCheckpointLabel;
     QHash<int, double> m_checkpointTotals;        // shotNumber -> cumulative
     QHash<int, double> m_seriesSubtotal;          // fineStageId -> subtotal

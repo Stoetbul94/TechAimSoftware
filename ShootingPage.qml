@@ -607,6 +607,9 @@ Item {
         anchors.top: statusStrip.bottom
         z: 11
         ctl: FINALS10M
+        // F9: the reopener shows once the completion card is dismissed.
+        summaryDismissed: finals10mHud.dismissed
+        onReopenSummaryRequested: finals10mHud.dismissed = false
     }
 
     CenterPane {
@@ -1023,11 +1026,16 @@ Item {
 
     // ── 10m FINAL (AR/AP) HUD — self-contained presentation over FINALS10M ──
     Finals10mHud {
+        id: finals10mHud
         visible: isFinals10mMatch
         z: 30
         anchors.fill: centerPanel
         ctl: FINALS10M
         developerMode: APPSETTINGS.getDeveloperMode()
+        // F9 exit workflow (durable session close before leaving).
+        onViewReportRequested: finals10mHud.dismissed = false   // keep/show summary
+        onNewFinalRequested: shootingPage.startNewFinals10m()
+        onHomeRequested: shootingPage.homeFromFinals10m()
     }
 
     // Match report now lives in the floating Report window (Match tab); see the
@@ -1163,6 +1171,26 @@ Item {
             FINALS10M.resetFinal()
             FINALS10M.startFinal()
         }
+    }
+
+    // F9 completion-exit: leave a COMPLETED 10m Final cleanly. closeFinalSession
+    // appends a clean close so the completed course is never offered as an
+    // unfinished recovery candidate (and never a second MatchCompleted); then
+    // return to event selection. New Final retains the discipline for a quick
+    // restart (the operator confirms Start → a brand-new session).
+    function homeFromFinals10m() {
+        FINALS10M.closeFinalSession()
+        isFinals10mMatch = false
+        finals10mRightPanel.reset()
+        loginPage.visible = true
+        resetDataModels()
+    }
+    function startNewFinals10m() {
+        FINALS10M.closeFinalSession()
+        isFinals10mMatch = false
+        finals10mRightPanel.reset()
+        loginPage.visible = true      // discipline (gameEvent 7) stays selected;
+        resetDataModels()             // operator clicks Start → new session id
     }
 
     function beginPreparationPhase()

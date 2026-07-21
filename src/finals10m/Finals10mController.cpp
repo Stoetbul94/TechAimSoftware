@@ -164,7 +164,6 @@ void Finals10mController::startFinal()
     m_lastShotScore = -1.0;
     m_lastShotNumber = 0;
     m_lastShotTimeSec = 0;
-    m_lastShotIsSighter = false;
     m_lastCheckpointLabel.clear();
     m_checkpointTotals.clear();
     m_seriesSubtotal.clear();
@@ -388,12 +387,14 @@ void Finals10mController::acceptShot(bool sighter, double xMm, double yMm,
                                       simulated, ++m_shotEventId);
     const int splitSec = static_cast<int>((qMax<qint64>(0, splitMs) + 999) / 1000);
     shot[QStringLiteral("timeSec")] = splitSec;
-    // F7: last-accepted-shot projection for the command panel.
-    m_lastShotScore = score;
-    m_lastShotNumber = sighter ? 0 : finalNumber;
-    m_lastShotTimeSec = splitSec;
-    m_lastShotIsSighter = sighter;
-    emit lastShotChanged();
+    // F9: LAST SHOT is the last OFFICIAL shot only. Sighters stay in the
+    // SIGHTERS list and never become the Final's last official result.
+    if (!sighter) {
+        m_lastShotScore = score;
+        m_lastShotNumber = finalNumber;
+        m_lastShotTimeSec = splitSec;
+        emit lastShotChanged();
+    }
     if (sighter)
         ++m_sighterCount;
     else
@@ -914,6 +915,21 @@ void Finals10mController::beginJournalSession()
     }
 }
 
+QString Finals10mController::sessionId() const
+{
+    return m_store ? m_store->state().sessionId : QString();
+}
+
+void Finals10mController::closeFinalSession()
+{
+    // F9 Home / New-Final exit: close the session cleanly so a COMPLETED course
+    // is not offered as an unfinished recovery candidate. closeSession appends
+    // exactly one CleanShutdown + archives; it never appends a second
+    // MatchCompleted. No-op when no session is open.
+    if (m_store && m_store->active())
+        m_store->closeSession(ta::rel::CloseReason::Clean);
+}
+
 void Finals10mController::submitEvent(const ta::rel::DomainEvent& event)
 {
     if (!m_store || !m_store->active())
@@ -1006,8 +1022,16 @@ void Finals10mController::loadRecoveredState(const ta::rel::RecoveredMatchState&
     m_cfg = techaim::finals10m::Finals10mConfig::forDiscipline(s.discipline);
     m_athleteName = s.athlete;
 
+    // F9: a COMPLETED course (MatchCompleted folded → Lifecycle::Complete) must
+    // restore the completed-result state — NEVER an active firing window and
+    // never a re-issued command. (enterStage(Complete) leaves currentStageId at
+    // the last single, so the fine-id mapping alone would wrongly reopen it.)
+    const bool wasComplete = (s.lifecycle == Lifecycle::Complete);
     const int fine = s.currentStageId;
-    if (fine <= 1) {
+    if (wasComplete) {
+        m_stage = Stage::Complete;
+        m_singleIndex = m_cfg.singleShotCount;
+    } else if (fine <= 1) {
         m_stage = Stage::PrepSighting;
         m_singleIndex = 0;
     } else if (fine == 2) {
@@ -1094,16 +1118,23 @@ void Finals10mController::loadRecoveredState(const ta::rel::RecoveredMatchState&
             recovered.lastEventMonoMs - recovered.stageClockStartMonoMs;
         elapsedScaledMs = static_cast<qint64>(elapsedReal * m_timeScale);
     }
-    restoreStageFiringState(elapsedScaledMs);
-    m_tick.start();
+    if (wasComplete) {
+        // Completed-result restore: no firing window, no tick, no re-issued
+        // command, no second MatchCompleted. The completion panel reopens.
+        m_window = WindowState::Closed;
+        m_segmentEndScaled = 0;
+        m_tick.stop();
+    } else {
+        restoreStageFiringState(elapsedScaledMs);
+        m_tick.start();
+    }
 
-    // F7: restore the last-accepted-shot projection from the recovered record.
+    // F9: restore the last OFFICIAL shot projection from the recovered record.
     if (!s.officials.isEmpty()) {
         const StateShotRecord& last = s.officials.last();
         m_lastShotScore = last.effectiveTenths() / 10.0;
         m_lastShotNumber = last.shot.shotNumber;
         m_lastShotTimeSec = static_cast<int>((qMax<qint32>(0, last.shot.splitMs) + 999) / 1000);
-        m_lastShotIsSighter = false;
     }
 
     emit configChanged();
@@ -1113,6 +1144,8 @@ void Finals10mController::loadRecoveredState(const ta::rel::RecoveredMatchState&
     emit phaseChanged();
     emit advanceLabelChanged();
     emit countdownChanged();
+    if (wasComplete)
+        emit finalCompleted();     // reopen the completion panel on the UI
     qInfo() << "FINALS10M: recovered session" << recovered.sessionId
             << "stage" << stageName(m_stage) << "single" << m_singleIndex
             << "officials" << m_officialShotCount << "total" << m_cumulativeTotal;
