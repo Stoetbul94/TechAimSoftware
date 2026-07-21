@@ -26,9 +26,13 @@ namespace rel {
 
 // ── shared enums ──────────────────────────────────────────────────────
 
+// Appended AFTER Training so existing quint8 values never move (journal/
+// snapshot compatibility). AirRifleFinal10m / AirPistolFinal10m are the two
+// 10m individual FINAL disciplines (F1) — single-athlete training course,
+// gated separately from Finals3P. See docs/issf-rules/10m-finals-shared.md.
 enum class Discipline : quint8 {
     None = 0, AirPistol10m, AirRifle10m, Prone50m, ThreePositions50m,
-    Finals3P, Training
+    Finals3P, Training, AirRifleFinal10m, AirPistolFinal10m
 };
 
 inline const char* disciplineId(Discipline d)
@@ -41,20 +45,30 @@ inline const char* disciplineId(Discipline d)
     case Discipline::ThreePositions50m: return "3P50";
     case Discipline::Finals3P:          return "FINAL3P";
     case Discipline::Training:          return "TRAINING";
+    case Discipline::AirRifleFinal10m:  return "FINAL_AR10";
+    case Discipline::AirPistolFinal10m: return "FINAL_AP10";
     }
     return "NONE";
 }
 
 inline bool disciplineFromId(const QString& id, Discipline* out)
 {
-    if (id == QLatin1String("NONE"))     { *out = Discipline::None; return true; }
-    if (id == QLatin1String("AP10"))     { *out = Discipline::AirPistol10m; return true; }
-    if (id == QLatin1String("AR10"))     { *out = Discipline::AirRifle10m; return true; }
-    if (id == QLatin1String("PRONE50"))  { *out = Discipline::Prone50m; return true; }
-    if (id == QLatin1String("3P50"))     { *out = Discipline::ThreePositions50m; return true; }
-    if (id == QLatin1String("FINAL3P"))  { *out = Discipline::Finals3P; return true; }
-    if (id == QLatin1String("TRAINING")) { *out = Discipline::Training; return true; }
+    if (id == QLatin1String("NONE"))       { *out = Discipline::None; return true; }
+    if (id == QLatin1String("AP10"))       { *out = Discipline::AirPistol10m; return true; }
+    if (id == QLatin1String("AR10"))       { *out = Discipline::AirRifle10m; return true; }
+    if (id == QLatin1String("PRONE50"))    { *out = Discipline::Prone50m; return true; }
+    if (id == QLatin1String("3P50"))       { *out = Discipline::ThreePositions50m; return true; }
+    if (id == QLatin1String("FINAL3P"))    { *out = Discipline::Finals3P; return true; }
+    if (id == QLatin1String("TRAINING"))   { *out = Discipline::Training; return true; }
+    if (id == QLatin1String("FINAL_AR10")) { *out = Discipline::AirRifleFinal10m; return true; }
+    if (id == QLatin1String("FINAL_AP10")) { *out = Discipline::AirPistolFinal10m; return true; }
     return false;
+}
+
+// The two 10m FINAL disciplines share one controller/state (F1).
+inline bool isFinals10mDiscipline(Discipline d)
+{
+    return d == Discipline::AirRifleFinal10m || d == Discipline::AirPistolFinal10m;
 }
 
 enum class TimerId : quint8 { Preparation = 0, Match = 1, Stage = 2, Window = 3 };

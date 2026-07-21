@@ -53,6 +53,7 @@ const char* discKindName(const DisciplineState& d)
     if (std::holds_alternative<QualificationState>(d)) return "qualification";
     if (std::holds_alternative<Finals3PState>(d))      return "finals3p";
     if (std::holds_alternative<TrainingState>(d))      return "training";
+    if (std::holds_alternative<Finals10mState>(d))     return "finals10m";
     return "none";
 }
 
@@ -213,6 +214,11 @@ QByteArray serializeSessionState(const SessionState& s)
         w.field("version", static_cast<qint64>(f->version));
     } else if (const auto* t = std::get_if<TrainingState>(&s.disc)) {
         w.field("version", static_cast<qint64>(t->version));
+    } else if (const auto* f10 = std::get_if<Finals10mState>(&s.disc)) {
+        w.field("stageId", static_cast<qint64>(f10->stageId));
+        w.field("windowId", static_cast<qint64>(f10->windowId));
+        w.field("shotsInStage", static_cast<qint64>(f10->shotsInStage));
+        w.field("version", static_cast<qint64>(f10->version));
     }
     w.endObject();
 
@@ -665,6 +671,14 @@ ReliabilityResult deserializeSessionState(const QByteArray& json, SessionState* 
                 TrainingState t;
                 t.version = static_cast<qint32>(dr.reqInt("version", 1, INT32_MAX));
                 s.disc = t;
+            } else if (kind == QLatin1String("finals10m")) {
+                Finals10mState f;
+                f.stageId = static_cast<qint16>(dr.reqInt("stageId", INT16_MIN, INT16_MAX));
+                f.windowId = static_cast<qint16>(dr.reqInt("windowId", INT16_MIN, INT16_MAX));
+                f.shotsInStage =
+                    static_cast<qint32>(dr.reqInt("shotsInStage", 0, INT32_MAX));
+                f.version = static_cast<qint32>(dr.reqInt("version", 1, INT32_MAX));
+                s.disc = f;
             } else if (kind == QLatin1String("none")) {
                 s.disc = std::monostate{};
             } else if (!dr.failed) {

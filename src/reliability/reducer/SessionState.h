@@ -201,13 +201,32 @@ struct Finals3PState {
     }
 };
 
+// 10m Air Rifle / Air Pistol FINAL (F1). Single-athlete training course.
+// The reducer-owned authoritative course record (accepted shots, integer
+// tenths totals, stage) lives in the generic SessionState above; this holds
+// only the discipline-specific live cursor — series/single index and
+// checkpoint are DERIVED from the official-shot fold, never stored twice.
+struct Finals10mState {
+    qint16 stageId = 0;        // fine-grained: 1 prep, 2 series1, 3 series2,
+                               // 4..17 singles 1..14
+    qint16 windowId = 0;
+    qint32 shotsInStage = 0;   // shots accepted in the current firing window
+    qint32 version = 1;
+    bool operator==(const Finals10mState& o) const
+    {
+        return stageId == o.stageId && windowId == o.windowId
+            && shotsInStage == o.shotsInStage && version == o.version;
+    }
+};
+
 struct TrainingState {
     qint32 version = 1;
     bool operator==(const TrainingState& o) const { return version == o.version; }
 };
 
 using DisciplineState =
-    std::variant<std::monostate, QualificationState, Finals3PState, TrainingState>;
+    std::variant<std::monostate, QualificationState, Finals3PState,
+                 TrainingState, Finals10mState>;
 
 // Serialized state format version (StateSnapshot payloads).
 // v2 (M3 Phase A): adds the `estIncidents` array. Backward compatible — a v1

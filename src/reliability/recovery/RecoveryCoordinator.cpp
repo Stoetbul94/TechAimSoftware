@@ -22,6 +22,8 @@ QString disciplineLabel(Discipline d, const QString& matchType)
     case Discipline::Prone50m:          return QStringLiteral("50m Rifle Prone");
     case Discipline::AirRifle10m:       return QStringLiteral("10m Air Rifle");
     case Discipline::AirPistol10m:      return QStringLiteral("10m Air Pistol");
+    case Discipline::AirRifleFinal10m:  return QStringLiteral("10m Air Rifle Final");
+    case Discipline::AirPistolFinal10m: return QStringLiteral("10m Air Pistol Final");
     case Discipline::Training:          return QStringLiteral("Training");
     case Discipline::None:              break;
     }

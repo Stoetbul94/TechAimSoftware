@@ -169,6 +169,10 @@ ReduceResult SessionReducer::apply(const SessionState& current,
             case Discipline::Finals3P:
                 next.disc = Finals3PState{};
                 break;
+            case Discipline::AirRifleFinal10m:
+            case Discipline::AirPistolFinal10m:
+                next.disc = Finals10mState{};
+                break;
             case Discipline::Training:
                 next.disc = TrainingState{};
                 break;
@@ -254,6 +258,10 @@ ReduceResult SessionReducer::apply(const SessionState& current,
                 f->stageId = e.shot.stageId;
                 f->windowId = e.shot.windowId;
                 ++f->shotsInStage;
+            } else if (auto* f10 = std::get_if<Finals10mState>(&next.disc)) {
+                f10->stageId = e.shot.stageId;
+                f10->windowId = e.shot.windowId;
+                ++f10->shotsInStage;
             }
             recomputeTotals(next);
         },
@@ -520,6 +528,9 @@ ReduceResult SessionReducer::apply(const SessionState& current,
             if (auto* f = std::get_if<Finals3PState>(&next.disc)) {
                 f->stageId = e.stageId;
                 f->shotsInStage = 0;
+            } else if (auto* f10 = std::get_if<Finals10mState>(&next.disc)) {
+                f10->stageId = e.stageId;
+                f10->shotsInStage = 0;
             }
         },
         [&](const StageStatusChanged& e) {
@@ -541,6 +552,8 @@ ReduceResult SessionReducer::apply(const SessionState& current,
             }
             if (auto* f = std::get_if<Finals3PState>(&next.disc))
                 f->windowId = e.windowId;
+            else if (auto* f10 = std::get_if<Finals10mState>(&next.disc))
+                f10->windowId = e.windowId;
         },
         [&](const WindowClosed&) {
             if (!active)

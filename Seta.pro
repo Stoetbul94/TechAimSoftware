@@ -22,6 +22,7 @@ SOURCES += main.cpp \
     src/finals/Finals3PController.cpp \
     src/finals/FinalsReportBuilder.cpp \
     src/finals/FinalsAudioService.cpp \
+    src/finals10m/Finals10mController.cpp \
     src/qualification/QualificationController.cpp \
     src/incident/EstIncidentController.cpp
 
@@ -54,7 +55,17 @@ HEADERS += \
     src/finals/FinalsAudioService.h \
     src/qualification/QualificationController.h \
     src/incident/EstIncidentController.h
+
+# 10m Air Rifle / Air Pistol FINAL — single-athlete training course (F1).
+# ISSF Rule Book Edition 2025 (Second Print 07/2026), rule 6.17.2. Separate
+# from the 3P Final; see docs/issf-rules/10m-finals-shared.md and
+# docs/10m-finals-architecture.md.
+HEADERS += \
+    src/finals10m/Finals10mTypes.h \
+    src/finals10m/Finals10mConfig.h \
+    src/finals10m/Finals10mController.h
 INCLUDEPATH += src/finals
+INCLUDEPATH += src/finals10m
 INCLUDEPATH += src/qualification
 INCLUDEPATH += src/incident
 
