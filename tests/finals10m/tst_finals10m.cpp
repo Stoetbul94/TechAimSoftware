@@ -483,6 +483,39 @@ static void clearCurrentSessions()
         d.remove(f);
 }
 
+// ── 6b. Air Pistol Final — no integer-scoring leak (F4) ────────────────────
+// Air Pistol QUALIFICATION is integer-scored; the Air Pistol FINAL is DECIMAL
+// (rule 6.17.2). This proves the qualification integer path never leaks into
+// the final: every fired decimal ring value is stored as decimal tenths, and
+// the total is the decimal sum (never the integer-floored sum).
+static void testPistolNoIntegerLeak()
+{
+    Finals10mController c;
+    c.setTimeScale(300.0);
+    c.configureDiscipline(QStringLiteral("FINAL_AP10"));
+    check(c.disciplineId() == QLatin1String("FINAL_AP10"), "AP: discipline configured");
+    check(c.targetType() == 0, "AP: pistol target type");
+    Recorder r; r.attach(&c);
+    c.startFinal();
+    // Fire every shot at 10.5 (integer floor would be 10 → 240.0; decimal → 252.0).
+    const bool done = driveToCompletion(c, 40000, 1, [](int){ return 10.5; });
+    check(done, "AP: full pistol final completed");
+
+    const ta::rel::SessionState& st = c.store()->state();
+    // Every official shot stored as 105 tenths (10.5), NOT 100 (integer 10.0).
+    bool allDecimal = !st.officials.isEmpty();
+    int fired = 0;
+    for (const ta::rel::StateShotRecord& sr : st.officials) {
+        ++fired;
+        if (sr.shot.scoreTenths != 105) allDecimal = false;
+    }
+    check(allDecimal, "AP: every final shot stored as 105 tenths (decimal, not integer 100)");
+    // Decimal total (fired × 10.5), never the integer-floored (fired × 10).
+    check(st.totalTenths == fired * 105, "AP: total is decimal sum (no integer-floor leak)",
+          QString("total=%1 fired=%2").arg(st.totalTenths).arg(fired));
+    check(qAbs(c.cumulativeTotal() - fired * 10.5) < 1e-9, "AP: decimal cumulative total");
+}
+
 // ── 7. Crash → recover → continue → complete (F3) ──────────────────────────
 static void testRecovery()
 {
@@ -588,6 +621,7 @@ int main(int argc, char** argv)
     testRejections();
     testEstBlocksOfficials();
     testReplayAndSnapshot();
+    testPistolNoIntegerLeak();
     testRecovery();
 
     std::printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
