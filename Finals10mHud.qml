@@ -90,32 +90,54 @@ Item {
     //    (~1.1 s), auto-dismissing, non-interactive (no MouseArea — never
     //    intercepts a shot). The PERSISTENT command + countdown lives in the
     //    right-hand Finals10mCommandPanel, NOT here (target-first design).
+    // F8B: high-contrast central flash. Short label + semantic colour on a dark
+    // translucent plate with a red accent border — readable over both the light
+    // and black target regions, rifle and pistol faces, zoomed or not (never
+    // black text on the light target; never colour alone — the word is always
+    // explicit). Non-interactive (no MouseArea), auto-dismissing, a QML
+    // projection only — never authoritative and never affects controller timing.
     property string flashText: ""
-    Timer { id: flashTimer; interval: 1100; onTriggered: hud.flashText = "" }
+    property color  flashColor: "#f2f3f5"
+    property bool   flashSafety: false
+    Timer { id: flashTimer; interval: hud.flashSafety ? 1600 : 1000; onTriggered: hud.flashText = "" }
+    function raiseFlash(label, col, safety) {
+        hud.flashText = label; hud.flashColor = col; hud.flashSafety = safety
+        flashTimer.restart()
+    }
     Connections {
         target: hud.ctl
         function onCommandIssued(ev) {
-            var t = ev.typeName
-            if (t === "TakeYourPositions" || t === "Stop" || t === "Unload") {
-                hud.flashText = ev.text
-                flashTimer.restart()
+            // Category mapping (docs: F8 command semantics). Safety/stop = red;
+            // active firing = green; prep/neutral = light + red accent.
+            switch (ev.typeName) {
+            case "Stop":                 hud.raiseFlash(qsTr("STOP"), hud._red, true); break
+            case "Unload":               hud.raiseFlash(qsTr("STOP · UNLOAD"), hud._red, true); break
+            case "StartSeries":
+            case "StartSingle":          hud.raiseFlash(qsTr("START · FIRE"), hud._green, false); break
+            case "TakeYourPositions":    hud.raiseFlash(qsTr("TAKE YOUR POSITIONS"), hud._txt, false); break
+            case "LoadSeries":
+            case "LoadSingle":           hud.raiseFlash(qsTr("LOAD"), hud._txt, false); break
+            default: break               // LOAD/START details, warnings etc. stay
+                                         // in the persistent right-hand panel only
             }
         }
     }
     Rectangle {
+        id: flashPlate
         visible: hud.flashText !== ""
         anchors.centerIn: parent
-        width: Math.min(hud.width * 0.7, flashText2.implicitWidth + 48)
-        height: flashText2.implicitHeight + 28
+        width: Math.min(hud.width * 0.72, flashText2.implicitWidth + 56)
+        height: flashText2.implicitHeight + 30
         radius: 12
-        color: Qt.rgba(0, 0, 0, 0.78)
+        color: Qt.rgba(0, 0, 0, 0.82)
+        border.color: hud._red; border.width: 2
         Text {
             id: flashText2
             anchors.centerIn: parent
             text: hud.flashText
-            color: hud._txt; font.pixelSize: 22; font.bold: true
+            color: hud.flashColor; font.pixelSize: 26; font.bold: true; font.letterSpacing: 1
             horizontalAlignment: Text.AlignHCenter
-            width: Math.min(hud.width * 0.62, implicitWidth); wrapMode: Text.WordWrap
+            width: Math.min(hud.width * 0.64, implicitWidth); wrapMode: Text.WordWrap
         }
     }
 
@@ -142,9 +164,19 @@ Item {
         anchors.bottom: parent.bottom; anchors.bottomMargin: hud.height * 0.30
         width: incText.implicitWidth + 28; height: 30; radius: 6
         color: "#7a1d1d"
+        property bool blocking: visible
         Connections {
             target: (typeof INCIDENTS !== "undefined") ? INCIDENTS : null
-            function onIncidentChanged() { incidentWarn.inc = INCIDENTS.activeIncident() }
+            function onIncidentChanged() {
+                incidentWarn.inc = INCIDENTS.activeIncident()
+                // Flash DO NOT FIRE once on the transition into a blocking state
+                // (safety-critical; longer dwell). The persistent warning banner
+                // + command panel keep showing the blocked state afterwards.
+                var nowBlocking = incidentWarn.visible
+                if (nowBlocking && !incidentWarn.blocking)
+                    hud.raiseFlash(qsTr("DO NOT FIRE · RANGE INCIDENT"), hud._red, true)
+                incidentWarn.blocking = nowBlocking
+            }
         }
         Text {
             id: incText; anchors.centerIn: parent
