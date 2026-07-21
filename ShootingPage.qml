@@ -338,9 +338,13 @@ Item {
         }
 
         // ── Phase stepper: SIGHT → MATCH, or SIGHT → KNEEL → PRONE → STAND ──
+        // F7: the 10m Final owns its own PREP/S1/S2/SINGLES/DONE progression in
+        // the right-hand command panel — the qualification SIGHTING/MATCH chip
+        // must not appear (and must never drive Final phase state).
         Row {
             anchors.centerIn: parent
             spacing: 6
+            visible: !isFinals10mMatch
             Repeater {
                 model: is3PMatch ? [qsTr("SIGHT"), qsTr("KNEEL"), qsTr("PRONE"), qsTr("STAND")]
                                  : [qsTr("SIGHTING"), qsTr("MATCH")]
@@ -375,13 +379,19 @@ Item {
             anchors.right: parent.right; anchors.rightMargin: 16
             anchors.verticalCenter: parent.verticalCenter
             spacing: 12
+            // F7: during a 10m Final the authoritative count/total live in the
+            // right-hand command panel + score summary; the legacy globalMatchModel
+            // count would read 0 here (10m shots never populate it) and contradict
+            // FINALS10M — so hide the legacy top counter for the Final.
             Text {
+                visible: !isFinals10mMatch
                 text: globalMatchModel.count + " / " + (matchShootCount > 0 ? matchShootCount : "—")
                 color: "white"; font.family: theme.fontFamily
                 font.pixelSize: 14; font.bold: true
                 anchors.verticalCenter: parent.verticalCenter
             }
             Text {
+                visible: !isFinals10mMatch
                 text: qsTr("SHOTS")
                 color: "#9a9ba0"; font.family: theme.fontFamily
                 font.pixelSize: 9; font.letterSpacing: 1.5
@@ -458,7 +468,12 @@ Item {
             // only renders and invokes. Qualification behaviour is untouched.
             readonly property bool finalsMode: shootingPage.isFinalsMatch
             readonly property bool finalsEnabled: finalsMode && FINALS3P.primaryActionEnabled
-            visible: finalsMode ? FINALS3P.primaryActionVisible : true
+            // F7: the 10m Final is fully command/timer-driven by FINALS10M — the
+            // qualification START MATCH bar must not appear and must never
+            // trigger a phase transition. (Completion "VIEW REPORT" is handled by
+            // the Finals10m completion panel, not this bar.)
+            visible: shootingPage.isFinals10mMatch ? false
+                     : (finalsMode ? FINALS3P.primaryActionVisible : true)
             color: finalsMode
                    ? (finalsEnabled ? (primaryMouse.containsMouse ? "#c40034" : "#e8003d")
                                     : "transparent")
@@ -555,6 +570,14 @@ Item {
         anchors.right: parent.right
         anchors.top: statusStrip.bottom
         z: 10
+        // F7: the qualification right panel (LAST SHOT / SERIES table / TOTAL /
+        // S1–S6) is hidden during a 10m Final — it reads qualification models
+        // that the Final never populates, so it would show a stale SERIES 1
+        // heading, zero totals and a qualification series structure. The
+        // Final-specific Finals10mRightPanel occupies the same slot. Its width
+        // is preserved (visible:false keeps the layout) so the target keeps its
+        // size. Qualification/3P use this panel unchanged.
+        visible: !isFinals10mMatch
         onSwitchToSighter:
         {
             if(sighterEnable)
@@ -570,6 +593,20 @@ Item {
         onMatchFinished: {
             changedToMatchFinish()
         }
+    }
+
+    // F7: 10m Final right-hand information column (command/countdown/last shot,
+    // Final-specific shot history, score summary). Same slot as rightPanel;
+    // every value from FINALS10M. Shared by Air Rifle and Air Pistol.
+    Finals10mRightPanel {
+        id: finals10mRightPanel
+        visible: isFinals10mMatch
+        width: rightPanel.width
+        height: rightPanel.height
+        anchors.right: parent.right
+        anchors.top: statusStrip.bottom
+        z: 11
+        ctl: FINALS10M
     }
 
     CenterPane {
@@ -1114,6 +1151,10 @@ Item {
         matchFinished = false
         finals10mShotSeq = 0
         rightPanel.resetRightPanelModels()
+        // F7: clear the Final-specific shot history so a fresh start / recovery
+        // rebuilds it from FINALS10M's accepted-shot signals (recovery re-emits
+        // every recovered shot, so the list restores exactly).
+        finals10mRightPanel.reset()
         if (startFresh) {
             MODREADER.appendToLogFile("10m FINAL: session start (" + disciplineId
                                       + ", FINALS10M owns timing)")

@@ -60,6 +60,16 @@ class Finals10mController : public QObject
     Q_PROPERTY(int stageShotCapacity READ stageShotLimit NOTIFY phaseChanged)
     Q_PROPERTY(double cumulativeTotal READ cumulativeTotal NOTIFY totalsChanged)
     Q_PROPERTY(QString checkpointLabel READ checkpointLabel NOTIFY totalsChanged)
+    // F7 athlete-display projections (read-only, derived — never a second
+    // authoritative source). Last accepted shot for the right-hand command
+    // panel, and live per-segment subtotals for the score summary.
+    Q_PROPERTY(double lastShotScore READ lastShotScore NOTIFY lastShotChanged)
+    Q_PROPERTY(int lastShotNumber READ lastShotNumber NOTIFY lastShotChanged)
+    Q_PROPERTY(int lastShotTimeSec READ lastShotTimeSec NOTIFY lastShotChanged)
+    Q_PROPERTY(bool lastShotIsSighter READ lastShotIsSighter NOTIFY lastShotChanged)
+    Q_PROPERTY(double series1Subtotal READ series1Subtotal NOTIFY totalsChanged)
+    Q_PROPERTY(double series2Subtotal READ series2Subtotal NOTIFY totalsChanged)
+    Q_PROPERTY(double singlesSubtotal READ singlesSubtotal NOTIFY totalsChanged)
     Q_PROPERTY(int seriesNumber READ seriesNumber NOTIFY phaseChanged)
     Q_PROPERTY(int singleIndex READ singleIndex NOTIFY phaseChanged)
     Q_PROPERTY(QString disciplineId READ disciplineId NOTIFY configChanged)
@@ -123,6 +133,16 @@ public:
     int maximumMatchShots() const { return m_cfg.maximumMatchShots; }
     double cumulativeTotal() const { return m_cumulativeTotal; }
     QString checkpointLabel() const { return m_lastCheckpointLabel; }
+    double lastShotScore() const { return m_lastShotScore; }
+    int lastShotNumber() const { return m_lastShotNumber; }
+    int lastShotTimeSec() const { return m_lastShotTimeSec; }
+    bool lastShotIsSighter() const { return m_lastShotIsSighter; }
+    double series1Subtotal() const { return m_seriesSubtotal.value(2, 0.0); }
+    double series2Subtotal() const { return m_seriesSubtotal.value(3, 0.0); }
+    double singlesSubtotal() const;
+    // True while an unresolved EST incident blocks official shots (Phase-E
+    // authority model). Polled by the command panel on INCIDENTS.incidentChanged.
+    Q_INVOKABLE bool officialsBlockedNow() const;
     int seriesNumber() const;
     int singleIndex() const { return m_singleIndex; }
     QString disciplineId() const;
@@ -161,6 +181,7 @@ signals:
     void shotRejected(const QVariantMap& rejection);
     void stageCompleted(int stageId);
     void checkpointReached(int shotNumber, const QString& label, double total);
+    void lastShotChanged();
     void finalCompleted();
     void reportRequested();
     void missingShotRecorded(const QVariantMap& record);
@@ -259,6 +280,11 @@ private:
     int m_sighterCount = 0;
     double m_cumulativeTotal = 0.0;
     int m_officialShotCount = 0;
+    // F7 last-accepted-shot projection (right-hand command panel).
+    double m_lastShotScore = -1.0;      // -1 = none yet
+    int m_lastShotNumber = 0;           // official number (0 for sighter / none)
+    int m_lastShotTimeSec = 0;
+    bool m_lastShotIsSighter = false;
     QString m_lastCheckpointLabel;
     QHash<int, double> m_checkpointTotals;        // shotNumber -> cumulative
     QHash<int, double> m_seriesSubtotal;          // fineStageId -> subtotal

@@ -161,11 +161,16 @@ void Finals10mController::startFinal()
     m_sighterCount = 0;
     m_cumulativeTotal = 0.0;
     m_officialShotCount = 0;
+    m_lastShotScore = -1.0;
+    m_lastShotNumber = 0;
+    m_lastShotTimeSec = 0;
+    m_lastShotIsSighter = false;
     m_lastCheckpointLabel.clear();
     m_checkpointTotals.clear();
     m_seriesSubtotal.clear();
     m_stageStatus.clear();
     emit totalsChanged();
+    emit lastShotChanged();
     beginJournalSession();
     m_tick.start();
 
@@ -381,7 +386,14 @@ void Finals10mController::acceptShot(bool sighter, double xMm, double yMm,
     QVariantMap shot = makeShotRecord(sighter, xMm, yMm, score, finalNumber,
                                       withinStage, externalShotId, direction,
                                       simulated, ++m_shotEventId);
-    shot[QStringLiteral("timeSec")] = static_cast<int>((qMax<qint64>(0, splitMs) + 999) / 1000);
+    const int splitSec = static_cast<int>((qMax<qint64>(0, splitMs) + 999) / 1000);
+    shot[QStringLiteral("timeSec")] = splitSec;
+    // F7: last-accepted-shot projection for the command panel.
+    m_lastShotScore = score;
+    m_lastShotNumber = sighter ? 0 : finalNumber;
+    m_lastShotTimeSec = splitSec;
+    m_lastShotIsSighter = sighter;
+    emit lastShotChanged();
     if (sighter)
         ++m_sighterCount;
     else
@@ -508,6 +520,21 @@ int Finals10mController::seriesNumber() const
     if (m_stage == Stage::Series1) return 1;
     if (m_stage == Stage::Series2) return 2;
     return 0;
+}
+
+double Finals10mController::singlesSubtotal() const
+{
+    double s = 0.0;
+    for (auto it = m_seriesSubtotal.constBegin(); it != m_seriesSubtotal.constEnd(); ++it)
+        if (it.key() >= 4)   // fine stage ids 4..17 = singles 1..14
+            s += it.value();
+    return s;
+}
+
+bool Finals10mController::officialsBlockedNow() const
+{
+    return m_store && m_store->active()
+        && EstIncidentController::officialsBlocked(m_store->state());
 }
 
 void Finals10mController::enterStage(Stage s)
@@ -1070,8 +1097,18 @@ void Finals10mController::loadRecoveredState(const ta::rel::RecoveredMatchState&
     restoreStageFiringState(elapsedScaledMs);
     m_tick.start();
 
+    // F7: restore the last-accepted-shot projection from the recovered record.
+    if (!s.officials.isEmpty()) {
+        const StateShotRecord& last = s.officials.last();
+        m_lastShotScore = last.effectiveTenths() / 10.0;
+        m_lastShotNumber = last.shot.shotNumber;
+        m_lastShotTimeSec = static_cast<int>((qMax<qint32>(0, last.shot.splitMs) + 999) / 1000);
+        m_lastShotIsSighter = false;
+    }
+
     emit configChanged();
     emit totalsChanged();
+    emit lastShotChanged();
     emit shotCountsChanged();
     emit phaseChanged();
     emit advanceLabelChanged();

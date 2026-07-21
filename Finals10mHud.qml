@@ -83,108 +83,47 @@ Item {
         }
     }
 
-    Timer { id: bannerTimer; interval: 4200; onTriggered: hud.checkpointBanner = "" }
+    Timer { id: bannerTimer; interval: 2600; onTriggered: hud.checkpointBanner = "" }
 
-    // ── Layer 1: persistent top strip ───────────────────────────────────
-    Rectangle {
-        id: strip
-        anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right
-        height: Math.max(40, Math.min(48, hud.height * 0.06))
-        color: hud._bg
-        Row {
-            anchors.fill: parent
-            anchors.leftMargin: 14; anchors.rightMargin: 14
-            spacing: 16
-            // discipline + stage
-            Column {
-                anchors.verticalCenter: parent.verticalCenter; spacing: 1
-                Text {
-                    text: hud.ctl ? hud.ctl.displayName : "10m Final"
-                    color: hud._red; font.pixelSize: 13; font.bold: true; font.letterSpacing: 1
-                }
-                Text {
-                    text: hud.ctl ? hud.ctl.stageLabel : ""
-                    color: hud._txtSec; font.pixelSize: 11
-                }
-            }
-            Item { width: 1; height: 1 }
-            // step progress dots
-            Row {
-                anchors.verticalCenter: parent.verticalCenter; spacing: 6
-                Repeater {
-                    model: hud.ctl ? hud.ctl.stepLabels() : []
-                    Rectangle {
-                        width: 54; height: 22; radius: 4
-                        color: (hud.ctl && hud.ctl.stepIndex === index) ? hud._red : hud._bgAlt
-                        Text {
-                            anchors.centerIn: parent; text: modelData
-                            font.pixelSize: 9; font.bold: true
-                            color: (hud.ctl && hud.ctl.stepIndex === index) ? hud._txt : hud._txtMut
-                        }
-                    }
-                }
-            }
-        }
-        // shot count + total (right-aligned)
-        Row {
-            anchors.right: parent.right; anchors.rightMargin: 14
-            anchors.verticalCenter: parent.verticalCenter; spacing: 18
-            Column {
-                Text { text: "SHOTS"; color: hud._txtMut; font.pixelSize: 8; font.letterSpacing: 1
-                       anchors.right: parent.right }
-                Text {
-                    anchors.right: parent.right
-                    text: (hud.ctl ? hud.ctl.officialShotCount : 0) + " / " + (hud.ctl ? hud.ctl.maximumMatchShots : 24)
-                    color: hud._txt; font.pixelSize: 14; font.bold: true
-                }
-            }
-            Column {
-                Text { text: "TOTAL"; color: hud._txtMut; font.pixelSize: 8; font.letterSpacing: 1
-                       anchors.right: parent.right }
-                Text {
-                    anchors.right: parent.right
-                    text: hud.fmt1(hud.ctl ? hud.ctl.cumulativeTotal : 0)
-                    color: hud._green; font.pixelSize: 14; font.bold: true
-                }
+    // ── Transient central flash — ONLY for the major CRO transitions the
+    //    athlete must notice (TAKE YOUR POSITIONS / STOP…UNLOAD). Brief
+    //    (~1.1 s), auto-dismissing, non-interactive (no MouseArea — never
+    //    intercepts a shot). The PERSISTENT command + countdown lives in the
+    //    right-hand Finals10mCommandPanel, NOT here (target-first design).
+    property string flashText: ""
+    Timer { id: flashTimer; interval: 1100; onTriggered: hud.flashText = "" }
+    Connections {
+        target: hud.ctl
+        function onCommandIssued(ev) {
+            var t = ev.typeName
+            if (t === "TakeYourPositions" || t === "Stop" || t === "Unload") {
+                hud.flashText = ev.text
+                flashTimer.restart()
             }
         }
     }
-
-    // ── Layer 2: CRO command + countdown (upper-middle) ─────────────────
     Rectangle {
-        visible: hud.ctl && hud.ctl.running && !hud.completed
-        anchors.horizontalCenter: parent.horizontalCenter
-        y: strip.height + hud.height * 0.06
-        width: Math.min(hud.width * 0.72, cmdCol.implicitWidth + 40)
-        height: cmdCol.implicitHeight + 20
-        radius: 10
-        color: Qt.rgba(0, 0, 0, 0.72)
-        Column {
-            id: cmdCol
-            anchors.centerIn: parent; spacing: 4
-            Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                text: hud.ctl ? hud.ctl.commandText : ""
-                color: hud._txt; font.pixelSize: 18; font.bold: true
-                horizontalAlignment: Text.AlignHCenter
-                width: Math.min(hud.width * 0.66, implicitWidth)
-                wrapMode: Text.WordWrap
-            }
-            Text {
-                anchors.horizontalCenter: parent.horizontalCenter
-                visible: hud.ctl && hud.ctl.remainingMs > 0
-                text: hud.ctl ? hud.ctl.remainingFormatted : "00:00"
-                color: (hud.ctl && hud.ctl.isFiringWindowOpen) ? hud._green : hud._amber
-                font.pixelSize: 30; font.bold: true
-            }
+        visible: hud.flashText !== ""
+        anchors.centerIn: parent
+        width: Math.min(hud.width * 0.7, flashText2.implicitWidth + 48)
+        height: flashText2.implicitHeight + 28
+        radius: 12
+        color: Qt.rgba(0, 0, 0, 0.78)
+        Text {
+            id: flashText2
+            anchors.centerIn: parent
+            text: hud.flashText
+            color: hud._txt; font.pixelSize: 22; font.bold: true
+            horizontalAlignment: Text.AlignHCenter
+            width: Math.min(hud.width * 0.62, implicitWidth); wrapMode: Text.WordWrap
         }
     }
 
-    // ── Checkpoint banner (transient) ───────────────────────────────────
+    // ── Checkpoint banner (transient, top toast — never over the aim) ───
     Rectangle {
         visible: hud.checkpointBanner !== ""
         anchors.horizontalCenter: parent.horizontalCenter
-        anchors.top: strip.bottom; anchors.topMargin: 8
+        anchors.top: parent.top; anchors.topMargin: 8
         width: cpText.implicitWidth + 28; height: 30; radius: 15
         color: hud._amber
         Text {

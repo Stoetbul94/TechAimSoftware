@@ -230,6 +230,15 @@ static void testFullRifleFinal()
     check(st.totalTenths == 2520, "total computed in integer tenths (2520)",
           QString("got %1").arg(st.totalTenths));
     check(qAbs(c.cumulativeTotal() - 252.0) < 1e-9, "cumulative decimal total 252.0");
+    // F7 projections: live subtotals partition the total; last shot tracked.
+    check(qAbs(c.series1Subtotal() - 52.5) < 1e-9, "F7: series1 subtotal 52.5");
+    check(qAbs(c.series2Subtotal() - 52.5) < 1e-9, "F7: series2 subtotal 52.5");
+    check(qAbs(c.singlesSubtotal() - 147.0) < 1e-9, "F7: singles subtotal 147.0");
+    check(qAbs(c.series1Subtotal() + c.series2Subtotal() + c.singlesSubtotal()
+               - c.cumulativeTotal()) < 1e-9, "F7: subtotals partition the total");
+    check(qAbs(c.lastShotScore() - 10.5) < 1e-9 && c.lastShotNumber() == 24,
+          "F7: last-shot projection = shot 24 @ 10.5",
+          QString("score=%1 num=%2").arg(c.lastShotScore()).arg(c.lastShotNumber()));
     // Decimal preserved (a 10.5 shot stores 105 tenths, not integer-floored 100).
     bool anyDecimal = false;
     for (const ta::rel::StateShotRecord& sr : st.officials)
