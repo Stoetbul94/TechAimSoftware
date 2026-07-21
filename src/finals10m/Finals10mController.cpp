@@ -370,11 +370,18 @@ void Finals10mController::acceptShot(bool sighter, double xMm, double yMm,
         emit totalsChanged();
         emit shotCountsChanged();
     }
-    m_lastAcceptScaled = scaledNow();
+    // Per-shot split (report "shot times"): time since the previous accepted
+    // shot in this window, or since the window opened for the window's first
+    // shot — in whole (scaled) seconds, the training-sim convention.
+    const qint64 nowSplit = scaledNow();
+    const qint64 splitMs = m_lastAcceptScaled > 0 ? (nowSplit - m_lastAcceptScaled)
+                                                   : (nowSplit - m_windowOpenedScaled);
+    m_lastAcceptScaled = nowSplit;
 
-    const QVariantMap shot = makeShotRecord(sighter, xMm, yMm, score, finalNumber,
-                                            withinStage, externalShotId, direction,
-                                            simulated, ++m_shotEventId);
+    QVariantMap shot = makeShotRecord(sighter, xMm, yMm, score, finalNumber,
+                                      withinStage, externalShotId, direction,
+                                      simulated, ++m_shotEventId);
+    shot[QStringLiteral("timeSec")] = static_cast<int>((qMax<qint64>(0, splitMs) + 999) / 1000);
     if (sighter)
         ++m_sighterCount;
     else
@@ -1035,12 +1042,13 @@ void Finals10mController::loadRecoveredState(const ta::rel::RecoveredMatchState&
     for (const StateShotRecord& r : s.officials) {
         const double xMm = r.shot.xHundredthMm / 100.0;
         const double yMm = r.shot.yHundredthMm / 100.0;
-        const QVariantMap rec = makeShotRecord(false, xMm, yMm,
-                                               r.effectiveTenths() / 10.0,
-                                               r.shot.shotNumber, r.shot.withinStage,
-                                               r.shot.externalId,
-                                               r.shot.directionCentiDeg / 100.0,
-                                               r.shot.simulated, r.seq);
+        QVariantMap rec = makeShotRecord(false, xMm, yMm,
+                                         r.effectiveTenths() / 10.0,
+                                         r.shot.shotNumber, r.shot.withinStage,
+                                         r.shot.externalId,
+                                         r.shot.directionCentiDeg / 100.0,
+                                         r.shot.simulated, r.seq);
+        rec[QStringLiteral("timeSec")] = static_cast<int>((qMax<qint32>(0, r.shot.splitMs) + 999) / 1000);
         m_officialShotRecords.append(rec);
         emit shotAccepted(rec);
     }

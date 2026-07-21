@@ -24,6 +24,7 @@ Item {
     // and never re-evaluate. Snapshot into these properties instead.
     property var checkpointSnapshot: ({})
     property var seriesSnapshot: []
+    property var reportGroup: ({})       // {mpiX, mpiY, extent, avgSec, n}
 
     readonly property color _bg:      "#1b1c22"
     readonly property color _bgAlt:   "#24262e"
@@ -36,6 +37,32 @@ Item {
 
     function fmt1(v) { return (v === undefined || v === null) ? "0.0" : Number(v).toFixed(1) }
 
+    // Group geometry / MPI / mean shot time over the accepted official shots
+    // (millimetre coordinates). Single-athlete training analysis only.
+    function computeGroup(recs) {
+        var n = 0, sx = 0, sy = 0, st = 0
+        var xs = [], ys = []
+        for (var i = 0; i < recs.length; ++i) {
+            var r = recs[i]
+            if (r.sighter === true) continue
+            var x = Number(r.xmm), y = Number(r.ymm)
+            if (isNaN(x) || isNaN(y)) continue
+            xs.push(x); ys.push(y); sx += x; sy += y
+            st += Number(r.timeSec || 0); ++n
+        }
+        if (n === 0) return { n: 0 }
+        var mpiX = sx / n, mpiY = sy / n
+        // Group extent = max pairwise distance (largest spread).
+        var extent = 0
+        for (var a = 0; a < xs.length; ++a)
+            for (var b = a + 1; b < xs.length; ++b) {
+                var dx = xs[a] - xs[b], dy = ys[a] - ys[b]
+                var d = Math.sqrt(dx*dx + dy*dy)
+                if (d > extent) extent = d
+            }
+        return { n: n, mpiX: mpiX, mpiY: mpiY, extent: extent, avgSec: st / n }
+    }
+
     Connections {
         target: hud.ctl
         function onCheckpointReached(shotNumber, label, total) {
@@ -46,6 +73,7 @@ Item {
             if (hud.ctl) {
                 hud.checkpointSnapshot = hud.ctl.checkpointTotals()
                 hud.seriesSnapshot = hud.ctl.seriesSubtotals()
+                hud.reportGroup = hud.computeGroup(hud.ctl.officialShotRecords())
             }
             hud.completed = true
         }
@@ -261,6 +289,35 @@ Item {
                             font.pixelSize: 12; font.bold: modelData >= 22
                         }
                     }
+                }
+            }
+            // group geometry / MPI / mean shot time
+            Text { text: qsTr("GROUP ANALYSIS"); color: hud._txtMut; font.pixelSize: 9; font.letterSpacing: 2 }
+            Row {
+                spacing: 24
+                visible: hud.reportGroup && hud.reportGroup.n > 0
+                Column {
+                    Text { text: qsTr("MPI (mm)"); color: hud._txtMut; font.pixelSize: 10 }
+                    Text {
+                        text: hud.reportGroup.n > 0
+                            ? (Number(hud.reportGroup.mpiX).toFixed(1) + ", " + Number(hud.reportGroup.mpiY).toFixed(1))
+                            : "—"
+                        color: hud._txt; font.pixelSize: 14; font.bold: true
+                    }
+                }
+                Column {
+                    Text { text: qsTr("Group extent (mm)"); color: hud._txtMut; font.pixelSize: 10 }
+                    Text { text: hud.reportGroup.n > 0 ? Number(hud.reportGroup.extent).toFixed(1) : "—"
+                           color: hud._txt; font.pixelSize: 14; font.bold: true }
+                }
+                Column {
+                    Text { text: qsTr("Mean shot time (s)"); color: hud._txtMut; font.pixelSize: 10 }
+                    Text { text: hud.reportGroup.n > 0 ? Number(hud.reportGroup.avgSec).toFixed(1) : "—"
+                           color: hud._txt; font.pixelSize: 14; font.bold: true }
+                }
+                Column {
+                    Text { text: qsTr("Shots fired"); color: hud._txtMut; font.pixelSize: 10 }
+                    Text { text: hud.reportGroup.n + " / 24"; color: hud._txt; font.pixelSize: 14; font.bold: true }
                 }
             }
             Text {
