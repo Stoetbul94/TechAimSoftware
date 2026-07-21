@@ -24,11 +24,15 @@ decision reads as an official rule.
 | 🛠 **Implementation decision** | A TechAim engineering choice that fills a gap the rules do not specify. |
 | ⏳ **Awaiting official rule confirmation** | Known-missing or ambiguous; must not be resolved silently in code. |
 
-> ⚠️ As of this writing, **no rule here carries the ✅ tag**. The discipline and
-> EST rules were supplied by the project owner (📋) and have not been diffed
-> against a published ISSF rulebook edition/page in this repository. When an
-> official PDF is provided, upgrade the relevant entries to ✅ and record the
-> edition, year, and section.
+> ⚠️ Most rules here are 📋 (project-owner-supplied, not yet diffed against a
+> published PDF). **Exception:** the **10m Finals** files
+> ([10m-finals-shared.md](10m-finals-shared.md),
+> [10m-air-rifle-final.md](10m-air-rifle-final.md),
+> [10m-air-pistol-final.md](10m-air-pistol-final.md)) carry the **✅ tag** —
+> verified 2026-07-21 against the official ISSF Rule Book **Edition 2025 (Second
+> Print 07/2026), Effective 1 July 2026**, rule 6.17.2 (pp. 265–272), read
+> section-by-section from the source PDF. The remaining discipline/EST files are
+> still 📋; upgrade them to ✅ when diffed against the same edition.
 
 ---
 
@@ -53,6 +57,9 @@ fixed (after reporting the conflict — never silently).
 | Discipline | Supported in TechAim | Persistence | Reducer | Recovery | Rules complete | Last verified | Unresolved Qs |
 |---|---|---|---|---|---|---|---|
 | [50m Rifle 3 Positions Final](50m-rifle-3p-final.md) | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes (M3) | 📋 Partial | 2026-07-19 | Finals-specific EST allowance mapping |
+| [10m Air Rifle Final](10m-air-rifle-final.md) | ❌ Not implemented (F0 docs) | ❌ No | ❌ No | ❌ No | ✅ **Yes — verified** | 2026-07-21 | Single vs 8-athlete scope; HQ command timings |
+| [10m Air Pistol Final](10m-air-pistol-final.md) | ❌ Not implemented (F0 docs) | ❌ No | ❌ No | ❌ No | ✅ **Yes — verified** | 2026-07-21 | Single vs 8-athlete scope; **final is decimal** |
+| [Shared: 10m Finals](10m-finals-shared.md) | ❌ Not implemented (F0 docs) | ❌ No | ❌ No | ❌ No | ✅ **Yes — verified (6.17.2)** | 2026-07-21 | See architecture gap report |
 | [10m Air Rifle Qualification](10m-air-rifle.md) | ✅ Scoring + persistence + recovery | ✅ Yes (B1) | ✅ Yes (C) | ✅ **Yes (D1)** — EST workflow = Phase E | 📋 Yes | 2026-07-20 | EST boundary at exactly 3:00 / 5:00 |
 | [10m Air Pistol Qualification](10m-air-pistol.md) | ✅ Scoring + persistence + recovery | ✅ Yes (B2, integer) | ✅ Yes (C) | ✅ **Yes (D2)** — EST workflow = Phase E | 📋 Yes | 2026-07-20 | EST boundary at exactly 3:00 / 5:00 |
 | [50m Rifle Prone](50m-rifle-prone.md) | ✅ Scoring + persistence + recovery | ✅ Yes (B3, decimal) | ✅ Yes (C) | ✅ **Yes (D3)** — EST workflow = Phase E | 📋 Yes | 2026-07-20 | EST boundary at exactly 3:00 / 5:00 |
@@ -101,3 +108,4 @@ Finals restorer.
 | 2026-07-19 | Phase B0: shared qualification persistence seam (`QualificationController`/`QUAL`). B1: 10m Air Rifle live scoring journalled (persistence ✅, recovery restore = Phase D). | Implementation (🛠) | src/qualification, ShootingPage, tests |
 | 2026-07-20 | Phase C (replay readiness + timer anchors) and Phase D1–D3 (AR10/AP10/PRONE50 crash recovery via the shared qualification restorer). EST workflow remains Phase E. | Implementation (🛠) | QUAL, ShootingPage/CenterPane, main.qml, RecoveryDialog |
 | 2026-07-21 | Phase E: EST incident + Jury workflow (E0–E5) — service, operator UI, allowances, recovery phases, resume gating, incident-aware crash recovery, per-session history. EST rules edition/page still pending (📋). | Implementation (🛠) | src/incident, IncidentWindow, reliability layer |
+| 2026-07-21 | Phase F0: 10m Air Rifle & Air Pistol **Final** rules + architecture package (docs only, no code). Rules ✅ **verified** against ISSF Rule Book Edition 2025 (Second Print 07/2026), rule 6.17.2, pp. 265–272 — 8 finalists, 2×5 (250 s) + 14 singles (50 s) = 24 shots, **decimal both AR & AP**, eliminations from shot 12, shoot-off ties. Architecture recommends one `Finals10mController` (rifle/pistol config); single-vs-8-athlete scope is the blocking gap. | Rules ✅ + Architecture (🛠) | docs/issf-rules/10m-*-final.md, docs/10m-finals-architecture.md |
