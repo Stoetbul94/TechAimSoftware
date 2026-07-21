@@ -777,8 +777,10 @@ ApplicationWindow {
                     shootingPage.setCurrentGameType(10)
                 else if (gameEvent === 4)
                     shootingPage.setCurrentGameType(11)
+                else if (gameEvent === 7)
+                    shootingPage.setFinals10mGameType()   // 10m Air Pistol FINAL (24)
                 else
-                    shootingPage.setCurrentGameType(6)           
+                    shootingPage.setCurrentGameType(6)
 		     } else {
                 if (gameEvent === 0)
                     shootingPage.setCurrentGameType(1)
@@ -792,6 +794,8 @@ ApplicationWindow {
                     shootingPage.setCurrentGameType(5)
                 else if (gameEvent === 6)
                     shootingPage.setFinalsGameType()   // 3P FINAL (35)
+                else if (gameEvent === 7)
+                    shootingPage.setFinals10mGameType()   // 10m Air Rifle FINAL (24)
                 else
                     shootingPage.setCurrentGameType(0)
             }

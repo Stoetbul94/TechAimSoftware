@@ -35,6 +35,7 @@
         <file>LoginPage.qml</file>
         <file>ShootingPage.qml</file>
         <file>FinalsHud.qml</file>
+        <file>Finals10mHud.qml</file>
         <file>FinalsTopStrip.qml</file>
         <file>FinalsProgressIndicator.qml</file>
         <file>FinalsCommandOverlay.qml</file>

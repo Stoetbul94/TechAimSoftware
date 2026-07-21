@@ -28,6 +28,7 @@
 #include "src/bridge/coachreportfeeder.h"
 #include "src/bridge/pdfexporter.h"
 #include "src/finals/Finals3PController.h"
+#include "src/finals10m/Finals10mController.h"
 #include "src/qualification/QualificationController.h"
 #include "src/incident/EstIncidentController.h"
 #include "src/finals/FinalsAudioService.h"
@@ -292,6 +293,15 @@ int main(int argc, char *argv[])
     QObject::connect(&finalsController, &Finals3PController::commandIssued,
                      &finalsAudio, &FinalsAudioService::onCommandIssued);
     engine.rootContext()->setContextProperty("FINALSAUDIO", &finalsAudio);
+    // 10m Air Rifle / Air Pistol FINAL (F1/F2) — single-athlete training course.
+    // Separate controller from the 3P Final; shares only the reliability layer.
+    // Discipline chosen at start via FINALS10M.configureDiscipline("FINAL_AR10"
+    // | "FINAL_AP10"). The audio service is reused (beep fallback until the
+    // official 10m command cues exist). See docs/10m-finals-architecture.md.
+    Finals10mController finals10mController;
+    engine.rootContext()->setContextProperty("FINALS10M", &finals10mController);
+    QObject::connect(&finals10mController, &Finals10mController::commandIssued,
+                     &finalsAudio, &FinalsAudioService::onCommandIssued);
     // Phase B — shared qualification persistence seam (QUAL). Idle until a
     // qualification discipline drives it (wired per-discipline in B1–B3); like
     // FINALS3P it owns a reliability SessionStore for its match record.
@@ -302,11 +312,13 @@ int main(int argc, char *argv[])
     // ACTIVE (qualification or finals); the reducer record is authoritative.
     EstIncidentController incidentController;
     incidentController.setStoreProvider(
-        [&qualController, &finalsController]() -> ta::rel::SessionStore* {
+        [&qualController, &finalsController, &finals10mController]() -> ta::rel::SessionStore* {
             if (qualController.store() && qualController.store()->active())
                 return qualController.store();
             if (finalsController.store() && finalsController.store()->active())
                 return finalsController.store();
+            if (finals10mController.store() && finals10mController.store()->active())
+                return finals10mController.store();
             return nullptr;
         });
     engine.rootContext()->setContextProperty("INCIDENTS", &incidentController);

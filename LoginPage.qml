@@ -240,6 +240,7 @@ Item {
 
     function getGameEventText(index) {
         if (index === 6) return qsTr("FINAL")   // 3P FINAL (35) — isFinalsMatch domain
+        if (index === 7) return qsTr("FINAL")   // 10m FINAL (24) — isFinals10mMatch domain
         if (APPSETTINGS.getIs15Shoot()) {
             if (index === 0) return qsTr("10")
             else if (index === 1) return qsTr("15")
@@ -268,6 +269,7 @@ Item {
     }
 
     function getEventCardTitle(index) {
+        if (index === 7) return getDisciplineName() + " — FINAL (24)"
         var shots = getGameEventText(index)
         if (shots === "FINAL") return getDisciplineName() + " — FINAL (35)"
         if (shots === "Free Practice") return getDisciplineName() + " — Free Practice"
@@ -275,6 +277,7 @@ Item {
     }
 
     function getEventCardSubtitle(index) {
+        if (index === 7) return "ISSF 10m Final · 24 shots · decimal · on command"
         var shots = getGameEventText(index)
         if (shots === "FINAL") return "ISSF Final · 35 shots · decimal · on command"
         if (shots === "Free Practice") return "Flexible training · no time limit"
@@ -282,6 +285,7 @@ Item {
     }
 
     function getEventCardBadge(index) {
+        if (index === 7) return "F24"
         var shots = getGameEventText(index)
         if (shots === "FINAL") return "F35"
         return shots === "Free Practice" ? "FP" : shots
@@ -1138,7 +1142,14 @@ Item {
                     // the 50m Rifle 3 Positions flow. Separate finals domain
                     // (isFinalsMatch) — see docs/3p-finals-discipline.md.
                     EventCard { eventIndex: 6; visible: gameMode === 1 && gameRange === 50 && gameSubMode === 1 }
-                    Item { width: 1; height: 2 }
+                    Item { width: 1; height: 2; visible: gameMode === 1 && gameRange === 50 && gameSubMode === 1 }
+
+                    // 10m FINAL (24) — ISSF 10m Air Rifle / Air Pistol final
+                    // training mode; offered at the 10m range for both rifle and
+                    // pistol. Separate single-athlete finals domain
+                    // (isFinals10mMatch) — see docs/10m-finals-architecture.md.
+                    EventCard { eventIndex: 7; visible: gameRange === 10 }
+                    Item { width: 1; height: 2; visible: gameRange === 10 }
 
                     // ── TRAINING SESSIONS ──────────────────────────────────────
                     Text {

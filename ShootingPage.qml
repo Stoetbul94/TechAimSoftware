@@ -56,6 +56,13 @@ Item {
     property bool is3PMatch: false
     // 3P FINAL (35) — separate finals domain; FINALS3P owns all finals timing.
     property bool isFinalsMatch: false
+    // 10m Air Rifle / Air Pistol FINAL (24) — single-athlete training course,
+    // its own controller (FINALS10M). Fully separate from is3PMatch/isFinalsMatch
+    // and from qualification. See docs/10m-finals-architecture.md.
+    property bool isFinals10mMatch: false
+    property real finals10mLastDirection: 0
+    property real finals10mLastRadius: 0
+    property int  finals10mShotSeq: 0
     // M3 recovery: one-shot guard so the window-open re-established during a
     // recovery resume does not clear the recovered shots off the target face.
     property bool suppressFaceClearOnce: false
@@ -199,6 +206,7 @@ Item {
     function loadGameInMatchMode() {
         is3PMatch = false   // restored sessions bypass beginPreparationPhase
         isFinalsMatch = false
+        isFinals10mMatch = false
         rightPanel.startClickedThroughLoad()
         sligterMode = false
         centerPanel.showSlighter(false)
@@ -211,6 +219,17 @@ Item {
         currentGameDisplay1 = "FINAL"
         currentGameDisplay2 = "35"
         currentmatchDisplay = "FINAL 35"
+    }
+
+    // 10m FINAL (24) — AR/AP single-athlete final; bypasses the qualification
+    // event models (like the 3P final). Discipline (rifle/pistol) is resolved
+    // from gameMode at beginPreparationPhase.
+    function setFinals10mGameType()
+    {
+        matchShootCount = 24
+        currentGameDisplay1 = "FINAL"
+        currentGameDisplay2 = "24"
+        currentmatchDisplay = "10m FINAL"
     }
 
     function setCurrentGameType(index)
@@ -373,7 +392,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 // 3P FINAL: the HUD strip owns phase display; the qualification
                 // phase chip (SIGHTING/MATCH from sligterMode) would conflict.
-                visible: !isFinalsMatch
+                visible: !isFinalsMatch && !isFinals10mMatch
                 color: matchFinished ? "#1d7a2f" : (sligterMode ? "#8a6d00" : "#e8003d")
                 Text {
                     id: phaseChipText
@@ -578,6 +597,18 @@ Item {
                 FINALS3P.registerShot(centerPanel.lastShotXmm, centerPanel.lastShotYmm,
                                       currentCalculatedScore, ++shootingPage.finalsShotSeq,
                                       shootingPage.finalsLastDirection)
+                return
+            }
+            // 10m FINAL (AR/AP): same detection + scoring pipeline; the shot is
+            // registered with FINALS10M, which validates (window/limit/duplicate/
+            // EST) and emits the accepted record. The face buffer is fed from the
+            // FINALS10M.onShotAccepted router below (durable-first).
+            if (isFinals10mMatch) {
+                shootingPage.finals10mLastDirection = xPosition
+                shootingPage.finals10mLastRadius = yPosition
+                FINALS10M.registerShot(centerPanel.lastShotXmm, centerPanel.lastShotYmm,
+                                       currentCalculatedScore, ++shootingPage.finals10mShotSeq,
+                                       shootingPage.finals10mLastDirection)
                 return
             }
             // B1/B2: 10m Air Rifle (AR10, decimal) and 10m Air Pistol (AP10,
@@ -827,6 +858,46 @@ Item {
         }
     }
 
+    // ── 10m FINAL (AR/AP) display router ─────────────────────────────────
+    // Feeds the shared target face from FINALS10M's durable accepted record.
+    // The rest of the finals presentation (stage, command, timer, totals,
+    // checkpoints, completion) lives in the self-contained Finals10mHud, so
+    // this router touches only the face buffer (globalModelOfData) — no
+    // dependency on the 3P finals models / RightPanel finals schema.
+    Connections {
+        target: FINALS10M
+        enabled: isFinals10mMatch
+
+        function onShotAccepted(shot) {
+            var rec = shot
+            // Polar display convention: the overlay plots via mapToPosition(
+            // direction, radius); `score` is the scoring engine's polar radius,
+            // `direction` the angle — both stashed by the router before submit.
+            rec.direction = shootingPage.finals10mLastDirection.toFixed(2)
+            rec.score = shootingPage.finals10mLastRadius.toFixed(2)
+            rec.isSighter = (shot.sighter === true)
+            rec.position = 2   // 10m final has no rifle position; standing face
+            if (!(shootingPage.recoveryReplayInProgress && rec.isSighter))
+                globalModelOfData.append(rec)
+        }
+
+        function onWindowStateChanged() {
+            if (FINALS10M.isFiringWindowOpen) {
+                if (shootingPage.suppressFaceClearOnce) {
+                    shootingPage.suppressFaceClearOnce = false
+                    return
+                }
+                Qt.callLater(function() { globalModelOfData.clear() })
+            }
+        }
+
+        function onReportRequested() {
+            // Full 10m finals report is F6; F2 shows the in-HUD completion
+            // panel. Keep the intent observable for the later report window.
+            MODREADER.appendToLogFile("FINALS10M: report requested (F6 pending)")
+        }
+    }
+
     // ── B1/B2: qualification durable-shot projection router ──────────────
     // The ONLY route that appends an AR10/AP10 shot to the visible models. It
     // fires (synchronously) after QUAL has durably submitted the SighterAccepted
@@ -910,6 +981,15 @@ Item {
         z: 30
         anchors.fill: centerPanel
         ctl: FINALS3P
+        developerMode: APPSETTINGS.getDeveloperMode()
+    }
+
+    // ── 10m FINAL (AR/AP) HUD — self-contained presentation over FINALS10M ──
+    Finals10mHud {
+        visible: isFinals10mMatch
+        z: 30
+        anchors.fill: centerPanel
+        ctl: FINALS10M
         developerMode: APPSETTINGS.getDeveloperMode()
     }
 
@@ -1016,8 +1096,45 @@ Item {
         }
     }
 
+    // 10m FINAL (AR/AP) mode engagement — the SINGLE way the 10m finals view is
+    // entered (canonical fresh start AND, later, recovery resume). It sets
+    // isFinals10mMatch (which drives the Finals10mHud and the shot router) and
+    // prepares the shared face buffer. Only startFresh begins a brand-new
+    // FINALS10M session; recovery (F3) passes false and injects instead.
+    function enterFinals10mMode(disciplineId, startFresh)
+    {
+        isFinals10mMatch = true
+        isFinalsMatch = false
+        is3PMatch = false
+        globalMatchModel.clear()
+        globalSlighterModel.clear()
+        globalModelOfData.clear()
+        centerPanel.backEndShootCount = 0
+        sligterMode = true
+        matchFinished = false
+        finals10mShotSeq = 0
+        rightPanel.resetRightPanelModels()
+        if (startFresh) {
+            MODREADER.appendToLogFile("10m FINAL: session start (" + disciplineId
+                                      + ", FINALS10M owns timing)")
+            FINALS10M.athleteName = (typeof userName !== "undefined" && userName) ? userName : ""
+            FINALS10M.configureDiscipline(disciplineId)
+            FINALS10M.resetFinal()
+            FINALS10M.startFinal()
+        }
+    }
+
     function beginPreparationPhase()
     {
+        // 10m FINAL (AR/AP): a separate single-athlete finals domain owned by
+        // FINALS10M. Selected via the "10m Final" event card (gameEvent 7) at
+        // the 10m range; rifle → FINAL_AR10, pistol → FINAL_AP10. Checked first
+        // so it returns before any qualification/3P detection runs.
+        if (APPSETTINGS.get10or50mRange() === 10
+                && APPSETTINGS.getGameEvent() === 7) {
+            enterFinals10mMode(APPSETTINGS.getGameMode() === 1 ? "FINAL_AR10" : "FINAL_AP10", true)
+            return
+        }
         // 3P FINAL: a separate domain — the FINALS3P controller owns ALL finals
         // timing and phases; none of the qualification prep/sighter machinery
         // (or its timers) runs. Phase A: skeleton + dry-run only, no scoring.
