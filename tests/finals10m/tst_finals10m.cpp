@@ -516,8 +516,8 @@ static void testPistolNoIntegerLeak()
     check(qAbs(c.cumulativeTotal() - fired * 10.5) < 1e-9, "AP: decimal cumulative total");
 }
 
-// ── 7. Crash → recover → continue → complete (F3) ──────────────────────────
-static void testRecovery()
+// ── 7. Crash → recover → continue → complete (F3 rifle / F5 pistol) ────────
+static void testRecovery(const QString& disc, ta::rel::Discipline discEnum, const char* tag)
 {
     clearCurrentSessions();
     int officialsA = 0; double totalA = 0.0;
@@ -527,10 +527,10 @@ static void testRecovery()
     {
         Finals10mController a;
         a.setTimeScale(250.0);
-        a.configureDiscipline(QStringLiteral("FINAL_AR10"));
+        a.configureDiscipline(disc);
         a.startFinal();
         const bool got = driveUntilOfficials(a, 10, 40000, 2, [](int){ return 10.5; });
-        check(got, "recovery: drove A to 10 officials before crash",
+        check(got, QString("%1 recovery: drove A to 10 officials before crash").arg(tag).toUtf8().constData(),
               QString("officials=%1").arg(a.officialShotCount()));
         officialsA = a.officialShotCount();
         totalA = a.cumulativeTotal();
@@ -541,34 +541,39 @@ static void testRecovery()
     {
         ta::rel::RecoveryCoordinator coord;
         for (const ta::rel::RecoveryCandidate& c : coord.scan())
-            if (c.discipline == ta::rel::Discipline::AirRifleFinal10m)
+            if (c.discipline == discEnum)
                 sid = c.sessionId;
     }
-    check(!sid.isEmpty(), "recovery: crashed AR-final session is a candidate");
+    check(!sid.isEmpty(), QString("%1 recovery: crashed session is a candidate").arg(tag).toUtf8().constData());
 
     // Phase 3: controller B resumes it (the production resumeFromRecovery path).
     Finals10mController b;
     b.setTimeScale(250.0);
     b.scanForRecovery();                       // prime B's own coordinator
     const bool resumed = b.resumeFromRecovery(sid);
-    check(resumed, "recovery: resumeFromRecovery succeeds");
-    check(b.disciplineId() == QLatin1String("FINAL_AR10"), "recovery: discipline restored (AR final)");
-    check(b.officialShotCount() == officialsA, "recovery: official count restored",
+    check(resumed, QString("%1 recovery: resumeFromRecovery succeeds").arg(tag).toUtf8().constData());
+    check(b.disciplineId() == disc, QString("%1 recovery: discipline restored").arg(tag).toUtf8().constData());
+    check(b.officialShotCount() == officialsA, QString("%1 recovery: official count restored").arg(tag).toUtf8().constData(),
           QString("%1 vs %2").arg(b.officialShotCount()).arg(officialsA));
-    check(qAbs(b.cumulativeTotal() - totalA) < 1e-6, "recovery: decimal total restored",
+    check(qAbs(b.cumulativeTotal() - totalA) < 1e-6, QString("%1 recovery: decimal total restored").arg(tag).toUtf8().constData(),
           QString("%1 vs %2").arg(b.cumulativeTotal()).arg(totalA));
-    check(b.store()->state().officials.size() == officialsA, "recovery: reducer officials restored");
-    // Next official continues (no duplicate numbering): the reducer rejects a
-    // duplicate shotNumber, so continuing must not double-count.
+    check(b.store()->state().officials.size() == officialsA,
+          QString("%1 recovery: reducer officials restored").arg(tag).toUtf8().constData());
+    // Decimal preserved after replay: every restored official is 105 tenths
+    // (critical for the AP final — no integer-scoring leak through recovery).
+    bool decimalAfterReplay = true;
+    for (const ta::rel::StateShotRecord& sr : b.store()->state().officials)
+        if (sr.shot.scoreTenths != 105) decimalAfterReplay = false;
+    check(decimalAfterReplay, QString("%1 recovery: decimal tenths preserved after replay").arg(tag).toUtf8().constData());
     const int beforeOfficials = b.officialShotCount();
 
     // Phase 4: continue firing to completion; verify it finishes at 24 and no
     // 25th is ever accepted.
     Recorder rb; rb.attach(&b);
     const bool done = driveToCompletion(b, 40000, 0, [](int){ return 10.5; });
-    check(done, "recovery: resumed course completes");
-    check(b.officialShotCount() >= beforeOfficials, "recovery: continued shots appended");
-    check(b.store()->state().officials.size() <= 24, "recovery: never exceeds 24 officials",
+    check(done, QString("%1 recovery: resumed course completes").arg(tag).toUtf8().constData());
+    check(b.officialShotCount() >= beforeOfficials, QString("%1 recovery: continued shots appended").arg(tag).toUtf8().constData());
+    check(b.store()->state().officials.size() <= 24, QString("%1 recovery: never exceeds 24 officials").arg(tag).toUtf8().constData(),
           QString("got %1").arg(b.store()->state().officials.size()));
     // Shot numbers across the whole (pre + post crash) record must be strictly
     // increasing, unique and within 1..24. Gaps are LEGAL (an unfired single is
@@ -581,17 +586,17 @@ static void testRecovery()
     for (int i = 1; i < nums.size(); ++i)
         if (nums[i] <= nums[i-1]) strictlyIncreasing = false;
     check(strictlyIncreasing && nums.last() <= 24,
-          "recovery: shot numbers strictly increasing, unique, within 1..24",
+          QString("%1 recovery: shot numbers strictly increasing, unique, within 1..24").arg(tag).toUtf8().constData(),
           QString("nums=%1").arg([&]{ QStringList s; for (int n : nums) s<<QString::number(n); return s.join(','); }()));
     // Pre-crash prefix (shots 1..officialsA) all survived the crash intact.
     bool prefixIntact = true;
     for (int n = 1; n <= officialsA; ++n)
         if (!nums.contains(n)) prefixIntact = false;
-    check(prefixIntact, "recovery: every pre-crash official shot survived");
+    check(prefixIntact, QString("%1 recovery: every pre-crash official shot survived").arg(tag).toUtf8().constData());
     // Shot 25 impossible after completion.
     const int before25 = rb.rejected.size();
     b.registerShot(0.0, 0.0, 10.0, 99999, 0.0);
-    check(rb.rejected.size() > before25, "recovery: shot 25 remains impossible after resume+complete");
+    check(rb.rejected.size() > before25, QString("%1 recovery: shot 25 remains impossible after resume+complete").arg(tag).toUtf8().constData());
 
     clearCurrentSessions();
 }
@@ -622,7 +627,8 @@ int main(int argc, char** argv)
     testEstBlocksOfficials();
     testReplayAndSnapshot();
     testPistolNoIntegerLeak();
-    testRecovery();
+    testRecovery(QStringLiteral("FINAL_AR10"), ta::rel::Discipline::AirRifleFinal10m, "AR");
+    testRecovery(QStringLiteral("FINAL_AP10"), ta::rel::Discipline::AirPistolFinal10m, "AP");
 
     std::printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
     std::fflush(stdout);
