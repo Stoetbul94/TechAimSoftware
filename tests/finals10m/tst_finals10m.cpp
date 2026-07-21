@@ -22,6 +22,10 @@
 #include "reliability/journal/JournalValidator.h"
 #include "reliability/reducer/SessionReducer.h"
 #include "reliability/reducer/SessionState.h"
+#include "reliability/recovery/RecoveryCoordinator.h"
+#include "reliability/recovery/RecoveryTypes.h"
+
+#include <QDir>
 
 using techaim::finals10m::Stage;
 
@@ -449,6 +453,116 @@ static void testReplayAndSnapshot()
     check(back == st, "snapshot: Finals10mState round-trips byte-for-byte-equal state");
 }
 
+// Drive a controller by polling until it has >= targetOfficials official shots,
+// filling MATCH windows and firing `sighters` sighting shots.
+static bool driveUntilOfficials(Finals10mController& c, int targetOfficials,
+                                int timeoutMs, int sighters,
+                                std::function<double(int)> scoreForShot)
+{
+    QElapsedTimer t; t.start();
+    int extId = 0, sightersFired = 0;
+    while (c.running() && c.officialShotCount() < targetOfficials) {
+        if (c.windowState() == WMatch && c.shotsInStage() < c.property("stageShotCapacity").toInt()) {
+            const int shotNo = c.nextShotNumber();
+            c.registerShot(0.3, -0.2, scoreForShot(shotNo), ++extId, 45.0);
+        } else if (c.windowState() == WSighting && sightersFired < sighters) {
+            c.registerShot(0.1, 0.1, 9.0, ++extId, 0.0);
+            ++sightersFired;
+        }
+        if (t.elapsed() > timeoutMs)
+            return false;
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 4);
+    }
+    return c.officialShotCount() >= targetOfficials;
+}
+
+static void clearCurrentSessions()
+{
+    QDir d(ta::rel::StoragePaths::currentSessionsDirectory());
+    for (const QString& f : d.entryList(QStringList() << "session_*.jsonl", QDir::Files))
+        d.remove(f);
+}
+
+// ── 7. Crash → recover → continue → complete (F3) ──────────────────────────
+static void testRecovery()
+{
+    clearCurrentSessions();
+    int officialsA = 0; double totalA = 0.0;
+
+    // Phase 1: drive controller A to 10 officials (both series fired), then
+    // "crash" — A leaves scope with NO closeSession, exactly like a real crash.
+    {
+        Finals10mController a;
+        a.setTimeScale(250.0);
+        a.configureDiscipline(QStringLiteral("FINAL_AR10"));
+        a.startFinal();
+        const bool got = driveUntilOfficials(a, 10, 40000, 2, [](int){ return 10.5; });
+        check(got, "recovery: drove A to 10 officials before crash",
+              QString("officials=%1").arg(a.officialShotCount()));
+        officialsA = a.officialShotCount();
+        totalA = a.cumulativeTotal();
+    }   // ← A destroyed = crash
+
+    // Phase 2: a fresh coordinator finds our crashed 10m-final session.
+    QString sid;
+    {
+        ta::rel::RecoveryCoordinator coord;
+        for (const ta::rel::RecoveryCandidate& c : coord.scan())
+            if (c.discipline == ta::rel::Discipline::AirRifleFinal10m)
+                sid = c.sessionId;
+    }
+    check(!sid.isEmpty(), "recovery: crashed AR-final session is a candidate");
+
+    // Phase 3: controller B resumes it (the production resumeFromRecovery path).
+    Finals10mController b;
+    b.setTimeScale(250.0);
+    b.scanForRecovery();                       // prime B's own coordinator
+    const bool resumed = b.resumeFromRecovery(sid);
+    check(resumed, "recovery: resumeFromRecovery succeeds");
+    check(b.disciplineId() == QLatin1String("FINAL_AR10"), "recovery: discipline restored (AR final)");
+    check(b.officialShotCount() == officialsA, "recovery: official count restored",
+          QString("%1 vs %2").arg(b.officialShotCount()).arg(officialsA));
+    check(qAbs(b.cumulativeTotal() - totalA) < 1e-6, "recovery: decimal total restored",
+          QString("%1 vs %2").arg(b.cumulativeTotal()).arg(totalA));
+    check(b.store()->state().officials.size() == officialsA, "recovery: reducer officials restored");
+    // Next official continues (no duplicate numbering): the reducer rejects a
+    // duplicate shotNumber, so continuing must not double-count.
+    const int beforeOfficials = b.officialShotCount();
+
+    // Phase 4: continue firing to completion; verify it finishes at 24 and no
+    // 25th is ever accepted.
+    Recorder rb; rb.attach(&b);
+    const bool done = driveToCompletion(b, 40000, 0, [](int){ return 10.5; });
+    check(done, "recovery: resumed course completes");
+    check(b.officialShotCount() >= beforeOfficials, "recovery: continued shots appended");
+    check(b.store()->state().officials.size() <= 24, "recovery: never exceeds 24 officials",
+          QString("got %1").arg(b.store()->state().officials.size()));
+    // Shot numbers across the whole (pre + post crash) record must be strictly
+    // increasing, unique and within 1..24. Gaps are LEGAL (an unfired single is
+    // a missed shot, not a ShotAccepted) — what recovery must guarantee is no
+    // duplicate / renumbering and an intact pre-crash prefix.
+    QList<int> nums;
+    for (const ta::rel::StateShotRecord& r : b.store()->state().officials)
+        nums << r.shot.shotNumber;
+    bool strictlyIncreasing = !nums.isEmpty() && nums.first() >= 1;
+    for (int i = 1; i < nums.size(); ++i)
+        if (nums[i] <= nums[i-1]) strictlyIncreasing = false;
+    check(strictlyIncreasing && nums.last() <= 24,
+          "recovery: shot numbers strictly increasing, unique, within 1..24",
+          QString("nums=%1").arg([&]{ QStringList s; for (int n : nums) s<<QString::number(n); return s.join(','); }()));
+    // Pre-crash prefix (shots 1..officialsA) all survived the crash intact.
+    bool prefixIntact = true;
+    for (int n = 1; n <= officialsA; ++n)
+        if (!nums.contains(n)) prefixIntact = false;
+    check(prefixIntact, "recovery: every pre-crash official shot survived");
+    // Shot 25 impossible after completion.
+    const int before25 = rb.rejected.size();
+    b.registerShot(0.0, 0.0, 10.0, 99999, 0.0);
+    check(rb.rejected.size() > before25, "recovery: shot 25 remains impossible after resume+complete");
+
+    clearCurrentSessions();
+}
+
 int main(int argc, char** argv)
 {
     QCoreApplication app(argc, argv);
@@ -474,6 +588,7 @@ int main(int argc, char** argv)
     testRejections();
     testEstBlocksOfficials();
     testReplayAndSnapshot();
+    testRecovery();
 
     std::printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
     std::fflush(stdout);

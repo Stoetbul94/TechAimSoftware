@@ -561,6 +561,10 @@ ApplicationWindow {
     function dispatchRecovery(sessionId, disciplineId) {
         if (disciplineId === "FINAL3P")
             return window.restoreFinals3P(sessionId)
+        // F3/F5: 10m Air Rifle / Air Pistol FINAL recovery via the dedicated
+        // single-athlete finals restorer (FINALS10M owns its own clock/state).
+        if (disciplineId === "FINAL_AR10" || disciplineId === "FINAL_AP10")
+            return window.restoreFinals10m(sessionId, disciplineId)
         // Phase D1-D3: qualification recovery via the shared restorer — AR10
         // (decimal), AP10 (integer/full-ring), PRONE50 (decimal, 50-min clock,
         // no Final / no 3P transition). 3P qualification stays blocked on rules.
@@ -619,6 +623,37 @@ ApplicationWindow {
             window.isRecoveredGame = false
             dialogManager.showError(qsTr("Recovery Failed"),
                 qsTr("The unfinished match could not be resumed."))
+        }
+        return resumed
+    }
+
+    // F3/F5: 10m Air Rifle / Air Pistol FINAL restorer. Mirrors restoreFinals3P
+    // but for the dedicated FINALS10M controller: configure the SAME selectors a
+    // fresh start uses, engage isFinals10mMatch (so the shot router re-routes the
+    // replayed shots to the face) WITHOUT starting a new session, then inject the
+    // reducer-rebuilt state. FINALS10M has its own RecoveryCoordinator, so it
+    // must scan before resume (the startup scan populated FINALS3P's coordinator,
+    // which is discipline-agnostic only for surfacing candidates).
+    function restoreFinals10m(sessionId, disciplineId) {
+        window.isRecoveredGame = true
+        loginPage.gameMode = (disciplineId === "FINAL_AR10") ? 1 : 0   // rifle / pistol
+        gameRange = 10
+        loginPage.gameSubMode = 0
+        loginPage.gameEvent = 7            // 10m FINAL (24)
+        shootingPage.setFinals10mGameType()
+        loginPage.visible = false          // reveal ShootingPage; isRecoveredGame
+                                           // suppresses beginPreparationPhase()
+        shootingPage.enterFinals10mMode(disciplineId, false)   // engage mode, no fresh start
+        shootingPage.suppressFaceClearOnce = true
+        shootingPage.recoveryReplayInProgress = true
+        FINALS10M.scanForRecovery()        // populate FINALS10M's own coordinator
+        var resumed = FINALS10M.resumeFromRecovery(sessionId)
+        shootingPage.recoveryReplayInProgress = false
+        if (!resumed) {
+            loginPage.visible = true
+            window.isRecoveredGame = false
+            dialogManager.showError(qsTr("Recovery Failed"),
+                qsTr("The unfinished 10m final could not be resumed."))
         }
         return resumed
     }
