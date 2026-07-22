@@ -207,6 +207,16 @@ void run_serializer_tests()
                              QStringLiteral("T9"), Authority::Jury,
                              QStringLiteral("Chair"),
                              QStringLiteral("continuous fault")},
+            // Training Lab (T1)
+            TrainingSessionStarted{QStringLiteral("technical_blocks"),
+                                   Discipline::AirRifle10m, 5, 6, 0,
+                                   QStringLiteral("Trigger"), 0},
+            TrainingBlockStarted{1, 0},
+            TrainingShotAccepted{ShotCore{1, 1, 1, 0, 120, -35, 104, 0, 4200, 0, 0, 7, true},
+                                 1, 1, 0, 0, 0, false},
+            TrainingBlockCompleted{1, 6},
+            TrainingNoteSaved{1, QStringLiteral("felt steady")},
+            TrainingCompleted{5},
         };
         check(catalogue.size() == static_cast<int>(std::variant_size_v<DomainEvent>),
               "round-trip covers every event type",

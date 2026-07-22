@@ -208,6 +208,11 @@ struct SessionStarted {
     // back-compatible — empty for pre-F10 journals, which replay as Unknown/
     // Legacy. Authoritative for this session; never re-inferred from config.
     QString operatingMode;
+    // T1 (Training Lab): session classification. Empty = competition (default);
+    // "Training" marks a Training Lab session so it is never treated as a
+    // qualification/Final result nor as an unfinished competition recovery
+    // candidate. Optional + written only when set → pre-T1 journals unchanged.
+    QString sessionKind;
 
     ReliabilityResult validate() const
     {
@@ -880,6 +885,103 @@ struct EstIncidentResolved {
                 QStringLiteral("EstIncidentResolved.officiallyAcceptedDurationMs < 0"));
         return ReliabilityResult::success();
     }
+};
+
+// ── Training Lab (T1) ────────────────────────────────────────────────────
+// Training sessions reuse the shared session lifecycle: SessionStarted (seq 0,
+// with sessionKind="Training") opens the journal, SessionClosed/CleanShutdown
+// close it. The events below carry the Training-specific structure. A Training
+// shot reuses ShotCore for measured data but is NEVER a competition
+// ShotAccepted. Appended at the END so no existing variant index / hash moves.
+
+// Programme configuration, emitted once right after SessionStarted (seq 1).
+struct TrainingSessionStarted {
+    static constexpr const char* kType = "TrainingSessionStarted";
+    static constexpr qint32 kVersion = 1;
+    QString programId;            // "technical_blocks"
+    Discipline discipline = Discipline::None;   // actual shooting discipline
+    qint16 blockCount = 0;
+    qint16 shotsPerBlock = 0;
+    qint8  visibilityMode = 0;    // 0 full-hidden, 1 group-only, 2 impact-visible
+    QString technicalFocus;       // athlete intention (never a diagnosis)
+    qint8  startPosition = 0;     // 3P: 0 kneeling,1 prone,2 standing; else 0
+    ReliabilityResult validate() const
+    {
+        if (programId.isEmpty())
+            return evdetail::invalid(QStringLiteral("TrainingSessionStarted.programId empty"));
+        if (blockCount < 1)
+            return evdetail::invalid(QStringLiteral("TrainingSessionStarted.blockCount < 1"));
+        if (shotsPerBlock < 1)
+            return evdetail::invalid(QStringLiteral("TrainingSessionStarted.shotsPerBlock < 1"));
+        return ReliabilityResult::success();
+    }
+};
+
+struct TrainingBlockStarted {
+    static constexpr const char* kType = "TrainingBlockStarted";
+    static constexpr qint32 kVersion = 1;
+    qint16 blockIndex = 0;        // 1-based
+    qint8  position = 0;          // 3P position for this block
+    ReliabilityResult validate() const
+    {
+        if (blockIndex < 1)
+            return evdetail::invalid(QStringLiteral("TrainingBlockStarted.blockIndex < 1"));
+        return ReliabilityResult::success();
+    }
+};
+
+struct TrainingShotAccepted {
+    static constexpr const char* kType = "TrainingShotAccepted";
+    static constexpr qint32 kVersion = 1;
+    ShotCore shot;                // x/y/scoreTenths/splitMs/simulated reused
+    qint16 blockIndex = 0;        // 1-based block this shot belongs to
+    qint16 withinBlock = 0;       // 1-based index within the block
+    qint8  position = 0;          // 3P position
+    // Reserved for Call & Diagnose (T2) — unused in T1.
+    qint32 calledXHundredthMm = 0;
+    qint32 calledYHundredthMm = 0;
+    bool   hasCall = false;
+    ReliabilityResult validate() const
+    {
+        if (blockIndex < 1)
+            return evdetail::invalid(QStringLiteral("TrainingShotAccepted.blockIndex < 1"));
+        if (withinBlock < 1)
+            return evdetail::invalid(QStringLiteral("TrainingShotAccepted.withinBlock < 1"));
+        return shot.validate();
+    }
+};
+
+struct TrainingBlockCompleted {
+    static constexpr const char* kType = "TrainingBlockCompleted";
+    static constexpr qint32 kVersion = 1;
+    qint16 blockIndex = 0;
+    qint16 shotCount = 0;         // measured shots accepted in the block
+    ReliabilityResult validate() const
+    {
+        if (blockIndex < 1)
+            return evdetail::invalid(QStringLiteral("TrainingBlockCompleted.blockIndex < 1"));
+        return ReliabilityResult::success();
+    }
+};
+
+struct TrainingNoteSaved {
+    static constexpr const char* kType = "TrainingNoteSaved";
+    static constexpr qint32 kVersion = 1;
+    qint16 blockIndex = 0;        // block the note belongs to
+    QString note;
+    ReliabilityResult validate() const
+    {
+        if (blockIndex < 1)
+            return evdetail::invalid(QStringLiteral("TrainingNoteSaved.blockIndex < 1"));
+        return ReliabilityResult::success();
+    }
+};
+
+struct TrainingCompleted {
+    static constexpr const char* kType = "TrainingCompleted";
+    static constexpr qint32 kVersion = 1;
+    qint16 completedBlocks = 0;
+    ReliabilityResult validate() const { return ReliabilityResult::success(); }
 };
 
 } // namespace rel

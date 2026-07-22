@@ -224,6 +224,23 @@ struct TrainingState {
     bool operator==(const TrainingState& o) const { return version == o.version; }
 };
 
+// T1: reducer-folded Training block record. The journal always stores MEASURED
+// values; the athlete-facing visibility is a controller projection (never data
+// deletion). Kept as plain SessionState fields (below), not in the
+// DisciplineState snapshot variant, so Training recovers by full event replay.
+struct TrainingBlockData {
+    qint16 blockIndex = 0;
+    qint8  position = 0;
+    QVector<ShotCore> shots;
+    bool   completed = false;
+    QString note;
+    bool operator==(const TrainingBlockData& o) const
+    {
+        return blockIndex == o.blockIndex && position == o.position
+            && completed == o.completed && note == o.note && shots == o.shots;
+    }
+};
+
 using DisciplineState =
     std::variant<std::monostate, QualificationState, Finals3PState,
                  TrainingState, Finals10mState>;
@@ -248,6 +265,19 @@ struct SessionState {
     // Unknown/Legacy for pre-F10 journals). Authoritative for THIS session and
     // preserved across replay — never re-inferred from the current config.
     QString operatingMode;
+    // T1: session classification ("" = competition, "Training" = Training Lab)
+    // and the reducer-folded Training projection (empty for competition).
+    QString sessionKind;
+    bool    trainingActive = false;
+    bool    trainingCompleted = false;
+    QString trainingProgramId;
+    qint16  trainingBlockCount = 0;
+    qint16  trainingShotsPerBlock = 0;
+    qint8   trainingVisibility = 0;
+    QString trainingFocus;
+    qint16  trainingCurrentBlock = 0;      // 1-based; 0 = none started
+    qint8   trainingCurrentPosition = 0;
+    QVector<TrainingBlockData> trainingBlocks;
     // lifecycle
     bool started = false;
     Lifecycle lifecycle = Lifecycle::None;

@@ -161,6 +161,7 @@ ReduceResult SessionReducer::apply(const SessionState& current,
             next.targetId = e.targetId;
             next.deviceId = e.deviceId;
             next.operatingMode = e.operatingMode;   // F10 (empty = Unknown/Legacy)
+            next.sessionKind = e.sessionKind;        // T1 (empty = competition)
             next.discipline = e.discipline;
             next.matchType = e.matchType;
             next.config = e.config;
@@ -794,6 +795,45 @@ ReduceResult SessionReducer::apply(const SessionState& current,
             inc->originalTarget = e.originalTarget;
             inc->reserveTarget = e.reserveTarget;
             inc->authorisedBy = e.authorisedBy;
+        },
+        // ── Training Lab (T1) ──────────────────────────────────────────
+        [&](const TrainingSessionStarted& e) {
+            if (!current.started) { failure = illegal("TrainingSessionStarted"); return; }
+            next.trainingActive = true;
+            next.trainingProgramId = e.programId;
+            next.trainingBlockCount = e.blockCount;
+            next.trainingShotsPerBlock = e.shotsPerBlock;
+            next.trainingVisibility = e.visibilityMode;
+            next.trainingFocus = e.technicalFocus;
+            next.trainingCurrentPosition = e.startPosition;
+        },
+        [&](const TrainingBlockStarted& e) {
+            next.trainingCurrentBlock = e.blockIndex;
+            next.trainingCurrentPosition = e.position;
+            for (const TrainingBlockData& b : next.trainingBlocks)
+                if (b.blockIndex == e.blockIndex) return;   // already present
+            TrainingBlockData b; b.blockIndex = e.blockIndex; b.position = e.position;
+            next.trainingBlocks.append(b);
+        },
+        [&](const TrainingShotAccepted& e) {
+            for (TrainingBlockData& b : next.trainingBlocks)
+                if (b.blockIndex == e.blockIndex) { b.shots.append(e.shot); return; }
+            // defensive: block not explicitly started — create it
+            TrainingBlockData b; b.blockIndex = e.blockIndex; b.position = e.position;
+            b.shots.append(e.shot); next.trainingBlocks.append(b);
+        },
+        [&](const TrainingBlockCompleted& e) {
+            for (TrainingBlockData& b : next.trainingBlocks)
+                if (b.blockIndex == e.blockIndex) { b.completed = true; return; }
+        },
+        [&](const TrainingNoteSaved& e) {
+            for (TrainingBlockData& b : next.trainingBlocks)
+                if (b.blockIndex == e.blockIndex) { b.note = e.note; return; }
+        },
+        [&](const TrainingCompleted& e) {
+            (void)e;
+            next.trainingCompleted = true;
+            next.lifecycle = Lifecycle::Complete;
         }
     }, envelope.payload);
 

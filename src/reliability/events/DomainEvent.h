@@ -65,7 +65,15 @@ using DomainEvent = std::variant<
     // Phase E — Jury decision + live target reassignment (appended at the END
     // so all prior variant indexes never move)
     EstDecisionRecorded,
-    TargetReassigned>;
+    TargetReassigned,
+    // Training Lab (T1) — appended at the END so all prior variant indexes and
+    // journal hashes never move. Training reuses SessionStarted/SessionClosed.
+    TrainingSessionStarted,
+    TrainingBlockStarted,
+    TrainingShotAccepted,
+    TrainingBlockCompleted,
+    TrainingNoteSaved,
+    TrainingCompleted>;
 
 // Stable type identifier of the alternative currently held.
 inline const char* eventTypeId(const DomainEvent& event)
