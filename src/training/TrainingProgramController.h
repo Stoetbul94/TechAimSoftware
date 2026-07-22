@@ -35,6 +35,10 @@ class TrainingProgramController : public QObject
     Q_PROPERTY(int blockCount READ blockCount NOTIFY configChanged)
     Q_PROPERTY(int shotsPerBlock READ shotsPerBlock NOTIFY configChanged)
     Q_PROPERTY(int shotsInBlock READ shotsInBlock NOTIFY progressChanged)
+    // T1.4 shot-counter contract: shotsCompleted = accepted counted shots in the
+    // CURRENT block (0 before the first counted shot). The UI MUST bind this,
+    // never a next-index / array+1 / sighter / pending-id derivation.
+    Q_PROPERTY(int shotsCompleted READ shotsInBlock NOTIFY progressChanged)
     Q_PROPERTY(int totalShots READ totalShots NOTIFY progressChanged)
     Q_PROPERTY(int visibilityMode READ visibilityMode NOTIFY configChanged)
     Q_PROPERTY(QString technicalFocus READ technicalFocus NOTIFY configChanged)
@@ -145,6 +149,23 @@ public:
     // counts. Purely informational; sighter scores never enter block/session
     // metrics, averages, groups, totals or the comparison.
     Q_INVOKABLE QVariantMap sighterAudit() const;
+
+    // T1.4 report/coaching projections (measured data only — no diagnosis).
+    // Deltas of a completed block vs the previous completed block (group
+    // diameter / average score / timing / MPI), for the review comparison.
+    Q_INVOKABLE QVariantMap blockDelta(int blockIndex1) const;
+    // Cautious, measured plain-language statements for a completed block.
+    Q_INVOKABLE QStringList blockObservations(int blockIndex1) const;
+    // Session-wide measured observations (best/tightest/most-repeatable,
+    // group-size change, centre drift) with correct direction wording.
+    Q_INVOKABLE QStringList sessionObservations() const;
+    Q_INVOKABLE int countedShotsTotal() const;   // counted shots across all blocks
+    Q_INVOKABLE int completedBlockCount() const;  // blocks actually completed
+    Q_INVOKABLE int sessionDurationSec() const;   // first to last counted shot
+    // Single authoritative report model (session meta + per-block + comparison
+    // + observations + notes + sighter audit). The Training PDF and the on-screen
+    // summary both derive from THIS — QML/PDF only format, never recompute.
+    Q_INVOKABLE QVariantMap trainingReportModel() const;
     // Shot plot for a REVEALED block (review/comparison only).
     Q_INVOKABLE QVariantList blockShotPlot(int blockIndex1) const;
 

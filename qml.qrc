@@ -37,6 +37,7 @@
         <file>FinalsHud.qml</file>
         <file>Finals10mHud.qml</file>
         <file>TrainingHud.qml</file>
+        <file>TrainingRightPanel.qml</file>
         <file>Finals10mCommandPanel.qml</file>
         <file>Finals10mRightPanel.qml</file>
         <file>FinalsTopStrip.qml</file>

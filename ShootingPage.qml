@@ -468,7 +468,12 @@ Item {
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.right: parent.right
-        height: 62
+        // T1.4: the competition action bar (START MATCH / FINISH MATCH / Feed
+        // paper) is Training-inappropriate — hidden during a Technical Blocks
+        // session, and its height collapses so the target reclaims the space.
+        // Training's own actions live in TrainingRightPanel / the review view.
+        height: isTrainingMatch ? 0 : 62
+        visible: !isTrainingMatch
         color: "#15161a"
         z: 40
 
@@ -637,6 +642,22 @@ Item {
         // F9: the reopener shows once the completion card is dismissed.
         summaryDismissed: finals10mHud.dismissed
         onReopenSummaryRequested: finals10mHud.dismissed = false
+    }
+
+    // TRAINING LAB (T1.4): the persistent Training control + information column.
+    // Replaces the competition RightPanel while a Technical Blocks session is
+    // active (rightPanel is hidden by `!isTrainingMatch`). Controls live HERE,
+    // never over the target. Same slot/width so the target keeps its size.
+    TrainingRightPanel {
+        id: trainingRightPanel
+        visible: isTrainingMatch
+        width: rightPanel.width
+        height: rightPanel.height
+        anchors.right: parent.right
+        anchors.top: statusStrip.bottom
+        z: 11
+        ctl: TRAINING
+        connected: shootingPage.trainingTargetConnected
     }
 
     CenterPane {

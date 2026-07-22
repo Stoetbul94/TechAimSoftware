@@ -28,163 +28,18 @@ Item {
     readonly property color _txtSec: "#B6BCC6"
     readonly property color _txtMut: "#6F7A86"
 
-    // ── top progress strip ───────────────────────────────────────────────
-    Rectangle {
-        id: strip
-        visible: hud.blockActive || hud.reviewOpen
-        anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right
-        height: 46; color: _bg
-        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: _line }
-        Row {
-            anchors.left: parent.left; anchors.leftMargin: 14
-            anchors.verticalCenter: parent.verticalCenter; spacing: 18
-            Text { text: "TRAINING LAB"; color: _red; font.pixelSize: 11; font.bold: true; font.letterSpacing: 2
-                   anchors.verticalCenter: parent.verticalCenter }
-            Text { text: "Technical Blocks"; color: _txt; font.pixelSize: 13; font.bold: true
-                   anchors.verticalCenter: parent.verticalCenter }
-            Text { visible: ctl && ctl.positionName !== ""
-                   text: ctl ? ctl.positionName : ""
-                   color: _green; font.pixelSize: 12; font.bold: true
-                   anchors.verticalCenter: parent.verticalCenter }
-            Text { text: ctl ? ("Block " + ctl.currentBlock + " of " + ctl.blockCount) : ""
-                   color: _txtSec; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
-            Text { text: ctl ? ("Shot " + Math.min(ctl.shotsInBlock + (hud.blockActive ? 1 : 0), ctl.shotsPerBlock)
-                                + " of " + ctl.shotsPerBlock) : ""
-                   color: _txtSec; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
-            Text { text: ctl ? ("Focus · " + ctl.technicalFocus) : ""
-                   color: _txtMut; font.pixelSize: 11; anchors.verticalCenter: parent.verticalCenter }
-            Text { text: ctl ? (["Full hidden block", "Group only", "Impact visible · score hidden"][ctl.visibilityMode]) : ""
-                   color: _txtMut; font.pixelSize: 11; anchors.verticalCenter: parent.verticalCenter }
-        }
-        // elapsed block time (polled — function projection has no NOTIFY)
-        Text {
-            id: elapsedText
-            anchors.right: parent.right; anchors.rightMargin: 14
-            anchors.verticalCenter: parent.verticalCenter
-            color: _txtMut; font.family: "Consolas"; font.pixelSize: 12
-            Timer {
-                interval: 1000; running: strip.visible; repeat: true
-                onTriggered: {
-                    var s = hud.ctl ? hud.ctl.blockElapsedSec() : 0
-                    elapsedText.text = Math.floor(s / 60) + ":" + ("0" + (s % 60)).slice(-2)
-                }
-            }
-        }
-    }
+    // T1.4: the persistent block/shot/focus status + the SIGHTERS control moved
+    // to TrainingRightPanel (target-first — nothing persistent over the target).
+    // TrainingHud now owns only the transient acknowledgement, the full-workspace
+    // Block Review and the final Summary.
 
-    // ── SIGHTERS (phase 1) ───────────────────────────────────────────────
-    // A separate, optional sighter phase before the FIRST counted block (and,
-    // in 3P, before the first block of every position). Sighters register on
-    // the target and show impact, but are NEVER counted. The target stays
-    // visible behind this HUD; only a top banner + a bottom readiness panel
-    // frame it. Primary action: START BLOCK (never "Start Match").
-    Rectangle {
-        id: sighterBanner
-        visible: hud.sightersOpen
-        anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right
-        height: 46; color: _bg
-        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: _line }
-        Row {
-            anchors.left: parent.left; anchors.leftMargin: 14
-            anchors.verticalCenter: parent.verticalCenter; spacing: 14
-            Text { text: "TRAINING LAB"; color: _red; font.pixelSize: 11; font.bold: true; font.letterSpacing: 2
-                   anchors.verticalCenter: parent.verticalCenter }
-            Text {
-                anchors.verticalCenter: parent.verticalCenter
-                color: _txt; font.pixelSize: 14; font.bold: true; font.letterSpacing: 1
-                text: "SIGHTERS" + (hud.ctl && hud.ctl.positionName !== ""
-                                    ? " — " + hud.ctl.positionName.toUpperCase() : "")
-            }
-            Text {
-                anchors.verticalCenter: parent.verticalCenter
-                color: _green; font.family: "Consolas"; font.pixelSize: 13; font.bold: true
-                text: hud.ctl ? (hud.ctl.sighterCount + " fired") : ""
-            }
-        }
-    }
-
-    Rectangle {
-        id: sighterPanel
-        visible: hud.sightersOpen
-        anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom
-        color: _bg
-        height: sighterCol.implicitHeight + 28
-        Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: _line }
-        Column {
-            id: sighterCol
-            anchors.left: parent.left; anchors.right: parent.right
-            anchors.top: parent.top; anchors.margins: 14; anchors.topMargin: 14
-            spacing: 10
-            Text {
-                width: parent.width; wrapMode: Text.WordWrap
-                color: _txtSec; font.pixelSize: 12
-                text: "Fire optional sighter shots to confirm your position and zero. "
-                    + "Sighter shots are not included in your Training blocks, measurements or final comparison."
-            }
-            // readiness chips
-            Flow {
-                width: parent.width; spacing: 8
-                Repeater {
-                    model: {
-                        if (!hud.ctl) return []
-                        var visLabels = ["Full hidden", "Group only", "Impact, no score"]
-                        var chips = []
-                        if (hud.ctl.positionName !== "") chips.push({ k: "Position", v: hud.ctl.positionName })
-                        chips.push({ k: "Focus", v: hud.ctl.technicalFocus })
-                        chips.push({ k: "Mode", v: visLabels[hud.ctl.visibilityMode] })
-                        chips.push({ k: "Source", v: hud.demoMode ? "Demo" : "Live" })
-                        chips.push({ k: "Sighters", v: "" + hud.ctl.sighterCount })
-                        chips.push({ k: "Target",
-                                     v: hud.demoMode ? "Demo · not needed"
-                                                     : (hud.connected ? "Connected" : "Not connected") })
-                        return chips
-                    }
-                    delegate: Rectangle {
-                        height: 40; radius: 8; color: _card; border.color: _line; border.width: 1
-                        width: chipRow.implicitWidth + 22
-                        Row {
-                            id: chipRow; anchors.centerIn: parent; spacing: 6
-                            Text { text: modelData.k; color: _txtMut; font.pixelSize: 11
-                                   anchors.verticalCenter: parent.verticalCenter }
-                            Text { text: modelData.v; color: _txt; font.pixelSize: 12; font.bold: true
-                                   anchors.verticalCenter: parent.verticalCenter }
-                        }
-                    }
-                }
-            }
-            // primary action: START BLOCK (zero sighters is allowed)
-            Row {
-                spacing: 10
-                Rectangle {
-                    width: Math.max(220, startBlockLabel.implicitWidth + 44); height: 48; radius: 8; color: _red
-                    Text {
-                        id: startBlockLabel; anchors.centerIn: parent
-                        text: hud.ctl ? hud.ctl.startBlockLabel.toUpperCase() : "START BLOCK"
-                        color: "white"; font.pixelSize: 14; font.bold: true; font.letterSpacing: 1
-                    }
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: if (hud.ctl) hud.ctl.startBlock()   // idempotent; double-taps rejected
-                    }
-                }
-                Text {
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: sighterPanel.width - startBlockLabel.width - 120
-                    wrapMode: Text.WordWrap
-                    text: "Sighters are optional — you may start with none. "
-                        + "The target is cleared and your next shot is counted Shot 1."
-                    color: _txtMut; font.pixelSize: 10
-                }
-            }
-        }
-    }
-
-    // Mode A acknowledgement: confirms a shot WITHOUT score or impact.
+    // Mode A acknowledgement: confirms a shot WITHOUT score or impact. Transient,
+    // non-blocking — persistent status lives in TrainingRightPanel.
     Rectangle {
         id: ackToast
         visible: false
         anchors.horizontalCenter: parent.horizontalCenter
-        anchors.top: strip.bottom; anchors.topMargin: 14
+        anchors.top: parent.top; anchors.topMargin: 18
         width: ackText.implicitWidth + 40; height: 40; radius: 20
         color: "#DD1B1E24"; border.color: _line; border.width: 1
         Text { id: ackText; anchors.centerIn: parent; color: _txt; font.pixelSize: 14; font.bold: true }

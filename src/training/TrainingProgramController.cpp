@@ -588,6 +588,176 @@ QVariantMap TrainingProgramController::sighterAudit() const
     return m;
 }
 
+// ── T1.4 report / coaching projections (measured only) ───────────────────
+namespace {
+// "3.1 mm right" / "8.3 mm high" — MPI is +x right, +y high. Guard tiny values.
+QString mpiPhrase(double vMm, const QString& pos, const QString& neg)
+{
+    if (qAbs(vMm) < 0.05) return QStringLiteral("centred");
+    return QStringLiteral("%1 mm %2").arg(qAbs(vMm), 0, 'f', 1)
+        .arg(vMm >= 0 ? pos : neg);
+}
+} // namespace
+
+QVariantMap TrainingProgramController::blockDelta(int blockIndex1) const
+{
+    QVariantMap d;
+    if (!m_store) return d;
+    // metrics of the target block and the previous COMPLETED block
+    const TrainingBlockData* cur = nullptr;
+    const TrainingBlockData* prev = nullptr;
+    for (const TrainingBlockData& b : st().trainingBlocks) {
+        if (!b.completed) continue;
+        if (b.blockIndex == blockIndex1) { cur = &b; break; }
+        prev = &b;                       // last completed before the target
+    }
+    if (!cur) return d;
+    const BlockMetrics cm = computeBlockMetrics(cur->shots);
+    d[QStringLiteral("hasPrev")] = (prev != nullptr);
+    if (!prev) return d;
+    const BlockMetrics pm = computeBlockMetrics(prev->shots);
+    d[QStringLiteral("prevBlock")] = prev->blockIndex;
+    d[QStringLiteral("diameterDeltaMm")] = cm.groupDiameter - pm.groupDiameter;
+    d[QStringLiteral("averageScoreDelta")] = cm.averageScore - pm.averageScore;
+    d[QStringLiteral("scoreStdDevDelta")] = cm.scoreStdDev - pm.scoreStdDev;
+    if (cm.hasTiming && pm.hasTiming) {
+        d[QStringLiteral("avgTimeDelta")] = cm.averageShotTime - pm.averageShotTime;
+        d[QStringLiteral("timeStdDevDelta")] = cm.shotTimeStdDev - pm.shotTimeStdDev;
+    }
+    return d;
+}
+
+QStringList TrainingProgramController::blockObservations(int blockIndex1) const
+{
+    QStringList out;
+    if (!m_store) return out;
+    const TrainingBlockData* cur = nullptr;
+    for (const TrainingBlockData& b : st().trainingBlocks)
+        if (b.completed && b.blockIndex == blockIndex1) { cur = &b; break; }
+    if (!cur) return out;
+    const BlockMetrics m = computeBlockMetrics(cur->shots);
+    if (m.hasGroup) {
+        if (m.horizontalSpread > m.verticalSpread * 1.25)
+            out << QStringLiteral("The group was wider horizontally than vertically.");
+        else if (m.verticalSpread > m.horizontalSpread * 1.25)
+            out << QStringLiteral("The group was taller vertically than horizontally.");
+        else
+            out << QStringLiteral("The vertical and horizontal spreads were similar.");
+        out << QStringLiteral("The group centre was %1 and %2.")
+                   .arg(mpiPhrase(m.mpiX, QStringLiteral("right"), QStringLiteral("left")))
+                   .arg(mpiPhrase(m.mpiY, QStringLiteral("high"), QStringLiteral("low")));
+    }
+    const QVariantMap d = blockDelta(blockIndex1);
+    if (d.value(QStringLiteral("hasPrev")).toBool()) {
+        const double dd = d.value(QStringLiteral("diameterDeltaMm")).toDouble();
+        if (qAbs(dd) >= 0.5)
+            out << QStringLiteral("The group was %1 mm %2 than Block %3.")
+                       .arg(qAbs(dd), 0, 'f', 1)
+                       .arg(dd > 0 ? QStringLiteral("larger") : QStringLiteral("smaller"))
+                       .arg(d.value(QStringLiteral("prevBlock")).toInt());
+    }
+    return out;
+}
+
+QStringList TrainingProgramController::sessionObservations() const
+{
+    QStringList out;
+    if (!m_store) return out;
+    QVector<BlockMetrics> metrics;
+    for (const TrainingBlockData& b : st().trainingBlocks)
+        metrics.append(b.completed ? computeBlockMetrics(b.shots) : BlockMetrics{});
+    const BlockComparison c = compareBlocks(metrics);
+    if (c.bestScoreBlock > 0)
+        out << QStringLiteral("Block %1 had the highest average score.").arg(c.bestScoreBlock);
+    if (c.tightestGroupBlock > 0)
+        out << QStringLiteral("Block %1 had the tightest group.").arg(c.tightestGroupBlock);
+    if (c.mostRepeatableBlock > 0)
+        out << QStringLiteral("Block %1 had the most consistent shot scores.").arg(c.mostRepeatableBlock);
+    if (c.bestScoreBlock > 0 && c.bestScoreBlock == c.tightestGroupBlock)
+        out << QStringLiteral("The highest-scoring block was also the tightest group.");
+    if (c.hasSizeChange && qAbs(c.groupSizeChangePct) >= 1.0)
+        out << QStringLiteral("Group size %1 %2% from the first to the last block.")
+                   .arg(c.groupSizeChangePct > 0 ? QStringLiteral("grew") : QStringLiteral("reduced"))
+                   .arg(qAbs(c.groupSizeChangePct), 0, 'f', 0);
+    if (c.hasDrift && c.centreDriftMm >= 0.5)
+        out << QStringLiteral("The group centre moved %1 (%2, %3) from the first to the last block.")
+                   .arg(c.centreDriftMm, 0, 'f', 1)
+                   .arg(mpiPhrase(c.centreDriftX, QStringLiteral("right"), QStringLiteral("left")))
+                   .arg(mpiPhrase(c.centreDriftY, QStringLiteral("high"), QStringLiteral("low")));
+    return out;
+}
+
+int TrainingProgramController::countedShotsTotal() const
+{
+    if (!m_store) return 0;
+    int n = 0;
+    for (const TrainingBlockData& b : st().trainingBlocks) n += b.shots.size();
+    return n;
+}
+
+int TrainingProgramController::completedBlockCount() const
+{
+    if (!m_store) return 0;
+    int n = 0;
+    for (const TrainingBlockData& b : st().trainingBlocks) if (b.completed) ++n;
+    return n;
+}
+
+int TrainingProgramController::sessionDurationSec() const
+{
+    if (!m_store) return 0;
+    // splitMs is monotonic ms stamped at each shot; span first→last counted shot.
+    qint64 lo = -1, hi = -1;
+    for (const TrainingBlockData& b : st().trainingBlocks)
+        for (const ShotCore& s : b.shots) {
+            if (lo < 0 || s.splitMs < lo) lo = s.splitMs;
+            if (hi < 0 || s.splitMs > hi) hi = s.splitMs;
+        }
+    if (lo < 0 || hi <= lo) return 0;
+    return static_cast<int>((hi - lo) / 1000);
+}
+
+QVariantMap TrainingProgramController::trainingReportModel() const
+{
+    QVariantMap r;
+    if (!m_store) return r;
+    const SessionState& s = st();
+    // session meta
+    r[QStringLiteral("sessionId")] = s.sessionId;
+    r[QStringLiteral("athlete")] = s.athlete;
+    r[QStringLiteral("createdAtIso")] = s.createdAtIso;
+    r[QStringLiteral("operatingMode")] = s.operatingMode.isEmpty()
+            ? QStringLiteral("Legacy") : s.operatingMode;
+    r[QStringLiteral("focus")] = m_cfg.technicalFocus;
+    r[QStringLiteral("visibilityMode")] = static_cast<int>(m_cfg.visibility);
+    r[QStringLiteral("visibilityLabel")] = visibilityLabel(m_cfg.visibility);
+    r[QStringLiteral("threePositions")] = m_cfg.threePositions;
+    r[QStringLiteral("blockCount")] = m_cfg.blockCount;
+    r[QStringLiteral("shotsPerBlock")] = m_cfg.shotsPerBlock;
+    r[QStringLiteral("plannedShots")] = m_cfg.totalShots();
+    r[QStringLiteral("countedShots")] = countedShotsTotal();
+    r[QStringLiteral("completedBlocks")] = completedBlockCount();
+    r[QStringLiteral("endedEarly")] = endedEarly();
+    r[QStringLiteral("durationSec")] = sessionDurationSec();
+    r[QStringLiteral("sighterAudit")] = sighterAudit();
+    r[QStringLiteral("observations")] = sessionObservations();
+    // per completed block
+    QVariantList blocks;
+    for (const TrainingBlockData& b : s.trainingBlocks) {
+        if (!b.completed) continue;
+        QVariantMap bm = blockReviewMetrics(b.blockIndex);
+        bm[QStringLiteral("plot")] = blockShotPlot(b.blockIndex);
+        bm[QStringLiteral("delta")] = blockDelta(b.blockIndex);
+        bm[QStringLiteral("observations")] = blockObservations(b.blockIndex);
+        bm[QStringLiteral("positionName")] = m_cfg.threePositions
+                ? positionLabel(static_cast<Position>(b.position)) : QString();
+        blocks.append(bm);
+    }
+    r[QStringLiteral("blocks")] = blocks;
+    r[QStringLiteral("comparison")] = finalComparison();
+    return r;
+}
+
 QVariantList TrainingProgramController::blockShotPlot(int blockIndex1) const
 {
     QVariantList out;
