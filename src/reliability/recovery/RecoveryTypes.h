@@ -44,6 +44,7 @@ struct RecoveryCandidate {
     Discipline discipline = Discipline::None;
     QString disciplineLabel;
     QString matchType;
+    QString operatingMode;        // F10: mode the session STARTED in (empty = Unknown/Legacy)
     QString startedAtIso;         // SessionStarted.createdAtIso
     QString lastEventWallIso;     // tw of the last valid line
     QString lastModifiedIso;      // file mtime

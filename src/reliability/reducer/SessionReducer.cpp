@@ -160,6 +160,7 @@ ReduceResult SessionReducer::apply(const SessionState& current,
             next.lane = e.lane;
             next.targetId = e.targetId;
             next.deviceId = e.deviceId;
+            next.operatingMode = e.operatingMode;   // F10 (empty = Unknown/Legacy)
             next.discipline = e.discipline;
             next.matchType = e.matchType;
             next.config = e.config;

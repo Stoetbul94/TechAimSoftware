@@ -87,9 +87,15 @@ public:
     // these are inert (developer bypass is devForceAdvanceStage1).
     Q_INVOKABLE void confirmStage1Advance();
     Q_INVOKABLE void cancelStage1Advance();
+    // shotSource (F10): 0 = Physical, 1 = Simulated. The authoritative
+    // input-source gate rejects a source that does not match the running
+    // operating mode before durable acceptance. Defaults to Physical.
     Q_INVOKABLE void registerShot(double xMm, double yMm, double decimalScore,
                                   int externalShotId = -1,
-                                  double direction = 0.0);
+                                  double direction = 0.0,
+                                  int shotSource = 0);
+    // F10: running operating mode (0 = Live, 1 = Demo). Set once at startup.
+    Q_INVOKABLE void setOperatingMode(int mode) { m_operatingMode = mode; }
     Q_INVOKABLE void abortFinal();
     Q_INVOKABLE void resetFinal();
     Q_INVOKABLE void pauseTrainingSimulation();
@@ -307,6 +313,7 @@ private:
     double m_cumulativeTotal = 0.0;
     double m_stageSubtotal = 0.0;
     int m_officialShotCount = 0;
+    int m_operatingMode = -1;             // F10: -1 = unset/permissive, 0 = Live, 1 = Demo
     QHash<int, int> m_stageStatus;        // stageId -> StageStatus
     QHash<int, double> m_stageSubtotalsMap;
 

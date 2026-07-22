@@ -202,6 +202,11 @@ void EventSerializer::serializePayloadInto(const DomainEvent& event,
             w.field("matchType", e.matchType);
             writeConfig(w, e.config);
             w.field("deviceId", e.deviceId);
+            // F10: operating mode the session STARTED in (Live/Demo). Optional
+            // and written only when set, so pre-F10 journals (no field) still
+            // re-serialise byte-identically and keep their existing hashes.
+            if (!e.operatingMode.isEmpty())
+                w.field("operatingMode", e.operatingMode);
         },
         [&](const SessionConfigured& e) {
             w.field("discipline", QString::fromLatin1(disciplineId(e.discipline)));
@@ -642,6 +647,7 @@ ReliabilityResult EventSerializer::deserializePayload(const QString& typeId,
         e.matchType = r.reqString("matchType");
         e.config = readConfig(r);
         e.deviceId = r.optString("deviceId");
+        e.operatingMode = r.optString("operatingMode");   // F10: "" for pre-F10 journals
         *out = e;
     } else if (typeId == QLatin1String(SessionConfigured::kType)) {
         SessionConfigured e;

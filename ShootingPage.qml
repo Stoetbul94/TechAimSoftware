@@ -135,6 +135,14 @@ Item {
             x:leftPanel.settingsX + leftPanel.settingsWidth
             y:leftPanel.settingsY
 
+            // F10: block operating-mode changes whenever a session is active.
+            // These three flags cover every mandated block condition, because
+            // prep/sighting/firing/paused/recovery/unresolved-incident and a
+            // completed-but-not-closed course all keep one of them set.
+            modeChangeBlocked: shootingPage.isFinals10mMatch
+                               || shootingPage.isFinalsMatch
+                               || shootingPage.qualDisciplineId !== ""
+
             onIsBackGroundBlackChanged: {
                 settingsMask.visible = false
             }
@@ -636,7 +644,8 @@ Item {
                 shootingPage.finalsLastRadius = yPosition
                 FINALS3P.registerShot(centerPanel.lastShotXmm, centerPanel.lastShotYmm,
                                       currentCalculatedScore, ++shootingPage.finalsShotSeq,
-                                      shootingPage.finalsLastDirection)
+                                      shootingPage.finalsLastDirection,
+                                      centerPanel.lastShotSource)   // F10 input-source gate
                 return
             }
             // 10m FINAL (AR/AP): same detection + scoring pipeline; the shot is
@@ -648,7 +657,8 @@ Item {
                 shootingPage.finals10mLastRadius = yPosition
                 FINALS10M.registerShot(centerPanel.lastShotXmm, centerPanel.lastShotYmm,
                                        currentCalculatedScore, ++shootingPage.finals10mShotSeq,
-                                       shootingPage.finals10mLastDirection)
+                                       shootingPage.finals10mLastDirection,
+                                       centerPanel.lastShotSource)   // F10 input-source gate
                 return
             }
             // B1/B2: 10m Air Rifle (AR10, decimal) and 10m Air Pistol (AP10,
@@ -668,12 +678,16 @@ Item {
                 var seamScore = (qualDisciplineId === "AP10")
                     ? Math.floor(currentCalculatedScore)
                     : currentCalculatedScore
+                // F10: the `simulated` flag reflects the shot's real origin
+                // (demo click vs physical target); the controller's input-source
+                // gate refuses it if it does not match the running mode.
+                var qualSimulated = (centerPanel.lastShotSource === 1)
                 if (sligterMode)
                     QUAL.submitSighter(centerPanel.lastShotXmm, centerPanel.lastShotYmm,
-                                       seamScore, extId, xPosition, false)
+                                       seamScore, extId, xPosition, qualSimulated)
                 else
                     QUAL.submitOfficial(centerPanel.lastShotXmm, centerPanel.lastShotYmm,
-                                        seamScore, extId, xPosition, false)
+                                        seamScore, extId, xPosition, qualSimulated)
                 return
             }
             // Hard cap at the match shot count. The auto-finish watcher polls

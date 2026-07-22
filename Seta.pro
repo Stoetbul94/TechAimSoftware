@@ -36,7 +36,8 @@ SOURCES += main.cpp \
     src/finals/FinalsAudioService.cpp \
     src/finals10m/Finals10mController.cpp \
     src/qualification/QualificationController.cpp \
-    src/incident/EstIncidentController.cpp
+    src/incident/EstIncidentController.cpp \
+    src/mode/OperatingModeService.cpp
 
 # Offline coach-analytics module (pure C++, independent from Qt/QML).
 HEADERS += \
@@ -66,7 +67,9 @@ HEADERS += \
     src/finals/FinalsReportBuilder.h \
     src/finals/FinalsAudioService.h \
     src/qualification/QualificationController.h \
-    src/incident/EstIncidentController.h
+    src/incident/EstIncidentController.h \
+    src/mode/OperatingMode.h \
+    src/mode/OperatingModeService.h
 
 # 10m Air Rifle / Air Pistol FINAL — single-athlete training course (F1).
 # ISSF Rule Book Edition 2025 (Second Print 07/2026), rule 6.17.2. Separate
@@ -80,6 +83,7 @@ INCLUDEPATH += src/finals
 INCLUDEPATH += src/finals10m
 INCLUDEPATH += src/qualification
 INCLUDEPATH += src/incident
+INCLUDEPATH += src/mode
 
 # Session Reliability Layer (M0) - QtCore-only storage foundation.
 include(Reliability.pri)

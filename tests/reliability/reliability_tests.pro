@@ -13,8 +13,11 @@ include(../../Reliability.pri)
 INCLUDEPATH += $$PWD/../../src
 SOURCES += $$PWD/../../src/qualification/QualificationController.cpp
 SOURCES += $$PWD/../../src/incident/EstIncidentController.cpp
+SOURCES += $$PWD/../../src/mode/OperatingModeService.cpp
 HEADERS += $$PWD/../../src/qualification/QualificationController.h
 HEADERS += $$PWD/../../src/incident/EstIncidentController.h
+HEADERS += $$PWD/../../src/mode/OperatingMode.h
+HEADERS += $$PWD/../../src/mode/OperatingModeService.h
 
 # Committed golden fixtures live next to the sources (byte-exact, -text in
 # .gitattributes). The harness reads them from the source tree.
@@ -40,4 +43,5 @@ SOURCES += \
     tst_snapshot.cpp \
     tst_store.cpp \
     tst_recovery.cpp \
+    tst_operatingmode.cpp \
     tst_fixtures.cpp

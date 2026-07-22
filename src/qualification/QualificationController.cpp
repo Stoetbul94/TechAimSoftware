@@ -1,6 +1,7 @@
 #include "QualificationController.h"
 
 #include "incident/EstIncidentController.h"
+#include "mode/OperatingMode.h"
 
 #include <QCoreApplication>
 #include <QUuid>
@@ -70,6 +71,11 @@ bool QualificationController::startSession(const QString& disciplineId,
     header.targetId = targetId;
     header.matchType = matchType;
     header.discipline = m_discipline;
+    // F10: stamp the session with the operating mode it started in (empty →
+    // Unknown/Legacy when no concrete mode was set, e.g. the harness).
+    if (m_operatingMode >= 0)
+        header.operatingMode =
+            ta::mode::modeToConfigString(static_cast<ta::mode::Mode>(m_operatingMode));
     header.config.officialShots = officialShots;
     header.config.seriesSize = 10;             // ISSF qualification series size
     header.config.matchMs = matchMs;
@@ -137,6 +143,16 @@ bool QualificationController::submitShot(bool sighter, double xMm, double yMm,
                                          double directionDeg, bool simulated)
 {
     if (!m_store || !m_store->active())
+        return false;
+
+    // F10 authoritative input-source gate: a shot whose origin does not match
+    // the running operating mode is refused here — before any reducer submit —
+    // so a Demo click cannot score in Live nor a physical shot in Demo, and no
+    // journal event is created for the rejected shot. (-1 = unset/permissive for
+    // standalone harness use; the runtime always sets a concrete mode.)
+    if (m_operatingMode >= 0
+        && !ta::mode::sourceAllowed(static_cast<ta::mode::Mode>(m_operatingMode),
+               simulated ? ta::mode::ShotSource::Simulated : ta::mode::ShotSource::Physical))
         return false;
 
     // Phase E resume gate: while an unresolved EST incident requires an

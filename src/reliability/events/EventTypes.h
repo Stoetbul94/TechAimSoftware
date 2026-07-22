@@ -204,6 +204,10 @@ struct SessionStarted {
     QString matchType;
     DisciplineConfig config;
     QString deviceId;
+    // F10: operating mode the session STARTED in ("Live"/"Demo"). Optional and
+    // back-compatible — empty for pre-F10 journals, which replay as Unknown/
+    // Legacy. Authoritative for this session; never re-inferred from config.
+    QString operatingMode;
 
     ReliabilityResult validate() const
     {

@@ -142,6 +142,7 @@ ReliabilityResult SessionStore::beginSession(const SessionHeader& header)
     started.matchType = header.matchType;
     started.config = header.config;
     started.deviceId = header.deviceId;
+    started.operatingMode = header.operatingMode;   // F10: Live/Demo at session start
 
     m_state = SessionState();
     m_nextSeq = 0;

@@ -60,6 +60,11 @@ Item {
     // without unit archaeology. Read by ShootingPage.onPointAddedToSeries.
     property real lastShotXmm: 0
     property real lastShotYmm: 0
+    // F10: origin of the shot currently being scored — 0 = Physical target,
+    // 1 = Simulated (demo click). Set by whichever pipeline produced it (NOT
+    // derived from the running mode), so the C++ input-source gate can reject a
+    // misrouted shot. Read by ShootingPage.onPointAddedToSeries.
+    property int lastShotSource: 0
     //    signal pointAddedXYPoints(real xPosition, real yPosition)
 
     property int gameTime: 0
@@ -246,6 +251,8 @@ Item {
     Connections {
         target: MODREADER
         function onShootCountChanged(count) {
+            // F10: shots delivered by MODREADER come from the PHYSICAL target.
+            paneItem.lastShotSource = 0
             //            var logData1 = "onShootCountChanged window visibilty changed.............................."+ windowVisibleMode
             //            MODREADER.appendToLogFile(logData1)
 
@@ -1230,6 +1237,9 @@ Item {
                 // detection + scoring pipeline (uxShoot -> calculateShootingSocre
                 // -> pointAddedToSeries); the finals branch lives at the
                 // registration junction in ShootingPage. No shortcut here.
+
+                // F10: this shot originates from a SIMULATED (demo) click.
+                paneItem.lastShotSource = 1
 
                 if (!shootingPanelRect.visible)
                     return

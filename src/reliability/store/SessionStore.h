@@ -40,6 +40,7 @@ struct SessionHeader {
     QString athlete, lane, targetId, deviceId, matchType;
     Discipline discipline = Discipline::None;
     DisciplineConfig config;
+    QString operatingMode;      // F10: "Live"/"Demo" (empty = unspecified)
 };
 
 struct SubmitResult {

@@ -333,6 +333,28 @@ Item {
                     Text { text: hud.reportGroup.n + " / 24"; color: hud._txt; font.pixelSize: 14; font.bold: true }
                 }
             }
+            // F10: operating-mode identification — a Demo session is never
+            // presented as an official Live result. Uses the mode the session
+            // was RECORDED with (not the current config).
+            Rectangle {
+                property string modeTok: (hud.ctl && hud.ctl.sessionOperatingMode)
+                                          ? hud.ctl.sessionOperatingMode : ""
+                property bool demo: (typeof OPMODE !== "undefined")
+                                     ? OPMODE.tokenIsDemo(modeTok)
+                                     : (modeTok === "Demo")
+                width: modeLabel.implicitWidth + 20; height: 22; radius: 11
+                color: demo ? "#3a0d12" : "#14361f"
+                border.width: 1; border.color: demo ? "#e8003d" : "#2f7d4f"
+                Text {
+                    id: modeLabel
+                    anchors.centerIn: parent
+                    text: (typeof OPMODE !== "undefined")
+                          ? OPMODE.sessionLabel(parent.modeTok)
+                          : (parent.demo ? "DEMO SESSION · SIMULATED INPUT" : "LIVE TARGET SESSION")
+                    color: parent.demo ? "#ffd0d7" : "#bfe8cd"
+                    font.pixelSize: 9; font.bold: true; font.letterSpacing: 1
+                }
+            }
             Text {
                 width: parent.width; wrapMode: Text.WordWrap
                 text: qsTr("Single-lane result. Official ranking and placement require Range Management coordination.")

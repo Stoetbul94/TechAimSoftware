@@ -80,6 +80,7 @@ class Finals10mController : public QObject
     Q_PROPERTY(bool complete READ complete NOTIFY phaseChanged)
     Q_PROPERTY(int missingShotCount READ missingShotCount NOTIFY totalsChanged)
     Q_PROPERTY(QString sessionId READ sessionId NOTIFY configChanged)
+    Q_PROPERTY(QString sessionOperatingMode READ sessionOperatingMode NOTIFY phaseChanged)
     Q_PROPERTY(bool primaryActionVisible READ primaryActionVisible NOTIFY advanceLabelChanged)
     Q_PROPERTY(bool primaryActionEnabled READ primaryActionEnabled NOTIFY advanceLabelChanged)
     Q_PROPERTY(QString primaryActionLabel READ primaryActionLabel NOTIFY advanceLabelChanged)
@@ -98,9 +99,16 @@ public:
     // ── main API ─────────────────────────────────────────────────────────
     Q_INVOKABLE void startFinal();
     Q_INVOKABLE void skipCeremony();
+    // shotSource (F10): 0 = Physical target, 1 = Simulated (demo). The
+    // authoritative input-source gate rejects a source that does not match the
+    // running operating mode before the shot is durably accepted. Defaults to
+    // Physical so existing callers / the harness stay source-neutral.
     Q_INVOKABLE void registerShot(double xMm, double yMm, double decimalScore,
                                   int externalShotId = -1,
-                                  double direction = 0.0);
+                                  double direction = 0.0,
+                                  int shotSource = 0);
+    // F10: running operating mode (0 = Live, 1 = Demo). Set once at startup.
+    Q_INVOKABLE void setOperatingMode(int mode) { m_operatingMode = mode; }
     Q_INVOKABLE void simulateShot();       // dry-run: same path, no coordinates
     Q_INVOKABLE void executePrimaryAction();
     Q_INVOKABLE void abortFinal();
@@ -147,6 +155,11 @@ public:
     bool complete() const { return m_stage == Stage::Complete; }
     int missingShotCount() const { return m_cfg.maximumMatchShots - m_officialShotCount; }
     QString sessionId() const;   // active/completed session id (empty if none)
+    // F10: operating mode this session STARTED in ("Live"/"Demo"; empty when
+    // unset/legacy). Read from the reducer — authoritative for this session.
+    QString sessionOperatingMode() const {
+        return m_store ? m_store->state().operatingMode : QString();
+    }
     // True while an unresolved EST incident blocks official shots (Phase-E
     // authority model). Polled by the command panel on INCIDENTS.incidentChanged.
     Q_INVOKABLE bool officialsBlockedNow() const;
@@ -291,6 +304,7 @@ private:
     int m_sighterCount = 0;
     double m_cumulativeTotal = 0.0;
     int m_officialShotCount = 0;
+    int m_operatingMode = -1;           // F10: -1 = unset/permissive, 0 = Live, 1 = Demo
     // F7 last-accepted-shot projection (right-hand command panel).
     double m_lastShotScore = -1.0;      // -1 = no official shot yet
     int m_lastShotNumber = 0;           // official number (0 = none)

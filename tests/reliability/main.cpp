@@ -32,6 +32,7 @@ int main(int argc, char** argv)
     run_snapshot_tests();
     run_store_tests();
     run_recovery_tests();
+    run_operatingmode_tests();
     run_fixture_tests(writeFixtures);
 
     std::printf("=== %d checks, %d failures ===\n", g_checks, g_failures);

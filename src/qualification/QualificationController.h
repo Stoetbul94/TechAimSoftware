@@ -76,6 +76,11 @@ public:
                                     qint64 externalId, double directionDeg,
                                     bool simulated);
 
+    // F10: running operating mode (0 = Live, 1 = Demo). Set once at startup;
+    // the authoritative input-source gate in submitShot rejects a shot whose
+    // simulated/physical origin does not match this mode.
+    Q_INVOKABLE void setOperatingMode(int mode) { m_operatingMode = mode; }
+
     Q_INVOKABLE void completeMatch();   // MatchCompleted (totals from reducer)
     Q_INVOKABLE void closeSession();    // SessionClosed + CleanShutdown + archive
 
@@ -157,6 +162,7 @@ private:
     // never journalled — the ISSF count is a caller-supplied config value, not
     // a rule hardcoded in the engine.
     int m_officialShots = 0;
+    int m_operatingMode = -1;  // F10: -1 = unset/permissive, 0 = Live, 1 = Demo
     // Phase-clock durations (ms) supplied at startSession, journalled as
     // TimerStarted anchors (Phase C) so a recovered session can rebase the
     // competition clock to its frozen remaining value: remaining = durationMs −

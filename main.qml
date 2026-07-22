@@ -748,6 +748,16 @@ ApplicationWindow {
         z: 4000
     }
 
+    // F10: a failed operating-mode config write is surfaced visibly (never
+    // silent) through the same TechAim dialog framework.
+    Connections {
+        target: (typeof OPMODE !== "undefined") ? OPMODE : null
+        ignoreUnknownSignals: true
+        function onConfigWriteFailed(message) {
+            dialogManager.showError(qsTr("Could not change operating mode"), message)
+        }
+    }
+
     // C++ -> dialog-framework bridges: backend messages render in the same
     // TechAim dialogs as QML ones (no native message boxes anywhere).
     Connections {
@@ -835,8 +845,48 @@ ApplicationWindow {
                     shootingPage.setCurrentGameType(0)
             }
     }
-           
 
+    // ── F10: global operating-mode badge ─────────────────────────────────
+    // Unmistakable in BOTH modes and present on every screen (event selection,
+    // qualification, 10m Finals, 3P Final, recovery, completed-result) because
+    // it overlays the whole window at the top z-order. Demo uses the warning
+    // (amber/red) treatment; Live uses a restrained neutral-green pill so it
+    // never distracts the athlete. Reads the running mode from OPMODE.
+    Rectangle {
+        id: opModeBadge
+        readonly property bool opLive: (typeof OPMODE !== "undefined") ? OPMODE.live : window.appMode
+        z: 100000
+        anchors.top: parent.top
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.topMargin: 6
+        width: opModeBadgeText.implicitWidth + 26
+        height: 22
+        radius: 11
+        color: opLive ? "#14361f" : "#3a0d12"
+        border.width: 1
+        border.color: opLive ? "#2f7d4f" : "#e8003d"
+        opacity: opLive ? 0.82 : 0.96
+        Row {
+            anchors.centerIn: parent
+            spacing: 6
+            Rectangle {
+                width: 7; height: 7; radius: 3.5
+                anchors.verticalCenter: parent.verticalCenter
+                color: opModeBadge.opLive ? "#37c76a" : "#ff2d55"
+            }
+            Text {
+                id: opModeBadgeText
+                anchors.verticalCenter: parent.verticalCenter
+                text: (typeof OPMODE !== "undefined")
+                      ? OPMODE.badgeText
+                      : (opModeBadge.opLive ? "LIVE TARGET" : "DEMO / SIMULATION")
+                color: opModeBadge.opLive ? "#bfe8cd" : "#ffd0d7"
+                font.pixelSize: 11
+                font.bold: true
+                font.letterSpacing: 1
+            }
+        }
+    }
 
 
 

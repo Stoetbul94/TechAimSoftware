@@ -244,6 +244,10 @@ struct SessionState {
     Discipline discipline = Discipline::None;
     QString matchType;
     DisciplineConfig config;
+    // F10: operating mode recorded at session start ("Live"/"Demo"; empty =
+    // Unknown/Legacy for pre-F10 journals). Authoritative for THIS session and
+    // preserved across replay — never re-inferred from the current config.
+    QString operatingMode;
     // lifecycle
     bool started = false;
     Lifecycle lifecycle = Lifecycle::None;

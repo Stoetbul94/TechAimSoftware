@@ -16,6 +16,15 @@ public:
     AppSettings(QString fileName);
     void setTachusWidget(TachusWidget* widget);
     Q_INVOKABLE bool getAppMode();
+    // Absolute, resolved path of the active config.ini (QSettings resolves the
+    // relative name against the working dir at construction). F10 uses this so
+    // the operating-mode writer never has to re-guess the path from the CWD.
+    Q_INVOKABLE QString getConfigFilePath() const {
+        return m_settings ? m_settings->fileName() : m_iniFileName;
+    }
+    // Raw app_mode token exactly as read from config (for F10 startup parse /
+    // invalid-value fallback logging). Empty when the key was absent.
+    QString getRawAppModeToken() const { return m_rawAppModeToken; }
     Q_INVOKABLE QString getBrandName();
     Q_INVOKABLE void saveMatch(bool createNew = false);
     Q_INVOKABLE void autoSaveMatch();
@@ -163,6 +172,7 @@ signals:
 
 private:
     bool m_appMode = false; // false for demo, true for live
+    QString m_rawAppModeToken;   // F10: raw app_mode token as read from config
     QString m_brandName = "tachus";
     QString m_iniFileName;   // config.ini path, for group-safe writes
     QSettings* m_settings = NULL;

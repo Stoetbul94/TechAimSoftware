@@ -2,6 +2,7 @@
 #include "../reliability/storage/StoragePaths.h"
 #include "../reliability/core/FixedPoint.h"
 #include "../incident/EstIncidentController.h"
+#include "../mode/OperatingMode.h"
 
 #include <QCoreApplication>
 #include <QDateTime>
@@ -268,8 +269,21 @@ QString Finals10mController::primaryActionLabel() const
 // ── shots ────────────────────────────────────────────────────────────────
 
 void Finals10mController::registerShot(double xMm, double yMm, double decimalScore,
-                                       int externalShotId, double direction)
+                                       int externalShotId, double direction,
+                                       int shotSource)
 {
+    // F10 authoritative input-source gate — a wrong-source shot is rejected
+    // here, before any window/limit/duplicate check and before any journal
+    // event, so a Demo click can never score in Live nor a physical shot in
+    // Demo. (mode 0 = Live, 1 = Demo, -1 = unset/permissive for standalone
+    // harness use; source 0 = Physical, 1 = Simulated.) The runtime always sets
+    // a concrete mode at startup.
+    if (m_operatingMode >= 0
+        && !ta::mode::sourceAllowed(static_cast<ta::mode::Mode>(m_operatingMode),
+                                    static_cast<ta::mode::ShotSource>(shotSource))) {
+        rejectShot(RejectReason::WrongInputSource, xMm, yMm, false, externalShotId);
+        return;
+    }
     if (!running()) {
         rejectShot(RejectReason::FinalsNotActive, xMm, yMm, false, externalShotId);
         return;
@@ -900,6 +914,11 @@ void Finals10mController::beginJournalSession()
     header.athlete = m_athleteName.trimmed();
     header.matchType = m_cfg.matchType;
     header.discipline = m_cfg.discipline;
+    // F10: stamp the session with the operating mode it started in (left empty
+    // → Unknown/Legacy when no concrete mode was set, e.g. the harness).
+    if (m_operatingMode >= 0)
+        header.operatingMode =
+            ta::mode::modeToConfigString(static_cast<ta::mode::Mode>(m_operatingMode));
     header.config.officialShots = m_cfg.maximumMatchShots;
     header.config.seriesSize = m_cfg.shotsPerSeries;
     header.config.matchMs =

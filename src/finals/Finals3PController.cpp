@@ -3,6 +3,7 @@
 #include "../reliability/storage/StoragePaths.h"
 #include "../reliability/core/FixedPoint.h"
 #include "../incident/EstIncidentController.h"
+#include "../mode/OperatingMode.h"
 
 #include <QApplication>
 #include <QCoreApplication>
@@ -100,6 +101,11 @@ void Finals3PController::beginJournalSession()
     header.athlete = m_athleteName.trimmed();
     header.matchType = QStringLiteral("FINAL 35");
     header.discipline = ta::rel::Discipline::Finals3P;
+    // F10: stamp the session with the operating mode it started in (empty →
+    // Unknown/Legacy when no concrete mode was set, e.g. the harness).
+    if (m_operatingMode >= 0)
+        header.operatingMode =
+            ta::mode::modeToConfigString(static_cast<ta::mode::Mode>(m_operatingMode));
     header.config.officialShots =
         m_cfg.kneelingShots + m_cfg.proneShots
         + 2 * m_cfg.seriesShots + 5 * m_cfg.singleShots;
@@ -801,8 +807,19 @@ void Finals3PController::applyTargetModeInternal(TargetMode m)
 // ── shots ────────────────────────────────────────────────────────────────
 
 void Finals3PController::registerShot(double xMm, double yMm, double decimalScore,
-                                      int externalShotId, double direction)
+                                      int externalShotId, double direction,
+                                      int shotSource)
 {
+    // F10 authoritative input-source gate — rejected before any other check and
+    // before any journal event, so a Demo click cannot score in Live nor a
+    // physical shot in Demo. (-1 = unset/permissive for standalone harness use;
+    // the runtime always sets a concrete mode at startup.)
+    if (m_operatingMode >= 0
+        && !ta::mode::sourceAllowed(static_cast<ta::mode::Mode>(m_operatingMode),
+                                    static_cast<ta::mode::ShotSource>(shotSource))) {
+        rejectShot(RejectReason::WrongInputSource, xMm, yMm, false, externalShotId);
+        return;
+    }
     // Validation chain (plan §8). Order: active -> data -> window -> duplicate
     // -> defensive mode check -> stage limit.
     if (!running()) {

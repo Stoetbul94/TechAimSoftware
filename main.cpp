@@ -32,9 +32,12 @@
 #include "src/qualification/QualificationController.h"
 #include "src/incident/EstIncidentController.h"
 #include "src/finals/FinalsAudioService.h"
+#include "src/mode/OperatingMode.h"
+#include "src/mode/OperatingModeService.h"
 #include "src/reliability/storage/StoragePaths.h"
 #include "logfile.h"
 #include <QLockFile>
+#include <QProcess>
 #include <QDir>
 #include <QDialog>
 #include <QFrame>
@@ -260,6 +263,29 @@ int main(int argc, char *argv[])
     }
 
     AppSettings *appsettings = new AppSettings("config.ini");
+
+    // F10: operating-mode authority (Live target vs Demo simulation). Parsed
+    // case-consistently from config.ini; an invalid/missing value falls back to
+    // Live (matching the product's existing default) WITHOUT enabling Demo
+    // input, and logs the fallback. Kept strictly separate from build identity
+    // (which source commit) and session type (which discipline).
+    const ta::mode::ParsedMode parsedMode =
+        ta::mode::parseMode(appsettings->getRawAppModeToken());
+    OperatingModeService* opMode =
+        new OperatingModeService(appsettings->getConfigFilePath(),
+                                 parsedMode.mode, parsedMode.valid,
+                                 parsedMode.raw, appsettings);
+    if (!parsedMode.valid) {
+        qWarning().noquote() << "Operating mode: invalid/missing app_mode value"
+                             << (parsedMode.raw.isEmpty()
+                                     ? QStringLiteral("(absent)")
+                                     : QStringLiteral("'%1'").arg(parsedMode.raw))
+                             << "— falling back to Live target (Demo input NOT enabled).";
+    }
+    qInfo().noquote() << "Operating mode:" << opMode->runningModeToken()
+                      << (opMode->isLive() ? "(physical target input)"
+                                           : "(simulated input)");
+
     QScreen *srn = QApplication::screens().at(0);
     qreal dotsPerInch = (qreal)srn->logicalDotsPerInch();
 
@@ -328,12 +354,38 @@ int main(int argc, char *argv[])
     buildInfo[QStringLiteral("commit")]  = QStringLiteral(APP_GIT_SHA);
     buildInfo[QStringLiteral("built")]   = kBuildTimestamp;
     engine.rootContext()->setContextProperty("BUILDINFO", buildInfo);
+    // F10: operating-mode authority for QML (badge, Settings selector, gate).
+    engine.rootContext()->setContextProperty("OPMODE", opMode);
+    // Push the running mode into the finals controllers (declared above) so the
+    // authoritative input-source gate rejects a wrong-source shot BEFORE it is
+    // durably accepted. The qualification controller is set below, right after
+    // it is constructed.
+    const int runningModeInt = static_cast<int>(opMode->runningMode());
+    finalsController.setOperatingMode(runningModeInt);
+    finals10mController.setOperatingMode(runningModeInt);
+    // Restart-based switch: the service only writes config + asks; main performs
+    // the detached relaunch. Release the single-instance lock FIRST so the new
+    // instance can immediately acquire it (avoids the "Already Running" race),
+    // then start a detached copy and quit cleanly. applyModeChange() has already
+    // ensured no session is active before this can be requested.
+    QObject::connect(opMode, &OperatingModeService::restartRequested,
+                     qApp, [&lockFile]() {
+        const QString exe = QCoreApplication::applicationFilePath();
+        const QString cwd = QDir::currentPath();
+        lockFile.unlock();
+        LogFile::instance().appendToLogFile(
+            QStringLiteral("Operating-mode restart: relaunching %1").arg(exe),
+            LogType::interfaceLevel);
+        QProcess::startDetached(exe, QStringList(), cwd);
+        QCoreApplication::quit();
+    });
     QObject::connect(&finals10mController, &Finals10mController::commandIssued,
                      &finalsAudio, &FinalsAudioService::onCommandIssued);
     // Phase B — shared qualification persistence seam (QUAL). Idle until a
     // qualification discipline drives it (wired per-discipline in B1–B3); like
     // FINALS3P it owns a reliability SessionStore for its match record.
     QualificationController qualController;
+    qualController.setOperatingMode(runningModeInt);   // F10 input-source gate
     engine.rootContext()->setContextProperty("QUAL", &qualController);
     // Phase E — EST incident workflow service (INCIDENTS). Discipline-agnostic:
     // it submits typed incident/Jury events through whichever session store is

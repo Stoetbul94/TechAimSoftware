@@ -95,7 +95,10 @@ enum class RejectReason {
     FinalsNotActive,
     // Phase E: an unresolved EST incident requires an authorised decision
     // before official shots may continue (generic authority model).
-    EstIncidentBlocked
+    EstIncidentBlocked,
+    // F10: the shot's input source does not match the running operating mode
+    // (a simulated shot in Live, or a physical shot in Demo).
+    WrongInputSource
 };
 
 inline QString rejectReasonName(RejectReason r)
@@ -108,6 +111,7 @@ inline QString rejectReasonName(RejectReason r)
     case RejectReason::InvalidShotData:       return QStringLiteral("InvalidShotData");
     case RejectReason::FinalsNotActive:       return QStringLiteral("FinalsNotActive");
     case RejectReason::EstIncidentBlocked:    return QStringLiteral("EstIncidentBlocked");
+    case RejectReason::WrongInputSource:      return QStringLiteral("WrongInputSource");
     }
     return QStringLiteral("Unknown");
 }

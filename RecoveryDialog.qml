@@ -87,6 +87,16 @@ Rectangle {
                 Text { text: qsTr("Athlete"); color: "#9aa0aa"; font.pixelSize: 13 }
                 Text { text: parent.c ? (parent.c.athlete || "—") : ""
                        color: "white"; font.pixelSize: 13; font.bold: true }
+                // F10: the mode the session was RECORDED with — a Demo session
+                // stays labelled Demo, a pre-F10 session shows Legacy; never
+                // re-inferred from the current running mode.
+                Text { text: qsTr("Mode"); color: "#9aa0aa"; font.pixelSize: 13 }
+                Text { text: (typeof OPMODE !== "undefined" && parent.c)
+                             ? OPMODE.sessionBadge(parent.c.operatingMode || "")
+                             : (parent.c ? (parent.c.operatingMode || "LEGACY") : "")
+                       color: (parent.c && parent.c.operatingMode === "Demo") ? "#ff9aa8"
+                              : (parent.c && parent.c.operatingMode === "Live") ? "#8fe0a8" : "#c9a06a"
+                       font.pixelSize: 13; font.bold: true }
                 Text { text: qsTr("Shots"); color: "#9aa0aa"; font.pixelSize: 13 }
                 Text { text: parent.c ? (parent.c.officialShots + " / " + parent.c.expectedShots) : ""
                        color: "white"; font.pixelSize: 13; font.bold: true }
