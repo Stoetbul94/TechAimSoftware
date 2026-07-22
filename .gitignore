@@ -32,3 +32,6 @@ tests/finals/tst_audio_clips/
 *.pro.user
 *.pro.user.*
 build-*/
+
+# F11: generated Windows deployment package (never committed)
+release-package/

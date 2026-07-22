@@ -92,9 +92,19 @@ detailed reference. Cross-discipline EST/interruption rules live in
 - Deployed `release/` needs `Qt6Multimedia.dll` + `multimedia/` plugins
   (finals audio).
 - **Finals harness**: `tests/finals/finals_tests.pro` — standalone console
-  binary, run with Qt bin on PATH. Currently **178 checks, 0 failures**.
+  binary, run with Qt bin on PATH. Currently **189 checks, 0 failures**.
   The Qt multimedia backend hard-exits at teardown; the harness fflushes
   per check so output is never lost.
+- **Headless harness runs** (finals10m + 3P link Qt Multimedia → they pull in
+  the Qt GUI **platform plugin**). Always run them with **both** the Qt `bin`
+  on PATH **and** `QT_QPA_PLATFORM=offscreen`, e.g.
+  `QT_QPA_PLATFORM=offscreen ./release/finals_tests.exe`. Without the platform
+  plugin these console tests pop a modal *"no Qt platform plugin could be
+  initialized"* dialog that **blocks the process and yields an empty output
+  file** — never infer PASS from exit code alone; always capture the
+  `=== N checks, M failures ===` line. (reliability is QtCore-only and needs
+  neither.) Current baselines: finals10m **143/0**, reliability **864/0**,
+  3P finals **189/0**.
 - Diagnostic logging is gated behind `APPSETTINGS.getDeveloperMode()` —
   production runs are near-silent; dev mode restores per-shot traces.
 
