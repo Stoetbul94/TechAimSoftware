@@ -4,6 +4,9 @@
 #include "reliability/reducer/SessionReducer.h"
 #include "reliability/storage/StoragePaths.h"
 
+#include <QFile>
+#include <QFileInfo>
+
 namespace ta {
 namespace rel {
 
@@ -139,6 +142,8 @@ ReliabilityResult SessionStore::beginSession(const SessionHeader& header)
     started.matchType = header.matchType;
     started.config = header.config;
     started.deviceId = header.deviceId;
+    started.operatingMode = header.operatingMode;   // F10: Live/Demo at session start
+    started.sessionKind = header.sessionKind;       // T1: Training classification
 
     m_state = SessionState();
     m_nextSeq = 0;
@@ -162,6 +167,103 @@ ReliabilityResult SessionStore::beginSession(const SessionHeader& header)
     }
     m_active = true;
     emit eventApplied(DomainEvent(started), false);
+    emit stateChanged();
+    return ReliabilityResult::success();
+}
+
+ReliabilityResult SessionStore::resumeSession(const RecoveredMatchState& recovered)
+{
+    if (m_active)
+        return ReliabilityResult::failure(ReliabilityError::InvalidArgument,
+            QStringLiteral("A session is already active."),
+            QStringLiteral("resumeSession called while active"));
+    if (recovered.sessionId.isEmpty() || recovered.journalPath.isEmpty())
+        return ReliabilityResult::failure(ReliabilityError::InvalidArgument,
+            QStringLiteral("Nothing to resume."),
+            QStringLiteral("empty recovered session id/path"));
+    if (!isWellFormedHashHex(recovered.lastLineHash))
+        return ReliabilityResult::failure(ReliabilityError::InvalidArgument,
+            QStringLiteral("The recovered session is missing its chain state."),
+            QStringLiteral("lastLineHash not 32 hex"));
+
+    // Drop any torn tail so appends chain onto the last VALID line. The
+    // original bytes are preserved alongside as <name>.tornbak first (§15).
+    if (recovered.validByteLength >= 0) {
+        QFileInfo info(recovered.journalPath);
+        if (info.exists() && info.size() > recovered.validByteLength) {
+            QFile::copy(recovered.journalPath, recovered.journalPath
+                        + QStringLiteral(".tornbak"));
+            QFile f(recovered.journalPath);
+            if (f.open(QIODevice::ReadWrite)) {
+                f.resize(recovered.validByteLength);
+                f.close();
+            }
+        }
+    }
+
+    if (m_injectedClock) {
+        m_clock = m_injectedClock;
+    } else {
+        m_ownClock = std::make_unique<SystemMonotonicClock>();
+        m_clock = m_ownClock.get();
+    }
+    m_clock->start();
+
+    m_identity.sessionId = recovered.sessionId;
+    m_identity.lane = recovered.state.lane;
+    m_identity.appVersion = recovered.state.appVersion;
+    m_identity.deviceId = recovered.state.deviceId;
+
+    m_queue = std::make_unique<PersistenceRetryQueue>(m_auxCap);
+    if (m_injectedFile)
+        m_manager = std::make_unique<JournalManager>(m_identity, m_injectedFile);
+    else
+        m_manager = std::make_unique<JournalManager>(m_identity,
+                                                     recovered.journalPath);
+    // Seed the write-order chain + sequence from the recovered tail.
+    m_manager->writer().resumeFrom(recovered.lastLineHash,
+                                   recovered.lastValidSeq + 1);
+
+    // Adopt the reducer-rebuilt state verbatim (sole authority — never
+    // reconstructed from anything but the reducer).
+    m_state = recovered.state;
+    m_nextSeq = recovered.lastValidSeq + 1;
+    m_health = Health::Healthy;
+    m_degradedMarkerPending = false;
+    m_peakQueued = 0;
+    m_active = true;
+
+    // Bracket the resume in the journal so replay is idempotent (§15): a crash
+    // during recovery leaves RecoveryStarted without RecoveryCompleted and the
+    // next run simply recovers again.
+    {
+        RecoveryStarted started;
+        started.fromSeq = recovered.lastValidSeq;
+        const quint64 seq = m_nextSeq++;
+        const SeqTimes t = stamp();
+        ErrorInfo e;
+        reduceInto(seq, DomainEvent(started), t, &e);
+        m_manager->append(seq, DomainEvent(started), t.wallIso, t.monoMs,
+                          DurabilityClass::Sync);
+    }
+    {
+        RecoveryCompleted done;
+        done.resumedAtSeq = recovered.lastValidSeq;
+        done.truncatedTail = recovered.recoveryClass == RecoveryClass::Recoverable;
+        const quint64 seq = m_nextSeq++;
+        const SeqTimes t = stamp();
+        ErrorInfo e;
+        reduceInto(seq, DomainEvent(done), t, &e);
+        const AppendOutcome out = m_manager->append(seq, DomainEvent(done),
+            t.wallIso, t.monoMs, DurabilityClass::Sync);
+        if (!out.ok) {
+            emit journalWriteFailed(m_manager->currentPath(),
+                                    out.error.technicalDetail);
+            // The resume itself is durable state in RAM; the marker will be
+            // retried on the next submit's degraded path.
+        }
+    }
+
     emit stateChanged();
     return ReliabilityResult::success();
 }

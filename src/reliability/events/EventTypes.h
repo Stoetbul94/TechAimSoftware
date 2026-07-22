@@ -26,9 +26,13 @@ namespace rel {
 
 // ── shared enums ──────────────────────────────────────────────────────
 
+// Appended AFTER Training so existing quint8 values never move (journal/
+// snapshot compatibility). AirRifleFinal10m / AirPistolFinal10m are the two
+// 10m individual FINAL disciplines (F1) — single-athlete training course,
+// gated separately from Finals3P. See docs/issf-rules/10m-finals-shared.md.
 enum class Discipline : quint8 {
     None = 0, AirPistol10m, AirRifle10m, Prone50m, ThreePositions50m,
-    Finals3P, Training
+    Finals3P, Training, AirRifleFinal10m, AirPistolFinal10m
 };
 
 inline const char* disciplineId(Discipline d)
@@ -41,26 +45,66 @@ inline const char* disciplineId(Discipline d)
     case Discipline::ThreePositions50m: return "3P50";
     case Discipline::Finals3P:          return "FINAL3P";
     case Discipline::Training:          return "TRAINING";
+    case Discipline::AirRifleFinal10m:  return "FINAL_AR10";
+    case Discipline::AirPistolFinal10m: return "FINAL_AP10";
     }
     return "NONE";
 }
 
 inline bool disciplineFromId(const QString& id, Discipline* out)
 {
-    if (id == QLatin1String("NONE"))     { *out = Discipline::None; return true; }
-    if (id == QLatin1String("AP10"))     { *out = Discipline::AirPistol10m; return true; }
-    if (id == QLatin1String("AR10"))     { *out = Discipline::AirRifle10m; return true; }
-    if (id == QLatin1String("PRONE50"))  { *out = Discipline::Prone50m; return true; }
-    if (id == QLatin1String("3P50"))     { *out = Discipline::ThreePositions50m; return true; }
-    if (id == QLatin1String("FINAL3P"))  { *out = Discipline::Finals3P; return true; }
-    if (id == QLatin1String("TRAINING")) { *out = Discipline::Training; return true; }
+    if (id == QLatin1String("NONE"))       { *out = Discipline::None; return true; }
+    if (id == QLatin1String("AP10"))       { *out = Discipline::AirPistol10m; return true; }
+    if (id == QLatin1String("AR10"))       { *out = Discipline::AirRifle10m; return true; }
+    if (id == QLatin1String("PRONE50"))    { *out = Discipline::Prone50m; return true; }
+    if (id == QLatin1String("3P50"))       { *out = Discipline::ThreePositions50m; return true; }
+    if (id == QLatin1String("FINAL3P"))    { *out = Discipline::Finals3P; return true; }
+    if (id == QLatin1String("TRAINING"))   { *out = Discipline::Training; return true; }
+    if (id == QLatin1String("FINAL_AR10")) { *out = Discipline::AirRifleFinal10m; return true; }
+    if (id == QLatin1String("FINAL_AP10")) { *out = Discipline::AirPistolFinal10m; return true; }
     return false;
+}
+
+// The two 10m FINAL disciplines share one controller/state (F1).
+inline bool isFinals10mDiscipline(Discipline d)
+{
+    return d == Discipline::AirRifleFinal10m || d == Discipline::AirPistolFinal10m;
 }
 
 enum class TimerId : quint8 { Preparation = 0, Match = 1, Stage = 2, Window = 3 };
 enum class SuspendReason : quint8 { AppSuspend = 0, UserHide = 1 };
 enum class CloseReason : quint8 { Clean = 0, Abort = 1, Archive = 2 };
 enum class Authority : quint8 { Jury = 0, Operator = 1 };
+
+// EST incident domain (M3 Phase A). Generic across every discipline —
+// no discipline-specific values live here. See
+// docs/issf-rules/est-malfunctions.md.
+enum class IncidentScope : quint8 {
+    IndividualTarget = 0, SelectedFiringPoints = 1, RelayWide = 2
+};
+enum class IncidentType : quint8 {
+    TargetNotRegistering = 0, ContinuousTargetFault = 1,
+    ScoringComputerFailure = 2, TargetNetworkFailure = 3,
+    ApplicationCrash = 4, ComputerCrash = 5, PowerFailure = 6,
+    CommunicationFailure = 7, TargetMove = 8, OtherEstFailure = 9
+};
+enum class IncidentStatus : quint8 {
+    Open = 0, AwaitingAuthorisation = 1, Resolved = 2, Abandoned = 3
+};
+// The three authorised post-interruption transitions (est-malfunctions §5/§6).
+// One parameterized event carries all three (anti-proliferation).
+enum class RecoveryPhaseKind : quint8 {
+    Preparation = 0, Sighting = 1, OfficialResume = 2
+};
+// Authorised Jury/RO decisions on an incident (Phase E). One parameterized
+// decision event covers them all (anti-proliferation): NoAllowance is the
+// explicit "no additional allowance" ruling (distinct from decision-pending);
+// DurationAccepted confirms the official interruption duration; Backup* record
+// the backup-score review outcome.
+enum class EstDecisionKind : quint8 {
+    NoAllowance = 0, DurationAccepted = 1,
+    BackupAccepted = 2, BackupRejected = 3, BackupInconclusive = 4
+};
 
 // Registry classifications (spec §12 / §20 / §8).
 enum class DurabilityClass : quint8 { Append, Flush, Sync };
@@ -160,6 +204,15 @@ struct SessionStarted {
     QString matchType;
     DisciplineConfig config;
     QString deviceId;
+    // F10: operating mode the session STARTED in ("Live"/"Demo"). Optional and
+    // back-compatible — empty for pre-F10 journals, which replay as Unknown/
+    // Legacy. Authoritative for this session; never re-inferred from config.
+    QString operatingMode;
+    // T1 (Training Lab): session classification. Empty = competition (default);
+    // "Training" marks a Training Lab session so it is never treated as a
+    // qualification/Final result nor as an unfinished competition recovery
+    // candidate. Optional + written only when set → pre-T1 journals unchanged.
+    QString sessionKind;
 
     ReliabilityResult validate() const
     {
@@ -666,6 +719,300 @@ struct CleanShutdown {
     static constexpr const char* kType = "CleanShutdown";
     static constexpr qint32 kVersion = 1;
     ReliabilityResult validate() const { return ReliabilityResult::success(); }
+};
+
+// ── M3 Phase A — generic EST incident + Jury-decision events ───────────
+// Appended AFTER every prior type so existing variant indexes never move.
+// These are DISCIPLINE-AGNOSTIC (est-malfunctions.md §7/§8). None of them
+// mutate the competition timer or official totals — a Jury-authorised
+// allowance is recorded as data; the controller applies it on resume
+// (est-malfunctions.md §5: no automatic time allowance).
+
+// Opens an EST/range-caused incident. `interruptionStartUtc` is a persisted
+// UTC wall-clock instant (survives reboot) — distinct from the envelope's
+// tw (when this event was journalled).
+struct EstIncidentRaised {
+    static constexpr const char* kType = "EstIncidentRaised";
+    static constexpr qint32 kVersion = 1;
+    QString incidentId;
+    IncidentType incidentType = IncidentType::OtherEstFailure;
+    IncidentScope scope = IncidentScope::IndividualTarget;
+    QString firingPoint;              // may be empty
+    QString relayId;                  // may be empty
+    QString interruptionStartUtc;     // ISO-8601 UTC (persisted wall-clock)
+    QString reason;
+    ReliabilityResult validate() const
+    {
+        if (incidentId.isEmpty())
+            return evdetail::invalid(QStringLiteral("EstIncidentRaised.incidentId empty"));
+        if (interruptionStartUtc.isEmpty())
+            return evdetail::invalid(
+                QStringLiteral("EstIncidentRaised.interruptionStartUtc empty"));
+        return ReliabilityResult::success();
+    }
+};
+
+// A distinct, authorised time-credit action (est-malfunctions.md §5.3). Does
+// NOT auto-extend the clock — recorded against the incident for the
+// controller to apply on resume.
+struct TimeCreditGranted {
+    static constexpr const char* kType = "TimeCreditGranted";
+    static constexpr qint32 kVersion = 1;
+    QString incidentId;
+    qint64 durationMs = 0;            // >= 0
+    Authority authority = Authority::Jury;
+    QString authorisedBy;            // official identifier, non-empty
+    QString reason;
+    ReliabilityResult validate() const
+    {
+        if (incidentId.isEmpty())
+            return evdetail::invalid(QStringLiteral("TimeCreditGranted.incidentId empty"));
+        if (durationMs < 0)
+            return evdetail::invalid(
+                QStringLiteral("TimeCreditGranted.durationMs %1 < 0").arg(durationMs));
+        if (authorisedBy.isEmpty())
+            return evdetail::invalid(
+                QStringLiteral("TimeCreditGranted.authorisedBy empty"));
+        return ReliabilityResult::success();
+    }
+};
+
+// One authorised post-interruption phase transition: the 5-minute prep, the
+// unlimited recovery-sighting period, or the official-resume gate
+// (est-malfunctions.md §6). durationMs: prep = allowance ms; sighting = 0
+// (unlimited); officialResume = 0.
+struct RecoveryPhaseEntered {
+    static constexpr const char* kType = "RecoveryPhaseEntered";
+    static constexpr qint32 kVersion = 1;
+    QString incidentId;
+    RecoveryPhaseKind phase = RecoveryPhaseKind::Preparation;
+    qint64 durationMs = 0;            // >= 0
+    Authority authority = Authority::Jury;
+    QString authorisedBy;            // non-empty (authorised action)
+    ReliabilityResult validate() const
+    {
+        if (incidentId.isEmpty())
+            return evdetail::invalid(
+                QStringLiteral("RecoveryPhaseEntered.incidentId empty"));
+        if (durationMs < 0)
+            return evdetail::invalid(
+                QStringLiteral("RecoveryPhaseEntered.durationMs %1 < 0").arg(durationMs));
+        if (authorisedBy.isEmpty())
+            return evdetail::invalid(
+                QStringLiteral("RecoveryPhaseEntered.authorisedBy empty"));
+        return ReliabilityResult::success();
+    }
+};
+
+// An authorised Jury/RO decision on an open incident (Phase E). Records the
+// tri-state allowance ruling (a deliberate NoAllowance is journalled — the
+// absence of TimeCreditGranted never implies it), the officially accepted
+// interruption duration, and backup-score review outcomes. Never mutates
+// clocks or scores.
+struct EstDecisionRecorded {
+    static constexpr const char* kType = "EstDecisionRecorded";
+    static constexpr qint32 kVersion = 1;
+    QString incidentId;
+    EstDecisionKind decision = EstDecisionKind::NoAllowance;
+    qint64 acceptedDurationMs = -1;   // official duration (-1 = not part of
+                                      // this decision)
+    Authority authority = Authority::Jury;
+    QString authorisedBy;            // official identifier, non-empty
+    QString reason;
+    ReliabilityResult validate() const
+    {
+        if (incidentId.isEmpty())
+            return evdetail::invalid(QStringLiteral("EstDecisionRecorded.incidentId empty"));
+        if (acceptedDurationMs < -1)
+            return evdetail::invalid(
+                QStringLiteral("EstDecisionRecorded.acceptedDurationMs < -1"));
+        if (authorisedBy.isEmpty())
+            return evdetail::invalid(
+                QStringLiteral("EstDecisionRecorded.authorisedBy empty"));
+        return ReliabilityResult::success();
+    }
+};
+
+// Authorised move to a reserve target/firing point DURING an open incident
+// (Phase E — Phase A folded the move into Resolve; the live workflow records
+// it when it happens; the envelope `tw` is the time of reassignment).
+struct TargetReassigned {
+    static constexpr const char* kType = "TargetReassigned";
+    static constexpr qint32 kVersion = 1;
+    QString incidentId;
+    QString originalTarget;
+    QString reserveTarget;
+    Authority authority = Authority::Jury;
+    QString authorisedBy;
+    QString reason;
+    ReliabilityResult validate() const
+    {
+        if (incidentId.isEmpty())
+            return evdetail::invalid(QStringLiteral("TargetReassigned.incidentId empty"));
+        if (reserveTarget.isEmpty())
+            return evdetail::invalid(
+                QStringLiteral("TargetReassigned.reserveTarget empty"));
+        if (authorisedBy.isEmpty())
+            return evdetail::invalid(
+                QStringLiteral("TargetReassigned.authorisedBy empty"));
+        return ReliabilityResult::success();
+    }
+};
+
+// Closes an incident with the official record (est-malfunctions.md §7/§9).
+// Carries the target-move + backup-review + Jury/RO note fields folded in.
+struct EstIncidentResolved {
+    static constexpr const char* kType = "EstIncidentResolved";
+    static constexpr qint32 kVersion = 1;
+    QString incidentId;
+    IncidentStatus status = IncidentStatus::Resolved;   // Resolved | Abandoned
+    qint64 calculatedDurationMs = -1;         // system estimate (-1 = unknown)
+    qint64 officiallyAcceptedDurationMs = 0;  // Jury-accepted, >= 0
+    QString systemRestoredUtc;                // ISO-8601 UTC (may be empty)
+    bool targetMoved = false;
+    QString originalTarget;
+    QString reserveTarget;
+    bool backupScoreReviewed = false;
+    QString juryNote;
+    QString rangeOfficerNote;
+    QString incidentReportRef;
+    ReliabilityResult validate() const
+    {
+        if (incidentId.isEmpty())
+            return evdetail::invalid(QStringLiteral("EstIncidentResolved.incidentId empty"));
+        if (officiallyAcceptedDurationMs < 0)
+            return evdetail::invalid(
+                QStringLiteral("EstIncidentResolved.officiallyAcceptedDurationMs < 0"));
+        return ReliabilityResult::success();
+    }
+};
+
+// ── Training Lab (T1) ────────────────────────────────────────────────────
+// Training sessions reuse the shared session lifecycle: SessionStarted (seq 0,
+// with sessionKind="Training") opens the journal, SessionClosed/CleanShutdown
+// close it. The events below carry the Training-specific structure. A Training
+// shot reuses ShotCore for measured data but is NEVER a competition
+// ShotAccepted. Appended at the END so no existing variant index / hash moves.
+
+// Programme configuration, emitted once right after SessionStarted (seq 1).
+struct TrainingSessionStarted {
+    static constexpr const char* kType = "TrainingSessionStarted";
+    static constexpr qint32 kVersion = 1;
+    QString programId;            // "technical_blocks"
+    Discipline discipline = Discipline::None;   // actual shooting discipline
+    qint16 blockCount = 0;
+    qint16 shotsPerBlock = 0;
+    qint8  visibilityMode = 0;    // 0 full-hidden, 1 group-only, 2 impact-visible
+    QString technicalFocus;       // athlete intention (never a diagnosis)
+    qint8  startPosition = 0;     // 3P: 0 kneeling,1 prone,2 standing; else 0
+    ReliabilityResult validate() const
+    {
+        if (programId.isEmpty())
+            return evdetail::invalid(QStringLiteral("TrainingSessionStarted.programId empty"));
+        if (blockCount < 1)
+            return evdetail::invalid(QStringLiteral("TrainingSessionStarted.blockCount < 1"));
+        if (shotsPerBlock < 1)
+            return evdetail::invalid(QStringLiteral("TrainingSessionStarted.shotsPerBlock < 1"));
+        return ReliabilityResult::success();
+    }
+};
+
+struct TrainingBlockStarted {
+    static constexpr const char* kType = "TrainingBlockStarted";
+    static constexpr qint32 kVersion = 1;
+    qint16 blockIndex = 0;        // 1-based
+    qint8  position = 0;          // 3P position for this block
+    ReliabilityResult validate() const
+    {
+        if (blockIndex < 1)
+            return evdetail::invalid(QStringLiteral("TrainingBlockStarted.blockIndex < 1"));
+        return ReliabilityResult::success();
+    }
+};
+
+struct TrainingShotAccepted {
+    static constexpr const char* kType = "TrainingShotAccepted";
+    static constexpr qint32 kVersion = 1;
+    ShotCore shot;                // x/y/scoreTenths/splitMs/simulated reused
+    qint16 blockIndex = 0;        // 1-based block this shot belongs to
+    qint16 withinBlock = 0;       // 1-based index within the block
+    qint8  position = 0;          // 3P position
+    // Reserved for Call & Diagnose (T2) — unused in T1.
+    qint32 calledXHundredthMm = 0;
+    qint32 calledYHundredthMm = 0;
+    bool   hasCall = false;
+    ReliabilityResult validate() const
+    {
+        if (blockIndex < 1)
+            return evdetail::invalid(QStringLiteral("TrainingShotAccepted.blockIndex < 1"));
+        if (withinBlock < 1)
+            return evdetail::invalid(QStringLiteral("TrainingShotAccepted.withinBlock < 1"));
+        return shot.validate();
+    }
+};
+
+struct TrainingBlockCompleted {
+    static constexpr const char* kType = "TrainingBlockCompleted";
+    static constexpr qint32 kVersion = 1;
+    qint16 blockIndex = 0;
+    qint16 shotCount = 0;         // measured shots accepted in the block
+    ReliabilityResult validate() const
+    {
+        if (blockIndex < 1)
+            return evdetail::invalid(QStringLiteral("TrainingBlockCompleted.blockIndex < 1"));
+        return ReliabilityResult::success();
+    }
+};
+
+struct TrainingNoteSaved {
+    static constexpr const char* kType = "TrainingNoteSaved";
+    static constexpr qint32 kVersion = 1;
+    qint16 blockIndex = 0;        // block the note belongs to
+    QString note;
+    ReliabilityResult validate() const
+    {
+        if (blockIndex < 1)
+            return evdetail::invalid(QStringLiteral("TrainingNoteSaved.blockIndex < 1"));
+        return ReliabilityResult::success();
+    }
+};
+
+struct TrainingCompleted {
+    static constexpr const char* kType = "TrainingCompleted";
+    static constexpr qint32 kVersion = 1;
+    qint16 completedBlocks = 0;
+    ReliabilityResult validate() const { return ReliabilityResult::success(); }
+};
+
+// T1.3: a sighter fired in a Training sighter phase. Measured like any shot
+// (may show impact/score) but NEVER counted — excluded from every block, all
+// metrics, totals and the final comparison. Kept for recovery/audit only.
+// `position` scopes it to a 3P position so each position's sighters stay
+// separate. Appended at the END so no prior variant index / hash moves.
+struct TrainingSighterAccepted {
+    static constexpr const char* kType = "TrainingSighterAccepted";
+    static constexpr qint32 kVersion = 1;
+    ShotCore shot;
+    qint8  position = 0;          // 3P position this sighter belongs to
+    qint16 beforeBlock = 0;       // 1-based block the sighter phase precedes
+    ReliabilityResult validate() const { return shot.validate(); }
+};
+
+// T1.3: entering a Training sighter phase. Emitted at each 3P position
+// boundary (before Prone's and Standing's first block) so recovery can tell
+// a mid-review crash from an in-sighters crash. The initial sighter phase
+// (before block 1) is implied by TrainingSessionStarted and needs no marker.
+struct TrainingSighterPhaseStarted {
+    static constexpr const char* kType = "TrainingSighterPhaseStarted";
+    static constexpr qint32 kVersion = 1;
+    qint8  position = 0;
+    qint16 beforeBlock = 0;       // 1-based block this sighter phase precedes
+    ReliabilityResult validate() const
+    {
+        if (beforeBlock < 1)
+            return evdetail::invalid(QStringLiteral("TrainingSighterPhaseStarted.beforeBlock < 1"));
+        return ReliabilityResult::success();
+    }
 };
 
 } // namespace rel

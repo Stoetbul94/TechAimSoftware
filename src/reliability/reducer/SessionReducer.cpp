@@ -48,6 +48,14 @@ StateShotRecord* findOfficialBySeq(SessionState& s, quint64 targetSeq)
     return nullptr;
 }
 
+EstIncidentRecord* findIncidentById(SessionState& s, const QString& id)
+{
+    for (EstIncidentRecord& r : s.estIncidents)
+        if (r.incidentId == id)
+            return &r;
+    return nullptr;
+}
+
 } // namespace
 
 qint32 SessionReducer::deriveTotalTenths(const SessionState& state)
@@ -152,6 +160,8 @@ ReduceResult SessionReducer::apply(const SessionState& current,
             next.lane = e.lane;
             next.targetId = e.targetId;
             next.deviceId = e.deviceId;
+            next.operatingMode = e.operatingMode;   // F10 (empty = Unknown/Legacy)
+            next.sessionKind = e.sessionKind;        // T1 (empty = competition)
             next.discipline = e.discipline;
             next.matchType = e.matchType;
             next.config = e.config;
@@ -160,6 +170,10 @@ ReduceResult SessionReducer::apply(const SessionState& current,
             switch (e.discipline) {
             case Discipline::Finals3P:
                 next.disc = Finals3PState{};
+                break;
+            case Discipline::AirRifleFinal10m:
+            case Discipline::AirPistolFinal10m:
+                next.disc = Finals10mState{};
                 break;
             case Discipline::Training:
                 next.disc = TrainingState{};
@@ -246,6 +260,10 @@ ReduceResult SessionReducer::apply(const SessionState& current,
                 f->stageId = e.shot.stageId;
                 f->windowId = e.shot.windowId;
                 ++f->shotsInStage;
+            } else if (auto* f10 = std::get_if<Finals10mState>(&next.disc)) {
+                f10->stageId = e.shot.stageId;
+                f10->windowId = e.shot.windowId;
+                ++f10->shotsInStage;
             }
             recomputeTotals(next);
         },
@@ -512,6 +530,9 @@ ReduceResult SessionReducer::apply(const SessionState& current,
             if (auto* f = std::get_if<Finals3PState>(&next.disc)) {
                 f->stageId = e.stageId;
                 f->shotsInStage = 0;
+            } else if (auto* f10 = std::get_if<Finals10mState>(&next.disc)) {
+                f10->stageId = e.stageId;
+                f10->shotsInStage = 0;
             }
         },
         [&](const StageStatusChanged& e) {
@@ -533,6 +554,8 @@ ReduceResult SessionReducer::apply(const SessionState& current,
             }
             if (auto* f = std::get_if<Finals3PState>(&next.disc))
                 f->windowId = e.windowId;
+            else if (auto* f10 = std::get_if<Finals10mState>(&next.disc))
+                f10->windowId = e.windowId;
         },
         [&](const WindowClosed&) {
             if (!active)
@@ -586,6 +609,246 @@ ReduceResult SessionReducer::apply(const SessionState& current,
         [&](const CleanShutdown&) {
             if (!current.started)
                 failure = illegal("CleanShutdown");
+        },
+        // ── M3 Phase A — generic EST incident + Jury-decision events ──
+        // These record incident/Jury data ONLY. They deliberately never
+        // touch next.timer or next.totalTenths: a Jury-authorised allowance
+        // is data the controller applies on resume, never an automatic
+        // clock change (est-malfunctions.md §5, "no automatic time
+        // allowance"). Legal whenever the session has started (an incident
+        // may span Active/Suspended/Complete).
+        [&](const EstIncidentRaised& e) {
+            if (!current.started) {
+                failure = illegal("EstIncidentRaised");
+                return;
+            }
+            if (findIncidentById(next, e.incidentId)) {
+                failure = rejected(current, ReliabilityError::ReducerRejected,
+                    QStringLiteral("duplicate incidentId '%1'").arg(e.incidentId),
+                    seq);
+                return;
+            }
+            EstIncidentRecord rec;
+            rec.incidentId = e.incidentId;
+            rec.incidentType = static_cast<quint8>(e.incidentType);
+            rec.scope = static_cast<quint8>(e.scope);
+            rec.firingPoint = e.firingPoint;
+            rec.relayId = e.relayId;
+            rec.interruptionStartUtc = e.interruptionStartUtc;
+            rec.reason = e.reason;
+            rec.status = static_cast<quint8>(IncidentStatus::Open);
+            rec.raisedSeq = seq;
+            rec.raisedAtMonoMs = envelope.monotonicMs;   // frozen-clock anchor
+            next.estIncidents.append(rec);
+        },
+        [&](const TimeCreditGranted& e) {
+            if (!current.started) {
+                failure = illegal("TimeCreditGranted");
+                return;
+            }
+            EstIncidentRecord* inc = findIncidentById(next, e.incidentId);
+            if (!inc) {
+                failure = rejected(current, ReliabilityError::ReducerRejected,
+                    QStringLiteral("TimeCreditGranted for unknown incident '%1'")
+                        .arg(e.incidentId), seq);
+                return;
+            }
+            // A granted credit IS the allowance decision (Phase E): the
+            // tri-state moves to "granted". Recorded, NOT applied to a timer.
+            inc->timeCreditMs += e.durationMs;
+            inc->creditDecision = 2;             // granted
+            inc->authorisedBy = e.authorisedBy;
+        },
+        [&](const RecoveryPhaseEntered& e) {
+            if (!current.started) {
+                failure = illegal("RecoveryPhaseEntered");
+                return;
+            }
+            EstIncidentRecord* inc = findIncidentById(next, e.incidentId);
+            if (!inc) {
+                failure = rejected(current, ReliabilityError::ReducerRejected,
+                    QStringLiteral("RecoveryPhaseEntered for unknown incident '%1'")
+                        .arg(e.incidentId), seq);
+                return;
+            }
+            switch (e.phase) {
+            case RecoveryPhaseKind::Preparation:
+                inc->preparationGranted = true;
+                break;
+            case RecoveryPhaseKind::Sighting:
+                inc->sightingGranted = true;
+                // Sighters accepted after this seq are RECOVERY sighters —
+                // deterministically distinguishable from original pre-match
+                // sighters (Phase E).
+                inc->sightingGrantedSeq = seq;
+                break;
+            case RecoveryPhaseKind::OfficialResume:
+                inc->officialResumeAuthorised = true;
+                break;
+            }
+            inc->authorisedBy = e.authorisedBy;
+        },
+        [&](const EstIncidentResolved& e) {
+            if (!current.started) {
+                failure = illegal("EstIncidentResolved");
+                return;
+            }
+            EstIncidentRecord* inc = findIncidentById(next, e.incidentId);
+            if (!inc) {
+                failure = rejected(current, ReliabilityError::ReducerRejected,
+                    QStringLiteral("EstIncidentResolved for unknown incident '%1'")
+                        .arg(e.incidentId), seq);
+                return;
+            }
+            if (inc->status == static_cast<quint8>(IncidentStatus::Resolved)
+                || inc->status == static_cast<quint8>(IncidentStatus::Abandoned)) {
+                failure = rejected(current, ReliabilityError::ReducerRejected,
+                    QStringLiteral("incident '%1' already closed").arg(e.incidentId),
+                    seq);
+                return;
+            }
+            inc->status = static_cast<quint8>(e.status);
+            inc->calculatedDurationMs = e.calculatedDurationMs;
+            inc->officiallyAcceptedDurationMs = e.officiallyAcceptedDurationMs;
+            inc->systemRestoredUtc = e.systemRestoredUtc;
+            inc->targetMoved = e.targetMoved;
+            inc->originalTarget = e.originalTarget;
+            inc->reserveTarget = e.reserveTarget;
+            inc->backupScoreReviewed = e.backupScoreReviewed;
+            inc->juryNote = e.juryNote;
+            inc->rangeOfficerNote = e.rangeOfficerNote;
+            inc->incidentReportRef = e.incidentReportRef;
+        },
+        // ── Phase E — Jury decision + live target reassignment ───────
+        // Decisions/moves record data on the incident; they never mutate
+        // clocks, totals, shot counts or numbering (authority model).
+        [&](const EstDecisionRecorded& e) {
+            if (!current.started) {
+                failure = illegal("EstDecisionRecorded");
+                return;
+            }
+            EstIncidentRecord* inc = findIncidentById(next, e.incidentId);
+            if (!inc) {
+                failure = rejected(current, ReliabilityError::ReducerRejected,
+                    QStringLiteral("EstDecisionRecorded for unknown incident '%1'")
+                        .arg(e.incidentId), seq);
+                return;
+            }
+            if (inc->status == static_cast<quint8>(IncidentStatus::Resolved)
+                || inc->status == static_cast<quint8>(IncidentStatus::Abandoned)) {
+                failure = rejected(current, ReliabilityError::ReducerRejected,
+                    QStringLiteral("decision on closed incident '%1'")
+                        .arg(e.incidentId), seq);
+                return;
+            }
+            switch (e.decision) {
+            case EstDecisionKind::NoAllowance:
+                // Deliberate, journalled "no additional allowance" — a state
+                // deliberately distinct from decision-pending. Rejected as a
+                // duplicate/contradiction if a credit was already granted.
+                if (inc->creditDecision != 0) {
+                    failure = rejected(current, ReliabilityError::ReducerRejected,
+                        QStringLiteral("allowance decision already recorded for "
+                                       "incident '%1'").arg(e.incidentId), seq);
+                    return;
+                }
+                inc->creditDecision = 1;   // none granted
+                break;
+            case EstDecisionKind::DurationAccepted:
+                inc->officiallyAcceptedDurationMs = e.acceptedDurationMs;
+                break;
+            case EstDecisionKind::BackupAccepted:
+                inc->backupReview = 1;
+                inc->backupScoreReviewed = true;
+                break;
+            case EstDecisionKind::BackupRejected:
+                inc->backupReview = 2;
+                inc->backupScoreReviewed = true;
+                break;
+            case EstDecisionKind::BackupInconclusive:
+                inc->backupReview = 3;
+                inc->backupScoreReviewed = true;
+                break;
+            }
+            inc->authorisedBy = e.authorisedBy;
+        },
+        [&](const TargetReassigned& e) {
+            if (!current.started) {
+                failure = illegal("TargetReassigned");
+                return;
+            }
+            EstIncidentRecord* inc = findIncidentById(next, e.incidentId);
+            if (!inc) {
+                failure = rejected(current, ReliabilityError::ReducerRejected,
+                    QStringLiteral("TargetReassigned for unknown incident '%1'")
+                        .arg(e.incidentId), seq);
+                return;
+            }
+            if (inc->status == static_cast<quint8>(IncidentStatus::Resolved)
+                || inc->status == static_cast<quint8>(IncidentStatus::Abandoned)) {
+                failure = rejected(current, ReliabilityError::ReducerRejected,
+                    QStringLiteral("reassignment on closed incident '%1'")
+                        .arg(e.incidentId), seq);
+                return;
+            }
+            inc->targetMoved = true;
+            inc->originalTarget = e.originalTarget;
+            inc->reserveTarget = e.reserveTarget;
+            inc->authorisedBy = e.authorisedBy;
+        },
+        // ── Training Lab (T1) ──────────────────────────────────────────
+        [&](const TrainingSessionStarted& e) {
+            if (!current.started) { failure = illegal("TrainingSessionStarted"); return; }
+            next.trainingActive = true;
+            next.trainingProgramId = e.programId;
+            next.trainingBlockCount = e.blockCount;
+            next.trainingShotsPerBlock = e.shotsPerBlock;
+            next.trainingVisibility = e.visibilityMode;
+            next.trainingFocus = e.technicalFocus;
+            next.trainingCurrentPosition = e.startPosition;
+            // T1.3: a Training session opens in the SIGHTERS phase before block 1.
+            next.trainingInSighterPhase = true;
+            next.trainingSighterPosition = e.startPosition;
+            next.trainingSighterBeforeBlock = 1;
+        },
+        [&](const TrainingSighterPhaseStarted& e) {
+            next.trainingInSighterPhase = true;
+            next.trainingSighterPosition = e.position;
+            next.trainingSighterBeforeBlock = e.beforeBlock;
+        },
+        [&](const TrainingSighterAccepted& e) {
+            // Recorded for audit/recovery ONLY — never touches blocks/metrics.
+            next.trainingSighters.append(e.shot);
+            next.trainingSighterPos.append(e.position);
+        },
+        [&](const TrainingBlockStarted& e) {
+            next.trainingCurrentBlock = e.blockIndex;
+            next.trainingCurrentPosition = e.position;
+            next.trainingInSighterPhase = false;   // T1.3: sighters end when a block starts
+            for (const TrainingBlockData& b : next.trainingBlocks)
+                if (b.blockIndex == e.blockIndex) return;   // already present
+            TrainingBlockData b; b.blockIndex = e.blockIndex; b.position = e.position;
+            next.trainingBlocks.append(b);
+        },
+        [&](const TrainingShotAccepted& e) {
+            for (TrainingBlockData& b : next.trainingBlocks)
+                if (b.blockIndex == e.blockIndex) { b.shots.append(e.shot); return; }
+            // defensive: block not explicitly started — create it
+            TrainingBlockData b; b.blockIndex = e.blockIndex; b.position = e.position;
+            b.shots.append(e.shot); next.trainingBlocks.append(b);
+        },
+        [&](const TrainingBlockCompleted& e) {
+            for (TrainingBlockData& b : next.trainingBlocks)
+                if (b.blockIndex == e.blockIndex) { b.completed = true; return; }
+        },
+        [&](const TrainingNoteSaved& e) {
+            for (TrainingBlockData& b : next.trainingBlocks)
+                if (b.blockIndex == e.blockIndex) { b.note = e.note; return; }
+        },
+        [&](const TrainingCompleted& e) {
+            (void)e;
+            next.trainingCompleted = true;
+            next.lifecycle = Lifecycle::Complete;
         }
     }, envelope.payload);
 

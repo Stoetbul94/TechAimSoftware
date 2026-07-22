@@ -128,7 +128,11 @@ void run_snapshot_tests()
         check(!bad.ok && bad.error.code == ReliabilityError::InvalidJson,
               "malformed state json rejected typed");
         QByteArray newer = serializeSessionState(state);
-        newer.replace("\"stateVersion\":1", "\"stateVersion\":99");
+        // Rewrite whatever the current state version is to a far-future one,
+        // so this stays correct across state-format bumps (v1 -> v2 -> ...).
+        newer.replace(
+            QStringLiteral("\"stateVersion\":%1").arg(kSessionStateVersion).toUtf8(),
+            "\"stateVersion\":99");
         const ReliabilityResult tooNew = deserializeSessionState(newer, &out);
         check(!tooNew.ok && tooNew.error.code == ReliabilityError::SchemaTooNew,
               "newer stateVersion rejected typed",

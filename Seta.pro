@@ -5,6 +5,18 @@ CONFIG += c++17
 
 VERSION = 4.0
 QMAKE_TARGET_PRODUCT = "SETA"
+
+# F9B: build identity embedded at COMPILE time (no runtime git). qmake runs
+# git once at build-configuration time; the app never shells out to git and
+# the customer machine needs no Git / repo / Qt Creator. Build date/time comes
+# from the compiler (__DATE__/__TIME__ in main.cpp).
+APP_VERSION_STR = 0.9.0
+GIT_SHA = $$system(git -C \"$$PWD\" rev-parse --short HEAD)
+isEmpty(GIT_SHA): GIT_SHA = unknown
+DEFINES += APP_VERSION_STR=\\\"$$APP_VERSION_STR\\\"
+DEFINES += APP_GIT_SHA=\\\"$$GIT_SHA\\\"
+CONFIG(release, debug|release): DEFINES += APP_BUILD_CONFIG=\\\"Release\\\"
+else: DEFINES += APP_BUILD_CONFIG=\\\"Debug\\\"
 #QMAKE_TARGET_PRODUCT = "TACHUS CPU"
 
 SOURCES += main.cpp \
@@ -21,7 +33,13 @@ SOURCES += main.cpp \
     src/bridge/pdfexporter.cpp \
     src/finals/Finals3PController.cpp \
     src/finals/FinalsReportBuilder.cpp \
-    src/finals/FinalsAudioService.cpp
+    src/finals/FinalsAudioService.cpp \
+    src/finals10m/Finals10mController.cpp \
+    src/qualification/QualificationController.cpp \
+    src/incident/EstIncidentController.cpp \
+    src/mode/OperatingModeService.cpp \
+    src/training/TrainingProgramController.cpp \
+    src/training/TrainingBlockMetrics.cpp
 
 # Offline coach-analytics module (pure C++, independent from Qt/QML).
 HEADERS += \
@@ -49,8 +67,33 @@ HEADERS += \
     src/finals/Finals3PController.h \
     src/finals/FinalsReportData.h \
     src/finals/FinalsReportBuilder.h \
-    src/finals/FinalsAudioService.h
+    src/finals/FinalsAudioService.h \
+    src/qualification/QualificationController.h \
+    src/incident/EstIncidentController.h \
+    src/mode/OperatingMode.h \
+    src/mode/OperatingModeService.h
+
+# 10m Air Rifle / Air Pistol FINAL — single-athlete training course (F1).
+# ISSF Rule Book Edition 2025 (Second Print 07/2026), rule 6.17.2. Separate
+# from the 3P Final; see docs/issf-rules/10m-finals-shared.md and
+# docs/10m-finals-architecture.md.
+HEADERS += \
+    src/finals10m/Finals10mTypes.h \
+    src/finals10m/Finals10mConfig.h \
+    src/finals10m/Finals10mController.h
+
+# Training Lab (T1) — separate domain from competition (docs/
+# training-lab-architecture.md). Technical Blocks vertical slice.
+HEADERS += \
+    src/training/TrainingProgramTypes.h \
+    src/training/TrainingBlockMetrics.h \
+    src/training/TrainingProgramController.h
+INCLUDEPATH += src/training
 INCLUDEPATH += src/finals
+INCLUDEPATH += src/finals10m
+INCLUDEPATH += src/qualification
+INCLUDEPATH += src/incident
+INCLUDEPATH += src/mode
 
 # Session Reliability Layer (M0) - QtCore-only storage foundation.
 include(Reliability.pri)

@@ -55,7 +55,27 @@ using DomainEvent = std::variant<
     PersistenceDegraded,
     PersistenceRestored,
     AuxEventsDropped,
-    CleanShutdown>;
+    CleanShutdown,
+    // M3 Phase A — generic EST incident + Jury-decision events (appended at
+    // the END so all prior variant indexes never move)
+    EstIncidentRaised,
+    TimeCreditGranted,
+    RecoveryPhaseEntered,
+    EstIncidentResolved,
+    // Phase E — Jury decision + live target reassignment (appended at the END
+    // so all prior variant indexes never move)
+    EstDecisionRecorded,
+    TargetReassigned,
+    // Training Lab (T1) — appended at the END so all prior variant indexes and
+    // journal hashes never move. Training reuses SessionStarted/SessionClosed.
+    TrainingSessionStarted,
+    TrainingBlockStarted,
+    TrainingShotAccepted,
+    TrainingBlockCompleted,
+    TrainingNoteSaved,
+    TrainingCompleted,
+    TrainingSighterAccepted,
+    TrainingSighterPhaseStarted>;
 
 // Stable type identifier of the alternative currently held.
 inline const char* eventTypeId(const DomainEvent& event)

@@ -208,10 +208,37 @@ Item {
         anchors.left: parent.left; anchors.leftMargin: parent.width * 0.06
         anchors.right: parent.right; anchors.rightMargin: parent.width * 0.06
 
-        readonly property int navSpacing: 12
-        readonly property int navCount: 6
-        // Each button grows to share the available height evenly.
-        readonly property real btnHeight: (height - navSpacing*(navCount-1)) / navCount
+        readonly property int navSpacing: 10
+        // Full navigation model — the ownership of the left-nav tabs. navCount
+        // derives from it so adding a tab (e.g. Range incident) can never again
+        // push a later tab (Home) off-screen: every item shares the available
+        // height evenly (Option 3). At short window heights the shared height
+        // shrinks uniformly with a sensible floor; icons/text scale down before
+        // the buttons become un-tappable.
+        readonly property var navModel: [
+            { key: "stats",    label: qsTr("Stats"),
+              path: "M18 20V10 M12 20V4 M6 20v-6" },
+            { key: "report",   label: qsTr("Report"),
+              path: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M16 13H8 M16 17H8 M10 9H8" },
+            { key: "coach",    label: qsTr("Coach report"),
+              path: "M12 15a7 7 0 1 0 0-14 7 7 0 0 0 0 14z M8.21 13.89L7 23l5-3 5 3-1.21-9.12" },
+            { key: "mpi",      label: qsTr("Group / MPI"),
+              path: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12z M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" },
+            { key: "incident", label: qsTr("Range incident"),
+              path: "M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z M12 9v4 M12 17h.01" },
+            { key: "settings", label: qsTr("Settings"),
+              path: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" },
+            { key: "home",     label: qsTr("Home"),
+              path: "M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10" }
+        ]
+        readonly property int navCount: navModel.length
+        // Each button grows to share the available height evenly (floored so it
+        // never collapses below a tappable size — below that a scroll fallback
+        // would engage, but at every supported height all items fit).
+        readonly property real btnHeight:
+            Math.max(40, (height - navSpacing*(navCount-1)) / navCount)
+        // Slightly smaller icon/text at short heights so labels never clip.
+        readonly property bool compact: btnHeight < 54
 
         Column {
             anchors.fill: parent
@@ -219,20 +246,7 @@ Item {
 
             Repeater {
                 id: navRepeater
-                model: [
-                    { key: "stats",    label: qsTr("Stats"),
-                      path: "M18 20V10 M12 20V4 M6 20v-6" },
-                    { key: "report",   label: qsTr("Report"),
-                      path: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M16 13H8 M16 17H8 M10 9H8" },
-                    { key: "coach",    label: qsTr("Coach report"),
-                      path: "M12 15a7 7 0 1 0 0-14 7 7 0 0 0 0 14z M8.21 13.89L7 23l5-3 5 3-1.21-9.12" },
-                    { key: "mpi",      label: qsTr("Group / MPI"),
-                      path: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12z M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" },
-                    { key: "settings", label: qsTr("Settings"),
-                      path: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" },
-                    { key: "home",     label: qsTr("Home"),
-                      path: "M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10" }
-                ]
+                model: navColumn.navModel
                 delegate: Rectangle {
                     id: navBtn
                     width: navColumn.width
@@ -242,11 +256,14 @@ Item {
                     border.color: modelData.key === "mpi" && isShowMPI ? "#e8003d" : "#3a3b40"
                     border.width: modelData.key === "mpi" && isShowMPI ? 2 : 1
                     Row {
-                        anchors.left: parent.left; anchors.leftMargin: 18
+                        anchors.left: parent.left
+                        anchors.leftMargin: navColumn.compact ? 14 : 18
                         anchors.verticalCenter: parent.verticalCenter
-                        spacing: 14
+                        anchors.right: parent.right; anchors.rightMargin: 8
+                        spacing: navColumn.compact ? 10 : 14
                         VIcon {
-                            width: 26; height: 26
+                            width: navColumn.compact ? 22 : 26
+                            height: width
                             pathData: modelData.path
                             color: modelData.key === "mpi" && isShowMPI ? "#e8003d" : "white"
                             anchors.verticalCenter: parent.verticalCenter
@@ -255,7 +272,9 @@ Item {
                             text: modelData.label
                             color: "white"
                             font.family: theme.fontFamily
-                            font.pixelSize: 17
+                            font.pixelSize: navColumn.compact ? 14 : 17
+                            elide: Text.ElideRight
+                            width: parent.width - (navColumn.compact ? 32 : 40)
                             anchors.verticalCenter: parent.verticalCenter
                         }
                     }
@@ -296,6 +315,10 @@ Item {
                 }
             } else if (key === "mpi") {
                 isShowMPI = !isShowMPI
+            } else if (key === "incident") {
+                // Phase E: operator range control — EST incident / Jury
+                // workflow (windowed; never on the athlete scoring face).
+                windowManager.openIncidents()
             } else if (key === "settings") {
                 settingsClicked()
             } else if (key === "home") {
@@ -304,10 +327,11 @@ Item {
         }
     }
 
-    // Anchor for the SettingsPage popup (roughly the Settings button, index 4).
+    // Anchor for the SettingsPage popup — the Settings button is index 5 in the
+    // nav model (stats0, report1, coach2, mpi3, incident4, settings5, home6).
     Item {
         id: settingsNavBtn
-        property real navY: navColumn.y + 4*(navColumn.btnHeight + navColumn.navSpacing)
+        property real navY: navColumn.y + 5*(navColumn.btnHeight + navColumn.navSpacing)
     }
     Image {
         id: sighter_selected

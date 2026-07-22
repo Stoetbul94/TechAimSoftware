@@ -126,6 +126,18 @@ public:
     bool failed() const { return m_poisoned; }
     const WriterMetrics& metrics() const { return m_metrics; }
 
+    // M3 resume: seed the write-order hash chain from an existing journal's
+    // last line so appended events chain correctly onto the recovered file.
+    // The header rule is waived after this (the header already exists on
+    // disk). `nextAutoSeq` primes the auto-sequence counter for callers that
+    // use append(); explicit-seq callers pass their own seq to appendSeq().
+    void resumeFrom(const QByteArray& lastLineHashHex, quint64 nextAutoSeq)
+    {
+        m_lastHash = lastLineHashHex;
+        m_autoSeq = nextAutoSeq;
+        m_headerWritten = true;
+    }
+
 private:
     AppendOutcome fail(ReliabilityError code, const QString& detail,
                        bool lineAppended, quint64 seq);

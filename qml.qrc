@@ -16,6 +16,8 @@
         <file>TechAimDialog.qml</file>
         <file>TechAimDialogManager.qml</file>
         <file>PersistenceBanner.qml</file>
+        <file>RecoveryDialog.qml</file>
+        <file>IncidentWindow.qml</file>
         <file>FloatingWindow.qml</file>
         <file>FloatingWindowGrip.qml</file>
         <file>WindowManager.qml</file>
@@ -33,6 +35,12 @@
         <file>LoginPage.qml</file>
         <file>ShootingPage.qml</file>
         <file>FinalsHud.qml</file>
+        <file>Finals10mHud.qml</file>
+        <file>TrainingHud.qml</file>
+        <file>TrainingRightPanel.qml</file>
+        <file>TrainingReportView.qml</file>
+        <file>Finals10mCommandPanel.qml</file>
+        <file>Finals10mRightPanel.qml</file>
         <file>FinalsTopStrip.qml</file>
         <file>FinalsProgressIndicator.qml</file>
         <file>FinalsCommandOverlay.qml</file>

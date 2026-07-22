@@ -26,6 +26,7 @@
 #include "Finals3PShotRecord.h"
 
 #include "reliability/store/SessionStore.h"
+#include "reliability/recovery/RecoveryCoordinator.h"
 
 class Finals3PController : public QObject
 {
@@ -86,9 +87,15 @@ public:
     // these are inert (developer bypass is devForceAdvanceStage1).
     Q_INVOKABLE void confirmStage1Advance();
     Q_INVOKABLE void cancelStage1Advance();
+    // shotSource (F10): 0 = Physical, 1 = Simulated. The authoritative
+    // input-source gate rejects a source that does not match the running
+    // operating mode before durable acceptance. Defaults to Physical.
     Q_INVOKABLE void registerShot(double xMm, double yMm, double decimalScore,
                                   int externalShotId = -1,
-                                  double direction = 0.0);
+                                  double direction = 0.0,
+                                  int shotSource = 0);
+    // F10: running operating mode (0 = Live, 1 = Demo). Set once at startup.
+    Q_INVOKABLE void setOperatingMode(int mode) { m_operatingMode = mode; }
     Q_INVOKABLE void abortFinal();
     Q_INVOKABLE void resetFinal();
     Q_INVOKABLE void pauseTrainingSimulation();
@@ -169,6 +176,25 @@ public:
     QString sessionJournalPath() const;
     // Persistence health as an int for QML binding (ta::rel::Health order).
     int persistenceHealth() const;
+    // Phase E: the incident workflow service submits its typed events through
+    // the ACTIVE session's store (main.cpp wires the provider).
+    ta::rel::SessionStore* store() { return m_store.get(); }
+
+    // ── recovery (M3) ────────────────────────────────────────────────────
+    // Resume a crashed match. The RecoveredMatchState was rebuilt EXCLUSIVELY
+    // by the reducer (Journal → Validator → Reducer → State); this method only
+    // INJECTS it — it never replays UI events, presses buttons, or re-issues
+    // commands. The store reopens the same journal (append) so the match
+    // continues writing where it left off.
+    void loadRecoveredState(const ta::rel::RecoveredMatchState& recovered);
+
+    // QML-facing recovery wiring (finals-scoped; the coordinator itself stays
+    // discipline-agnostic so Qualification/Training can adopt it later). Called
+    // by main.qml before LoginPage: scan surfaces unfinished sessions; resume
+    // rebuilds + injects one; discard moves it aside.
+    Q_INVOKABLE QVariantList scanForRecovery();
+    Q_INVOKABLE bool resumeFromRecovery(const QString& sessionId);
+    Q_INVOKABLE void discardRecovery(const QString& sessionId);
 
 signals:
     void phaseChanged();
@@ -287,6 +313,7 @@ private:
     double m_cumulativeTotal = 0.0;
     double m_stageSubtotal = 0.0;
     int m_officialShotCount = 0;
+    int m_operatingMode = -1;             // F10: -1 = unset/permissive, 0 = Live, 1 = Demo
     QHash<int, int> m_stageStatus;        // stageId -> StageStatus
     QHash<int, double> m_stageSubtotalsMap;
 
@@ -297,10 +324,15 @@ private:
     // rejected submit is a journal-fidelity diagnostic, never a scoring
     // change (never-refuse-to-score lives in the store, §9C).
     std::unique_ptr<ta::rel::SessionStore> m_store;
+    std::unique_ptr<ta::rel::RecoveryCoordinator> m_recovery;   // M3 startup scan
     bool m_journalFailureNotified = false;   // one UI signal per session
     void beginJournalSession();              // startFinal: open a new session
     void submitEvent(const ta::rel::DomainEvent& event);
     void submitStagePhase(Stage s);          // Prep/Sighting/OfficialMatch
+    // M3: firing-ready window on resume. elapsedScaledMs = how much of the
+    // current stage/window clock had already elapsed at the crash (scaled ms),
+    // so the countdown resumes from the remaining time (spec §16), never full.
+    void restoreStageFiringState(qint64 elapsedScaledMs);
     ta::rel::ShotCore buildShotCore(const techaim::finals::ShotContext& ctx,
                                     double xMm, double yMm, double score,
                                     int finalNumber, int withinStage,

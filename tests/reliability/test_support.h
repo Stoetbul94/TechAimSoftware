@@ -101,8 +101,12 @@ void run_writer_tests();
 void run_reader_tests();
 void run_validator_tests();
 void run_reducer_tests();
+void run_incident_tests();
+void run_qualification_tests();
 void run_snapshot_tests();
 void run_store_tests();
+void run_recovery_tests();
+void run_operatingmode_tests();
 void run_fixture_tests(bool regenerate);
 
 #endif // TA_REL_TEST_SUPPORT_H

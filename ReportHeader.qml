@@ -16,6 +16,10 @@ Item {
     property string lane: ""
     property string extraLabel: ""       // free slot (e.g. Wind / Light)
     property string extraValue: ""
+    // F10: operating mode on the report so a Demo session is never mistaken for
+    // an official Live result. Defaults to the running mode; a caller may pass a
+    // recovered session's RECORDED mode to override.
+    property string mode: (typeof OPMODE !== "undefined") ? OPMODE.badgeText : ""
     property var    extraPairs: []       // additional [{l,v}] appended after built-ins (e.g. Shots/Score/Time)
     property color  accent: "#a80038"
 
@@ -32,6 +36,7 @@ Item {
         add("Time", timeText)
         add("Range", range)
         add("Lane", lane)
+        add("Mode", mode)
         add(extraLabel, extraValue)
         for (var i = 0; i < extraPairs.length; ++i)
             add(extraPairs[i].l, extraPairs[i].v)

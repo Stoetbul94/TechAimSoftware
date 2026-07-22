@@ -2,6 +2,9 @@
 #include "defines.h"
 
 #include <QFileDialog>
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
 #include <QPainter>
 #include <QImage>
 #include <QtPrintSupport/QPrinter>
@@ -101,6 +104,73 @@ void CustomPrint::createFinalsPdf()
     }
     painter.end();
     emit saveComplete();
+}
+
+bool CustomPrint::createTrainingPdf(QString filePath)
+{
+    if (filePath.isEmpty() || m_images.isEmpty()) {
+        emit printingNotice(tr("Training report could not be created (no pages)."), 5000);
+        return false;
+    }
+    // Fail early + clearly if the target is not writable (surfaced to the UI).
+    QFileInfo fi(filePath);
+    QDir().mkpath(fi.absolutePath());
+    QFile probe(filePath);
+    if (!probe.open(QIODevice::WriteOnly)) {
+        emit printingNotice(tr("Could not write the training report to %1").arg(filePath), 6000);
+        return false;
+    }
+    probe.close();
+
+    QPdfWriter pdfWriter(filePath);
+    pdfWriter.setPageSize(QPageSize(QPageSize::A4));
+    pdfWriter.setPageMargins(QMargins(30, 30, 30, 30));
+    // T1.5 branding: document metadata (no Demo/dev filesystem paths). Title +
+    // Creator via the native API; Author/Subject/Keywords via an XMP packet so
+    // every reader surfaces them.
+    pdfWriter.setTitle(QStringLiteral("Tech Aim Technical Blocks Training Report"));
+    pdfWriter.setCreator(QStringLiteral("Tech Aim Electronic Target Control"));
+    {
+        const QString xmp = QStringLiteral(
+            "<?xpacket begin=\"\" id=\"W5M0MpCehiHzreSzNTczkc9d\"?>"
+            "<x:xmpmeta xmlns:x=\"adobe:ns:meta/\">"
+            "<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\">"
+            "<rdf:Description rdf:about=\"\""
+            " xmlns:dc=\"http://purl.org/dc/elements/1.1/\""
+            " xmlns:pdf=\"http://ns.adobe.com/pdf/1.3/\""
+            " xmlns:xmp=\"http://ns.adobe.com/xap/1.0/\">"
+            "<dc:title><rdf:Alt><rdf:li xml:lang=\"x-default\">Tech Aim Technical Blocks Training Report</rdf:li></rdf:Alt></dc:title>"
+            "<dc:creator><rdf:Seq><rdf:li>Tech Aim</rdf:li></rdf:Seq></dc:creator>"
+            "<dc:description><rdf:Alt><rdf:li xml:lang=\"x-default\">Electronic Target Training Analysis</rdf:li></rdf:Alt></dc:description>"
+            "<pdf:Keywords>Tech Aim, Training Lab, Technical Blocks, Electronic Target, Shooting</pdf:Keywords>"
+            "<xmp:CreatorTool>Tech Aim Electronic Target Control</xmp:CreatorTool>"
+            "</rdf:Description></rdf:RDF></x:xmpmeta>"
+            "<?xpacket end=\"w\"?>");
+        pdfWriter.setDocumentXmpMetadata(xmp.toUtf8());
+    }
+    QPainter painter(&pdfWriter);
+    if (!painter.isActive()) {
+        emit printingNotice(tr("Could not create the training report PDF."), 6000);
+        return false;
+    }
+    const quint32 iWidth = pdfWriter.width();
+    const quint32 iHeight = pdfWriter.height();
+    for (int i = 0; i < m_images.count(); ++i) {
+        if (i >= 1)
+            pdfWriter.newPage();
+        const QImage img1 = m_images.at(i);
+        if (!img1.isNull()) {
+            const QImage img = img1.scaled(iWidth, iHeight, Qt::KeepAspectRatio,
+                                           Qt::SmoothTransformation);
+            const qreal xOff = (iWidth - img.width()) / 2.0;
+            painter.drawImage(QRectF(xOff, 0, img.width(), img.height()),
+                              img1, img1.rect());
+        }
+    }
+    painter.end();
+    emit printingNotice(tr("Training report saved to %1").arg(filePath), 5000);
+    emit saveComplete();
+    return true;
 }
 
 void CustomPrint::createSummryPdf()

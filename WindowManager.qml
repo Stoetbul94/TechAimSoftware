@@ -61,6 +61,7 @@ Item {
     function openMatchReport() { manager.open("report", 1) }   // Match tab
     function openFinalsReport(){ manager.open("report", 2) }   // Finals tab (3P FINAL)
     function openCoach()       { manager.open("coach") }
+    function openIncidents()   { manager.open("incidents") }   // EST incident workflow (Phase E)
     // Reserved for upcoming tools — register the window, then these just work:
     function openStatistics() { manager.open("statistics") }
     function openSettings()   { manager.open("settings") }

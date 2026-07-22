@@ -60,6 +60,11 @@ Item {
     // without unit archaeology. Read by ShootingPage.onPointAddedToSeries.
     property real lastShotXmm: 0
     property real lastShotYmm: 0
+    // F10: origin of the shot currently being scored — 0 = Physical target,
+    // 1 = Simulated (demo click). Set by whichever pipeline produced it (NOT
+    // derived from the running mode), so the C++ input-source gate can reject a
+    // misrouted shot. Read by ShootingPage.onPointAddedToSeries.
+    property int lastShotSource: 0
     //    signal pointAddedXYPoints(real xPosition, real yPosition)
 
     property int gameTime: 0
@@ -246,6 +251,13 @@ Item {
     Connections {
         target: MODREADER
         function onShootCountChanged(count) {
+            // Source tag: this handler fires for BOTH real hardware (Live) AND
+            // demo clicks (which reach it via MODREADER.uxShoot -> shootCountChanged).
+            // The two input paths are mutually exclusive by operating mode, so the
+            // true source is the mode itself: Live -> Physical(0), Demo ->
+            // Simulated(1). (Unconditionally tagging Physical here rejected every
+            // Demo shot at the F10 source gate — the "shots not registering" bug.)
+            paneItem.lastShotSource = appMode ? 0 : 1
             //            var logData1 = "onShootCountChanged window visibilty changed.............................."+ windowVisibleMode
             //            MODREADER.appendToLogFile(logData1)
 
@@ -297,19 +309,28 @@ Item {
 
                 calculateShootingSocre(xCor, yCor, itemPoint.x, itemPoint.y)
 
+                // TRAINING: the athlete-facing impact/zoom is a controller
+                // projection. When the visibility mode hides impacts (Mode A —
+                // Full hidden), the face is not drawn and the view is not zoomed
+                // to the shot; the router reveals the buffered markers at block
+                // review. Mode B/C (showImpacts) draw normally, like competition.
+                var trainingHidesImpact = shootingPage.isTrainingMatch && !TRAINING.showImpacts
+
                 showShootingAnimation = false // removing the animation circle
                 if (showShootingAnimation)
                 {
                     animatorCircle.x = (itemPoint.x - animatorCircle.width/2)
                     animatorCircle.y = (itemPoint.y - animatorCircle.width/2)
                     animatorCircle.visible = true
-                } else {
+                } else if (!trainingHidesImpact) {
                     var temp = root.mapToValue(paneItem.itemPoint,polarSeries);
                     addIfinRange(temp)
                 }
 
-                // SIUS-style: zoom in on where the shot just landed.
-                paneItem.triggerAutoZoom(paneItem.itemPoint.x, paneItem.itemPoint.y)
+                // SIUS-style: zoom in on where the shot just landed (not while a
+                // Training block hides impacts).
+                if (!trainingHidesImpact)
+                    paneItem.triggerAutoZoom(paneItem.itemPoint.x, paneItem.itemPoint.y)
 
                 backEndShootCount = newShootCount
 
@@ -1211,7 +1232,7 @@ Item {
             // "phantom shot"). The finals face highlights the last shot red
             // via the overlay itself; cross-window review needs the full
             // record and is out of this marker's reach by design.
-            visible: !shootingPage.isFinalsMatch && globalModelOfData.count > 1
+            visible: !shootingPage.isFinalsMatch && !shootingPage.isFinals10mMatch && !shootingPage.isTrainingMatch && globalModelOfData.count > 1
             //            border.width: 1
             //            border.color: "red"
             z: 100
@@ -1230,6 +1251,9 @@ Item {
                 // detection + scoring pipeline (uxShoot -> calculateShootingSocre
                 // -> pointAddedToSeries); the finals branch lives at the
                 // registration junction in ShootingPage. No shortcut here.
+
+                // F10: this shot originates from a SIMULATED (demo) click.
+                paneItem.lastShotSource = 1
 
                 if (!shootingPanelRect.visible)
                     return
@@ -1296,7 +1320,7 @@ Item {
         anchors.right: parent.right
         // 3P FINAL: qualification sighter-corner indicator hidden — the HUD
         // strip shows SIGHTING/MATCH state.
-        visible: !shootingPage.isFinalsMatch
+        visible: !shootingPage.isFinalsMatch && !shootingPage.isFinals10mMatch && !shootingPage.isTrainingMatch
 
         width: 0.2*parent.width
         height: width
@@ -1412,7 +1436,7 @@ Item {
         height: 40
         // 3P FINAL: the qualification match clock never shows — the Finals
         // HUD strip is the only time source (FINALS3P.remainingFormatted).
-        visible: APPSETTINGS.timer() && !shootingPage.isFinalsMatch
+        visible: APPSETTINGS.timer() && !shootingPage.isFinalsMatch && !shootingPage.isFinals10mMatch && !shootingPage.isTrainingMatch
         color: "transparent"
 
         Row {
@@ -1506,7 +1530,7 @@ Item {
         // exclusive), keeping clear of the shot counter at top-left.
         // 3P FINAL: no qualification clocks at all (FINALS3P HUD is the only
         // time source), so this must not appear when the match clock hides.
-        visible: !timerNotification.visible && !shootingPage.isFinalsMatch
+        visible: !timerNotification.visible && !shootingPage.isFinalsMatch && !shootingPage.isFinals10mMatch && !shootingPage.isTrainingMatch
 
         Row {
             id:stRow
@@ -1812,6 +1836,51 @@ Item {
     {
         gameTimer.stop()
         sighterTimer.stop()
+    }
+
+    // ── Phase D: qualification crash-recovery helpers ────────────────────────
+    // Map authoritative target-face millimetres to the polar-chart (angle,
+    // radius) the display pipeline uses — the IDENTICAL transform live shots go
+    // through in onShootCountChanged (mm → pixel via the per-discipline face
+    // span, then mapToValue on the polar series). Recovered shots projected
+    // with this land exactly where the same live shot would have.
+    function polarForMm(xmm, ymm)
+    {
+        var pistalWidthHeight = gameRange == 10 ? 155.5 : 500
+        var rifleWidthHeight = gameRange == 10 ? 45.5 : 154.4
+        var shootingWidth = gameMode ? pistalWidthHeight : rifleWidthHeight
+        var shootingHeight = gameMode ? pistalWidthHeight : rifleWidthHeight
+
+        var offsetX = shootingMianRect.width/shootingWidth
+        var offsetY = shootingMianRect.height/shootingHeight
+
+        var centerX = shootingPanelRect.width/2
+        var centerY = shootingPanelRect.height/2
+
+        itemPoint.x = centerX+((xmm)*offsetX)
+        itemPoint.y = centerY-((ymm)*offsetY)
+
+        return root.mapToValue(paneItem.itemPoint, polarSeries)
+    }
+
+    // Rebase the running phase clocks to a recovered FROZEN remaining value
+    // (seconds) — spec: application downtime never consumes competition time,
+    // and the phase never restarts from its full duration. The elapsed counter
+    // is set so remaining = total − elapsed; the normal 1s tick continues the
+    // countdown from there. No Jury credit / recovery allowance is applied here
+    // (those are explicit Phase-E actions).
+    function restoreMatchClockRemaining(remainSecs)
+    {
+        // gameTime may legitimately go NEGATIVE: an authorised Jury time
+        // credit can push the remaining time above the original duration
+        // (remaining = totalGameTime − gameTime keeps counting correctly).
+        gameTime = totalGameTime - remainSecs
+        stopTimer.text = minutesToseconds(Math.max(0, remainSecs))
+    }
+    function restorePrepCountdownRemaining(remainSecs)
+    {
+        sighterTime = Math.max(0, totalSighterTime - remainSecs)
+        stStopTimer.text = minutesToseconds(Math.max(0, remainSecs))
     }
 
     function calculateShootingSocre(xPoint, yPoint, demoXPoint, demoYPoint)

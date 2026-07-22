@@ -202,6 +202,14 @@ void EventSerializer::serializePayloadInto(const DomainEvent& event,
             w.field("matchType", e.matchType);
             writeConfig(w, e.config);
             w.field("deviceId", e.deviceId);
+            // F10: operating mode the session STARTED in (Live/Demo). Optional
+            // and written only when set, so pre-F10 journals (no field) still
+            // re-serialise byte-identically and keep their existing hashes.
+            if (!e.operatingMode.isEmpty())
+                w.field("operatingMode", e.operatingMode);
+            // T1: session classification, optional (empty = competition).
+            if (!e.sessionKind.isEmpty())
+                w.field("sessionKind", e.sessionKind);
         },
         [&](const SessionConfigured& e) {
             w.field("discipline", QString::fromLatin1(disciplineId(e.discipline)));
@@ -357,6 +365,104 @@ void EventSerializer::serializePayloadInto(const DomainEvent& event,
         },
         [&](const CleanShutdown&) {
             // no fields
+        },
+        [&](const EstIncidentRaised& e) {
+            w.field("incidentId", e.incidentId);
+            w.field("incidentType", static_cast<qint64>(e.incidentType));
+            w.field("scope", static_cast<qint64>(e.scope));
+            w.field("firingPoint", e.firingPoint);
+            w.field("relayId", e.relayId);
+            w.field("interruptionStartUtc", e.interruptionStartUtc);
+            w.field("reason", e.reason);
+        },
+        [&](const TimeCreditGranted& e) {
+            w.field("incidentId", e.incidentId);
+            w.field("durationMs", e.durationMs);
+            w.field("authority", static_cast<qint64>(e.authority));
+            w.field("authorisedBy", e.authorisedBy);
+            w.field("reason", e.reason);
+        },
+        [&](const RecoveryPhaseEntered& e) {
+            w.field("incidentId", e.incidentId);
+            w.field("phase", static_cast<qint64>(e.phase));
+            w.field("durationMs", e.durationMs);
+            w.field("authority", static_cast<qint64>(e.authority));
+            w.field("authorisedBy", e.authorisedBy);
+        },
+        [&](const EstIncidentResolved& e) {
+            w.field("incidentId", e.incidentId);
+            w.field("status", static_cast<qint64>(e.status));
+            w.field("calculatedDurationMs", e.calculatedDurationMs);
+            w.field("officiallyAcceptedDurationMs", e.officiallyAcceptedDurationMs);
+            w.field("systemRestoredUtc", e.systemRestoredUtc);
+            w.field("targetMoved", e.targetMoved);
+            w.field("originalTarget", e.originalTarget);
+            w.field("reserveTarget", e.reserveTarget);
+            w.field("backupScoreReviewed", e.backupScoreReviewed);
+            w.field("juryNote", e.juryNote);
+            w.field("rangeOfficerNote", e.rangeOfficerNote);
+            w.field("incidentReportRef", e.incidentReportRef);
+        },
+        [&](const EstDecisionRecorded& e) {
+            w.field("incidentId", e.incidentId);
+            w.field("decision", static_cast<qint64>(e.decision));
+            w.field("acceptedDurationMs", e.acceptedDurationMs);
+            w.field("authority", static_cast<qint64>(e.authority));
+            w.field("authorisedBy", e.authorisedBy);
+            w.field("reason", e.reason);
+        },
+        [&](const TargetReassigned& e) {
+            w.field("incidentId", e.incidentId);
+            w.field("originalTarget", e.originalTarget);
+            w.field("reserveTarget", e.reserveTarget);
+            w.field("authority", static_cast<qint64>(e.authority));
+            w.field("authorisedBy", e.authorisedBy);
+            w.field("reason", e.reason);
+        },
+        // ── Training Lab (T1) ──────────────────────────────────────────
+        [&](const TrainingSessionStarted& e) {
+            w.field("programId", e.programId);
+            w.field("discipline", QString::fromLatin1(disciplineId(e.discipline)));
+            w.field("blockCount", static_cast<qint64>(e.blockCount));
+            w.field("shotsPerBlock", static_cast<qint64>(e.shotsPerBlock));
+            w.field("visibilityMode", static_cast<qint64>(e.visibilityMode));
+            w.field("technicalFocus", e.technicalFocus);
+            w.field("startPosition", static_cast<qint64>(e.startPosition));
+        },
+        [&](const TrainingBlockStarted& e) {
+            w.field("blockIndex", static_cast<qint64>(e.blockIndex));
+            w.field("position", static_cast<qint64>(e.position));
+        },
+        [&](const TrainingShotAccepted& e) {
+            writeShotCore(w, e.shot);
+            w.field("blockIndex", static_cast<qint64>(e.blockIndex));
+            w.field("withinBlock", static_cast<qint64>(e.withinBlock));
+            w.field("position", static_cast<qint64>(e.position));
+            if (e.hasCall) {
+                w.field("calledXHundredthMm", static_cast<qint64>(e.calledXHundredthMm));
+                w.field("calledYHundredthMm", static_cast<qint64>(e.calledYHundredthMm));
+                w.field("hasCall", e.hasCall);
+            }
+        },
+        [&](const TrainingBlockCompleted& e) {
+            w.field("blockIndex", static_cast<qint64>(e.blockIndex));
+            w.field("shotCount", static_cast<qint64>(e.shotCount));
+        },
+        [&](const TrainingNoteSaved& e) {
+            w.field("blockIndex", static_cast<qint64>(e.blockIndex));
+            w.field("note", e.note);
+        },
+        [&](const TrainingCompleted& e) {
+            w.field("completedBlocks", static_cast<qint64>(e.completedBlocks));
+        },
+        [&](const TrainingSighterAccepted& e) {
+            writeShotCore(w, e.shot);
+            w.field("position", static_cast<qint64>(e.position));
+            w.field("beforeBlock", static_cast<qint64>(e.beforeBlock));
+        },
+        [&](const TrainingSighterPhaseStarted& e) {
+            w.field("position", static_cast<qint64>(e.position));
+            w.field("beforeBlock", static_cast<qint64>(e.beforeBlock));
         }
     }, event);
 }
@@ -368,7 +474,7 @@ namespace {
 // Accumulating field reader: first failure wins, typed.
 struct FieldReader {
     const QJsonObject& o;
-    ErrorInfo err;
+    ErrorInfo err{};
     bool failed = false;
 
     void fail(ReliabilityError code, const QString& detail)
@@ -589,6 +695,8 @@ ReliabilityResult EventSerializer::deserializePayload(const QString& typeId,
         e.matchType = r.reqString("matchType");
         e.config = readConfig(r);
         e.deviceId = r.optString("deviceId");
+        e.operatingMode = r.optString("operatingMode");   // F10: "" for pre-F10 journals
+        e.sessionKind = r.optString("sessionKind");        // T1: "" = competition
         *out = e;
     } else if (typeId == QLatin1String(SessionConfigured::kType)) {
         SessionConfigured e;
@@ -805,6 +913,126 @@ ReliabilityResult EventSerializer::deserializePayload(const QString& typeId,
         *out = e;
     } else if (typeId == QLatin1String(CleanShutdown::kType)) {
         *out = CleanShutdown{};
+    } else if (typeId == QLatin1String(EstIncidentRaised::kType)) {
+        EstIncidentRaised e;
+        e.incidentId = r.reqString("incidentId");
+        e.incidentType = static_cast<IncidentType>(r.reqInt("incidentType", 0, 9));
+        e.scope = static_cast<IncidentScope>(r.reqInt("scope", 0, 2));
+        e.firingPoint = r.optString("firingPoint");
+        e.relayId = r.optString("relayId");
+        e.interruptionStartUtc = r.reqString("interruptionStartUtc");
+        e.reason = r.optString("reason");
+        *out = e;
+    } else if (typeId == QLatin1String(TimeCreditGranted::kType)) {
+        TimeCreditGranted e;
+        e.incidentId = r.reqString("incidentId");
+        e.durationMs = r.reqInt("durationMs", std::numeric_limits<qint64>::min(),
+                                std::numeric_limits<qint64>::max());
+        e.authority = readAuthority(r);
+        e.authorisedBy = r.reqString("authorisedBy");
+        e.reason = r.optString("reason");
+        *out = e;
+    } else if (typeId == QLatin1String(RecoveryPhaseEntered::kType)) {
+        RecoveryPhaseEntered e;
+        e.incidentId = r.reqString("incidentId");
+        e.phase = static_cast<RecoveryPhaseKind>(r.reqInt("phase", 0, 2));
+        e.durationMs = r.reqInt("durationMs", std::numeric_limits<qint64>::min(),
+                                std::numeric_limits<qint64>::max());
+        e.authority = readAuthority(r);
+        e.authorisedBy = r.reqString("authorisedBy");
+        *out = e;
+    } else if (typeId == QLatin1String(EstIncidentResolved::kType)) {
+        EstIncidentResolved e;
+        e.incidentId = r.reqString("incidentId");
+        e.status = static_cast<IncidentStatus>(r.reqInt("status", 0, 3));
+        e.calculatedDurationMs = r.reqInt("calculatedDurationMs",
+                                          std::numeric_limits<qint64>::min(),
+                                          std::numeric_limits<qint64>::max());
+        e.officiallyAcceptedDurationMs =
+            r.reqInt("officiallyAcceptedDurationMs",
+                     std::numeric_limits<qint64>::min(),
+                     std::numeric_limits<qint64>::max());
+        e.systemRestoredUtc = r.optString("systemRestoredUtc");
+        e.targetMoved = r.reqBool("targetMoved");
+        e.originalTarget = r.optString("originalTarget");
+        e.reserveTarget = r.optString("reserveTarget");
+        e.backupScoreReviewed = r.reqBool("backupScoreReviewed");
+        e.juryNote = r.optString("juryNote");
+        e.rangeOfficerNote = r.optString("rangeOfficerNote");
+        e.incidentReportRef = r.optString("incidentReportRef");
+        *out = e;
+    } else if (typeId == QLatin1String(EstDecisionRecorded::kType)) {
+        EstDecisionRecorded e;
+        e.incidentId = r.reqString("incidentId");
+        e.decision = static_cast<EstDecisionKind>(r.reqInt("decision", 0, 4));
+        e.acceptedDurationMs = r.reqInt("acceptedDurationMs", -1,
+                                        std::numeric_limits<qint64>::max());
+        e.authority = readAuthority(r);
+        e.authorisedBy = r.reqString("authorisedBy");
+        e.reason = r.optString("reason");
+        *out = e;
+    } else if (typeId == QLatin1String(TargetReassigned::kType)) {
+        TargetReassigned e;
+        e.incidentId = r.reqString("incidentId");
+        e.originalTarget = r.optString("originalTarget");
+        e.reserveTarget = r.reqString("reserveTarget");
+        e.authority = readAuthority(r);
+        e.authorisedBy = r.reqString("authorisedBy");
+        e.reason = r.optString("reason");
+        *out = e;
+    // ── Training Lab (T1) ──────────────────────────────────────────────
+    } else if (typeId == QLatin1String(TrainingSessionStarted::kType)) {
+        TrainingSessionStarted e;
+        e.programId = r.reqString("programId");
+        e.discipline = readDiscipline(r, "discipline");
+        e.blockCount = static_cast<qint16>(r.reqInt("blockCount", 1, 100));
+        e.shotsPerBlock = static_cast<qint16>(r.reqInt("shotsPerBlock", 1, 100));
+        e.visibilityMode = static_cast<qint8>(r.reqInt("visibilityMode", 0, 2));
+        e.technicalFocus = r.optString("technicalFocus");
+        e.startPosition = static_cast<qint8>(r.reqInt("startPosition", 0, 2));
+        *out = e;
+    } else if (typeId == QLatin1String(TrainingBlockStarted::kType)) {
+        TrainingBlockStarted e;
+        e.blockIndex = static_cast<qint16>(r.reqInt("blockIndex", 1, 1000));
+        e.position = static_cast<qint8>(r.reqInt("position", 0, 2));
+        *out = e;
+    } else if (typeId == QLatin1String(TrainingShotAccepted::kType)) {
+        TrainingShotAccepted e;
+        e.shot = readShotCore(r);
+        e.blockIndex = static_cast<qint16>(r.reqInt("blockIndex", 1, 1000));
+        e.withinBlock = static_cast<qint16>(r.reqInt("withinBlock", 1, 1000));
+        e.position = static_cast<qint8>(r.reqInt("position", 0, 2));
+        if (r.o.contains(QLatin1String("hasCall"))) {
+            e.hasCall = r.reqBool("hasCall");
+            e.calledXHundredthMm = static_cast<qint32>(r.reqInt("calledXHundredthMm", INT32_MIN, INT32_MAX));
+            e.calledYHundredthMm = static_cast<qint32>(r.reqInt("calledYHundredthMm", INT32_MIN, INT32_MAX));
+        }
+        *out = e;
+    } else if (typeId == QLatin1String(TrainingBlockCompleted::kType)) {
+        TrainingBlockCompleted e;
+        e.blockIndex = static_cast<qint16>(r.reqInt("blockIndex", 1, 1000));
+        e.shotCount = static_cast<qint16>(r.reqInt("shotCount", 0, 1000));
+        *out = e;
+    } else if (typeId == QLatin1String(TrainingNoteSaved::kType)) {
+        TrainingNoteSaved e;
+        e.blockIndex = static_cast<qint16>(r.reqInt("blockIndex", 1, 1000));
+        e.note = r.optString("note");
+        *out = e;
+    } else if (typeId == QLatin1String(TrainingCompleted::kType)) {
+        TrainingCompleted e;
+        e.completedBlocks = static_cast<qint16>(r.reqInt("completedBlocks", 0, 1000));
+        *out = e;
+    } else if (typeId == QLatin1String(TrainingSighterAccepted::kType)) {
+        TrainingSighterAccepted e;
+        e.shot = readShotCore(r);
+        e.position = static_cast<qint8>(r.reqInt("position", 0, 2));
+        e.beforeBlock = static_cast<qint16>(r.reqInt("beforeBlock", 0, 1000));
+        *out = e;
+    } else if (typeId == QLatin1String(TrainingSighterPhaseStarted::kType)) {
+        TrainingSighterPhaseStarted e;
+        e.position = static_cast<qint8>(r.reqInt("position", 0, 2));
+        e.beforeBlock = static_cast<qint16>(r.reqInt("beforeBlock", 1, 1000));
+        *out = e;
     } else {
         return ReliabilityResult::failure(ReliabilityError::UnsupportedEventType,
             QStringLiteral("Unknown event type in journal."),

@@ -25,7 +25,10 @@ HEADERS += \
     $$PWD/src/reliability/store/MonotonicClock.h \
     $$PWD/src/reliability/store/JournalManager.h \
     $$PWD/src/reliability/store/PersistenceRetryQueue.h \
-    $$PWD/src/reliability/store/SessionStore.h
+    $$PWD/src/reliability/store/SessionStore.h \
+    $$PWD/src/reliability/replay/ReplayEngine.h \
+    $$PWD/src/reliability/recovery/RecoveryTypes.h \
+    $$PWD/src/reliability/recovery/RecoveryCoordinator.h
 
 SOURCES += \
     $$PWD/src/reliability/storage/StoragePaths.cpp \
@@ -40,4 +43,6 @@ SOURCES += \
     $$PWD/src/reliability/reducer/SessionReducer.cpp \
     $$PWD/src/reliability/store/JournalManager.cpp \
     $$PWD/src/reliability/store/PersistenceRetryQueue.cpp \
-    $$PWD/src/reliability/store/SessionStore.cpp
+    $$PWD/src/reliability/store/SessionStore.cpp \
+    $$PWD/src/reliability/replay/ReplayEngine.cpp \
+    $$PWD/src/reliability/recovery/RecoveryCoordinator.cpp

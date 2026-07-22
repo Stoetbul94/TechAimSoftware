@@ -24,7 +24,11 @@ AppSettings::AppSettings(QString fileName)
     m_settings->beginGroup("App_Settings");
     //m_settings->setValue("app_mode", "Demo");
     //m_settings->setValue("brand_name", "tachus");
-    m_appMode = m_settings->value("app_mode", "Demo").toString() == "Live" ? true : false;
+    // F10: capture the RAW token (empty when the key is absent) so main.cpp can
+    // parse the operating mode case-consistently and log any invalid fallback.
+    // getAppMode() keeps its historical meaning (true = Live) for existing code.
+    m_rawAppModeToken = m_settings->value("app_mode", QString()).toString();
+    m_appMode = m_rawAppModeToken.trimmed().compare("Live", Qt::CaseInsensitive) == 0;
     qDebug() << m_settings->value("app_mode", "Demo").toString() << "*******" << fileName;
 
 #ifdef BRAND_TACHUS
@@ -562,6 +566,14 @@ void AppSettings::setGame_is_sighter_mode(int value)
 {
     qDebug() << __FUNCTION__ << value;
     game_is_sighter_mode = value;
+
+    // No legacy save-match file yet (e.g. a session entered outside the
+    // LoginPage start flow): keep the flag in memory and skip the XML update
+    // instead of dereferencing a null QFile.
+    if (m_matchSavedFile == NULL) {
+        qDebug("setGame_is_sighter_mode: no save-match file, skipping XML update");
+        return;
+    }
 
     //update xml file
     QDomDocument xmlDocument;

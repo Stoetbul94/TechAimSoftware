@@ -111,6 +111,39 @@ const EventMeta kRows[] = {
                           ReducerClass::Marker),
     row<CleanShutdown>(DurabilityClass::Sync, BroadcastClass::Internal,
                        ReducerClass::Marker),
+    // M3 Phase A — generic EST incident + Jury-decision events. Durability
+    // Sync: an incident/adjustment must be on disk before acting on it.
+    row<EstIncidentRaised>(DurabilityClass::Sync, BroadcastClass::Broadcast,
+                           ReducerClass::Mutating),
+    row<TimeCreditGranted>(DurabilityClass::Sync, BroadcastClass::Broadcast,
+                           ReducerClass::Mutating),
+    row<RecoveryPhaseEntered>(DurabilityClass::Sync, BroadcastClass::Broadcast,
+                              ReducerClass::Mutating),
+    row<EstIncidentResolved>(DurabilityClass::Sync, BroadcastClass::Broadcast,
+                             ReducerClass::Mutating),
+    // Phase E — authorised decisions must be on disk before acting on them.
+    row<EstDecisionRecorded>(DurabilityClass::Sync, BroadcastClass::Broadcast,
+                             ReducerClass::Mutating),
+    row<TargetReassigned>(DurabilityClass::Sync, BroadcastClass::Broadcast,
+                          ReducerClass::Mutating),
+    // Training Lab (T1). Shots + lifecycle are Sync (durable before acting);
+    // all mutate the Training reducer sub-state.
+    row<TrainingSessionStarted>(DurabilityClass::Sync, BroadcastClass::Broadcast,
+                                ReducerClass::Mutating),
+    row<TrainingBlockStarted>(DurabilityClass::Sync, BroadcastClass::Broadcast,
+                              ReducerClass::Mutating),
+    row<TrainingShotAccepted>(DurabilityClass::Sync, BroadcastClass::Broadcast,
+                              ReducerClass::Mutating),
+    row<TrainingBlockCompleted>(DurabilityClass::Sync, BroadcastClass::Broadcast,
+                                ReducerClass::Mutating),
+    row<TrainingNoteSaved>(DurabilityClass::Sync, BroadcastClass::Internal,
+                           ReducerClass::Mutating),
+    row<TrainingCompleted>(DurabilityClass::Sync, BroadcastClass::Broadcast,
+                           ReducerClass::Mutating),
+    row<TrainingSighterAccepted>(DurabilityClass::Flush, BroadcastClass::Broadcast,
+                                 ReducerClass::Mutating),   // measured, never counted
+    row<TrainingSighterPhaseStarted>(DurabilityClass::Sync, BroadcastClass::Broadcast,
+                                     ReducerClass::Mutating),
 };
 
 struct RegistryIndex {

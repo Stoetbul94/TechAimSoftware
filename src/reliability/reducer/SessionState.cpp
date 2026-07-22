@@ -27,6 +27,7 @@ bool SessionState::operator==(const SessionState& o) const
         && officials == o.officials && sighters == o.sighters
         && crossShots == o.crossShots && corrections == o.corrections
         && adjustments == o.adjustments && incidents == o.incidents
+        && estIncidents == o.estIncidents
         && totalTenths == o.totalTenths
         && stageSubtotalTenths == o.stageSubtotalTenths
         && stageStatuses == o.stageStatuses && timer == o.timer
@@ -52,6 +53,7 @@ const char* discKindName(const DisciplineState& d)
     if (std::holds_alternative<QualificationState>(d)) return "qualification";
     if (std::holds_alternative<Finals3PState>(d))      return "finals3p";
     if (std::holds_alternative<TrainingState>(d))      return "training";
+    if (std::holds_alternative<Finals10mState>(d))     return "finals10m";
     return "none";
 }
 
@@ -129,6 +131,42 @@ QByteArray serializeSessionState(const SessionState& s)
         w.endObject();
     }
     w.endArray();
+    // estIncidents (state v2). Field order frozen; all fields always written.
+    w.beginArrayField("estIncidents");
+    for (const EstIncidentRecord& i : s.estIncidents) {
+        w.beginObject();
+        w.field("incidentId", i.incidentId);
+        w.field("incidentType", static_cast<qint64>(i.incidentType));
+        w.field("scope", static_cast<qint64>(i.scope));
+        w.field("firingPoint", i.firingPoint);
+        w.field("relayId", i.relayId);
+        w.field("interruptionStartUtc", i.interruptionStartUtc);
+        w.field("systemRestoredUtc", i.systemRestoredUtc);
+        w.field("calculatedDurationMs", i.calculatedDurationMs);
+        w.field("officiallyAcceptedDurationMs", i.officiallyAcceptedDurationMs);
+        w.field("targetMoved", i.targetMoved);
+        w.field("originalTarget", i.originalTarget);
+        w.field("reserveTarget", i.reserveTarget);
+        w.field("backupScoreReviewed", i.backupScoreReviewed);
+        w.field("timeCreditMs", i.timeCreditMs);
+        w.field("preparationGranted", i.preparationGranted);
+        w.field("sightingGranted", i.sightingGranted);
+        w.field("officialResumeAuthorised", i.officialResumeAuthorised);
+        w.field("authorisedBy", i.authorisedBy);
+        w.field("juryNote", i.juryNote);
+        w.field("rangeOfficerNote", i.rangeOfficerNote);
+        w.field("incidentReportRef", i.incidentReportRef);
+        w.field("status", static_cast<qint64>(i.status));
+        w.field("reason", i.reason);
+        w.fieldU("raisedSeq", i.raisedSeq);
+        // state v3 (Phase E)
+        w.field("creditDecision", static_cast<qint64>(i.creditDecision));
+        w.field("backupReview", static_cast<qint64>(i.backupReview));
+        w.field("raisedAtMonoMs", i.raisedAtMonoMs);
+        w.fieldU("sightingGrantedSeq", i.sightingGrantedSeq);
+        w.endObject();
+    }
+    w.endArray();
 
     w.field("totalTenths", static_cast<qint64>(s.totalTenths));
     // QMap iterates in key order — deterministic by construction.
@@ -176,6 +214,11 @@ QByteArray serializeSessionState(const SessionState& s)
         w.field("version", static_cast<qint64>(f->version));
     } else if (const auto* t = std::get_if<TrainingState>(&s.disc)) {
         w.field("version", static_cast<qint64>(t->version));
+    } else if (const auto* f10 = std::get_if<Finals10mState>(&s.disc)) {
+        w.field("stageId", static_cast<qint64>(f10->stageId));
+        w.field("windowId", static_cast<qint64>(f10->windowId));
+        w.field("shotsInStage", static_cast<qint64>(f10->shotsInStage));
+        w.field("version", static_cast<qint64>(f10->version));
     }
     w.endObject();
 
@@ -190,7 +233,7 @@ namespace {
 // Local typed field reader (mirrors the serializer's; state parsing only).
 struct StateReader {
     const QJsonObject& o;
-    ErrorInfo err;
+    ErrorInfo err{};
     bool failed = false;
 
     void fail(ReliabilityError code, const QString& detail)
@@ -266,6 +309,29 @@ struct StateReader {
             return QJsonArray();
         }
         return v.toArray();
+    }
+    // Optional array: absent key -> empty (backward compat for state v1 that
+    // predates the field); present-but-not-array -> typed failure.
+    QJsonArray optArray(const char* key)
+    {
+        const QJsonValue v = o.value(QLatin1String(key));
+        if (v.isUndefined())
+            return QJsonArray();
+        if (!v.isArray()) {
+            fail(ReliabilityError::InvalidFieldType,
+                 QStringLiteral("'%1' not an array").arg(QLatin1String(key)));
+            return QJsonArray();
+        }
+        return v.toArray();
+    }
+    // Optional integer: absent key -> `def` (backward compat for fields added
+    // in later state versions); present-but-wrong -> typed failure.
+    qint64 optIntDef(const char* key, qint64 def, qint64 min, qint64 max)
+    {
+        const QJsonValue v = o.value(QLatin1String(key));
+        if (v.isUndefined())
+            return def;
+        return reqInt(key, min, max);
     }
 };
 
@@ -454,6 +520,66 @@ ReliabilityResult deserializeSessionState(const QByteArray& json, SessionState* 
         }
         s.incidents.append(i);
     }
+    // estIncidents (state v2). optArray → a v1 snapshot with no such key
+    // yields an empty vector (backward compatible).
+    for (const QJsonValue& v : r.optArray("estIncidents")) {
+        if (!v.isObject()) {
+            r.fail(ReliabilityError::InvalidFieldType,
+                   QStringLiteral("est incident is not an object"));
+            break;
+        }
+        StateReader er{v.toObject()};
+        EstIncidentRecord i;
+        i.incidentId = er.reqString("incidentId");
+        i.incidentType = static_cast<quint8>(er.reqInt("incidentType", 0, 255));
+        i.scope = static_cast<quint8>(er.reqInt("scope", 0, 255));
+        i.firingPoint = er.reqString("firingPoint");
+        i.relayId = er.reqString("relayId");
+        i.interruptionStartUtc = er.reqString("interruptionStartUtc");
+        i.systemRestoredUtc = er.reqString("systemRestoredUtc");
+        i.calculatedDurationMs = er.reqInt("calculatedDurationMs",
+                                           std::numeric_limits<qint64>::min(),
+                                           std::numeric_limits<qint64>::max());
+        i.officiallyAcceptedDurationMs =
+            er.reqInt("officiallyAcceptedDurationMs",
+                      std::numeric_limits<qint64>::min(),
+                      std::numeric_limits<qint64>::max());
+        i.targetMoved = er.reqBool("targetMoved");
+        i.originalTarget = er.reqString("originalTarget");
+        i.reserveTarget = er.reqString("reserveTarget");
+        i.backupScoreReviewed = er.reqBool("backupScoreReviewed");
+        i.timeCreditMs = er.reqInt("timeCreditMs",
+                                   std::numeric_limits<qint64>::min(),
+                                   std::numeric_limits<qint64>::max());
+        i.preparationGranted = er.reqBool("preparationGranted");
+        i.sightingGranted = er.reqBool("sightingGranted");
+        i.officialResumeAuthorised = er.reqBool("officialResumeAuthorised");
+        i.authorisedBy = er.reqString("authorisedBy");
+        i.juryNote = er.reqString("juryNote");
+        i.rangeOfficerNote = er.reqString("rangeOfficerNote");
+        i.incidentReportRef = er.reqString("incidentReportRef");
+        i.status = static_cast<quint8>(er.reqInt("status", 0, 255));
+        i.reason = er.reqString("reason");
+        i.raisedSeq = static_cast<quint64>(
+            er.reqInt("raisedSeq", 0, std::numeric_limits<qint64>::max()));
+        // state v3 fields — absent in v2 snapshots, default there.
+        i.creditDecision = static_cast<quint8>(
+            er.optIntDef("creditDecision", 0, 0, 255));
+        i.backupReview = static_cast<quint8>(
+            er.optIntDef("backupReview", 0, 0, 255));
+        i.raisedAtMonoMs = er.optIntDef("raisedAtMonoMs", 0,
+                                        std::numeric_limits<qint64>::min(),
+                                        std::numeric_limits<qint64>::max());
+        i.sightingGrantedSeq = static_cast<quint64>(
+            er.optIntDef("sightingGrantedSeq", 0, 0,
+                         std::numeric_limits<qint64>::max()));
+        if (er.failed) {
+            r.failed = true;
+            r.err = er.err;
+            break;
+        }
+        s.estIncidents.append(i);
+    }
 
     s.totalTenths = static_cast<qint32>(r.reqInt("totalTenths", INT32_MIN, INT32_MAX));
     for (const QJsonValue& v : r.reqArray("stageSubtotals")) {
@@ -545,6 +671,14 @@ ReliabilityResult deserializeSessionState(const QByteArray& json, SessionState* 
                 TrainingState t;
                 t.version = static_cast<qint32>(dr.reqInt("version", 1, INT32_MAX));
                 s.disc = t;
+            } else if (kind == QLatin1String("finals10m")) {
+                Finals10mState f;
+                f.stageId = static_cast<qint16>(dr.reqInt("stageId", INT16_MIN, INT16_MAX));
+                f.windowId = static_cast<qint16>(dr.reqInt("windowId", INT16_MIN, INT16_MAX));
+                f.shotsInStage =
+                    static_cast<qint32>(dr.reqInt("shotsInStage", 0, INT32_MAX));
+                f.version = static_cast<qint32>(dr.reqInt("version", 1, INT32_MAX));
+                s.disc = f;
             } else if (kind == QLatin1String("none")) {
                 s.disc = std::monostate{};
             } else if (!dr.failed) {

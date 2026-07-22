@@ -25,6 +25,30 @@ Item {
 
     property bool matchFinished :false
 
+    // ── Phase B1: 10m Air Rifle qualification durable journaling ─────────────
+    // Non-empty when the current qualification session is journalled through the
+    // QUAL seam (B1: "AR10" only; AP10/Prone follow in B2/B3). Empty => the
+    // legacy direct-to-model path. Gates the QUAL routing so no second parallel
+    // scoring path exists for the un-migrated disciplines.
+    property string qualDisciplineId: ""
+    // Per-session strictly-increasing shot identity for the durable seam. One
+    // per processed detection event (the C++ backEndShootCount guard already
+    // dedupes repeated hardware deliveries upstream, so a value is never
+    // consumed twice); carried as the event externalId for reducer-level dedup
+    // and future resume seeding. NOT the visible model count.
+    property int qualShotSeq: 0
+    // The polar display (angle, radius) of the shot in flight, stashed so the
+    // QUAL.onShotAccepted projection reuses the EXACT existing addToSeries args
+    // (the signal fires synchronously inside submit, so these stay valid).
+    property real qualPendingAngle: 0
+    property real qualPendingRadius: 0
+    // Phase D: true while restoreQualificationSession() replays a recovered
+    // session into the UI. Guards the canonical transitions it reuses
+    // (changedToMatchMode) from RE-journalling phase events — the recovered
+    // journal already contains OfficialMatchStarted + its TimerStarted anchor,
+    // and re-anchoring would restart the frozen match clock.
+    property bool qualRecoveryInProgress: false
+
     // ── 50m Rifle 3 Positions (ISSF 3x20 qualification) ──────────────────────
     // Position is derived from the match-shot count: 0-19 kneeling, 20-39
     // prone, 40-59 standing. The overall 105-min match clock runs through
@@ -32,6 +56,32 @@ Item {
     property bool is3PMatch: false
     // 3P FINAL (35) — separate finals domain; FINALS3P owns all finals timing.
     property bool isFinalsMatch: false
+    // 10m Air Rifle / Air Pistol FINAL (24) — single-athlete training course,
+    // its own controller (FINALS10M). Fully separate from is3PMatch/isFinalsMatch
+    // and from qualification. See docs/10m-finals-architecture.md.
+    property bool isFinals10mMatch: false
+    // Training Lab (T1): Technical Blocks session (TRAINING controller owns all
+    // state; competition components are gated off while this is set).
+    property bool isTrainingMatch: false
+    property int trainingShotSeq: 0
+    property real trainingLastDirection: 0
+    property real trainingLastRadius: 0
+    // Hidden-mode display cache: polar display records buffered while the
+    // visibility mode hides impacts; revealed (appended to the face) at block
+    // review. Never rendered before reveal.
+    property var trainingPendingMarkers: []
+    property real finals10mLastDirection: 0
+    property real finals10mLastRadius: 0
+    property int  finals10mShotSeq: 0
+    // M3 recovery: one-shot guard so the window-open re-established during a
+    // recovery resume does not clear the recovered shots off the target face.
+    property bool suppressFaceClearOnce: false
+    // M3 recovery: true while loadRecoveredState re-emits the recovered shots.
+    // Sighters belong to a PAST (sighting) window and would normally have been
+    // cleared off the current firing-window face at window-open — so during the
+    // replay the router keeps them out of the face buffer (they still populate
+    // the shot list). Officials of the current window populate the face as usual.
+    property bool recoveryReplayInProgress: false
     // Shot direction (angle) and polar display radius of the shot currently
     // being registered with the finals controller; injected into the record by
     // the router. `score`/`direction` are the qualification polar-display
@@ -95,6 +145,14 @@ Item {
             x:leftPanel.settingsX + leftPanel.settingsWidth
             y:leftPanel.settingsY
 
+            // F10: block operating-mode changes whenever a session is active.
+            // These three flags cover every mandated block condition, because
+            // prep/sighting/firing/paused/recovery/unresolved-incident and a
+            // completed-but-not-closed course all keep one of them set.
+            modeChangeBlocked: shootingPage.isFinals10mMatch
+                               || shootingPage.isFinalsMatch
+                               || shootingPage.qualDisciplineId !== ""
+
             onIsBackGroundBlackChanged: {
                 settingsMask.visible = false
             }
@@ -148,6 +206,7 @@ Item {
         globalMatchModel.append(tpl);    globalMatchModel.clear()
         globalSlighterModel.append(tpl); globalSlighterModel.clear()
         globalModelOfData.append(tpl);   globalModelOfData.clear()
+        shootingPage.trainingTargetConnected = MODREADER.isMasterSystemConnected()
     }
 
     // Rejected finals shots (never in the official models) — plan §8.
@@ -166,6 +225,7 @@ Item {
     function loadGameInMatchMode() {
         is3PMatch = false   // restored sessions bypass beginPreparationPhase
         isFinalsMatch = false
+        isFinals10mMatch = false
         rightPanel.startClickedThroughLoad()
         sligterMode = false
         centerPanel.showSlighter(false)
@@ -178,6 +238,17 @@ Item {
         currentGameDisplay1 = "FINAL"
         currentGameDisplay2 = "35"
         currentmatchDisplay = "FINAL 35"
+    }
+
+    // 10m FINAL (24) — AR/AP single-athlete final; bypasses the qualification
+    // event models (like the 3P final). Discipline (rifle/pistol) is resolved
+    // from gameMode at beginPreparationPhase.
+    function setFinals10mGameType()
+    {
+        matchShootCount = 24
+        currentGameDisplay1 = "FINAL"
+        currentGameDisplay2 = "24"
+        currentmatchDisplay = "10m FINAL"
     }
 
     function setCurrentGameType(index)
@@ -286,9 +357,13 @@ Item {
         }
 
         // ── Phase stepper: SIGHT → MATCH, or SIGHT → KNEEL → PRONE → STAND ──
+        // F7: the 10m Final owns its own PREP/S1/S2/SINGLES/DONE progression in
+        // the right-hand command panel — the qualification SIGHTING/MATCH chip
+        // must not appear (and must never drive Final phase state).
         Row {
             anchors.centerIn: parent
             spacing: 6
+            visible: !isFinals10mMatch && !isTrainingMatch
             Repeater {
                 model: is3PMatch ? [qsTr("SIGHT"), qsTr("KNEEL"), qsTr("PRONE"), qsTr("STAND")]
                                  : [qsTr("SIGHTING"), qsTr("MATCH")]
@@ -323,13 +398,19 @@ Item {
             anchors.right: parent.right; anchors.rightMargin: 16
             anchors.verticalCenter: parent.verticalCenter
             spacing: 12
+            // F7: during a 10m Final the authoritative count/total live in the
+            // right-hand command panel + score summary; the legacy globalMatchModel
+            // count would read 0 here (10m shots never populate it) and contradict
+            // FINALS10M — so hide the legacy top counter for the Final.
             Text {
+                visible: !isFinals10mMatch && !isTrainingMatch
                 text: globalMatchModel.count + " / " + (matchShootCount > 0 ? matchShootCount : "—")
                 color: "white"; font.family: theme.fontFamily
                 font.pixelSize: 14; font.bold: true
                 anchors.verticalCenter: parent.verticalCenter
             }
             Text {
+                visible: !isFinals10mMatch && !isTrainingMatch
                 text: qsTr("SHOTS")
                 color: "#9a9ba0"; font.family: theme.fontFamily
                 font.pixelSize: 9; font.letterSpacing: 1.5
@@ -340,7 +421,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 // 3P FINAL: the HUD strip owns phase display; the qualification
                 // phase chip (SIGHTING/MATCH from sligterMode) would conflict.
-                visible: !isFinalsMatch
+                visible: !isFinalsMatch && !isFinals10mMatch && !isTrainingMatch
                 color: matchFinished ? "#1d7a2f" : (sligterMode ? "#8a6d00" : "#e8003d")
                 Text {
                     id: phaseChipText
@@ -387,7 +468,12 @@ Item {
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.right: parent.right
-        height: 62
+        // T1.4: the competition action bar (START MATCH / FINISH MATCH / Feed
+        // paper) is Training-inappropriate — hidden during a Technical Blocks
+        // session, and its height collapses so the target reclaims the space.
+        // Training's own actions live in TrainingRightPanel / the review view.
+        height: isTrainingMatch ? 0 : 62
+        visible: !isTrainingMatch
         color: "#15161a"
         z: 40
 
@@ -406,7 +492,12 @@ Item {
             // only renders and invokes. Qualification behaviour is untouched.
             readonly property bool finalsMode: shootingPage.isFinalsMatch
             readonly property bool finalsEnabled: finalsMode && FINALS3P.primaryActionEnabled
-            visible: finalsMode ? FINALS3P.primaryActionVisible : true
+            // F7: the 10m Final is fully command/timer-driven by FINALS10M — the
+            // qualification START MATCH bar must not appear and must never
+            // trigger a phase transition. (Completion "VIEW REPORT" is handled by
+            // the Finals10m completion panel, not this bar.)
+            visible: shootingPage.isFinals10mMatch ? false
+                     : (finalsMode ? FINALS3P.primaryActionVisible : true)
             color: finalsMode
                    ? (finalsEnabled ? (primaryMouse.containsMouse ? "#c40034" : "#e8003d")
                                     : "transparent")
@@ -487,6 +578,17 @@ Item {
         z: 10
 
         onHomeButtonClicked: {
+            // T1.1/T1.4 root-cause fix: the legacy Home path used to leave a
+            // Training session OPEN (stale "session active" on relaunch) and
+            // never cleared the LoginPage Training ownership. Route Training
+            // exits through exitTrainingToHome(), which durably closes AND
+            // resets ownership — and aborts (keeping this screen) if the
+            // durable close fails, so data is never abandoned to hide a prompt.
+            if (isTrainingMatch) {
+                if (!exitTrainingToHome())
+                    return                       // close failed → stay put
+                return
+            }
             loginPage.visible = true
             resetDataModels()
         }
@@ -503,6 +605,14 @@ Item {
         anchors.right: parent.right
         anchors.top: statusStrip.bottom
         z: 10
+        // F7: the qualification right panel (LAST SHOT / SERIES table / TOTAL /
+        // S1–S6) is hidden during a 10m Final — it reads qualification models
+        // that the Final never populates, so it would show a stale SERIES 1
+        // heading, zero totals and a qualification series structure. The
+        // Final-specific Finals10mRightPanel occupies the same slot. Its width
+        // is preserved (visible:false keeps the layout) so the target keeps its
+        // size. Qualification/3P use this panel unchanged.
+        visible: !isFinals10mMatch && !isTrainingMatch
         onSwitchToSighter:
         {
             if(sighterEnable)
@@ -518,6 +628,39 @@ Item {
         onMatchFinished: {
             changedToMatchFinish()
         }
+    }
+
+    // F7: 10m Final right-hand information column (command/countdown/last shot,
+    // Final-specific shot history, score summary). Same slot as rightPanel;
+    // every value from FINALS10M. Shared by Air Rifle and Air Pistol.
+    Finals10mRightPanel {
+        id: finals10mRightPanel
+        visible: isFinals10mMatch
+        width: rightPanel.width
+        height: rightPanel.height
+        anchors.right: parent.right
+        anchors.top: statusStrip.bottom
+        z: 11
+        ctl: FINALS10M
+        // F9: the reopener shows once the completion card is dismissed.
+        summaryDismissed: finals10mHud.dismissed
+        onReopenSummaryRequested: finals10mHud.dismissed = false
+    }
+
+    // TRAINING LAB (T1.4): the persistent Training control + information column.
+    // Replaces the competition RightPanel while a Technical Blocks session is
+    // active (rightPanel is hidden by `!isTrainingMatch`). Controls live HERE,
+    // never over the target. Same slot/width so the target keeps its size.
+    TrainingRightPanel {
+        id: trainingRightPanel
+        visible: isTrainingMatch
+        width: rightPanel.width
+        height: rightPanel.height
+        anchors.right: parent.right
+        anchors.top: statusStrip.bottom
+        z: 11
+        ctl: TRAINING
+        connected: shootingPage.trainingTargetConnected
     }
 
     CenterPane {
@@ -539,12 +682,67 @@ Item {
             // Duplicate key: the backend's cumulative detection counter
             // (MODREADER.getShootCount() at receipt) — strictly increasing
             // per firing window; a repeated value is a retransmission.
+            // TRAINING LAB (T1): one explicit session-owner decision — while a
+            // Training session is active the shot goes to TRAINING only (never
+            // also to qualification/finals). The controller applies the F10
+            // source gate + block cap; display happens via its accepted router.
+            if (isTrainingMatch) {
+                shootingPage.trainingLastDirection = xPosition
+                shootingPage.trainingLastRadius = yPosition
+                TRAINING.registerShot(centerPanel.lastShotXmm, centerPanel.lastShotYmm,
+                                      currentCalculatedScore, ++shootingPage.trainingShotSeq,
+                                      xPosition, centerPanel.lastShotSource)
+                return
+            }
             if (isFinalsMatch) {
                 shootingPage.finalsLastDirection = xPosition
                 shootingPage.finalsLastRadius = yPosition
                 FINALS3P.registerShot(centerPanel.lastShotXmm, centerPanel.lastShotYmm,
                                       currentCalculatedScore, ++shootingPage.finalsShotSeq,
-                                      shootingPage.finalsLastDirection)
+                                      shootingPage.finalsLastDirection,
+                                      centerPanel.lastShotSource)   // F10 input-source gate
+                return
+            }
+            // 10m FINAL (AR/AP): same detection + scoring pipeline; the shot is
+            // registered with FINALS10M, which validates (window/limit/duplicate/
+            // EST) and emits the accepted record. The face buffer is fed from the
+            // FINALS10M.onShotAccepted router below (durable-first).
+            if (isFinals10mMatch) {
+                shootingPage.finals10mLastDirection = xPosition
+                shootingPage.finals10mLastRadius = yPosition
+                FINALS10M.registerShot(centerPanel.lastShotXmm, centerPanel.lastShotYmm,
+                                       currentCalculatedScore, ++shootingPage.finals10mShotSeq,
+                                       shootingPage.finals10mLastDirection,
+                                       centerPanel.lastShotSource)   // F10 input-source gate
+                return
+            }
+            // B1/B2: 10m Air Rifle (AR10, decimal) and 10m Air Pistol (AP10,
+            // integer) — the DURABLE acceptance route. No UI append happens
+            // here; the shot is submitted to QUAL first and the QUAL.onShotAccepted
+            // signal drives the (existing) projection, so a shot becomes visible
+            // only after it is journalled. If QUAL refuses it (cap / duplicate /
+            // wrong phase) nothing is projected. sligterMode classifies sighter
+            // vs official (the same source addToSeries would use).
+            if (qualDisciplineId !== "") {
+                shootingPage.qualPendingAngle = xPosition
+                shootingPage.qualPendingRadius = yPosition
+                var extId = ++shootingPage.qualShotSeq
+                // AP10 is full-ring INTEGER scoring: floor the decimal ring
+                // position to the integer ring value BEFORE it is journalled,
+                // so the reducer total is integer-based. AR10 stays decimal.
+                var seamScore = (qualDisciplineId === "AP10")
+                    ? Math.floor(currentCalculatedScore)
+                    : currentCalculatedScore
+                // F10: the `simulated` flag reflects the shot's real origin
+                // (demo click vs physical target); the controller's input-source
+                // gate refuses it if it does not match the running mode.
+                var qualSimulated = (centerPanel.lastShotSource === 1)
+                if (sligterMode)
+                    QUAL.submitSighter(centerPanel.lastShotXmm, centerPanel.lastShotYmm,
+                                       seamScore, extId, xPosition, qualSimulated)
+                else
+                    QUAL.submitOfficial(centerPanel.lastShotXmm, centerPanel.lastShotYmm,
+                                        seamScore, extId, xPosition, qualSimulated)
                 return
             }
             // Hard cap at the match shot count. The auto-finish watcher polls
@@ -711,7 +909,13 @@ Item {
             else
                 globalMatchModel.append(rec)
             // Display buffer drives the target face (cleared per window below).
-            globalModelOfData.append(rec)
+            // M3 recovery: a replayed SIGHTER belongs to a past sighting window
+            // and, in a never-crashed match, would already have been cleared off
+            // the current firing-window face at window-open — so keep it out of
+            // the face buffer here. Officials of the current window populate the
+            // face exactly as in live firing, preserving shot numbering.
+            if (!(shootingPage.recoveryReplayInProgress && rec.isSighter))
+                globalModelOfData.append(rec)
             finalsShotListModel.append(rec)
             // Right panel consumes the SAME accepted record (FIX4).
             rightPanel.finalsOnShotAccepted(rec)
@@ -749,8 +953,353 @@ Item {
             // Clean face per firing window (mirrors qualification's
             // clean-face-per-position). Deferred: model resets from inside
             // signal handlers with live delegates crash (see 3P doc gotchas).
-            if (FINALS3P.isFiringWindowOpen)
+            if (FINALS3P.isFiringWindowOpen) {
+                // M3 recovery: the window re-established by restoreStageFiringState
+                // must NOT erase the shots just replayed onto the face — consume
+                // the one-shot guard and skip this clear (normal firing windows
+                // still clear the face as before).
+                if (shootingPage.suppressFaceClearOnce) {
+                    shootingPage.suppressFaceClearOnce = false
+                    return
+                }
                 Qt.callLater(function() { globalModelOfData.clear() })
+            }
+        }
+    }
+
+    // ── 10m FINAL (AR/AP) display router ─────────────────────────────────
+    // Feeds the shared target face from FINALS10M's durable accepted record.
+    // The rest of the finals presentation (stage, command, timer, totals,
+    // checkpoints, completion) lives in the self-contained Finals10mHud, so
+    // this router touches only the face buffer (globalModelOfData) — no
+    // dependency on the 3P finals models / RightPanel finals schema.
+    Connections {
+        target: FINALS10M
+        enabled: isFinals10mMatch
+
+        function onShotAccepted(shot) {
+            var rec = shot
+            // Polar display convention: the overlay plots via mapToPosition(
+            // direction, radius); `score` is the scoring engine's polar radius,
+            // `direction` the angle — both stashed by the router before submit.
+            rec.direction = shootingPage.finals10mLastDirection.toFixed(2)
+            rec.score = shootingPage.finals10mLastRadius.toFixed(2)
+            rec.isSighter = (shot.sighter === true)
+            rec.position = 2   // 10m final has no rifle position; standing face
+            if (!(shootingPage.recoveryReplayInProgress && rec.isSighter))
+                globalModelOfData.append(rec)
+        }
+
+        function onWindowStateChanged() {
+            if (FINALS10M.isFiringWindowOpen) {
+                if (shootingPage.suppressFaceClearOnce) {
+                    shootingPage.suppressFaceClearOnce = false
+                    return
+                }
+                Qt.callLater(function() { globalModelOfData.clear() })
+            }
+        }
+
+        function onReportRequested() {
+            // Full 10m finals report is F6; F2 shows the in-HUD completion
+            // panel. Keep the intent observable for the later report window.
+            MODREADER.appendToLogFile("FINALS10M: report requested (F6 pending)")
+        }
+    }
+
+    // ── TRAINING LAB (T1): durable-first display router ──────────────────
+    // The ONLY route that puts a Training shot on the face. The controller's
+    // shotAccepted record carries coordinates ONLY when the visibility mode
+    // shows impacts (Mode B/C); in Mode A the polar display data is buffered
+    // and revealed at block review. Numerical scores never render live.
+    Connections {
+        target: TRAINING
+        enabled: isTrainingMatch
+
+        function onShotAccepted(rec) {
+            // Mode B/C: rec carries the accepted shot's REAL mm coordinates —
+            // plot the dot at its true position (polarForMm is the same mm→face
+            // mapping qualification/recovery use). Mode A: rec omits coordinates,
+            // so nothing is drawn now; the whole block is revealed at completion.
+            if (rec.xMm !== undefined)
+                shootingPage.trainingAppendMarker(rec.xMm, rec.yMm)
+        }
+        // T1.3: a Training SIGHTER — always shown on the face (sighters are not
+        // part of any hidden block), never counted. Drawn on its OWN marker so
+        // START BLOCK can clear it without disturbing counted shots.
+        function onSighterAccepted(rec) {
+            if (rec.xMm !== undefined)
+                shootingPage.trainingAppendSighterMarker(rec.xMm, rec.yMm)
+        }
+        // T1.3: the counted block began (or a new position's sighters opened) —
+        // wipe EVERY visible sighter marker so the counted target starts clean
+        // and no sighter dot can ever reappear on a block/review face.
+        function onSightersCleared() {
+            globalModelOfData.clear()
+        }
+        function onBlockCompleted(blockIndex) {
+            // Reveal the completed block from the DURABLE plot — works for every
+            // visibility mode (in Full-hidden this is the first time impacts
+            // appear) and always uses each shot's own coordinates.
+            globalModelOfData.clear()
+            var shots = TRAINING.blockShotPlot(blockIndex)
+            for (var i = 0; i < shots.length; ++i)
+                shootingPage.trainingAppendMarker(shots[i].xMm, shots[i].yMm)
+        }
+        function onPhaseChanged() {
+            // New block active → clear the face for the fresh block.
+            if (TRAINING.phase === 2)
+                Qt.callLater(function() { globalModelOfData.clear() })
+        }
+    }
+
+    TrainingHud {
+        id: trainingHud
+        visible: isTrainingMatch
+        anchors.fill: parent
+        z: 60
+        ctl: TRAINING
+        connected: shootingPage.trainingTargetConnected
+        onHomeRequested: shootingPage.homeFromTraining()
+        onNewSessionRequested: shootingPage.newTrainingSession()
+        onExportPdfRequested: shootingPage.exportTrainingPdf()
+    }
+
+    // T1.4: off-screen Training PDF renderer (A4 pages from the report model).
+    TrainingReportView {
+        id: trainingReportView
+        ctl: TRAINING
+        onExported: function(path) {
+            dialogManager.show({ "type": "info", "title": qsTr("Training report saved"),
+                "message": qsTr("Saved to:\n%1").arg(path),
+                "buttons": [ { "label": qsTr("OK"), "result": "ok", "accent": true } ] })
+        }
+        onFailed: function(reason) {
+            dialogManager.showError(qsTr("Export failed"), reason)
+        }
+    }
+    // Build the Training-specific filename and trigger the export. The notice
+    // (saved path or write error) is surfaced by CUSTOMPRINT.printingNotice.
+    function exportTrainingPdf() {
+        var m = TRAINING.trainingReportModel()
+        var base = APPSETTINGS.getPrintPDFFilePath()      // full file path or ""
+        var dir = ""
+        if (base && base.length > 0) {
+            var slash = Math.max(base.lastIndexOf("/"), base.lastIndexOf("\\"))
+            dir = slash > 0 ? base.substring(0, slash) : ""
+        }
+        var athlete = (m.athlete && m.athlete.length ? m.athlete : "Athlete").replace(/[^A-Za-z0-9]/g, "")
+        var now = new Date()
+        var date = "" + now.getFullYear() + ("0" + (now.getMonth() + 1)).slice(-2) + ("0" + now.getDate()).slice(-2)
+        var sid = (m.sessionId || "").substring(0, 8)
+        var fname = "TechAim_TechnicalBlocks_" + athlete + "_" + date + "_" + sid + ".pdf"
+        var path = (dir && dir.length ? dir + "/" : "") + fname
+        trainingReportView.exportPdf(path)
+    }
+
+    // Hardware connection state for the Sighters readiness panel (Demo ignores
+    // it). Tracked from MODREADER's master-connection signal.
+    property bool trainingTargetConnected: false
+    Connections {
+        target: MODREADER
+        function onMasterConnectionChanged(isConn) { shootingPage.trainingTargetConnected = isConn }
+    }
+    // (initial connection state is seeded in the root Component.onCompleted.)
+
+    // T1 closure: in-place Training recovery. Resume the journal through
+    // TRAINING (owner selected by sessionKind, never by discipline alone),
+    // then restore the PROJECTION: the face redraws the current block's
+    // shots ONLY when the recovered visibility mode permits (Mode B/C);
+    // Mode A re-buffers them for reveal at review. Completed-block review
+    // and the summary rebuild from controller metrics on their own.
+    function restoreTrainingSession(sessionId) {
+        if (!TRAINING.resumeFromRecovery(sessionId))
+            return false
+        enterTrainingMode()
+        trainingShotSeq = Math.max(trainingShotSeq, TRAINING.recoveredMaxExternalId())
+        // Restore the face projection: the current block's shots are redrawn
+        // only when the recovered visibility mode permits (Mode B/C, or once
+        // the block is in review). Full-hidden (Mode A) mid-block stays clean —
+        // the shots reveal when the block completes, exactly as live.
+        if (TRAINING.phase === 1) {
+            // Recovered mid-Sighters: redraw the current phase's sighter markers
+            // (always visible). No counted shots exist yet — START BLOCK is next.
+            var sgh = TRAINING.recoveredSighterShots()
+            for (var j = 0; j < sgh.length; ++j)
+                trainingAppendSighterMarker(sgh[j].xMm, sgh[j].yMm)
+        } else if (TRAINING.showImpacts) {
+            var shots = TRAINING.recoveredCurrentBlockShots()
+            for (var i = 0; i < shots.length; ++i)
+                trainingAppendMarker(shots[i].xMm, shots[i].yMm)
+        }
+        loginPage.visible = false
+        return true
+    }
+
+    // Append one Training shot marker to the face at its true position. Uses
+    // the accepted shot's mm coordinates (the reducer-authoritative record),
+    // mapped to the polar face the same way every other discipline does. The
+    // role set matches globalModelOfData's canonical roles (direction/score =
+    // polar angle/radius for positioning; xmm/ymm for group geometry) so the
+    // marker delegate places it correctly. calculatedscore is 0 — Training
+    // never renders a numerical score on the face.
+    function trainingAppendMarker(xMm, yMm) {
+        var p = centerPanel.polarForMm(xMm * 1, yMm * 1)
+        // direction/score are string roles in the locked schema (the delegate
+        // does direction*1); match the types exactly so the values are kept.
+        globalModelOfData.append({
+            direction: p.x.toFixed(2), score: p.y.toFixed(2),
+            xmm: xMm * 1, ymm: yMm * 1, calculatedscore: "0.0",
+            timeComsumed: 0, isSighter: false, position: 2
+        })
+    }
+
+    // T1.3: append a SIGHTER marker (isSighter=true). Same face mapping, but
+    // tagged so it is visually distinct and is the marker onSightersCleared
+    // removes. Sighters never enter the counted record — this is display only.
+    function trainingAppendSighterMarker(xMm, yMm) {
+        var p = centerPanel.polarForMm(xMm * 1, yMm * 1)
+        globalModelOfData.append({
+            direction: p.x.toFixed(2), score: p.y.toFixed(2),
+            xmm: xMm * 1, ymm: yMm * 1, calculatedscore: "0.0",
+            timeComsumed: 0, isSighter: true, position: 2
+        })
+    }
+
+    // Enter/exit workflow (mirrors the finals pattern). CRUCIAL: without the
+    // sligterMode / matchFinished / backEndShootCount reset the shared demo
+    // click path (CenterPane) blocks every shot — sligterMode=true also skips
+    // the competition shot-cap so Training runs on its own controller cap.
+    function enterTrainingMode() {
+        isTrainingMatch = true
+        isFinalsMatch = false
+        isFinals10mMatch = false
+        is3PMatch = false
+        trainingShotSeq = 0
+        trainingPendingMarkers = []
+        globalMatchModel.clear()
+        globalSlighterModel.clear()
+        globalModelOfData.clear()
+        centerPanel.backEndShootCount = 0
+        sligterMode = true
+        matchFinished = false
+        rightPanel.resetRightPanelModels()
+    }
+    // T1.4 clean Home: BOTH the durable close AND the UI-ownership reset must
+    // succeed. If the durable close fails, do NOT navigate Home — keep this
+    // screen, keep the journal recoverable, and let the operator Retry. On
+    // success, clear every Training-ownership flag so nothing stale remains
+    // (isTrainingMatch, LoginPage.trainingConfirmed, models).
+    function exitTrainingToHome() {
+        if (!TRAINING.closeCleanly()) {
+            dialogManager.showError(qsTr("Training could not be closed safely"),
+                (TRAINING.lastError && TRAINING.lastError.length > 0
+                    ? TRAINING.lastError + "\n\n" : "")
+                + qsTr("Your session is preserved and can be recovered. "
+                     + "Please try again."))
+            return false                        // stay on the current screen
+        }
+        isTrainingMatch = false
+        trainingPendingMarkers = []
+        loginPage.trainingConfirmed = false     // LoginPage no longer owns Training
+        resetDataModels()
+        loginPage.visible = true
+        return true
+    }
+    function homeFromTraining() {
+        exitTrainingToHome()
+    }
+    function newTrainingSession() {
+        // Durably close the completed/old session before offering a fresh setup.
+        // If the close fails, stay on the summary (recoverable + retriable).
+        if (!TRAINING.closeCleanly()) {
+            dialogManager.showError(qsTr("Training could not be closed safely"),
+                (TRAINING.lastError && TRAINING.lastError.length > 0
+                    ? TRAINING.lastError + "\n\n" : "")
+                + qsTr("Your session is preserved and can be recovered. "
+                     + "Please try again."))
+            return
+        }
+        isTrainingMatch = false
+        trainingPendingMarkers = []
+        resetDataModels()
+        loginPage.visible = true
+        loginPage.practiceView = 2           // back to Technical Blocks setup
+    }
+
+    // ── B1/B2: qualification durable-shot projection router ──────────────
+    // The ONLY route that appends an AR10/AP10 shot to the visible models. It
+    // fires (synchronously) after QUAL has durably submitted the SighterAccepted
+    // / ShotAccepted event, so the journal — not the UI — is authoritative. It
+    // reuses the EXACT existing qualification projection (rightPanel.addToSeries)
+    // with the shot's polar display args, stashed just before submit. The
+    // reducer-authoritative score (decimal for AR10, integer for AP10) and
+    // coords come from the accepted record.
+    Connections {
+        target: QUAL
+        enabled: shootingPage.qualDisciplineId !== ""
+        function onShotAccepted(record) {
+            rightPanel.addToSeries(shootingPage.qualPendingAngle,
+                                   shootingPage.qualPendingRadius,
+                                   record.calculatedscore * 1,
+                                   record.xmm * 1, record.ymm * 1)
+        }
+    }
+
+    // ── Phase E: qualification reactions to the EST incident workflow ────
+    // Edge-triggered on the reducer-derived statusKey. The authoritative
+    // state and every authorised action live in INCIDENTS/the journal; this
+    // block only adjusts the qualification presentation: freeze the QML match
+    // clock at raise, switch to sighter routing for the authorised
+    // recovery-sighting phase (QML-side only, like the 3P position change —
+    // no MODREADER.changeSighterMode swap), and on authorised resumption
+    // restore match routing with the clock rebased to frozen + credit.
+    // Finals sessions are untouched (guarded by qualDisciplineId).
+    property string incidentPhaseSeen: ""
+    Connections {
+        target: INCIDENTS
+        enabled: shootingPage.qualDisciplineId !== ""
+        function onIncidentChanged() {
+            var m = INCIDENTS.activeIncident()
+            var key = (m && m.statusKey !== undefined) ? m.statusKey : ""
+            if (key === shootingPage.incidentPhaseSeen)
+                return
+            var prev = shootingPage.incidentPhaseSeen
+            shootingPage.incidentPhaseSeen = key
+            if (key === "awaiting-jury-decision") {
+                // Incident raised: competition clock frozen (journalled
+                // TimerPaused); stop the visible countdowns too.
+                centerPanel.stopMatchClock()
+                MODREADER.appendToLogFile("EST incident raised — match clock frozen")
+            } else if (key === "recovery-sighting") {
+                // Authorised unlimited recovery sighting: classify incoming
+                // shots as sighters (journal + models) without touching the
+                // C++ list swap; face keeps the current shots for reference.
+                sligterMode = true
+                centerPanel.setSighterIndicator(true)
+                MODREADER.appendToLogFile("EST recovery sighting active")
+            } else if (key === "resumed" || (key === "" && prev !== ""
+                       && prev !== "resumed" && prev !== "resolved")) {
+                // Official resumption authorised (or the incident was
+                // cancelled/closed while frozen): back to match routing, face
+                // shows the official record, clock rebased to frozen+credit.
+                if (!sligterMode || prev === "recovery-sighting"
+                        || prev === "awaiting-jury-decision"
+                        || prev === "awaiting-official-resume") {
+                    sligterMode = false
+                    centerPanel.setSighterIndicator(false)
+                    globalModelOfData.clear()
+                    for (var i = 0; i < globalMatchModel.count; ++i)
+                        globalModelOfData.append(globalMatchModel.get(i))
+                    rightPanel.updateTotal()
+                    centerPanel.currentPageIndexChanged()
+                    var remainSecs = Math.floor(INCIDENTS.remainingCompetitionMs() / 1000)
+                    centerPanel.showSlighter(false)   // restarts the match tick
+                    centerPanel.restoreMatchClockRemaining(remainSecs)
+                    MODREADER.appendToLogFile("EST resume authorised — clock "
+                                              + remainSecs + "s (frozen + credit)")
+                }
+            }
         }
     }
 
@@ -762,6 +1311,20 @@ Item {
         anchors.fill: centerPanel
         ctl: FINALS3P
         developerMode: APPSETTINGS.getDeveloperMode()
+    }
+
+    // ── 10m FINAL (AR/AP) HUD — self-contained presentation over FINALS10M ──
+    Finals10mHud {
+        id: finals10mHud
+        visible: isFinals10mMatch
+        z: 30
+        anchors.fill: centerPanel
+        ctl: FINALS10M
+        developerMode: APPSETTINGS.getDeveloperMode()
+        // F9 exit workflow (durable session close before leaving).
+        onViewReportRequested: finals10mHud.dismissed = false   // keep/show summary
+        onNewFinalRequested: shootingPage.startNewFinals10m()
+        onHomeRequested: shootingPage.homeFromFinals10m()
     }
 
     // Match report now lives in the floating Report window (Match tab); see the
@@ -829,8 +1392,107 @@ Item {
     // ISSF flow: enter the preparation/sighting phase at session start.
     // The 15-min sighting countdown runs; the match clock stays hidden and
     // zeroed until the match starts (play button or countdown expiry).
+    // 3P FINAL mode-engagement — the SINGLE way the finals view is entered
+    // (canonical fresh start AND recovery resume). It sets isFinalsMatch (which
+    // drives the finals RightPanel/HUD and the `enabled: isFinalsMatch` shot
+    // router) and prepares the finals models. Only when startFresh is true does
+    // it also start a brand-new session — recovery passes false and injects the
+    // recovered state instead (M3). Steps (a)–(c) are byte-identical to the old
+    // inline finals branch; (d)–(e) are gated on startFresh.
+    function enterFinalsMode(startFresh)
+    {
+        isFinalsMatch = true
+        is3PMatch = false
+        // Fresh, start-from-zero session: the finals path returns before the
+        // qualification clearing flows run, so clear the shot models here
+        // (role locks survive clear()).
+        globalMatchModel.clear()
+        globalSlighterModel.clear()
+        globalModelOfData.clear()
+        finalsIncidentModel.clear()
+        finalsShotListModel.clear()
+        // FIX1: deterministic session state. Qualification resets these in
+        // changedToSigherMode/changedToMatchMode, which finals never runs:
+        // stale backEndShootCount made the shot processor read wrong backend
+        // indices after a prior session; stale sligterMode/matchFinished leak
+        // previous-session behaviour into the shared display pipeline.
+        centerPanel.backEndShootCount = 0
+        sligterMode = true            // face shows all current-window shots
+        matchFinished = false
+        finalsShotSeq = 0
+        rightPanel.resetRightPanelModels()   // clears the shot table + totals
+        if (startFresh) {
+            MODREADER.appendToLogFile("3P FINAL: session start (FINALS3P owns timing)")
+            // D4 ceremony polish: the Full ceremony announces the athlete.
+            FINALS3P.athleteName = (typeof userName !== "undefined" && userName) ? userName : ""
+            FINALS3P.resetFinal()
+            FINALS3P.startFinal()
+        }
+    }
+
+    // 10m FINAL (AR/AP) mode engagement — the SINGLE way the 10m finals view is
+    // entered (canonical fresh start AND, later, recovery resume). It sets
+    // isFinals10mMatch (which drives the Finals10mHud and the shot router) and
+    // prepares the shared face buffer. Only startFresh begins a brand-new
+    // FINALS10M session; recovery (F3) passes false and injects instead.
+    function enterFinals10mMode(disciplineId, startFresh)
+    {
+        isFinals10mMatch = true
+        isFinalsMatch = false
+        is3PMatch = false
+        globalMatchModel.clear()
+        globalSlighterModel.clear()
+        globalModelOfData.clear()
+        centerPanel.backEndShootCount = 0
+        sligterMode = true
+        matchFinished = false
+        finals10mShotSeq = 0
+        rightPanel.resetRightPanelModels()
+        // F7: clear the Final-specific shot history so a fresh start / recovery
+        // rebuilds it from FINALS10M's accepted-shot signals (recovery re-emits
+        // every recovered shot, so the list restores exactly).
+        finals10mRightPanel.reset()
+        if (startFresh) {
+            MODREADER.appendToLogFile("10m FINAL: session start (" + disciplineId
+                                      + ", FINALS10M owns timing)")
+            FINALS10M.athleteName = (typeof userName !== "undefined" && userName) ? userName : ""
+            FINALS10M.configureDiscipline(disciplineId)
+            FINALS10M.resetFinal()
+            FINALS10M.startFinal()
+        }
+    }
+
+    // F9 completion-exit: leave a COMPLETED 10m Final cleanly. closeFinalSession
+    // appends a clean close so the completed course is never offered as an
+    // unfinished recovery candidate (and never a second MatchCompleted); then
+    // return to event selection. New Final retains the discipline for a quick
+    // restart (the operator confirms Start → a brand-new session).
+    function homeFromFinals10m() {
+        FINALS10M.closeFinalSession()
+        isFinals10mMatch = false
+        finals10mRightPanel.reset()
+        loginPage.visible = true
+        resetDataModels()
+    }
+    function startNewFinals10m() {
+        FINALS10M.closeFinalSession()
+        isFinals10mMatch = false
+        finals10mRightPanel.reset()
+        loginPage.visible = true      // discipline (gameEvent 7) stays selected;
+        resetDataModels()             // operator clicks Start → new session id
+    }
+
     function beginPreparationPhase()
     {
+        // 10m FINAL (AR/AP): a separate single-athlete finals domain owned by
+        // FINALS10M. Selected via the "10m Final" event card (gameEvent 7) at
+        // the 10m range; rifle → FINAL_AR10, pistol → FINAL_AP10. Checked first
+        // so it returns before any qualification/3P detection runs.
+        if (APPSETTINGS.get10or50mRange() === 10
+                && APPSETTINGS.getGameEvent() === 7) {
+            enterFinals10mMode(APPSETTINGS.getGameMode() === 1 ? "FINAL_AR10" : "FINAL_AP10", true)
+            return
+        }
         // 3P FINAL: a separate domain — the FINALS3P controller owns ALL finals
         // timing and phases; none of the qualification prep/sighter machinery
         // (or its timers) runs. Phase A: skeleton + dry-run only, no scoring.
@@ -839,31 +1501,7 @@ Item {
                      && APPSETTINGS.getGameSubMode() === 1
                      && matchShootCount === 35
         if (isFinalsMatch) {
-            is3PMatch = false
-            // Fresh, start-from-zero session: the finals path returns before
-            // the qualification clearing flows run, so clear the shot models
-            // here (role locks survive clear()).
-            globalMatchModel.clear()
-            globalSlighterModel.clear()
-            globalModelOfData.clear()
-            finalsIncidentModel.clear()
-            finalsShotListModel.clear()
-            // FIX1: deterministic session state. Qualification resets these in
-            // changedToSigherMode/changedToMatchMode, which finals never runs:
-            // stale backEndShootCount made the shot processor read wrong
-            // backend indices after a prior session; stale sligterMode/
-            // matchFinished leak previous-session behaviour into the shared
-            // display pipeline. rightPanel paging state likewise.
-            centerPanel.backEndShootCount = 0
-            sligterMode = true            // face shows all current-window shots
-            matchFinished = false
-            finalsShotSeq = 0
-            rightPanel.resetRightPanelModels()   // clears the shot table + totals
-            MODREADER.appendToLogFile("3P FINAL: session start (FINALS3P owns timing)")
-            // D4 ceremony polish: the Full ceremony announces the athlete.
-            FINALS3P.athleteName = (typeof userName !== "undefined" && userName) ? userName : ""
-            FINALS3P.resetFinal()
-            FINALS3P.startFinal()
+            enterFinalsMode(true)            // canonical fresh finals start
             return
         }
         MODREADER.appendToLogFile("beginPreparationPhase: prep seconds = " + APPSETTINGS.getPrepTimeCount())
@@ -875,8 +1513,168 @@ Item {
         centerPanel.totalSighterTime = APPSETTINGS.getPrepTimeCount()
         changedToSigherMode()
         centerPanel.startPreparationCountdown()
+
+        // Phase B1: 10m Air Rifle qualification is journalled through the QUAL
+        // seam so the journal + reducer become authoritative. Only air rifle
+        // (gameMode 1 = rifle, 10m range) migrates in B1; AP10/Prone keep the
+        // legacy path until B2/B3. is3PMatch/isFinalsMatch are already excluded
+        // above. See docs/issf-rules/10m-air-rifle.md.
+        // Which migrated qualification discipline is this? (B1: AR10 decimal;
+        // B2: AP10 integer; B3: PRONE50 decimal). Pure detection — the actual
+        // mode engagement is the shared enterQualificationMode() seam below.
+        var freshQualId = ""
+        if (APPSETTINGS.get10or50mRange() === 10) {
+            if (APPSETTINGS.getGameMode() === 1)
+                freshQualId = "AR10"             // 10m Air Rifle  (decimal)
+            else if (APPSETTINGS.getGameMode() === 0)
+                freshQualId = "AP10"             // 10m Air Pistol (integer)
+        } else if (APPSETTINGS.get10or50mRange() === 50) {
+            // 50m Rifle Prone: rifle, sub-mode 0 (Prone), decimal. 50m 3P
+            // qualification (sub-mode 1 / is3PMatch) is NOT migrated — its rules
+            // are pending; 50m pistol is out of scope. Prone must never enter
+            // Finals or a 3P position transition (both already excluded above).
+            if (APPSETTINGS.getGameMode() === 1
+                    && APPSETTINGS.getGameSubMode() === 0 && !is3PMatch)
+                freshQualId = "PRONE50"          // 50m Rifle Prone (decimal)
+        }
+        if (freshQualId !== "")
+            enterQualificationMode(freshQualId, true)   // canonical fresh start
+        else
+            qualDisciplineId = ""                       // unmigrated: legacy path
         MODREADER.appendToLogFile("beginPreparationPhase: done, totalSighterTime = "
                                   + centerPanel.totalSighterTime + " is3P = " + is3PMatch)
+    }
+
+    // Phase D: single qualification mode-engagement for the MIGRATED
+    // disciplines (AR10/AP10/PRONE50) — the canonical fresh start AND the
+    // recovery resume enter here; there is no parallel recovery-only setup.
+    // Part A (always): discipline routing + shot-identity reset. Part B
+    // (startFresh only): begin a brand-new journalled QUAL session and its
+    // original preparation+sighting phase. Recovery passes false and injects
+    // the recovered session instead — it must never create a new session,
+    // archive the interrupted journal, or restart the phase clock.
+    function enterQualificationMode(disciplineId, startFresh)
+    {
+        if (!startFresh) {
+            // Recovery arrives without beginPreparationPhase(): establish the
+            // qualification mode it would have, in the same order the fresh
+            // path runs (mode flags → models → sighter routing). Fresh-path
+            // callers arrive with all of this already done.
+            isFinalsMatch = false
+            is3PMatch = false
+            resetDataModels()                    // clear stale fresh models
+            centerPanel.totalSighterTime = APPSETTINGS.getPrepTimeCount()
+            changedToSigherMode()                // sighter routing + clean face
+        }
+        qualDisciplineId = disciplineId
+        qualShotSeq = 0
+        if (!startFresh)
+            return
+        var athlete = (typeof userName !== "undefined" && userName) ? userName : ""
+        // ISSF course parameters are CONFIG the caller supplies (not rules in
+        // the engine): official count + match/prep clocks as timer anchors.
+        // matchShootCount = the selected count (60 for the full event);
+        // getTimeCount/getPrepTimeCount return seconds.
+        var matchMs = APPSETTINGS.getTimeCount(matchShootCount) * 1000
+        var prepMs = APPSETTINGS.getPrepTimeCount() * 1000
+        var started = QUAL.startSession(disciplineId, String(matchShootCount),
+                                        athlete, matchShootCount, matchMs,
+                                        prepMs, -1, "", "")
+        if (started) {
+            QUAL.beginPreparation()
+            QUAL.beginSighting()   // combined ISSF prep+sighting phase
+            MODREADER.appendToLogFile("QUAL: " + disciplineId
+                                      + " session journalling started ("
+                                      + QUAL.journalPath + ")")
+        } else {
+            qualDisciplineId = ""
+            MODREADER.appendToLogFile("QUAL: startSession failed — "
+                                      + "falling back to the legacy path")
+        }
+    }
+
+    // Phase D: restore a crashed qualification session (AR10/AP10/PRONE50).
+    // Deterministic order (docs/session-reliability-phaseB-qualification.md):
+    // the journal was already validated + reducer-replayed in C++; here we
+    // (1) configure the qualification mode WITHOUT starting a session,
+    // (2) adopt the recovered journal/state, (3) project the recovered shots
+    // through the SAME rightPanel.addToSeries used after a durable live
+    // acceptance, (4) re-establish the recovered phase via the canonical
+    // sighting→match transition, (5) rebase the frozen phase clock, and
+    // (6) seed the live shot identity so a re-reported pre-crash measurement
+    // is refused by the reducer's externalId guard.
+    function restoreQualificationSession(sessionId, disciplineId)
+    {
+        enterQualificationMode(disciplineId, false)
+        if (!QUAL.resumeFromRecovery(sessionId)) {
+            qualDisciplineId = ""
+            return false
+        }
+        qualRecoveryInProgress = true
+        var shots = QUAL.recoveredShots()
+        var i, s, p
+        // Sighters first, while sligterMode is true — the exact classification
+        // addToSeries applies to a live sighting-phase shot.
+        for (i = 0; i < shots.length; ++i) {
+            s = shots[i]
+            if (s.isSighter !== true)
+                continue
+            p = centerPanel.polarForMm(s.xmm * 1, s.ymm * 1)
+            rightPanel.addToSeries(p.x, p.y, s.calculatedscore * 1,
+                                   s.xmm * 1, s.ymm * 1)
+        }
+        var remainSecs = Math.floor(QUAL.recoveredRemainingMs() / 1000)
+        if (QUAL.recoveredPhaseId() === 3) {   // MatchPhase::OfficialMatch
+            // Canonical sighting→match transition (clean face, officials-only
+            // totals, match clock running). qualRecoveryInProgress suppresses
+            // its QUAL.beginOfficialMatch() so the recovered journal is not
+            // re-anchored — the frozen clock is rebased below instead.
+            changedToMatchMode()
+            for (i = 0; i < shots.length; ++i) {
+                s = shots[i]
+                if (s.isSighter === true)
+                    continue
+                p = centerPanel.polarForMm(s.xmm * 1, s.ymm * 1)
+                rightPanel.addToSeries(p.x, p.y, s.calculatedscore * 1,
+                                       s.xmm * 1, s.ymm * 1)
+            }
+            centerPanel.restoreMatchClockRemaining(remainSecs)
+        } else {
+            // Preparation+Sighting: resume the countdown from the frozen
+            // remaining prep time (never the full 15 minutes).
+            centerPanel.startPreparationCountdown()
+            centerPanel.restorePrepCountdownRemaining(remainSecs)
+        }
+        // Live shot identity continues past every recovered externalId, so the
+        // next live measurement becomes recovered-max+1 (and a duplicate
+        // retransmission of the final pre-crash shot is refused by identity).
+        qualShotSeq = Math.max(qualShotSeq, QUAL.recoveredMaxExternalId())
+        qualRecoveryInProgress = false
+        // Phase E: incident-aware resume gating. If an unresolved incident
+        // survived the crash, the clock stays frozen and the Jury workflow
+        // opens for review — officials remain refused at the controller
+        // regardless of any UI state (no bypass via ordinary Resume).
+        var incState = INCIDENTS.activeIncident()
+        if (incState && incState.statusKey !== undefined) {
+            incidentPhaseSeen = incState.statusKey
+            centerPanel.stopMatchClock()
+            if (incState.statusKey === "recovery-sighting") {
+                sligterMode = true
+                centerPanel.setSighterIndicator(true)
+            }
+            centerPanel.restoreMatchClockRemaining(
+                Math.floor(INCIDENTS.remainingCompetitionMs() / 1000))
+            Qt.callLater(windowManager.openIncidents)
+            MODREADER.appendToLogFile("QUAL: resumed with unresolved EST "
+                                      + "incident (" + incState.statusKey
+                                      + ") — officials blocked")
+        }
+        MODREADER.appendToLogFile("QUAL: recovered " + disciplineId + " session "
+                                  + sessionId + " — officials "
+                                  + QUAL.officialShotCount() + ", sighters "
+                                  + QUAL.sighterCount() + ", remaining "
+                                  + remainSecs + "s")
+        return true
     }
 
     // 3P mid-match position change: shots become sighters for the new position
@@ -986,12 +1784,27 @@ Item {
         centerPanel.currentPageIndexChanged()
         MODREADER.appendToLogFile("play: page index refreshed")
         centerPanel.disableMotorMovement = false
+
+        // B1/B2: the official match clock has begun — journal the transition so
+        // a recovered qualification session knows it is past sighting. Phase D:
+        // suppressed during recovery replay — the recovered journal already
+        // holds OfficialMatchStarted + its TimerStarted anchor, and re-emitting
+        // them would restart the frozen match clock.
+        if (qualDisciplineId !== "" && !qualRecoveryInProgress)
+            QUAL.beginOfficialMatch()
     }
 
     function changedToMatchFinish()
     {
         matchFinished = true
         centerPanel.stopMatchClock()
+
+        // B1/B2: record the qualification total and close the session cleanly
+        // so it validates as a finished (non-recoverable) journal.
+        if (qualDisciplineId !== "") {
+            QUAL.completeMatch()
+            QUAL.closeSession()
+        }
         MODREADER.appendToLogFile("Match finished: " + globalMatchModel.count
                                   + "/" + matchShootCount + " match shots")
         // 3P: open the right-panel table + face on the final series for review of

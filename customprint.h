@@ -18,6 +18,11 @@ public:
     Q_INVOKABLE void createPdf();
     Q_INVOKABLE void createSummryPdf();
     Q_INVOKABLE void createFinalsPdf();
+    // T1.4: Training-specific PDF. Writes the accumulated A4 page images to
+    // `filePath` directly (no blocking file dialog), one image per page fitted
+    // KeepAspectRatio. Emits printingNotice with the saved path on success, or
+    // an error notice if the file could not be written. Returns true on success.
+    Q_INVOKABLE bool createTrainingPdf(QString filePath);
     Q_INVOKABLE void setServerPath(QString path);
     Q_INVOKABLE void createPdf(QString filePath);
 
