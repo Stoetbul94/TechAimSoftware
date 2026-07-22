@@ -34,6 +34,7 @@
 #include "src/finals/FinalsAudioService.h"
 #include "src/mode/OperatingMode.h"
 #include "src/mode/OperatingModeService.h"
+#include "src/training/TrainingProgramController.h"
 #include "src/reliability/storage/StoragePaths.h"
 #include "logfile.h"
 #include <QLockFile>
@@ -387,6 +388,12 @@ int main(int argc, char *argv[])
     QualificationController qualController;
     qualController.setOperatingMode(runningModeInt);   // F10 input-source gate
     engine.rootContext()->setContextProperty("QUAL", &qualController);
+    // Training Lab (T1) — Technical Blocks domain controller. Separate from
+    // every competition controller; owns ALL Training state and journals
+    // Training-specific events (sessionKind=Training). Same F10 source gate.
+    TrainingProgramController trainingController;
+    trainingController.setOperatingMode(runningModeInt);
+    engine.rootContext()->setContextProperty("TRAINING", &trainingController);
     // Phase E — EST incident workflow service (INCIDENTS). Discipline-agnostic:
     // it submits typed incident/Jury events through whichever session store is
     // ACTIVE (qualification or finals); the reducer record is authoritative.

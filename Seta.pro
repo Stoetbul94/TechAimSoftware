@@ -37,7 +37,9 @@ SOURCES += main.cpp \
     src/finals10m/Finals10mController.cpp \
     src/qualification/QualificationController.cpp \
     src/incident/EstIncidentController.cpp \
-    src/mode/OperatingModeService.cpp
+    src/mode/OperatingModeService.cpp \
+    src/training/TrainingProgramController.cpp \
+    src/training/TrainingBlockMetrics.cpp
 
 # Offline coach-analytics module (pure C++, independent from Qt/QML).
 HEADERS += \
@@ -79,6 +81,14 @@ HEADERS += \
     src/finals10m/Finals10mTypes.h \
     src/finals10m/Finals10mConfig.h \
     src/finals10m/Finals10mController.h
+
+# Training Lab (T1) — separate domain from competition (docs/
+# training-lab-architecture.md). Technical Blocks vertical slice.
+HEADERS += \
+    src/training/TrainingProgramTypes.h \
+    src/training/TrainingBlockMetrics.h \
+    src/training/TrainingProgramController.h
+INCLUDEPATH += src/training
 INCLUDEPATH += src/finals
 INCLUDEPATH += src/finals10m
 INCLUDEPATH += src/qualification
