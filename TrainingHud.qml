@@ -10,6 +10,7 @@ Item {
     property var ctl: null                    // TRAINING
     signal homeRequested()
     signal newSessionRequested()
+    signal exportPdfRequested()               // T1.4: Training PDF export
 
     readonly property bool sightersOpen: ctl && ctl.phase === 1
     readonly property bool blockActive:  ctl && ctl.phase === 2
@@ -54,14 +55,14 @@ Item {
         }
     }
 
-    // ── BLOCK REVIEW ─────────────────────────────────────────────────────
+    // ── BLOCK REVIEW (full-workspace) ────────────────────────────────────
     Rectangle {
         visible: hud.reviewOpen
         anchors.fill: parent
-        color: "#B8000000"
+        color: "#EA0F1116"
         MouseArea { anchors.fill: parent }    // modal: no click-through, no shots UI
         Rectangle {
-            width: Math.min(640, parent.width - 60); height: Math.min(560, parent.height - 40)
+            width: Math.min(1180, parent.width - 40); height: Math.min(820, parent.height - 30)
             anchors.centerIn: parent
             color: _card; radius: 12; border.color: _line; border.width: 1
             Flickable {
@@ -69,114 +70,203 @@ Item {
                 contentHeight: reviewCol.implicitHeight; clip: true
                 Column {
                     id: reviewCol
-                    width: parent.width; spacing: 10
+                    width: parent.width; spacing: 12
                     property var m: (hud.reviewOpen && hud.ctl)
                                     ? hud.ctl.blockReviewMetrics(hud.ctl.currentBlock) : ({})
+                    property var dlt: (hud.reviewOpen && hud.ctl)
+                                    ? hud.ctl.blockDelta(hud.ctl.currentBlock) : ({})
+                    property var obs: (hud.reviewOpen && hud.ctl)
+                                    ? hud.ctl.blockObservations(hud.ctl.currentBlock) : []
 
                     Text { text: "BLOCK " + (hud.ctl ? hud.ctl.currentBlock : "") + " COMPLETE"
-                           color: _txt; font.pixelSize: 20; font.bold: true }
-                    Text { visible: hud.ctl && hud.ctl.positionName !== ""
-                           text: hud.ctl ? hud.ctl.positionName : ""; color: _green; font.pixelSize: 13; font.bold: true }
-                    Text { text: "MEASURED RESULTS"; color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2 }
-                    Text { text: "Counted block shots only · sighters excluded"; color: _txtMut; font.pixelSize: 9 }
+                           color: _txt; font.pixelSize: 24; font.bold: true }
+                    Text { text: "MEASURED BLOCK RESULT"; color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2 }
+                    Row {
+                        spacing: 10
+                        Text { visible: hud.ctl && hud.ctl.positionName !== ""
+                               text: hud.ctl ? hud.ctl.positionName : ""; color: _green; font.pixelSize: 13; font.bold: true }
+                        Text { text: (reviewCol.m.shotCount !== undefined ? reviewCol.m.shotCount : "0")
+                                     + " counted shots · sighters excluded"
+                               color: _txtMut; font.pixelSize: 12 }
+                        Text { text: hud.ctl ? ("Focus · " + hud.ctl.technicalFocus) : ""
+                               color: _txtMut; font.pixelSize: 12 }
+                    }
 
-                    // Target plot: the block's shots revealed on a target-like
-                    // view (auto-scaled to the group so shape/spread are clear;
-                    // absolute radius/diameter are in the metrics below).
-                    Rectangle {
-                        width: 220; height: 220; radius: 6
-                        color: "#0C0E12"; border.color: _line; border.width: 1
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        property var shots: (hud.reviewOpen && hud.ctl)
-                                            ? hud.ctl.blockShotPlot(hud.ctl.currentBlock) : []
-                        // half-range in mm (min 8mm so a tight group isn't over-magnified)
-                        property real rangeMm: {
-                            var mx = 8
-                            for (var i = 0; i < shots.length; ++i)
-                                mx = Math.max(mx, Math.abs(shots[i].xMm), Math.abs(shots[i].yMm))
-                            return mx * 1.25
-                        }
-                        readonly property real plotR: width / 2 - 10
-                        // reference rings
-                        Repeater {
-                            model: [1.0, 0.6, 0.3]
+                    // LEFT target/group view + RIGHT metric cards
+                    Row {
+                        width: parent.width; spacing: 18
+
+                        // — target/group view (≈58%) —
+                        Column {
+                            width: parent.width * 0.56; spacing: 6
                             Rectangle {
-                                width: parent.plotR * 2 * modelData; height: width; radius: width / 2
-                                anchors.centerIn: parent
-                                color: "transparent"; border.color: "#23262d"; border.width: 1
+                                width: parent.width; height: Math.min(width, 420); radius: 8
+                                color: "#0C0E12"; border.color: _line; border.width: 1
+                                property var shots: (hud.reviewOpen && hud.ctl)
+                                                    ? hud.ctl.blockShotPlot(hud.ctl.currentBlock) : []
+                                property real rangeMm: {
+                                    var mx = 8
+                                    for (var i = 0; i < shots.length; ++i)
+                                        mx = Math.max(mx, Math.abs(shots[i].xMm), Math.abs(shots[i].yMm))
+                                    return mx * 1.25
+                                }
+                                readonly property real plotR: Math.min(width, height) / 2 - 16
+                                Repeater {
+                                    model: [1.0, 0.6, 0.3]
+                                    Rectangle {
+                                        width: parent.plotR * 2 * modelData; height: width; radius: width / 2
+                                        anchors.centerIn: parent
+                                        color: "transparent"; border.color: "#23262d"; border.width: 1
+                                    }
+                                }
+                                Rectangle { anchors.centerIn: parent; width: parent.plotR * 2; height: 1; color: "#1c1f26" }
+                                Rectangle { anchors.centerIn: parent; width: 1; height: parent.plotR * 2; color: "#1c1f26" }
+                                // group-centre (MPI) marker
+                                Rectangle {
+                                    visible: reviewCol.m.hasGroup === true
+                                    width: 14; height: 14; radius: 7; color: "transparent"
+                                    border.color: _green; border.width: 2
+                                    x: parent.width / 2 + (reviewCol.m.mpiX / parent.rangeMm) * parent.plotR - width / 2
+                                    y: parent.height / 2 - (reviewCol.m.mpiY / parent.rangeMm) * parent.plotR - height / 2
+                                }
+                                Repeater {
+                                    model: parent.shots
+                                    Rectangle {
+                                        width: 11; height: 11; radius: 6
+                                        color: index === parent.parent.shots.length - 1 ? "#ff2d55" : "#e8003d"
+                                        x: parent.width / 2 + (modelData.xMm / parent.rangeMm) * parent.plotR - width / 2
+                                        y: parent.height / 2 - (modelData.yMm / parent.rangeMm) * parent.plotR - height / 2
+                                        border.color: "#ffffff"; border.width: 1
+                                    }
+                                }
+                                Text {
+                                    anchors.bottom: parent.bottom; anchors.bottomMargin: 6
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: "±" + Number(parent.rangeMm).toFixed(0) + " mm  ·  ● counted shot   ○ group centre"
+                                    color: _txtMut; font.pixelSize: 10
+                                }
                             }
                         }
-                        // crosshair
-                        Rectangle { anchors.centerIn: parent; width: parent.plotR * 2; height: 1; color: "#1c1f26" }
-                        Rectangle { anchors.centerIn: parent; width: 1; height: parent.plotR * 2; color: "#1c1f26" }
-                        // shot dots (index shown, newest brightest)
-                        Repeater {
-                            model: parent.shots
-                            Rectangle {
-                                width: 9; height: 9; radius: 5
-                                color: index === parent.parent.shots.length - 1 ? "#ff2d55" : "#e8003d"
-                                x: parent.width / 2 + (modelData.xMm / parent.rangeMm) * parent.plotR - width / 2
-                                y: parent.height / 2 - (modelData.yMm / parent.rangeMm) * parent.plotR - height / 2
-                                border.color: "#ffffff"; border.width: 1
+
+                        // — primary metric cards (≈42%) —
+                        Grid {
+                            width: parent.width * 0.40; columns: 2
+                            columnSpacing: 10; rowSpacing: 10
+                            property var m: reviewCol.m
+                            property var d: reviewCol.dlt
+                            Repeater {
+                                model: {
+                                    var m = reviewCol.m, d = reviewCol.dlt
+                                    if (!m || m.shotCount === undefined) return []
+                                    function cmp(v, unit, better) {
+                                        if (v === undefined || !d || !d.hasPrev) return ""
+                                        if (Math.abs(v) < 0.05) return "Same as previous block"
+                                        return "Block " + d.prevBlock + ": " + Math.abs(v).toFixed(1) + " " + unit
+                                               + (v > 0 ? " more" : " less")
+                                    }
+                                    return [
+                                        { l: "AVERAGE SCORE", v: Number(m.averageScore).toFixed(1), u: "",
+                                          e: "Mean of the counted-shot scores.",
+                                          c: cmp(d ? d.averageScoreDelta : undefined, "", true) },
+                                        { l: "GROUP DIAMETER", v: m.hasGroup ? Number(m.groupDiameter).toFixed(1) : "—", u: "mm",
+                                          e: "The largest distance between two shots.",
+                                          c: cmp(d ? d.diameterDeltaMm : undefined, "mm", false) },
+                                        { l: "GROUP CENTRE (MPI)",
+                                          v: Math.abs(Number(m.mpiX)).toFixed(1) + (m.mpiX >= 0 ? " R" : " L")
+                                             + " · " + Math.abs(Number(m.mpiY)).toFixed(1) + (m.mpiY >= 0 ? " Hi" : " Lo"),
+                                          u: "mm",
+                                          e: "Average centre of this block's group.", c: "" },
+                                        { l: "SCORE VARIATION", v: Number(m.scoreStdDev).toFixed(2), u: "",
+                                          e: "Lower means more consistent scores.",
+                                          c: cmp(d ? d.scoreStdDevDelta : undefined, "", false) }
+                                    ]
+                                }
+                                delegate: Rectangle {
+                                    width: (parent.width - 10) / 2; height: 128; radius: 8
+                                    color: "#1D2026"; border.color: _line; border.width: 1
+                                    Column {
+                                        anchors.fill: parent; anchors.margins: 10; spacing: 3
+                                        Text { text: modelData.l; color: _txtMut; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1
+                                               width: parent.width; wrapMode: Text.WordWrap }
+                                        Row { spacing: 3
+                                            Text { text: modelData.v; color: _txt; font.family: "Consolas"; font.pixelSize: 20; font.bold: true }
+                                            Text { text: modelData.u; color: _txtSec; font.pixelSize: 11; anchors.bottom: parent.bottom; anchors.bottomMargin: 3 }
+                                        }
+                                        Text { text: modelData.e; color: _txtSec; font.pixelSize: 9; width: parent.width; wrapMode: Text.WordWrap }
+                                        Text { visible: modelData.c !== ""; text: modelData.c; color: _green; font.pixelSize: 9; width: parent.width; wrapMode: Text.WordWrap }
+                                    }
+                                }
                             }
-                        }
-                        Text {
-                            anchors.bottom: parent.bottom; anchors.bottomMargin: 4
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            text: "±" + Number(parent.rangeMm).toFixed(0) + " mm"
-                            color: _txtMut; font.pixelSize: 9
                         }
                     }
 
+                    // secondary details
                     Grid {
-                        columns: 3; columnSpacing: 14; rowSpacing: 8; width: parent.width
+                        columns: 4; columnSpacing: 14; rowSpacing: 8; width: parent.width
                         Repeater {
                             model: {
                                 var m = reviewCol.m
                                 if (!m || m.shotCount === undefined) return []
                                 return [
-                                    { l: "Shots",            v: m.shotCount },
-                                    { l: "Average score",    v: Number(m.averageScore).toFixed(1) },
-                                    { l: "Score std dev",    v: Number(m.scoreStdDev).toFixed(2) },
-                                    { l: "Group radius",     v: m.hasGroup ? Number(m.groupRadius).toFixed(1) + " mm" : "—" },
-                                    { l: "Group diameter",   v: m.hasGroup ? Number(m.groupDiameter).toFixed(1) + " mm" : "—" },
-                                    { l: "MPI X / Y",        v: Number(m.mpiX).toFixed(1) + " / " + Number(m.mpiY).toFixed(1) + " mm" },
-                                    { l: "H spread",         v: m.hasGroup ? Number(m.horizontalSpread).toFixed(1) + " mm" : "—" },
-                                    { l: "V spread",         v: m.hasGroup ? Number(m.verticalSpread).toFixed(1) + " mm" : "—" },
-                                    { l: "Avg shot time",    v: m.hasTiming ? Number(m.averageShotTime).toFixed(1) + " s" : "—" }
+                                    { l: "Shots",          v: m.shotCount },
+                                    { l: "Group radius",   v: m.hasGroup ? Number(m.groupRadius).toFixed(1) + " mm" : "—" },
+                                    { l: "H spread",       v: m.hasGroup ? Number(m.horizontalSpread).toFixed(1) + " mm" : "—" },
+                                    { l: "V spread",       v: m.hasGroup ? Number(m.verticalSpread).toFixed(1) + " mm" : "—" },
+                                    { l: "Avg shot time",  v: m.hasTiming ? Number(m.averageShotTime).toFixed(1) + " s" : "—" },
+                                    { l: "Timing variation", v: m.hasTiming ? Number(m.shotTimeStdDev).toFixed(2) + " s" : "—" }
                                 ]
                             }
                             delegate: Column {
-                                width: (reviewCol.width - 28) / 3; spacing: 2
+                                width: (reviewCol.width - 42) / 4; spacing: 2
                                 Text { text: modelData.l; color: _txtMut; font.pixelSize: 10 }
-                                Text { text: "" + modelData.v; color: _txt; font.family: "Consolas"; font.pixelSize: 15; font.bold: true }
+                                Text { text: "" + modelData.v; color: _txt; font.family: "Consolas"; font.pixelSize: 14; font.bold: true }
                             }
                         }
                     }
 
-                    Text { text: "SESSION FOCUS"; color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 4 }
-                    Text { text: hud.ctl ? hud.ctl.technicalFocus : ""; color: _txt; font.pixelSize: 13; font.bold: true }
+                    // OBSERVED (measured statements only)
+                    Column {
+                        width: parent.width; spacing: 3
+                        visible: reviewCol.obs.length > 0
+                        Text { text: "OBSERVED"; color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 4 }
+                        Repeater {
+                            model: reviewCol.obs
+                            Text { width: reviewCol.width; wrapMode: Text.WordWrap
+                                   text: "· " + modelData; color: _txtSec; font.pixelSize: 12 }
+                        }
+                    }
 
                     Text { text: "ATHLETE NOTE"; color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 4 }
+                    Text { text: "What did you notice during this block?"; color: _txtMut; font.pixelSize: 11 }
                     Rectangle {
-                        width: parent.width; height: 66; radius: 6
+                        width: parent.width; height: 96; radius: 6
                         color: "#1D2026"; border.color: noteInput.activeFocus ? _red : _line; border.width: 1
                         TextEdit {
                             id: noteInput
-                            anchors.fill: parent; anchors.margins: 8
-                            color: _txt; font.pixelSize: 12; wrapMode: TextEdit.Wrap
+                            anchors.fill: parent; anchors.margins: 10
+                            color: _txt; font.pixelSize: 13; wrapMode: TextEdit.Wrap
                             // reasonable length limit
                             onTextChanged: if (length > 300) remove(300, length)
+                            // restore any durably-saved note when the review opens
+                            Connections {
+                                target: hud
+                                function onReviewOpenChanged() {
+                                    if (hud.reviewOpen && hud.ctl) {
+                                        var mm = hud.ctl.blockReviewMetrics(hud.ctl.currentBlock)
+                                        noteInput.text = (mm && mm.note) ? mm.note : ""
+                                    }
+                                }
+                            }
                         }
                     }
                     Row {
-                        spacing: 8
+                        spacing: 10
                         Rectangle {
-                            width: 110; height: 34; radius: 6
-                            color: "#2B2C33"; border.color: _line; border.width: 1
-                            Text { id: saveNoteLabel; anchors.centerIn: parent; text: "Save Note"; color: _txt; font.pixelSize: 12 }
+                            width: 130; height: 40; radius: 8
+                            color: saveNoteMouse.pressed ? "#3A3C44" : "#2B2C33"; border.color: _line; border.width: 1
+                            Text { id: saveNoteLabel; anchors.centerIn: parent; text: "Save Note"; color: _txt; font.pixelSize: 13 }
                             MouseArea {
-                                anchors.fill: parent
+                                id: saveNoteMouse; anchors.fill: parent
                                 onClicked: {
                                     if (hud.ctl && hud.ctl.saveNote(noteInput.text)) {
                                         saveNoteLabel.text = "Saved ✓"
@@ -188,22 +278,24 @@ Item {
                         }
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
-                            text: "One note per block · saved durably"
+                            text: (300 - noteInput.length) + " characters left · one note per block"
                             color: _txtMut; font.pixelSize: 10
                         }
                     }
 
+                    // primary + secondary actions (touch: primary ≥ 56 px)
                     Row {
-                        spacing: 10; topPadding: 8
+                        width: parent.width; spacing: 12; topPadding: 8
                         Rectangle {
-                            width: 190; height: 44; radius: 8; color: _red
+                            width: parent.width * 0.62; height: 56; radius: 8
+                            color: continueMouse.pressed ? "#A80038" : _red
                             Text {
-                                anchors.centerIn: parent; color: "white"; font.pixelSize: 13; font.bold: true
+                                anchors.centerIn: parent; color: "white"; font.pixelSize: 15; font.bold: true
                                 text: hud.ctl && hud.ctl.currentBlock >= hud.ctl.blockCount
-                                      ? "View Session Summary" : "Continue to Block " + (hud.ctl ? hud.ctl.currentBlock + 1 : "")
+                                      ? "VIEW SESSION SUMMARY" : "CONTINUE TO BLOCK " + (hud.ctl ? hud.ctl.currentBlock + 1 : "")
                             }
                             MouseArea {
-                                anchors.fill: parent
+                                id: continueMouse; anchors.fill: parent
                                 onClicked: {
                                     if (!hud.ctl) return
                                     if (noteInput.text.length > 0) hud.ctl.saveNote(noteInput.text)
@@ -213,9 +305,9 @@ Item {
                             }
                         }
                         Rectangle {
-                            width: 130; height: 44; radius: 8
+                            width: parent.width * 0.34; height: 56; radius: 8
                             color: "transparent"; border.color: _line; border.width: 1
-                            Text { anchors.centerIn: parent; text: "End Training"; color: _txtSec; font.pixelSize: 12 }
+                            Text { anchors.centerIn: parent; text: "End Training"; color: _txtSec; font.pixelSize: 13 }
                             MouseArea {
                                 anchors.fill: parent
                                 onClicked: dialogManager.showConfirmation(qsTr("End training?"),
@@ -237,7 +329,7 @@ Item {
         color: "#B8000000"
         MouseArea { anchors.fill: parent }
         Rectangle {
-            width: Math.min(720, parent.width - 50); height: Math.min(600, parent.height - 30)
+            width: Math.min(1120, parent.width - 40); height: Math.min(840, parent.height - 30)
             anchors.centerIn: parent
             color: _card; radius: 12; border.color: _line; border.width: 1
             Flickable {
@@ -248,6 +340,15 @@ Item {
                     width: parent.width; spacing: 10
                     property var blocks: (hud.summaryOpen && hud.ctl) ? hud.ctl.completedBlockSummaries() : []
                     property var cmp:    (hud.summaryOpen && hud.ctl) ? hud.ctl.finalComparison() : ({})
+                    property var au:     (hud.summaryOpen && hud.ctl) ? hud.ctl.sighterAudit() : ({})
+                    property var sobs:   (hud.summaryOpen && hud.ctl) ? hud.ctl.sessionObservations() : []
+                    // max group diameter across blocks (for the comparison bar scale)
+                    readonly property real maxDia: {
+                        var mx = 1
+                        for (var i = 0; i < blocks.length; ++i)
+                            if (blocks[i].hasGroup) mx = Math.max(mx, blocks[i].groupDiameter)
+                        return mx
+                    }
 
                     Text { text: (hud.ctl && hud.ctl.endedEarly()) ? "TRAINING ENDED" : "TECHNICAL BLOCKS COMPLETE"
                            color: _txt; font.pixelSize: 21; font.bold: true }
@@ -266,6 +367,90 @@ Item {
                               + " · " + (hud.ctl.sessionOperatingMode || "Legacy") + " mode"
                               + " · Focus " + hud.ctl.technicalFocus
                               + " · " + ["Full hidden", "Group only", "Impact, no score"][hud.ctl.visibilityMode]) : "")
+                    }
+
+                    // ── overview cards ────────────────────────────────────
+                    Grid {
+                        width: parent.width; columns: 6; columnSpacing: 10; rowSpacing: 10
+                        Repeater {
+                            model: {
+                                if (!hud.ctl) return []
+                                var d = hud.ctl.sessionDurationSec()
+                                var dur = Math.floor(d / 60) + "m " + ("0" + (d % 60)).slice(-2) + "s"
+                                var au = sumCol.au
+                                var sight = (au && au.total !== undefined) ? au.total : 0
+                                return [
+                                    { l: "BLOCKS",     v: "" + hud.ctl.completedBlockCount() + "/" + hud.ctl.blockCount },
+                                    { l: "COUNTED",    v: "" + hud.ctl.countedShotsTotal() },
+                                    { l: "SIGHTERS",   v: "" + sight },
+                                    { l: "DURATION",   v: dur },
+                                    { l: "FOCUS",      v: hud.ctl.technicalFocus },
+                                    { l: "VISIBILITY", v: ["Full hidden", "Group only", "Impact only"][hud.ctl.visibilityMode] }
+                                ]
+                            }
+                            delegate: Rectangle {
+                                width: (sumCol.width - 50) / 6; height: 62; radius: 8
+                                color: "#1D2026"; border.color: _line; border.width: 1
+                                Column {
+                                    anchors.fill: parent; anchors.margins: 8; spacing: 3
+                                    Text { text: modelData.l; color: _txtMut; font.pixelSize: 8; font.bold: true; font.letterSpacing: 1 }
+                                    Text { text: modelData.v; color: _txt; font.pixelSize: 14; font.bold: true
+                                           width: parent.width; elide: Text.ElideRight }
+                                }
+                            }
+                        }
+                    }
+
+                    // ── comparison bars (average score + group diameter) ──
+                    Text { text: "GROUP SIZE BY BLOCK"; color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 4 }
+                    Column {
+                        width: parent.width; spacing: 4
+                        Repeater {
+                            model: sumCol.blocks
+                            delegate: Row {
+                                width: sumCol.width; spacing: 8
+                                property var b: modelData
+                                Text { text: "B" + b.blockIndex; color: _txtSec; font.pixelSize: 11; width: 30
+                                       anchors.verticalCenter: parent.verticalCenter }
+                                Rectangle {
+                                    width: sumCol.width * 0.6; height: 14; radius: 4; color: "#0E1014"
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    Rectangle {
+                                        anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
+                                        height: parent.height; radius: 4; color: "#e8003d"
+                                        width: b.hasGroup ? parent.width * Math.min(1, b.groupDiameter / sumCol.maxDia) : 0
+                                    }
+                                }
+                                Text { text: b.hasGroup ? Number(b.groupDiameter).toFixed(1) + " mm" : "—"
+                                       color: _txt; font.family: "Consolas"; font.pixelSize: 11
+                                       anchors.verticalCenter: parent.verticalCenter }
+                            }
+                        }
+                    }
+                    Text { text: "AVERAGE SCORE BY BLOCK"; color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 4 }
+                    Column {
+                        width: parent.width; spacing: 4
+                        Repeater {
+                            model: sumCol.blocks
+                            delegate: Row {
+                                width: sumCol.width; spacing: 8
+                                property var b: modelData
+                                Text { text: "B" + b.blockIndex; color: _txtSec; font.pixelSize: 11; width: 30
+                                       anchors.verticalCenter: parent.verticalCenter }
+                                Rectangle {
+                                    width: sumCol.width * 0.6; height: 14; radius: 4; color: "#0E1014"
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    Rectangle {
+                                        anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
+                                        height: parent.height; radius: 4; color: "#20C997"
+                                        width: parent.width * Math.min(1, Number(b.averageScore) / 11.0)
+                                    }
+                                }
+                                Text { text: Number(b.averageScore).toFixed(1)
+                                       color: _txt; font.family: "Consolas"; font.pixelSize: 11
+                                       anchors.verticalCenter: parent.verticalCenter }
+                            }
+                        }
                     }
 
                     Text { text: "BLOCK COMPARISON"; color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 4 }
@@ -326,38 +511,36 @@ Item {
 
                     Text { text: "OBSERVED"; color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 4 }
                     Column {
-                        spacing: 3
-                        Text { visible: sumCol.cmp.bestScoreBlock > 0
-                               text: "· Highest-score block: Block " + sumCol.cmp.bestScoreBlock
-                               color: _txtSec; font.pixelSize: 11 }
-                        Text { visible: sumCol.cmp.tightestGroupBlock > 0
-                               text: "· Tightest-group block: Block " + sumCol.cmp.tightestGroupBlock
-                               color: _txtSec; font.pixelSize: 11 }
-                        Text { visible: sumCol.cmp.mostRepeatableBlock > 0
-                               text: "· Most repeatable block: Block " + sumCol.cmp.mostRepeatableBlock
-                               color: _txtSec; font.pixelSize: 11 }
-                        Text { visible: sumCol.cmp.hasSizeChange === true
-                               text: "· Group " + (sumCol.cmp.groupSizeChangePct < 0 ? "became " + Math.abs(sumCol.cmp.groupSizeChangePct).toFixed(0) + "% smaller"
-                                                                                      : "grew " + Number(sumCol.cmp.groupSizeChangePct).toFixed(0) + "%")
-                                     + " from the first to the last block"
-                               color: _txtSec; font.pixelSize: 11 }
-                        Text { visible: sumCol.cmp.hasDrift === true && sumCol.cmp.centreDriftMm >= 0.5
-                               text: "· Group centre moved " + Number(sumCol.cmp.centreDriftMm).toFixed(1) + " mm ("
-                                     + (sumCol.cmp.centreDriftX >= 0 ? "right" : "left") + "/"
-                                     + (sumCol.cmp.centreDriftY >= 0 ? "up" : "down") + ")"
-                               color: _txtSec; font.pixelSize: 11 }
-                        Text { visible: sumCol.blocks.length === 0
-                               text: "No completed blocks."
-                               color: _txtMut; font.pixelSize: 11 }
+                        width: parent.width; spacing: 3
+                        Repeater {
+                            model: sumCol.sobs
+                            Text { width: sumCol.width; wrapMode: Text.WordWrap
+                                   text: "· " + modelData; color: _txtSec; font.pixelSize: 12 }
+                        }
+                        Text { visible: sumCol.sobs.length === 0
+                               text: sumCol.blocks.length === 0 ? "No completed blocks."
+                                                                : "Not enough blocks to compare."
+                               color: _txtMut; font.pixelSize: 12 }
                     }
 
                     Row {
-                        spacing: 10; topPadding: 10
+                        width: parent.width; spacing: 10; topPadding: 12
+                        // Export PDF (Training-specific report)
                         Rectangle {
-                            width: 150; height: 44; radius: 8; color: _red
-                            Text { anchors.centerIn: parent; text: "New Session"; color: "white"; font.pixelSize: 13; font.bold: true }
+                            width: 190; height: 56; radius: 8
+                            color: pdfMouse.pressed ? "#2A2C34" : "#23252C"; border.color: _line; border.width: 1
+                            Row { anchors.centerIn: parent; spacing: 8
+                                Text { text: "⭳"; color: _green; font.pixelSize: 18; anchors.verticalCenter: parent.verticalCenter }
+                                Text { text: "EXPORT PDF"; color: _txt; font.pixelSize: 14; font.bold: true
+                                       anchors.verticalCenter: parent.verticalCenter }
+                            }
+                            MouseArea { id: pdfMouse; anchors.fill: parent; onClicked: hud.exportPdfRequested() }
+                        }
+                        Rectangle {
+                            width: 170; height: 56; radius: 8; color: newSessMouse.pressed ? "#A80038" : _red
+                            Text { anchors.centerIn: parent; text: "NEW SESSION"; color: "white"; font.pixelSize: 14; font.bold: true }
                             MouseArea {
-                                anchors.fill: parent
+                                id: newSessMouse; anchors.fill: parent
                                 onClicked: dialogManager.showConfirmation(qsTr("Start a new training session?"),
                                     qsTr("This session is closed and preserved. A new session ID is created."),
                                     function(ok) { if (ok) hud.newSessionRequested() },
@@ -365,7 +548,7 @@ Item {
                             }
                         }
                         Rectangle {
-                            width: 120; height: 44; radius: 8
+                            width: 120; height: 56; radius: 8
                             color: "transparent"; border.color: _line; border.width: 1
                             Text { anchors.centerIn: parent; text: "Home"; color: _txtSec; font.pixelSize: 13 }
                             MouseArea { anchors.fill: parent; onClicked: hud.homeRequested() }

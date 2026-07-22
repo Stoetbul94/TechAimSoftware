@@ -2,6 +2,9 @@
 #include "defines.h"
 
 #include <QFileDialog>
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
 #include <QPainter>
 #include <QImage>
 #include <QtPrintSupport/QPrinter>
@@ -101,6 +104,50 @@ void CustomPrint::createFinalsPdf()
     }
     painter.end();
     emit saveComplete();
+}
+
+bool CustomPrint::createTrainingPdf(QString filePath)
+{
+    if (filePath.isEmpty() || m_images.isEmpty()) {
+        emit printingNotice(tr("Training report could not be created (no pages)."), 5000);
+        return false;
+    }
+    // Fail early + clearly if the target is not writable (surfaced to the UI).
+    QFileInfo fi(filePath);
+    QDir().mkpath(fi.absolutePath());
+    QFile probe(filePath);
+    if (!probe.open(QIODevice::WriteOnly)) {
+        emit printingNotice(tr("Could not write the training report to %1").arg(filePath), 6000);
+        return false;
+    }
+    probe.close();
+
+    QPdfWriter pdfWriter(filePath);
+    pdfWriter.setPageSize(QPageSize(QPageSize::A4));
+    pdfWriter.setPageMargins(QMargins(30, 30, 30, 30));
+    QPainter painter(&pdfWriter);
+    if (!painter.isActive()) {
+        emit printingNotice(tr("Could not create the training report PDF."), 6000);
+        return false;
+    }
+    const quint32 iWidth = pdfWriter.width();
+    const quint32 iHeight = pdfWriter.height();
+    for (int i = 0; i < m_images.count(); ++i) {
+        if (i >= 1)
+            pdfWriter.newPage();
+        const QImage img1 = m_images.at(i);
+        if (!img1.isNull()) {
+            const QImage img = img1.scaled(iWidth, iHeight, Qt::KeepAspectRatio,
+                                           Qt::SmoothTransformation);
+            const qreal xOff = (iWidth - img.width()) / 2.0;
+            painter.drawImage(QRectF(xOff, 0, img.width(), img.height()),
+                              img1, img1.rect());
+        }
+    }
+    painter.end();
+    emit printingNotice(tr("Training report saved to %1").arg(filePath), 5000);
+    emit saveComplete();
+    return true;
 }
 
 void CustomPrint::createSummryPdf()

@@ -1062,6 +1062,39 @@ Item {
         connected: shootingPage.trainingTargetConnected
         onHomeRequested: shootingPage.homeFromTraining()
         onNewSessionRequested: shootingPage.newTrainingSession()
+        onExportPdfRequested: shootingPage.exportTrainingPdf()
+    }
+
+    // T1.4: off-screen Training PDF renderer (A4 pages from the report model).
+    TrainingReportView {
+        id: trainingReportView
+        ctl: TRAINING
+        onExported: function(path) {
+            dialogManager.show({ "type": "info", "title": qsTr("Training report saved"),
+                "message": qsTr("Saved to:\n%1").arg(path),
+                "buttons": [ { "label": qsTr("OK"), "result": "ok", "accent": true } ] })
+        }
+        onFailed: function(reason) {
+            dialogManager.showError(qsTr("Export failed"), reason)
+        }
+    }
+    // Build the Training-specific filename and trigger the export. The notice
+    // (saved path or write error) is surfaced by CUSTOMPRINT.printingNotice.
+    function exportTrainingPdf() {
+        var m = TRAINING.trainingReportModel()
+        var base = APPSETTINGS.getPrintPDFFilePath()      // full file path or ""
+        var dir = ""
+        if (base && base.length > 0) {
+            var slash = Math.max(base.lastIndexOf("/"), base.lastIndexOf("\\"))
+            dir = slash > 0 ? base.substring(0, slash) : ""
+        }
+        var athlete = (m.athlete && m.athlete.length ? m.athlete : "Athlete").replace(/[^A-Za-z0-9]/g, "")
+        var now = new Date()
+        var date = "" + now.getFullYear() + ("0" + (now.getMonth() + 1)).slice(-2) + ("0" + now.getDate()).slice(-2)
+        var sid = (m.sessionId || "").substring(0, 8)
+        var fname = "TechAim_TechnicalBlocks_" + athlete + "_" + date + "_" + sid + ".pdf"
+        var path = (dir && dir.length ? dir + "/" : "") + fname
+        trainingReportView.exportPdf(path)
     }
 
     // Hardware connection state for the Sighters readiness panel (Demo ignores

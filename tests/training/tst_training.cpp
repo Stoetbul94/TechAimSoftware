@@ -1238,6 +1238,85 @@ static void testCleanClose()
     StoragePaths::setRootOverrideForTesting(QString());
 }
 
+// ── 12. T1.4 PDF report model (data feeding the Training PDF) ─────────────
+static void runReportSession(const char* disc, int blocks, int spb,
+                             bool withNote, bool earlyEnd, QVariantMap* out)
+{
+    TrainingProgramController c; MemFile f; ManualClock clk;
+    c.storeForTesting()->setClockForTesting(&clk);
+    c.storeForTesting()->setJournalFileForTesting(&f);
+    c.configureDefaults(QString::fromLatin1(disc));
+    c.setTechnicalFocus(QStringLiteral("Trigger"));
+    if (qstrcmp(disc, "3P50") != 0)        // keep the 3P block shape intact
+        { c.setBlockCount(blocks); c.setShotsPerBlock(spb); }
+    c.setOperatingMode(1);
+    c.startTraining(QStringLiteral("Rae"));
+    c.startBlock();
+    const int nblocks = c.blockCount();
+    for (int b = 1; b <= nblocks; ++b) {
+        for (int i = 0; i < c.shotsPerBlock(); ++i) {
+            clk.advance(4000);
+            c.registerShot(0.5 + b, 0.5, 10.0, 30000 + b * 100 + i, 0, 1);
+        }
+        if (withNote) c.saveNote(QStringLiteral("felt %1").arg(b));
+        if (earlyEnd && b == 1) { c.endTrainingEarly(); break; }
+        c.continueToNextBlock();
+    }
+    *out = c.trainingReportModel();
+    c.resetTraining();
+}
+
+static void testPdfModel()
+{
+    std::printf("--- T1.4 PDF report model ---\n");
+    struct Case { const char* disc; int b; int spb; };
+    const Case cases[] = { {"AR10", 2, 3}, {"AP10", 2, 3}, {"PRONE50", 2, 3}, {"3P50", 6, 6} };
+    for (const Case& cs : cases) {
+        QVariantMap r; runReportSession(cs.disc, cs.b, cs.spb, true, false, &r);
+        const QString tag = QString::fromLatin1(cs.disc);
+        check(r.contains(QStringLiteral("athlete")) && r.value(QStringLiteral("athlete")).toString() == QLatin1String("Rae"),
+              (tag + ": report model carries athlete").toUtf8().constData());
+        check(!r.value(QStringLiteral("sessionId")).toString().isEmpty(),
+              (tag + ": report model carries session id").toUtf8().constData());
+        check(r.value(QStringLiteral("visibilityLabel")).toString().length() > 0,
+              (tag + ": report model carries visibility label").toUtf8().constData());
+        const QVariantList blocks = r.value(QStringLiteral("blocks")).toList();
+        check(blocks.size() == r.value(QStringLiteral("completedBlocks")).toInt() && blocks.size() > 0,
+              (tag + ": report blocks match completed count").toUtf8().constData());
+        // every block entry has a note (we saved one) + a plot + measured fields
+        bool blocksOk = true;
+        for (const QVariant& bv : blocks) {
+            const QVariantMap bm = bv.toMap();
+            if (bm.value(QStringLiteral("note")).toString().isEmpty()) blocksOk = false;
+            if (bm.value(QStringLiteral("plot")).toList().isEmpty()) blocksOk = false;
+            if (!bm.contains(QStringLiteral("averageScore"))) blocksOk = false;
+        }
+        check(blocksOk, (tag + ": each block entry has note + plot + metrics").toUtf8().constData());
+        // no official-competition wording anywhere in the observations
+        bool cleanWording = true;
+        const QStringList obs = r.value(QStringLiteral("observations")).toStringList();
+        for (const QString& s : obs)
+            if (s.contains(QStringLiteral("match"), Qt::CaseInsensitive)
+                || s.contains(QStringLiteral("official"), Qt::CaseInsensitive)
+                || s.contains(QStringLiteral("rank"), Qt::CaseInsensitive)) cleanWording = false;
+        check(cleanWording, (tag + ": no competition/ranking wording in observations").toUtf8().constData());
+    }
+    // notes absent → block note empty, model still complete
+    {
+        QVariantMap r; runReportSession("AR10", 2, 3, /*withNote*/false, false, &r);
+        const QVariantList blocks = r.value(QStringLiteral("blocks")).toList();
+        check(blocks.size() == 2 && blocks[0].toMap().value(QStringLiteral("note")).toString().isEmpty(),
+              "pdf: notes-absent session yields empty block notes, model intact");
+    }
+    // early-ended → flagged, only completed blocks reported
+    {
+        QVariantMap r; runReportSession("AR10", 3, 3, false, /*earlyEnd*/true, &r);
+        check(r.value(QStringLiteral("endedEarly")).toBool(), "pdf: early-ended flagged in model");
+        check(r.value(QStringLiteral("blocks")).toList().size() == 1,
+              "pdf: early-ended reports only the completed block");
+    }
+}
+
 int main(int argc, char** argv)
 {
     QCoreApplication app(argc, argv);
@@ -1257,6 +1336,7 @@ int main(int argc, char** argv)
     testShotCounter();
     testReportModel();
     testCleanClose();
+    testPdfModel();
     std::printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
     std::fflush(stdout);
     return g_failures == 0 ? 0 : 1;
