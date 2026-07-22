@@ -617,7 +617,7 @@ Item {
                             // F11: this button is the target CONNECTION toggle, not the
                             // operating-mode switch (that is the OPERATING MODE control
                             // below). Label reflects connection state only.
-                            text: mod_connected ? "Connected" : "Not connected"
+                            text: mod_connected ? "Connected" : (appMode ? "Not connected" : "Demo \u00b7 not needed")
                             color: mod_connected ? _green : _txtMut
                             font.family: theme.fontFamily; font.pixelSize: 11; font.bold: true
                             anchors.verticalCenter: parent.verticalCenter
@@ -980,8 +980,12 @@ Item {
                             // started once). NEVER a qualification/Final session.
                             if (trainingConfirmed) {
                                 if (!TRAINING.startTraining(username_loginPage)) {
+                                    // T1.1: specific, actionable reason from the
+                                    // controller (lastStartError is a real property).
                                     dialogManager.showError(qsTr("Cannot start training"),
-                                                            TRAINING.lastError)
+                                        TRAINING.lastStartError !== ""
+                                            ? TRAINING.lastStartError
+                                            : qsTr("The training session could not be started."))
                                     return
                                 }
                                 shootingPage.enterTrainingMode()
@@ -1346,7 +1350,7 @@ Item {
                     Rectangle {
                         readonly property bool selected: gameEvent >= 0 && gameEvent <= 3 && !trainingConfirmed
                         width: eventColumn.width
-                        height: selected ? 118 : 72
+                        height: selected ? 132 : 72
                         radius: 8
                         color: selected ? _redDark : _surfaceAlt
                         border.color: selected ? _red : _borderSub
@@ -1370,7 +1374,7 @@ Item {
                                     Text { text: "OPEN PRACTICE"
                                            color: _txt; font.family: theme.fontFamily
                                            font.pixelSize: 13; font.bold: true }
-                                    Text { text: "Free shooting session. Configure shot count and score display."
+                                    Text { text: "A flexible shooting session. Choose a shot plan below.\nPlans come from the discipline's event definitions."
                                            color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 10 }
                                 }
                             }
@@ -1380,10 +1384,10 @@ Item {
                                 spacing: 6
                                 Repeater {
                                     model: (gameMode === 1 && gameRange === 50)
-                                           ? [ {e: 1, t: "20"}, {e: 3, t: "40"}, {e: 5, t: "Free"} ]
-                                           : [ {e: 0, t: "10"}, {e: 1, t: "20"}, {e: 2, t: "30"}, {e: 3, t: "40"}, {e: 5, t: "Free"} ]
+                                           ? [ {e: 1, t: "20"}, {e: 3, t: "40"}, {e: 5, t: "No limit"} ]
+                                           : [ {e: 0, t: "10"}, {e: 1, t: "20"}, {e: 2, t: "30"}, {e: 3, t: "40"}, {e: 5, t: "No limit"} ]
                                     delegate: Rectangle {
-                                        width: 52; height: 30; radius: 6
+                                        width: 72; height: 44; radius: 6
                                         color: gameEvent === modelData.e ? _red : _input
                                         border.color: gameEvent === modelData.e ? _red : _borderSub
                                         Text { anchors.centerIn: parent
@@ -1435,16 +1439,10 @@ Item {
                         MouseArea { anchors.fill: parent; onClicked: practiceView = 1 }
                     }
                     Item { width: 1; height: 8 }
-                    // ── FREE PRACTICE ──────────────────────────────────────────
-                    Text {
-                        visible: !hideFreePractice
-                        text: "FREE PRACTICE"
-                        color: _txtMut; font.family: theme.fontFamily
-                        font.pixelSize: 9; font.bold: true; font.letterSpacing: 2
-                        topPadding: 14; bottomPadding: 8
-                    }
-                    EventCard { eventIndex: 5; visible: !hideFreePractice }
-                    Item { width: 1; height: 8 }
+                    // T1.1: the separate FREE PRACTICE section is gone — one
+                    // practice concept only. Unlimited practice (gameEvent 5)
+                    // lives inside the Open Practice card as the "No limit"
+                    // option; nothing else changed on the practice path.
                 }
             }
             // ── TRAINING LAB catalogue (practiceView 1) ──────────────────────
@@ -1467,8 +1465,25 @@ Item {
                                     onClicked: practiceView = 0 }
                         bottomPadding: 6
                     }
-                    Text { text: "TRAINING LAB"; color: _txt
-                           font.family: theme.fontFamily; font.pixelSize: 18; font.bold: true }
+                    Row {
+                        spacing: 10
+                        Text { text: "TRAINING LAB"; color: _txt
+                               font.family: theme.fontFamily; font.pixelSize: 18; font.bold: true
+                               anchors.verticalCenter: parent.verticalCenter }
+                        // T1.1: in-app help — no GitHub docs needed to understand it.
+                        Rectangle {
+                            width: 88; height: 30; radius: 15
+                            color: _input; border.color: _borderSub; border.width: 1
+                            anchors.verticalCenter: parent.verticalCenter
+                            Text { anchors.centerIn: parent; text: "ⓘ  Help"
+                                   color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 11 }
+                            MouseArea {
+                                anchors.fill: parent
+                                onClicked: dialogManager.showInformation(qsTr("Training Lab"),
+                                    qsTr("TECHNICAL BLOCKS\nShoot several short groups while concentrating on one technical part of your process. After each block, TechAim reveals the measured group and lets you record a note before continuing.\n\nVISIBILITY MODES\nFull hidden — nothing shown until review. Group only — positions without numbers. Impact only — impacts without scores.\n\nTHREE POSITIONS\nKneeling, Prone and Standing stay separate: K1 → K2 → P1 → P2 → S1 → S2.\n\nTraining results are for development only — never an official competition result. In Demo mode no physical target is required."))
+                            }
+                        }
+                    }
                     Text { text: "Structured technical practice and athlete feedback."
                            color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 11 }
                     Text { text: getDisciplineName(); color: _red
@@ -1496,7 +1511,7 @@ Item {
                                            color: _green; font.pixelSize: 9; font.bold: true }
                                 }
                             }
-                            Text { text: "Train repeatability through structured blocks.\nControl score and impact visibility."
+                            Text { text: "Shoot several short groups while concentrating on one technical part of your process.\nAfter each block, TechAim reveals the measured group and lets you record a note."
                                    color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 10 }
                             Text { text: (gameMode === 1 && gameRange === 50 && gameSubMode === 1)
                                          ? "Default: 36 shots · Kneeling → Prone → Standing · Configurable"
@@ -1578,6 +1593,26 @@ Item {
                     }
                     Text { text: "TECHNICAL BLOCKS SETUP"; color: _txt
                            font.family: theme.fontFamily; font.pixelSize: 17; font.bold: true }
+                    Text {
+                        width: parent.width; wrapMode: Text.WordWrap
+                        color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 11
+                        text: trainingDisciplineId() === "3P50"
+                              ? "The programme keeps Kneeling, Prone and Standing separate. Each position gets its own blocks, measurements, notes and comparison \u2014 results are never combined into one generic 3P analysis."
+                              : "You shoot each block while focusing on one selected area. The block then stops and opens a measured review; after adding a note you continue to the next block. Hidden modes reveal scores and impacts only at the review."
+                    }
+                    Text {
+                        visible: trainingDisciplineId() === "3P50"
+                        width: parent.width; wrapMode: Text.WordWrap
+                        color: _green; font.family: "Consolas"; font.pixelSize: 12; font.bold: true
+                        text: {
+                            var bpp = Math.max(1, TRAINING.blockCount / 3)
+                            var seq = [], names = ["K", "P", "S"]
+                            for (var g = 0; g < 3; ++g)
+                                for (var i = 1; i <= bpp; ++i) seq.push(names[g] + i)
+                            return seq.join(" \u2192 ") + "   \u00b7   "
+                                   + (TRAINING.blockCount * TRAINING.shotsPerBlock) + " shots total"
+                        }
+                    }
                     Text { text: getDisciplineName() + "  ·  " + username_loginPage
                                  + "  ·  " + TRAINING.estimatedTime
                            color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 11 }
@@ -1591,7 +1626,7 @@ Item {
                                font.family: theme.fontFamily; font.pixelSize: 12
                                anchors.verticalCenter: parent.verticalCenter }
                         Rectangle {
-                            width: 34; height: 34; radius: 6; color: _input; border.color: _borderSub
+                            width: 52; height: 48; radius: 8; color: _input; border.color: _borderSub
                             Text { anchors.centerIn: parent; text: "−"; color: _txt; font.pixelSize: 16 }
                             MouseArea { anchors.fill: parent; onClicked: parent.parent.minus() }
                         }
@@ -1599,15 +1634,15 @@ Item {
                                font.family: "Consolas"; font.pixelSize: 16; font.bold: true
                                anchors.verticalCenter: parent.verticalCenter }
                         Rectangle {
-                            width: 34; height: 34; radius: 6; color: _input; border.color: _borderSub
+                            width: 52; height: 48; radius: 8; color: _input; border.color: _borderSub
                             Text { anchors.centerIn: parent; text: "+"; color: _txt; font.pixelSize: 16 }
                             MouseArea { anchors.fill: parent; onClicked: parent.parent.plus() }
                         }
                     }
 
                     Stepper {
-                        label: "Blocks"
-                        value: TRAINING.blockCount
+                        label: trainingDisciplineId() === "3P50" ? "Blocks per position" : "Blocks"
+                        value: trainingDisciplineId() === "3P50" ? TRAINING.blockCount / 3 : TRAINING.blockCount
                         onMinus: TRAINING.setBlockCount(TRAINING.blockCount
                                      - (trainingDisciplineId() === "3P50" ? 3 : 1))
                         onPlus:  TRAINING.setBlockCount(TRAINING.blockCount
@@ -1630,7 +1665,7 @@ Item {
                         Repeater {
                             model: TRAINING.focusOptionsForDiscipline()
                             delegate: Rectangle {
-                                width: focusT.implicitWidth + 22; height: 30; radius: 15
+                                width: focusT.implicitWidth + 30; height: 44; radius: 22
                                 color: TRAINING.technicalFocus === modelData ? _red : _input
                                 border.color: TRAINING.technicalFocus === modelData ? _red : _borderSub
                                 Text { id: focusT; anchors.centerIn: parent; text: modelData
@@ -1642,6 +1677,25 @@ Item {
                         }
                     }
 
+                    Text {
+                        width: parent.width; wrapMode: Text.WordWrap
+                        visible: TRAINING.technicalFocus !== ""
+                        color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 10
+                        text: {
+                            var d = {
+                              "Hold": "Focus on a calm, stable hold through the shot.",
+                              "Aim": "Focus on a clean, consistent sight picture.",
+                              "Trigger": "Focus on a smooth release without disturbing the aim.",
+                              "Follow-through": "Focus on keeping the process going after the shot breaks.",
+                              "Natural point of aim": "Focus on rebuilding alignment without forcing the sights onto the centre.",
+                              "Head position": "Focus on a consistent, relaxed head placement.",
+                              "Shoulder contact": "Focus on repeatable butt-plate contact and pressure.",
+                              "Balance": "Focus on quiet, centred balance through the shot.",
+                              "Rhythm": "Focus on an even shot cadence."
+                            }
+                            return d[TRAINING.technicalFocus] || ""
+                        }
+                    }
                     Text { text: "Visibility"; color: _txtSec
                            font.family: theme.fontFamily; font.pixelSize: 12; topPadding: 4 }
                     Column {
@@ -1649,22 +1703,29 @@ Item {
                         Repeater {
                             model: [ "Full hidden block", "Group only", "Impact visible, score hidden" ]
                             delegate: MouseArea {
-                                width: visRow.implicitWidth; height: 22
+                                width: eventScroll.availableWidth; height: 52
                                 onClicked: TRAINING.setVisibilityMode(index)
-                                Row {
-                                    id: visRow
-                                    spacing: 8; height: parent.height
-                                    Rectangle {
-                                        width: 15; height: 15; radius: 8
-                                        color: "transparent"; border.width: 2
-                                        border.color: TRAINING.visibilityMode === index ? _red : _borderStr
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        Rectangle { anchors.centerIn: parent; width: 7; height: 7; radius: 4
-                                                    color: _red; visible: TRAINING.visibilityMode === index }
+                                Rectangle {
+                                    anchors.fill: parent; radius: 8
+                                    color: TRAINING.visibilityMode === index ? _redDark : _input
+                                    border.color: TRAINING.visibilityMode === index ? _red : _borderSub
+                                    border.width: TRAINING.visibilityMode === index ? 2 : 1
+                                    Column {
+                                        anchors.left: parent.left; anchors.leftMargin: 14
+                                        anchors.verticalCenter: parent.verticalCenter; spacing: 2
+                                        Text { text: modelData; color: _txt
+                                               font.family: theme.fontFamily; font.pixelSize: 12; font.bold: true }
+                                        Text {
+                                            text: ["No score or impact is shown until block review.",
+                                                   "Shot positions form a group; numerical scores stay hidden.",
+                                                   "Shot positions are visible; scores stay hidden."][index]
+                                            color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 9
+                                        }
                                     }
-                                    Text { text: modelData; color: _txt
-                                           font.family: theme.fontFamily; font.pixelSize: 12
-                                           anchors.verticalCenter: parent.verticalCenter }
+                                    Text { visible: TRAINING.visibilityMode === index
+                                           anchors.right: parent.right; anchors.rightMargin: 14
+                                           anchors.verticalCenter: parent.verticalCenter
+                                           text: "\u2713"; color: _red; font.pixelSize: 16; font.bold: true }
                                 }
                             }
                         }
@@ -1683,14 +1744,14 @@ Item {
                     Row {
                         spacing: 10; topPadding: 6
                         Rectangle {
-                            width: 100; height: 42; radius: 8
+                            width: 110; height: 52; radius: 8
                             color: "transparent"; border.color: _borderStr; border.width: 1
                             Text { anchors.centerIn: parent; text: "Back"; color: _txtSec
                                    font.family: theme.fontFamily; font.pixelSize: 12 }
                             MouseArea { anchors.fill: parent; onClicked: practiceView = 1 }
                         }
                         Rectangle {
-                            width: 160; height: 42; radius: 8; color: _red
+                            width: 180; height: 52; radius: 8; color: _red
                             Text { anchors.centerIn: parent; text: "Confirm setup"; color: "white"
                                    font.family: theme.fontFamily; font.pixelSize: 13; font.bold: true }
                             MouseArea {

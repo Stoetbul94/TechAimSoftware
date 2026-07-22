@@ -79,9 +79,42 @@ QStringList TrainingProgramController::focusOptionsForDiscipline() const
 
 bool TrainingProgramController::startTraining(const QString& athlete)
 {
+    // T1.1: every refusal sets a specific, actionable, user-facing reason in
+    // m_lastStartError and logs a structured (non-private) diagnostic.
+    auto refuse = [this](const QString& userMsg, const char* code) {
+        m_lastStartError = userMsg;
+        m_lastError = userMsg;
+        qWarning().noquote()
+            << "TRAINING start refused —" << code
+            << "| mode" << m_operatingMode
+            << "| discipline" << disciplineId(m_cfg.discipline)
+            << "| cfg" << m_cfg.blockCount << "x" << m_cfg.shotsPerBlock
+            << "| storeActive" << (m_store && m_store->active());
+        emit startErrorChanged();
+        return false;
+    };
+    if (athlete.trimmed().isEmpty())
+        return refuse(QStringLiteral("No athlete has been selected.\n\n"
+                          "Enter or choose an athlete name, then start again."),
+                      "no-athlete");
+    if (m_cfg.discipline == Discipline::None)
+        return refuse(QStringLiteral("No programme has been configured.\n\n"
+                          "Open Training Lab, choose Technical Blocks and confirm the setup."),
+                      "no-programme");
     const QString err = m_cfg.validate();
-    if (!err.isEmpty()) { m_lastError = err; return false; }
-    if (m_store->active()) { m_lastError = QStringLiteral("A session is already active."); return false; }
+    if (!err.isEmpty())
+        return refuse(QStringLiteral("The Technical Blocks setup is not valid.\n\n%1").arg(err),
+                      "invalid-config");
+    // Stale session self-heal: this store belongs EXCLUSIVELY to Training, so
+    // an active session here can only be an earlier Training session that was
+    // left open (e.g. leaving via a legacy Home path). "Start training" states
+    // the operator's intent — close the stale session cleanly (its journal is
+    // preserved/archived) and start fresh, instead of failing cryptically.
+    if (m_store->active()) {
+        qInfo() << "TRAINING: closing stale open training session"
+                << st().sessionId.left(8) << "before starting a new one";
+        m_store->closeSession(CloseReason::Clean);
+    }
 
     SessionHeader header;
     header.sessionId = QUuid::createUuid().toString(QUuid::WithoutBraces);
@@ -98,7 +131,12 @@ bool TrainingProgramController::startTraining(const QString& athlete)
     header.config.officialShots = 0;     // NEVER an official competition record
 
     const ReliabilityResult r = m_store->beginSession(header);
-    if (!r.ok) { m_lastError = r.error.operatorMessage; return false; }
+    if (!r.ok)
+        return refuse(QStringLiteral("The training session journal could not be created.\n\n%1")
+                          .arg(r.error.operatorMessage),
+                      "journal-open-failed");
+    m_lastStartError.clear();
+    emit startErrorChanged();
 
     TrainingSessionStarted ev;
     ev.programId = QLatin1String(kProgramTechnicalBlocks);

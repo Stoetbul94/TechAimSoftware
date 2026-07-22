@@ -47,6 +47,9 @@ class TrainingProgramController : public QObject
     Q_PROPERTY(bool showImpacts READ showImpacts NOTIFY progressChanged)
     Q_PROPERTY(bool showScores READ showScores NOTIFY progressChanged)
     Q_PROPERTY(bool showGroup READ showGroup NOTIFY progressChanged)
+    // T1.1: user-facing reason the last start attempt failed ("" = none).
+    // Plain language, no internal enums — shown verbatim in the dialog.
+    Q_PROPERTY(QString lastStartError READ lastStartError NOTIFY startErrorChanged)
 
 public:
     explicit TrainingProgramController(QObject* parent = nullptr);
@@ -113,6 +116,7 @@ public:
     QString sessionId() const;
     QString sessionOperatingMode() const;
     QString lastError() const { return m_lastError; }
+    QString lastStartError() const { return m_lastStartError; }
     bool showImpacts() const;
     bool showScores() const;
     bool showGroup() const;
@@ -133,6 +137,7 @@ signals:
     void phaseChanged();
     void configChanged();
     void progressChanged();
+    void startErrorChanged();
     void shotAccepted(QVariantMap record);   // projection-safe (no score in hidden modes)
     void shotRejected(QString reason);
     void blockCompleted(int blockIndex);
@@ -152,6 +157,7 @@ private:
     qint64 m_lastExternalId = -1;
     qint64 m_blockStartMonoMs = 0;   // block-elapsed projection anchor
     QString m_lastError;
+    QString m_lastStartError;        // T1.1: user-facing start-failure reason
 };
 
 #endif // TA_TRAINING_PROGRAMCONTROLLER_H

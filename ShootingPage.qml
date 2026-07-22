@@ -572,6 +572,14 @@ Item {
         z: 10
 
         onHomeButtonClicked: {
+            // T1.1 root-cause fix: the legacy Home path used to leave a
+            // Training session OPEN, so the next Start training failed with
+            // "A session is already active". Close Training on ANY exit.
+            if (isTrainingMatch) {
+                TRAINING.resetTraining()
+                isTrainingMatch = false
+                trainingPendingMarkers = []
+            }
             loginPage.visible = true
             resetDataModels()
         }
