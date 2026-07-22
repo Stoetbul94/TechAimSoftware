@@ -585,6 +585,88 @@ static void testInPlaceResume()
     StoragePaths::setRootOverrideForTesting(QString());
 }
 
+// ── 6c. T1.1 start-failure matrix + Demo operator journey ────────────────
+static void testStartMatrixAndJourney()
+{
+    std::printf("--- start-failure matrix + demo journey ---\n");
+    // Distinct, user-facing reasons (never internal enums, never generic).
+    {
+        TrainingProgramController c;
+        MemFile f; ManualClock clk;
+        c.storeForTesting()->setClockForTesting(&clk);
+        c.storeForTesting()->setJournalFileForTesting(&f);
+        c.setOperatingMode(1);
+        check(!c.startTraining(QString()), "matrix: empty athlete refused");
+        check(c.lastStartError().contains(QLatin1String("athlete")),
+              "matrix: athlete reason is specific");
+        check(!c.startTraining(QStringLiteral("A")), "matrix: no programme refused");
+        check(c.lastStartError().contains(QLatin1String("programme")),
+              "matrix: programme reason is specific");
+        c.configureDefaults(QStringLiteral("AR10"));
+        c.setBlockCount(0);
+        check(!c.startTraining(QStringLiteral("A")), "matrix: invalid blocks refused");
+        check(c.lastStartError().contains(QLatin1String("Blocks")),
+              "matrix: block-count reason is specific");
+        c.setBlockCount(5); c.setShotsPerBlock(2);
+        check(!c.startTraining(QStringLiteral("A")), "matrix: invalid shots refused");
+        check(c.lastStartError().contains(QLatin1String("Shots per block")),
+              "matrix: shots reason is specific");
+        c.setShotsPerBlock(6);
+        c.setTechnicalFocus(QStringLiteral("Trigger"));
+        // Demo with NO physical connection: must succeed (no COM gate exists).
+        check(c.startTraining(QStringLiteral("Philemon")),
+              "matrix: Demo start succeeds with no physical connection");
+        check(c.lastStartError().isEmpty(), "matrix: success clears the error");
+        // Stale-session self-heal — the reported defect: an open session left
+        // behind by a legacy exit no longer blocks Start; it is closed cleanly
+        // and a NEW session begins with a new id.
+        const QString sid1 = c.sessionId();
+        check(c.startTraining(QStringLiteral("Philemon")),
+              "matrix: start over a stale open session self-heals");
+        check(c.sessionId() != sid1 && !c.sessionId().isEmpty(),
+              "matrix: self-heal produced a NEW session id");
+        c.resetTraining();
+    }
+    // Reported screenshot path, end to end: PRONE50, NPA focus, Mode C,
+    // Demo, no connection — 2x3 journey through summary/new-session reset.
+    {
+        TrainingProgramController c;
+        MemFile f; ManualClock clk;
+        c.storeForTesting()->setClockForTesting(&clk);
+        c.storeForTesting()->setJournalFileForTesting(&f);
+        c.setOperatingMode(1);
+        c.configureDefaults(QStringLiteral("PRONE50"));
+        c.setTechnicalFocus(QStringLiteral("Natural point of aim"));
+        c.setVisibilityMode(2);                       // Impact only
+        c.setBlockCount(2); c.setShotsPerBlock(3);    // shortened valid setup
+        check(c.validateConfig().isEmpty(), "journey: shortened setup valid");
+        check(c.startTraining(QStringLiteral("Philemon")),
+              "journey: PRONE50 Demo start succeeds (screenshot path)");
+        check(fire(c, clk, 3) == 3, "journey: three simulated shots accepted");
+        check(c.phase() == 3, "journey: review opens at block limit");
+        check(c.saveNote(QStringLiteral("ok")), "journey: note saved");
+        check(c.continueToNextBlock() && c.currentBlock() == 2,
+              "journey: continue starts block 2");
+        fire(c, clk, 3);
+        check(c.continueToNextBlock() && c.phase() == 4,
+              "journey: final summary after last block");
+        const QString oldSid = c.sessionId();
+        c.resetTraining();                            // Home / New Session path
+        check(!c.active(), "journey: home closes the session durably");
+        check(countType(f.data, "TrainingCompleted") == 1,
+              "journey: journal intact after home (1 completion)");
+        // New Session: fresh id, zero state
+        c.configureDefaults(QStringLiteral("PRONE50"));
+        c.setTechnicalFocus(QStringLiteral("Trigger"));
+        c.setBlockCount(2); c.setShotsPerBlock(3);
+        MemFile f2; c.storeForTesting()->setJournalFileForTesting(&f2);
+        check(c.startTraining(QStringLiteral("Philemon"))
+                  && c.sessionId() != oldSid && c.shotsInBlock() == 0,
+              "journey: new session starts fresh with new id, zero shots");
+        c.resetTraining();
+    }
+}
+
 // ── 7. separation ────────────────────────────────────────────────────────
 static void testSeparation()
 {
@@ -623,6 +705,7 @@ int main(int argc, char** argv)
     testAnalytics();
     testRecovery();
     testInPlaceResume();
+    testStartMatrixAndJourney();
     testSeparation();
     std::printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
     std::fflush(stdout);
