@@ -71,8 +71,16 @@ public:
                                   int shotSource);
     Q_INVOKABLE bool saveNote(const QString& note);      // one per block review
     Q_INVOKABLE bool continueToNextBlock();              // explicit action
+    // End from Block Review before the configured final block: appends ONE
+    // TrainingCompleted carrying the TRUE completed-block count (never
+    // fabricates uncompleted blocks) and moves to the summary. Completed
+    // blocks stay intact; endedEarly() distinguishes the partial session.
+    Q_INVOKABLE bool endTrainingEarly();
+    Q_INVOKABLE bool endedEarly() const;
     Q_INVOKABLE void closeTrainingSession();             // durable clean close
     Q_INVOKABLE void resetTraining();                    // clear projections
+    // Elapsed seconds since the current block started (0 when none).
+    Q_INVOKABLE int blockElapsedSec() const;
 
     // F10 gate: running operating mode (0=Live, 1=Demo, -1 unset/permissive).
     Q_INVOKABLE void setOperatingMode(int mode) { m_operatingMode = mode; }
@@ -128,6 +136,7 @@ private:
     int m_currentBlock = 0;          // 1-based
     int m_operatingMode = -1;        // -1 unset/permissive (harness); runtime sets
     qint64 m_lastExternalId = -1;
+    qint64 m_blockStartMonoMs = 0;   // block-elapsed projection anchor
     QString m_lastError;
 };
 

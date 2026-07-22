@@ -117,6 +117,7 @@ bool TrainingProgramController::startTraining(const QString& athlete)
 
     m_currentBlock = 1;
     m_lastExternalId = -1;
+    m_blockStartMonoMs = m_store->nowMonotonicMs();
     m_phase = 2;                          // BlockActive
     emit phaseChanged(); emit progressChanged();
     return true;
@@ -235,9 +236,43 @@ bool TrainingProgramController::continueToNextBlock()
     b.position = static_cast<qint8>(m_cfg.positionForBlock(m_currentBlock + 1));
     if (!submit(DomainEvent(b))) return false;
     ++m_currentBlock;
+    m_blockStartMonoMs = m_store->nowMonotonicMs();
     m_phase = 2;
     emit phaseChanged(); emit progressChanged();
     return true;
+}
+
+bool TrainingProgramController::endTrainingEarly()
+{
+    if (m_phase != 3) { m_lastError = QStringLiteral("End training from the block review."); return false; }
+    // Count the blocks that ACTUALLY completed — never fabricate the rest.
+    int completed = 0;
+    for (const TrainingBlockData& b : st().trainingBlocks)
+        if (b.completed) ++completed;
+    TrainingCompleted ev;
+    ev.completedBlocks = static_cast<qint16>(completed);
+    if (!submit(DomainEvent(ev))) return false;
+    m_phase = 4;
+    emit trainingCompleted();
+    emit phaseChanged(); emit progressChanged();
+    return true;
+}
+
+bool TrainingProgramController::endedEarly() const
+{
+    if (!m_store || !st().trainingCompleted) return false;
+    int completed = 0;
+    for (const TrainingBlockData& b : st().trainingBlocks)
+        if (b.completed) ++completed;
+    return completed < st().trainingBlockCount;
+}
+
+int TrainingProgramController::blockElapsedSec() const
+{
+    if (m_phase != 2 && m_phase != 3) return 0;
+    const qint64 now = m_store ? m_store->nowMonotonicMs() : 0;
+    return now > m_blockStartMonoMs
+        ? static_cast<int>((now - m_blockStartMonoMs) / 1000) : 0;
 }
 
 void TrainingProgramController::closeTrainingSession()

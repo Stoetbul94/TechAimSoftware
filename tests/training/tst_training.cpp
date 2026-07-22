@@ -318,6 +318,35 @@ static void testLifecycle()
     c.resetTraining();
 }
 
+// ── 4b. early end (T1 part 2) ────────────────────────────────────────────
+static void testEarlyEnd()
+{
+    std::printf("--- early end ---\n");
+    TrainingProgramController c;
+    MemFile f; ManualClock clk;
+    prepare(c, f, clk, "AR10", 1);
+    c.setBlockCount(3); c.setShotsPerBlock(3);
+    c.startTraining(QStringLiteral("A"));
+    check(!c.endTrainingEarly(), "early end refused while block active");
+    fire(c, clk, 3);                              // block 1 -> review
+    check(c.blockElapsedSec() > 0, "block elapsed time projection > 0");
+    check(c.endTrainingEarly(), "early end accepted from block review");
+    check(c.phase() == 4, "early end reaches summary phase");
+    check(c.endedEarly(), "endedEarly() true for a partial session");
+    // TrainingCompleted carries the TRUE completed count (1 of 3) — never
+    // fabricates the uncompleted blocks.
+    const ValidationReport rep = JournalValidator::validateBytes(f.data);
+    int completedBlocksField = -1;
+    for (const EventEnvelope& e : rep.validEnvelopes)
+        if (auto* tc = std::get_if<TrainingCompleted>(&e.payload))
+            completedBlocksField = tc->completedBlocks;
+    check(completedBlocksField == 1,
+          "TrainingCompleted records the true completed count (1 of 3)");
+    check(countType(f.data, "TrainingCompleted") == 1, "exactly one TrainingCompleted");
+    check(!c.registerShot(1, 1, 10.0, 700, 0.0, 1), "ended session rejects shots");
+    c.resetTraining();
+}
+
 // ── 5. analytics ─────────────────────────────────────────────────────────
 static void testAnalytics()
 {
@@ -461,6 +490,7 @@ int main(int argc, char** argv)
     testShotAcceptance();
     testVisibility();
     testLifecycle();
+    testEarlyEnd();
     testAnalytics();
     testRecovery();
     testSeparation();

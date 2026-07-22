@@ -81,6 +81,15 @@ Rectangle {
                 columns: 2; columnSpacing: 18; rowSpacing: 8
                 visible: root.current !== null
                 property var c: root.current
+                // T1: a Training session is labelled TRAINING SESSION — never
+                // "Match recovery" / "Final recovery" / an official event.
+                Text { visible: parent.c && parent.c.sessionKind === "Training"
+                       text: qsTr("Type"); color: "#9aa0aa"; font.pixelSize: 13 }
+                Text { visible: parent.c && parent.c.sessionKind === "Training"
+                       text: qsTr("TRAINING SESSION · Technical Blocks")
+                             + (parent.c && parent.c.trainingBlock > 0
+                                ? qsTr("  ·  Block %1").arg(parent.c.trainingBlock) : "")
+                       color: "#c9a06a"; font.pixelSize: 13; font.bold: true }
                 Text { text: qsTr("Discipline"); color: "#9aa0aa"; font.pixelSize: 13 }
                 Text { text: parent.c ? (parent.c.disciplineLabel || "") : ""
                        color: "white"; font.pixelSize: 13; font.bold: true }
@@ -190,8 +199,12 @@ Rectangle {
                         anchors.fill: parent
                         onClicked: {
                             if (root.resumable && root.current) {
+                                // T1: a Training session must never enter a
+                                // competition restorer — route it explicitly.
                                 root.resumeRequested(root.current.sessionId,
-                                                     root.current.disciplineId || "")
+                                    root.current.sessionKind === "Training"
+                                        ? "TRAINING"
+                                        : (root.current.disciplineId || ""))
                                 root.visible = false
                             }
                             // Recovery Wizard (non-resumable) is deferred; the

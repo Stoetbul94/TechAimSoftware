@@ -1,5 +1,5 @@
 import QtQuick 2.15
-import QtQuick.Controls 2.2
+import QtQuick.Controls 2.15
 import QtQuick.Dialogs
 import QtQuick.Window 2.2
 
@@ -9,6 +9,16 @@ Item {
     property int rootItemHeight: 724
 
     property bool demoMode: true
+    // Training Lab (T1): right-panel view state — 0 events, 1 catalogue,
+    // 2 Technical Blocks setup. trainingConfirmed = setup accepted, Start
+    // becomes "Start training →".
+    property int practiceView: 0
+    property bool trainingConfirmed: false
+    function trainingDisciplineId() {
+        if (gameMode === 0) return "AP10"
+        if (gameRange === 10) return "AR10"
+        return gameSubMode === 0 ? "PRONE50" : "3P50"
+    }
     property bool connectToMaster: false
     property alias username_loginPage: name_text_field.text
     property int gameMode: 0 // 0 -> pistol, 1 -> rifle
@@ -855,7 +865,7 @@ Item {
                 id: profileLabel
                 anchors.top: networkShareCard.bottom; anchors.topMargin: 16
                 anchors.left: parent.left; anchors.leftMargin: 22
-                text: "SELECTED PROFILE"
+                text: trainingConfirmed ? "SELECTED PROGRAMME" : "SELECTED PROFILE"
                 color: _txtMut; font.family: theme.fontFamily
                 font.pixelSize: 10; font.bold: true; font.letterSpacing: 2
             }
@@ -863,11 +873,18 @@ Item {
                 id: profileName
                 anchors.top: profileLabel.bottom; anchors.topMargin: 4
                 anchors.left: parent.left; anchors.leftMargin: 22
-                text: getDisciplineName() + " — ISSF"
+                text: trainingConfirmed ? "Technical Blocks" : getDisciplineName() + " — ISSF"
                 color: _txt; font.family: theme.fontFamily; font.pixelSize: 16; font.bold: true
             }
+            Text {
+                visible: trainingConfirmed && trainingDisciplineId() === "3P50"
+                anchors.top: profileName.bottom; anchors.topMargin: 2
+                anchors.left: parent.left; anchors.leftMargin: 22
+                text: "POSITION FLOW   Kneeling → Prone → Standing"
+                color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 9; font.letterSpacing: 1
+            }
 
-            // ── INFO TILES ────────────────────────────────────────────────────
+            // ── INFO TILES (T1: programme summary when Training confirmed) ────
             Grid {
                 id: infoTiles
                 anchors.top: profileName.bottom; anchors.topMargin: 12
@@ -875,7 +892,14 @@ Item {
                 anchors.right: parent.right; anchors.rightMargin: 22
                 columns: 3; spacing: 8
                 Repeater {
-                    model: [
+                    model: trainingConfirmed ? [
+                        { lbl: "BLOCKS",     val: "" + TRAINING.blockCount },
+                        { lbl: "SHOTS/BLOCK", val: "" + TRAINING.shotsPerBlock },
+                        { lbl: "TOTAL",      val: "" + (TRAINING.blockCount * TRAINING.shotsPerBlock) },
+                        { lbl: "FOCUS",      val: TRAINING.technicalFocus },
+                        { lbl: "VISIBILITY", val: ["Full hidden", "Group only", "Impact only"][TRAINING.visibilityMode] },
+                        { lbl: "EST. TIME",  val: TRAINING.estimatedTime }
+                    ] : [
                         { lbl: "SHOT PLAN", val: getGameEventText(gameEvent) === "Free Practice" ? "Free" : getGameEventText(gameEvent) + " shots" },
                         { lbl: "SCORING",   val: (gameMode === 0 || (gameMode === 1 && gameRange === 50 && gameSubMode === 1)) ? "Integer" : "Decimal" },
                         { lbl: "PREP",      val: "15 min" },
@@ -940,7 +964,7 @@ Item {
                     opacity: startMouse.visible ? 1.0 : 0.4
                     property bool _startHov: false
                     Text {
-                        text: "Start session  →"
+                        text: trainingConfirmed ? "Start training  →" : "Start session  →"
                         color: "white"; font.family: theme.fontFamily; font.pixelSize: 15; font.bold: true
                         anchors.centerIn: parent
                     }
@@ -950,6 +974,20 @@ Item {
                         onEntered: startSessionRect._startHov = true
                         onExited:  startSessionRect._startHov = false
                         onClicked: {
+                            // TRAINING LAB (T1): explicit Start training — new
+                            // Training session (kind=Training, technical_blocks,
+                            // mode/discipline/focus/visibility persisted, Block 1
+                            // started once). NEVER a qualification/Final session.
+                            if (trainingConfirmed) {
+                                if (!TRAINING.startTraining(username_loginPage)) {
+                                    dialogManager.showError(qsTr("Cannot start training"),
+                                                            TRAINING.lastError)
+                                    return
+                                }
+                                shootingPage.enterTrainingMode()
+                                rootItem.visible = false
+                                return
+                            }
                             if (!appMode) {
                                 MODREADER.appendToLogFile("Application running in demo mode")
                                 if (connectToMaster && !MODREADER.isMasterSystemConnected()) {
@@ -1169,6 +1207,7 @@ Item {
             // Scrollable event cards
             ScrollView {
                 id: eventScroll
+                visible: practiceView === 0
                 anchors.top: subDisciplineRow.bottom; anchors.topMargin: 12
                 anchors.left: parent.left;   anchors.leftMargin: 22
                 anchors.right: parent.right; anchors.rightMargin: 22
@@ -1291,24 +1330,110 @@ Item {
                     EventCard { eventIndex: 7; visible: gameRange === 10 }
                     Item { width: 1; height: 2; visible: gameRange === 10 }
 
-                    // ── TRAINING SESSIONS ──────────────────────────────────────
+                    // ── PRACTICE & DEVELOPMENT (T1) ────────────────────────────
+                    // Replaces the four fixed 10/20/30/40 rows. Open Practice
+                    // preserves the SAME practice events (gameEvent 0-3) as
+                    // compact presets; Training Lab opens the programme
+                    // catalogue in this panel.
                     Text {
-                        text: "TRAINING SESSIONS"
+                        text: "PRACTICE & DEVELOPMENT"
                         color: _txtMut; font.family: theme.fontFamily
                         font.pixelSize: 9; font.bold: true; font.letterSpacing: 2
                         topPadding: 14; bottomPadding: 8
                     }
-                    // 10 shots: 10m disciplines only
-                    EventCard { eventIndex: 0; visible: !(gameMode === 1 && gameRange === 50) }
-                    Item { width: 1; height: 8; visible: !(gameMode === 1 && gameRange === 50) }
-                    // 20 shots: all disciplines
-                    EventCard { eventIndex: 1 }
+                    // OPEN PRACTICE — one card; presets select the existing
+                    // practice events (identical behaviour to the old rows).
+                    Rectangle {
+                        readonly property bool selected: gameEvent >= 0 && gameEvent <= 3 && !trainingConfirmed
+                        width: eventColumn.width
+                        height: selected ? 118 : 72
+                        radius: 8
+                        color: selected ? _redDark : _surfaceAlt
+                        border.color: selected ? _red : _borderSub
+                        border.width: selected ? 2 : 1
+                        Column {
+                            anchors.left: parent.left; anchors.leftMargin: 12
+                            anchors.right: parent.right; anchors.rightMargin: 12
+                            anchors.top: parent.top; anchors.topMargin: 12
+                            spacing: 8
+                            Row {
+                                spacing: 12
+                                Rectangle {
+                                    width: 38; height: 38; radius: 19
+                                    color: parent.parent.parent.selected ? _red : _borderStr
+                                    Text { text: "OP"; color: "white"; font.family: "Consolas"
+                                           font.pixelSize: 12; font.bold: true; anchors.centerIn: parent }
+                                }
+                                Column {
+                                    spacing: 3
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    Text { text: "OPEN PRACTICE"
+                                           color: _txt; font.family: theme.fontFamily
+                                           font.pixelSize: 13; font.bold: true }
+                                    Text { text: "Free shooting session. Configure shot count and score display."
+                                           color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 10 }
+                                }
+                            }
+                            // Compact presets (existing gameEvents; 10/30 stay 10m-only)
+                            Row {
+                                visible: parent.parent.selected
+                                spacing: 6
+                                Repeater {
+                                    model: (gameMode === 1 && gameRange === 50)
+                                           ? [ {e: 1, t: "20"}, {e: 3, t: "40"}, {e: 5, t: "Free"} ]
+                                           : [ {e: 0, t: "10"}, {e: 1, t: "20"}, {e: 2, t: "30"}, {e: 3, t: "40"}, {e: 5, t: "Free"} ]
+                                    delegate: Rectangle {
+                                        width: 52; height: 30; radius: 6
+                                        color: gameEvent === modelData.e ? _red : _input
+                                        border.color: gameEvent === modelData.e ? _red : _borderSub
+                                        Text { anchors.centerIn: parent
+                                               text: modelData.t
+                                               color: gameEvent === modelData.e ? "white" : _txtSec
+                                               font.family: "Consolas"; font.pixelSize: 12; font.bold: true }
+                                        MouseArea { anchors.fill: parent; onClicked: gameEvent = modelData.e }
+                                    }
+                                }
+                            }
+                        }
+                        MouseArea {
+                            anchors.fill: parent
+                            enabled: !parent.selected
+                            onClicked: { trainingConfirmed = false; gameEvent = 1 }
+                        }
+                    }
                     Item { width: 1; height: 8 }
-                    // 30 shots: 10m disciplines only
-                    EventCard { eventIndex: 2; visible: !(gameMode === 1 && gameRange === 50) }
-                    Item { width: 1; height: 8; visible: !(gameMode === 1 && gameRange === 50) }
-                    // 40 shots: all disciplines
-                    EventCard { eventIndex: 3 }
+                    // TRAINING LAB — gateway to the programme catalogue.
+                    Rectangle {
+                        width: eventColumn.width; height: 72; radius: 8
+                        color: _surfaceAlt
+                        border.color: trainingConfirmed ? _red : _borderSub
+                        border.width: trainingConfirmed ? 2 : 1
+                        Row {
+                            anchors.left: parent.left; anchors.leftMargin: 12
+                            anchors.right: parent.right; anchors.rightMargin: 12
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 12
+                            Rectangle {
+                                width: 38; height: 38; radius: 19
+                                color: trainingConfirmed ? _red : _borderStr
+                                anchors.verticalCenter: parent.verticalCenter
+                                Text { text: "TL"; color: "white"; font.family: "Consolas"
+                                       font.pixelSize: 12; font.bold: true; anchors.centerIn: parent }
+                            }
+                            Column {
+                                anchors.verticalCenter: parent.verticalCenter; spacing: 3
+                                width: parent.width - 38 - 30 - 24
+                                Text { text: "TRAINING LAB"
+                                       color: _txt; font.family: theme.fontFamily
+                                       font.pixelSize: 13; font.bold: true }
+                                Text { text: "Structured technical practice and athlete feedback.\nTechnical Blocks · Shot calling · Group analysis"
+                                       color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 10 }
+                            }
+                            Text { text: "→"; color: _red; font.pixelSize: 20; font.bold: true
+                                   anchors.verticalCenter: parent.verticalCenter }
+                        }
+                        MouseArea { anchors.fill: parent; onClicked: practiceView = 1 }
+                    }
                     Item { width: 1; height: 8 }
                     // ── FREE PRACTICE ──────────────────────────────────────────
                     Text {
@@ -1320,6 +1445,269 @@ Item {
                     }
                     EventCard { eventIndex: 5; visible: !hideFreePractice }
                     Item { width: 1; height: 8 }
+                }
+            }
+            // ── TRAINING LAB catalogue (practiceView 1) ──────────────────────
+            ScrollView {
+                visible: practiceView === 1
+                anchors.top: subDisciplineRow.bottom; anchors.topMargin: 12
+                anchors.left: parent.left;   anchors.leftMargin: 22
+                anchors.right: parent.right; anchors.rightMargin: 22
+                anchors.bottom: parent.bottom; anchors.bottomMargin: 18
+                clip: true
+                ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                Column {
+                    width: eventScroll.availableWidth
+                    spacing: 8
+
+                    Text {
+                        text: "← Back to events"
+                        color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 12
+                        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                    onClicked: practiceView = 0 }
+                        bottomPadding: 6
+                    }
+                    Text { text: "TRAINING LAB"; color: _txt
+                           font.family: theme.fontFamily; font.pixelSize: 18; font.bold: true }
+                    Text { text: "Structured technical practice and athlete feedback."
+                           color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 11 }
+                    Text { text: getDisciplineName(); color: _red
+                           font.family: theme.fontFamily; font.pixelSize: 13; font.bold: true
+                           bottomPadding: 6 }
+
+                    // AVAILABLE — Technical Blocks (clickable)
+                    Rectangle {
+                        width: parent.width; height: 96; radius: 8
+                        color: _surfaceAlt; border.color: _red; border.width: 1
+                        Column {
+                            anchors.left: parent.left; anchors.leftMargin: 14
+                            anchors.right: parent.right; anchors.rightMargin: 14
+                            anchors.verticalCenter: parent.verticalCenter; spacing: 3
+                            Row {
+                                spacing: 8
+                                Text { text: gameMode === 1 && gameRange === 50 && gameSubMode === 1
+                                             ? "TECHNICAL BLOCKS · BY POSITION" : "TECHNICAL BLOCKS"
+                                       color: _txt; font.family: theme.fontFamily; font.pixelSize: 14; font.bold: true }
+                                Rectangle {
+                                    width: 74; height: 18; radius: 9; color: "#0d2018"
+                                    border.color: _green; border.width: 1
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    Text { anchors.centerIn: parent; text: "AVAILABLE"
+                                           color: _green; font.pixelSize: 9; font.bold: true }
+                                }
+                            }
+                            Text { text: "Train repeatability through structured blocks.\nControl score and impact visibility."
+                                   color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 10 }
+                            Text { text: (gameMode === 1 && gameRange === 50 && gameSubMode === 1)
+                                         ? "Default: 36 shots · Kneeling → Prone → Standing · Configurable"
+                                         : "Default: 30 shots · Configurable"
+                                   color: _txtSec; font.family: "Consolas"; font.pixelSize: 10 }
+                        }
+                        MouseArea {
+                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                TRAINING.configureDefaults(trainingDisciplineId())
+                                practiceView = 2
+                            }
+                        }
+                    }
+
+                    // COMING NEXT / PLANNED — visibly disabled, non-interactive.
+                    component FutureCard: Rectangle {
+                        property string title: ""
+                        property string status: "COMING NEXT"
+                        width: parent.width; height: 54; radius: 8
+                        color: _input; border.color: _borderSub; border.width: 1
+                        opacity: 0.55
+                        Row {
+                            anchors.left: parent.left; anchors.leftMargin: 14
+                            anchors.verticalCenter: parent.verticalCenter; spacing: 10
+                            Text { text: title; color: _txtSec
+                                   font.family: theme.fontFamily; font.pixelSize: 13; font.bold: true
+                                   anchors.verticalCenter: parent.verticalCenter }
+                            Rectangle {
+                                width: statusT.implicitWidth + 16; height: 18; radius: 9
+                                color: "transparent"; border.color: _borderStr; border.width: 1
+                                anchors.verticalCenter: parent.verticalCenter
+                                Text { id: statusT; anchors.centerIn: parent; text: status
+                                       color: _txtMut; font.pixelSize: 9; font.bold: true }
+                            }
+                        }
+                        // no MouseArea: not clickable, no selector, no fake setup
+                    }
+                    FutureCard { title: (gameMode === 1 && gameRange === 50 && gameSubMode === 1)
+                                        ? "CALL & DIAGNOSE · BY POSITION" : "CALL & DIAGNOSE" }
+                    FutureCard { title: "POSITION TRANSITION"
+                                 visible: gameMode === 1 && gameRange === 50 && gameSubMode === 1 }
+                    FutureCard { title: "WIND MAP"; status: "PLANNED"
+                                 visible: gameMode === 1 && gameRange === 50 }
+
+                    Text { text: "INCLUDED INSIGHTS"; color: _txtMut
+                           font.family: theme.fontFamily; font.pixelSize: 9; font.bold: true
+                           font.letterSpacing: 2; topPadding: 10 }
+                    Text {
+                        text: {
+                            if (gameMode === 0) return "· Group Pattern Coach\n· Air Pistol technical checklist"
+                            if (gameRange === 10) return "· Group Pattern Coach\n· Air Rifle technical checklist"
+                            if (gameSubMode === 1) return "· Position-specific Group Pattern Coach\n· Kneeling checklist · Prone checklist · Standing checklist"
+                            return "· Group Pattern Coach\n· Prone technical checklist"
+                        }
+                        color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 11
+                    }
+                }
+            }
+
+            // ── TECHNICAL BLOCKS SETUP (practiceView 2) ──────────────────────
+            ScrollView {
+                visible: practiceView === 2
+                anchors.top: subDisciplineRow.bottom; anchors.topMargin: 12
+                anchors.left: parent.left;   anchors.leftMargin: 22
+                anchors.right: parent.right; anchors.rightMargin: 22
+                anchors.bottom: parent.bottom; anchors.bottomMargin: 18
+                clip: true
+                ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                Column {
+                    width: eventScroll.availableWidth
+                    spacing: 10
+
+                    Text {
+                        text: "← Back"
+                        color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 12
+                        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                    onClicked: practiceView = 1 }
+                    }
+                    Text { text: "TECHNICAL BLOCKS SETUP"; color: _txt
+                           font.family: theme.fontFamily; font.pixelSize: 17; font.bold: true }
+                    Text { text: getDisciplineName() + "  ·  " + username_loginPage
+                                 + "  ·  " + TRAINING.estimatedTime
+                           color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 11 }
+
+                    component Stepper: Row {
+                        property string label: ""
+                        property int value: 0
+                        signal minus(); signal plus()
+                        spacing: 10
+                        Text { text: label; color: _txtSec; width: 130
+                               font.family: theme.fontFamily; font.pixelSize: 12
+                               anchors.verticalCenter: parent.verticalCenter }
+                        Rectangle {
+                            width: 34; height: 34; radius: 6; color: _input; border.color: _borderSub
+                            Text { anchors.centerIn: parent; text: "−"; color: _txt; font.pixelSize: 16 }
+                            MouseArea { anchors.fill: parent; onClicked: parent.parent.minus() }
+                        }
+                        Text { text: value; color: _txt; width: 40; horizontalAlignment: Text.AlignHCenter
+                               font.family: "Consolas"; font.pixelSize: 16; font.bold: true
+                               anchors.verticalCenter: parent.verticalCenter }
+                        Rectangle {
+                            width: 34; height: 34; radius: 6; color: _input; border.color: _borderSub
+                            Text { anchors.centerIn: parent; text: "+"; color: _txt; font.pixelSize: 16 }
+                            MouseArea { anchors.fill: parent; onClicked: parent.parent.plus() }
+                        }
+                    }
+
+                    Stepper {
+                        label: "Blocks"
+                        value: TRAINING.blockCount
+                        onMinus: TRAINING.setBlockCount(TRAINING.blockCount
+                                     - (trainingDisciplineId() === "3P50" ? 3 : 1))
+                        onPlus:  TRAINING.setBlockCount(TRAINING.blockCount
+                                     + (trainingDisciplineId() === "3P50" ? 3 : 1))
+                    }
+                    Stepper {
+                        label: "Shots per block"
+                        value: TRAINING.shotsPerBlock
+                        onMinus: TRAINING.setShotsPerBlock(TRAINING.shotsPerBlock - 1)
+                        onPlus:  TRAINING.setShotsPerBlock(TRAINING.shotsPerBlock + 1)
+                    }
+                    Text { text: "Total: " + (TRAINING.blockCount * TRAINING.shotsPerBlock) + " shots"
+                                 + (trainingDisciplineId() === "3P50" ? "  ·  Kneeling → Prone → Standing" : "")
+                           color: _txtSec; font.family: "Consolas"; font.pixelSize: 11 }
+
+                    Text { text: "Technical focus"; color: _txtSec
+                           font.family: theme.fontFamily; font.pixelSize: 12; topPadding: 4 }
+                    Flow {
+                        width: parent.width; spacing: 6
+                        Repeater {
+                            model: TRAINING.focusOptionsForDiscipline()
+                            delegate: Rectangle {
+                                width: focusT.implicitWidth + 22; height: 30; radius: 15
+                                color: TRAINING.technicalFocus === modelData ? _red : _input
+                                border.color: TRAINING.technicalFocus === modelData ? _red : _borderSub
+                                Text { id: focusT; anchors.centerIn: parent; text: modelData
+                                       color: TRAINING.technicalFocus === modelData ? "white" : _txtSec
+                                       font.family: theme.fontFamily; font.pixelSize: 11 }
+                                MouseArea { anchors.fill: parent
+                                            onClicked: TRAINING.setTechnicalFocus(modelData) }
+                            }
+                        }
+                    }
+
+                    Text { text: "Visibility"; color: _txtSec
+                           font.family: theme.fontFamily; font.pixelSize: 12; topPadding: 4 }
+                    Column {
+                        spacing: 5
+                        Repeater {
+                            model: [ "Full hidden block", "Group only", "Impact visible, score hidden" ]
+                            delegate: MouseArea {
+                                width: visRow.implicitWidth; height: 22
+                                onClicked: TRAINING.setVisibilityMode(index)
+                                Row {
+                                    id: visRow
+                                    spacing: 8; height: parent.height
+                                    Rectangle {
+                                        width: 15; height: 15; radius: 8
+                                        color: "transparent"; border.width: 2
+                                        border.color: TRAINING.visibilityMode === index ? _red : _borderStr
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        Rectangle { anchors.centerIn: parent; width: 7; height: 7; radius: 4
+                                                    color: _red; visible: TRAINING.visibilityMode === index }
+                                    }
+                                    Text { text: modelData; color: _txt
+                                           font.family: theme.fontFamily; font.pixelSize: 12
+                                           anchors.verticalCenter: parent.verticalCenter }
+                                }
+                            }
+                        }
+                    }
+                    Text { text: "Optional shot calling — coming with Call & Diagnose"
+                           color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 10 }
+
+                    // Validation (controller-owned — no duplicate rules here).
+                    Text {
+                        id: setupError
+                        visible: text !== ""
+                        text: ""
+                        width: parent.width; wrapMode: Text.WordWrap
+                        color: "#ff9aa8"; font.family: theme.fontFamily; font.pixelSize: 11
+                    }
+                    Row {
+                        spacing: 10; topPadding: 6
+                        Rectangle {
+                            width: 100; height: 42; radius: 8
+                            color: "transparent"; border.color: _borderStr; border.width: 1
+                            Text { anchors.centerIn: parent; text: "Back"; color: _txtSec
+                                   font.family: theme.fontFamily; font.pixelSize: 12 }
+                            MouseArea { anchors.fill: parent; onClicked: practiceView = 1 }
+                        }
+                        Rectangle {
+                            width: 160; height: 42; radius: 8; color: _red
+                            Text { anchors.centerIn: parent; text: "Confirm setup"; color: "white"
+                                   font.family: theme.fontFamily; font.pixelSize: 13; font.bold: true }
+                            MouseArea {
+                                anchors.fill: parent
+                                onClicked: {
+                                    if (TRAINING.technicalFocus === "") {
+                                        setupError.text = "Select a technical focus."; return
+                                    }
+                                    var err = TRAINING.validateConfig()
+                                    if (err !== "") { setupError.text = err; return }
+                                    setupError.text = ""
+                                    trainingConfirmed = true
+                                    practiceView = 0        // back to events + summary
+                                }
+                            }
+                        }
+                    }
                 }
             }
         } // rightPanel

@@ -45,6 +45,10 @@ struct RecoveryCandidate {
     QString disciplineLabel;
     QString matchType;
     QString operatingMode;        // F10: mode the session STARTED in (empty = Unknown/Legacy)
+    QString sessionKind;          // T1: "Training" (empty = competition) — a Training
+                                  // session is offered ONLY as a Training resume
+    QString trainingProgramId;    // T1: e.g. "technical_blocks"
+    qint16  trainingBlock = 0;    // T1: current block at the crash (0 = none)
     QString startedAtIso;         // SessionStarted.createdAtIso
     QString lastEventWallIso;     // tw of the last valid line
     QString lastModifiedIso;      // file mtime

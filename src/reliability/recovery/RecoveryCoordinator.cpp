@@ -93,6 +93,9 @@ RecoveryCandidate RecoveryCoordinator::classifyFile(const QString& path)
         c.discipline = s.discipline;
         c.matchType = s.matchType;
         c.operatingMode = s.operatingMode;   // F10: recorded mode (empty = Unknown/Legacy)
+        c.sessionKind = s.sessionKind;       // T1: Training vs competition
+        c.trainingProgramId = s.trainingProgramId;
+        c.trainingBlock = s.trainingCurrentBlock;
         c.disciplineLabel = disciplineLabel(s.discipline, s.matchType);
         c.startedAtIso = s.createdAtIso;
         c.currentStageId = s.currentStageId;
@@ -194,6 +197,9 @@ QVariantList RecoveryCoordinator::scanForQml()
         m[QStringLiteral("disciplineLabel")] = c.disciplineLabel;
         m[QStringLiteral("matchType")] = c.matchType;
         m[QStringLiteral("operatingMode")] = c.operatingMode;   // F10 (empty = Unknown/Legacy)
+        m[QStringLiteral("sessionKind")] = c.sessionKind;       // T1: "Training" or ""
+        m[QStringLiteral("trainingProgramId")] = c.trainingProgramId;
+        m[QStringLiteral("trainingBlock")] = c.trainingBlock;
         m[QStringLiteral("startedAtIso")] = c.startedAtIso;
         m[QStringLiteral("lastEventWallIso")] = c.lastEventWallIso;
         m[QStringLiteral("lastModifiedIso")] = c.lastModifiedIso;

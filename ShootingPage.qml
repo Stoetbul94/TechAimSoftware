@@ -60,6 +60,16 @@ Item {
     // its own controller (FINALS10M). Fully separate from is3PMatch/isFinalsMatch
     // and from qualification. See docs/10m-finals-architecture.md.
     property bool isFinals10mMatch: false
+    // Training Lab (T1): Technical Blocks session (TRAINING controller owns all
+    // state; competition components are gated off while this is set).
+    property bool isTrainingMatch: false
+    property int trainingShotSeq: 0
+    property real trainingLastDirection: 0
+    property real trainingLastRadius: 0
+    // Hidden-mode display cache: polar display records buffered while the
+    // visibility mode hides impacts; revealed (appended to the face) at block
+    // review. Never rendered before reveal.
+    property var trainingPendingMarkers: []
     property real finals10mLastDirection: 0
     property real finals10mLastRadius: 0
     property int  finals10mShotSeq: 0
@@ -352,7 +362,7 @@ Item {
         Row {
             anchors.centerIn: parent
             spacing: 6
-            visible: !isFinals10mMatch
+            visible: !isFinals10mMatch && !isTrainingMatch
             Repeater {
                 model: is3PMatch ? [qsTr("SIGHT"), qsTr("KNEEL"), qsTr("PRONE"), qsTr("STAND")]
                                  : [qsTr("SIGHTING"), qsTr("MATCH")]
@@ -392,14 +402,14 @@ Item {
             // count would read 0 here (10m shots never populate it) and contradict
             // FINALS10M — so hide the legacy top counter for the Final.
             Text {
-                visible: !isFinals10mMatch
+                visible: !isFinals10mMatch && !isTrainingMatch
                 text: globalMatchModel.count + " / " + (matchShootCount > 0 ? matchShootCount : "—")
                 color: "white"; font.family: theme.fontFamily
                 font.pixelSize: 14; font.bold: true
                 anchors.verticalCenter: parent.verticalCenter
             }
             Text {
-                visible: !isFinals10mMatch
+                visible: !isFinals10mMatch && !isTrainingMatch
                 text: qsTr("SHOTS")
                 color: "#9a9ba0"; font.family: theme.fontFamily
                 font.pixelSize: 9; font.letterSpacing: 1.5
@@ -410,7 +420,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 // 3P FINAL: the HUD strip owns phase display; the qualification
                 // phase chip (SIGHTING/MATCH from sligterMode) would conflict.
-                visible: !isFinalsMatch && !isFinals10mMatch
+                visible: !isFinalsMatch && !isFinals10mMatch && !isTrainingMatch
                 color: matchFinished ? "#1d7a2f" : (sligterMode ? "#8a6d00" : "#e8003d")
                 Text {
                     id: phaseChipText
@@ -585,7 +595,7 @@ Item {
         // Final-specific Finals10mRightPanel occupies the same slot. Its width
         // is preserved (visible:false keeps the layout) so the target keeps its
         // size. Qualification/3P use this panel unchanged.
-        visible: !isFinals10mMatch
+        visible: !isFinals10mMatch && !isTrainingMatch
         onSwitchToSighter:
         {
             if(sighterEnable)
@@ -639,6 +649,18 @@ Item {
             // Duplicate key: the backend's cumulative detection counter
             // (MODREADER.getShootCount() at receipt) — strictly increasing
             // per firing window; a repeated value is a retransmission.
+            // TRAINING LAB (T1): one explicit session-owner decision — while a
+            // Training session is active the shot goes to TRAINING only (never
+            // also to qualification/finals). The controller applies the F10
+            // source gate + block cap; display happens via its accepted router.
+            if (isTrainingMatch) {
+                shootingPage.trainingLastDirection = xPosition
+                shootingPage.trainingLastRadius = yPosition
+                TRAINING.registerShot(centerPanel.lastShotXmm, centerPanel.lastShotYmm,
+                                      currentCalculatedScore, ++shootingPage.trainingShotSeq,
+                                      xPosition, centerPanel.lastShotSource)
+                return
+            }
             if (isFinalsMatch) {
                 shootingPage.finalsLastDirection = xPosition
                 shootingPage.finalsLastRadius = yPosition
@@ -950,6 +972,77 @@ Item {
             // panel. Keep the intent observable for the later report window.
             MODREADER.appendToLogFile("FINALS10M: report requested (F6 pending)")
         }
+    }
+
+    // ── TRAINING LAB (T1): durable-first display router ──────────────────
+    // The ONLY route that puts a Training shot on the face. The controller's
+    // shotAccepted record carries coordinates ONLY when the visibility mode
+    // shows impacts (Mode B/C); in Mode A the polar display data is buffered
+    // and revealed at block review. Numerical scores never render live.
+    Connections {
+        target: TRAINING
+        enabled: isTrainingMatch
+
+        function onShotAccepted(rec) {
+            var disp = {
+                direction: shootingPage.trainingLastDirection.toFixed(2),
+                score: shootingPage.trainingLastRadius.toFixed(2),
+                isSighter: false, position: 2
+            }
+            if (rec.xMm !== undefined) {
+                globalModelOfData.append(disp)          // Mode B/C: impact shown
+            } else {
+                var p = shootingPage.trainingPendingMarkers
+                p.push(disp)                             // Mode A: buffer, reveal at review
+                shootingPage.trainingPendingMarkers = p
+            }
+        }
+        function onBlockCompleted(blockIndex) {
+            // Reveal: append any hidden markers so the completed block target
+            // is inspectable in the review.
+            var p = shootingPage.trainingPendingMarkers
+            for (var i = 0; i < p.length; ++i) globalModelOfData.append(p[i])
+            shootingPage.trainingPendingMarkers = []
+        }
+        function onPhaseChanged() {
+            // New block active → clear the face for the fresh block.
+            if (TRAINING.phase === 2)
+                Qt.callLater(function() { globalModelOfData.clear() })
+        }
+    }
+
+    TrainingHud {
+        id: trainingHud
+        visible: isTrainingMatch
+        anchors.fill: parent
+        z: 60
+        ctl: TRAINING
+        onHomeRequested: shootingPage.homeFromTraining()
+        onNewSessionRequested: shootingPage.newTrainingSession()
+    }
+
+    // Enter/exit workflow (mirrors the finals pattern).
+    function enterTrainingMode() {
+        isTrainingMatch = true
+        trainingShotSeq = 0
+        trainingPendingMarkers = []
+        resetDataModels()
+        globalModelOfData.clear()
+    }
+    function homeFromTraining() {
+        TRAINING.resetTraining()             // durable clean close + projections
+        isTrainingMatch = false
+        trainingPendingMarkers = []
+        resetDataModels()
+        loginPage.visible = true
+    }
+    function newTrainingSession() {
+        TRAINING.resetTraining()             // closes + preserves prior journal
+        isTrainingMatch = false
+        trainingPendingMarkers = []
+        resetDataModels()
+        loginPage.visible = true
+        loginPage.practiceView = 2           // back to Technical Blocks setup
     }
 
     // ── B1/B2: qualification durable-shot projection router ──────────────
