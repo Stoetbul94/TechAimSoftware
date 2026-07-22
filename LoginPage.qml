@@ -1446,17 +1446,23 @@ Item {
                 }
             }
             // ── TRAINING LAB catalogue (practiceView 1) ──────────────────────
-            ScrollView {
+            Flickable {
+                id: catFlick
                 visible: practiceView === 1
                 anchors.top: subDisciplineRow.bottom; anchors.topMargin: 12
                 anchors.left: parent.left;   anchors.leftMargin: 22
                 anchors.right: parent.right; anchors.rightMargin: 22
                 anchors.bottom: parent.bottom; anchors.bottomMargin: 18
                 clip: true
-                ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                contentWidth: width
+                contentHeight: catCol.implicitHeight
+                boundsBehavior: Flickable.StopAtBounds
+                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
                 Column {
-                    width: eventScroll.availableWidth
+                    id: catCol
+                    width: catFlick.width
                     spacing: 8
+                    bottomPadding: 12
 
                     Text {
                         text: "← Back to events"
@@ -1573,17 +1579,28 @@ Item {
             }
 
             // ── TECHNICAL BLOCKS SETUP (practiceView 2) ──────────────────────
-            ScrollView {
+            // Flickable with an EXPLICIT contentHeight so the whole setup —
+            // including the Back / Confirm buttons at the end — is always
+            // reachable by touch drag / flick / wheel, regardless of window
+            // height. (Plain ScrollView mis-measured the externally-widthed
+            // Column and clipped the actions off the bottom.)
+            Flickable {
+                id: setupFlick
                 visible: practiceView === 2
                 anchors.top: subDisciplineRow.bottom; anchors.topMargin: 12
                 anchors.left: parent.left;   anchors.leftMargin: 22
                 anchors.right: parent.right; anchors.rightMargin: 22
                 anchors.bottom: parent.bottom; anchors.bottomMargin: 18
                 clip: true
-                ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                contentWidth: width
+                contentHeight: setupCol.implicitHeight
+                boundsBehavior: Flickable.StopAtBounds
+                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
                 Column {
-                    width: eventScroll.availableWidth
+                    id: setupCol
+                    width: setupFlick.width
                     spacing: 10
+                    bottomPadding: 12
 
                     Text {
                         text: "← Back"
