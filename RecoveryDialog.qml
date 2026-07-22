@@ -72,7 +72,10 @@ Rectangle {
             spacing: 12
 
             Text {
-                text: qsTr("Unfinished Match Found")
+                // T1.4: a Training session is never a "Match".
+                text: (root.current && root.current.sessionKind === "Training")
+                      ? qsTr("Unfinished Training Session")
+                      : qsTr("Unfinished Match Found")
                 color: "white"; font.pixelSize: 22; font.bold: true
             }
             Rectangle { width: parent.width; height: 1; color: "#333" }
@@ -192,8 +195,9 @@ Rectangle {
                     width: 160; height: 40; radius: 8
                     color: root.resumable ? "#e8003d" : "#3a3b44"
                     Text { anchors.centerIn: parent
-                           text: root.resumable ? qsTr("Resume Match")
-                                                : qsTr("Recovery Wizard")
+                           text: !root.resumable ? qsTr("Recovery Wizard")
+                                 : ((root.current && root.current.sessionKind === "Training")
+                                    ? qsTr("Resume Training") : qsTr("Resume Match"))
                            color: "white"; font.pixelSize: 14; font.bold: true }
                     MouseArea {
                         anchors.fill: parent

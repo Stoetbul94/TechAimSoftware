@@ -1047,6 +1047,197 @@ static void testSighterRecovery()
     StoragePaths::setRootOverrideForTesting(QString());
 }
 
+// ── 9. T1.4 shot-counter semantics (Shot 0..N, no off-by-one) ────────────
+static void testShotCounter()
+{
+    std::printf("--- T1.4 shot counter (shotsCompleted) ---\n");
+    TrainingProgramController c; MemFile f; ManualClock clk;
+    prepare(c, f, clk, "AR10", 1);
+    c.setBlockCount(1); c.setShotsPerBlock(4);
+    c.startTraining(QStringLiteral("A"));
+    c.registerShot(1, 1, 10.0, -1, 0, 1);          // a sighter (must NOT count)
+    check(c.startBlock(), "counter: block starts");
+    check(c.shotsInBlock() == 0, "counter: block begins at 0 (before any counted shot)");
+    fire(c, clk, 1);
+    check(c.shotsInBlock() == 1, "counter: first accepted counted shot -> 1");
+    fire(c, clk, 1);
+    check(c.shotsInBlock() == 2, "counter: intermediate -> 2 (no off-by-one, no sighter)");
+    fire(c, clk, 1);
+    check(c.shotsInBlock() == 3, "counter: -> 3");
+    fire(c, clk, 1);
+    check(c.shotsInBlock() == 4, "counter: final accepted -> 4 of 4");
+    check(c.phase() == 3, "counter: block completes at N");
+    c.resetTraining();
+
+    // recovery keeps the authoritative counted count (zero and partial).
+    const QString root = QDir::temp().filePath(
+        QStringLiteral("techaim_t14_counter_%1").arg(QCoreApplication::applicationPid()));
+    QDir(root).removeRecursively();
+    StoragePaths::setRootOverrideForTesting(root);
+    StoragePaths::initialize();
+    QString sZero, sPart;
+    {
+        TrainingProgramController a; a.configureDefaults(QStringLiteral("AR10"));
+        a.setTechnicalFocus(QStringLiteral("Aim")); a.setOperatingMode(1);
+        a.startTraining(QStringLiteral("Z")); sZero = a.sessionId();
+        a.startBlock();                                // BlockActive, zero counted
+    }
+    {
+        TrainingProgramController b; b.setOperatingMode(1);
+        check(b.resumeFromRecovery(sZero) && b.shotsInBlock() == 0,
+              "counter: recovery after Start Block (before Shot 1) restores 0 counted");
+        b.resetTraining();
+    }
+    {
+        TrainingProgramController a; a.configureDefaults(QStringLiteral("AR10"));
+        a.setTechnicalFocus(QStringLiteral("Aim")); a.setOperatingMode(1);
+        a.startTraining(QStringLiteral("P")); sPart = a.sessionId();
+        a.registerShot(9, 9, 9.0, 910000, 0, 1);       // sighter (excluded)
+        a.startBlock();
+        qint64 e = 910100;
+        a.registerShot(1, 1, 10.0, ++e, 0, 1);
+        a.registerShot(1, 2, 10.0, ++e, 0, 1);         // 2 counted, then crash
+    }
+    {
+        TrainingProgramController b; b.setOperatingMode(1);
+        check(b.resumeFromRecovery(sPart) && b.shotsInBlock() == 2,
+              "counter: recovery with partial block restores exactly 2 counted (no sighter)");
+        b.resetTraining();
+    }
+    StoragePaths::setRootOverrideForTesting(QString());
+}
+
+// ── 10. T1.4 report/coaching data model (measured only, correct direction) ─
+static void testReportModel()
+{
+    std::printf("--- T1.4 report model + observations ---\n");
+    TrainingProgramController c; MemFile f; ManualClock clk;
+    prepare(c, f, clk, "AR10", 1);
+    c.setBlockCount(2); c.setShotsPerBlock(3);
+    c.startTraining(QStringLiteral("A"));
+    c.startBlock();
+    // Block 1: tight group near centre, high scores.
+    clk.advance(4000); c.registerShot(0.0, 0.0, 10.5, 1001, 0, 1);
+    clk.advance(4000); c.registerShot(0.5, 0.0, 10.4, 1002, 0, 1);
+    clk.advance(4000); c.registerShot(0.0, 0.5, 10.4, 1003, 0, 1);
+    check(c.phase() == 3, "report: block 1 complete");
+    c.continueToNextBlock();
+    // Block 2: wider group, offset RIGHT and HIGH (+x,+y), lower scores.
+    clk.advance(4000); c.registerShot(9.0, 9.0, 8.0, 1004, 0, 1);
+    clk.advance(4000); c.registerShot(15.0, 9.0, 8.2, 1005, 0, 1);
+    clk.advance(4000); c.registerShot(9.0, 15.0, 8.1, 1006, 0, 1);
+    // block-2 delta vs block 1
+    const QVariantMap d = c.blockDelta(2);
+    check(d.value(QStringLiteral("hasPrev")).toBool(), "report: block 2 has a previous block");
+    check(d.value(QStringLiteral("diameterDeltaMm")).toDouble() > 0.0,
+          "report: block 2 group is larger than block 1 (positive diameter delta)");
+    check(d.value(QStringLiteral("averageScoreDelta")).toDouble() < 0.0,
+          "report: block 2 average score is lower (negative delta)");
+    // observations use CORRECT direction wording (+x right, +y high)
+    const QStringList obs = c.blockObservations(2);
+    bool rightHigh = false;
+    for (const QString& s : obs)
+        if (s.contains(QStringLiteral("right")) && s.contains(QStringLiteral("high"))) rightHigh = true;
+    check(rightHigh, "report: block-2 MPI observed as right AND high (+x,+y, Y not inverted)");
+    c.continueToNextBlock();                       // complete
+    check(c.phase() == 4, "report: session complete");
+    // full report model
+    const QVariantMap r = c.trainingReportModel();
+    check(r.value(QStringLiteral("countedShots")).toInt() == 6, "report: 6 counted shots");
+    check(r.value(QStringLiteral("completedBlocks")).toInt() == 2, "report: 2 completed blocks");
+    check(r.value(QStringLiteral("blocks")).toList().size() == 2, "report: 2 block entries");
+    check(!r.value(QStringLiteral("endedEarly")).toBool(), "report: not ended early");
+    const QStringList sobs = c.sessionObservations();
+    bool tightBest = false;
+    for (const QString& s : sobs)
+        if (s.contains(QStringLiteral("Block 1"))) tightBest = true;
+    check(tightBest, "report: session observations name Block 1 (best/tightest)");
+    // no diagnostic wording leaks into observations
+    bool clean = true;
+    const QStringList all = sobs + obs;
+    for (const QString& s : all)
+        if (s.contains(QStringLiteral("trigger"), Qt::CaseInsensitive)
+            || s.contains(QStringLiteral("error"), Qt::CaseInsensitive)
+            || s.contains(QStringLiteral("fault"), Qt::CaseInsensitive)) clean = false;
+    check(clean, "report: observations contain no diagnostic-cause wording");
+    c.resetTraining();
+}
+
+// ── 11. T1.4 clean close / stale-session defect ──────────────────────────
+static void testCleanClose()
+{
+    std::printf("--- T1.4 clean close + recovery scan ---\n");
+    const QString root = QDir::temp().filePath(
+        QStringLiteral("techaim_t14_close_%1").arg(QCoreApplication::applicationPid()));
+    QDir(root).removeRecursively();
+    StoragePaths::setRootOverrideForTesting(root);
+    StoragePaths::initialize();
+
+    auto candidate = [](const QString& sid, bool* resumable)->bool {
+        RecoveryCoordinator coord;
+        for (const RecoveryCandidate& c : coord.scan())
+            if (c.sessionId == sid) { if (resumable) *resumable = c.resumable; return true; }
+        return false;
+    };
+
+    // (a) completed session → closeCleanly → NOT a candidate (archived).
+    {
+        TrainingProgramController a; a.configureDefaults(QStringLiteral("AR10"));
+        a.setBlockCount(1); a.setShotsPerBlock(3);
+        a.setTechnicalFocus(QStringLiteral("Hold")); a.setOperatingMode(1);
+        a.startTraining(QStringLiteral("A")); const QString sid = a.sessionId();
+        a.startBlock();
+        qint64 e = 20000; for (int i = 0; i < 3; ++i) a.registerShot(1, 1, 10.0, ++e, 0, 1);
+        a.continueToNextBlock();                       // completed (phase 4)
+        check(a.phase() == 4, "close(a): session completed");
+        check(a.closeCleanly(), "close(a): completed session closes cleanly");
+        check(!candidate(sid, nullptr), "close(a): completed+closed leaves NO recovery candidate");
+    }
+    // (b) active block → Save and Close (closeCleanly) → NOT a candidate.
+    {
+        TrainingProgramController a; a.configureDefaults(QStringLiteral("AR10"));
+        a.setTechnicalFocus(QStringLiteral("Aim")); a.setOperatingMode(1);
+        a.startTraining(QStringLiteral("B")); const QString sid = a.sessionId();
+        a.startBlock();
+        qint64 e = 21000; a.registerShot(1, 1, 10.0, ++e, 0, 1);   // mid-block
+        check(a.closeCleanly(), "close(b): active block Save&Close succeeds");
+        check(!candidate(sid, nullptr), "close(b): Save&Close leaves NO candidate");
+    }
+    // (c) active block left OPEN (Keep for Recovery / hard kill) → candidate exists.
+    {
+        QString sid;
+        {
+            TrainingProgramController a; a.configureDefaults(QStringLiteral("AR10"));
+            a.setTechnicalFocus(QStringLiteral("Aim")); a.setOperatingMode(1);
+            a.startTraining(QStringLiteral("C")); sid = a.sessionId();
+            a.startBlock();
+            qint64 e = 22000; a.registerShot(1, 1, 10.0, ++e, 0, 1);
+        }                                              // destroyed WITHOUT close
+        bool resumable = false;
+        check(candidate(sid, &resumable) && resumable,
+              "close(c): unclosed active block IS a resumable recovery candidate");
+        RecoveryCoordinator coord; coord.scan(); coord.archiveOrDiscard(sid, true);  // tidy
+    }
+    // (d) completed but NOT closed (crash after complete) → classified complete,
+    //     auto-archived, never offered as "still active".
+    {
+        QString sid;
+        {
+            TrainingProgramController a; a.configureDefaults(QStringLiteral("AR10"));
+            a.setBlockCount(1); a.setShotsPerBlock(3);
+            a.setTechnicalFocus(QStringLiteral("Hold")); a.setOperatingMode(1);
+            a.startTraining(QStringLiteral("D")); sid = a.sessionId();
+            a.startBlock();
+            qint64 e = 23000; for (int i = 0; i < 3; ++i) a.registerShot(1, 1, 10.0, ++e, 0, 1);
+            a.continueToNextBlock();                   // completed, but NOT closed
+        }                                              // destroyed WITHOUT close
+        check(!candidate(sid, nullptr),
+              "close(d): completed-but-unclosed classified complete, not an active candidate");
+    }
+
+    StoragePaths::setRootOverrideForTesting(QString());
+}
+
 int main(int argc, char** argv)
 {
     QCoreApplication app(argc, argv);
@@ -1063,6 +1254,9 @@ int main(int argc, char** argv)
     testSeparation();
     testSighters();
     testSighterRecovery();
+    testShotCounter();
+    testReportModel();
+    testCleanClose();
     std::printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
     std::fflush(stdout);
     return g_failures == 0 ? 0 : 1;

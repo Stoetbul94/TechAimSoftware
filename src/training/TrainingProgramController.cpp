@@ -398,19 +398,36 @@ int TrainingProgramController::blockElapsedSec() const
 
 void TrainingProgramController::closeTrainingSession()
 {
-    if (m_store && m_store->active())
-        m_store->closeSession(CloseReason::Clean);
-    emit phaseChanged();
+    closeCleanly();
 }
 
-void TrainingProgramController::resetTraining()
+// T1.4 clean-close contract: durably close the Training session (SessionClosed
+// + CleanShutdown + archive out of Current, via SessionStore) AND clear the
+// controller projections. Returns false with lastError set when the durable
+// close fails — the caller must NOT navigate away (keep the journal recoverable
+// and offer Retry). Idempotent: closing when already inactive succeeds.
+bool TrainingProgramController::closeCleanly()
 {
-    if (m_store && m_store->active())
-        m_store->closeSession(CloseReason::Clean);
+    if (m_store && m_store->active()) {
+        const ReliabilityResult rr = m_store->closeSession(CloseReason::Clean);
+        if (!rr.ok) {
+            m_lastError = rr.error.operatorMessage.isEmpty()
+                ? QStringLiteral("The training session could not be closed safely.")
+                : rr.error.operatorMessage;
+            emit journalWriteFailed(rr.error.affectedPath, rr.error.technicalDetail);
+            return false;                       // stay put — recoverable, retriable
+        }
+    }
     m_phase = 0;
     m_currentBlock = 0;
     m_lastExternalId = -1;
     emit phaseChanged(); emit progressChanged();
+    return true;
+}
+
+void TrainingProgramController::resetTraining()
+{
+    closeCleanly();                             // best-effort; see closeCleanly()
 }
 
 // ── projections ──────────────────────────────────────────────────────────

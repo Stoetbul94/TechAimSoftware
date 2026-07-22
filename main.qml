@@ -480,6 +480,37 @@ ApplicationWindow {
             {
                 window.close()
                 Qt.quit()
+            } else if (shootingPage.isTrainingMatch) {
+                // T1.4: a Technical Blocks session is NOT a competition match —
+                // never the "Save Match?" path. A completed session closes
+                // cleanly; an in-progress one offers a durable Save & Close (no
+                // recovery candidate) or Keep for Recovery (left open on disk).
+                if (TRAINING.phase === 4) {
+                    if (TRAINING.closeCleanly()) { window.close(); Qt.quit() }
+                    else dialogManager.showError(qsTr("Training could not be closed safely"),
+                        qsTr("Your session is preserved and can be recovered. Please try again."))
+                } else {
+                    dialogManager.show({
+                        "type": "question",
+                        "title": qsTr("Close Training?"),
+                        "message": qsTr("Save and close this training session, or keep it so you can resume it next time?"),
+                        "buttons": [
+                            { "label": qsTr("Cancel"),            "result": "cancel", "accent": false },
+                            { "label": qsTr("Keep for Recovery"), "result": "keep",   "accent": false },
+                            { "label": qsTr("Save and Close"),    "result": "save",   "accent": true }
+                        ],
+                        "defaultResult": "save",
+                        "cancelResult": "cancel",
+                        "onResult": function (r) {
+                            if (r === "keep") { window.close(); Qt.quit() }   // leave journal open (recoverable)
+                            else if (r === "save") {
+                                if (TRAINING.closeCleanly()) { window.close(); Qt.quit() }
+                                else dialogManager.showError(qsTr("Training could not be closed safely"),
+                                    qsTr("Your session is preserved and can be recovered. Please try again."))
+                            }
+                        }
+                    })
+                }
             } else {
                 dialogManager.show({
                     "type": "question",

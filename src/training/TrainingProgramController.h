@@ -58,6 +58,8 @@ class TrainingProgramController : public QObject
     // T1.1: user-facing reason the last start attempt failed ("" = none).
     // Plain language, no internal enums — shown verbatim in the dialog.
     Q_PROPERTY(QString lastStartError READ lastStartError NOTIFY startErrorChanged)
+    // T1.4: user-facing reason the last operation (e.g. clean close) failed.
+    Q_PROPERTY(QString lastError READ lastError NOTIFY phaseChanged)
 
 public:
     explicit TrainingProgramController(QObject* parent = nullptr);
@@ -94,7 +96,11 @@ public:
     Q_INVOKABLE bool endTrainingEarly();
     Q_INVOKABLE bool endedEarly() const;
     Q_INVOKABLE void closeTrainingSession();             // durable clean close
-    Q_INVOKABLE void resetTraining();                    // clear projections
+    // T1.4: durable clean close + projection clear. Returns false (lastError set)
+    // when the durable close FAILS — the caller must keep the current screen and
+    // offer Retry rather than navigating Home and leaving a half-closed session.
+    Q_INVOKABLE bool closeCleanly();
+    Q_INVOKABLE void resetTraining();                    // clear projections (best-effort)
     // Elapsed seconds since the current block started (0 when none).
     Q_INVOKABLE int blockElapsedSec() const;
 

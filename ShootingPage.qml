@@ -578,13 +578,16 @@ Item {
         z: 10
 
         onHomeButtonClicked: {
-            // T1.1 root-cause fix: the legacy Home path used to leave a
-            // Training session OPEN, so the next Start training failed with
-            // "A session is already active". Close Training on ANY exit.
+            // T1.1/T1.4 root-cause fix: the legacy Home path used to leave a
+            // Training session OPEN (stale "session active" on relaunch) and
+            // never cleared the LoginPage Training ownership. Route Training
+            // exits through exitTrainingToHome(), which durably closes AND
+            // resets ownership — and aborts (keeping this screen) if the
+            // durable close fails, so data is never abandoned to hide a prompt.
             if (isTrainingMatch) {
-                TRAINING.resetTraining()
-                isTrainingMatch = false
-                trainingPendingMarkers = []
+                if (!exitTrainingToHome())
+                    return                       // close failed → stay put
+                return
             }
             loginPage.visible = true
             resetDataModels()
@@ -1149,15 +1152,41 @@ Item {
         matchFinished = false
         rightPanel.resetRightPanelModels()
     }
-    function homeFromTraining() {
-        TRAINING.resetTraining()             // durable clean close + projections
+    // T1.4 clean Home: BOTH the durable close AND the UI-ownership reset must
+    // succeed. If the durable close fails, do NOT navigate Home — keep this
+    // screen, keep the journal recoverable, and let the operator Retry. On
+    // success, clear every Training-ownership flag so nothing stale remains
+    // (isTrainingMatch, LoginPage.trainingConfirmed, models).
+    function exitTrainingToHome() {
+        if (!TRAINING.closeCleanly()) {
+            dialogManager.showError(qsTr("Training could not be closed safely"),
+                (TRAINING.lastError && TRAINING.lastError.length > 0
+                    ? TRAINING.lastError + "\n\n" : "")
+                + qsTr("Your session is preserved and can be recovered. "
+                     + "Please try again."))
+            return false                        // stay on the current screen
+        }
         isTrainingMatch = false
         trainingPendingMarkers = []
+        loginPage.trainingConfirmed = false     // LoginPage no longer owns Training
         resetDataModels()
         loginPage.visible = true
+        return true
+    }
+    function homeFromTraining() {
+        exitTrainingToHome()
     }
     function newTrainingSession() {
-        TRAINING.resetTraining()             // closes + preserves prior journal
+        // Durably close the completed/old session before offering a fresh setup.
+        // If the close fails, stay on the summary (recoverable + retriable).
+        if (!TRAINING.closeCleanly()) {
+            dialogManager.showError(qsTr("Training could not be closed safely"),
+                (TRAINING.lastError && TRAINING.lastError.length > 0
+                    ? TRAINING.lastError + "\n\n" : "")
+                + qsTr("Your session is preserved and can be recovered. "
+                     + "Please try again."))
+            return
+        }
         isTrainingMatch = false
         trainingPendingMarkers = []
         resetDataModels()
