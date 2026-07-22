@@ -206,6 +206,7 @@ Item {
         globalMatchModel.append(tpl);    globalMatchModel.clear()
         globalSlighterModel.append(tpl); globalSlighterModel.clear()
         globalModelOfData.append(tpl);   globalModelOfData.clear()
+        shootingPage.trainingTargetConnected = MODREADER.isMasterSystemConnected()
     }
 
     // Rejected finals shots (never in the official models) — plan §8.
@@ -999,6 +1000,19 @@ Item {
             if (rec.xMm !== undefined)
                 shootingPage.trainingAppendMarker(rec.xMm, rec.yMm)
         }
+        // T1.3: a Training SIGHTER — always shown on the face (sighters are not
+        // part of any hidden block), never counted. Drawn on its OWN marker so
+        // START BLOCK can clear it without disturbing counted shots.
+        function onSighterAccepted(rec) {
+            if (rec.xMm !== undefined)
+                shootingPage.trainingAppendSighterMarker(rec.xMm, rec.yMm)
+        }
+        // T1.3: the counted block began (or a new position's sighters opened) —
+        // wipe EVERY visible sighter marker so the counted target starts clean
+        // and no sighter dot can ever reappear on a block/review face.
+        function onSightersCleared() {
+            globalModelOfData.clear()
+        }
         function onBlockCompleted(blockIndex) {
             // Reveal the completed block from the DURABLE plot — works for every
             // visibility mode (in Full-hidden this is the first time impacts
@@ -1021,9 +1035,19 @@ Item {
         anchors.fill: parent
         z: 60
         ctl: TRAINING
+        connected: shootingPage.trainingTargetConnected
         onHomeRequested: shootingPage.homeFromTraining()
         onNewSessionRequested: shootingPage.newTrainingSession()
     }
+
+    // Hardware connection state for the Sighters readiness panel (Demo ignores
+    // it). Tracked from MODREADER's master-connection signal.
+    property bool trainingTargetConnected: false
+    Connections {
+        target: MODREADER
+        function onMasterConnectionChanged(isConn) { shootingPage.trainingTargetConnected = isConn }
+    }
+    // (initial connection state is seeded in the root Component.onCompleted.)
 
     // T1 closure: in-place Training recovery. Resume the journal through
     // TRAINING (owner selected by sessionKind, never by discipline alone),
@@ -1040,7 +1064,13 @@ Item {
         // only when the recovered visibility mode permits (Mode B/C, or once
         // the block is in review). Full-hidden (Mode A) mid-block stays clean —
         // the shots reveal when the block completes, exactly as live.
-        if (TRAINING.showImpacts) {
+        if (TRAINING.phase === 1) {
+            // Recovered mid-Sighters: redraw the current phase's sighter markers
+            // (always visible). No counted shots exist yet — START BLOCK is next.
+            var sgh = TRAINING.recoveredSighterShots()
+            for (var j = 0; j < sgh.length; ++j)
+                trainingAppendSighterMarker(sgh[j].xMm, sgh[j].yMm)
+        } else if (TRAINING.showImpacts) {
             var shots = TRAINING.recoveredCurrentBlockShots()
             for (var i = 0; i < shots.length; ++i)
                 trainingAppendMarker(shots[i].xMm, shots[i].yMm)
@@ -1064,6 +1094,18 @@ Item {
             direction: p.x.toFixed(2), score: p.y.toFixed(2),
             xmm: xMm * 1, ymm: yMm * 1, calculatedscore: "0.0",
             timeComsumed: 0, isSighter: false, position: 2
+        })
+    }
+
+    // T1.3: append a SIGHTER marker (isSighter=true). Same face mapping, but
+    // tagged so it is visually distinct and is the marker onSightersCleared
+    // removes. Sighters never enter the counted record — this is display only.
+    function trainingAppendSighterMarker(xMm, yMm) {
+        var p = centerPanel.polarForMm(xMm * 1, yMm * 1)
+        globalModelOfData.append({
+            direction: p.x.toFixed(2), score: p.y.toFixed(2),
+            xmm: xMm * 1, ymm: yMm * 1, calculatedscore: "0.0",
+            timeComsumed: 0, isSighter: true, position: 2
         })
     }
 

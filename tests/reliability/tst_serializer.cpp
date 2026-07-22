@@ -217,6 +217,8 @@ void run_serializer_tests()
             TrainingBlockCompleted{1, 6},
             TrainingNoteSaved{1, QStringLiteral("felt steady")},
             TrainingCompleted{5},
+            TrainingSighterAccepted{ShotCore{0, 0, 0, 0, 90, 12, 98, 0, 3000, 0, 0, 5, true}, 0, 1},
+            TrainingSighterPhaseStarted{1, 3},
         };
         check(catalogue.size() == static_cast<int>(std::variant_size_v<DomainEvent>),
               "round-trip covers every event type",

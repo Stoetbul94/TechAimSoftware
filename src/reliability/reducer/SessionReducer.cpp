@@ -806,10 +806,25 @@ ReduceResult SessionReducer::apply(const SessionState& current,
             next.trainingVisibility = e.visibilityMode;
             next.trainingFocus = e.technicalFocus;
             next.trainingCurrentPosition = e.startPosition;
+            // T1.3: a Training session opens in the SIGHTERS phase before block 1.
+            next.trainingInSighterPhase = true;
+            next.trainingSighterPosition = e.startPosition;
+            next.trainingSighterBeforeBlock = 1;
+        },
+        [&](const TrainingSighterPhaseStarted& e) {
+            next.trainingInSighterPhase = true;
+            next.trainingSighterPosition = e.position;
+            next.trainingSighterBeforeBlock = e.beforeBlock;
+        },
+        [&](const TrainingSighterAccepted& e) {
+            // Recorded for audit/recovery ONLY — never touches blocks/metrics.
+            next.trainingSighters.append(e.shot);
+            next.trainingSighterPos.append(e.position);
         },
         [&](const TrainingBlockStarted& e) {
             next.trainingCurrentBlock = e.blockIndex;
             next.trainingCurrentPosition = e.position;
+            next.trainingInSighterPhase = false;   // T1.3: sighters end when a block starts
             for (const TrainingBlockData& b : next.trainingBlocks)
                 if (b.blockIndex == e.blockIndex) return;   // already present
             TrainingBlockData b; b.blockIndex = e.blockIndex; b.position = e.position;

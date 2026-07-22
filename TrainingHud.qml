@@ -11,9 +11,13 @@ Item {
     signal homeRequested()
     signal newSessionRequested()
 
-    readonly property bool blockActive: ctl && ctl.phase === 2
-    readonly property bool reviewOpen:  ctl && ctl.phase === 3
-    readonly property bool summaryOpen: ctl && ctl.phase === 4
+    readonly property bool sightersOpen: ctl && ctl.phase === 1
+    readonly property bool blockActive:  ctl && ctl.phase === 2
+    readonly property bool reviewOpen:   ctl && ctl.phase === 3
+    readonly property bool summaryOpen:  ctl && ctl.phase === 4
+    // Live/Demo + hardware connection (for the Sighters readiness panel).
+    property bool connected: false
+    readonly property bool demoMode: ctl && ctl.sessionOperatingMode === "Demo"
 
     readonly property color _bg:     "#15171C"
     readonly property color _card:   "#1B1E24"
@@ -68,6 +72,113 @@ Item {
         }
     }
 
+    // ── SIGHTERS (phase 1) ───────────────────────────────────────────────
+    // A separate, optional sighter phase before the FIRST counted block (and,
+    // in 3P, before the first block of every position). Sighters register on
+    // the target and show impact, but are NEVER counted. The target stays
+    // visible behind this HUD; only a top banner + a bottom readiness panel
+    // frame it. Primary action: START BLOCK (never "Start Match").
+    Rectangle {
+        id: sighterBanner
+        visible: hud.sightersOpen
+        anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right
+        height: 46; color: _bg
+        Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: _line }
+        Row {
+            anchors.left: parent.left; anchors.leftMargin: 14
+            anchors.verticalCenter: parent.verticalCenter; spacing: 14
+            Text { text: "TRAINING LAB"; color: _red; font.pixelSize: 11; font.bold: true; font.letterSpacing: 2
+                   anchors.verticalCenter: parent.verticalCenter }
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                color: _txt; font.pixelSize: 14; font.bold: true; font.letterSpacing: 1
+                text: "SIGHTERS" + (hud.ctl && hud.ctl.positionName !== ""
+                                    ? " — " + hud.ctl.positionName.toUpperCase() : "")
+            }
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                color: _green; font.family: "Consolas"; font.pixelSize: 13; font.bold: true
+                text: hud.ctl ? (hud.ctl.sighterCount + " fired") : ""
+            }
+        }
+    }
+
+    Rectangle {
+        id: sighterPanel
+        visible: hud.sightersOpen
+        anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom
+        color: _bg
+        height: sighterCol.implicitHeight + 28
+        Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: _line }
+        Column {
+            id: sighterCol
+            anchors.left: parent.left; anchors.right: parent.right
+            anchors.top: parent.top; anchors.margins: 14; anchors.topMargin: 14
+            spacing: 10
+            Text {
+                width: parent.width; wrapMode: Text.WordWrap
+                color: _txtSec; font.pixelSize: 12
+                text: "Fire optional sighter shots to confirm your position and zero. "
+                    + "Sighter shots are not included in your Training blocks, measurements or final comparison."
+            }
+            // readiness chips
+            Flow {
+                width: parent.width; spacing: 8
+                Repeater {
+                    model: {
+                        if (!hud.ctl) return []
+                        var visLabels = ["Full hidden", "Group only", "Impact, no score"]
+                        var chips = []
+                        if (hud.ctl.positionName !== "") chips.push({ k: "Position", v: hud.ctl.positionName })
+                        chips.push({ k: "Focus", v: hud.ctl.technicalFocus })
+                        chips.push({ k: "Mode", v: visLabels[hud.ctl.visibilityMode] })
+                        chips.push({ k: "Source", v: hud.demoMode ? "Demo" : "Live" })
+                        chips.push({ k: "Sighters", v: "" + hud.ctl.sighterCount })
+                        chips.push({ k: "Target",
+                                     v: hud.demoMode ? "Demo · not needed"
+                                                     : (hud.connected ? "Connected" : "Not connected") })
+                        return chips
+                    }
+                    delegate: Rectangle {
+                        height: 40; radius: 8; color: _card; border.color: _line; border.width: 1
+                        width: chipRow.implicitWidth + 22
+                        Row {
+                            id: chipRow; anchors.centerIn: parent; spacing: 6
+                            Text { text: modelData.k; color: _txtMut; font.pixelSize: 11
+                                   anchors.verticalCenter: parent.verticalCenter }
+                            Text { text: modelData.v; color: _txt; font.pixelSize: 12; font.bold: true
+                                   anchors.verticalCenter: parent.verticalCenter }
+                        }
+                    }
+                }
+            }
+            // primary action: START BLOCK (zero sighters is allowed)
+            Row {
+                spacing: 10
+                Rectangle {
+                    width: Math.max(220, startBlockLabel.implicitWidth + 44); height: 48; radius: 8; color: _red
+                    Text {
+                        id: startBlockLabel; anchors.centerIn: parent
+                        text: hud.ctl ? hud.ctl.startBlockLabel.toUpperCase() : "START BLOCK"
+                        color: "white"; font.pixelSize: 14; font.bold: true; font.letterSpacing: 1
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: if (hud.ctl) hud.ctl.startBlock()   // idempotent; double-taps rejected
+                    }
+                }
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: sighterPanel.width - startBlockLabel.width - 120
+                    wrapMode: Text.WordWrap
+                    text: "Sighters are optional — you may start with none. "
+                        + "The target is cleared and your next shot is counted Shot 1."
+                    color: _txtMut; font.pixelSize: 10
+                }
+            }
+        }
+    }
+
     // Mode A acknowledgement: confirms a shot WITHOUT score or impact.
     Rectangle {
         id: ackToast
@@ -112,6 +223,7 @@ Item {
                     Text { visible: hud.ctl && hud.ctl.positionName !== ""
                            text: hud.ctl ? hud.ctl.positionName : ""; color: _green; font.pixelSize: 13; font.bold: true }
                     Text { text: "MEASURED RESULTS"; color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2 }
+                    Text { text: "Counted block shots only · sighters excluded"; color: _txtMut; font.pixelSize: 9 }
 
                     // Target plot: the block's shots revealed on a target-like
                     // view (auto-scaled to the group so shape/spread are clear;
@@ -335,6 +447,26 @@ Item {
                                        text: b.note || "" }
                             }
                         }
+                    }
+
+                    Text { text: "SIGHTERS"; color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 4 }
+                    Column {
+                        spacing: 2
+                        property var au: (hud.summaryOpen && hud.ctl) ? hud.ctl.sighterAudit() : ({})
+                        Text {
+                            color: _txtSec; font.pixelSize: 11
+                            text: {
+                                var a = parent.au
+                                if (!a || a.total === undefined) return "Sighters: 0"
+                                if (a.threePositions)
+                                    return "Sighters — Kneeling " + a.kneeling
+                                         + ", Prone " + a.prone + ", Standing " + a.standing
+                                         + "  (total " + a.total + ")"
+                                return "Sighters: " + a.total
+                            }
+                        }
+                        Text { text: "Sighters excluded from Training results."
+                               color: _txtMut; font.pixelSize: 10 }
                     }
 
                     Text { text: "OBSERVED"; color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 4 }

@@ -454,6 +454,15 @@ void EventSerializer::serializePayloadInto(const DomainEvent& event,
         },
         [&](const TrainingCompleted& e) {
             w.field("completedBlocks", static_cast<qint64>(e.completedBlocks));
+        },
+        [&](const TrainingSighterAccepted& e) {
+            writeShotCore(w, e.shot);
+            w.field("position", static_cast<qint64>(e.position));
+            w.field("beforeBlock", static_cast<qint64>(e.beforeBlock));
+        },
+        [&](const TrainingSighterPhaseStarted& e) {
+            w.field("position", static_cast<qint64>(e.position));
+            w.field("beforeBlock", static_cast<qint64>(e.beforeBlock));
         }
     }, event);
 }
@@ -1012,6 +1021,17 @@ ReliabilityResult EventSerializer::deserializePayload(const QString& typeId,
     } else if (typeId == QLatin1String(TrainingCompleted::kType)) {
         TrainingCompleted e;
         e.completedBlocks = static_cast<qint16>(r.reqInt("completedBlocks", 0, 1000));
+        *out = e;
+    } else if (typeId == QLatin1String(TrainingSighterAccepted::kType)) {
+        TrainingSighterAccepted e;
+        e.shot = readShotCore(r);
+        e.position = static_cast<qint8>(r.reqInt("position", 0, 2));
+        e.beforeBlock = static_cast<qint16>(r.reqInt("beforeBlock", 0, 1000));
+        *out = e;
+    } else if (typeId == QLatin1String(TrainingSighterPhaseStarted::kType)) {
+        TrainingSighterPhaseStarted e;
+        e.position = static_cast<qint8>(r.reqInt("position", 0, 2));
+        e.beforeBlock = static_cast<qint16>(r.reqInt("beforeBlock", 1, 1000));
         *out = e;
     } else {
         return ReliabilityResult::failure(ReliabilityError::UnsupportedEventType,

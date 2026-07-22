@@ -140,6 +140,10 @@ const EventMeta kRows[] = {
                            ReducerClass::Mutating),
     row<TrainingCompleted>(DurabilityClass::Sync, BroadcastClass::Broadcast,
                            ReducerClass::Mutating),
+    row<TrainingSighterAccepted>(DurabilityClass::Flush, BroadcastClass::Broadcast,
+                                 ReducerClass::Mutating),   // measured, never counted
+    row<TrainingSighterPhaseStarted>(DurabilityClass::Sync, BroadcastClass::Broadcast,
+                                     ReducerClass::Mutating),
 };
 
 struct RegistryIndex {

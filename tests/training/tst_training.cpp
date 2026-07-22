@@ -78,6 +78,14 @@ void prepare(TrainingProgramController& c, MemFile& f, ManualClock& clk,
         c.setOperatingMode(opMode);
 }
 
+// T1.3: start training AND leave the (now separate) Sighters phase into the
+// first counted block — the state every pre-T1.3 test assumed after start.
+bool startCounted(TrainingProgramController& c, const QString& athlete)
+{
+    if (!c.startTraining(athlete)) return false;
+    return c.startBlock();
+}
+
 // Fire n valid simulated shots (Demo source) advancing the clock.
 int fire(TrainingProgramController& c, ManualClock& clk, int n,
          double score = 10.2, double x = 1.0, double y = -1.0)
@@ -183,7 +191,7 @@ static void testShotAcceptance()
         TrainingProgramController c;
         MemFile f; ManualClock clk;
         prepare(c, f, clk, "AR10", /*Demo*/1);
-        c.startTraining(QStringLiteral("A"));
+        startCounted(c, QStringLiteral("A"));
         check(c.registerShot(1.0, 1.0, 10.4, 1, 0.0, /*Simulated*/1),
               "Demo: simulated shot accepted");
         const int before = countType(f.data, "TrainingShotAccepted");
@@ -199,7 +207,7 @@ static void testShotAcceptance()
         TrainingProgramController c;
         MemFile f; ManualClock clk;
         prepare(c, f, clk, "AR10", /*Live*/0);
-        c.startTraining(QStringLiteral("A"));
+        startCounted(c, QStringLiteral("A"));
         check(c.registerShot(1.0, 1.0, 9.8, 1, 0.0, /*Physical*/0),
               "Live: physical shot accepted");
         check(!c.registerShot(1.0, 1.0, 9.8, 2, 0.0, /*Simulated*/1),
@@ -213,7 +221,7 @@ static void testShotAcceptance()
         TrainingProgramController c;
         MemFile f; ManualClock clk;
         prepare(c, f, clk, "AR10", 1);
-        c.startTraining(QStringLiteral("A"));
+        startCounted(c, QStringLiteral("A"));
         clk.advance(4000);                       // shot arrives 4 s into session
         c.registerShot(2.5, -3.25, 10.47, 10, 0.0, 1);
         const ValidationReport rep = JournalValidator::validateBytes(f.data);
@@ -243,7 +251,7 @@ static void testVisibility()
         MemFile f; ManualClock clk;
         prepare(c, f, clk, "AR10", 1);
         c.setVisibilityMode(0);   // Mode A
-        c.startTraining(QStringLiteral("A"));
+        startCounted(c, QStringLiteral("A"));
         fire(c, clk, 1);
         check(!c.showImpacts() && !c.showScores() && !c.showGroup(),
               "Mode A live block: no impact, no score, no group");
@@ -264,7 +272,7 @@ static void testVisibility()
         MemFile f; ManualClock clk;
         prepare(c, f, clk, "AR10", 1);
         c.setVisibilityMode(1);   // Mode B
-        c.startTraining(QStringLiteral("A"));
+        startCounted(c, QStringLiteral("A"));
         fire(c, clk, 1);
         check(c.showImpacts() && c.showGroup() && !c.showScores(),
               "Mode B live block: markers/group only, no numbers");
@@ -275,7 +283,7 @@ static void testVisibility()
         MemFile f; ManualClock clk;
         prepare(c, f, clk, "AR10", 1);
         c.setVisibilityMode(2);   // Mode C
-        c.startTraining(QStringLiteral("A"));
+        startCounted(c, QStringLiteral("A"));
         fire(c, clk, 1);
         check(c.showImpacts() && !c.showScores(),
               "Mode C live block: impact visible, score hidden");
@@ -291,7 +299,7 @@ static void testLifecycle()
     MemFile f; ManualClock clk;
     prepare(c, f, clk, "AR10", 1);
     c.setBlockCount(2); c.setShotsPerBlock(3);
-    c.startTraining(QStringLiteral("A"));
+    startCounted(c, QStringLiteral("A"));
     check(countType(f.data, "TrainingBlockStarted") == 1, "block 1 started once");
     fire(c, clk, 3);
     check(countType(f.data, "TrainingBlockCompleted") == 1, "block 1 completed once");
@@ -329,7 +337,7 @@ static void testEarlyEnd()
     MemFile f; ManualClock clk;
     prepare(c, f, clk, "AR10", 1);
     c.setBlockCount(3); c.setShotsPerBlock(3);
-    c.startTraining(QStringLiteral("A"));
+    startCounted(c, QStringLiteral("A"));
     check(!c.endTrainingEarly(), "early end refused while block active");
     fire(c, clk, 3);                              // block 1 -> review
     check(c.blockElapsedSec() > 0, "block elapsed time projection > 0");
@@ -421,7 +429,7 @@ static void testRecovery()
     {
         TrainingProgramController c;
         prepare(c, f, clk, "3P50", 1);
-        c.startTraining(QStringLiteral("A"));
+        startCounted(c, QStringLiteral("A"));
         fire(c, clk, 6);                       // block 1 (Kneeling) complete
         c.saveNote(QStringLiteral("steady"));
         c.continueToNextBlock();               // block 2 (Kneeling)
@@ -479,6 +487,7 @@ static void testInPlaceResume()
         a.setVisibilityMode(1);                       // Mode B
         a.setOperatingMode(1);                        // Demo
         check(a.startTraining(QStringLiteral("A")), "resume(a): session starts on disk");
+        check(a.startBlock(), "resume(a): start block 1 out of Sighters");
         sid = a.sessionId();
         static qint64 ext = 5000;
         for (int i = 0; i < 6; ++i) a.registerShot(1, 1, 10.0, ++ext, 0, 1);  // block 1
@@ -532,6 +541,7 @@ static void testInPlaceResume()
         a.setTechnicalFocus(QStringLiteral("Trigger"));
         a.setOperatingMode(1);
         a.startTraining(QStringLiteral("B"));
+        a.startBlock();
         sid2 = a.sessionId();
         qint64 ext = 7000;
         for (int i = 0; i < 6; ++i) a.registerShot(1, 1, 10.2, ++ext, 0, 1);
@@ -564,6 +574,7 @@ static void testInPlaceResume()
         a.setTechnicalFocus(QStringLiteral("Hold"));
         a.setOperatingMode(1);
         a.startTraining(QStringLiteral("C"));
+        a.startBlock();
         sid3 = a.sessionId();
         qint64 ext = 7500;
         for (int i = 0; i < 3; ++i) a.registerShot(1, 1, 10.0, ++ext, 0, 1);
@@ -642,6 +653,7 @@ static void testStartMatrixAndJourney()
         check(c.validateConfig().isEmpty(), "journey: shortened setup valid");
         check(c.startTraining(QStringLiteral("Philemon")),
               "journey: PRONE50 Demo start succeeds (screenshot path)");
+        check(c.startBlock(), "journey: start block 1 out of Sighters");
         check(fire(c, clk, 3) == 3, "journey: three simulated shots accepted");
         check(c.phase() == 3, "journey: review opens at block limit");
         check(c.saveNote(QStringLiteral("ok")), "journey: note saved");
@@ -675,7 +687,7 @@ static void testSeparation()
     MemFile f; ManualClock clk;
     prepare(c, f, clk, "AR10", 1);
     c.setBlockCount(1); c.setShotsPerBlock(3);
-    c.startTraining(QStringLiteral("A"));
+    startCounted(c, QStringLiteral("A"));
     fire(c, clk, 3);
     c.continueToNextBlock();                    // completes training
     const ValidationReport rep = JournalValidator::validateBytes(f.data);
@@ -693,6 +705,348 @@ static void testSeparation()
     c.resetTraining();
 }
 
+// ── 8. T1.3 sighter separation ───────────────────────────────────────────
+static void testSighters()
+{
+    std::printf("--- T1.3 sighters separated from counted blocks ---\n");
+
+    // Single-position: starts in Sighters; sighters measured, NEVER counted.
+    {
+        TrainingProgramController c; MemFile f; ManualClock clk;
+        prepare(c, f, clk, "AR10", /*Demo*/1);
+        check(c.startTraining(QStringLiteral("A")), "single: training starts");
+        check(c.phase() == 1 && c.inSighters(), "single: opens in Sighters phase");
+        check(c.pendingBlock() == 1, "single: pending counted block is 1");
+        check(c.startBlockLabel() == QLatin1String("Start Block 1"),
+              "single: primary action labelled 'Start Block 1'");
+        check(countType(f.data, "TrainingBlockStarted") == 0,
+              "single: NO block started during Sighters");
+        // a sighter shot
+        clk.advance(3000);
+        check(c.registerShot(2, 2, 10.3, 1, 0.0, 1), "single: sighter shot accepted");
+        check(c.sighterCount() == 1, "single: sighter count increments");
+        check(c.shotsInBlock() == 0 && c.totalShots() == 0,
+              "single: counted block/total progress stays 0");
+        check(countType(f.data, "TrainingSighterAccepted") == 1,
+              "single: journalled as TrainingSighterAccepted");
+        check(countType(f.data, "TrainingShotAccepted") == 0,
+              "single: sighter creates NO counted TrainingShotAccepted");
+        // source gate still applies to sighters
+        check(!c.registerShot(2, 2, 10.0, 2, 0.0, /*Physical*/0),
+              "single: wrong-source sighter rejected under Demo gate");
+        check(c.sighterCount() == 1, "single: rejected-source sighter not recorded");
+        // unlimited sighters
+        clk.advance(3000); c.registerShot(1, 1, 9.9, 3, 0.0, 1);
+        clk.advance(3000); c.registerShot(0, 1, 9.5, 4, 0.0, 1);
+        check(c.sighterCount() == 3, "single: sighters may be unlimited");
+        check(c.blockReviewMetrics(1).isEmpty(),
+              "single: sighters produce no block metrics");
+        // Start Block 1 — one BlockStarted, phase BlockActive, counted reset 0
+        check(c.startBlock(), "single: Start Block 1 accepted");
+        check(c.phase() == 2, "single: phase -> BlockActive");
+        check(countType(f.data, "TrainingBlockStarted") == 1,
+              "single: exactly one TrainingBlockStarted");
+        check(c.shotsInBlock() == 0, "single: visible counted progress reset to 0/N");
+        // repeated Start Block rejected (no double start)
+        check(!c.startBlock(), "single: repeated Start Block rejected");
+        check(countType(f.data, "TrainingBlockStarted") == 1,
+              "single: no duplicate TrainingBlockStarted on repeat");
+        // next shot is counted Shot 1
+        clk.advance(3000);
+        check(c.registerShot(1, 0, 10.4, 10, 0.0, 1), "single: first counted shot accepted");
+        check(c.shotsInBlock() == 1, "single: first counted shot is Shot 1 of N");
+        check(countType(f.data, "TrainingShotAccepted") == 1,
+              "single: exactly one counted shot event");
+        check(c.sighterCount() == 3, "single: no sighter copied into Block 1");
+        c.resetTraining();
+    }
+
+    // Zero-sighter Start Block allowed (sighters optional, no minimum).
+    {
+        TrainingProgramController c; MemFile f; ManualClock clk;
+        prepare(c, f, clk, "AR10", 1);
+        c.startTraining(QStringLiteral("Z"));
+        check(c.sighterCount() == 0, "zero: no sighters fired");
+        check(c.startBlock(), "zero: Start Block allowed with zero sighters");
+        check(c.phase() == 2, "zero: block active with no sighters");
+        c.resetTraining();
+    }
+
+    // Metrics + comparison exclude sighters end-to-end. Off-centre sighters
+    // would wreck MPI/group if they leaked into the counted block.
+    {
+        TrainingProgramController c; MemFile f; ManualClock clk;
+        prepare(c, f, clk, "AR10", 1);
+        c.setBlockCount(1); c.setShotsPerBlock(3);
+        c.startTraining(QStringLiteral("M"));
+        clk.advance(2000); c.registerShot(40, 40, 1.0, 1, 0.0, 1);   // wild sighters
+        clk.advance(2000); c.registerShot(-40, -40, 1.0, 2, 0.0, 1);
+        check(c.startBlock(), "exclude: block starts after wild sighters");
+        fire(c, clk, 3, 10.0, 0.5, 0.5);                             // tight counted group
+        check(c.phase() == 3, "exclude: counted block completes");
+        const QVariantMap m = c.blockReviewMetrics(1);
+        check(m.value(QStringLiteral("shotCount")).toInt() == 3,
+              "exclude: block metrics count only the 3 counted shots");
+        check(qAbs(m.value(QStringLiteral("mpiX")).toDouble()) < 5.0
+                  && qAbs(m.value(QStringLiteral("mpiY")).toDouble()) < 5.0,
+              "exclude: MPI reflects counted shots only (sighters excluded)");
+        check(c.blockShotPlot(1).size() == 3,
+              "exclude: Block Review plot contains only counted shots");
+        const QVariantMap au = c.sighterAudit();
+        check(au.value(QStringLiteral("total")).toInt() == 2,
+              "exclude: sighter audit still records the 2 sighters (audit only)");
+        c.resetTraining();
+    }
+
+    // Visibility: sighters visible in every mode; the hidden block begins after
+    // the sighter phase (controller-observable part of 'begins clean').
+    {
+        TrainingProgramController c; MemFile f; ManualClock clk;
+        prepare(c, f, clk, "AR10", 1);
+        c.setVisibilityMode(0);                       // Full hidden
+        c.startTraining(QStringLiteral("V"));
+        check(c.showImpacts() && c.showScores(),
+              "vis: sighters fully visible before a Full-Hidden block");
+        clk.advance(2000); c.registerShot(1, 1, 10.0, 1, 0.0, 1);
+        check(c.startBlock(), "vis: Full-Hidden block starts");
+        check(!c.showImpacts() && !c.showScores() && !c.showGroup(),
+              "vis: Full-Hidden counted block begins hidden/clean");
+        check(c.shotsInBlock() == 0, "vis: counted block begins at 0 (clean)");
+        c.resetTraining();
+    }
+    {
+        TrainingProgramController c; MemFile f; ManualClock clk;
+        prepare(c, f, clk, "AR10", 1);
+        c.setVisibilityMode(1);                       // Group only
+        c.startTraining(QStringLiteral("G"));
+        c.registerShot(1, 1, 10.0, 1, 0.0, 1);
+        check(c.startBlock() && c.showGroup() && !c.showScores(),
+              "vis: Group-Only block shows group, no numbers");
+        check(c.shotsInBlock() == 0, "vis: Group-Only block begins clean (0 counted)");
+        c.resetTraining();
+    }
+
+    // 3P: separate sighter phase before the FIRST block of each position, in
+    // order; each position's sighters are isolated; analytics exclude sighters.
+    {
+        TrainingProgramController c; MemFile f; ManualClock clk;
+        prepare(c, f, clk, "3P50", 1);
+        c.startTraining(QStringLiteral("3"));
+        check(c.phase() == 1 && c.positionName() == QLatin1String("Kneeling"),
+              "3P: opens in Kneeling sighters");
+        check(c.startBlockLabel() == QLatin1String("Start Kneeling Block 1"),
+              "3P: Kneeling start label");
+        // sighter externalId = -1: not part of the counted retransmission
+        // sequence, so it never collides with fire()'s shared counter.
+        clk.advance(2000); c.registerShot(5, 5, 9.0, -1, 0.0, 1);
+        clk.advance(2000); c.registerShot(5, 4, 9.0, -1, 0.0, 1);
+        check(c.sighterCount() == 2, "3P: Kneeling sighter count");
+        c.startBlock();                               // K block 1
+        fire(c, clk, 6);
+        check(c.continueToNextBlock() && c.phase() == 2
+                  && c.positionName() == QLatin1String("Kneeling"),
+              "3P: Kneeling Block 2 starts directly (no mid-position sighters)");
+        fire(c, clk, 6);
+        check(c.phase() == 3, "3P: Kneeling Block 2 review");
+        check(c.continueToNextBlock() && c.phase() == 1
+                  && c.positionName() == QLatin1String("Prone"),
+              "3P: Prone sighters open ONLY after both Kneeling blocks");
+        check(c.startBlockLabel() == QLatin1String("Start Prone Block 1"),
+              "3P: Prone start label");
+        check(c.sighterCount() == 0,
+              "3P: Prone sighter count fresh (Kneeling sighters separate)");
+        check(countType(f.data, "TrainingSighterPhaseStarted") >= 1,
+              "3P: sighter-phase transition journalled");
+        clk.advance(2000); c.registerShot(3, 3, 9.0, -1, 0.0, 1);
+        check(c.sighterCount() == 1, "3P: Prone sighter counted in Prone phase only");
+        c.startBlock(); fire(c, clk, 6);
+        c.continueToNextBlock(); fire(c, clk, 6);
+        check(c.phase() == 3, "3P: Prone Block 2 review");
+        check(c.continueToNextBlock() && c.phase() == 1
+                  && c.positionName() == QLatin1String("Standing"),
+              "3P: Standing sighters open ONLY after both Prone blocks");
+        check(c.sighterCount() == 0, "3P: Standing sighters separate");
+        clk.advance(2000); c.registerShot(2, 2, 9.0, -1, 0.0, 1);
+        clk.advance(2000); c.registerShot(2, 1, 9.0, -1, 0.0, 1);
+        c.startBlock(); fire(c, clk, 6);
+        c.continueToNextBlock(); fire(c, clk, 6);
+        check(c.continueToNextBlock() && c.phase() == 4, "3P: completes to summary");
+        // per-position audit + every block holds only 6 counted shots
+        const QVariantMap au = c.sighterAudit();
+        check(au.value(QStringLiteral("kneeling")).toInt() == 2
+                  && au.value(QStringLiteral("prone")).toInt() == 1
+                  && au.value(QStringLiteral("standing")).toInt() == 2,
+              "3P: sighter audit per position (K2 / P1 / S2)");
+        check(au.value(QStringLiteral("total")).toInt() == 5, "3P: sighter audit total 5");
+        bool allSix = true;
+        for (int b = 1; b <= 6; ++b)
+            if (c.blockShotPlot(b).size() != 6) allSix = false;
+        check(allSix, "3P: every counted block holds exactly 6 shots (sighters excluded)");
+        // replay separation: sighters durable, competition record empty
+        const ValidationReport rep = JournalValidator::validateBytes(f.data);
+        const ReplayResult rr = ReplayEngine::replay(rep.validEnvelopes);
+        check(rr.state.trainingSighters.size() == 5, "3P: replay restores 5 durable sighters");
+        check(rr.state.officials.isEmpty() && rr.state.sighters.isEmpty(),
+              "3P: no competition official/sighter record from Training");
+        int cShots = 0;
+        for (const TrainingBlockData& bd : rr.state.trainingBlocks) cShots += bd.shots.size();
+        check(cShots == 36, "3P: replay counted block shots total 36 (no sighter leak)");
+        c.resetTraining();
+    }
+
+    // Ownership: exactly-once classification at the routing boundary.
+    {
+        TrainingProgramController c; MemFile f; ManualClock clk;
+        prepare(c, f, clk, "AR10", 1);
+        c.startTraining(QStringLiteral("O"));
+        clk.advance(2000); c.registerShot(1, 1, 10.0, 1, 0.0, 1);   // sighter
+        check(countType(f.data, "ShotAccepted") == 0
+                  && countType(f.data, "SighterAccepted") == 0,
+              "own: Training sighter creates NO qualification event");
+        check(countType(f.data, "TrainingShotAccepted") == 0,
+              "own: Training sighter creates NO counted block event");
+        c.startBlock();
+        clk.advance(2000); c.registerShot(1, 1, 10.0, 2, 0.0, 1);   // counted
+        check(countType(f.data, "TrainingSighterAccepted") == 1,
+              "own: counted block shot creates NO new sighter event");
+        check(countType(f.data, "TrainingShotAccepted") == 1,
+              "own: counted block shot creates exactly one counted event");
+        c.resetTraining();
+    }
+    // Open Practice / no active Training: the controller owns classification and
+    // refuses everything when it is not the active owner (routing gate parity).
+    {
+        TrainingProgramController c;
+        c.setOperatingMode(1);
+        check(!c.registerShot(1, 1, 10.0, 1, 0.0, 1),
+              "own: no shot classified while Training inactive (Open Practice)");
+        check(!c.startBlock(), "own: Start Block refused while Training inactive");
+    }
+}
+
+// ── 8b. T1.3 sighter recovery (real journals) ────────────────────────────
+static void testSighterRecovery()
+{
+    std::printf("--- T1.3 sighter recovery ---\n");
+    const QString root = QDir::temp().filePath(
+        QStringLiteral("techaim_t13_recover_%1").arg(QCoreApplication::applicationPid()));
+    QDir(root).removeRecursively();
+    StoragePaths::setRootOverrideForTesting(root);
+    StoragePaths::initialize();
+
+    // (a) crash mid-sighters → resume restores the Sighters phase, sighter
+    //     count, config; Start Block works once; next shot is counted Shot 1.
+    QString sid;
+    {
+        TrainingProgramController a;
+        a.configureDefaults(QStringLiteral("AR10"));
+        a.setTechnicalFocus(QStringLiteral("Aim"));
+        a.setVisibilityMode(2);
+        a.setOperatingMode(1);
+        check(a.startTraining(QStringLiteral("A")), "recover(a): session starts");
+        sid = a.sessionId();
+        qint64 ext = 3000;
+        a.registerShot(2, 2, 9.8, ++ext, 0, 1);
+        a.registerShot(2, 3, 9.9, ++ext, 0, 1);
+        a.registerShot(1, 2, 9.5, ++ext, 0, 1);       // 3 sighters, then crash
+    }
+    {
+        TrainingProgramController b;
+        b.setOperatingMode(1);
+        check(b.resumeFromRecovery(sid), "recover(a): resume succeeds");
+        check(b.phase() == 1 && b.inSighters(), "recover(a): restored INTO Sighters phase");
+        check(b.sighterCount() == 3, "recover(a): sighter count restored (3)");
+        check(b.shotsInBlock() == 0 && b.totalShots() == 0,
+              "recover(a): no counted progress after sighter recovery");
+        check(b.technicalFocus() == QLatin1String("Aim") && b.visibilityMode() == 2,
+              "recover(a): focus + visibility restored");
+        check(b.recoveredSighterShots().size() == 3,
+              "recover(a): sighter markers exposed for the face restore");
+        check(b.blockReviewMetrics(1).isEmpty(),
+              "recover(a): sighters remain excluded from block metrics");
+        check(!b.registerShot(2, 2, 9.0, 3001, 0, 1),
+              "recover(a): pre-crash sighter externalId still refused (dup guard)");
+        check(b.startBlock(), "recover(a): Start Block works once after recovery");
+        check(!b.startBlock(), "recover(a): repeated Start Block still rejected");
+        check(b.phase() == 2 && b.shotsInBlock() == 0,
+              "recover(a): counted block active with zero counted shots");
+        check(b.registerShot(0, 0, 10.5, 4000, 0, 1) && b.shotsInBlock() == 1,
+              "recover(a): next shot becomes counted Shot 1");
+        b.resetTraining();
+    }
+
+    // (b) crash AFTER Start Block but BEFORE the first counted shot → resume
+    //     lands in BlockActive, zero counted, no duplicate BlockStarted.
+    QString sid2;
+    {
+        TrainingProgramController a;
+        a.configureDefaults(QStringLiteral("AR10"));
+        a.setTechnicalFocus(QStringLiteral("Hold"));
+        a.setOperatingMode(1);
+        a.startTraining(QStringLiteral("B"));
+        sid2 = a.sessionId();
+        a.registerShot(2, 2, 9.0, 5000, 0, 1);        // one sighter
+        a.startBlock();                               // durable BlockActive, no counted shot
+    }
+    {
+        TrainingProgramController b;
+        b.setOperatingMode(1);
+        check(b.resumeFromRecovery(sid2), "recover(b): resume succeeds");
+        check(b.phase() == 2, "recover(b): restored INTO BlockActive");
+        check(b.currentBlock() == 1 && b.shotsInBlock() == 0,
+              "recover(b): block 1 active with zero counted shots");
+        const ValidationReport rep =
+            JournalValidator::validateFile(b.store()->currentJournalPath());
+        check(rep.firstInvalidLine == -1, "recover(b): hash chain valid");
+        int starts = 0;
+        for (const EventEnvelope& e : rep.validEnvelopes)
+            if (qstrcmp(eventTypeId(e.payload), "TrainingBlockStarted") == 0) ++starts;
+        check(starts == 1, "recover(b): no duplicate TrainingBlockStarted");
+        check(b.registerShot(0, 0, 10.4, 6000, 0, 1) && b.shotsInBlock() == 1,
+              "recover(b): next shot is counted Shot 1");
+        b.resetTraining();
+    }
+
+    // (c) 3P: crash mid-Prone-sighters → resume restores Prone Sighters with
+    //     only the Prone sighters visible (Kneeling sighters stay separate).
+    QString sid3;
+    {
+        TrainingProgramController a;
+        a.configureDefaults(QStringLiteral("3P50"));
+        a.setTechnicalFocus(QStringLiteral("Trigger"));
+        a.setOperatingMode(1);
+        a.startTraining(QStringLiteral("C"));
+        sid3 = a.sessionId();
+        qint64 ext = 7000;
+        a.registerShot(5, 5, 9.0, ++ext, 0, 1);       // K sighter
+        a.startBlock();
+        for (int i = 0; i < 6; ++i) a.registerShot(1, 1, 10.0, ++ext, 0, 1);
+        a.continueToNextBlock();
+        for (int i = 0; i < 6; ++i) a.registerShot(1, 1, 10.0, ++ext, 0, 1);
+        a.continueToNextBlock();                      // -> Prone sighters
+        a.registerShot(3, 3, 9.0, ++ext, 0, 1);
+        a.registerShot(3, 2, 9.0, ++ext, 0, 1);       // 2 Prone sighters, crash
+    }
+    {
+        TrainingProgramController b;
+        b.setOperatingMode(1);
+        check(b.resumeFromRecovery(sid3), "recover(c): 3P Prone-sighter resume succeeds");
+        check(b.phase() == 1 && b.positionName() == QLatin1String("Prone"),
+              "recover(c): restored INTO Prone Sighters");
+        check(b.sighterCount() == 2,
+              "recover(c): only Prone sighters counted in this phase");
+        check(b.recoveredSighterShots().size() == 2,
+              "recover(c): only Prone sighter markers restored (Kneeling separate)");
+        check(b.startBlockLabel() == QLatin1String("Start Prone Block 1"),
+              "recover(c): Prone start label restored");
+        check(b.startBlock() && b.phase() == 2 && b.currentBlock() == 3,
+              "recover(c): Start Block begins Prone Block 1 (block index 3)");
+        b.resetTraining();
+    }
+
+    StoragePaths::setRootOverrideForTesting(QString());
+}
+
 int main(int argc, char** argv)
 {
     QCoreApplication app(argc, argv);
@@ -707,6 +1061,8 @@ int main(int argc, char** argv)
     testInPlaceResume();
     testStartMatrixAndJourney();
     testSeparation();
+    testSighters();
+    testSighterRecovery();
     std::printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
     std::fflush(stdout);
     return g_failures == 0 ? 0 : 1;

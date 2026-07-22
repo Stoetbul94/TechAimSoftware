@@ -73,7 +73,9 @@ using DomainEvent = std::variant<
     TrainingShotAccepted,
     TrainingBlockCompleted,
     TrainingNoteSaved,
-    TrainingCompleted>;
+    TrainingCompleted,
+    TrainingSighterAccepted,
+    TrainingSighterPhaseStarted>;
 
 // Stable type identifier of the alternative currently held.
 inline const char* eventTypeId(const DomainEvent& event)

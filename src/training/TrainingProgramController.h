@@ -28,8 +28,7 @@
 class TrainingProgramController : public QObject
 {
     Q_OBJECT
-    // phase: 0 Idle, 1 SetupConfirmed(ready), 2 BlockActive, 3 BlockReview,
-    //        4 Complete
+    // phase: 0 Idle, 1 Sighters, 2 BlockActive, 3 BlockReview, 4 Complete
     Q_PROPERTY(int phase READ phase NOTIFY phaseChanged)
     Q_PROPERTY(bool active READ active NOTIFY phaseChanged)
     Q_PROPERTY(int currentBlock READ currentBlock NOTIFY progressChanged)
@@ -47,6 +46,11 @@ class TrainingProgramController : public QObject
     Q_PROPERTY(bool showImpacts READ showImpacts NOTIFY progressChanged)
     Q_PROPERTY(bool showScores READ showScores NOTIFY progressChanged)
     Q_PROPERTY(bool showGroup READ showGroup NOTIFY progressChanged)
+    // T1.3 sighter phase projections.
+    Q_PROPERTY(bool inSighters READ inSighters NOTIFY phaseChanged)
+    Q_PROPERTY(int sighterCount READ sighterCount NOTIFY progressChanged)
+    Q_PROPERTY(int pendingBlock READ pendingBlock NOTIFY progressChanged)
+    Q_PROPERTY(QString startBlockLabel READ startBlockLabel NOTIFY progressChanged)
     // T1.1: user-facing reason the last start attempt failed ("" = none).
     // Plain language, no internal enums — shown verbatim in the dialog.
     Q_PROPERTY(QString lastStartError READ lastStartError NOTIFY startErrorChanged)
@@ -73,6 +77,10 @@ public:
     Q_INVOKABLE bool registerShot(double xMm, double yMm, double decimalScore,
                                   qint64 externalId, double directionDeg,
                                   int shotSource);
+    // T1.3: from the Sighters phase, leave sighters and start the pending
+    // counted block exactly once (idempotent against double-tap). Clears the
+    // athlete-facing sighter markers (a controller signal drives the UI).
+    Q_INVOKABLE bool startBlock();
     Q_INVOKABLE bool saveNote(const QString& note);      // one per block review
     Q_INVOKABLE bool continueToNextBlock();              // explicit action
     // End from Block Review before the configured final block: appends ONE
@@ -96,6 +104,9 @@ public:
     // Recovered shots for the face restore (mm coords + block/position);
     // the QML restorer applies the visibility mode before drawing.
     Q_INVOKABLE QVariantList recoveredCurrentBlockShots() const;
+    // T1.3: sighters of the CURRENT (recovered) sighter phase — mm coords, so
+    // the face can restore the visible sighter markers after a mid-sighter crash.
+    Q_INVOKABLE QVariantList recoveredSighterShots() const;
     Q_INVOKABLE qint64 recoveredMaxExternalId() const { return m_lastExternalId; }
 
     // F10 gate: running operating mode (0=Live, 1=Demo, -1 unset/permissive).
@@ -120,12 +131,20 @@ public:
     bool showImpacts() const;
     bool showScores() const;
     bool showGroup() const;
+    bool inSighters() const { return m_phase == 1; }
+    int sighterCount() const;               // sighters in the CURRENT phase
+    int pendingBlock() const;               // block startBlock() will begin
+    QString startBlockLabel() const;        // "Start Block 1" / "Start Prone Block 1"
 
     // Measured results — REVEALED data only (block review / final comparison).
     // Live-block hidden values are not exposed through these.
     Q_INVOKABLE QVariantMap blockReviewMetrics(int blockIndex1) const;
     Q_INVOKABLE QVariantList completedBlockSummaries() const;
     Q_INVOKABLE QVariantMap finalComparison() const;
+    // T1.3: sighter audit for the Training report — TOTAL and (3P) per-position
+    // counts. Purely informational; sighter scores never enter block/session
+    // metrics, averages, groups, totals or the comparison.
+    Q_INVOKABLE QVariantMap sighterAudit() const;
     // Shot plot for a REVEALED block (review/comparison only).
     Q_INVOKABLE QVariantList blockShotPlot(int blockIndex1) const;
 
@@ -138,6 +157,10 @@ signals:
     void configChanged();
     void progressChanged();
     void startErrorChanged();
+    // T1.3: the counted block began — the UI must clear ALL sighter markers
+    // from the target before the first counted shot is drawn.
+    void sightersCleared();
+    void sighterAccepted(QVariantMap record);   // projection-safe sighter (may show impact)
     void shotAccepted(QVariantMap record);   // projection-safe (no score in hidden modes)
     void shotRejected(QString reason);
     void blockCompleted(int blockIndex);
@@ -146,6 +169,8 @@ signals:
 
 private:
     bool submit(const ta::rel::DomainEvent& ev);
+    bool acceptSighter(double xMm, double yMm, double decimalScore,
+                       qint64 externalId, double directionDeg, int shotSource);
     const ta::rel::SessionState& st() const { return m_store->state(); }
 
     std::unique_ptr<ta::rel::SessionStore> m_store;

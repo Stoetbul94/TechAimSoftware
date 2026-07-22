@@ -278,6 +278,17 @@ struct SessionState {
     qint16  trainingCurrentBlock = 0;      // 1-based; 0 = none started
     qint8   trainingCurrentPosition = 0;
     QVector<TrainingBlockData> trainingBlocks;
+    // T1.3: sighters are kept COMPLETELY separate from counted blocks — never
+    // in trainingBlocks, never in any metric/total. trainingInSighterPhase is
+    // true while the current phase is Sighters (before a position's first
+    // block); the reducer records each sighter with its position so a 3P
+    // position's sighters stay distinct. Parallel vectors keep the schema
+    // minimal and backward-compatible.
+    bool    trainingInSighterPhase = false;
+    qint8   trainingSighterPosition = 0;   // position of the CURRENT sighter phase
+    qint16  trainingSighterBeforeBlock = 1;// block the current sighter phase precedes
+    QVector<ShotCore> trainingSighters;    // all sighter shots (audit/recovery)
+    QVector<qint8>    trainingSighterPos;  // parallel: 3P position of each sighter
     // lifecycle
     bool started = false;
     Lifecycle lifecycle = Lifecycle::None;

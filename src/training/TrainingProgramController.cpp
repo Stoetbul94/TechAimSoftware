@@ -148,15 +148,36 @@ bool TrainingProgramController::startTraining(const QString& athlete)
     ev.startPosition = static_cast<qint8>(m_cfg.positionForBlock(1));
     if (!submit(DomainEvent(ev))) return false;
 
-    TrainingBlockStarted b;
-    b.blockIndex = 1;
-    b.position = static_cast<qint8>(m_cfg.positionForBlock(1));
-    if (!submit(DomainEvent(b))) return false;
-
-    m_currentBlock = 1;
+    // T1.3: a Training session opens in the SIGHTERS phase before Block 1 —
+    // NOT counted. TrainingSessionStarted already put the reducer in the
+    // sighter phase; the block starts only on an explicit Start Block action.
+    m_currentBlock = 0;                   // no counted block started yet
     m_lastExternalId = -1;
     m_blockStartMonoMs = m_store->nowMonotonicMs();
-    m_phase = 2;                          // BlockActive
+    m_phase = 1;                          // Sighters
+    emit phaseChanged(); emit progressChanged();
+    return true;
+}
+
+bool TrainingProgramController::startBlock()
+{
+    if (m_phase != 1) {
+        m_lastError = QStringLiteral("Sighters are not active.");
+        return false;
+    }
+    const int b = pendingBlock();
+    if (b < 1 || b > m_cfg.blockCount) {
+        m_lastError = QStringLiteral("No block to start.");
+        return false;
+    }
+    TrainingBlockStarted ev;
+    ev.blockIndex = static_cast<qint16>(b);
+    ev.position = static_cast<qint8>(m_cfg.positionForBlock(b));
+    if (!submit(DomainEvent(ev))) return false;   // repeated tap: reducer state
+    m_currentBlock = b;                            //   already moved on -> phase
+    m_blockStartMonoMs = m_store->nowMonotonicMs();//   guard below prevents dup
+    m_phase = 2;                                   // BlockActive
+    emit sightersCleared();                        // UI clears all sighter markers
     emit phaseChanged(); emit progressChanged();
     return true;
 }
@@ -174,24 +195,31 @@ bool TrainingProgramController::registerShot(double xMm, double yMm,
         emit shotRejected(QStringLiteral("WrongInputSource"));
         return false;
     }
-    if (m_phase != 2 || !m_store->active()) {
+    if (!m_store->active()
+        || (m_phase != 1 && m_phase != 2)) {   // only Sighters or BlockActive score
         emit shotRejected(QStringLiteral("TrainingNotActive"));
-        return false;
-    }
-    // duplicate/retransmission guard (same contract as the finals)
-    if (externalId >= 0 && externalId <= m_lastExternalId) {
-        emit shotRejected(QStringLiteral("DuplicateShot"));
-        return false;
-    }
-    // block cap — no spill into the next block, ever
-    const int within = shotsInBlock();
-    if (within >= m_cfg.shotsPerBlock) {
-        emit shotRejected(QStringLiteral("BlockFull"));
         return false;
     }
     if (!(decimalScore >= 0.0) || decimalScore > 11.0
         || !(xMm > -500.0 && xMm < 500.0) || !(yMm > -500.0 && yMm < 500.0)) {
         emit shotRejected(QStringLiteral("InvalidShotData"));
+        return false;
+    }
+    // duplicate/retransmission guard (shared externalId sequence across sighters
+    // and counted shots — both classify exactly once).
+    if (externalId >= 0 && externalId <= m_lastExternalId) {
+        emit shotRejected(QStringLiteral("DuplicateShot"));
+        return false;
+    }
+    // T1.3 — THE classification boundary (TrainingProgramController owns it):
+    // in the Sighters phase every shot is a Training sighter (measured, shown,
+    // NEVER counted); in BlockActive it is a counted block shot. Never both.
+    if (m_phase == 1)
+        return acceptSighter(xMm, yMm, decimalScore, externalId, directionDeg, shotSource);
+    // block cap — no spill into the next block, ever
+    const int within = shotsInBlock();
+    if (within >= m_cfg.shotsPerBlock) {
+        emit shotRejected(QStringLiteral("BlockFull"));
         return false;
     }
 
@@ -243,6 +271,43 @@ bool TrainingProgramController::registerShot(double xMm, double yMm,
     return true;
 }
 
+// T1.3: a Training sighter — measured and shown, but NEVER counted. Journalled
+// as TrainingSighterAccepted (excluded from every block/metric/total); scoped
+// to the current sighter phase's position so 3P positions stay separate.
+bool TrainingProgramController::acceptSighter(double xMm, double yMm,
+                                              double decimalScore, qint64 externalId,
+                                              double directionDeg, int shotSource)
+{
+    const int pos = static_cast<int>(m_cfg.positionForBlock(pendingBlock()));
+    TrainingSighterAccepted ev;
+    ev.position = static_cast<qint8>(pos);
+    ev.beforeBlock = static_cast<qint16>(pendingBlock());
+    ShotCore& s = ev.shot;
+    s.shotNumber = 0;                    // 0 = sighter marker (never a block index)
+    s.xHundredthMm = static_cast<qint32>(qRound(xMm * 100.0));
+    s.yHundredthMm = static_cast<qint32>(qRound(yMm * 100.0));
+    s.scoreTenths = static_cast<qint16>(qBound<int>(0, qRound(decimalScore * 10.0), 110));
+    s.directionCentiDeg = static_cast<qint32>(qRound(directionDeg * 100.0));
+    s.splitMs = static_cast<qint32>(m_store->nowMonotonicMs() > 0
+        ? qMin<qint64>(m_store->nowMonotonicMs(), INT32_MAX) : 0);
+    s.externalId = externalId;
+    s.simulated = (shotSource == 1);
+    if (!submit(DomainEvent(ev)))
+        return false;
+    if (externalId >= 0)
+        m_lastExternalId = externalId;
+    // Sighters may always show their impact + score (they are not part of any
+    // hidden block); the visibility modes apply to counted blocks only.
+    QVariantMap rec;
+    rec[QStringLiteral("xMm")] = xMm;
+    rec[QStringLiteral("yMm")] = yMm;
+    rec[QStringLiteral("score")] = decimalScore;
+    rec[QStringLiteral("sighter")] = true;
+    emit sighterAccepted(rec);
+    emit progressChanged();
+    return true;
+}
+
 bool TrainingProgramController::saveNote(const QString& note)
 {
     if (m_phase != 3 && m_phase != 4) {
@@ -269,13 +334,31 @@ bool TrainingProgramController::continueToNextBlock()
         emit phaseChanged(); emit progressChanged();
         return true;
     }
+    const int next = m_currentBlock + 1;
+    // T1.3 — 3P position boundary: before the FIRST block of a new position,
+    // enter a separate SIGHTERS phase for that position (Kneeling → Prone →
+    // Standing). Ordinary blocks within a position never reopen sighters.
+    if (m_cfg.threePositions
+        && m_cfg.positionForBlock(next) != m_cfg.positionForBlock(m_currentBlock)) {
+        TrainingSighterPhaseStarted sp;
+        sp.position = static_cast<qint8>(m_cfg.positionForBlock(next));
+        sp.beforeBlock = static_cast<qint16>(next);
+        if (!submit(DomainEvent(sp))) return false;
+        // m_currentBlock stays at the completed block; pendingBlock() == next.
+        m_phase = 1;                      // Sighters (new position)
+        emit sightersCleared();           // clear the previous position's markers
+        emit phaseChanged(); emit progressChanged();
+        return true;
+    }
+    // Same position / non-3P: start the next block directly (no sighters).
     TrainingBlockStarted b;
-    b.blockIndex = static_cast<qint16>(m_currentBlock + 1);
-    b.position = static_cast<qint8>(m_cfg.positionForBlock(m_currentBlock + 1));
+    b.blockIndex = static_cast<qint16>(next);
+    b.position = static_cast<qint8>(m_cfg.positionForBlock(next));
     if (!submit(DomainEvent(b))) return false;
     ++m_currentBlock;
     m_blockStartMonoMs = m_store->nowMonotonicMs();
     m_phase = 2;
+    emit sightersCleared();               // clear the prior block's markers
     emit phaseChanged(); emit progressChanged();
     return true;
 }
@@ -351,7 +434,45 @@ int TrainingProgramController::totalShots() const
 QString TrainingProgramController::positionName() const
 {
     if (!m_cfg.threePositions) return QString();
-    return positionLabel(m_cfg.positionForBlock(qMax(1, m_currentBlock)));
+    // In the Sighters phase the "current" position is the one whose block is
+    // pending (m_currentBlock still points at the previous/last block).
+    const int b = (m_phase == 1) ? pendingBlock() : qMax(1, m_currentBlock);
+    return positionLabel(m_cfg.positionForBlock(b));
+}
+
+// T1.3 — the 1-based counted block that startBlock()/continueToNextBlock()
+// will begin next (during Sighters this is m_currentBlock + 1).
+int TrainingProgramController::pendingBlock() const
+{
+    return qBound(1, m_currentBlock + 1, qMax(1, m_cfg.blockCount));
+}
+
+// Sighters fired in the CURRENT phase only. Each 3P position owns exactly one
+// sighter phase, so counting by that phase's position keeps positions separate;
+// non-3P sessions have a single phase (position 0) and count all sighters.
+int TrainingProgramController::sighterCount() const
+{
+    if (!m_store) return 0;
+    const int pos = static_cast<int>(m_cfg.positionForBlock(pendingBlock()));
+    const QVector<ShotCore>& s = st().trainingSighters;
+    const QVector<qint8>&    p = st().trainingSighterPos;
+    int n = 0;
+    for (int i = 0; i < s.size(); ++i)
+        if (i >= p.size() || static_cast<int>(p[i]) == pos) ++n;
+    return n;
+}
+
+// Primary Sighters action label. Never "Start Match" — always "Start Block N",
+// and per-position for 3P ("Start Kneeling Block 1", etc.).
+QString TrainingProgramController::startBlockLabel() const
+{
+    const int b = pendingBlock();
+    if (!m_cfg.threePositions)
+        return QStringLiteral("Start Block %1").arg(b);
+    const int within = m_cfg.blocksPerPosition > 0
+        ? ((b - 1) % m_cfg.blocksPerPosition) + 1 : b;
+    return QStringLiteral("Start %1 Block %2")
+        .arg(positionLabel(m_cfg.positionForBlock(b))).arg(within);
 }
 
 QString TrainingProgramController::sessionId() const
@@ -446,6 +567,27 @@ QVariantMap TrainingProgramController::finalComparison() const
     return m;
 }
 
+QVariantMap TrainingProgramController::sighterAudit() const
+{
+    QVariantMap m;
+    m[QStringLiteral("total")] = 0;
+    m[QStringLiteral("threePositions")] = m_cfg.threePositions;
+    m[QStringLiteral("kneeling")] = 0;
+    m[QStringLiteral("prone")] = 0;
+    m[QStringLiteral("standing")] = 0;
+    if (!m_store) return m;
+    const QVector<qint8>& p = st().trainingSighterPos;
+    int k = 0, pr = 0, sd = 0;
+    for (qint8 pos : p) {
+        if (pos == 1) ++pr; else if (pos == 2) ++sd; else ++k;
+    }
+    m[QStringLiteral("total")] = p.size();
+    m[QStringLiteral("kneeling")] = k;
+    m[QStringLiteral("prone")] = pr;
+    m[QStringLiteral("standing")] = sd;
+    return m;
+}
+
 QVariantList TrainingProgramController::blockShotPlot(int blockIndex1) const
 {
     QVariantList out;
@@ -500,21 +642,32 @@ bool TrainingProgramController::resumeFromRecovery(const QString& sessionId)
     m_cfg.technicalFocus = s.trainingFocus;
     if (m_cfg.threePositions)
         m_cfg.blocksPerPosition = qMax(1, m_cfg.blockCount / 3);
-    // Duplicate guard continues past every recovered externalId.
+    // Duplicate guard continues past every recovered externalId — counted
+    // shots AND sighters share the one externalId sequence.
     m_lastExternalId = -1;
     for (const TrainingBlockData& b : s.trainingBlocks)
         for (const ShotCore& sc : b.shots)
             if (sc.externalId > m_lastExternalId) m_lastExternalId = sc.externalId;
+    for (const ShotCore& sc : s.trainingSighters)
+        if (sc.externalId > m_lastExternalId) m_lastExternalId = sc.externalId;
     // Phase re-derivation from the durable record only:
-    //   completed  -> summary; current block completed -> review (never
-    //   auto-start the next block); otherwise -> active block.
-    m_currentBlock = qMax<int>(1, s.trainingCurrentBlock);
-    bool currentCompleted = false;
-    for (const TrainingBlockData& b : s.trainingBlocks)
-        if (b.blockIndex == m_currentBlock) currentCompleted = b.completed;
-    if (s.trainingCompleted)      m_phase = 4;
-    else if (currentCompleted)    m_phase = 3;
-    else                          m_phase = 2;
+    //   completed -> summary; sighter phase durably open -> Sighters (no block
+    //   started yet); current block completed -> review (never auto-start the
+    //   next block); otherwise -> active block.
+    if (s.trainingCompleted) {
+        m_currentBlock = qMax<int>(1, s.trainingCurrentBlock);
+        m_phase = 4;
+    } else if (s.trainingInSighterPhase) {
+        // pendingBlock() must resolve to the block the sighters precede.
+        m_currentBlock = qMax<int>(0, s.trainingSighterBeforeBlock - 1);
+        m_phase = 1;
+    } else {
+        m_currentBlock = qMax<int>(1, s.trainingCurrentBlock);
+        bool currentCompleted = false;
+        for (const TrainingBlockData& b : s.trainingBlocks)
+            if (b.blockIndex == m_currentBlock) currentCompleted = b.completed;
+        m_phase = currentCompleted ? 3 : 2;
+    }
     m_blockStartMonoMs = m_store->nowMonotonicMs();   // elapsed restarts at resume
     emit configChanged(); emit phaseChanged(); emit progressChanged();
     if (m_phase == 4) emit trainingCompleted();
@@ -545,6 +698,26 @@ QVariantList TrainingProgramController::recoveredCurrentBlockShots() const
             m[QStringLiteral("yMm")] = sc.yHundredthMm / 100.0;
             out.append(m);
         }
+    }
+    return out;
+}
+
+QVariantList TrainingProgramController::recoveredSighterShots() const
+{
+    // Sighters of the CURRENT phase's position only (mm) — the counted target
+    // never mixes them, but a recovered Sighters phase redraws them verbatim.
+    QVariantList out;
+    if (!m_store || m_phase != 1) return out;
+    const int pos = static_cast<int>(m_cfg.positionForBlock(pendingBlock()));
+    const QVector<ShotCore>& s = st().trainingSighters;
+    const QVector<qint8>&    p = st().trainingSighterPos;
+    for (int i = 0; i < s.size(); ++i) {
+        if (i < p.size() && static_cast<int>(p[i]) != pos) continue;
+        QVariantMap m;
+        m[QStringLiteral("xMm")] = s[i].xHundredthMm / 100.0;
+        m[QStringLiteral("yMm")] = s[i].yHundredthMm / 100.0;
+        m[QStringLiteral("score")] = s[i].scoreTenths / 10.0;
+        out.append(m);
     }
     return out;
 }

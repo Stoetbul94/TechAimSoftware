@@ -984,6 +984,37 @@ struct TrainingCompleted {
     ReliabilityResult validate() const { return ReliabilityResult::success(); }
 };
 
+// T1.3: a sighter fired in a Training sighter phase. Measured like any shot
+// (may show impact/score) but NEVER counted — excluded from every block, all
+// metrics, totals and the final comparison. Kept for recovery/audit only.
+// `position` scopes it to a 3P position so each position's sighters stay
+// separate. Appended at the END so no prior variant index / hash moves.
+struct TrainingSighterAccepted {
+    static constexpr const char* kType = "TrainingSighterAccepted";
+    static constexpr qint32 kVersion = 1;
+    ShotCore shot;
+    qint8  position = 0;          // 3P position this sighter belongs to
+    qint16 beforeBlock = 0;       // 1-based block the sighter phase precedes
+    ReliabilityResult validate() const { return shot.validate(); }
+};
+
+// T1.3: entering a Training sighter phase. Emitted at each 3P position
+// boundary (before Prone's and Standing's first block) so recovery can tell
+// a mid-review crash from an in-sighters crash. The initial sighter phase
+// (before block 1) is implied by TrainingSessionStarted and needs no marker.
+struct TrainingSighterPhaseStarted {
+    static constexpr const char* kType = "TrainingSighterPhaseStarted";
+    static constexpr qint32 kVersion = 1;
+    qint8  position = 0;
+    qint16 beforeBlock = 0;       // 1-based block this sighter phase precedes
+    ReliabilityResult validate() const
+    {
+        if (beforeBlock < 1)
+            return evdetail::invalid(QStringLiteral("TrainingSighterPhaseStarted.beforeBlock < 1"));
+        return ReliabilityResult::success();
+    }
+};
+
 } // namespace rel
 } // namespace ta
 
