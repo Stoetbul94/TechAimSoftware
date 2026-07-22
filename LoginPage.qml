@@ -604,7 +604,10 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                         }
                         Text {
-                            text: mod_connected ? "Connected" : "Demo / Offline"
+                            // F11: this button is the target CONNECTION toggle, not the
+                            // operating-mode switch (that is the OPERATING MODE control
+                            // below). Label reflects connection state only.
+                            text: mod_connected ? "Connected" : "Not connected"
                             color: mod_connected ? _green : _txtMut
                             font.family: theme.fontFamily; font.pixelSize: 11; font.bold: true
                             anchors.verticalCenter: parent.verticalCenter
@@ -633,11 +636,148 @@ Item {
                 }
             }
 
+            // ── OPERATING MODE (F11 fix) ──────────────────────────────────────
+            // The operator-facing Live/Demo switch. Placed HERE (the idle
+            // Start-session screen) because changing mode is only permitted when
+            // no session is active; the in-session Settings selector is blocked.
+            // Uses OPMODE + the same confirm/restart flow. Read-only display
+            // falls back to appMode if OPMODE is unavailable.
+            Text {
+                id: opModeSectionLabel
+                anchors.top: showComportConnector ? connRow.bottom : athleteBox.bottom
+                anchors.topMargin: 16
+                anchors.left: parent.left; anchors.leftMargin: 22
+                text: "OPERATING MODE"
+                color: _txtMut; font.family: theme.fontFamily
+                font.pixelSize: 10; font.bold: true; font.letterSpacing: 2
+            }
+            Row {
+                id: opModeRow
+                anchors.top: opModeSectionLabel.bottom; anchors.topMargin: 6
+                anchors.left: parent.left;   anchors.leftMargin: 22
+                anchors.right: parent.right; anchors.rightMargin: 22
+                height: 46; spacing: 8
+                property bool opLive: (typeof OPMODE !== "undefined") ? OPMODE.live : appMode
+
+                // Live target pill
+                Rectangle {
+                    width: (parent.width - parent.spacing) / 2; height: 46; radius: 6
+                    color: opModeRow.opLive ? "#0d2018" : _input
+                    border.color: opModeRow.opLive ? _green : _borderSub
+                    border.width: opModeRow.opLive ? 2 : 1
+                    Column {
+                        anchors.centerIn: parent; spacing: 1
+                        Text { text: "LIVE TARGET"; color: opModeRow.opLive ? _green : _txt
+                               font.family: theme.fontFamily; font.pixelSize: 12; font.bold: true
+                               anchors.horizontalCenter: parent.horizontalCenter }
+                        Text { text: "Physical target"; color: _txtMut
+                               font.family: theme.fontFamily; font.pixelSize: 8
+                               anchors.horizontalCenter: parent.horizontalCenter }
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        enabled: !opModeRow.opLive && typeof OPMODE !== "undefined"
+                        onClicked: { OPMODE.selectMode(0); opModeConfirm.targetMode = 0; opModeConfirm.open() }
+                    }
+                }
+                // Demo pill
+                Rectangle {
+                    width: (parent.width - parent.spacing) / 2; height: 46; radius: 6
+                    color: !opModeRow.opLive ? "#2a0b10" : _input
+                    border.color: !opModeRow.opLive ? _red : _borderSub
+                    border.width: !opModeRow.opLive ? 2 : 1
+                    Column {
+                        anchors.centerIn: parent; spacing: 1
+                        Text { text: "DEMO / SIMULATION"; color: !opModeRow.opLive ? _red : _txt
+                               font.family: theme.fontFamily; font.pixelSize: 12; font.bold: true
+                               anchors.horizontalCenter: parent.horizontalCenter }
+                        Text { text: "Simulated clicks"; color: _txtMut
+                               font.family: theme.fontFamily; font.pixelSize: 8
+                               anchors.horizontalCenter: parent.horizontalCenter }
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        enabled: opModeRow.opLive && typeof OPMODE !== "undefined"
+                        onClicked: { OPMODE.selectMode(1); opModeConfirm.targetMode = 1; opModeConfirm.open() }
+                    }
+                }
+            }
+            Text {
+                id: opModeHint
+                anchors.top: opModeRow.bottom; anchors.topMargin: 3
+                anchors.left: parent.left; anchors.leftMargin: 22
+                anchors.right: parent.right; anchors.rightMargin: 22
+                wrapMode: Text.WordWrap
+                font.family: theme.fontFamily; font.pixelSize: 8
+                color: (typeof OPMODE !== "undefined" && OPMODE.restartRequired) ? _red : _txtMut
+                text: (typeof OPMODE !== "undefined" && OPMODE.restartRequired)
+                      ? "Restart required — the selected mode takes effect on next launch."
+                      : "Switch the target source. Changing mode requires an application restart."
+            }
+
+            // Confirm dialog (Restart Now / Later / Cancel) — mirrors Settings.
+            Popup {
+                id: opModeConfirm
+                property int targetMode: 1
+                parent: Overlay.overlay
+                anchors.centerIn: Overlay.overlay
+                modal: true; focus: true
+                closePolicy: Popup.CloseOnEscape
+                width: 380; padding: 0
+                background: Rectangle { color: "#1B1E24"; radius: 13; border.color: _borderSub; border.width: 1 }
+                Overlay.modal: Rectangle { color: "#AA000000" }
+                contentItem: Column {
+                    spacing: 12; padding: 22; width: opModeConfirm.width
+                    Text {
+                        width: parent.width - 44
+                        text: opModeConfirm.targetMode === 1 ? "Switch to Demo mode?" : "Switch to Live target mode?"
+                        color: _txt; font.family: theme.fontFamily; font.pixelSize: 16; font.bold: true
+                        wrapMode: Text.WordWrap
+                    }
+                    Text {
+                        width: parent.width - 44
+                        text: opModeConfirm.targetMode === 1
+                              ? "Simulated shots will be enabled. Demo sessions are intended for testing and cannot be treated as Live target results.\n\nThe application must restart before the change takes effect."
+                              : "Simulated shot input will be disabled. The application will expect the physical TechAim target connection.\n\nThe application must restart before the change takes effect."
+                        color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 11; wrapMode: Text.WordWrap
+                    }
+                    Item {
+                        width: parent.width - 44; height: 34
+                        Row {
+                            anchors.right: parent.right; spacing: 8
+                            Rectangle {
+                                width: 74; height: 32; radius: 8; color: "transparent"
+                                border.color: _borderSub; border.width: 1
+                                Text { anchors.centerIn: parent; text: "Cancel"; color: _txt
+                                       font.family: theme.fontFamily; font.pixelSize: 11 }
+                                MouseArea { anchors.fill: parent
+                                    onClicked: { if (typeof OPMODE !== "undefined") OPMODE.selectMode(opModeRow.opLive ? 0 : 1); opModeConfirm.close() } }
+                            }
+                            Rectangle {
+                                width: 104; height: 32; radius: 8; color: _surfaceAlt
+                                border.color: _borderSub; border.width: 1
+                                Text { anchors.centerIn: parent; text: "Restart Later"; color: _txt
+                                       font.family: theme.fontFamily; font.pixelSize: 11 }
+                                MouseArea { anchors.fill: parent
+                                    onClicked: { OPMODE.applyModeChange(false); opModeConfirm.close() } }
+                            }
+                            Rectangle {
+                                width: 104; height: 32; radius: 8; color: _red
+                                Text { anchors.centerIn: parent; text: "Restart Now"; color: "white"
+                                       font.family: theme.fontFamily; font.pixelSize: 11; font.bold: true }
+                                MouseArea { anchors.fill: parent
+                                    onClicked: { if (OPMODE.applyModeChange(false)) OPMODE.requestRestart(); opModeConfirm.close() } }
+                            }
+                        }
+                    }
+                }
+            }
+
             // ── NETWORK SHARE ─────────────────────────────────────────────────
             Text {
                 id: networkSectionLabel
-                anchors.top: showComportConnector ? connRow.bottom : athleteBox.bottom
-                anchors.topMargin: 16
+                anchors.top: opModeHint.bottom
+                anchors.topMargin: 14
                 anchors.left: parent.left; anchors.leftMargin: 22
                 text: "NETWORK SHARE"
                 color: _txtMut; font.family: theme.fontFamily
