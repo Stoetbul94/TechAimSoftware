@@ -79,30 +79,85 @@ Item {
         }, Qt.size(pageW, pageH))
     }
 
-    // ── shared page chrome ────────────────────────────────────────────────
+    // total pages: overview + comparison + one per completed block + notes
+    readonly property int totalPages: 3 + (blocks ? blocks.length : 0)
+
+    // ── shared branded page chrome (Tech Aim Report System style) ─────────
     component ReportPage: Rectangle {
         width: view.pageW; height: view.pageH; color: "white"
+        property int pageNo: 0
         default property alias content: inner.data
         Column {
-            anchors.fill: parent; anchors.margins: 40; spacing: 14
-            // header band
-            Row {
-                width: parent.width; spacing: 10
-                Rectangle { width: 6; height: 40; color: view.red; radius: 3 }
+            anchors.fill: parent; anchors.margins: 40; anchors.bottomMargin: 54; spacing: 12
+            // branded header: accent bar + Tech Aim wordmark + report title,
+            // with athlete/discipline/date/session meta right-aligned.
+            Item {
+                width: parent.width; height: 58
+                Row {
+                    anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; spacing: 12
+                    Rectangle { width: 6; height: 46; radius: 3; color: view.red; anchors.verticalCenter: parent.verticalCenter }
+                    Column {
+                        anchors.verticalCenter: parent.verticalCenter; spacing: 3
+                        // Approved light-background Tech Aim wordmark. Aspect
+                        // preserved; mipmap keeps the PDF grab (3–4×) crisp;
+                        // transparent PNG drawn onto the white page.
+                        Image {
+                            source: "qrc:/images/logo/techaim_color.png"
+                            height: 24
+                            width: sourceSize.height > 0 ? height * sourceSize.width / sourceSize.height : 0
+                            fillMode: Image.PreserveAspectFit; smooth: true; mipmap: true
+                        }
+                        Row { spacing: 8
+                            Text { text: "TRAINING LAB"; color: view.red; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2
+                                   anchors.verticalCenter: parent.verticalCenter }
+                            Text { text: "TECHNICAL BLOCKS REPORT"; color: view.ink; font.pixelSize: 15; font.bold: true
+                                   anchors.verticalCenter: parent.verticalCenter }
+                        }
+                    }
+                }
                 Column {
-                    Text { text: "TECH AIM"; color: view.red; font.pixelSize: 12; font.bold: true; font.letterSpacing: 3 }
-                    Text { text: "TRAINING SESSION · Technical Blocks"; color: view.ink; font.pixelSize: 16; font.bold: true }
+                    anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; spacing: 2
+                    Repeater {
+                        model: [
+                            { l: "Athlete",  v: view.model.athlete || "—" },
+                            { l: "Discipline", v: view.model.threePositions ? "50m Rifle 3P"
+                                                : (view.model.discipline || "Single position") },
+                            { l: "Date",     v: (view.model.createdAtIso || "").substring(0, 10) },
+                            { l: "Session",  v: (view.model.sessionId || "").substring(0, 8) }
+                        ]
+                        delegate: Row {
+                            anchors.right: parent.right; spacing: 6
+                            Text { text: modelData.l + ":"; color: view.sub; font.pixelSize: 9 }
+                            Text { text: modelData.v; color: view.ink; font.pixelSize: 9; font.bold: true }
+                        }
+                    }
                 }
             }
-            Rectangle { width: parent.width; height: 1; color: view.line }
-            Item { id: inner; width: parent.width; height: parent.height - 90 }
+            Rectangle { width: parent.width; height: 2; color: view.red; opacity: 0.85 }
+            Text { text: "Not an official competition result"; color: view.sub; font.pixelSize: 9; font.italic: true }
+            Item { id: inner; width: parent.width; height: parent.height - 150 }
         }
-        // footer
-        Text {
-            anchors.bottom: parent.bottom; anchors.bottomMargin: 22
-            anchors.horizontalCenter: parent.horizontalCenter
-            text: "Not an official competition result · Measured training data"
-            color: view.sub; font.pixelSize: 9
+        // branded footer: small wordmark + tagline (left), page X of Y (right)
+        Item {
+            anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom
+            anchors.margins: 40; height: 30
+            Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: view.line }
+            Row {
+                anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; spacing: 8
+                Image {
+                    source: "qrc:/images/logo/techaim_color.png"; height: 12
+                    width: sourceSize.height > 0 ? height * sourceSize.width / sourceSize.height : 0
+                    fillMode: Image.PreserveAspectFit; smooth: true; mipmap: true
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+                Text { text: "Tech Aim Electronic Target Control  ·  WE AIM TO PLEASE"
+                       color: view.sub; font.pixelSize: 9; anchors.verticalCenter: parent.verticalCenter }
+            }
+            Text {
+                anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
+                text: "Page " + pageNo + " of " + view.totalPages
+                color: view.sub; font.pixelSize: 9
+            }
         }
     }
 
@@ -117,6 +172,7 @@ Item {
     // ── PAGE 1 — SESSION OVERVIEW ─────────────────────────────────────────
     ReportPage {
         id: overviewPage
+        pageNo: 1
         Column {
             width: parent.width; spacing: 8
             Text { text: view.model.endedEarly ? "SESSION ENDED EARLY" : "SESSION OVERVIEW"
@@ -153,6 +209,7 @@ Item {
     // ── PAGE 2 — BLOCK COMPARISON ─────────────────────────────────────────
     ReportPage {
         id: comparisonPage
+        pageNo: 2
         Column {
             width: parent.width; spacing: 8
             Text { text: "BLOCK COMPARISON"; color: view.ink; font.pixelSize: 15; font.bold: true }
@@ -214,6 +271,7 @@ Item {
         model: view.blocks
         ReportPage {
             property var b: modelData
+            pageNo: 3 + index
             Column {
                 width: parent.width; spacing: 10
                 Text { text: "BLOCK " + b.blockIndex + (b.positionName ? " · " + b.positionName : "")
@@ -270,6 +328,7 @@ Item {
     // ── FINAL PAGE — NOTES & OBSERVATIONS ─────────────────────────────────
     ReportPage {
         id: notesPage
+        pageNo: view.totalPages
         Column {
             width: parent.width; spacing: 10
             Text { text: "ATHLETE NOTES"; color: view.ink; font.pixelSize: 15; font.bold: true }

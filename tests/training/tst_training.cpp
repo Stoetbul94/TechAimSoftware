@@ -17,6 +17,7 @@
 #include "reliability/storage/StoragePaths.h"
 
 #include <QDir>
+#include <QFileInfo>
 
 #include <QCoreApplication>
 #include <QVariantMap>
@@ -1317,6 +1318,34 @@ static void testPdfModel()
     }
 }
 
+// ── 13. T1.5 PDF branding assets ─────────────────────────────────────────
+static void testBrandingAssets()
+{
+    std::printf("--- T1.5 branding assets ---\n");
+    // The Training PDF header/footer resolve the approved light-background
+    // Tech Aim wordmark. Verify the asset ships in the repo (repo-relative to
+    // the test binary: seta10/tests/training/release/ -> seta10/).
+    const QString repo = QDir(QCoreApplication::applicationDirPath())
+                             .filePath(QStringLiteral("../../.."));
+    const QString logo = QDir(repo).filePath(QStringLiteral("images/logo/techaim_color.png"));
+    check(QFileInfo::exists(logo), "branding: approved Tech Aim colour wordmark exists",
+          logo);
+    check(QFileInfo(logo).size() > 1000, "branding: wordmark is a real (non-empty) asset");
+    // white variant for dark backgrounds and black for mono print also present.
+    check(QFileInfo::exists(QDir(repo).filePath(QStringLiteral("images/logo/techaim_white.png"))),
+          "branding: white wordmark variant exists (dark backgrounds)");
+    check(QFileInfo::exists(QDir(repo).filePath(QStringLiteral("images/logo/techaim_black.png"))),
+          "branding: black wordmark variant exists (mono print)");
+    // No unrelated-organisation logo is present in the approved logo set.
+    const QStringList logos = QDir(QDir(repo).filePath(QStringLiteral("images/logo")))
+                                  .entryList(QStringList() << QStringLiteral("*.png"), QDir::Files);
+    bool noForeign = true;
+    for (const QString& f : logos)
+        if (f.contains(QStringLiteral("satrf"), Qt::CaseInsensitive)
+            || f.contains(QStringLiteral("federation"), Qt::CaseInsensitive)) noForeign = false;
+    check(noForeign, "branding: no unrelated-organisation logo in the approved set");
+}
+
 int main(int argc, char** argv)
 {
     QCoreApplication app(argc, argv);
@@ -1337,6 +1366,7 @@ int main(int argc, char** argv)
     testReportModel();
     testCleanClose();
     testPdfModel();
+    testBrandingAssets();
     std::printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
     std::fflush(stdout);
     return g_failures == 0 ? 0 : 1;

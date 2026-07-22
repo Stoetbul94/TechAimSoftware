@@ -125,6 +125,29 @@ bool CustomPrint::createTrainingPdf(QString filePath)
     QPdfWriter pdfWriter(filePath);
     pdfWriter.setPageSize(QPageSize(QPageSize::A4));
     pdfWriter.setPageMargins(QMargins(30, 30, 30, 30));
+    // T1.5 branding: document metadata (no Demo/dev filesystem paths). Title +
+    // Creator via the native API; Author/Subject/Keywords via an XMP packet so
+    // every reader surfaces them.
+    pdfWriter.setTitle(QStringLiteral("Tech Aim Technical Blocks Training Report"));
+    pdfWriter.setCreator(QStringLiteral("Tech Aim Electronic Target Control"));
+    {
+        const QString xmp = QStringLiteral(
+            "<?xpacket begin=\"\" id=\"W5M0MpCehiHzreSzNTczkc9d\"?>"
+            "<x:xmpmeta xmlns:x=\"adobe:ns:meta/\">"
+            "<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\">"
+            "<rdf:Description rdf:about=\"\""
+            " xmlns:dc=\"http://purl.org/dc/elements/1.1/\""
+            " xmlns:pdf=\"http://ns.adobe.com/pdf/1.3/\""
+            " xmlns:xmp=\"http://ns.adobe.com/xap/1.0/\">"
+            "<dc:title><rdf:Alt><rdf:li xml:lang=\"x-default\">Tech Aim Technical Blocks Training Report</rdf:li></rdf:Alt></dc:title>"
+            "<dc:creator><rdf:Seq><rdf:li>Tech Aim</rdf:li></rdf:Seq></dc:creator>"
+            "<dc:description><rdf:Alt><rdf:li xml:lang=\"x-default\">Electronic Target Training Analysis</rdf:li></rdf:Alt></dc:description>"
+            "<pdf:Keywords>Tech Aim, Training Lab, Technical Blocks, Electronic Target, Shooting</pdf:Keywords>"
+            "<xmp:CreatorTool>Tech Aim Electronic Target Control</xmp:CreatorTool>"
+            "</rdf:Description></rdf:RDF></x:xmpmeta>"
+            "<?xpacket end=\"w\"?>");
+        pdfWriter.setDocumentXmpMetadata(xmp.toUtf8());
+    }
     QPainter painter(&pdfWriter);
     if (!painter.isActive()) {
         emit printingNotice(tr("Could not create the training report PDF."), 6000);
