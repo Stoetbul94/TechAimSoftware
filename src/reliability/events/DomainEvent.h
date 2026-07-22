@@ -75,7 +75,16 @@ using DomainEvent = std::variant<
     TrainingNoteSaved,
     TrainingCompleted,
     TrainingSighterAccepted,
-    TrainingSighterPhaseStarted>;
+    TrainingSighterPhaseStarted,
+    // Call & Diagnose (T2) — appended at the END so all prior variant indexes
+    // and journal hashes never move. Reuses SessionStarted/SessionClosed and
+    // the Training sighter events.
+    CallDiagnoseSessionStarted,
+    CallDiagnoseStarted,
+    CallDiagnoseShotReceived,
+    CallDiagnoseCallRecorded,
+    CallDiagnoseNoteSaved,
+    CallDiagnoseCompleted>;
 
 // Stable type identifier of the alternative currently held.
 inline const char* eventTypeId(const DomainEvent& event)

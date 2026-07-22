@@ -849,6 +849,59 @@ ReduceResult SessionReducer::apply(const SessionState& current,
             (void)e;
             next.trainingCompleted = true;
             next.lifecycle = Lifecycle::Complete;
+        },
+        // ── Call & Diagnose (T2) ──
+        [&](const CallDiagnoseSessionStarted& e) {
+            if (!current.started) { failure = illegal("CallDiagnoseSessionStarted"); return; }
+            next.cdActive = true;
+            next.cdProgramId = e.programId;
+            next.cdFocus = e.technicalFocus;
+            next.cdShotCount = e.shotCount;
+            next.cdThreePositions = e.threePositions;
+            next.cdCurrentPosition = e.startPosition;
+            next.cdCallingActive = false;
+            // opens in the SIGHTERS phase (reuse the Training sighter machinery)
+            next.trainingInSighterPhase = true;
+            next.trainingSighterPosition = e.startPosition;
+            next.trainingSighterBeforeBlock = 1;
+        },
+        [&](const CallDiagnoseStarted& e) {
+            // Sighters → calling for this position.
+            next.cdCallingActive = true;
+            next.cdCurrentPosition = e.position;
+            next.trainingInSighterPhase = false;
+        },
+        [&](const CallDiagnoseShotReceived& e) {
+            // The actual impact is stored durably (hidden in the UI). Exactly
+            // one unresolved shot may exist — the controller enforces this;
+            // the reducer simply records it.
+            CallDiagnoseShotRecord rec;
+            rec.actual = e.shot;
+            rec.shotNumber = e.shotNumber;
+            rec.position = e.position;
+            rec.hasCall = false;
+            next.cdShots.append(rec);
+        },
+        [&](const CallDiagnoseCallRecorded& e) {
+            for (CallDiagnoseShotRecord& rec : next.cdShots)
+                if (rec.position == e.position && rec.shotNumber == e.shotNumber) {
+                    rec.hasCall = true;
+                    rec.calledXHundredthMm = e.calledXHundredthMm;
+                    rec.calledYHundredthMm = e.calledYHundredthMm;
+                    rec.callSplitMs = e.callSplitMs;
+                    return;
+                }
+        },
+        [&](const CallDiagnoseNoteSaved& e) {
+            for (CallDiagnoseShotRecord& rec : next.cdShots)
+                if (rec.position == e.position && rec.shotNumber == e.shotNumber) {
+                    rec.note = e.note; return;
+                }
+        },
+        [&](const CallDiagnoseCompleted& e) {
+            next.cdCompleted = true;
+            next.cdSessionNote = e.sessionNote;
+            next.lifecycle = Lifecycle::Complete;
         }
     }, envelope.payload);
 

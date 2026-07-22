@@ -219,6 +219,13 @@ void run_serializer_tests()
             TrainingCompleted{5},
             TrainingSighterAccepted{ShotCore{0, 0, 0, 0, 90, 12, 98, 0, 3000, 0, 0, 5, true}, 0, 1},
             TrainingSighterPhaseStarted{1, 3},
+            CallDiagnoseSessionStarted{QStringLiteral("call_and_diagnose"), 20,
+                                       QStringLiteral("Trigger"), 0, false},
+            CallDiagnoseStarted{0},
+            CallDiagnoseShotReceived{ShotCore{3, 3, 0, 0, 120, 34, 104, 0, 4000, 0, 0, 42, true}, 3, 0},
+            CallDiagnoseCallRecorded{3, 0, 250, -180, 4200},
+            CallDiagnoseNoteSaved{3, 0, QStringLiteral("felt high")},
+            CallDiagnoseCompleted{20, QStringLiteral("good session")},
         };
         check(catalogue.size() == static_cast<int>(std::variant_size_v<DomainEvent>),
               "round-trip covers every event type",

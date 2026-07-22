@@ -463,6 +463,39 @@ void EventSerializer::serializePayloadInto(const DomainEvent& event,
         [&](const TrainingSighterPhaseStarted& e) {
             w.field("position", static_cast<qint64>(e.position));
             w.field("beforeBlock", static_cast<qint64>(e.beforeBlock));
+        },
+        // ── Call & Diagnose (T2) ──
+        [&](const CallDiagnoseSessionStarted& e) {
+            w.field("programId", e.programId);
+            w.field("shotCount", static_cast<qint64>(e.shotCount));
+            w.field("technicalFocus", e.technicalFocus);
+            w.field("startPosition", static_cast<qint64>(e.startPosition));
+            w.field("threePositions", e.threePositions);
+        },
+        [&](const CallDiagnoseStarted& e) {
+            w.field("position", static_cast<qint64>(e.position));
+        },
+        [&](const CallDiagnoseShotReceived& e) {
+            writeShotCore(w, e.shot);
+            w.field("shotNumber", static_cast<qint64>(e.shotNumber));
+            w.field("position", static_cast<qint64>(e.position));
+        },
+        [&](const CallDiagnoseCallRecorded& e) {
+            w.field("shotNumber", static_cast<qint64>(e.shotNumber));
+            w.field("position", static_cast<qint64>(e.position));
+            w.field("calledXHundredthMm", static_cast<qint64>(e.calledXHundredthMm));
+            w.field("calledYHundredthMm", static_cast<qint64>(e.calledYHundredthMm));
+            w.field("callSplitMs", static_cast<qint64>(e.callSplitMs));
+        },
+        [&](const CallDiagnoseNoteSaved& e) {
+            w.field("shotNumber", static_cast<qint64>(e.shotNumber));
+            w.field("position", static_cast<qint64>(e.position));
+            w.field("note", e.note);
+        },
+        [&](const CallDiagnoseCompleted& e) {
+            w.field("completedShots", static_cast<qint64>(e.completedShots));
+            if (!e.sessionNote.isEmpty())
+                w.field("sessionNote", e.sessionNote);
         }
     }, event);
 }
@@ -1032,6 +1065,44 @@ ReliabilityResult EventSerializer::deserializePayload(const QString& typeId,
         TrainingSighterPhaseStarted e;
         e.position = static_cast<qint8>(r.reqInt("position", 0, 2));
         e.beforeBlock = static_cast<qint16>(r.reqInt("beforeBlock", 1, 1000));
+        *out = e;
+    } else if (typeId == QLatin1String(CallDiagnoseSessionStarted::kType)) {
+        CallDiagnoseSessionStarted e;
+        e.programId = r.reqString("programId");
+        e.shotCount = static_cast<qint16>(r.reqInt("shotCount", 1, 1000));
+        e.technicalFocus = r.reqString("technicalFocus");
+        e.startPosition = static_cast<qint8>(r.reqInt("startPosition", 0, 2));
+        e.threePositions = r.reqBool("threePositions");
+        *out = e;
+    } else if (typeId == QLatin1String(CallDiagnoseStarted::kType)) {
+        CallDiagnoseStarted e;
+        e.position = static_cast<qint8>(r.reqInt("position", 0, 2));
+        *out = e;
+    } else if (typeId == QLatin1String(CallDiagnoseShotReceived::kType)) {
+        CallDiagnoseShotReceived e;
+        e.shot = readShotCore(r);
+        e.shotNumber = static_cast<qint16>(r.reqInt("shotNumber", 1, 10000));
+        e.position = static_cast<qint8>(r.reqInt("position", 0, 2));
+        *out = e;
+    } else if (typeId == QLatin1String(CallDiagnoseCallRecorded::kType)) {
+        CallDiagnoseCallRecorded e;
+        e.shotNumber = static_cast<qint16>(r.reqInt("shotNumber", 1, 10000));
+        e.position = static_cast<qint8>(r.reqInt("position", 0, 2));
+        e.calledXHundredthMm = static_cast<qint32>(r.reqInt("calledXHundredthMm", INT32_MIN, INT32_MAX));
+        e.calledYHundredthMm = static_cast<qint32>(r.reqInt("calledYHundredthMm", INT32_MIN, INT32_MAX));
+        e.callSplitMs = static_cast<qint32>(r.reqInt("callSplitMs", INT32_MIN, INT32_MAX));
+        *out = e;
+    } else if (typeId == QLatin1String(CallDiagnoseNoteSaved::kType)) {
+        CallDiagnoseNoteSaved e;
+        e.shotNumber = static_cast<qint16>(r.reqInt("shotNumber", 1, 10000));
+        e.position = static_cast<qint8>(r.reqInt("position", 0, 2));
+        e.note = r.reqString("note");
+        *out = e;
+    } else if (typeId == QLatin1String(CallDiagnoseCompleted::kType)) {
+        CallDiagnoseCompleted e;
+        e.completedShots = static_cast<qint16>(r.reqInt("completedShots", 0, 10000));
+        if (r.o.contains(QLatin1String("sessionNote")))
+            e.sessionNote = r.optString("sessionNote");
         *out = e;
     } else {
         return ReliabilityResult::failure(ReliabilityError::UnsupportedEventType,

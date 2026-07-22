@@ -39,7 +39,9 @@ SOURCES += main.cpp \
     src/incident/EstIncidentController.cpp \
     src/mode/OperatingModeService.cpp \
     src/training/TrainingProgramController.cpp \
-    src/training/TrainingBlockMetrics.cpp
+    src/training/TrainingBlockMetrics.cpp \
+    src/training/CallDiagnoseController.cpp \
+    src/training/CallDiagnoseAnalytics.cpp
 
 # Offline coach-analytics module (pure C++, independent from Qt/QML).
 HEADERS += \
@@ -87,7 +89,10 @@ HEADERS += \
 HEADERS += \
     src/training/TrainingProgramTypes.h \
     src/training/TrainingBlockMetrics.h \
-    src/training/TrainingProgramController.h
+    src/training/TrainingProgramController.h \
+    src/training/CallDiagnoseTypes.h \
+    src/training/CallDiagnoseAnalytics.h \
+    src/training/CallDiagnoseController.h
 INCLUDEPATH += src/training
 INCLUDEPATH += src/finals
 INCLUDEPATH += src/finals10m

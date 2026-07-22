@@ -10,6 +10,8 @@
 
 #include "training/TrainingProgramController.h"
 #include "training/TrainingBlockMetrics.h"
+#include "training/CallDiagnoseController.h"
+#include "training/CallDiagnoseAnalytics.h"
 #include "reliability/journal/JournalWriter.h"
 #include "reliability/journal/JournalValidator.h"
 #include "reliability/replay/ReplayEngine.h"
@@ -1346,6 +1348,299 @@ static void testBrandingAssets()
     check(noForeign, "branding: no unrelated-organisation logo in the approved set");
 }
 
+// ══════════════════════════════════════════════════════════════════════════
+//  T2 — CALL & DIAGNOSE
+// ══════════════════════════════════════════════════════════════════════════
+namespace {
+void prepCd(CallDiagnoseController& c, MemFile& f, ManualClock& clk,
+            const char* disc, int opMode)
+{
+    c.storeForTesting()->setClockForTesting(&clk);
+    c.storeForTesting()->setJournalFileForTesting(&f);
+    c.configureDefaults(QString::fromLatin1(disc));
+    c.setTechnicalFocus(QStringLiteral("Trigger"));
+    if (opMode >= 0) c.setOperatingMode(opMode);
+}
+// One full called shot: actual → call → confirm → continue. Returns accepted.
+qint64 g_cdExt = 500000;
+void doCall(CallDiagnoseController& c, ManualClock& clk,
+            double ax, double ay, double cx, double cy, double score = 10.0)
+{
+    clk.advance(3000);
+    c.registerShot(ax, ay, score, ++g_cdExt, 0.0, 1);   // actual (hidden)
+    c.submitCall(cx, cy);
+    c.confirmCall();                                     // reveal
+    c.continueToNext();                                  // → next
+}
+} // namespace
+
+static void testCdDomain()
+{
+    std::printf("--- T2 call & diagnose: domain ---\n");
+    {
+        CallDiagnoseController c;
+        c.configureDefaults(QStringLiteral("AR10"));
+        check(c.shotCount() == 20, "cd: AR10 default 20 called shots");
+        check(c.validateConfig().isEmpty(), "cd: AR10 default valid");
+        c.setShotCount(2);
+        check(!c.validateConfig().isEmpty(), "cd: 2 shots rejected (min 5)");
+        c.setShotCount(61);
+        check(!c.validateConfig().isEmpty(), "cd: 61 shots rejected (max 60)");
+        c.setShotCount(20);
+        check(c.validateConfig().isEmpty(), "cd: 20 shots valid again");
+    }
+    {
+        CallDiagnoseController c; MemFile f; ManualClock clk;
+        prepCd(c, f, clk, "AR10", 1);
+        check(c.startCallDiagnose(QStringLiteral("A")), "cd: session starts");
+        check(c.phase() == 1 && c.inSighters(), "cd: opens in Sighters");
+        check(c.startLabel() == QLatin1String("Start Call & Diagnose"), "cd: start label");
+        const ValidationReport rep = JournalValidator::validateBytes(f.data);
+        const ReplayResult rr = ReplayEngine::replay(rep.validEnvelopes);
+        check(rr.state.sessionKind == QLatin1String("Training"), "cd: classified Training");
+        check(rr.state.cdProgramId == QLatin1String("call_and_diagnose"), "cd: programId persisted");
+        check(rr.state.cdShotCount == 20, "cd: shot count persisted");
+        // transitions
+        check(c.startProgramme() && c.phase() == 2 && c.awaitingShot(),
+              "cd: Sighters -> AwaitingShot on Start");
+        c.resetCallDiagnose();
+    }
+}
+
+static void testCdPendingOwnership()
+{
+    std::printf("--- T2 call & diagnose: pending-shot ownership ---\n");
+    CallDiagnoseController c; MemFile f; ManualClock clk;
+    prepCd(c, f, clk, "AR10", 1);
+    c.setShotCount(5);
+    c.startCallDiagnose(QStringLiteral("A"));
+    c.startProgramme();                                  // AwaitingShot
+    check(c.registerShot(2, 3, 10.4, 900, 0, 1), "cd: actual shot accepted");
+    check(c.phase() == 3 && c.awaitingCall(), "cd: actual received -> AwaitingCall");
+    check(countType(f.data, "CallDiagnoseShotReceived") == 1, "cd: actual stored exactly once");
+    // actual is HIDDEN: no reveal projection until a call is confirmed
+    check(c.revealCurrent().isEmpty(), "cd: actual hidden before call (no reveal data)");
+    // the next shot is REFUSED until the call is resolved
+    check(!c.registerShot(1, 1, 9.0, 901, 0, 1), "cd: next shot refused while awaiting a call");
+    check(countType(f.data, "CallDiagnoseShotReceived") == 1, "cd: refused shot created no event");
+    // place + confirm the call
+    check(c.submitCall(2.5, 2.5), "cd: call placed");
+    check(c.confirmCall(), "cd: call confirmed -> Reveal");
+    check(c.phase() == 4 && c.revealOpen(), "cd: Reveal open");
+    check(countType(f.data, "CallDiagnoseCallRecorded") == 1, "cd: exactly one call recorded");
+    check(!c.confirmCall(), "cd: duplicate confirm rejected");
+    check(countType(f.data, "CallDiagnoseCallRecorded") == 1, "cd: no duplicate call event");
+    check(!c.revealCurrent().isEmpty(), "cd: reveal data available after confirm");
+    // must Continue before the next shot
+    check(!c.registerShot(1, 1, 9.0, 902, 0, 1), "cd: next shot refused during Reveal");
+    check(c.continueToNext() && c.phase() == 2, "cd: Continue -> AwaitingShot");
+    check(c.registerShot(1, 1, 9.0, 903, 0, 1) && c.phase() == 3,
+          "cd: next actual accepted after Continue, pairs with the new call");
+    c.resetCallDiagnose();
+}
+
+static void testCdCoordinates()
+{
+    std::printf("--- T2 call & diagnose: coordinates + error ---\n");
+    CallDiagnoseController c; MemFile f; ManualClock clk;
+    prepCd(c, f, clk, "AR10", 1);
+    c.setShotCount(5);
+    c.startCallDiagnose(QStringLiteral("A"));
+    c.startProgramme();
+    // actual (2,3), call (5,7): errorX=+3 (right), errorY=+4 (high), radial=5
+    clk.advance(3000);
+    c.registerShot(2.0, 3.0, 10.0, 1000, 0, 1);
+    c.submitCall(5.0, 7.0);
+    c.confirmCall();
+    const QVariantMap rv = c.revealCurrent();
+    check(qAbs(rv.value("actualXMm").toDouble() - 2.0) < 1e-6
+              && qAbs(rv.value("actualYMm").toDouble() - 3.0) < 1e-6, "cd: actual coords retained");
+    check(qAbs(rv.value("calledXMm").toDouble() - 5.0) < 1e-6
+              && qAbs(rv.value("calledYMm").toDouble() - 7.0) < 1e-6, "cd: called coords retained");
+    check(qAbs(rv.value("errorXMm").toDouble() - 3.0) < 1e-6, "cd: X error = called-actual = +3 (right)");
+    check(qAbs(rv.value("errorYMm").toDouble() - 4.0) < 1e-6, "cd: Y error = +4 (high, Y not inverted)");
+    check(qAbs(rv.value("errorMm").toDouble() - 5.0) < 1e-6, "cd: radial error = 5.0 mm");
+    check(rv.value("xPhrase").toString().contains("right"), "cd: X phrase says right");
+    check(rv.value("yPhrase").toString().contains("high"), "cd: Y phrase says high");
+    c.continueToNext();
+    // exact match → zero error
+    clk.advance(3000);
+    c.registerShot(-1.0, -2.0, 9.5, 1001, 0, 1);
+    c.submitCall(-1.0, -2.0);
+    c.confirmCall();
+    check(qAbs(c.revealCurrent().value("errorMm").toDouble()) < 1e-9,
+          "cd: exact-match call gives zero error");
+    c.resetCallDiagnose();
+}
+
+static void testCdAnalytics()
+{
+    std::printf("--- T2 call & diagnose: analytics ---\n");
+    CallDiagnoseController c; MemFile f; ManualClock clk;
+    prepCd(c, f, clk, "AR10", 1);
+    c.setShotCount(6);
+    c.startCallDiagnose(QStringLiteral("A"));
+    c.startProgramme();
+    // 5 calls, all called 2mm LEFT and 1mm HIGH of a fixed actual (0,0).
+    for (int i = 0; i < 5; ++i) doCall(c, clk, 0.0, 0.0, -2.0, 1.0, 10.0);
+    const QVariantMap s = c.sessionStats(-1);
+    check(s.value("count").toInt() == 5, "cd: 5 calls counted");
+    // each radial error = sqrt(4+1)=~2.236
+    check(qAbs(s.value("averageError").toDouble() - std::sqrt(5.0)) < 1e-6, "cd: avg error correct");
+    check(qAbs(s.value("medianError").toDouble() - std::sqrt(5.0)) < 1e-6, "cd: median error correct");
+    check(qAbs(s.value("smallestError").toDouble() - std::sqrt(5.0)) < 1e-6, "cd: smallest error");
+    check(qAbs(s.value("largestError").toDouble() - std::sqrt(5.0)) < 1e-6, "cd: largest error");
+    check(s.value("errorStdDev").toDouble() < 1e-9, "cd: SD zero for identical errors");
+    check(s.value("hasBias").toBool(), "cd: bias available (>=3 calls)");
+    check(qAbs(s.value("biasX").toDouble() + 2.0) < 1e-6, "cd: mean X bias = -2 (left)");
+    check(qAbs(s.value("biasY").toDouble() - 1.0) < 1e-6, "cd: mean Y bias = +1 (high)");
+    // observations name the left/high bias, no diagnostic wording
+    const QStringList obs = c.sessionObservations();
+    bool leftHigh = false, clean = true;
+    for (const QString& o : obs) {
+        if (o.contains("left")) leftHigh = true;
+        if (o.contains("trigger", Qt::CaseInsensitive) || o.contains("fault", Qt::CaseInsensitive)) clean = false;
+    }
+    check(leftHigh, "cd: observations report the left directional bias");
+    check(clean, "cd: observations carry no diagnostic-cause wording");
+    // edges
+    {
+        const CallSessionStats z = computeCallSessionStats({});
+        check(z.count == 0 && z.averageError == 0.0, "cd: zero-shot analytics guarded");
+    }
+    c.resetCallDiagnose();
+}
+
+static void testCdSeparation()
+{
+    std::printf("--- T2 call & diagnose: separation ---\n");
+    CallDiagnoseController c; MemFile f; ManualClock clk;
+    prepCd(c, f, clk, "AR10", 1);
+    c.setShotCount(5);
+    c.startCallDiagnose(QStringLiteral("A"));
+    c.startProgramme();
+    for (int i = 0; i < 5; ++i) doCall(c, clk, 1.0, 1.0, 1.2, 0.8, 10.0);
+    check(c.phase() == 5 && c.isCompleted(), "cd: completes after configured shots");
+    const ValidationReport rep = JournalValidator::validateBytes(f.data);
+    const ReplayResult rr = ReplayEngine::replay(rep.validEnvelopes);
+    check(countType(f.data, "ShotAccepted") == 0, "cd: no competition ShotAccepted");
+    check(countType(f.data, "SighterAccepted") == 0, "cd: no competition SighterAccepted");
+    check(countType(f.data, "MatchCompleted") == 0, "cd: completion is not MatchCompleted");
+    check(countType(f.data, "TrainingShotAccepted") == 0, "cd: no Technical-Blocks shot events");
+    check(rr.state.officials.isEmpty() && rr.state.sighters.isEmpty(),
+          "cd: no official/sighter competition record");
+    check(rr.state.sessionKind == QLatin1String("Training"), "cd: stays Training end-to-end");
+    check(rr.state.cdCompleted, "cd: completion recorded distinctly");
+    c.resetCallDiagnose();
+}
+
+static void testCdRecovery()
+{
+    std::printf("--- T2 call & diagnose: recovery ---\n");
+    const QString root = QDir::temp().filePath(
+        QStringLiteral("techaim_cd_recover_%1").arg(QCoreApplication::applicationPid()));
+    QDir(root).removeRecursively();
+    StoragePaths::setRootOverrideForTesting(root);
+    StoragePaths::initialize();
+
+    // (a) CRITICAL: actual received but call NOT entered → resume AwaitingCall,
+    //     actual hidden, next shot refused, call pairs with the correct shot.
+    QString sidA;
+    {
+        CallDiagnoseController a; a.configureDefaults(QStringLiteral("AR10"));
+        a.setShotCount(5); a.setTechnicalFocus(QStringLiteral("Aim")); a.setOperatingMode(1);
+        a.startCallDiagnose(QStringLiteral("A")); sidA = a.sessionId();
+        a.startProgramme();
+        qint64 e = 40000;
+        // two full calls
+        for (int i = 0; i < 2; ++i) { a.registerShot(1, 1, 10.0, ++e, 0, 1); a.submitCall(1, 1); a.confirmCall(); a.continueToNext(); }
+        a.registerShot(4, 5, 9.8, ++e, 0, 1);        // 3rd ACTUAL received, no call → crash
+    }
+    {
+        CallDiagnoseController b; b.setOperatingMode(1);
+        check(b.resumeFromRecovery(sidA), "cd-recover(a): resume succeeds");
+        check(b.phase() == 3 && b.awaitingCall(), "cd-recover(a): restored INTO AwaitingCall");
+        check(b.pendingShotNumber() == 3, "cd-recover(a): pending shot number restored (3)");
+        check(b.shotsCompleted() == 2, "cd-recover(a): 2 calls already completed");
+        check(b.revealCurrent().isEmpty(), "cd-recover(a): actual stays HIDDEN until the call");
+        check(!b.registerShot(1, 1, 9.0, 40010, 0, 1), "cd-recover(a): next shot refused (pending)");
+        check(b.submitCall(4.5, 5.5) && b.confirmCall(), "cd-recover(a): call entered after resume");
+        check(b.revealCurrent().value("shotNumber").toInt() == 3,
+              "cd-recover(a): call paired with the correct durable actual (shot 3)");
+        const ValidationReport rep = JournalValidator::validateFile(b.store()->currentJournalPath());
+        check(rep.firstInvalidLine == -1, "cd-recover(a): hash chain valid after resume+call");
+        b.resetCallDiagnose();
+    }
+
+    // (b) call confirmed but not continued → resume AwaitingShot; note persists.
+    QString sidB;
+    {
+        CallDiagnoseController a; a.configureDefaults(QStringLiteral("AR10"));
+        a.setShotCount(5); a.setTechnicalFocus(QStringLiteral("Hold")); a.setOperatingMode(1);
+        a.startCallDiagnose(QStringLiteral("B")); sidB = a.sessionId();
+        a.startProgramme();
+        a.registerShot(2, 2, 10.0, 41000, 0, 1);
+        a.submitCall(2, 3); a.confirmCall();
+        a.saveShotNote(QStringLiteral("felt high"));     // note after reveal, then crash
+    }
+    {
+        CallDiagnoseController b; b.setOperatingMode(1);
+        check(b.resumeFromRecovery(sidB), "cd-recover(b): resume succeeds");
+        check(b.phase() == 2 && b.awaitingShot(),
+              "cd-recover(b): confirmed-not-continued restores to AwaitingShot");
+        const QVariantList shots = b.shotReviewList();
+        check(shots.size() == 1 && shots[0].toMap().value("note").toString() == QLatin1String("felt high"),
+              "cd-recover(b): per-shot note restored");
+        b.resetCallDiagnose();
+    }
+
+    // (c) completed session → auto-archived, NOT offered as an active candidate.
+    QString sidC;
+    {
+        CallDiagnoseController a; a.configureDefaults(QStringLiteral("AR10"));
+        a.setShotCount(5); a.setTechnicalFocus(QStringLiteral("Trigger")); a.setOperatingMode(1);
+        a.startCallDiagnose(QStringLiteral("C")); sidC = a.sessionId();
+        a.startProgramme();
+        qint64 e = 42000;
+        for (int i = 0; i < 5; ++i) { a.registerShot(1, 1, 10.0, ++e, 0, 1); a.submitCall(1, 1); a.confirmCall(); a.continueToNext(); }
+        // completed, NOT closed → crash
+    }
+    {
+        RecoveryCoordinator coord;
+        bool offered = false;
+        for (const RecoveryCandidate& cand : coord.scan())
+            if (cand.sessionId == sidC && cand.resumable) offered = true;
+        check(!offered, "cd-recover(c): completed C&D NOT offered as an unfinished resume");
+        CallDiagnoseController b; b.setOperatingMode(1);
+        check(!b.resumeFromRecovery(sidC), "cd-recover(c): completed session not resumed as active");
+    }
+
+    // (d) 3P: crash mid-Prone calling → resume restores the Prone position.
+    QString sidD;
+    {
+        CallDiagnoseController a; a.configureDefaults(QStringLiteral("3P50"));
+        a.setTechnicalFocus(QStringLiteral("Balance")); a.setOperatingMode(1);
+        const int per = a.shotCount();
+        a.startCallDiagnose(QStringLiteral("D")); sidD = a.sessionId();
+        a.startProgramme();                              // Kneeling
+        qint64 e = 43000;
+        for (int i = 0; i < per; ++i) { a.registerShot(1, 1, 10.0, ++e, 0, 1); a.submitCall(1, 1); a.confirmCall(); a.continueToNext(); }
+        // now in Prone sighters
+        a.startProgramme();                              // Prone calling
+        a.registerShot(2, 2, 9.0, ++e, 0, 1);            // one Prone actual, crash awaiting call
+    }
+    {
+        CallDiagnoseController b; b.setOperatingMode(1);
+        check(b.resumeFromRecovery(sidD), "cd-recover(d): 3P resume succeeds");
+        check(b.phase() == 3 && b.positionName() == QLatin1String("Prone"),
+              "cd-recover(d): restored INTO Prone AwaitingCall");
+        check(b.shotsCompleted() == 0, "cd-recover(d): Prone calls start fresh (Kneeling separate)");
+        b.resetCallDiagnose();
+    }
+
+    StoragePaths::setRootOverrideForTesting(QString());
+}
+
 int main(int argc, char** argv)
 {
     QCoreApplication app(argc, argv);
@@ -1367,6 +1662,12 @@ int main(int argc, char** argv)
     testCleanClose();
     testPdfModel();
     testBrandingAssets();
+    testCdDomain();
+    testCdPendingOwnership();
+    testCdCoordinates();
+    testCdAnalytics();
+    testCdSeparation();
+    testCdRecovery();
     std::printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
     std::fflush(stdout);
     return g_failures == 0 ? 0 : 1;

@@ -144,6 +144,20 @@ const EventMeta kRows[] = {
                                  ReducerClass::Mutating),   // measured, never counted
     row<TrainingSighterPhaseStarted>(DurabilityClass::Sync, BroadcastClass::Broadcast,
                                      ReducerClass::Mutating),
+    // Call & Diagnose (T2). The actual shot and the call must be on disk before
+    // acting on them (reveal is authoritative), so both are Sync.
+    row<CallDiagnoseSessionStarted>(DurabilityClass::Sync, BroadcastClass::Broadcast,
+                                    ReducerClass::Mutating),
+    row<CallDiagnoseStarted>(DurabilityClass::Sync, BroadcastClass::Broadcast,
+                             ReducerClass::Mutating),
+    row<CallDiagnoseShotReceived>(DurabilityClass::Sync, BroadcastClass::Broadcast,
+                                  ReducerClass::Mutating),
+    row<CallDiagnoseCallRecorded>(DurabilityClass::Sync, BroadcastClass::Broadcast,
+                                  ReducerClass::Mutating),
+    row<CallDiagnoseNoteSaved>(DurabilityClass::Sync, BroadcastClass::Internal,
+                               ReducerClass::Mutating),
+    row<CallDiagnoseCompleted>(DurabilityClass::Sync, BroadcastClass::Broadcast,
+                               ReducerClass::Mutating),
 };
 
 struct RegistryIndex {

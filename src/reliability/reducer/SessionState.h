@@ -241,6 +241,29 @@ struct TrainingBlockData {
     }
 };
 
+// T2: one Call & Diagnose shot — the ACTUAL measured impact plus the athlete's
+// call (added later, hence hasCall). The actual is authoritative in the journal
+// even while hidden in the UI. Call-to-actual error is DERIVED (analytics),
+// never stored.
+struct CallDiagnoseShotRecord {
+    ShotCore actual;
+    qint16 shotNumber = 0;
+    qint8  position = 0;
+    bool   hasCall = false;
+    qint32 calledXHundredthMm = 0;
+    qint32 calledYHundredthMm = 0;
+    qint32 callSplitMs = 0;
+    QString note;
+    bool operator==(const CallDiagnoseShotRecord& o) const
+    {
+        return actual == o.actual && shotNumber == o.shotNumber
+            && position == o.position && hasCall == o.hasCall
+            && calledXHundredthMm == o.calledXHundredthMm
+            && calledYHundredthMm == o.calledYHundredthMm
+            && callSplitMs == o.callSplitMs && note == o.note;
+    }
+};
+
 using DisciplineState =
     std::variant<std::monostate, QualificationState, Finals3PState,
                  TrainingState, Finals10mState>;
@@ -289,6 +312,18 @@ struct SessionState {
     qint16  trainingSighterBeforeBlock = 1;// block the current sighter phase precedes
     QVector<ShotCore> trainingSighters;    // all sighter shots (audit/recovery)
     QVector<qint8>    trainingSighterPos;  // parallel: 3P position of each sighter
+    // T2: Call & Diagnose programme (still sessionKind = "Training";
+    // cdProgramId = "call_and_diagnose"). Sighters reuse the fields above.
+    bool    cdActive = false;
+    bool    cdCompleted = false;
+    bool    cdCallingActive = false;       // false = sighter phase; true = calling
+    QString cdProgramId;
+    QString cdFocus;                       // technical focus (recovery)
+    qint16  cdShotCount = 0;               // called shots per position (or total)
+    qint8   cdCurrentPosition = 0;
+    bool    cdThreePositions = false;
+    QString cdSessionNote;
+    QVector<CallDiagnoseShotRecord> cdShots;
     // lifecycle
     bool started = false;
     Lifecycle lifecycle = Lifecycle::None;
