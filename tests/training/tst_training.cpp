@@ -14,6 +14,9 @@
 #include "reliability/journal/JournalValidator.h"
 #include "reliability/replay/ReplayEngine.h"
 #include "reliability/store/MonotonicClock.h"
+#include "reliability/storage/StoragePaths.h"
+
+#include <QDir>
 
 #include <QCoreApplication>
 #include <QVariantMap>
@@ -456,6 +459,132 @@ static void testRecovery()
           "3P: kneeling blocks carry Kneeling identity");
 }
 
+// ── 6b. in-place resume (T1 closure) ─────────────────────────────────────
+static void testInPlaceResume()
+{
+    std::printf("--- in-place resume (real journals) ---\n");
+    const QString root = QDir::temp().filePath(
+        QStringLiteral("techaim_t1_resume_%1").arg(QCoreApplication::applicationPid()));
+    QDir(root).removeRecursively();
+    StoragePaths::setRootOverrideForTesting(root);
+    StoragePaths::initialize();
+
+    // (a) crash mid-block-2 → resume restores config/phase/progress; firing
+    //     continues with the duplicate guard intact and completes cleanly.
+    QString sid;
+    {
+        TrainingProgramController a;
+        a.configureDefaults(QStringLiteral("3P50"));
+        a.setTechnicalFocus(QStringLiteral("Rhythm"));
+        a.setVisibilityMode(1);                       // Mode B
+        a.setOperatingMode(1);                        // Demo
+        check(a.startTraining(QStringLiteral("A")), "resume(a): session starts on disk");
+        sid = a.sessionId();
+        static qint64 ext = 5000;
+        for (int i = 0; i < 6; ++i) a.registerShot(1, 1, 10.0, ++ext, 0, 1);  // block 1
+        a.saveNote(QStringLiteral("k-steady"));
+        a.continueToNextBlock();                      // block 2 (Kneeling)
+        a.registerShot(2, 2, 9.8, ++ext, 0, 1);
+        a.registerShot(2, 1, 9.9, ++ext, 0, 1);       // crash mid-block-2
+    }
+    {
+        TrainingProgramController b;
+        b.setOperatingMode(1);
+        check(b.resumeFromRecovery(sid), "resume(a): in-place resume succeeds");
+        check(b.phase() == 2, "resume(a): active-block phase restored");
+        check(b.currentBlock() == 2 && b.shotsInBlock() == 2,
+              "resume(a): block 2 with 2 shots restored");
+        check(b.blockCount() == 6 && b.shotsPerBlock() == 6,
+              "resume(a): 3P configuration restored (6x6)");
+        check(b.visibilityMode() == 1 && b.technicalFocus() == QLatin1String("Rhythm"),
+              "resume(a): visibility + focus restored");
+        check(b.positionName() == QLatin1String("Kneeling"),
+              "resume(a): 3P position restored (block 2 = Kneeling)");
+        check(b.recoveredCurrentBlockShots().size() == 2,
+              "resume(a): current-block shots exposed for the face restore");
+        check(!b.registerShot(3, 3, 10.0, 5001, 0, 1),
+              "resume(a): pre-crash externalId still refused (duplicate guard)");
+        check(!b.registerShot(3, 3, 10.0, 9000, 0, /*Physical*/0),
+              "resume(a): wrong-source gate still active after resume");
+        // finish block 2; review appears exactly once
+        qint64 ext2 = 9100;
+        for (int i = 0; i < 4; ++i) b.registerShot(1, 2, 10.1, ++ext2, 0, 1);
+        check(b.phase() == 3, "resume(a): block completes into review after resume");
+        const ValidationReport rep =
+            JournalValidator::validateFile(b.store()->currentJournalPath());
+        check(rep.firstInvalidLine == -1, "resume(a): hash chain valid after resume+shots");
+        int starts = 0, completes = 0;
+        for (const EventEnvelope& e : rep.validEnvelopes) {
+            if (qstrcmp(eventTypeId(e.payload), "TrainingSessionStarted") == 0) ++starts;
+            if (qstrcmp(eventTypeId(e.payload), "TrainingBlockCompleted") == 0) ++completes;
+        }
+        check(starts == 1, "resume(a): no duplicate TrainingSessionStarted");
+        check(completes == 2, "resume(a): block completions exactly once each");
+        b.resetTraining();
+    }
+
+    // (b) crash while Block Review durable (block completed) → resume lands in
+    //     review, shots rejected, note restored; continue does not double-start.
+    QString sid2;
+    {
+        TrainingProgramController a;
+        a.configureDefaults(QStringLiteral("AR10"));
+        a.setTechnicalFocus(QStringLiteral("Trigger"));
+        a.setOperatingMode(1);
+        a.startTraining(QStringLiteral("B"));
+        sid2 = a.sessionId();
+        qint64 ext = 7000;
+        for (int i = 0; i < 6; ++i) a.registerShot(1, 1, 10.2, ++ext, 0, 1);
+        a.saveNote(QStringLiteral("review-note"));    // crash during review
+    }
+    {
+        TrainingProgramController b;
+        b.setOperatingMode(1);
+        check(b.resumeFromRecovery(sid2), "resume(b): review-phase resume succeeds");
+        check(b.phase() == 3, "resume(b): restored INTO block review (no auto next)");
+        check(!b.registerShot(1, 1, 10.0, 8000, 0, 1),
+              "resume(b): shots rejected while review restored");
+        const QVariantMap m = b.blockReviewMetrics(1);
+        check(m.value(QStringLiteral("note")).toString() == QLatin1String("review-note"),
+              "resume(b): saved note restored exactly");
+        check(b.continueToNextBlock() && b.currentBlock() == 2 && b.shotsInBlock() == 0,
+              "resume(b): continue starts block 2 once with zero shots");
+        b.resetTraining();
+    }
+
+    // (c) crash after TrainingCompleted → resume shows summary, rejects shots,
+    //     appends no duplicate completion.
+    QString sid3;
+    {
+        TrainingProgramController a;
+        a.configureDefaults(QStringLiteral("AR10"));
+        a.setBlockCount(1); a.setShotsPerBlock(3);
+        a.setTechnicalFocus(QStringLiteral("Hold"));
+        a.setOperatingMode(1);
+        a.startTraining(QStringLiteral("C"));
+        sid3 = a.sessionId();
+        qint64 ext = 7500;
+        for (int i = 0; i < 3; ++i) a.registerShot(1, 1, 10.0, ++ext, 0, 1);
+        a.continueToNextBlock();                      // TrainingCompleted
+    }                                                 // crash before Home
+    {
+        TrainingProgramController b;
+        b.setOperatingMode(1);
+        check(b.resumeFromRecovery(sid3), "resume(c): completed-session resume succeeds");
+        check(b.phase() == 4, "resume(c): summary restored (no active block)");
+        check(!b.registerShot(1, 1, 10.0, 9500, 0, 1),
+              "resume(c): completed session accepts no shots");
+        const ValidationReport rep =
+            JournalValidator::validateFile(b.store()->currentJournalPath());
+        int tc = 0;
+        for (const EventEnvelope& e : rep.validEnvelopes)
+            if (qstrcmp(eventTypeId(e.payload), "TrainingCompleted") == 0) ++tc;
+        check(tc == 1, "resume(c): no duplicate TrainingCompleted");
+        b.resetTraining();
+    }
+    StoragePaths::setRootOverrideForTesting(QString());
+}
+
 // ── 7. separation ────────────────────────────────────────────────────────
 static void testSeparation()
 {
@@ -493,6 +622,7 @@ int main(int argc, char** argv)
     testEarlyEnd();
     testAnalytics();
     testRecovery();
+    testInPlaceResume();
     testSeparation();
     std::printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
     std::fflush(stdout);

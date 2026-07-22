@@ -559,16 +559,15 @@ ApplicationWindow {
     // Rules: never silently fall back to Finals; an unknown discipline fails
     // safe. See docs/issf-rules/README.md.
     function dispatchRecovery(sessionId, disciplineId) {
-        // T1: Training sessions are classified separately and NEVER resumed
-        // through a competition restorer. The in-place resume workflow ships
-        // with a later Training phase; the journal is left intact.
+        // T1 closure: Training sessions are classified separately and resume
+        // through the TRAINING owner only — never a competition restorer.
         if (disciplineId === "TRAINING") {
-            dialogManager.showInformation(qsTr("Training Session"),
-                qsTr("This is an unfinished TRAINING session (Technical Blocks). "
-                     + "In-place training resume arrives in a later build.\n\n"
-                     + "The session journal has been preserved and is not treated "
-                     + "as a competition match."))
-            return false
+            var ok = shootingPage.restoreTrainingSession(sessionId)
+            if (!ok)
+                dialogManager.showError(qsTr("Training Recovery Failed"),
+                    qsTr("The training session could not be resumed. "
+                         + "Its journal has been left intact."))
+            return ok
         }
         if (disciplineId === "FINAL3P")
             return window.restoreFinals3P(sessionId)

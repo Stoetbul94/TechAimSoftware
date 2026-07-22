@@ -1021,6 +1021,33 @@ Item {
         onNewSessionRequested: shootingPage.newTrainingSession()
     }
 
+    // T1 closure: in-place Training recovery. Resume the journal through
+    // TRAINING (owner selected by sessionKind, never by discipline alone),
+    // then restore the PROJECTION: the face redraws the current block's
+    // shots ONLY when the recovered visibility mode permits (Mode B/C);
+    // Mode A re-buffers them for reveal at review. Completed-block review
+    // and the summary rebuild from controller metrics on their own.
+    function restoreTrainingSession(sessionId) {
+        if (!TRAINING.resumeFromRecovery(sessionId))
+            return false
+        enterTrainingMode()
+        trainingShotSeq = Math.max(trainingShotSeq, TRAINING.recoveredMaxExternalId())
+        var shots = TRAINING.recoveredCurrentBlockShots()
+        for (var i = 0; i < shots.length; ++i) {
+            var p = centerPanel.polarForMm(shots[i].xMm * 1, shots[i].yMm * 1)
+            var disp = { direction: p.x.toFixed(2), score: p.y.toFixed(2),
+                         isSighter: false, position: 2 }
+            if (TRAINING.phase === 2 && !TRAINING.showImpacts) {
+                var buf = trainingPendingMarkers
+                buf.push(disp); trainingPendingMarkers = buf   // Mode A: stays hidden
+            } else if (TRAINING.phase !== 2 || TRAINING.showImpacts) {
+                globalModelOfData.append(disp)                 // B/C or review reveal
+            }
+        }
+        loginPage.visible = false
+        return true
+    }
+
     // Enter/exit workflow (mirrors the finals pattern).
     function enterTrainingMode() {
         isTrainingMatch = true

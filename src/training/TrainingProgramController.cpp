@@ -427,6 +427,90 @@ QVariantList TrainingProgramController::blockShotPlot(int blockIndex1) const
     return out;
 }
 
+// ── T1 closure: in-place recovery ────────────────────────────────────────
+
+bool TrainingProgramController::resumeFromRecovery(const QString& sessionId)
+{
+    if (!m_recovery)
+        m_recovery = std::make_unique<RecoveryCoordinator>();
+    m_recovery->scan();                       // idempotent candidate cache
+    RecoveredMatchState rec;
+    ErrorInfo err;
+    if (!m_recovery->buildRecoveredState(sessionId, &rec, &err)) {
+        emit journalWriteFailed(rec.journalPath, err.technicalDetail);
+        return false;
+    }
+    // Owner check by classification, not discipline: only Training sessions
+    // (technical_blocks) are resumed here — a competition journal is refused.
+    if (rec.state.sessionKind != QLatin1String("Training")
+        || rec.state.trainingProgramId != QLatin1String(kProgramTechnicalBlocks)) {
+        m_lastError = QStringLiteral("Not a Training session.");
+        return false;
+    }
+    const ReliabilityResult rr = m_store->resumeSession(rec);
+    if (!rr.ok) {
+        emit journalWriteFailed(rec.journalPath, rr.error.technicalDetail);
+        return false;
+    }
+    // Rebuild the configuration from the replayed state (never re-defaults).
+    const SessionState& s = st();
+    m_cfg = TechnicalBlocksConfig::defaultsFor(s.discipline);   // shape + est. time
+    m_cfg.discipline = s.discipline;
+    m_cfg.blockCount = s.trainingBlockCount;
+    m_cfg.shotsPerBlock = s.trainingShotsPerBlock;
+    m_cfg.visibility = static_cast<Visibility>(qBound<int>(0, s.trainingVisibility, 2));
+    m_cfg.technicalFocus = s.trainingFocus;
+    if (m_cfg.threePositions)
+        m_cfg.blocksPerPosition = qMax(1, m_cfg.blockCount / 3);
+    // Duplicate guard continues past every recovered externalId.
+    m_lastExternalId = -1;
+    for (const TrainingBlockData& b : s.trainingBlocks)
+        for (const ShotCore& sc : b.shots)
+            if (sc.externalId > m_lastExternalId) m_lastExternalId = sc.externalId;
+    // Phase re-derivation from the durable record only:
+    //   completed  -> summary; current block completed -> review (never
+    //   auto-start the next block); otherwise -> active block.
+    m_currentBlock = qMax<int>(1, s.trainingCurrentBlock);
+    bool currentCompleted = false;
+    for (const TrainingBlockData& b : s.trainingBlocks)
+        if (b.blockIndex == m_currentBlock) currentCompleted = b.completed;
+    if (s.trainingCompleted)      m_phase = 4;
+    else if (currentCompleted)    m_phase = 3;
+    else                          m_phase = 2;
+    m_blockStartMonoMs = m_store->nowMonotonicMs();   // elapsed restarts at resume
+    emit configChanged(); emit phaseChanged(); emit progressChanged();
+    if (m_phase == 4) emit trainingCompleted();
+    qInfo() << "TRAINING: resumed session" << s.sessionId.left(8)
+            << "block" << m_currentBlock << "phase" << m_phase;
+    return true;
+}
+
+void TrainingProgramController::discardRecovery(const QString& sessionId)
+{
+    if (!m_recovery)
+        m_recovery = std::make_unique<RecoveryCoordinator>();
+    m_recovery->scan();
+    m_recovery->archiveOrDiscard(sessionId, /*discarded*/ true);
+}
+
+QVariantList TrainingProgramController::recoveredCurrentBlockShots() const
+{
+    // Shots of the CURRENT block only (mm + within-block index). The QML
+    // restorer applies the visibility mode: Mode A buffers, B/C draw.
+    QVariantList out;
+    if (!m_store) return out;
+    for (const TrainingBlockData& b : st().trainingBlocks) {
+        if (b.blockIndex != m_currentBlock) continue;
+        for (const ShotCore& sc : b.shots) {
+            QVariantMap m;
+            m[QStringLiteral("xMm")] = sc.xHundredthMm / 100.0;
+            m[QStringLiteral("yMm")] = sc.yHundredthMm / 100.0;
+            out.append(m);
+        }
+    }
+    return out;
+}
+
 // ── internals ────────────────────────────────────────────────────────────
 
 bool TrainingProgramController::submit(const DomainEvent& ev)

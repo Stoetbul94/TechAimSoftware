@@ -23,6 +23,7 @@
 #include "TrainingProgramTypes.h"
 #include "TrainingBlockMetrics.h"
 #include "reliability/store/SessionStore.h"
+#include "reliability/recovery/RecoveryCoordinator.h"
 
 class TrainingProgramController : public QObject
 {
@@ -82,6 +83,18 @@ public:
     // Elapsed seconds since the current block started (0 when none).
     Q_INVOKABLE int blockElapsedSec() const;
 
+    // ── T1 closure: in-place Training recovery ───────────────────────────
+    // Reopens the crashed journal in append mode, adopts the replayed state
+    // and re-derives the controller phase (active block / review / complete).
+    // Refuses non-Training sessions — a competition journal is NEVER resumed
+    // here (and Training is never resumed by a competition controller).
+    Q_INVOKABLE bool resumeFromRecovery(const QString& sessionId);
+    Q_INVOKABLE void discardRecovery(const QString& sessionId);
+    // Recovered shots for the face restore (mm coords + block/position);
+    // the QML restorer applies the visibility mode before drawing.
+    Q_INVOKABLE QVariantList recoveredCurrentBlockShots() const;
+    Q_INVOKABLE qint64 recoveredMaxExternalId() const { return m_lastExternalId; }
+
     // F10 gate: running operating mode (0=Live, 1=Demo, -1 unset/permissive).
     Q_INVOKABLE void setOperatingMode(int mode) { m_operatingMode = mode; }
 
@@ -131,6 +144,7 @@ private:
     const ta::rel::SessionState& st() const { return m_store->state(); }
 
     std::unique_ptr<ta::rel::SessionStore> m_store;
+    std::unique_ptr<ta::rel::RecoveryCoordinator> m_recovery;
     ta::training::TechnicalBlocksConfig m_cfg;
     int m_phase = 0;
     int m_currentBlock = 0;          // 1-based
