@@ -992,25 +992,21 @@ Item {
         enabled: isTrainingMatch
 
         function onShotAccepted(rec) {
-            var disp = {
-                direction: shootingPage.trainingLastDirection.toFixed(2),
-                score: shootingPage.trainingLastRadius.toFixed(2),
-                isSighter: false, position: 2
-            }
-            if (rec.xMm !== undefined) {
-                globalModelOfData.append(disp)          // Mode B/C: impact shown
-            } else {
-                var p = shootingPage.trainingPendingMarkers
-                p.push(disp)                             // Mode A: buffer, reveal at review
-                shootingPage.trainingPendingMarkers = p
-            }
+            // Mode B/C: rec carries the accepted shot's REAL mm coordinates —
+            // plot the dot at its true position (polarForMm is the same mm→face
+            // mapping qualification/recovery use). Mode A: rec omits coordinates,
+            // so nothing is drawn now; the whole block is revealed at completion.
+            if (rec.xMm !== undefined)
+                shootingPage.trainingAppendMarker(rec.xMm, rec.yMm)
         }
         function onBlockCompleted(blockIndex) {
-            // Reveal: append any hidden markers so the completed block target
-            // is inspectable in the review.
-            var p = shootingPage.trainingPendingMarkers
-            for (var i = 0; i < p.length; ++i) globalModelOfData.append(p[i])
-            shootingPage.trainingPendingMarkers = []
+            // Reveal the completed block from the DURABLE plot — works for every
+            // visibility mode (in Full-hidden this is the first time impacts
+            // appear) and always uses each shot's own coordinates.
+            globalModelOfData.clear()
+            var shots = TRAINING.blockShotPlot(blockIndex)
+            for (var i = 0; i < shots.length; ++i)
+                shootingPage.trainingAppendMarker(shots[i].xMm, shots[i].yMm)
         }
         function onPhaseChanged() {
             // New block active → clear the face for the fresh block.
@@ -1040,20 +1036,35 @@ Item {
             return false
         enterTrainingMode()
         trainingShotSeq = Math.max(trainingShotSeq, TRAINING.recoveredMaxExternalId())
-        var shots = TRAINING.recoveredCurrentBlockShots()
-        for (var i = 0; i < shots.length; ++i) {
-            var p = centerPanel.polarForMm(shots[i].xMm * 1, shots[i].yMm * 1)
-            var disp = { direction: p.x.toFixed(2), score: p.y.toFixed(2),
-                         isSighter: false, position: 2 }
-            if (TRAINING.phase === 2 && !TRAINING.showImpacts) {
-                var buf = trainingPendingMarkers
-                buf.push(disp); trainingPendingMarkers = buf   // Mode A: stays hidden
-            } else if (TRAINING.phase !== 2 || TRAINING.showImpacts) {
-                globalModelOfData.append(disp)                 // B/C or review reveal
-            }
+        // Restore the face projection: the current block's shots are redrawn
+        // only when the recovered visibility mode permits (Mode B/C, or once
+        // the block is in review). Full-hidden (Mode A) mid-block stays clean —
+        // the shots reveal when the block completes, exactly as live.
+        if (TRAINING.showImpacts) {
+            var shots = TRAINING.recoveredCurrentBlockShots()
+            for (var i = 0; i < shots.length; ++i)
+                trainingAppendMarker(shots[i].xMm, shots[i].yMm)
         }
         loginPage.visible = false
         return true
+    }
+
+    // Append one Training shot marker to the face at its true position. Uses
+    // the accepted shot's mm coordinates (the reducer-authoritative record),
+    // mapped to the polar face the same way every other discipline does. The
+    // role set matches globalModelOfData's canonical roles (direction/score =
+    // polar angle/radius for positioning; xmm/ymm for group geometry) so the
+    // marker delegate places it correctly. calculatedscore is 0 — Training
+    // never renders a numerical score on the face.
+    function trainingAppendMarker(xMm, yMm) {
+        var p = centerPanel.polarForMm(xMm * 1, yMm * 1)
+        // direction/score are string roles in the locked schema (the delegate
+        // does direction*1); match the types exactly so the values are kept.
+        globalModelOfData.append({
+            direction: p.x.toFixed(2), score: p.y.toFixed(2),
+            xmm: xMm * 1, ymm: yMm * 1, calculatedscore: "0.0",
+            timeComsumed: 0, isSighter: false, position: 2
+        })
     }
 
     // Enter/exit workflow (mirrors the finals pattern). CRUCIAL: without the
