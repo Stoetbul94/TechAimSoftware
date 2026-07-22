@@ -552,8 +552,10 @@ static void testInPlaceResume()
         b.resetTraining();
     }
 
-    // (c) crash after TrainingCompleted → resume shows summary, rejects shots,
-    //     appends no duplicate completion.
+    // (c) crash after TrainingCompleted → the coordinator recognises it as
+    //     complete (via TrainingCompleted, not MatchCompleted), auto-archives
+    //     it, and NEVER offers it as an unfinished resume. This is the fix for
+    //     the recurring "session still running" prompt after finishing.
     QString sid3;
     {
         TrainingProgramController a;
@@ -565,23 +567,21 @@ static void testInPlaceResume()
         sid3 = a.sessionId();
         qint64 ext = 7500;
         for (int i = 0; i < 3; ++i) a.registerShot(1, 1, 10.0, ++ext, 0, 1);
-        a.continueToNextBlock();                      // TrainingCompleted
+        a.continueToNextBlock();                      // TrainingCompleted; not closed
     }                                                 // crash before Home
     {
+        RecoveryCoordinator coord;
+        bool offered = false;
+        for (const RecoveryCandidate& cand : coord.scan())
+            if (cand.sessionId == sid3 && cand.resumable) offered = true;
+        check(!offered, "resume(c): completed training NOT offered as unfinished resume");
+        // A completed (now-archived) session is not re-opened as an active one.
         TrainingProgramController b;
         b.setOperatingMode(1);
-        check(b.resumeFromRecovery(sid3), "resume(c): completed-session resume succeeds");
-        check(b.phase() == 4, "resume(c): summary restored (no active block)");
-        check(!b.registerShot(1, 1, 10.0, 9500, 0, 1),
-              "resume(c): completed session accepts no shots");
-        const ValidationReport rep =
-            JournalValidator::validateFile(b.store()->currentJournalPath());
-        int tc = 0;
-        for (const EventEnvelope& e : rep.validEnvelopes)
-            if (qstrcmp(eventTypeId(e.payload), "TrainingCompleted") == 0) ++tc;
-        check(tc == 1, "resume(c): no duplicate TrainingCompleted");
-        b.resetTraining();
+        check(!b.resumeFromRecovery(sid3),
+              "resume(c): a completed session is not resumed as active");
     }
+
     StoragePaths::setRootOverrideForTesting(QString());
 }
 

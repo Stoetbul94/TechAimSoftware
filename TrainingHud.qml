@@ -113,6 +113,54 @@ Item {
                            text: hud.ctl ? hud.ctl.positionName : ""; color: _green; font.pixelSize: 13; font.bold: true }
                     Text { text: "MEASURED RESULTS"; color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2 }
 
+                    // Target plot: the block's shots revealed on a target-like
+                    // view (auto-scaled to the group so shape/spread are clear;
+                    // absolute radius/diameter are in the metrics below).
+                    Rectangle {
+                        width: 220; height: 220; radius: 6
+                        color: "#0C0E12"; border.color: _line; border.width: 1
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        property var shots: (hud.reviewOpen && hud.ctl)
+                                            ? hud.ctl.blockShotPlot(hud.ctl.currentBlock) : []
+                        // half-range in mm (min 8mm so a tight group isn't over-magnified)
+                        property real rangeMm: {
+                            var mx = 8
+                            for (var i = 0; i < shots.length; ++i)
+                                mx = Math.max(mx, Math.abs(shots[i].xMm), Math.abs(shots[i].yMm))
+                            return mx * 1.25
+                        }
+                        readonly property real plotR: width / 2 - 10
+                        // reference rings
+                        Repeater {
+                            model: [1.0, 0.6, 0.3]
+                            Rectangle {
+                                width: parent.plotR * 2 * modelData; height: width; radius: width / 2
+                                anchors.centerIn: parent
+                                color: "transparent"; border.color: "#23262d"; border.width: 1
+                            }
+                        }
+                        // crosshair
+                        Rectangle { anchors.centerIn: parent; width: parent.plotR * 2; height: 1; color: "#1c1f26" }
+                        Rectangle { anchors.centerIn: parent; width: 1; height: parent.plotR * 2; color: "#1c1f26" }
+                        // shot dots (index shown, newest brightest)
+                        Repeater {
+                            model: parent.shots
+                            Rectangle {
+                                width: 9; height: 9; radius: 5
+                                color: index === parent.parent.shots.length - 1 ? "#ff2d55" : "#e8003d"
+                                x: parent.width / 2 + (modelData.xMm / parent.rangeMm) * parent.plotR - width / 2
+                                y: parent.height / 2 - (modelData.yMm / parent.rangeMm) * parent.plotR - height / 2
+                                border.color: "#ffffff"; border.width: 1
+                            }
+                        }
+                        Text {
+                            anchors.bottom: parent.bottom; anchors.bottomMargin: 4
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: "±" + Number(parent.rangeMm).toFixed(0) + " mm"
+                            color: _txtMut; font.pixelSize: 9
+                        }
+                    }
+
                     Grid {
                         columns: 3; columnSpacing: 14; rowSpacing: 8; width: parent.width
                         Repeater {

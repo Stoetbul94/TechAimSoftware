@@ -87,6 +87,13 @@ RecoveryCandidate RecoveryCoordinator::classifyFile(const QString& path)
     // Derive the human-facing fields from the replayed reducer state (never
     // from anything but the reducer).
     const ReplayResult replay = ReplayEngine::replay(rep.validEnvelopes);
+    // T1: Training sessions complete with TrainingCompleted, not MatchCompleted,
+    // so the quick sawMatchCompleted flag misses them. A completed Training
+    // session (or any session the reducer folded to Complete) must be treated
+    // as complete — auto-archived below, never offered as an unfinished resume.
+    if (replay.ok && (replay.state.trainingCompleted
+                      || replay.state.lifecycle == Lifecycle::Complete))
+        c.complete = true;
     if (replay.ok) {
         const SessionState& s = replay.state;
         c.athlete = s.athlete;

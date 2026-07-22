@@ -1091,7 +1091,7 @@ Item {
                     }
                     MouseArea {
                         id: pistolMouse; anchors.fill: parent; hoverEnabled: true
-                        onClicked: { papermode = 0; gameMode = 0; rangeSelected(10); gameEvent = 0 }
+                        onClicked: { trainingConfirmed = false; papermode = 0; gameMode = 0; rangeSelected(10); gameEvent = 0 }
                     }
                 }
 
@@ -1118,7 +1118,7 @@ Item {
                     }
                     MouseArea {
                         id: rifleMouse; anchors.fill: parent; hoverEnabled: true
-                        onClicked: { papermode = 0; gameMode = 1; gameEvent = 0 }
+                        onClicked: { trainingConfirmed = false; papermode = 0; gameMode = 1; gameEvent = 0 }
                     }
                 }
             }
@@ -1150,7 +1150,7 @@ Item {
                         }
                         MouseArea {
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: { rangeSelected(10); gameSubMode = 0; gameEvent = 0 }
+                            onClicked: { trainingConfirmed = false; rangeSelected(10); gameSubMode = 0; gameEvent = 0 }
                         }
                     }
                     Rectangle {
@@ -1166,7 +1166,7 @@ Item {
                         }
                         MouseArea {
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: { rangeSelected(50); gameSubMode = 0; gameEvent = 4 }
+                            onClicked: { trainingConfirmed = false; rangeSelected(50); gameSubMode = 0; gameEvent = 4 }
                         }
                     }
                 }
@@ -1187,7 +1187,7 @@ Item {
                         }
                         MouseArea {
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: { gameSubMode = 0; gameEvent = 4 }
+                            onClicked: { trainingConfirmed = false; gameSubMode = 0; gameEvent = 4 }
                         }
                     }
                     Rectangle {
@@ -1202,7 +1202,7 @@ Item {
                         }
                         MouseArea {
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: { gameSubMode = 1; gameEvent = 4 }
+                            onClicked: { trainingConfirmed = false; gameSubMode = 1; gameEvent = 4 }
                         }
                     }
                 }
@@ -1307,7 +1307,7 @@ Item {
                             anchors.fill: parent; hoverEnabled: true
                             onEntered: { if (gameEvent !== eventIndex) parent.color = _borderSub }
                             onExited:  { parent.color = gameEvent === eventIndex ? _redDark : _surfaceAlt }
-                            onClicked: { gameEvent = eventIndex }
+                            onClicked: { trainingConfirmed = false; gameEvent = eventIndex }
                         }
                     }
 
@@ -1394,7 +1394,7 @@ Item {
                                                text: modelData.t
                                                color: gameEvent === modelData.e ? "white" : _txtSec
                                                font.family: "Consolas"; font.pixelSize: 12; font.bold: true }
-                                        MouseArea { anchors.fill: parent; onClicked: gameEvent = modelData.e }
+                                        MouseArea { anchors.fill: parent; onClicked: { trainingConfirmed = false; gameEvent = modelData.e } }
                                     }
                                 }
                             }
