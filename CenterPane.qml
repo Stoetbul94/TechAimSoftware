@@ -251,8 +251,13 @@ Item {
     Connections {
         target: MODREADER
         function onShootCountChanged(count) {
-            // F10: shots delivered by MODREADER come from the PHYSICAL target.
-            paneItem.lastShotSource = 0
+            // Source tag: this handler fires for BOTH real hardware (Live) AND
+            // demo clicks (which reach it via MODREADER.uxShoot -> shootCountChanged).
+            // The two input paths are mutually exclusive by operating mode, so the
+            // true source is the mode itself: Live -> Physical(0), Demo ->
+            // Simulated(1). (Unconditionally tagging Physical here rejected every
+            // Demo shot at the F10 source gate — the "shots not registering" bug.)
+            paneItem.lastShotSource = appMode ? 0 : 1
             //            var logData1 = "onShootCountChanged window visibilty changed.............................."+ windowVisibleMode
             //            MODREADER.appendToLogFile(logData1)
 
@@ -304,19 +309,28 @@ Item {
 
                 calculateShootingSocre(xCor, yCor, itemPoint.x, itemPoint.y)
 
+                // TRAINING: the athlete-facing impact/zoom is a controller
+                // projection. When the visibility mode hides impacts (Mode A —
+                // Full hidden), the face is not drawn and the view is not zoomed
+                // to the shot; the router reveals the buffered markers at block
+                // review. Mode B/C (showImpacts) draw normally, like competition.
+                var trainingHidesImpact = shootingPage.isTrainingMatch && !TRAINING.showImpacts
+
                 showShootingAnimation = false // removing the animation circle
                 if (showShootingAnimation)
                 {
                     animatorCircle.x = (itemPoint.x - animatorCircle.width/2)
                     animatorCircle.y = (itemPoint.y - animatorCircle.width/2)
                     animatorCircle.visible = true
-                } else {
+                } else if (!trainingHidesImpact) {
                     var temp = root.mapToValue(paneItem.itemPoint,polarSeries);
                     addIfinRange(temp)
                 }
 
-                // SIUS-style: zoom in on where the shot just landed.
-                paneItem.triggerAutoZoom(paneItem.itemPoint.x, paneItem.itemPoint.y)
+                // SIUS-style: zoom in on where the shot just landed (not while a
+                // Training block hides impacts).
+                if (!trainingHidesImpact)
+                    paneItem.triggerAutoZoom(paneItem.itemPoint.x, paneItem.itemPoint.y)
 
                 backEndShootCount = newShootCount
 

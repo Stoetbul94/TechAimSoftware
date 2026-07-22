@@ -1056,13 +1056,24 @@ Item {
         return true
     }
 
-    // Enter/exit workflow (mirrors the finals pattern).
+    // Enter/exit workflow (mirrors the finals pattern). CRUCIAL: without the
+    // sligterMode / matchFinished / backEndShootCount reset the shared demo
+    // click path (CenterPane) blocks every shot — sligterMode=true also skips
+    // the competition shot-cap so Training runs on its own controller cap.
     function enterTrainingMode() {
         isTrainingMatch = true
+        isFinalsMatch = false
+        isFinals10mMatch = false
+        is3PMatch = false
         trainingShotSeq = 0
         trainingPendingMarkers = []
-        resetDataModels()
+        globalMatchModel.clear()
+        globalSlighterModel.clear()
         globalModelOfData.clear()
+        centerPanel.backEndShootCount = 0
+        sligterMode = true
+        matchFinished = false
+        rightPanel.resetRightPanelModels()
     }
     function homeFromTraining() {
         TRAINING.resetTraining()             // durable clean close + projections
