@@ -2253,6 +2253,39 @@ static void testPtRecovery()
     StoragePaths::setRootOverrideForTesting(QString());
 }
 
+static void testPtReportModel()
+{
+    std::printf("--- T4 position transition: report model ---\n");
+    PositionTransitionController c; MemFile f; ManualClock clk;
+    prepPt(c, f, clk, 1);
+    c.setVerificationShots(5);
+    c.startPositionTransition(QStringLiteral("Rae"));
+    ptRunPosition(c, clk, 5, 1, 10000, 5000, 1.0, 1.0); c.saveNote(QStringLiteral("k")); c.continueToNext();
+    ptRunPosition(c, clk, 5, 2, 12000, 6000, 2.0, 2.0); c.saveNote(QStringLiteral("p")); c.continueToNext();
+    ptRunPosition(c, clk, 5, 0, 14000, 7000, 3.0, 3.0); c.continueToNext();
+    check(c.isCompleted(), "pt-report: session completed");
+    const QVariantMap r = c.reportModel();
+    check(r.value("programme").toString() == QLatin1String("Position Transition"), "pt-report: programme name");
+    check(r.value("athlete").toString() == QLatin1String("Rae"), "pt-report: athlete present");
+    check(r.value("positionsCompleted").toInt() == 3, "pt-report: 3 positions completed");
+    check(r.value("positions").toList().size() == 3, "pt-report: 3 per-position pages");
+    check(r.value("countedShots").toInt() == 15, "pt-report: 15 counted shots");
+    check(r.value("totalSighters").toInt() == 3, "pt-report: 3 sighters (excluded)");
+    // per-position page has timing + group + checklist + note
+    const QVariantMap k = r.value("positions").toList().first().toMap();
+    check(k.contains("setupDurationMs") && k.contains("groupDiameter") && k.contains("checklist"),
+          "pt-report: per-position page carries timing + group + checklist");
+    // no competition/ranking wording in the observations
+    bool clean = true;
+    const QStringList obs = r.value("observations").toStringList();
+    for (const QString& s : obs)
+        if (s.contains(QStringLiteral("match"), Qt::CaseInsensitive)
+            || s.contains(QStringLiteral("official"), Qt::CaseInsensitive)
+            || s.contains(QStringLiteral("rank"), Qt::CaseInsensitive)) clean = false;
+    check(clean, "pt-report: no competition/ranking wording in observations");
+    c.resetPositionTransition();
+}
+
 int main(int argc, char** argv)
 {
     QCoreApplication app(argc, argv);
@@ -2289,6 +2322,7 @@ int main(int argc, char** argv)
     testPt3PSeparation();
     testPtSeparation();
     testPtRecovery();
+    testPtReportModel();
     std::printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
     std::fflush(stdout);
     return g_failures == 0 ? 0 : 1;

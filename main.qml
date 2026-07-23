@@ -480,6 +480,32 @@ ApplicationWindow {
             {
                 window.close()
                 Qt.quit()
+            } else if (shootingPage.isPositionTransitionMatch) {
+                // T4: Position Transition is a Training programme, not a competition.
+                if (POSTRANS.phase === 5) {
+                    if (POSTRANS.closeCleanly()) { window.close(); Qt.quit() }
+                    else dialogManager.showError(qsTr("Position Transition could not be closed safely"),
+                        qsTr("Your session is preserved and can be recovered. Please try again."))
+                } else {
+                    dialogManager.show({
+                        "type": "question", "title": qsTr("Close Position Transition?"),
+                        "message": qsTr("Save and close this session, or keep it so you can resume it next time?"),
+                        "buttons": [
+                            { "label": qsTr("Cancel"),            "result": "cancel", "accent": false },
+                            { "label": qsTr("Keep for Recovery"), "result": "keep",   "accent": false },
+                            { "label": qsTr("Save and Close"),    "result": "save",   "accent": true }
+                        ],
+                        "defaultResult": "save", "cancelResult": "cancel",
+                        "onResult": function (r) {
+                            if (r === "keep") { window.close(); Qt.quit() }
+                            else if (r === "save") {
+                                if (POSTRANS.closeCleanly()) { window.close(); Qt.quit() }
+                                else dialogManager.showError(qsTr("Position Transition could not be closed safely"),
+                                    qsTr("Your session is preserved and can be recovered. Please try again."))
+                            }
+                        }
+                    })
+                }
             } else if (shootingPage.isCallDiagnoseMatch) {
                 // T2: Call & Diagnose is a Training programme, not a competition.
                 if (CALLDIAG.phase === 5) {
@@ -625,6 +651,14 @@ ApplicationWindow {
                     qsTr("The Call & Diagnose session could not be resumed. "
                          + "Its journal has been left intact."))
             return okc
+        }
+        if (disciplineId === "POSTRANS") {
+            var okp = shootingPage.restorePositionTransitionSession(sessionId)
+            if (!okp)
+                dialogManager.showError(qsTr("Position Transition Recovery Failed"),
+                    qsTr("The Position Transition session could not be resumed. "
+                         + "Its journal has been left intact."))
+            return okp
         }
         if (disciplineId === "TRAINING") {
             var ok = shootingPage.restoreTrainingSession(sessionId)

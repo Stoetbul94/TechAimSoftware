@@ -15,6 +15,7 @@ Item {
     property int practiceView: 0
     property bool trainingConfirmed: false
     property bool cdConfirmed: false        // T2: Call & Diagnose setup accepted
+    property bool ptConfirmed: false        // T4: Position Transition setup accepted
     function trainingDisciplineId() {
         if (gameMode === 0) return "AP10"
         if (gameRange === 10) return "AR10"
@@ -866,7 +867,7 @@ Item {
                 id: profileLabel
                 anchors.top: networkShareCard.bottom; anchors.topMargin: 16
                 anchors.left: parent.left; anchors.leftMargin: 22
-                text: (trainingConfirmed || cdConfirmed) ? "SELECTED PROGRAMME" : "SELECTED PROFILE"
+                text: (trainingConfirmed || cdConfirmed || ptConfirmed) ? "SELECTED PROGRAMME" : "SELECTED PROFILE"
                 color: _txtMut; font.family: theme.fontFamily
                 font.pixelSize: 10; font.bold: true; font.letterSpacing: 2
             }
@@ -874,8 +875,9 @@ Item {
                 id: profileName
                 anchors.top: profileLabel.bottom; anchors.topMargin: 4
                 anchors.left: parent.left; anchors.leftMargin: 22
-                text: cdConfirmed ? "Call & Diagnose"
-                      : (trainingConfirmed ? "Technical Blocks" : getDisciplineName() + " — ISSF")
+                text: ptConfirmed ? "Position Transition"
+                      : (cdConfirmed ? "Call & Diagnose"
+                      : (trainingConfirmed ? "Technical Blocks" : getDisciplineName() + " — ISSF"))
                 color: _txt; font.family: theme.fontFamily; font.pixelSize: 16; font.bold: true
             }
             Text {
@@ -894,7 +896,14 @@ Item {
                 anchors.right: parent.right; anchors.rightMargin: 22
                 columns: 3; spacing: 8
                 Repeater {
-                    model: cdConfirmed ? [
+                    model: ptConfirmed ? [
+                        { lbl: "SEQUENCE",  val: POSTRANS.sequenceString() },
+                        { lbl: "VERIFY",    val: "" + POSTRANS.verificationShots + " / pos" },
+                        { lbl: "REPEATS",   val: "" + POSTRANS.totalRepeats },
+                        { lbl: "FOCUS",     val: POSTRANS.technicalFocus },
+                        { lbl: "CHECKLIST", val: ["Self", "Coach", "Off"][POSTRANS.checklistMode] },
+                        { lbl: "MODE",      val: appMode ? "Live" : "Demo" }
+                    ] : cdConfirmed ? [
                         { lbl: "CALLED",    val: "" + CALLDIAG.shotCount + (trainingDisciplineId() === "3P50" ? " / pos" : "") },
                         { lbl: "TOTAL",     val: "" + (trainingDisciplineId() === "3P50" ? CALLDIAG.shotCount * 3 : CALLDIAG.shotCount) },
                         { lbl: "FOCUS",     val: CALLDIAG.technicalFocus },
@@ -973,8 +982,9 @@ Item {
                     opacity: startMouse.visible ? 1.0 : 0.4
                     property bool _startHov: false
                     Text {
-                        text: cdConfirmed ? "Start calling  →"
-                              : (trainingConfirmed ? "Start training  →" : "Start session  →")
+                        text: ptConfirmed ? "Start transitions  →"
+                              : (cdConfirmed ? "Start calling  →"
+                              : (trainingConfirmed ? "Start training  →" : "Start session  →"))
                         color: "white"; font.family: theme.fontFamily; font.pixelSize: 15; font.bold: true
                         anchors.centerIn: parent
                     }
@@ -984,6 +994,19 @@ Item {
                         onEntered: startSessionRect._startHov = true
                         onExited:  startSessionRect._startHov = false
                         onClicked: {
+                            // TRAINING LAB (T4): Position Transition — new Training
+                            // session (kind=Training, position_transition; 3P only).
+                            if (ptConfirmed) {
+                                if (!POSTRANS.startPositionTransition(username_loginPage)) {
+                                    dialogManager.showError(qsTr("Cannot start Position Transition"),
+                                        POSTRANS.lastStartError !== "" ? POSTRANS.lastStartError
+                                            : qsTr("The session could not be started."))
+                                    return
+                                }
+                                shootingPage.enterPositionTransitionMode()
+                                rootItem.visible = false
+                                return
+                            }
                             // TRAINING LAB (T2): Call & Diagnose — new Training
                             // session (kind=Training, call_and_diagnose). Opens in
                             // Sighters; NEVER a qualification/Final session.
@@ -1116,7 +1139,7 @@ Item {
                     }
                     MouseArea {
                         id: pistolMouse; anchors.fill: parent; hoverEnabled: true
-                        onClicked: { trainingConfirmed = false; cdConfirmed = false; papermode = 0; gameMode = 0; rangeSelected(10); gameEvent = 0 }
+                        onClicked: { trainingConfirmed = false; cdConfirmed = false; ptConfirmed = false; papermode = 0; gameMode = 0; rangeSelected(10); gameEvent = 0 }
                     }
                 }
 
@@ -1143,7 +1166,7 @@ Item {
                     }
                     MouseArea {
                         id: rifleMouse; anchors.fill: parent; hoverEnabled: true
-                        onClicked: { trainingConfirmed = false; cdConfirmed = false; papermode = 0; gameMode = 1; gameEvent = 0 }
+                        onClicked: { trainingConfirmed = false; cdConfirmed = false; ptConfirmed = false; papermode = 0; gameMode = 1; gameEvent = 0 }
                     }
                 }
             }
@@ -1175,7 +1198,7 @@ Item {
                         }
                         MouseArea {
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: { trainingConfirmed = false; cdConfirmed = false; rangeSelected(10); gameSubMode = 0; gameEvent = 0 }
+                            onClicked: { trainingConfirmed = false; cdConfirmed = false; ptConfirmed = false; rangeSelected(10); gameSubMode = 0; gameEvent = 0 }
                         }
                     }
                     Rectangle {
@@ -1191,7 +1214,7 @@ Item {
                         }
                         MouseArea {
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: { trainingConfirmed = false; cdConfirmed = false; rangeSelected(50); gameSubMode = 0; gameEvent = 4 }
+                            onClicked: { trainingConfirmed = false; cdConfirmed = false; ptConfirmed = false; rangeSelected(50); gameSubMode = 0; gameEvent = 4 }
                         }
                     }
                 }
@@ -1212,7 +1235,7 @@ Item {
                         }
                         MouseArea {
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: { trainingConfirmed = false; cdConfirmed = false; gameSubMode = 0; gameEvent = 4 }
+                            onClicked: { trainingConfirmed = false; cdConfirmed = false; ptConfirmed = false; gameSubMode = 0; gameEvent = 4 }
                         }
                     }
                     Rectangle {
@@ -1227,7 +1250,7 @@ Item {
                         }
                         MouseArea {
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: { trainingConfirmed = false; cdConfirmed = false; gameSubMode = 1; gameEvent = 4 }
+                            onClicked: { trainingConfirmed = false; cdConfirmed = false; ptConfirmed = false; gameSubMode = 1; gameEvent = 4 }
                         }
                     }
                 }
@@ -1332,7 +1355,7 @@ Item {
                             anchors.fill: parent; hoverEnabled: true
                             onEntered: { if (gameEvent !== eventIndex) parent.color = _borderSub }
                             onExited:  { parent.color = gameEvent === eventIndex ? _redDark : _surfaceAlt }
-                            onClicked: { trainingConfirmed = false; cdConfirmed = false; gameEvent = eventIndex }
+                            onClicked: { trainingConfirmed = false; cdConfirmed = false; ptConfirmed = false; gameEvent = eventIndex }
                         }
                     }
 
@@ -1419,7 +1442,7 @@ Item {
                                                text: modelData.t
                                                color: gameEvent === modelData.e ? "white" : _txtSec
                                                font.family: "Consolas"; font.pixelSize: 12; font.bold: true }
-                                        MouseArea { anchors.fill: parent; onClicked: { trainingConfirmed = false; cdConfirmed = false; gameEvent = modelData.e } }
+                                        MouseArea { anchors.fill: parent; onClicked: { trainingConfirmed = false; cdConfirmed = false; ptConfirmed = false; gameEvent = modelData.e } }
                                     }
                                 }
                             }
@@ -1427,7 +1450,7 @@ Item {
                         MouseArea {
                             anchors.fill: parent
                             enabled: !parent.selected
-                            onClicked: { trainingConfirmed = false; cdConfirmed = false; gameEvent = 1 }
+                            onClicked: { trainingConfirmed = false; cdConfirmed = false; ptConfirmed = false; gameEvent = 1 }
                         }
                     }
                     Item { width: 1; height: 8 }
@@ -1617,8 +1640,33 @@ Item {
                             }
                         }
                     }
-                    FutureCard { title: "POSITION TRANSITION"
-                                 visible: gameMode === 1 && gameRange === 50 && gameSubMode === 1 }
+                    // AVAILABLE — Position Transition (T4, 3P only, clickable)
+                    Rectangle {
+                        visible: gameMode === 1 && gameRange === 50 && gameSubMode === 1
+                        width: parent.width; height: 96; radius: 8
+                        color: _surfaceAlt; border.color: _red; border.width: 1
+                        Column {
+                            anchors.left: parent.left; anchors.leftMargin: 14
+                            anchors.right: parent.right; anchors.rightMargin: 14
+                            anchors.verticalCenter: parent.verticalCenter; spacing: 3
+                            Row {
+                                spacing: 8
+                                Text { text: "POSITION TRANSITION"; color: _txt; font.family: theme.fontFamily; font.pixelSize: 14; font.bold: true }
+                                Rectangle {
+                                    width: 74; height: 18; radius: 9; color: "#0d2018"; border.color: _green; border.width: 1
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    Text { anchors.centerIn: parent; text: "AVAILABLE"; color: _green; font.pixelSize: 9; font.bold: true } }
+                            }
+                            Text { text: "Practise changing between Kneeling, Prone and Standing.\nMeasure setup time, sighters, first-shot timing and early group repeatability after each transition."
+                                   color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 10 }
+                            Text { text: "Default: Kneeling → Prone → Standing · 5 verification shots"
+                                   color: _txtSec; font.family: "Consolas"; font.pixelSize: 10 }
+                        }
+                        MouseArea {
+                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                            onClicked: { POSTRANS.configureDefaults(); practiceView = 5 }
+                        }
+                    }
                     FutureCard { title: "WIND MAP"; status: "PLANNED"
                                  visible: gameMode === 1 && gameRange === 50 }
 
@@ -1956,6 +2004,124 @@ Item {
                                     practiceView = 0
                                 }
                             }
+                        }
+                    }
+                }
+            }
+
+            // ── POSITION TRANSITION SETUP (practiceView 5) ───────────────────
+            Flickable {
+                id: ptSetupFlick
+                visible: practiceView === 5
+                anchors.top: subDisciplineRow.bottom; anchors.topMargin: 12
+                anchors.left: parent.left;   anchors.leftMargin: 22
+                anchors.right: parent.right; anchors.rightMargin: 22
+                anchors.bottom: parent.bottom; anchors.bottomMargin: 18
+                clip: true; contentWidth: width; contentHeight: ptSetupCol.implicitHeight
+                boundsBehavior: Flickable.StopAtBounds
+                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                Column {
+                    id: ptSetupCol
+                    width: ptSetupFlick.width; spacing: 10; bottomPadding: 12
+
+                    Text { text: "← Back"; color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 12
+                        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: practiceView = 1 } }
+                    Text { text: "POSITION TRANSITION SETUP"; color: _txt; font.family: theme.fontFamily; font.pixelSize: 17; font.bold: true }
+                    Text {
+                        width: parent.width; wrapMode: Text.WordWrap; color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 11
+                        text: "This programme measures how consistently you rebuild each Three-Position shooting position. You begin a position setup, confirm when the position is ready, fire optional sighters, then a short counted verification block. Tech Aim compares the timing and measured result of each position. This is a Training session and not an official competition result."
+                    }
+                    Text { text: POSTRANS.sequenceArrow; color: _green; font.family: "Consolas"; font.pixelSize: 13; font.bold: true }
+
+                    Text { text: "Positions"; color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 12; topPadding: 4 }
+                    Flow { width: parent.width; spacing: 6
+                        Repeater {
+                            model: [ { l: "Full 3P", p: 0 }, { l: "Kneeling → Prone", p: 1 }, { l: "Prone → Standing", p: 2 },
+                                     { l: "Kneeling only", p: 3 }, { l: "Prone only", p: 4 }, { l: "Standing only", p: 5 } ]
+                            delegate: Rectangle {
+                                width: pseqT.implicitWidth + 26; height: 40; radius: 20
+                                property bool sel: POSTRANS.sequenceString() ===
+                                    ({0:"K,P,S",1:"K,P",2:"P,S",3:"K",4:"P",5:"S"}[modelData.p])
+                                color: sel ? _red : _input; border.color: sel ? _red : _borderSub
+                                Text { id: pseqT; anchors.centerIn: parent; text: modelData.l
+                                       color: sel ? "white" : _txtSec; font.family: theme.fontFamily; font.pixelSize: 11 }
+                                MouseArea { anchors.fill: parent; onClicked: POSTRANS.setSequencePreset(modelData.p) }
+                            }
+                        }
+                    }
+
+                    Row { spacing: 10
+                        Text { text: "Verification shots"; color: _txtSec; width: 150; font.family: theme.fontFamily; font.pixelSize: 12
+                               anchors.verticalCenter: parent.verticalCenter }
+                        Rectangle { width: 52; height: 48; radius: 8; color: _input; border.color: _borderSub
+                            Text { anchors.centerIn: parent; text: "−"; color: _txt; font.pixelSize: 16 }
+                            MouseArea { anchors.fill: parent; onClicked: POSTRANS.setVerificationShots(POSTRANS.verificationShots - 1) } }
+                        Text { text: POSTRANS.verificationShots; color: _txt; width: 40; horizontalAlignment: Text.AlignHCenter
+                               font.family: "Consolas"; font.pixelSize: 16; font.bold: true; anchors.verticalCenter: parent.verticalCenter }
+                        Rectangle { width: 52; height: 48; radius: 8; color: _input; border.color: _borderSub
+                            Text { anchors.centerIn: parent; text: "+"; color: _txt; font.pixelSize: 16 }
+                            MouseArea { anchors.fill: parent; onClicked: POSTRANS.setVerificationShots(POSTRANS.verificationShots + 1) } }
+                    }
+                    Row { spacing: 10
+                        Text { text: "Repeats"; color: _txtSec; width: 150; font.family: theme.fontFamily; font.pixelSize: 12
+                               anchors.verticalCenter: parent.verticalCenter }
+                        Rectangle { width: 52; height: 48; radius: 8; color: _input; border.color: _borderSub
+                            Text { anchors.centerIn: parent; text: "−"; color: _txt; font.pixelSize: 16 }
+                            MouseArea { anchors.fill: parent; onClicked: POSTRANS.setRepeats(POSTRANS.totalRepeats - 1) } }
+                        Text { text: POSTRANS.totalRepeats; color: _txt; width: 40; horizontalAlignment: Text.AlignHCenter
+                               font.family: "Consolas"; font.pixelSize: 16; font.bold: true; anchors.verticalCenter: parent.verticalCenter }
+                        Rectangle { width: 52; height: 48; radius: 8; color: _input; border.color: _borderSub
+                            Text { anchors.centerIn: parent; text: "+"; color: _txt; font.pixelSize: 16 }
+                            MouseArea { anchors.fill: parent; onClicked: POSTRANS.setRepeats(POSTRANS.totalRepeats + 1) } }
+                    }
+
+                    Text { text: "Checklist"; color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 12; topPadding: 4 }
+                    Row { spacing: 6
+                        Repeater {
+                            model: [ "Athlete self-check", "Coach-assisted", "Disabled" ]
+                            delegate: Rectangle {
+                                width: pclT.implicitWidth + 24; height: 40; radius: 20
+                                color: POSTRANS.checklistMode === index ? _red : _input
+                                border.color: POSTRANS.checklistMode === index ? _red : _borderSub
+                                Text { id: pclT; anchors.centerIn: parent; text: modelData
+                                       color: POSTRANS.checklistMode === index ? "white" : _txtSec; font.family: theme.fontFamily; font.pixelSize: 11 }
+                                MouseArea { anchors.fill: parent; onClicked: POSTRANS.setChecklistMode(index) }
+                            }
+                        }
+                    }
+
+                    Text { text: "Technical focus"; color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 12; topPadding: 4 }
+                    Flow { width: parent.width; spacing: 6
+                        Repeater {
+                            model: POSTRANS.focusOptionsForDiscipline()
+                            delegate: Rectangle {
+                                width: pfT.implicitWidth + 30; height: 44; radius: 22
+                                color: POSTRANS.technicalFocus === modelData ? _red : _input
+                                border.color: POSTRANS.technicalFocus === modelData ? _red : _borderSub
+                                Text { id: pfT; anchors.centerIn: parent; text: modelData
+                                       color: POSTRANS.technicalFocus === modelData ? "white" : _txtSec; font.family: theme.fontFamily; font.pixelSize: 11 }
+                                MouseArea { anchors.fill: parent; onClicked: POSTRANS.setTechnicalFocus(modelData) }
+                            }
+                        }
+                    }
+
+                    Text { id: ptSetupError; visible: text !== ""; text: ""; width: parent.width; wrapMode: Text.WordWrap
+                           color: "#ff9aa8"; font.family: theme.fontFamily; font.pixelSize: 11 }
+                    Row { spacing: 10; topPadding: 6
+                        Rectangle { width: 110; height: 52; radius: 8; color: "transparent"; border.color: _borderStr; border.width: 1
+                            Text { anchors.centerIn: parent; text: "Back"; color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 12 }
+                            MouseArea { anchors.fill: parent; onClicked: practiceView = 1 } }
+                        Rectangle { width: 180; height: 52; radius: 8; color: _red
+                            Text { anchors.centerIn: parent; text: "Confirm setup"; color: "white"; font.family: theme.fontFamily; font.pixelSize: 13; font.bold: true }
+                            MouseArea { anchors.fill: parent
+                                onClicked: {
+                                    if (POSTRANS.technicalFocus === "") { ptSetupError.text = "Select a technical focus."; return }
+                                    var err = POSTRANS.validateConfig()
+                                    if (err !== "") { ptSetupError.text = err; return }
+                                    ptSetupError.text = ""
+                                    ptConfirmed = true; trainingConfirmed = false; cdConfirmed = false
+                                    practiceView = 0
+                                } }
                         }
                     }
                 }

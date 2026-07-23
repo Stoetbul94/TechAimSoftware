@@ -36,6 +36,7 @@
 #include "src/mode/OperatingModeService.h"
 #include "src/training/TrainingProgramController.h"
 #include "src/training/CallDiagnoseController.h"
+#include "src/training/PositionTransitionController.h"
 #include "src/reliability/storage/StoragePaths.h"
 #include "logfile.h"
 #include <QLockFile>
@@ -400,6 +401,10 @@ int main(int argc, char *argv[])
     CallDiagnoseController callDiagnoseController;
     callDiagnoseController.setOperatingMode(runningModeInt);
     engine.rootContext()->setContextProperty("CALLDIAG", &callDiagnoseController);
+    // Position Transition (T4) — third Training Lab programme (50m 3P only).
+    PositionTransitionController positionTransitionController;
+    positionTransitionController.setOperatingMode(runningModeInt);
+    engine.rootContext()->setContextProperty("POSTRANS", &positionTransitionController);
     // Phase E — EST incident workflow service (INCIDENTS). Discipline-agnostic:
     // it submits typed incident/Jury events through whichever session store is
     // ACTIVE (qualification or finals); the reducer record is authoritative.

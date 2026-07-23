@@ -42,6 +42,9 @@
         <file>CallDiagnoseRightPanel.qml</file>
         <file>CallDiagnoseHud.qml</file>
         <file>CallDiagnoseReportView.qml</file>
+        <file>PositionTransitionRightPanel.qml</file>
+        <file>PositionTransitionHud.qml</file>
+        <file>PositionTransitionReportView.qml</file>
         <file>PdfBrandingMetrics.js</file>
         <file>Finals10mCommandPanel.qml</file>
         <file>Finals10mRightPanel.qml</file>

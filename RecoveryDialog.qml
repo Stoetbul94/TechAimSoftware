@@ -208,7 +208,9 @@ Rectangle {
                                 root.resumeRequested(root.current.sessionId,
                                     root.current.sessionKind === "Training"
                                         ? (root.current.trainingProgramId === "call_and_diagnose"
-                                            ? "CALLDIAG" : "TRAINING")
+                                            ? "CALLDIAG"
+                                            : (root.current.trainingProgramId === "position_transition"
+                                                ? "POSTRANS" : "TRAINING"))
                                         : (root.current.disciplineId || ""))
                                 root.visible = false
                             }

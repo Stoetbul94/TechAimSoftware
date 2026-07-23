@@ -70,6 +70,9 @@ Item {
     // is the hidden actual, the call is placed on the HUD's own call target.
     property bool isCallDiagnoseMatch: false
     property int callDiagShotSeq: 0
+    // Position Transition (T4): POSTRANS owns all state; 50m 3P only.
+    property bool isPositionTransitionMatch: false
+    property int posTransShotSeq: 0
     // Hidden-mode display cache: polar display records buffered while the
     // visibility mode hides impacts; revealed (appended to the face) at block
     // review. Never rendered before reveal.
@@ -476,8 +479,8 @@ Item {
         // paper) is Training-inappropriate — hidden during a Technical Blocks
         // session, and its height collapses so the target reclaims the space.
         // Training's own actions live in TrainingRightPanel / the review view.
-        height: (isTrainingMatch || isCallDiagnoseMatch) ? 0 : 62
-        visible: !isTrainingMatch && !isCallDiagnoseMatch
+        height: (isTrainingMatch || isCallDiagnoseMatch || isPositionTransitionMatch) ? 0 : 62
+        visible: !isTrainingMatch && !isCallDiagnoseMatch && !isPositionTransitionMatch
         color: "#15161a"
         z: 40
 
@@ -598,6 +601,11 @@ Item {
                     return
                 return
             }
+            if (isPositionTransitionMatch) {
+                if (!exitPositionTransitionToHome())
+                    return
+                return
+            }
             loginPage.visible = true
             resetDataModels()
         }
@@ -621,7 +629,7 @@ Item {
         // Final-specific Finals10mRightPanel occupies the same slot. Its width
         // is preserved (visible:false keeps the layout) so the target keeps its
         // size. Qualification/3P use this panel unchanged.
-        visible: !isFinals10mMatch && !isTrainingMatch && !isCallDiagnoseMatch
+        visible: !isFinals10mMatch && !isTrainingMatch && !isCallDiagnoseMatch && !isPositionTransitionMatch
         onSwitchToSighter:
         {
             if(sighterEnable)
@@ -711,6 +719,15 @@ Item {
             if (isCallDiagnoseMatch) {
                 CALLDIAG.registerShot(centerPanel.lastShotXmm, centerPanel.lastShotYmm,
                                       currentCalculatedScore, ++shootingPage.callDiagShotSeq,
+                                      xPosition, centerPanel.lastShotSource)
+                return
+            }
+            // POSITION TRANSITION (T4): shots route to POSTRANS (setup shots
+            // ignored, sighters shown, verification counted). Sighters draw on
+            // the live target; counted shots reveal at the position review.
+            if (isPositionTransitionMatch) {
+                POSTRANS.registerShot(centerPanel.lastShotXmm, centerPanel.lastShotYmm,
+                                      currentCalculatedScore, ++shootingPage.posTransShotSeq,
                                       xPosition, centerPanel.lastShotSource)
                 return
             }
@@ -1204,6 +1221,106 @@ Item {
             return false
         enterCallDiagnoseMode()
         callDiagShotSeq = Math.max(callDiagShotSeq, CALLDIAG.recoveredMaxExternalId())
+        loginPage.visible = false
+        return true
+    }
+
+    // ── POSITION TRANSITION (T4) ─────────────────────────────────────────
+    PositionTransitionRightPanel {
+        id: posTransRightPanel
+        visible: isPositionTransitionMatch
+        width: rightPanel.width; height: rightPanel.height
+        anchors.right: parent.right; anchors.top: statusStrip.bottom
+        z: 11
+        ctl: POSTRANS
+        connected: shootingPage.trainingTargetConnected
+    }
+    PositionTransitionHud {
+        id: posTransHud
+        visible: isPositionTransitionMatch
+        anchors.fill: parent
+        z: 60
+        ctl: POSTRANS
+        onHomeRequested: shootingPage.homeFromPositionTransition()
+        onNewSessionRequested: shootingPage.newPositionTransitionSession()
+        onExportPdfRequested: shootingPage.exportPositionTransitionPdf()
+    }
+    PositionTransitionReportView {
+        id: posTransReportView
+        ctl: POSTRANS
+        onExported: function(path) {
+            dialogManager.show({ "type": "info", "title": qsTr("Position Transition report saved"),
+                "message": qsTr("Saved to:\n%1").arg(path),
+                "buttons": [ { "label": qsTr("OK"), "result": "ok", "accent": true } ] })
+        }
+        onFailed: function(reason) { dialogManager.showError(qsTr("Export failed"), reason) }
+    }
+    // Only sighters are drawn on the live target; verification/setup shots are
+    // not drawn here (they reveal at the position review).
+    Connections {
+        target: POSTRANS
+        enabled: isPositionTransitionMatch
+        function onSighterAccepted(rec) {
+            if (rec.xMm !== undefined) shootingPage.trainingAppendSighterMarker(rec.xMm, rec.yMm)
+        }
+        function onSightersCleared() { globalModelOfData.clear() }
+    }
+    function enterPositionTransitionMode() {
+        isPositionTransitionMatch = true
+        isTrainingMatch = false; isCallDiagnoseMatch = false
+        isFinalsMatch = false; isFinals10mMatch = false; is3PMatch = false
+        posTransShotSeq = 0
+        globalMatchModel.clear(); globalSlighterModel.clear(); globalModelOfData.clear()
+        centerPanel.backEndShootCount = 0
+        sligterMode = true
+        matchFinished = false
+        rightPanel.resetRightPanelModels()
+    }
+    function exitPositionTransitionToHome() {
+        if (!POSTRANS.closeCleanly()) {
+            dialogManager.showError(qsTr("Position Transition could not be closed safely"),
+                (POSTRANS.lastError && POSTRANS.lastError.length > 0 ? POSTRANS.lastError + "\n\n" : "")
+                + qsTr("Your session is preserved and can be recovered. Please try again."))
+            return false
+        }
+        isPositionTransitionMatch = false
+        loginPage.ptConfirmed = false
+        resetDataModels()
+        loginPage.visible = true
+        return true
+    }
+    function homeFromPositionTransition() { exitPositionTransitionToHome() }
+    function newPositionTransitionSession() {
+        if (!POSTRANS.closeCleanly()) {
+            dialogManager.showError(qsTr("Position Transition could not be closed safely"),
+                qsTr("Your session is preserved and can be recovered. Please try again."))
+            return
+        }
+        isPositionTransitionMatch = false
+        resetDataModels()
+        loginPage.visible = true
+        loginPage.practiceView = 1
+    }
+    function exportPositionTransitionPdf() {
+        var m = POSTRANS.reportModel()
+        var base = APPSETTINGS.getPrintPDFFilePath()
+        var dir = ""
+        if (base && base.length > 0) {
+            var slash = Math.max(base.lastIndexOf("/"), base.lastIndexOf("\\"))
+            dir = slash > 0 ? base.substring(0, slash) : ""
+        }
+        var athlete = (m.athlete && m.athlete.length ? m.athlete : "Athlete").replace(/[^A-Za-z0-9]/g, "")
+        var now = new Date()
+        var date = "" + now.getFullYear() + ("0" + (now.getMonth() + 1)).slice(-2) + ("0" + now.getDate()).slice(-2)
+        var sid = (m.sessionId || "").substring(0, 8)
+        var path = (dir && dir.length ? dir + "/" : "") + "TechAim_PositionTransition_" + athlete + "_" + date + "_" + sid + ".pdf"
+        posTransReportView.exportPdf(path)
+    }
+    function restorePositionTransitionSession(sessionId) {
+        if (!POSTRANS.resumeFromRecovery(sessionId))
+            return false
+        enterPositionTransitionMode()
+        posTransShotSeq = Math.max(posTransShotSeq, POSTRANS.recoveredMaxExternalId())
         loginPage.visible = false
         return true
     }
