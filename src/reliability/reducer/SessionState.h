@@ -264,6 +264,29 @@ struct CallDiagnoseShotRecord {
     }
 };
 
+// T4: one Position Transition record — a position (K/P/S) worked in a given
+// repeat: measured setup timing, its sighters, the counted verification shots,
+// the per-item checklist state and an athlete note. Group/first-shot metrics
+// are DERIVED (analytics), never stored.
+struct PtPositionRecord {
+    qint8   position = 0;         // 0 K, 1 P, 2 S
+    qint16  repeat = 1;           // 1-based
+    qint32  setupDurationMs = 0;  // begin-of-setup → Position Ready
+    qint32  readyMonoMs = 0;      // Position Ready monotonic timestamp
+    QVector<ShotCore> sighters;   // measured, never counted
+    QVector<ShotCore> verifShots; // counted verification shots (order preserved)
+    QVector<qint8>    checklist;  // per-item state (0 unset/1 checked/2 skipped/3 n-a)
+    QString note;
+    bool    completed = false;
+    bool operator==(const PtPositionRecord& o) const
+    {
+        return position == o.position && repeat == o.repeat
+            && setupDurationMs == o.setupDurationMs && readyMonoMs == o.readyMonoMs
+            && sighters == o.sighters && verifShots == o.verifShots
+            && checklist == o.checklist && note == o.note && completed == o.completed;
+    }
+};
+
 using DisciplineState =
     std::variant<std::monostate, QualificationState, Finals3PState,
                  TrainingState, Finals10mState>;
@@ -324,6 +347,22 @@ struct SessionState {
     bool    cdThreePositions = false;
     QString cdSessionNote;
     QVector<CallDiagnoseShotRecord> cdShots;
+    // T4: Position Transition programme (sessionKind=Training,
+    // programId=position_transition; 50m 3P only).
+    bool    ptActive = false;
+    bool    ptCompleted = false;
+    QString ptProgramId;
+    QString ptSequence;                    // e.g. "K,P,S"
+    QString ptFocus;
+    qint16  ptVerificationShots = 0;
+    qint16  ptRepeats = 1;
+    qint8   ptChecklistMode = 0;
+    qint8   ptCurrentPosition = 0;         // position id currently active
+    qint16  ptCurrentRepeat = 1;
+    bool    ptInSetup = false;             // true = PositionSetup phase (no counted shots)
+    bool    ptVerifying = false;           // true = VerificationActive
+    QString ptSessionNote;
+    QVector<PtPositionRecord> ptRecords;
     // lifecycle
     bool started = false;
     Lifecycle lifecycle = Lifecycle::None;

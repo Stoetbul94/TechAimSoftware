@@ -158,6 +158,31 @@ const EventMeta kRows[] = {
                                ReducerClass::Mutating),
     row<CallDiagnoseCompleted>(DurabilityClass::Sync, BroadcastClass::Broadcast,
                                ReducerClass::Mutating),
+    // Position Transition (T4). Timing + counted shots must be durable before
+    // acting on them, so lifecycle/shot events are Sync; the checklist toggle
+    // is Flush (frequent, low-stakes).
+    row<PositionTransitionSessionStarted>(DurabilityClass::Sync, BroadcastClass::Broadcast,
+                                          ReducerClass::Mutating),
+    row<PositionSetupStarted>(DurabilityClass::Sync, BroadcastClass::Broadcast,
+                              ReducerClass::Mutating),
+    row<PositionChecklistUpdated>(DurabilityClass::Flush, BroadcastClass::Internal,
+                                  ReducerClass::Mutating),
+    row<PositionReady>(DurabilityClass::Sync, BroadcastClass::Broadcast,
+                       ReducerClass::Mutating),
+    row<PositionSighterAccepted>(DurabilityClass::Flush, BroadcastClass::Broadcast,
+                                 ReducerClass::Mutating),   // measured, never counted
+    row<PositionVerificationStarted>(DurabilityClass::Sync, BroadcastClass::Broadcast,
+                                     ReducerClass::Mutating),
+    row<PositionVerificationShotAccepted>(DurabilityClass::Sync, BroadcastClass::Broadcast,
+                                          ReducerClass::Mutating),
+    row<PositionVerificationCompleted>(DurabilityClass::Sync, BroadcastClass::Broadcast,
+                                       ReducerClass::Mutating),
+    row<PositionNoteSaved>(DurabilityClass::Sync, BroadcastClass::Internal,
+                           ReducerClass::Mutating),
+    row<NextPositionTransitionStarted>(DurabilityClass::Sync, BroadcastClass::Broadcast,
+                                       ReducerClass::Mutating),
+    row<PositionTransitionCompleted>(DurabilityClass::Sync, BroadcastClass::Broadcast,
+                                     ReducerClass::Mutating),
 };
 
 struct RegistryIndex {

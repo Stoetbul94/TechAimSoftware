@@ -496,6 +496,66 @@ void EventSerializer::serializePayloadInto(const DomainEvent& event,
             w.field("completedShots", static_cast<qint64>(e.completedShots));
             if (!e.sessionNote.isEmpty())
                 w.field("sessionNote", e.sessionNote);
+        },
+        // ── Position Transition (T4) ──
+        [&](const PositionTransitionSessionStarted& e) {
+            w.field("programId", e.programId);
+            w.field("sequence", e.sequence);
+            w.field("verificationShots", static_cast<qint64>(e.verificationShots));
+            w.field("repeats", static_cast<qint64>(e.repeats));
+            w.field("checklistMode", static_cast<qint64>(e.checklistMode));
+            w.field("technicalFocus", e.technicalFocus);
+        },
+        [&](const PositionSetupStarted& e) {
+            w.field("position", static_cast<qint64>(e.position));
+            w.field("repeat", static_cast<qint64>(e.repeat));
+        },
+        [&](const PositionChecklistUpdated& e) {
+            w.field("position", static_cast<qint64>(e.position));
+            w.field("repeat", static_cast<qint64>(e.repeat));
+            w.field("itemIndex", static_cast<qint64>(e.itemIndex));
+            w.field("state", static_cast<qint64>(e.state));
+        },
+        [&](const PositionReady& e) {
+            w.field("position", static_cast<qint64>(e.position));
+            w.field("repeat", static_cast<qint64>(e.repeat));
+            w.field("setupDurationMs", static_cast<qint64>(e.setupDurationMs));
+        },
+        [&](const PositionSighterAccepted& e) {
+            writeShotCore(w, e.shot);
+            w.field("position", static_cast<qint64>(e.position));
+            w.field("repeat", static_cast<qint64>(e.repeat));
+        },
+        [&](const PositionVerificationStarted& e) {
+            w.field("position", static_cast<qint64>(e.position));
+            w.field("repeat", static_cast<qint64>(e.repeat));
+            w.field("readyMonoMs", static_cast<qint64>(e.readyMonoMs));
+        },
+        [&](const PositionVerificationShotAccepted& e) {
+            writeShotCore(w, e.shot);
+            w.field("position", static_cast<qint64>(e.position));
+            w.field("repeat", static_cast<qint64>(e.repeat));
+            w.field("withinBlock", static_cast<qint64>(e.withinBlock));
+        },
+        [&](const PositionVerificationCompleted& e) {
+            w.field("position", static_cast<qint64>(e.position));
+            w.field("repeat", static_cast<qint64>(e.repeat));
+            w.field("shotCount", static_cast<qint64>(e.shotCount));
+        },
+        [&](const PositionNoteSaved& e) {
+            w.field("position", static_cast<qint64>(e.position));
+            w.field("repeat", static_cast<qint64>(e.repeat));
+            w.field("note", e.note);
+        },
+        [&](const NextPositionTransitionStarted& e) {
+            w.field("fromPosition", static_cast<qint64>(e.fromPosition));
+            w.field("toPosition", static_cast<qint64>(e.toPosition));
+            w.field("toRepeat", static_cast<qint64>(e.toRepeat));
+        },
+        [&](const PositionTransitionCompleted& e) {
+            w.field("completedPositions", static_cast<qint64>(e.completedPositions));
+            if (!e.sessionNote.isEmpty())
+                w.field("sessionNote", e.sessionNote);
         }
     }, event);
 }
@@ -1101,6 +1161,76 @@ ReliabilityResult EventSerializer::deserializePayload(const QString& typeId,
     } else if (typeId == QLatin1String(CallDiagnoseCompleted::kType)) {
         CallDiagnoseCompleted e;
         e.completedShots = static_cast<qint16>(r.reqInt("completedShots", 0, 10000));
+        if (r.o.contains(QLatin1String("sessionNote")))
+            e.sessionNote = r.optString("sessionNote");
+        *out = e;
+    } else if (typeId == QLatin1String(PositionTransitionSessionStarted::kType)) {
+        PositionTransitionSessionStarted e;
+        e.programId = r.reqString("programId");
+        e.sequence = r.reqString("sequence");
+        e.verificationShots = static_cast<qint16>(r.reqInt("verificationShots", 1, 1000));
+        e.repeats = static_cast<qint16>(r.reqInt("repeats", 1, 100));
+        e.checklistMode = static_cast<qint8>(r.reqInt("checklistMode", 0, 2));
+        e.technicalFocus = r.reqString("technicalFocus");
+        *out = e;
+    } else if (typeId == QLatin1String(PositionSetupStarted::kType)) {
+        PositionSetupStarted e;
+        e.position = static_cast<qint8>(r.reqInt("position", 0, 2));
+        e.repeat = static_cast<qint16>(r.reqInt("repeat", 1, 100));
+        *out = e;
+    } else if (typeId == QLatin1String(PositionChecklistUpdated::kType)) {
+        PositionChecklistUpdated e;
+        e.position = static_cast<qint8>(r.reqInt("position", 0, 2));
+        e.repeat = static_cast<qint16>(r.reqInt("repeat", 1, 100));
+        e.itemIndex = static_cast<qint8>(r.reqInt("itemIndex", 0, 63));
+        e.state = static_cast<qint8>(r.reqInt("state", 0, 3));
+        *out = e;
+    } else if (typeId == QLatin1String(PositionReady::kType)) {
+        PositionReady e;
+        e.position = static_cast<qint8>(r.reqInt("position", 0, 2));
+        e.repeat = static_cast<qint16>(r.reqInt("repeat", 1, 100));
+        e.setupDurationMs = static_cast<qint32>(r.reqInt("setupDurationMs", 0, INT32_MAX));
+        *out = e;
+    } else if (typeId == QLatin1String(PositionSighterAccepted::kType)) {
+        PositionSighterAccepted e;
+        e.shot = readShotCore(r);
+        e.position = static_cast<qint8>(r.reqInt("position", 0, 2));
+        e.repeat = static_cast<qint16>(r.reqInt("repeat", 1, 100));
+        *out = e;
+    } else if (typeId == QLatin1String(PositionVerificationStarted::kType)) {
+        PositionVerificationStarted e;
+        e.position = static_cast<qint8>(r.reqInt("position", 0, 2));
+        e.repeat = static_cast<qint16>(r.reqInt("repeat", 1, 100));
+        e.readyMonoMs = static_cast<qint32>(r.reqInt("readyMonoMs", 0, INT32_MAX));
+        *out = e;
+    } else if (typeId == QLatin1String(PositionVerificationShotAccepted::kType)) {
+        PositionVerificationShotAccepted e;
+        e.shot = readShotCore(r);
+        e.position = static_cast<qint8>(r.reqInt("position", 0, 2));
+        e.repeat = static_cast<qint16>(r.reqInt("repeat", 1, 100));
+        e.withinBlock = static_cast<qint16>(r.reqInt("withinBlock", 1, 1000));
+        *out = e;
+    } else if (typeId == QLatin1String(PositionVerificationCompleted::kType)) {
+        PositionVerificationCompleted e;
+        e.position = static_cast<qint8>(r.reqInt("position", 0, 2));
+        e.repeat = static_cast<qint16>(r.reqInt("repeat", 1, 100));
+        e.shotCount = static_cast<qint16>(r.reqInt("shotCount", 0, 1000));
+        *out = e;
+    } else if (typeId == QLatin1String(PositionNoteSaved::kType)) {
+        PositionNoteSaved e;
+        e.position = static_cast<qint8>(r.reqInt("position", 0, 2));
+        e.repeat = static_cast<qint16>(r.reqInt("repeat", 1, 100));
+        e.note = r.reqString("note");
+        *out = e;
+    } else if (typeId == QLatin1String(NextPositionTransitionStarted::kType)) {
+        NextPositionTransitionStarted e;
+        e.fromPosition = static_cast<qint8>(r.reqInt("fromPosition", 0, 2));
+        e.toPosition = static_cast<qint8>(r.reqInt("toPosition", 0, 2));
+        e.toRepeat = static_cast<qint16>(r.reqInt("toRepeat", 1, 100));
+        *out = e;
+    } else if (typeId == QLatin1String(PositionTransitionCompleted::kType)) {
+        PositionTransitionCompleted e;
+        e.completedPositions = static_cast<qint16>(r.reqInt("completedPositions", 0, 1000));
         if (r.o.contains(QLatin1String("sessionNote")))
             e.sessionNote = r.optString("sessionNote");
         *out = e;

@@ -1109,6 +1109,131 @@ struct CallDiagnoseCompleted {
     ReliabilityResult validate() const { return ReliabilityResult::success(); }
 };
 
+// ── Position Transition (T4) ─────────────────────────────────────────────
+// Third Training Lab programme (programId "position_transition", sessionKind
+// "Training") — 50m Rifle 3 Positions only. Trains repeatable position setup:
+// per position (and repeat) an athlete builds the position, confirms Position
+// Ready, fires optional sighters, then a short counted verification block. It
+// measures setup/transition timing, sighters and early-group quality; it never
+// claims a technical cause. Sighters reuse TrainingSighter* events. All
+// appended at the END so no prior variant index / journal hash moves.
+struct PositionTransitionSessionStarted {
+    static constexpr const char* kType = "PositionTransitionSessionStarted";
+    static constexpr qint32 kVersion = 1;
+    QString programId;            // "position_transition"
+    QString sequence;             // e.g. "K,P,S" (position order, comma-separated)
+    qint16  verificationShots = 0;// counted verification shots per position
+    qint16  repeats = 1;          // full-sequence repeats
+    qint8   checklistMode = 0;    // 0 self-check, 1 coach-assisted, 2 disabled
+    QString technicalFocus;
+    ReliabilityResult validate() const
+    {
+        if (verificationShots < 1)
+            return evdetail::invalid(QStringLiteral("PositionTransitionSessionStarted.verificationShots < 1"));
+        if (repeats < 1)
+            return evdetail::invalid(QStringLiteral("PositionTransitionSessionStarted.repeats < 1"));
+        return ReliabilityResult::success();
+    }
+};
+
+struct PositionSetupStarted {
+    static constexpr const char* kType = "PositionSetupStarted";
+    static constexpr qint32 kVersion = 1;
+    qint8  position = 0;          // 0 K, 1 P, 2 S
+    qint16 repeat = 1;            // 1-based
+    ReliabilityResult validate() const { return ReliabilityResult::success(); }
+};
+
+struct PositionChecklistUpdated {
+    static constexpr const char* kType = "PositionChecklistUpdated";
+    static constexpr qint32 kVersion = 1;
+    qint8  position = 0;
+    qint16 repeat = 1;
+    qint8  itemIndex = 0;
+    qint8  state = 0;             // 0 unset, 1 checked, 2 skipped, 3 not-applicable
+    ReliabilityResult validate() const { return ReliabilityResult::success(); }
+};
+
+struct PositionReady {
+    static constexpr const char* kType = "PositionReady";
+    static constexpr qint32 kVersion = 1;
+    qint8  position = 0;
+    qint16 repeat = 1;
+    qint32 setupDurationMs = 0;   // begin-of-setup → Position Ready
+    ReliabilityResult validate() const { return ReliabilityResult::success(); }
+};
+
+// A sighter fired in a position's setup/sighter phase — measured and shown,
+// NEVER counted (excluded from verification metrics and the first-shot value).
+// Scoped by (position, repeat) so each position/repeat's sighters stay separate.
+struct PositionSighterAccepted {
+    static constexpr const char* kType = "PositionSighterAccepted";
+    static constexpr qint32 kVersion = 1;
+    ShotCore shot;
+    qint8  position = 0;
+    qint16 repeat = 1;
+    ReliabilityResult validate() const { return shot.validate(); }
+};
+
+struct PositionVerificationStarted {
+    static constexpr const char* kType = "PositionVerificationStarted";
+    static constexpr qint32 kVersion = 1;
+    qint8  position = 0;
+    qint16 repeat = 1;
+    qint32 readyMonoMs = 0;       // Position Ready timestamp (for first-shot timing)
+    ReliabilityResult validate() const { return ReliabilityResult::success(); }
+};
+
+struct PositionVerificationShotAccepted {
+    static constexpr const char* kType = "PositionVerificationShotAccepted";
+    static constexpr qint32 kVersion = 1;
+    ShotCore shot;
+    qint8  position = 0;
+    qint16 repeat = 1;
+    qint16 withinBlock = 0;       // 1-based within the verification block
+    ReliabilityResult validate() const
+    {
+        if (withinBlock < 1)
+            return evdetail::invalid(QStringLiteral("PositionVerificationShotAccepted.withinBlock < 1"));
+        return shot.validate();
+    }
+};
+
+struct PositionVerificationCompleted {
+    static constexpr const char* kType = "PositionVerificationCompleted";
+    static constexpr qint32 kVersion = 1;
+    qint8  position = 0;
+    qint16 repeat = 1;
+    qint16 shotCount = 0;
+    ReliabilityResult validate() const { return ReliabilityResult::success(); }
+};
+
+struct PositionNoteSaved {
+    static constexpr const char* kType = "PositionNoteSaved";
+    static constexpr qint32 kVersion = 1;
+    qint8  position = 0;
+    qint16 repeat = 1;
+    QString note;
+    ReliabilityResult validate() const { return ReliabilityResult::success(); }
+};
+
+struct NextPositionTransitionStarted {
+    static constexpr const char* kType = "NextPositionTransitionStarted";
+    static constexpr qint32 kVersion = 1;
+    qint8  fromPosition = 0;
+    qint8  toPosition = 0;
+    qint16 toRepeat = 1;
+    ReliabilityResult validate() const { return ReliabilityResult::success(); }
+};
+
+struct PositionTransitionCompleted {
+    static constexpr const char* kType = "PositionTransitionCompleted";
+    static constexpr qint32 kVersion = 1;
+    qint16 completedPositions = 0;
+    QString sessionNote;
+    ReliabilityResult validate() const { return ReliabilityResult::success(); }
+};
+
 } // namespace rel
 } // namespace ta
 

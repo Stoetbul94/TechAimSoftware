@@ -84,7 +84,20 @@ using DomainEvent = std::variant<
     CallDiagnoseShotReceived,
     CallDiagnoseCallRecorded,
     CallDiagnoseNoteSaved,
-    CallDiagnoseCompleted>;
+    CallDiagnoseCompleted,
+    // Position Transition (T4) — appended at the END so all prior variant
+    // indexes and journal hashes never move.
+    PositionTransitionSessionStarted,
+    PositionSetupStarted,
+    PositionChecklistUpdated,
+    PositionReady,
+    PositionSighterAccepted,
+    PositionVerificationStarted,
+    PositionVerificationShotAccepted,
+    PositionVerificationCompleted,
+    PositionNoteSaved,
+    NextPositionTransitionStarted,
+    PositionTransitionCompleted>;
 
 // Stable type identifier of the alternative currently held.
 inline const char* eventTypeId(const DomainEvent& event)

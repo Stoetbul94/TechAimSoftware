@@ -14,6 +14,8 @@
 #include "training/CallDiagnoseAnalytics.h"
 #include "training/TargetGeometry.h"
 #include "training/GroupPatternAnalyzer.h"
+#include "training/PositionTransitionController.h"
+#include "training/PositionTransitionTypes.h"
 #include "reliability/journal/JournalWriter.h"
 #include "reliability/journal/JournalValidator.h"
 #include "reliability/replay/ReplayEngine.h"
@@ -1965,6 +1967,292 @@ static void testGroupPattern()
     }
 }
 
+// ══════════════════════════════════════════════════════════════════════════
+//  T4 — POSITION TRANSITION
+// ══════════════════════════════════════════════════════════════════════════
+namespace {
+qint64 g_ptExt = 700000;
+void prepPt(PositionTransitionController& c, MemFile& f, ManualClock& clk, int opMode)
+{
+    c.storeForTesting()->setClockForTesting(&clk);
+    c.storeForTesting()->setJournalFileForTesting(&f);
+    c.configureDefaults();
+    c.setTechnicalFocus(QStringLiteral("Natural point of aim"));
+    if (opMode >= 0) c.setOperatingMode(opMode);
+}
+// Run one position from PositionSetup (phase 1) to PositionReview (phase 4).
+void ptRunPosition(PositionTransitionController& c, ManualClock& clk, int nShots,
+                   int nSighters, int setupMs, int firstShotDelayMs,
+                   double baseX = 1.0, double baseY = 1.0)
+{
+    clk.advance(setupMs);
+    c.positionReady();
+    for (int i = 0; i < nSighters; ++i) { clk.advance(2000); c.registerShot(6, 6, 9.0, ++g_ptExt, 0, 1); }
+    c.startVerification();
+    for (int i = 0; i < nShots; ++i) {
+        clk.advance(i == 0 ? firstShotDelayMs : 3000);
+        c.registerShot(baseX + i * 0.1, baseY, 10.0, ++g_ptExt, 0, 1);
+    }
+}
+} // namespace
+
+static void testPtDomain()
+{
+    std::printf("--- T4 position transition: domain ---\n");
+    {
+        PositionTransitionController c;
+        c.configureDefaults();
+        check(c.verificationShots() == 5, "pt: default 5 verification shots");
+        check(c.validateConfig().isEmpty(), "pt: default config valid");
+        check(c.sequenceString() == QLatin1String("K,P,S"), "pt: default sequence K,P,S");
+        c.setVerificationShots(2);
+        check(!c.validateConfig().isEmpty(), "pt: 2 shots rejected (min 3)");
+        c.setVerificationShots(11);
+        check(!c.validateConfig().isEmpty(), "pt: 11 shots rejected (max 10)");
+        c.setVerificationShots(5);
+        c.setRepeats(5);
+        check(!c.validateConfig().isEmpty(), "pt: 5 repeats rejected (max 4)");
+        c.setRepeats(1);
+        c.setSequencePreset(1);
+        check(c.sequenceString() == QLatin1String("K,P"), "pt: K→P preset");
+        c.setSequencePreset(0);
+    }
+    {
+        PositionTransitionController c; MemFile f; ManualClock clk;
+        prepPt(c, f, clk, 1);
+        c.setVerificationShots(3);
+        check(c.startPositionTransition(QStringLiteral("A")), "pt: session starts");
+        check(c.phase() == 1 && c.inSetup(), "pt: opens in PositionSetup");
+        check(c.positionName() == QLatin1String("Kneeling"), "pt: first position Kneeling");
+        const ValidationReport rep = JournalValidator::validateBytes(f.data);
+        const ReplayResult rr = ReplayEngine::replay(rep.validEnvelopes);
+        check(rr.state.sessionKind == QLatin1String("Training"), "pt: classified Training");
+        check(rr.state.ptProgramId == QLatin1String("position_transition"), "pt: programId persisted");
+        // shots during setup are IGNORED
+        check(!c.registerShot(1, 1, 10.0, 1, 0, 1), "pt: setup shot rejected (ignored)");
+        check(countType(f.data, "PositionVerificationShotAccepted") == 0, "pt: setup shot not journalled");
+        // Position Ready → Sighters
+        clk.advance(9000);
+        check(c.positionReady() && c.phase() == 2 && c.inSighters(), "pt: Position Ready -> Sighters");
+        check(countType(f.data, "PositionReady") == 1, "pt: PositionReady once");
+        clk.advance(2000);
+        check(c.registerShot(6, 6, 9.0, 900, 0, 1), "pt: sighter accepted in Sighters");
+        check(c.sighterCount() == 1 && c.shotsCompleted() == 0, "pt: sighter excluded from verification count");
+        // Start Verification → counted
+        check(c.startVerification() && c.phase() == 3 && c.verifying(), "pt: Start Verification -> VerificationActive");
+        check(c.shotsCompleted() == 0, "pt: Shot 0 of N at verification start");
+        clk.advance(3000); c.registerShot(1, 1, 10.0, 901, 0, 1);
+        check(c.shotsCompleted() == 1, "pt: first counted verification shot -> 1");
+        clk.advance(3000); c.registerShot(1.2, 1, 10.0, 902, 0, 1);
+        clk.advance(3000); c.registerShot(0.9, 1, 10.0, 903, 0, 1);
+        check(c.phase() == 4 && c.reviewOpen(), "pt: block completes -> PositionReview");
+        check(countType(f.data, "PositionVerificationCompleted") == 1, "pt: verification completed once");
+        check(!c.registerShot(1, 1, 10.0, 904, 0, 1), "pt: no shot accepted in review");
+        // continue -> next position (Prone)
+        check(c.continueToNext() && c.phase() == 1 && c.positionName() == QLatin1String("Prone"),
+              "pt: continue -> Prone PositionSetup");
+        c.resetPositionTransition();
+    }
+}
+
+static void testPtTimingFirstShot()
+{
+    std::printf("--- T4 position transition: timing + first shot ---\n");
+    PositionTransitionController c; MemFile f; ManualClock clk;
+    prepPt(c, f, clk, 1);
+    c.setSequencePreset(3);            // single Kneeling
+    c.setVerificationShots(5);
+    c.startPositionTransition(QStringLiteral("A"));
+    // setup 12s, 2 sighters, first shot 8s after ready, tight group + one wide first shot
+    clk.advance(12000);
+    c.positionReady();
+    clk.advance(2000); c.registerShot(6, 6, 9.0, ++g_ptExt, 0, 1);
+    clk.advance(2000); c.registerShot(6, 5, 9.0, ++g_ptExt, 0, 1);
+    c.startVerification();
+    clk.advance(8000); c.registerShot(20, 0, 8.0, ++g_ptExt, 0, 1);   // first shot: far from group
+    clk.advance(3000); c.registerShot(0.3, 0.3, 10.0, ++g_ptExt, 0, 1);
+    clk.advance(3000); c.registerShot(-0.3, -0.3, 10.0, ++g_ptExt, 0, 1);
+    clk.advance(3000); c.registerShot(0.3, -0.3, 10.0, ++g_ptExt, 0, 1);
+    clk.advance(3000); c.registerShot(-0.3, 0.3, 10.0, ++g_ptExt, 0, 1);
+    const QVariantMap rv = c.currentReview();
+    check(qAbs(rv.value("setupDurationMs").toInt() - 12000) < 50, "pt: setup duration ~12s measured");
+    check(rv.value("sighterCount").toInt() == 2, "pt: 2 sighters recorded (excluded from group)");
+    check(rv.value("verificationShots").toInt() == 5, "pt: 5 counted verification shots");
+    // Position Ready → first counted shot INCLUDES the sighter phase
+    // (2 sighters × 2s) + the 8s to the first shot = 12s.
+    check(qAbs(rv.value("readyToFirstShotMs").toInt() - 12000) < 50, "pt: ready-to-first-shot ~12s (incl. sighters)");
+    check(qAbs(rv.value("firstShotScore").toDouble() - 8.0) < 1e-6, "pt: first-shot score recorded");
+    check(rv.value("firstShotDistMm").toDouble() > 10.0, "pt: first-shot distance from MPI measured");
+    check(rv.value("firstShotSeparated").toBool(), "pt: wide first shot flagged separated from group");
+    // group metrics exclude sighters (MPI near the tight group, not the 6,6 sighters)
+    check(qAbs(rv.value("mpiX").toDouble()) < 6.0, "pt: group MPI excludes sighters");
+    c.resetPositionTransition();
+}
+
+static void testPt3PSeparation()
+{
+    std::printf("--- T4 position transition: 3P separation ---\n");
+    PositionTransitionController c; MemFile f; ManualClock clk;
+    prepPt(c, f, clk, 1);
+    c.setVerificationShots(5);
+    c.startPositionTransition(QStringLiteral("A"));   // K,P,S
+    // Kneeling
+    ptRunPosition(c, clk, 5, 1, 10000, 5000, 1.0, 1.0);
+    c.saveNote(QStringLiteral("kneeling note"));
+    c.setChecklistItem(0, 1);
+    c.continueToNext();                               // Prone
+    check(c.positionName() == QLatin1String("Prone"), "pt: advanced to Prone");
+    ptRunPosition(c, clk, 5, 3, 15000, 6000, 2.0, 2.0);   // more sighters, wider
+    c.saveNote(QStringLiteral("prone note"));
+    c.continueToNext();                               // Standing
+    ptRunPosition(c, clk, 5, 2, 20000, 7000, 3.0, 3.0);
+    c.saveNote(QStringLiteral("standing note"));
+    check(c.continueToNext() && c.phase() == 5, "pt: completes after Standing");
+    const QVariantList comp = c.positionComparison();
+    check(comp.size() == 3, "pt: 3 positions in comparison");
+    // separate notes + sighters + analytics
+    QVariantMap k = c.positionReview(0, 1), p = c.positionReview(1, 1), s = c.positionReview(2, 1);
+    check(k.value("note").toString() == QLatin1String("kneeling note")
+          && p.value("note").toString() == QLatin1String("prone note")
+          && s.value("note").toString() == QLatin1String("standing note"),
+          "pt: notes remain separate per position");
+    check(k.value("sighterCount").toInt() == 1 && p.value("sighterCount").toInt() == 3
+          && s.value("sighterCount").toInt() == 2, "pt: sighters separate per position");
+    check(k.value("checklistChecked").toInt() == 1 && p.value("checklistChecked").toInt() == 0,
+          "pt: checklist separate per position");
+    c.resetPositionTransition();
+}
+
+static void testPtSeparation()
+{
+    std::printf("--- T4 position transition: programme separation ---\n");
+    PositionTransitionController c; MemFile f; ManualClock clk;
+    prepPt(c, f, clk, 1);
+    c.setSequencePreset(3); c.setVerificationShots(3);   // single Kneeling
+    c.startPositionTransition(QStringLiteral("A"));
+    ptRunPosition(c, clk, 3, 0, 8000, 4000, 1.0, 1.0);
+    c.continueToNext();                                  // completes
+    const ValidationReport rep = JournalValidator::validateBytes(f.data);
+    const ReplayResult rr = ReplayEngine::replay(rep.validEnvelopes);
+    check(countType(f.data, "ShotAccepted") == 0, "pt: no competition ShotAccepted");
+    check(countType(f.data, "MatchCompleted") == 0, "pt: not MatchCompleted");
+    check(countType(f.data, "TrainingShotAccepted") == 0, "pt: no Technical-Blocks shot events");
+    check(countType(f.data, "CallDiagnoseShotReceived") == 0, "pt: no Call & Diagnose events");
+    check(rr.state.officials.isEmpty() && rr.state.sighters.isEmpty(), "pt: no competition record");
+    check(rr.state.trainingBlocks.isEmpty(), "pt: Technical Blocks state untouched");
+    check(rr.state.cdShots.isEmpty(), "pt: Call & Diagnose state untouched");
+    check(rr.state.ptCompleted, "pt: completion recorded distinctly");
+    c.resetPositionTransition();
+}
+
+static void testPtRecovery()
+{
+    std::printf("--- T4 position transition: recovery ---\n");
+    const QString root = QDir::temp().filePath(
+        QStringLiteral("techaim_pt_recover_%1").arg(QCoreApplication::applicationPid()));
+    QDir(root).removeRecursively();
+    StoragePaths::setRootOverrideForTesting(root);
+    StoragePaths::initialize();
+
+    // (a) crash mid-verification (Prone) → resume restores position/repeat/phase,
+    //     the counted progress and the timers; the dup guard holds.
+    QString sidA;
+    {
+        PositionTransitionController a;
+        a.configureDefaults(); a.setVerificationShots(5);
+        a.setTechnicalFocus(QStringLiteral("Balance")); a.setOperatingMode(1);
+        a.startPositionTransition(QStringLiteral("A")); sidA = a.sessionId();
+        qint64 e = 60000;
+        // Kneeling complete
+        a.positionReady();
+        a.startVerification();
+        for (int i = 0; i < 5; ++i) a.registerShot(1, 1, 10.0, ++e, 0, 1);
+        a.continueToNext();              // Prone setup
+        a.positionReady();
+        a.startVerification();
+        a.registerShot(2, 2, 10.0, ++e, 0, 1);
+        a.registerShot(2, 1, 10.0, ++e, 0, 1);   // 2/5 Prone, crash
+    }
+    {
+        PositionTransitionController b; b.setOperatingMode(1);
+        check(b.resumeFromRecovery(sidA), "pt-recover(a): resume succeeds");
+        check(b.phase() == 3 && b.verifying(), "pt-recover(a): restored INTO VerificationActive");
+        check(b.positionName() == QLatin1String("Prone"), "pt-recover(a): Prone restored");
+        check(b.currentRepeat() == 1 && b.shotsCompleted() == 2, "pt-recover(a): 2/5 Prone counted restored");
+        check(!b.registerShot(2, 2, 9.0, 60002, 0, 1), "pt-recover(a): pre-crash externalId refused (dup guard)");
+        qint64 e2 = 61000;
+        for (int i = 0; i < 3; ++i) b.registerShot(2, 2, 10.0, ++e2, 0, 1);
+        check(b.phase() == 4, "pt-recover(a): completes Prone into review after resume");
+        const ValidationReport rep = JournalValidator::validateFile(b.store()->currentJournalPath());
+        check(rep.firstInvalidLine == -1, "pt-recover(a): hash chain valid after resume+shots");
+        int starts = 0;
+        for (const EventEnvelope& ev : rep.validEnvelopes)
+            if (qstrcmp(eventTypeId(ev.payload), "PositionTransitionSessionStarted") == 0) ++starts;
+        check(starts == 1, "pt-recover(a): no duplicate session-started event");
+        b.resetPositionTransition();
+    }
+
+    // (b) crash during PositionSetup → resume restores PositionSetup (no counted).
+    QString sidB;
+    {
+        PositionTransitionController a;
+        a.configureDefaults(); a.setVerificationShots(4); a.setOperatingMode(1);
+        a.startPositionTransition(QStringLiteral("B")); sidB = a.sessionId();
+        a.setChecklistItem(0, 1); a.setChecklistItem(1, 2);   // partial checklist, crash in setup
+    }
+    {
+        PositionTransitionController b; b.setOperatingMode(1);
+        check(b.resumeFromRecovery(sidB), "pt-recover(b): resume succeeds");
+        check(b.phase() == 1 && b.inSetup(), "pt-recover(b): restored INTO PositionSetup");
+        check(b.shotsCompleted() == 0, "pt-recover(b): no counted shots");
+        const QVariantList cl = b.checklistItems();
+        check(cl.size() >= 2 && cl[0].toMap().value("state").toInt() == 1
+              && cl[1].toMap().value("state").toInt() == 2, "pt-recover(b): partial checklist restored");
+        check(b.positionReady() && b.phase() == 2, "pt-recover(b): Position Ready works after resume");
+        b.resetPositionTransition();
+    }
+
+    // (c) crash after Verification Started before Shot 1 → resume VerificationActive, 0 counted.
+    QString sidC;
+    {
+        PositionTransitionController a;
+        a.configureDefaults(); a.setVerificationShots(4); a.setOperatingMode(1);
+        a.startPositionTransition(QStringLiteral("C")); sidC = a.sessionId();
+        a.positionReady();
+        a.registerShot(6, 6, 9.0, 70000, 0, 1);   // a sighter
+        a.startVerification();                     // crash before Shot 1
+    }
+    {
+        PositionTransitionController b; b.setOperatingMode(1);
+        check(b.resumeFromRecovery(sidC), "pt-recover(c): resume succeeds");
+        check(b.phase() == 3 && b.shotsCompleted() == 0, "pt-recover(c): VerificationActive, 0 counted");
+        check(b.sighterCount() == 1, "pt-recover(c): sighter restored (excluded from count)");
+        check(b.registerShot(1, 1, 10.0, 70100, 0, 1) && b.shotsCompleted() == 1,
+              "pt-recover(c): next shot is counted Shot 1");
+        b.resetPositionTransition();
+    }
+
+    // (d) completed session → NOT offered as an active recovery candidate.
+    QString sidD;
+    {
+        PositionTransitionController a;
+        a.configureDefaults(); a.setSequencePreset(3); a.setVerificationShots(3); a.setOperatingMode(1);
+        a.startPositionTransition(QStringLiteral("D")); sidD = a.sessionId();
+        a.positionReady(); a.startVerification();
+        qint64 e = 71000; for (int i = 0; i < 3; ++i) a.registerShot(1, 1, 10.0, ++e, 0, 1);
+        a.continueToNext();   // completes (single position)
+    }
+    {
+        RecoveryCoordinator coord;
+        bool offered = false;
+        for (const RecoveryCandidate& cand : coord.scan())
+            if (cand.sessionId == sidD && cand.resumable) offered = true;
+        check(!offered, "pt-recover(d): completed session NOT offered as unfinished");
+    }
+
+    StoragePaths::setRootOverrideForTesting(QString());
+}
+
 int main(int argc, char** argv)
 {
     QCoreApplication app(argc, argv);
@@ -1996,6 +2284,11 @@ int main(int argc, char** argv)
     testCdAdaptiveBounds();
     testCdFeedback();
     testGroupPattern();
+    testPtDomain();
+    testPtTimingFirstShot();
+    testPt3PSeparation();
+    testPtSeparation();
+    testPtRecovery();
     std::printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
     std::fflush(stdout);
     return g_failures == 0 ? 0 : 1;
