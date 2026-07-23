@@ -318,6 +318,18 @@ Item {
                 Text { text: "OBSERVED"; color: view.sub; font.pixelSize: 10; font.bold: true; topPadding: 6 }
                 Repeater { model: b.observations ? b.observations : []
                     Text { width: 700; wrapMode: Text.WordWrap; text: "· " + modelData; color: view.ink; font.pixelSize: 11 } }
+                // GROUP PATTERN INSIGHTS (T3)
+                Column {
+                    width: 700; spacing: 2; visible: (b.groupPattern && b.groupPattern.hasData === true)
+                    Text { text: "GROUP PATTERN INSIGHTS"; color: view.red; font.pixelSize: 10; font.bold: true; topPadding: 6 }
+                    Repeater { model: (b.groupPattern ? (b.groupPattern.properties || []) : [])
+                        Column { width: 700; spacing: 0
+                            Text { text: modelData.label + "  (" + modelData.confidence + " evidence)"; color: view.ink; font.pixelSize: 10; font.bold: true }
+                            Text { width: 700; wrapMode: Text.WordWrap; text: modelData.evidence; color: view.sub; font.pixelSize: 10 } } }
+                    Text { visible: (b.groupPattern.prompt || "") !== ""; width: 700; wrapMode: Text.WordWrap
+                           text: "Coach discussion: " + b.groupPattern.prompt; color: view.ink; font.pixelSize: 10; font.italic: true }
+                    Text { width: 700; wrapMode: Text.WordWrap; text: b.groupPattern.disclaimer || ""; color: view.sub; font.pixelSize: 9 }
+                }
                 Text { text: "ATHLETE NOTE"; color: view.sub; font.pixelSize: 10; font.bold: true; topPadding: 6 }
                 Text { width: 700; wrapMode: Text.WordWrap; color: view.ink; font.pixelSize: 11
                        text: (b.note && b.note.length > 0) ? b.note : "—" }

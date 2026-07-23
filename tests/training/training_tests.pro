@@ -14,6 +14,7 @@ SOURCES += \
     $$PWD/../../src/training/TrainingBlockMetrics.cpp \
     $$PWD/../../src/training/CallDiagnoseController.cpp \
     $$PWD/../../src/training/CallDiagnoseAnalytics.cpp \
+    $$PWD/../../src/training/GroupPatternAnalyzer.cpp \
     $$PWD/../../src/analytics/CoachAnalyticsEngine.cpp
 HEADERS += \
     $$PWD/../../src/training/TrainingProgramTypes.h \
@@ -22,6 +23,7 @@ HEADERS += \
     $$PWD/../../src/training/CallDiagnoseTypes.h \
     $$PWD/../../src/training/CallDiagnoseAnalytics.h \
     $$PWD/../../src/training/CallDiagnoseController.h \
-    $$PWD/../../src/training/TargetGeometry.h
+    $$PWD/../../src/training/TargetGeometry.h \
+    $$PWD/../../src/training/GroupPatternAnalyzer.h
 
 SOURCES += tst_training.cpp

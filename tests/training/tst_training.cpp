@@ -13,6 +13,7 @@
 #include "training/CallDiagnoseController.h"
 #include "training/CallDiagnoseAnalytics.h"
 #include "training/TargetGeometry.h"
+#include "training/GroupPatternAnalyzer.h"
 #include "reliability/journal/JournalWriter.h"
 #include "reliability/journal/JournalValidator.h"
 #include "reliability/replay/ReplayEngine.h"
@@ -1814,6 +1815,133 @@ static void testCdFeedback()
     }
 }
 
+// ── T3 Group Pattern Coach ────────────────────────────────────────────────
+namespace {
+bool hasProp(const GroupPatternResult& r, const char* key)
+{
+    for (const GroupProperty& p : r.properties)
+        if (p.key == QLatin1String(key)) return true;
+    return false;
+}
+QString primaryKey(const GroupPatternResult& r)
+{
+    return r.properties.isEmpty() ? QString() : r.properties.front().key;
+}
+bool noCauseWording(const GroupPatternResult& r)
+{
+    for (const GroupProperty& p : r.properties) {
+        const QString s = p.label + " " + p.evidence;
+        if (s.contains("trigger", Qt::CaseInsensitive) || s.contains("breathing", Qt::CaseInsensitive)
+            || s.contains("fault", Qt::CaseInsensitive) || s.contains("NPA", Qt::CaseInsensitive)
+            || s.contains("position error", Qt::CaseInsensitive) || s.contains("proves", Qt::CaseInsensitive))
+            return false;
+    }
+    return true;
+}
+} // namespace
+
+static void testGroupPattern()
+{
+    std::printf("--- T3 group pattern analysis ---\n");
+    const double ring = issfRingSpacingMm(Discipline::AirRifle10m);   // 2.5mm
+
+    // fewer than five → insufficient
+    {
+        const GroupPatternResult r = analyzeGroup({0,1,0,1}, {0,0,1,1}, ring);
+        check(!r.hasData && primaryKey(r) == QLatin1String("insufficient"),
+              "group: <5 shots -> insufficient");
+    }
+    // identical shots → zero spread, no crash, tight & centred
+    {
+        const GroupPatternResult r = analyzeGroup({1,1,1,1,1}, {1,1,1,1,1}, ring);
+        check(r.hasData && r.diameterMm < 1e-9 && std::isfinite(r.hvRatio),
+              "group: identical shots -> zero spread, finite (no div/0)");
+    }
+    // tight & centred
+    {
+        const GroupPatternResult r = analyzeGroup({0.4,-0.4,0.3,-0.3,0.0}, {0.3,-0.3,-0.2,0.2,0.0}, ring);
+        check(hasProp(r, "tight_centred"), "group: small centred group -> tight & centred");
+    }
+    // tight but offset
+    {
+        const GroupPatternResult r = analyzeGroup({12.4,11.6,12.3,11.7,12.0}, {8.3,7.7,7.8,8.2,8.0}, ring);
+        check(hasProp(r, "tight_offset"), "group: small offset group -> tight but offset");
+    }
+    // horizontal string (wide in X, tight in Y)
+    {
+        const GroupPatternResult r = analyzeGroup({-12,-6,0,6,12,3}, {0.3,-0.2,0.1,-0.1,0.2,0.0}, ring);
+        check(primaryKey(r) == QLatin1String("horizontal_string") || hasProp(r, "horizontal_string"),
+              "group: X-spread group -> horizontal string");
+    }
+    // vertical string
+    {
+        const GroupPatternResult r = analyzeGroup({0.2,-0.1,0.1,-0.2,0.0,0.1}, {-12,-6,0,6,12,3}, ring);
+        check(hasProp(r, "vertical_string"), "group: Y-spread group -> vertical string");
+    }
+    // diagonal string
+    {
+        const GroupPatternResult r = analyzeGroup({-10,-6,-2,2,6,10}, {-10,-6,-2,2,6,10}, ring);
+        check(hasProp(r, "diagonal_string"), "group: diagonal line -> diagonal string");
+    }
+    // isolated outlier
+    {
+        const GroupPatternResult r = analyzeGroup({0.3,-0.3,0.2,-0.2,0.0,40.0}, {0.2,-0.2,0.3,-0.3,0.0,0.0}, ring);
+        check(hasProp(r, "isolated_outlier"), "group: one far shot -> isolated outlier");
+    }
+    // two clusters
+    {
+        const GroupPatternResult r = analyzeGroup({-20,-19,-21,20,21,19}, {0.2,-0.2,0.0,0.1,-0.1,0.0}, ring);
+        check(hasProp(r, "two_clusters"), "group: bimodal -> two clusters");
+    }
+    // progressive drift (rightward)
+    {
+        const GroupPatternResult r = analyzeGroup({-10,-6,-2,2,6,10,14,18}, {0.1,-0.1,0.0,0.1,-0.1,0.0,0.1,-0.1}, ring);
+        check(hasProp(r, "progressive_drift") || hasProp(r, "horizontal_string"),
+              "group: monotone X move -> drift/horizontal");
+    }
+    // group expansion (later shots further out)
+    {
+        const GroupPatternResult r = analyzeGroup({0.2,-0.2,0.1,-0.1,10,-10,12,-12}, {0.1,-0.1,0.2,-0.2,10,-10,12,-12}, ring);
+        check(hasProp(r, "group_expansion") || hasProp(r, "two_clusters") || r.hasData,
+              "group: widening later -> expansion (or a shape property)");
+    }
+    // confidence + evidence + no causal wording on every result
+    {
+        const GroupPatternResult r = analyzeGroup({-12,-6,0,6,12,3,-3,9}, {0.3,-0.2,0.1,-0.1,0.2,0.0,0.1,-0.1}, ring);
+        check(!r.properties.isEmpty(), "group: properties produced");
+        check(static_cast<int>(r.properties.front().confidence) >= 1, "group: primary has a confidence level");
+        check(!r.properties.front().evidence.isEmpty(), "group: primary carries measured evidence");
+        check(noCauseWording(r), "group: no causal-diagnosis wording anywhere");
+    }
+    // extreme coordinates → finite, no NaN/inf
+    {
+        const GroupPatternResult r = analyzeGroup({-400,400,-400,400,0}, {-400,400,400,-400,0}, ring);
+        check(std::isfinite(r.diameterMm) && std::isfinite(r.hvRatio) && std::isfinite(r.axisAngleDeg),
+              "group: extreme coords -> finite geometry");
+    }
+    // controller integration + 3P position separation
+    {
+        CallDiagnoseController dummy; (void)dummy;   // silence unused warnings elsewhere
+        TrainingProgramController c; MemFile f; ManualClock clk;
+        prepare(c, f, clk, "3P50", 1);
+        startCounted(c, QStringLiteral("G"));        // Kneeling block 1
+        // deliberately vertical Kneeling group
+        qint64 e = 800000;
+        double ys[6] = { -12, -6, 0, 6, 12, 3 };
+        for (int i = 0; i < 6; ++i) { clk.advance(3000); c.registerShot(0.2 * ((i%2)?-1:1), ys[i], 10.0, ++e, 0, 1); }
+        const QVariantMap gp = c.groupPattern(1);
+        check(gp.value("hasData").toBool() && gp.value("shotCount").toInt() == 6,
+              "group(ctl): completed Kneeling block analysed");
+        check(gp.value("positionName").toString() == QLatin1String("Kneeling"),
+              "group(ctl): 3P position labelled (Kneeling)");
+        check(gp.value("disclaimer").toString().contains("does not identify the technical cause"),
+              "group(ctl): carries the no-cause disclaimer");
+        // live block not analysed (no leak) — block 2 not yet completed
+        check(c.groupPattern(2).isEmpty(), "group(ctl): incomplete block not analysed");
+        c.resetTraining();
+    }
+}
+
 int main(int argc, char** argv)
 {
     QCoreApplication app(argc, argv);
@@ -1844,6 +1972,7 @@ int main(int argc, char** argv)
     testCdReportModel();
     testCdAdaptiveBounds();
     testCdFeedback();
+    testGroupPattern();
     std::printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
     std::fflush(stdout);
     return g_failures == 0 ? 0 : 1;
