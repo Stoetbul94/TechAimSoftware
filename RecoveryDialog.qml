@@ -207,7 +207,8 @@ Rectangle {
                                 // competition restorer — route it explicitly.
                                 root.resumeRequested(root.current.sessionId,
                                     root.current.sessionKind === "Training"
-                                        ? "TRAINING"
+                                        ? (root.current.trainingProgramId === "call_and_diagnose"
+                                            ? "CALLDIAG" : "TRAINING")
                                         : (root.current.disciplineId || ""))
                                 root.visible = false
                             }

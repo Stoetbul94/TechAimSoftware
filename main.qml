@@ -480,6 +480,32 @@ ApplicationWindow {
             {
                 window.close()
                 Qt.quit()
+            } else if (shootingPage.isCallDiagnoseMatch) {
+                // T2: Call & Diagnose is a Training programme, not a competition.
+                if (CALLDIAG.phase === 5) {
+                    if (CALLDIAG.closeCleanly()) { window.close(); Qt.quit() }
+                    else dialogManager.showError(qsTr("Call & Diagnose could not be closed safely"),
+                        qsTr("Your session is preserved and can be recovered. Please try again."))
+                } else {
+                    dialogManager.show({
+                        "type": "question", "title": qsTr("Close Call & Diagnose?"),
+                        "message": qsTr("Save and close this session, or keep it so you can resume it next time?"),
+                        "buttons": [
+                            { "label": qsTr("Cancel"),            "result": "cancel", "accent": false },
+                            { "label": qsTr("Keep for Recovery"), "result": "keep",   "accent": false },
+                            { "label": qsTr("Save and Close"),    "result": "save",   "accent": true }
+                        ],
+                        "defaultResult": "save", "cancelResult": "cancel",
+                        "onResult": function (r) {
+                            if (r === "keep") { window.close(); Qt.quit() }
+                            else if (r === "save") {
+                                if (CALLDIAG.closeCleanly()) { window.close(); Qt.quit() }
+                                else dialogManager.showError(qsTr("Call & Diagnose could not be closed safely"),
+                                    qsTr("Your session is preserved and can be recovered. Please try again."))
+                            }
+                        }
+                    })
+                }
             } else if (shootingPage.isTrainingMatch) {
                 // T1.4: a Technical Blocks session is NOT a competition match —
                 // never the "Save Match?" path. A completed session closes
@@ -592,6 +618,14 @@ ApplicationWindow {
     function dispatchRecovery(sessionId, disciplineId) {
         // T1 closure: Training sessions are classified separately and resume
         // through the TRAINING owner only — never a competition restorer.
+        if (disciplineId === "CALLDIAG") {
+            var okc = shootingPage.restoreCallDiagnoseSession(sessionId)
+            if (!okc)
+                dialogManager.showError(qsTr("Call & Diagnose Recovery Failed"),
+                    qsTr("The Call & Diagnose session could not be resumed. "
+                         + "Its journal has been left intact."))
+            return okc
+        }
         if (disciplineId === "TRAINING") {
             var ok = shootingPage.restoreTrainingSession(sessionId)
             if (!ok)

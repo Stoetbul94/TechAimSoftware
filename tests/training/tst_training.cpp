@@ -1641,6 +1641,46 @@ static void testCdRecovery()
     StoragePaths::setRootOverrideForTesting(QString());
 }
 
+static void testCdReportModel()
+{
+    std::printf("--- T2 call & diagnose: report model ---\n");
+    CallDiagnoseController c; MemFile f; ManualClock clk;
+    prepCd(c, f, clk, "AR10", 1);
+    c.setShotCount(5);
+    c.startCallDiagnose(QStringLiteral("Rae"));
+    c.startProgramme();
+    for (int i = 0; i < 5; ++i) {
+        clk.advance(3000);
+        c.registerShot(1.0, 1.0, 10.0, ++g_cdExt, 0.0, 1);
+        c.submitCall(1.5, 0.5);
+        c.confirmCall();
+        c.saveShotNote(QStringLiteral("note %1").arg(i + 1));
+        c.continueToNext();
+    }
+    check(c.isCompleted(), "cd-report: session completed");
+    const QVariantMap r = c.reportModel();
+    check(r.value(QStringLiteral("athlete")).toString() == QLatin1String("Rae"), "cd-report: athlete present");
+    check(!r.value(QStringLiteral("sessionId")).toString().isEmpty(), "cd-report: session id present");
+    check(r.value(QStringLiteral("calledShots")).toInt() == 5, "cd-report: 5 called shots");
+    const QVariantList shots = r.value(QStringLiteral("shots")).toList();
+    check(shots.size() == 5, "cd-report: 5 shot entries");
+    bool notesOk = true;
+    for (const QVariant& sv : shots)
+        if (sv.toMap().value(QStringLiteral("note")).toString().isEmpty()) notesOk = false;
+    check(notesOk, "cd-report: per-shot notes present in the model");
+    const QVariantMap stats = r.value(QStringLiteral("stats")).toMap();
+    check(stats.value(QStringLiteral("count")).toInt() == 5, "cd-report: stats count = 5");
+    // no competition/ranking wording in the observations
+    bool clean = true;
+    const QStringList obs = r.value(QStringLiteral("observations")).toStringList();
+    for (const QString& s : obs)
+        if (s.contains(QStringLiteral("match"), Qt::CaseInsensitive)
+            || s.contains(QStringLiteral("official"), Qt::CaseInsensitive)
+            || s.contains(QStringLiteral("rank"), Qt::CaseInsensitive)) clean = false;
+    check(clean, "cd-report: no competition/ranking wording in observations");
+    c.resetCallDiagnose();
+}
+
 int main(int argc, char** argv)
 {
     QCoreApplication app(argc, argv);
@@ -1668,6 +1708,7 @@ int main(int argc, char** argv)
     testCdAnalytics();
     testCdSeparation();
     testCdRecovery();
+    testCdReportModel();
     std::printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
     std::fflush(stdout);
     return g_failures == 0 ? 0 : 1;

@@ -39,6 +39,9 @@
         <file>TrainingHud.qml</file>
         <file>TrainingRightPanel.qml</file>
         <file>TrainingReportView.qml</file>
+        <file>CallDiagnoseRightPanel.qml</file>
+        <file>CallDiagnoseHud.qml</file>
+        <file>CallDiagnoseReportView.qml</file>
         <file>Finals10mCommandPanel.qml</file>
         <file>Finals10mRightPanel.qml</file>
         <file>FinalsTopStrip.qml</file>

@@ -14,6 +14,7 @@ Item {
     // becomes "Start training →".
     property int practiceView: 0
     property bool trainingConfirmed: false
+    property bool cdConfirmed: false        // T2: Call & Diagnose setup accepted
     function trainingDisciplineId() {
         if (gameMode === 0) return "AP10"
         if (gameRange === 10) return "AR10"
@@ -865,7 +866,7 @@ Item {
                 id: profileLabel
                 anchors.top: networkShareCard.bottom; anchors.topMargin: 16
                 anchors.left: parent.left; anchors.leftMargin: 22
-                text: trainingConfirmed ? "SELECTED PROGRAMME" : "SELECTED PROFILE"
+                text: (trainingConfirmed || cdConfirmed) ? "SELECTED PROGRAMME" : "SELECTED PROFILE"
                 color: _txtMut; font.family: theme.fontFamily
                 font.pixelSize: 10; font.bold: true; font.letterSpacing: 2
             }
@@ -873,7 +874,8 @@ Item {
                 id: profileName
                 anchors.top: profileLabel.bottom; anchors.topMargin: 4
                 anchors.left: parent.left; anchors.leftMargin: 22
-                text: trainingConfirmed ? "Technical Blocks" : getDisciplineName() + " — ISSF"
+                text: cdConfirmed ? "Call & Diagnose"
+                      : (trainingConfirmed ? "Technical Blocks" : getDisciplineName() + " — ISSF")
                 color: _txt; font.family: theme.fontFamily; font.pixelSize: 16; font.bold: true
             }
             Text {
@@ -892,7 +894,14 @@ Item {
                 anchors.right: parent.right; anchors.rightMargin: 22
                 columns: 3; spacing: 8
                 Repeater {
-                    model: trainingConfirmed ? [
+                    model: cdConfirmed ? [
+                        { lbl: "CALLED",    val: "" + CALLDIAG.shotCount + (trainingDisciplineId() === "3P50" ? " / pos" : "") },
+                        { lbl: "TOTAL",     val: "" + (trainingDisciplineId() === "3P50" ? CALLDIAG.shotCount * 3 : CALLDIAG.shotCount) },
+                        { lbl: "FOCUS",     val: CALLDIAG.technicalFocus },
+                        { lbl: "REVEAL",    val: "After each call" },
+                        { lbl: "EST. TIME", val: CALLDIAG.estimatedTime },
+                        { lbl: "MODE",      val: appMode ? "Live" : "Demo" }
+                    ] : trainingConfirmed ? [
                         { lbl: "BLOCKS",     val: "" + TRAINING.blockCount },
                         { lbl: "SHOTS/BLOCK", val: "" + TRAINING.shotsPerBlock },
                         { lbl: "TOTAL",      val: "" + (TRAINING.blockCount * TRAINING.shotsPerBlock) },
@@ -964,7 +973,8 @@ Item {
                     opacity: startMouse.visible ? 1.0 : 0.4
                     property bool _startHov: false
                     Text {
-                        text: trainingConfirmed ? "Start training  →" : "Start session  →"
+                        text: cdConfirmed ? "Start calling  →"
+                              : (trainingConfirmed ? "Start training  →" : "Start session  →")
                         color: "white"; font.family: theme.fontFamily; font.pixelSize: 15; font.bold: true
                         anchors.centerIn: parent
                     }
@@ -974,6 +984,21 @@ Item {
                         onEntered: startSessionRect._startHov = true
                         onExited:  startSessionRect._startHov = false
                         onClicked: {
+                            // TRAINING LAB (T2): Call & Diagnose — new Training
+                            // session (kind=Training, call_and_diagnose). Opens in
+                            // Sighters; NEVER a qualification/Final session.
+                            if (cdConfirmed) {
+                                if (!CALLDIAG.startCallDiagnose(username_loginPage)) {
+                                    dialogManager.showError(qsTr("Cannot start Call & Diagnose"),
+                                        CALLDIAG.lastStartError !== ""
+                                            ? CALLDIAG.lastStartError
+                                            : qsTr("The session could not be started."))
+                                    return
+                                }
+                                shootingPage.enterCallDiagnoseMode()
+                                rootItem.visible = false
+                                return
+                            }
                             // TRAINING LAB (T1): explicit Start training — new
                             // Training session (kind=Training, technical_blocks,
                             // mode/discipline/focus/visibility persisted, Block 1
@@ -1091,7 +1116,7 @@ Item {
                     }
                     MouseArea {
                         id: pistolMouse; anchors.fill: parent; hoverEnabled: true
-                        onClicked: { trainingConfirmed = false; papermode = 0; gameMode = 0; rangeSelected(10); gameEvent = 0 }
+                        onClicked: { trainingConfirmed = false; cdConfirmed = false; papermode = 0; gameMode = 0; rangeSelected(10); gameEvent = 0 }
                     }
                 }
 
@@ -1118,7 +1143,7 @@ Item {
                     }
                     MouseArea {
                         id: rifleMouse; anchors.fill: parent; hoverEnabled: true
-                        onClicked: { trainingConfirmed = false; papermode = 0; gameMode = 1; gameEvent = 0 }
+                        onClicked: { trainingConfirmed = false; cdConfirmed = false; papermode = 0; gameMode = 1; gameEvent = 0 }
                     }
                 }
             }
@@ -1150,7 +1175,7 @@ Item {
                         }
                         MouseArea {
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: { trainingConfirmed = false; rangeSelected(10); gameSubMode = 0; gameEvent = 0 }
+                            onClicked: { trainingConfirmed = false; cdConfirmed = false; rangeSelected(10); gameSubMode = 0; gameEvent = 0 }
                         }
                     }
                     Rectangle {
@@ -1166,7 +1191,7 @@ Item {
                         }
                         MouseArea {
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: { trainingConfirmed = false; rangeSelected(50); gameSubMode = 0; gameEvent = 4 }
+                            onClicked: { trainingConfirmed = false; cdConfirmed = false; rangeSelected(50); gameSubMode = 0; gameEvent = 4 }
                         }
                     }
                 }
@@ -1187,7 +1212,7 @@ Item {
                         }
                         MouseArea {
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: { trainingConfirmed = false; gameSubMode = 0; gameEvent = 4 }
+                            onClicked: { trainingConfirmed = false; cdConfirmed = false; gameSubMode = 0; gameEvent = 4 }
                         }
                     }
                     Rectangle {
@@ -1202,7 +1227,7 @@ Item {
                         }
                         MouseArea {
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: { trainingConfirmed = false; gameSubMode = 1; gameEvent = 4 }
+                            onClicked: { trainingConfirmed = false; cdConfirmed = false; gameSubMode = 1; gameEvent = 4 }
                         }
                     }
                 }
@@ -1307,7 +1332,7 @@ Item {
                             anchors.fill: parent; hoverEnabled: true
                             onEntered: { if (gameEvent !== eventIndex) parent.color = _borderSub }
                             onExited:  { parent.color = gameEvent === eventIndex ? _redDark : _surfaceAlt }
-                            onClicked: { trainingConfirmed = false; gameEvent = eventIndex }
+                            onClicked: { trainingConfirmed = false; cdConfirmed = false; gameEvent = eventIndex }
                         }
                     }
 
@@ -1394,7 +1419,7 @@ Item {
                                                text: modelData.t
                                                color: gameEvent === modelData.e ? "white" : _txtSec
                                                font.family: "Consolas"; font.pixelSize: 12; font.bold: true }
-                                        MouseArea { anchors.fill: parent; onClicked: { trainingConfirmed = false; gameEvent = modelData.e } }
+                                        MouseArea { anchors.fill: parent; onClicked: { trainingConfirmed = false; cdConfirmed = false; gameEvent = modelData.e } }
                                     }
                                 }
                             }
@@ -1402,7 +1427,7 @@ Item {
                         MouseArea {
                             anchors.fill: parent
                             enabled: !parent.selected
-                            onClicked: { trainingConfirmed = false; gameEvent = 1 }
+                            onClicked: { trainingConfirmed = false; cdConfirmed = false; gameEvent = 1 }
                         }
                     }
                     Item { width: 1; height: 8 }
@@ -1556,8 +1581,42 @@ Item {
                         }
                         // no MouseArea: not clickable, no selector, no fake setup
                     }
-                    FutureCard { title: (gameMode === 1 && gameRange === 50 && gameSubMode === 1)
-                                        ? "CALL & DIAGNOSE · BY POSITION" : "CALL & DIAGNOSE" }
+                    // AVAILABLE — Call & Diagnose (T2, clickable)
+                    Rectangle {
+                        width: parent.width; height: 96; radius: 8
+                        color: _surfaceAlt; border.color: _red; border.width: 1
+                        Column {
+                            anchors.left: parent.left; anchors.leftMargin: 14
+                            anchors.right: parent.right; anchors.rightMargin: 14
+                            anchors.verticalCenter: parent.verticalCenter; spacing: 3
+                            Row {
+                                spacing: 8
+                                Text { text: (gameMode === 1 && gameRange === 50 && gameSubMode === 1)
+                                             ? "CALL & DIAGNOSE · BY POSITION" : "CALL & DIAGNOSE"
+                                       color: _txt; font.family: theme.fontFamily; font.pixelSize: 14; font.bold: true }
+                                Rectangle {
+                                    width: 74; height: 18; radius: 9; color: "#0d2018"
+                                    border.color: _green; border.width: 1
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    Text { anchors.centerIn: parent; text: "AVAILABLE"
+                                           color: _green; font.pixelSize: 9; font.bold: true }
+                                }
+                            }
+                            Text { text: "Call each shot before the actual impact is revealed.\nCompare where you believed the shot landed with where it actually landed."
+                                   color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 10 }
+                            Text { text: (gameMode === 1 && gameRange === 50 && gameSubMode === 1)
+                                         ? "Default: 10 called shots per position · Configurable"
+                                         : "Default: 20 called shots · Configurable"
+                                   color: _txtSec; font.family: "Consolas"; font.pixelSize: 10 }
+                        }
+                        MouseArea {
+                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                CALLDIAG.configureDefaults(trainingDisciplineId())
+                                practiceView = 3
+                            }
+                        }
+                    }
                     FutureCard { title: "POSITION TRANSITION"
                                  visible: gameMode === 1 && gameRange === 50 && gameSubMode === 1 }
                     FutureCard { title: "WIND MAP"; status: "PLANNED"
@@ -1781,7 +1840,120 @@ Item {
                                     if (err !== "") { setupError.text = err; return }
                                     setupError.text = ""
                                     trainingConfirmed = true
+                                    cdConfirmed = false     // programmes are mutually exclusive
                                     practiceView = 0        // back to events + summary
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ── CALL & DIAGNOSE SETUP (practiceView 3) ───────────────────────
+            Flickable {
+                id: cdSetupFlick
+                visible: practiceView === 3
+                anchors.top: subDisciplineRow.bottom; anchors.topMargin: 12
+                anchors.left: parent.left;   anchors.leftMargin: 22
+                anchors.right: parent.right; anchors.rightMargin: 22
+                anchors.bottom: parent.bottom; anchors.bottomMargin: 18
+                clip: true
+                contentWidth: width
+                contentHeight: cdSetupCol.implicitHeight
+                boundsBehavior: Flickable.StopAtBounds
+                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                Column {
+                    id: cdSetupCol
+                    width: cdSetupFlick.width
+                    spacing: 10; bottomPadding: 12
+
+                    Text {
+                        text: "← Back"; color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 12
+                        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                    onClicked: practiceView = 1 }
+                    }
+                    Text { text: "CALL & DIAGNOSE SETUP"; color: _txt
+                           font.family: theme.fontFamily; font.pixelSize: 17; font.bold: true }
+                    Text {
+                        width: parent.width; wrapMode: Text.WordWrap
+                        color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 11
+                        text: "After every shot the actual impact stays hidden. Tap the target where you believe the shot landed, confirm your call, then compare it with the measured result. This assesses how accurately you recognise your own shot."
+                            + (trainingDisciplineId() === "3P50"
+                               ? " Kneeling, Prone and Standing are kept separate." : "")
+                    }
+                    Text { text: getDisciplineName() + "  ·  " + username_loginPage + "  ·  " + CALLDIAG.estimatedTime
+                           color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 11 }
+
+                    Row {
+                        spacing: 10
+                        Text { text: trainingDisciplineId() === "3P50" ? "Called shots / position" : "Called shots"
+                               color: _txtSec; width: 150; font.family: theme.fontFamily; font.pixelSize: 12
+                               anchors.verticalCenter: parent.verticalCenter }
+                        Rectangle { width: 52; height: 48; radius: 8; color: _input; border.color: _borderSub
+                            Text { anchors.centerIn: parent; text: "−"; color: _txt; font.pixelSize: 16 }
+                            MouseArea { anchors.fill: parent; onClicked: CALLDIAG.setShotCount(CALLDIAG.shotCount - 1) } }
+                        Text { text: CALLDIAG.shotCount; color: _txt; width: 40; horizontalAlignment: Text.AlignHCenter
+                               font.family: "Consolas"; font.pixelSize: 16; font.bold: true
+                               anchors.verticalCenter: parent.verticalCenter }
+                        Rectangle { width: 52; height: 48; radius: 8; color: _input; border.color: _borderSub
+                            Text { anchors.centerIn: parent; text: "+"; color: _txt; font.pixelSize: 16 }
+                            MouseArea { anchors.fill: parent; onClicked: CALLDIAG.setShotCount(CALLDIAG.shotCount + 1) } }
+                    }
+                    Text { text: "Total: " + (trainingDisciplineId() === "3P50" ? CALLDIAG.shotCount * 3 : CALLDIAG.shotCount)
+                                 + " called shots"
+                                 + (trainingDisciplineId() === "3P50" ? "  ·  Kneeling → Prone → Standing" : "")
+                           color: _txtSec; font.family: "Consolas"; font.pixelSize: 11 }
+
+                    Text { text: "Technical focus"; color: _txtSec
+                           font.family: theme.fontFamily; font.pixelSize: 12; topPadding: 4 }
+                    Flow {
+                        width: parent.width; spacing: 6
+                        Repeater {
+                            model: CALLDIAG.focusOptionsForDiscipline()
+                            delegate: Rectangle {
+                                width: cdFocusT.implicitWidth + 30; height: 44; radius: 22
+                                color: CALLDIAG.technicalFocus === modelData ? _red : _input
+                                border.color: CALLDIAG.technicalFocus === modelData ? _red : _borderSub
+                                Text { id: cdFocusT; anchors.centerIn: parent; text: modelData
+                                       color: CALLDIAG.technicalFocus === modelData ? "white" : _txtSec
+                                       font.family: theme.fontFamily; font.pixelSize: 11 }
+                                MouseArea { anchors.fill: parent
+                                            onClicked: CALLDIAG.setTechnicalFocus(modelData) }
+                            }
+                        }
+                    }
+                    Text { text: "Reveal happens immediately after each call is confirmed."
+                           color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 10 }
+
+                    Text {
+                        id: cdSetupError
+                        visible: text !== ""; text: ""
+                        width: parent.width; wrapMode: Text.WordWrap
+                        color: "#ff9aa8"; font.family: theme.fontFamily; font.pixelSize: 11
+                    }
+                    Row {
+                        spacing: 10; topPadding: 6
+                        Rectangle {
+                            width: 110; height: 52; radius: 8
+                            color: "transparent"; border.color: _borderStr; border.width: 1
+                            Text { anchors.centerIn: parent; text: "Back"; color: _txtSec
+                                   font.family: theme.fontFamily; font.pixelSize: 12 }
+                            MouseArea { anchors.fill: parent; onClicked: practiceView = 1 }
+                        }
+                        Rectangle {
+                            width: 180; height: 52; radius: 8; color: _red
+                            Text { anchors.centerIn: parent; text: "Confirm setup"; color: "white"
+                                   font.family: theme.fontFamily; font.pixelSize: 13; font.bold: true }
+                            MouseArea {
+                                anchors.fill: parent
+                                onClicked: {
+                                    if (CALLDIAG.technicalFocus === "") { cdSetupError.text = "Select a technical focus."; return }
+                                    var err = CALLDIAG.validateConfig()
+                                    if (err !== "") { cdSetupError.text = err; return }
+                                    cdSetupError.text = ""
+                                    cdConfirmed = true
+                                    trainingConfirmed = false      // mutually exclusive
+                                    practiceView = 0
                                 }
                             }
                         }
