@@ -85,7 +85,70 @@ CallSessionStats computeCallSessionStats(const QVector<CallShotStat>& stats)
         }
         if (den > 0.0) { o.trendSlope = num / den; o.hasTrend = true; }
     }
+
+    // robust outlier detection — Tukey IQR fences on the (sorted) radial error.
+    // Linear-interpolated quartiles; an error above q3 + 1.5*IQR is an outlier.
+    auto quantile = [&errors, n](double p) -> double {
+        if (n == 1) return errors[0];
+        const double pos = p * (n - 1);
+        const int lo = static_cast<int>(std::floor(pos));
+        const int hi = static_cast<int>(std::ceil(pos));
+        if (lo == hi) return errors[lo];
+        return errors[lo] + (pos - lo) * (errors[hi] - errors[lo]);
+    };
+    o.q1 = quantile(0.25);
+    o.q3 = quantile(0.75);
+    o.iqr = o.q3 - o.q1;
+    o.outlierThreshold = o.q3 + 1.5 * o.iqr;
+    if (n >= 4) {
+        for (const CallShotStat& s : stats)
+            if (s.errorMm > o.outlierThreshold) ++o.outlierCount;
+    }
+
+    // early-vs-late average error (>= 6 calls) — for the trend narrative.
+    if (n >= 6) {
+        const int half = n / 2;
+        double e1 = 0.0, e2 = 0.0;
+        for (int i = 0; i < half; ++i) e1 += stats[i].errorMm;
+        for (int i = n - half; i < n; ++i) e2 += stats[i].errorMm;
+        o.firstHalfAvg = e1 / half;
+        o.secondHalfAvg = e2 / half;
+        o.hasHalves = true;
+    }
     return o;
+}
+
+CompareBounds comparisonBounds(double calledXMm, double calledYMm,
+                               double actualXMm, double actualYMm,
+                               double minHalfRangeMm, double markerMm)
+{
+    // include call, actual AND the target centre (0,0); square viewport.
+    double maxAbs = 0.0;
+    maxAbs = std::max(maxAbs, std::fabs(calledXMm));
+    maxAbs = std::max(maxAbs, std::fabs(calledYMm));
+    maxAbs = std::max(maxAbs, std::fabs(actualXMm));
+    maxAbs = std::max(maxAbs, std::fabs(actualYMm));
+    CompareBounds b;
+    // 20% padding for the extreme point + the marker radius so nothing clips.
+    b.halfRangeMm = std::max(minHalfRangeMm, maxAbs * 1.20 + markerMm);
+    b.outsideFace = false;
+    return b;
+}
+
+CompareBounds targetBounds(double calledXMm, double calledYMm,
+                           double actualXMm, double actualYMm,
+                           double faceRadiusMm, double markerMm)
+{
+    double maxAbs = 0.0;
+    maxAbs = std::max(maxAbs, std::fabs(calledXMm));
+    maxAbs = std::max(maxAbs, std::fabs(calledYMm));
+    maxAbs = std::max(maxAbs, std::fabs(actualXMm));
+    maxAbs = std::max(maxAbs, std::fabs(actualYMm));
+    CompareBounds b;
+    b.outsideFace = (maxAbs > faceRadiusMm);
+    // normally the whole face; expand (never clamp) if a marker lies outside.
+    b.halfRangeMm = b.outsideFace ? (maxAbs * 1.10 + markerMm) : faceRadiusMm;
+    return b;
 }
 
 }} // namespace ta::training

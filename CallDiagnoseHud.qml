@@ -16,6 +16,10 @@ Item {
     readonly property bool awaitingCall: ctl && ctl.phase === 3
     readonly property bool revealOpen:   ctl && ctl.phase === 4
     readonly property bool summaryOpen:  ctl && ctl.phase === 5
+    // T2.1: reveal view mode — false = Comparison Zoom (auto-fit call+actual),
+    // true = Target View (whole face). Reset to Comparison each reveal.
+    property bool targetView: false
+    onRevealOpenChanged: if (revealOpen) targetView = false
 
     readonly property color _bg:     "#15171C"
     readonly property color _card:   "#1B1E24"
@@ -64,9 +68,16 @@ Item {
                 property bool hasCall: hud.ctl ? hud.ctl.hasPendingCall : false
                 property real callMmX: 0
                 property real callMmY: 0
+                // adaptive half-range (mm): during Reveal the controller supplies an
+                // auto-fit range so neither marker is ever clipped; during call
+                // entry a fixed discipline range is used for placement.
+                readonly property real activeRange: hud.awaitingCall
+                    ? hud.rangeMm
+                    : (hud.targetView ? (rv.targetHalfRangeMm || hud.rangeMm)
+                                      : (rv.comparisonHalfRangeMm || hud.rangeMm))
 
-                function mmToX(mm) { return cx + (mm / hud.rangeMm) * plotR }
-                function mmToYpix(mm) { return cy - (mm / hud.rangeMm) * plotR }
+                function mmToX(mm) { return cx + (mm / activeRange) * plotR }
+                function mmToYpix(mm) { return cy - (mm / activeRange) * plotR }
 
                 // reference rings
                 Repeater {
@@ -77,7 +88,13 @@ Item {
                 Rectangle { anchors.centerIn: parent; width: face.plotR * 2; height: 1; color: "#1c1f26" }
                 Rectangle { anchors.centerIn: parent; width: 1; height: face.plotR * 2; color: "#1c1f26" }
                 Text { anchors.top: parent.top; anchors.topMargin: 6; anchors.horizontalCenter: parent.horizontalCenter
-                       text: "±" + hud.rangeMm.toFixed(0) + " mm"; color: _txtMut; font.pixelSize: 9 }
+                       text: "±" + face.activeRange.toFixed(0) + " mm"; color: _txtMut; font.pixelSize: 9 }
+                // off-face indicator (a marker lies beyond the scoring face)
+                Text {
+                    visible: hud.revealOpen && face.rv.outsideFace === true
+                    anchors.bottom: parent.bottom; anchors.bottomMargin: 6; anchors.horizontalCenter: parent.horizontalCenter
+                    text: "OUTSIDE NORMAL TARGET FACE"; color: _redHi; font.pixelSize: 9; font.bold: true
+                }
 
                 // ACTUAL marker (reveal only) — filled diamond + label
                 Item {
@@ -124,7 +141,24 @@ Item {
                     }
                 }
             }
-            // legend
+            // reveal difference (full sentences + exact-call state)
+            Column {
+                visible: hud.revealOpen; anchors.horizontalCenter: parent.horizontalCenter; spacing: 2
+                property var rv: hud.revealOpen && hud.ctl ? hud.ctl.revealCurrent() : ({})
+                Text { anchors.horizontalCenter: parent.horizontalCenter
+                       visible: parent.rv.exact === true
+                       text: "EXACT CALL — 0.0 mm"; color: _green; font.pixelSize: 16; font.bold: true }
+                Text { anchors.horizontalCenter: parent.horizontalCenter
+                       visible: parent.rv.exact !== true
+                       text: "CALL DIFFERENCE  " + (parent.rv.errorMm !== undefined ? Number(parent.rv.errorMm).toFixed(1) : "—") + " mm"
+                             + (parent.rv.errorRingSpacings !== undefined ? "  (~" + Number(parent.rv.errorRingSpacings).toFixed(1) + " ring spacings)" : "")
+                       color: _txt; font.pixelSize: 15; font.bold: true }
+                Text { anchors.horizontalCenter: parent.horizontalCenter; width: 520; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap
+                       text: (parent.rv.horizontalSentence || ""); color: _txtSec; font.pixelSize: 12 }
+                Text { anchors.horizontalCenter: parent.horizontalCenter; width: 520; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap
+                       text: (parent.rv.verticalSentence || ""); color: _txtSec; font.pixelSize: 12 }
+            }
+            // legend + view toggle
             Row {
                 anchors.horizontalCenter: parent.horizontalCenter; spacing: 20
                 Row { spacing: 6
@@ -135,6 +169,15 @@ Item {
                     Rectangle { width: 11; height: 11; radius: 2; rotation: 45; color: _red; border.color: "white"; border.width: 1
                                 anchors.verticalCenter: parent.verticalCenter }
                     Text { text: "ACTUAL"; color: _txtSec; font.pixelSize: 11; anchors.verticalCenter: parent.verticalCenter } }
+                // Comparison Zoom / Target View toggle (touch ≥48px targets)
+                Row { spacing: 0; visible: hud.revealOpen
+                    Rectangle { width: 120; height: 30; radius: 6; color: !hud.targetView ? _redHi : "transparent"; border.color: _line; border.width: 1
+                        Text { anchors.centerIn: parent; text: "Comparison"; color: !hud.targetView ? "white" : _txtSec; font.pixelSize: 11 }
+                        MouseArea { anchors.fill: parent; onClicked: hud.targetView = false } }
+                    Rectangle { width: 110; height: 30; radius: 6; color: hud.targetView ? _redHi : "transparent"; border.color: _line; border.width: 1
+                        Text { anchors.centerIn: parent; text: "Target"; color: hud.targetView ? "white" : _txtSec; font.pixelSize: 11 }
+                        MouseArea { anchors.fill: parent; onClicked: hud.targetView = true } }
+                }
             }
 
             // actions
@@ -186,6 +229,7 @@ Item {
                     property var st: (hud.summaryOpen && hud.ctl) ? hud.ctl.sessionStats(-1) : ({})
                     property var obs: (hud.summaryOpen && hud.ctl) ? hud.ctl.sessionObservations() : []
                     property var shots: (hud.summaryOpen && hud.ctl) ? hud.ctl.shotReviewList() : []
+                    property var ins: (hud.summaryOpen && hud.ctl) ? hud.ctl.callInsights() : ({})
 
                     Text { text: "CALL & DIAGNOSE COMPLETE"; color: _txt; font.pixelSize: 22; font.bold: true }
                     Text { text: "TRAINING SESSION"; color: _red; font.pixelSize: 11; font.bold: true; font.letterSpacing: 2 }
@@ -218,6 +262,68 @@ Item {
                                     Text { text: modelData.v; color: _txt; font.family: "Consolas"; font.pixelSize: 15; font.bold: true } }
                             }
                         }
+                    }
+
+                    // ── WHAT YOU SHOULD TAKE FROM THIS SESSION ──────────────
+                    Rectangle {
+                        visible: sumCol.ins.hasData === true
+                        width: parent.width; radius: 8; color: "#12161C"; border.color: _line; border.width: 1
+                        height: takeCol.implicitHeight + 24
+                        Column {
+                            id: takeCol
+                            anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top; anchors.margins: 12
+                            spacing: 8
+                            Text { text: "WHAT YOU SHOULD TAKE FROM THIS SESSION"; color: _redHi; font.pixelSize: 12; font.bold: true; font.letterSpacing: 1 }
+                            Repeater {
+                                model: {
+                                    var i = sumCol.ins
+                                    if (!i || !i.hasData) return []
+                                    var m = []
+                                    m.push({ t: "TYPICAL CALL ACCURACY", b: (i.typicalText || "") + "  " + (i.withinText || "") })
+                                    m.push({ t: "AVERAGE vs TYPICAL", b: i.averageVsMedian || "" })
+                                    var biasStr = (i.biasSentences || []).join("  ") + "  " + (i.biasCaveat || "")
+                                    m.push({ t: "DIRECTIONAL BIAS", b: biasStr })
+                                    m.push({ t: "CALL CONSISTENCY", b: i.consistencyText || "" })
+                                    m.push({ t: "CALL ACCURACY TREND", b: i.trendText || "" })
+                                    m.push({ t: "SHOT AWARENESS vs SHOT RESULT", b: i.awarenessText || "" })
+                                    return m
+                                }
+                                delegate: Column { width: takeCol.width; spacing: 2
+                                    Text { text: modelData.t; color: _green; font.pixelSize: 10; font.bold: true; font.letterSpacing: 1 }
+                                    Text { width: parent.width; wrapMode: Text.WordWrap; text: modelData.b; color: _txtSec; font.pixelSize: 12 } }
+                            }
+                        }
+                    }
+
+                    // SHOTS TO REVIEW WITH YOUR COACH
+                    Column {
+                        width: parent.width; spacing: 3
+                        visible: (sumCol.ins.reviewShots || []).length > 0
+                        Text { text: "SHOTS TO REVIEW WITH YOUR COACH"; color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 4 }
+                        Repeater { model: sumCol.ins.reviewShots || []
+                            Text { width: sumCol.width; wrapMode: Text.WordWrap
+                                   text: "· Shot " + modelData.shotNumber + ": " + modelData.text
+                                   color: _txtSec; font.pixelSize: 12 } }
+                    }
+
+                    // ACCURACY TREND CHART (shot number vs call difference)
+                    Text { text: "CALL DIFFERENCE BY SHOT"; color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 4 }
+                    Column {
+                        width: parent.width; spacing: 3
+                        readonly property real maxErr: {
+                            var mx = 1
+                            for (var i = 0; i < sumCol.shots.length; ++i) mx = Math.max(mx, sumCol.shots[i].errorMm)
+                            return mx
+                        }
+                        Repeater { model: sumCol.shots
+                            delegate: Row { spacing: 8; property var s: modelData
+                                Text { text: (s.positionName ? s.positionName.substring(0,1) + " " : "") + "#" + s.shotNumber
+                                       color: _txtSec; font.pixelSize: 9; width: 40; anchors.verticalCenter: parent.verticalCenter }
+                                Rectangle { width: sumCol.width * 0.55; height: 11; radius: 3; color: "#0E1014"; anchors.verticalCenter: parent.verticalCenter
+                                    Rectangle { height: parent.height; radius: 3; color: s.isOutlier ? _redHi : _green
+                                        width: parent.width * Math.min(1, s.errorMm / parent.parent.parent.maxErr) } }
+                                Text { text: Number(s.errorMm).toFixed(1) + " mm"; color: _txt; font.family: "Consolas"; font.pixelSize: 9
+                                       anchors.verticalCenter: parent.verticalCenter } } }
                     }
 
                     Text { text: "OBSERVED"; color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 4 }

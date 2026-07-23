@@ -117,6 +117,12 @@ public:
     Q_INVOKABLE QVariantMap sessionStats(int positionFilter = -1) const;
     Q_INVOKABLE QStringList sessionObservations() const;   // measured statements
     Q_INVOKABLE QVariantList shotReviewList() const;       // revealed shots only
+    // T2.1 discipline geometry + the "What You Should Take" coaching bundle
+    // (typical accuracy, bands, average-vs-median, bias, consistency, trend,
+    // shots to review, awareness-vs-result). Measured only — no diagnosis.
+    Q_INVOKABLE double ringSpacingMm() const;
+    Q_INVOKABLE double faceRadiusMm() const;
+    Q_INVOKABLE QVariantMap callInsights() const;
     Q_INVOKABLE int sessionDurationSec() const;
     Q_INVOKABLE QVariantMap reportModel() const;           // PDF/summary source
 

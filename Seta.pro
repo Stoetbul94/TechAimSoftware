@@ -92,7 +92,8 @@ HEADERS += \
     src/training/TrainingProgramController.h \
     src/training/CallDiagnoseTypes.h \
     src/training/CallDiagnoseAnalytics.h \
-    src/training/CallDiagnoseController.h
+    src/training/CallDiagnoseController.h \
+    src/training/TargetGeometry.h
 INCLUDEPATH += src/training
 INCLUDEPATH += src/finals
 INCLUDEPATH += src/finals10m

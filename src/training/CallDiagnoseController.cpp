@@ -1,6 +1,7 @@
 #include "CallDiagnoseController.h"
 
 #include "mode/OperatingMode.h"
+#include "TargetGeometry.h"
 
 #include <QCoreApplication>
 #include <QDebug>
@@ -492,6 +493,40 @@ const CallDiagnoseShotRecord* CallDiagnoseController::lastResolvedShot() const
     return nullptr;
 }
 
+namespace {
+QString bandKey(double errMm, double ring)
+{
+    if (ring <= 0.0) return QStringLiteral("more");
+    const double r = errMm / ring;
+    if (r <= 0.5) return QStringLiteral("half");
+    if (r <= 1.0) return QStringLiteral("one");
+    return QStringLiteral("more");
+}
+QString bandText(const QString& key)
+{
+    if (key == QLatin1String("half")) return QStringLiteral("Within half a ring");
+    if (key == QLatin1String("one"))  return QStringLiteral("Within one ring");
+    return QStringLiteral("More than one ring");
+}
+QString horizSentence(double ex)
+{
+    if (std::fabs(ex) < 0.05)
+        return QStringLiteral("Your call and the measured impact were horizontally aligned.");
+    return QStringLiteral("Your call was %1 mm %2 of the measured impact.")
+        .arg(std::fabs(ex), 0, 'f', 1).arg(ex >= 0 ? "right" : "left");
+}
+QString vertSentence(double ey)
+{
+    if (std::fabs(ey) < 0.05)
+        return QStringLiteral("Your call and the measured impact were vertically aligned.");
+    return QStringLiteral("Your call was %1 mm %2 of the measured impact.")
+        .arg(std::fabs(ey), 0, 'f', 1).arg(ey >= 0 ? "high" : "low");
+}
+} // namespace
+
+double CallDiagnoseController::ringSpacingMm() const { return issfRingSpacingMm(m_cfg.discipline); }
+double CallDiagnoseController::faceRadiusMm() const { return issfFaceRadiusMm(m_cfg.discipline); }
+
 QVariantMap CallDiagnoseController::revealCurrent() const
 {
     QVariantMap m;
@@ -503,16 +538,58 @@ QVariantMap CallDiagnoseController::revealCurrent() const
     const double ax = r->actual.xHundredthMm / 100.0, ay = r->actual.yHundredthMm / 100.0;
     const double cx = r->calledXHundredthMm / 100.0, cy = r->calledYHundredthMm / 100.0;
     const double ex = cx - ax, ey = cy - ay;          // signed: call − actual
+    const double err = std::sqrt(ex * ex + ey * ey);
+    const double ring = ringSpacingMm();
+    const double face = faceRadiusMm();
     m[QStringLiteral("shotNumber")] = r->shotNumber;
     m[QStringLiteral("actualXMm")] = ax; m[QStringLiteral("actualYMm")] = ay;
     m[QStringLiteral("calledXMm")] = cx; m[QStringLiteral("calledYMm")] = cy;
     m[QStringLiteral("errorXMm")] = ex; m[QStringLiteral("errorYMm")] = ey;
-    m[QStringLiteral("errorMm")] = std::sqrt(ex * ex + ey * ey);
+    m[QStringLiteral("errorMm")] = err;
     m[QStringLiteral("actualScore")] = r->actual.scoreTenths / 10.0;
+    m[QStringLiteral("exact")] = (err < 0.05);
+    // legacy short phrases (kept for the compact panel)
     m[QStringLiteral("xPhrase")] = (std::fabs(ex) < 0.05) ? QStringLiteral("on line")
         : QStringLiteral("%1 mm %2").arg(std::fabs(ex), 0, 'f', 1).arg(ex >= 0 ? "right" : "left");
     m[QStringLiteral("yPhrase")] = (std::fabs(ey) < 0.05) ? QStringLiteral("on line")
         : QStringLiteral("%1 mm %2").arg(std::fabs(ey), 0, 'f', 1).arg(ey >= 0 ? "high" : "low");
+    // T2.1: full sentences, ring normalisation, band, adaptive bounds
+    m[QStringLiteral("horizontalSentence")] = horizSentence(ex);
+    m[QStringLiteral("verticalSentence")] = vertSentence(ey);
+    m[QStringLiteral("errorRingSpacings")] = (ring > 0.0) ? err / ring : 0.0;
+    const QString bk = bandKey(err, ring);
+    m[QStringLiteral("band")] = bk;
+    m[QStringLiteral("bandText")] = bandText(bk);
+    const CompareBounds cb = comparisonBounds(cx, cy, ax, ay, ring, 3.0);
+    const CompareBounds tb = targetBounds(cx, cy, ax, ay, face, 3.0);
+    m[QStringLiteral("comparisonHalfRangeMm")] = cb.halfRangeMm;
+    m[QStringLiteral("targetHalfRangeMm")] = tb.halfRangeMm;
+    m[QStringLiteral("faceRadiusMm")] = face;
+    m[QStringLiteral("outsideFace")] = tb.outsideFace;
+    // one measured immediate observation (compare vs earlier calls this session)
+    QVector<double> priorErr;
+    double prevErr = -1.0, minPrior = 1e18;
+    for (const CallDiagnoseShotRecord& rec : st().cdShots) {
+        if (!rec.hasCall) continue;
+        const double dx = rec.calledXHundredthMm / 100.0 - rec.actual.xHundredthMm / 100.0;
+        const double dy = rec.calledYHundredthMm / 100.0 - rec.actual.yHundredthMm / 100.0;
+        const double e = std::sqrt(dx * dx + dy * dy);
+        if (rec.shotNumber == r->shotNumber && rec.position == r->position) break;
+        priorErr.append(e); prevErr = e; if (e < minPrior) minPrior = e;
+    }
+    QString feedback;
+    if (bk == QLatin1String("half")) feedback = QStringLiteral("Your call was within half a ring of the measured impact.");
+    else if (bk == QLatin1String("one")) feedback = QStringLiteral("Your call was within one ring of the measured impact.");
+    else feedback = QStringLiteral("Your call was more than one ring from the measured impact.");
+    if (!priorErr.isEmpty()) {
+        if (err < minPrior - 0.05) feedback = QStringLiteral("This was your closest call of the session so far.");
+        else if (prevErr >= 0.0 && err < prevErr - 0.05) feedback = QStringLiteral("This call was closer than your previous call.");
+        else if (prevErr >= 0.0 && err > prevErr + 0.05) feedback = QStringLiteral("This call was wider than your previous call.");
+    }
+    m[QStringLiteral("feedback")] = feedback;
+    // call-quality summary (band-based, neutral)
+    m[QStringLiteral("callQuality")] = bandText(bk)
+        + (ring > 0.0 ? QStringLiteral(" (~%1 ring spacings)").arg(err / ring, 0, 'f', 1) : QString());
     return m;
 }
 
@@ -578,7 +655,14 @@ QVariantList CallDiagnoseController::shotReviewList() const
     if (!m_store) return out;
     // Only REVEALED shots (a completed call). Never expose an unresolved actual.
     const QVector<CallShotStat> stats = computeCallShotStats(st().cdShots);
-    // map note by (position, shotNumber)
+    const CallSessionStats ss = computeCallSessionStats(stats);
+    const double ring = ringSpacingMm();
+    // identify review-worthy shots (largest/closest/largest H/largest V)
+    int largestH = -1, largestV = -1; double bH = -1, bV = -1;
+    for (const CallShotStat& s : stats) {
+        if (std::fabs(s.errorXMm) > bH) { bH = std::fabs(s.errorXMm); largestH = s.shotNumber; }
+        if (std::fabs(s.errorYMm) > bV) { bV = std::fabs(s.errorYMm); largestV = s.shotNumber; }
+    }
     for (const CallShotStat& s : stats) {
         QVariantMap m;
         m[QStringLiteral("shotNumber")] = s.shotNumber;
@@ -590,6 +674,22 @@ QVariantList CallDiagnoseController::shotReviewList() const
         m[QStringLiteral("errorMm")] = s.errorMm;
         m[QStringLiteral("errorXMm")] = s.errorXMm; m[QStringLiteral("errorYMm")] = s.errorYMm;
         m[QStringLiteral("actualScore")] = s.actualScore;
+        m[QStringLiteral("errorRingSpacings")] = (ring > 0.0) ? s.errorMm / ring : 0.0;
+        const QString bk = bandKey(s.errorMm, ring);
+        m[QStringLiteral("band")] = bk;
+        m[QStringLiteral("bandText")] = bandText(bk);
+        m[QStringLiteral("horizontalSentence")] = horizSentence(s.errorXMm);
+        m[QStringLiteral("verticalSentence")] = vertSentence(s.errorYMm);
+        const CompareBounds cb = comparisonBounds(s.calledXMm, s.calledYMm, s.actualXMm, s.actualYMm, ring, 3.0);
+        m[QStringLiteral("comparisonHalfRangeMm")] = cb.halfRangeMm;
+        m[QStringLiteral("isOutlier")] = (ss.outlierCount > 0 && s.errorMm > ss.outlierThreshold);
+        // neutral review tag
+        QString tag;
+        if (s.shotNumber == ss.bestShotNumber) tag = QStringLiteral("closest");
+        else if (s.shotNumber == ss.worstShotNumber) tag = QStringLiteral("largest difference");
+        else if (s.shotNumber == largestH) tag = QStringLiteral("largest horizontal");
+        else if (s.shotNumber == largestV) tag = QStringLiteral("largest vertical");
+        m[QStringLiteral("reviewTag")] = tag;
         for (const CallDiagnoseShotRecord& r : st().cdShots)
             if (r.position == s.position && r.shotNumber == s.shotNumber) {
                 m[QStringLiteral("note")] = r.note; break;
@@ -597,6 +697,123 @@ QVariantList CallDiagnoseController::shotReviewList() const
         out.append(m);
     }
     return out;
+}
+
+QVariantMap CallDiagnoseController::callInsights() const
+{
+    QVariantMap ins;
+    if (!m_store) return ins;
+    const QVector<CallShotStat> stats = computeCallShotStats(st().cdShots);
+    const CallSessionStats s = computeCallSessionStats(stats);
+    const double ring = ringSpacingMm();
+    ins[QStringLiteral("count")] = s.count;
+    ins[QStringLiteral("ringSpacingMm")] = ring;
+    if (s.count == 0) { ins[QStringLiteral("hasData")] = false; return ins; }
+    ins[QStringLiteral("hasData")] = true;
+
+    // 1) TYPICAL CALL ACCURACY (median is primary)
+    int withinHalf = 0, withinOne = 0;
+    for (const CallShotStat& st1 : stats) {
+        const QString bk = bandKey(st1.errorMm, ring);
+        if (bk == QLatin1String("half")) { ++withinHalf; ++withinOne; }
+        else if (bk == QLatin1String("one")) ++withinOne;
+    }
+    ins[QStringLiteral("medianError")] = s.medianError;
+    ins[QStringLiteral("medianRingSpacings")] = (ring > 0.0) ? s.medianError / ring : 0.0;
+    ins[QStringLiteral("averageError")] = s.averageError;
+    ins[QStringLiteral("largestError")] = s.largestError;
+    ins[QStringLiteral("withinHalfRing")] = withinHalf;
+    ins[QStringLiteral("withinOneRing")] = withinOne;
+    ins[QStringLiteral("typicalText")] = QStringLiteral(
+        "Your median call difference was %1 mm. Half of your calls were within %1 mm of the measured impact.")
+        .arg(s.medianError, 0, 'f', 1);
+    ins[QStringLiteral("withinText")] = QStringLiteral("%1 of %2 calls were within one ring spacing.")
+        .arg(withinOne).arg(s.count);
+
+    // 2) AVERAGE vs MEDIAN / OUTLIER explanation
+    QString avgVsMedian;
+    if (s.averageError > s.medianError * 1.25 + 0.5 && s.outlierCount > 0)
+        avgVsMedian = QStringLiteral(
+            "Your typical call was about %1 mm from the measured impact. The %2 mm average was raised by %3 large call difference%4, including a %5 mm outlier.")
+            .arg(s.medianError, 0, 'f', 1).arg(s.averageError, 0, 'f', 1)
+            .arg(s.outlierCount).arg(s.outlierCount == 1 ? "" : "s").arg(s.largestError, 0, 'f', 1);
+    else
+        avgVsMedian = QStringLiteral("Your average (%1 mm) and median (%2 mm) call differences were similar.")
+            .arg(s.averageError, 0, 'f', 1).arg(s.medianError, 0, 'f', 1);
+    ins[QStringLiteral("averageVsMedian")] = avgVsMedian;
+    ins[QStringLiteral("outlierCount")] = s.outlierCount;
+
+    // 3) DIRECTIONAL BIAS (measured — never a sight-adjustment recommendation)
+    QStringList bias;
+    if (s.hasBias) {
+        if (std::fabs(s.biasX) >= 0.5)
+            bias << QStringLiteral("Calls averaged %1 mm %2 of the measured impacts.")
+                       .arg(std::fabs(s.biasX), 0, 'f', 1).arg(s.biasX >= 0 ? "right" : "left");
+        if (std::fabs(s.biasY) >= 0.5)
+            bias << QStringLiteral("Calls averaged %1 mm %2.")
+                       .arg(std::fabs(s.biasY), 0, 'f', 1).arg(s.biasY >= 0 ? "high" : "low");
+        if (bias.isEmpty())
+            bias << QStringLiteral("No clear directional call bias was measured.");
+    } else {
+        bias << QStringLiteral("Too few calls to measure a directional bias.");
+    }
+    ins[QStringLiteral("biasSentences")] = bias;
+    ins[QStringLiteral("biasCaveat")] = QStringLiteral(
+        "This describes a difference in shot perception. It does not indicate that the sights or the shots should be moved.");
+
+    // 4) CONSISTENCY
+    ins[QStringLiteral("consistencySd")] = s.errorStdDev;
+    ins[QStringLiteral("consistencyText")] = QStringLiteral(
+        "Call differences varied by about %1 mm. Lower variation means more repeatable call accuracy.")
+        .arg(s.errorStdDev, 0, 'f', 1);
+
+    // 5) TREND
+    QString trend;
+    if (!s.hasTrend) trend = QStringLiteral("Too few completed calls to determine a meaningful trend.");
+    else if (s.hasHalves && s.secondHalfAvg < s.firstHalfAvg - 0.5)
+        trend = QStringLiteral("Call accuracy improved through the session (later calls averaged %1 mm vs %2 mm early).")
+            .arg(s.secondHalfAvg, 0, 'f', 1).arg(s.firstHalfAvg, 0, 'f', 1);
+    else if (s.hasHalves && s.secondHalfAvg > s.firstHalfAvg + 0.5)
+        trend = QStringLiteral("Call differences became larger in the later shots (%1 mm vs %2 mm early).")
+            .arg(s.secondHalfAvg, 0, 'f', 1).arg(s.firstHalfAvg, 0, 'f', 1);
+    else trend = QStringLiteral("Call accuracy remained broadly stable through the session.");
+    ins[QStringLiteral("trendText")] = trend;
+
+    // SHOTS TO REVIEW (neutral, measured)
+    QVariantList review;
+    auto addReview = [&](int shotNo, const QString& text) {
+        if (shotNo <= 0) return;
+        for (const QVariant& v : review) if (v.toMap().value(QStringLiteral("shotNumber")).toInt() == shotNo) return;
+        QVariantMap rm; rm[QStringLiteral("shotNumber")] = shotNo; rm[QStringLiteral("text")] = text;
+        review.append(rm);
+    };
+    addReview(s.worstShotNumber, QStringLiteral("Largest call difference (%1 mm).").arg(s.largestError, 0, 'f', 1));
+    addReview(s.bestShotNumber, QStringLiteral("Closest call of the session (%1 mm).").arg(s.smallestError, 0, 'f', 1));
+    // a low-scoring shot that was called accurately (awareness despite a poor result)
+    int awareLow = 0; double awareLowScore = 99;
+    for (const CallShotStat& st1 : stats)
+        if (bandKey(st1.errorMm, ring) == QLatin1String("half") && st1.actualScore < 8.0 && st1.actualScore < awareLowScore) {
+            awareLow = st1.shotNumber; awareLowScore = st1.actualScore;
+        }
+    if (awareLow > 0)
+        addReview(awareLow, QStringLiteral("A low-scoring shot you still called accurately — good awareness."));
+    ins[QStringLiteral("reviewShots")] = review;
+
+    // AWARENESS vs RESULT groups (neutral; central = score >= 9.0)
+    int cc = 0, co = 0, wc = 0, wo = 0;
+    for (const CallShotStat& st1 : stats) {
+        const bool close = bandKey(st1.errorMm, ring) != QLatin1String("more");
+        const bool central = st1.actualScore >= 9.0;
+        if (close && central) ++cc; else if (close && !central) ++co;
+        else if (!close && central) ++wc; else ++wo;
+    }
+    QVariantMap aw;
+    aw[QStringLiteral("closeCentral")] = cc; aw[QStringLiteral("closeOuter")] = co;
+    aw[QStringLiteral("wideCentral")] = wc; aw[QStringLiteral("wideOuter")] = wo;
+    ins[QStringLiteral("awareness")] = aw;
+    ins[QStringLiteral("awarenessText")] = QStringLiteral(
+        "Call accuracy and shot score are different measurements. A low-scoring shot can still be accurately called; a high-scoring shot can be poorly called.");
+    return ins;
 }
 
 int CallDiagnoseController::sessionDurationSec() const
@@ -633,6 +850,8 @@ QVariantMap CallDiagnoseController::reportModel() const
     r[QStringLiteral("durationSec")] = sessionDurationSec();
     r[QStringLiteral("stats")] = sessionStats(-1);
     r[QStringLiteral("observations")] = sessionObservations();
+    r[QStringLiteral("insights")] = callInsights();
+    r[QStringLiteral("ringSpacingMm")] = ringSpacingMm();
     r[QStringLiteral("shots")] = shotReviewList();
     r[QStringLiteral("sessionNote")] = s.cdSessionNote;
     r[QStringLiteral("completed")] = s.cdCompleted;

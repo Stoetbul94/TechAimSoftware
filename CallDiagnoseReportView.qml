@@ -202,9 +202,30 @@ Item {
                 }
             }
             Item { height: 8; width: 1 }
-            Text { text: "OBSERVED"; color: view.sub; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2 }
-            Repeater { model: view.model.observations ? view.model.observations : []
-                Text { width: 700; wrapMode: Text.WordWrap; text: "· " + modelData; color: view.ink; font.pixelSize: 11 } }
+            Text { text: "WHAT YOU SHOULD TAKE FROM THIS SESSION"; color: view.red; font.pixelSize: 12; font.bold: true }
+            Repeater {
+                model: {
+                    var i = view.model.insights || {}
+                    if (!i.hasData) return []
+                    var m = []
+                    m.push({ t: "Typical call accuracy", b: (i.typicalText || "") + "  " + (i.withinText || "") })
+                    m.push({ t: "Average vs typical", b: i.averageVsMedian || "" })
+                    m.push({ t: "Directional bias", b: (i.biasSentences || []).join("  ") + "  " + (i.biasCaveat || "") })
+                    m.push({ t: "Call consistency", b: i.consistencyText || "" })
+                    m.push({ t: "Trend", b: i.trendText || "" })
+                    m.push({ t: "Awareness vs result", b: i.awarenessText || "" })
+                    return m
+                }
+                delegate: Column { width: 700; spacing: 1
+                    Text { text: modelData.t; color: view.sub; font.pixelSize: 10; font.bold: true }
+                    Text { width: 700; wrapMode: Text.WordWrap; text: modelData.b; color: view.ink; font.pixelSize: 11 } }
+            }
+            Item { height: 6; width: 1 }
+            Text { visible: view.model.insights !== undefined && (view.model.insights.reviewShots || []).length > 0
+                   text: "SHOTS TO REVIEW"; color: view.sub; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2 }
+            Repeater { model: (view.model.insights ? (view.model.insights.reviewShots || []) : [])
+                Text { width: 700; wrapMode: Text.WordWrap; text: "· Shot " + modelData.shotNumber + ": " + modelData.text
+                       color: view.ink; font.pixelSize: 11 } }
         }
     }
 

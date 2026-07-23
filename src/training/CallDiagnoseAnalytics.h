@@ -43,7 +43,34 @@ struct CallSessionStats {
     bool   hasTrend = false;   // >= 5 calls
     int    bestShotNumber = 0; // shotNumber of the smallest-error call
     int    worstShotNumber = 0;
+    // T2.1 robust outlier detection (Tukey IQR on the radial error). An error
+    // above q3 + 1.5*IQR is a measured outlier (never an arbitrary threshold).
+    double q1 = 0.0, q3 = 0.0, iqr = 0.0;
+    double outlierThreshold = 0.0;
+    int    outlierCount = 0;
+    // early-vs-late average error (first vs second half), for the trend text.
+    double firstHalfAvg = 0.0, secondHalfAvg = 0.0;
+    bool   hasHalves = false;  // >= 6 calls
 };
+
+// T2.1 adaptive comparison viewport. A SQUARE half-range (mm, same for X and Y
+// — never stretched) that always contains the call, the actual, the target
+// centre, complete marker radii and padding, so neither marker is ever clipped.
+struct CompareBounds {
+    double halfRangeMm = 8.0;  // half-width of the square viewport (mm)
+    bool   outsideFace = false;// a marker lies beyond the scoring face
+};
+
+// Tight fit around call + actual + centre (+ marker + padding). minHalfRangeMm
+// keeps a useful context so a sub-mm difference is not over-magnified.
+CompareBounds comparisonBounds(double calledXMm, double calledYMm,
+                               double actualXMm, double actualYMm,
+                               double minHalfRangeMm, double markerMm);
+
+// Whole scoring face, expanded only if a marker lies outside it (never clips).
+CompareBounds targetBounds(double calledXMm, double calledYMm,
+                           double actualXMm, double actualYMm,
+                           double faceRadiusMm, double markerMm);
 
 // Per-shot stats for the shots that have a completed call (order preserved).
 QVector<CallShotStat> computeCallShotStats(const QVector<ta::rel::CallDiagnoseShotRecord>& shots);

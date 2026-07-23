@@ -12,6 +12,7 @@
 #include "training/TrainingBlockMetrics.h"
 #include "training/CallDiagnoseController.h"
 #include "training/CallDiagnoseAnalytics.h"
+#include "training/TargetGeometry.h"
 #include "reliability/journal/JournalWriter.h"
 #include "reliability/journal/JournalValidator.h"
 #include "reliability/replay/ReplayEngine.h"
@@ -1681,6 +1682,138 @@ static void testCdReportModel()
     c.resetCallDiagnose();
 }
 
+static void testCdAdaptiveBounds()
+{
+    std::printf("--- T2.1 adaptive comparison bounds ---\n");
+    struct Case { const char* name; double cx, cy, ax, ay; };
+    const Case cases[] = {
+        { "exact",            0.0,  0.0,  0.0,  0.0 },
+        { "small 1mm",        0.0,  0.0,  1.0,  0.0 },
+        { "medium 15mm",      0.0,  0.0, 10.6, 10.6 },
+        { "large 68.6mm",     0.0,  0.0, 68.6,  0.0 },
+        { "opposite extremes",-40.0, 40.0, 40.0,-40.0 },
+        { "actual at ring",   0.0,  0.0, 22.5,  0.0 },
+        { "centre vs edge",   0.0,  0.0,  0.0, 22.7 },
+        { "actual off-face",  0.0,  0.0, 90.0,  0.0 },
+        { "call off-face",   90.0,  0.0,  0.0,  0.0 },
+        { "both off-face",  -90.0, 10.0, 95.0,-10.0 },
+        { "horizontal only",  0.0,  0.0, 30.0,  0.0 },
+        { "vertical only",    0.0,  0.0,  0.0, 30.0 },
+        { "diagonal",         5.0, -5.0, 25.0, 20.0 }
+    };
+    const double face = issfFaceRadiusMm(Discipline::AirRifle10m);   // 22.75
+    const double ring = issfRingSpacingMm(Discipline::AirRifle10m);  // 2.5
+    for (const Case& c : cases) {
+        const CompareBounds cmp = comparisonBounds(c.cx, c.cy, c.ax, c.ay, ring, 3.0);
+        const CompareBounds tgt = targetBounds(c.cx, c.cy, c.ax, c.ay, face, 3.0);
+        const QString tag = QString::fromLatin1(c.name);
+        bool finite = std::isfinite(cmp.halfRangeMm) && std::isfinite(tgt.halfRangeMm)
+                      && cmp.halfRangeMm > 0.0 && tgt.halfRangeMm > 0.0;
+        check(finite, (tag + ": bounds finite and positive (no NaN/inf)").toUtf8().constData());
+        // both markers inside BOTH viewports (never clipped) — square, symmetric
+        bool inCmp = std::fabs(c.cx) <= cmp.halfRangeMm && std::fabs(c.cy) <= cmp.halfRangeMm
+                  && std::fabs(c.ax) <= cmp.halfRangeMm && std::fabs(c.ay) <= cmp.halfRangeMm;
+        bool inTgt = std::fabs(c.cx) <= tgt.halfRangeMm && std::fabs(c.cy) <= tgt.halfRangeMm
+                  && std::fabs(c.ax) <= tgt.halfRangeMm && std::fabs(c.ay) <= tgt.halfRangeMm;
+        check(inCmp, (tag + ": both markers inside Comparison Zoom").toUtf8().constData());
+        check(inTgt, (tag + ": both markers inside Target View").toUtf8().constData());
+        // Target View flags an off-face coordinate rather than clamping it
+        const double maxAbs = qMax(qMax(std::fabs(c.cx), std::fabs(c.cy)),
+                                   qMax(std::fabs(c.ax), std::fabs(c.ay)));
+        check(tgt.outsideFace == (maxAbs > face),
+              (tag + ": off-face flagged correctly").toUtf8().constData());
+    }
+    // reveal projection carries adaptive bounds + full sentences (Y not inverted)
+    {
+        CallDiagnoseController c; MemFile f; ManualClock clk;
+        prepCd(c, f, clk, "AR10", 1);
+        c.setShotCount(5); c.startCallDiagnose(QStringLiteral("A")); c.startProgramme();
+        clk.advance(3000);
+        c.registerShot(0.0, 0.0, 2.4, ++g_cdExt, 0.0, 1);   // actual at centre
+        c.submitCall(-68.6, 0.0);                            // call 68.6 left
+        c.confirmCall();
+        const QVariantMap rv = c.revealCurrent();
+        check(std::fabs(rv.value("actualXMm").toDouble()) <= rv.value("comparisonHalfRangeMm").toDouble()
+              && std::fabs(rv.value("calledXMm").toDouble()) <= rv.value("comparisonHalfRangeMm").toDouble(),
+              "bounds: 68.6mm call fits the reveal Comparison Zoom");
+        check(rv.value("horizontalSentence").toString().contains("68.6")
+              && rv.value("horizontalSentence").toString().contains("left"),
+              "bounds: full horizontal sentence (68.6 mm left)");
+        check(rv.value("errorRingSpacings").toDouble() > 20.0, "bounds: ring-spacing normalisation present");
+        c.resetCallDiagnose();
+    }
+}
+
+static void testCdFeedback()
+{
+    std::printf("--- T2.1 feedback / insights ---\n");
+    // A session with a clear LEFT bias + one large outlier.
+    CallDiagnoseController c; MemFile f; ManualClock clk;
+    prepCd(c, f, clk, "AP10", 1);      // ring spacing 8mm
+    c.setShotCount(8); c.startCallDiagnose(QStringLiteral("A")); c.startProgramme();
+    // 7 calls ~4mm left, 1 call 40mm left (outlier). actual fixed at (0,0).
+    for (int i = 0; i < 7; ++i) doCall(c, clk, 0.0, 0.0, -4.0, 0.0, 9.0);
+    doCall(c, clk, 0.0, 0.0, -40.0, 0.0, 9.0);
+    const QVariantMap ins = c.callInsights();
+    check(ins.value("hasData").toBool(), "feedback: insights available");
+    // typical = median ~4mm; average pulled up by the 40mm outlier
+    check(qAbs(ins.value("medianError").toDouble() - 4.0) < 0.5, "feedback: median ~4mm (typical)");
+    check(ins.value("averageError").toDouble() > ins.value("medianError").toDouble() + 1.0,
+          "feedback: average materially > median (outlier effect)");
+    check(ins.value("outlierCount").toInt() >= 1, "feedback: robust IQR outlier detected");
+    check(ins.value("averageVsMedian").toString().contains("outlier"),
+          "feedback: average-vs-median explanation mentions the outlier");
+    // left bias sentence, no diagnosis, with the sight-adjustment caveat
+    const QStringList bias = ins.value("biasSentences").toStringList();
+    bool leftBias = false; for (const QString& b : bias) if (b.contains("left")) leftBias = true;
+    check(leftBias, "feedback: directional bias reported as left");
+    check(ins.value("biasCaveat").toString().contains("sights"),
+          "feedback: bias carries the 'do not move the sights' caveat");
+    // ring-spacing normalisation uses the AP10 spacing (8mm), not a hardcode
+    check(qAbs(ins.value("ringSpacingMm").toDouble() - 8.0) < 1e-9, "feedback: AP10 ring spacing = 8mm");
+    check(qAbs(ins.value("medianRingSpacings").toDouble() - 0.5) < 0.1,
+          "feedback: 4mm median ≈ 0.5 ring spacings for AP10");
+    // shots-to-review names the largest + closest
+    const QVariantList review = ins.value("reviewShots").toList();
+    check(review.size() >= 2, "feedback: shots-to-review selected");
+    // no causal-diagnosis wording anywhere in the insights text
+    QStringList allText;
+    allText << ins.value("typicalText").toString() << ins.value("averageVsMedian").toString()
+            << ins.value("consistencyText").toString() << ins.value("trendText").toString()
+            << ins.value("awarenessText").toString() << bias;
+    for (const QVariant& rv : review) allText << rv.toMap().value("text").toString();
+    bool clean = true;
+    for (const QString& s : allText)
+        if (s.contains("trigger", Qt::CaseInsensitive) || s.contains("breathing", Qt::CaseInsensitive)
+            || s.contains("fault", Qt::CaseInsensitive) || s.contains("proves", Qt::CaseInsensitive)) clean = false;
+    check(clean, "feedback: no causal-diagnosis wording in the insights");
+    c.resetCallDiagnose();
+
+    // mean ≈ median (no outlier) → the explanation says 'similar'
+    {
+        CallDiagnoseController d; MemFile f2; ManualClock clk2;
+        prepCd(d, f2, clk2, "AR10", 1);
+        d.setShotCount(6); d.startCallDiagnose(QStringLiteral("B")); d.startProgramme();
+        for (int i = 0; i < 6; ++i) doCall(d, clk2, 0.0, 0.0, 3.0, 0.0, 10.0);
+        const QVariantMap ins2 = d.callInsights();
+        check(ins2.value("averageVsMedian").toString().contains("similar"),
+              "feedback: uniform errors → average and median reported as similar");
+        d.resetCallDiagnose();
+    }
+    // too few calls → trend text says so
+    {
+        CallDiagnoseController d; MemFile f3; ManualClock clk3;
+        prepCd(d, f3, clk3, "AR10", 1);
+        d.setShotCount(5); d.startCallDiagnose(QStringLiteral("C")); d.startProgramme();
+        doCall(d, clk3, 0.0, 0.0, 2.0, 0.0, 10.0);
+        doCall(d, clk3, 0.0, 0.0, 2.0, 0.0, 10.0);
+        const QVariantMap ins3 = d.callInsights();
+        check(ins3.value("trendText").toString().contains("Too few"),
+              "feedback: <5 calls → 'too few to determine a trend'");
+        d.resetCallDiagnose();
+    }
+}
+
 int main(int argc, char** argv)
 {
     QCoreApplication app(argc, argv);
@@ -1709,6 +1842,8 @@ int main(int argc, char** argv)
     testCdSeparation();
     testCdRecovery();
     testCdReportModel();
+    testCdAdaptiveBounds();
+    testCdFeedback();
     std::printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
     std::fflush(stdout);
     return g_failures == 0 ? 0 : 1;

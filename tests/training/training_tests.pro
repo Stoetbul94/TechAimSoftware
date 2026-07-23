@@ -21,6 +21,7 @@ HEADERS += \
     $$PWD/../../src/training/TrainingProgramController.h \
     $$PWD/../../src/training/CallDiagnoseTypes.h \
     $$PWD/../../src/training/CallDiagnoseAnalytics.h \
-    $$PWD/../../src/training/CallDiagnoseController.h
+    $$PWD/../../src/training/CallDiagnoseController.h \
+    $$PWD/../../src/training/TargetGeometry.h
 
 SOURCES += tst_training.cpp

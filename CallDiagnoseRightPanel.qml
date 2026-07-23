@@ -91,15 +91,29 @@ Item {
                     Column {
                         id: revealCol
                         anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top; anchors.margins: 10
-                        spacing: 3
+                        spacing: 5
                         property var rv: panel.revealOpen && panel.ctl ? panel.ctl.revealCurrent() : ({})
                         Text { text: "CALL DIFFERENCE"; color: _txtMut; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1 }
-                        Text { text: (revealCol.rv.errorMm !== undefined ? Number(revealCol.rv.errorMm).toFixed(1) : "—") + " mm"
+                        Text { visible: revealCol.rv.exact === true; text: "EXACT CALL — 0.0 mm"
+                               color: _green; font.family: "Consolas"; font.pixelSize: 20; font.bold: true }
+                        Text { visible: revealCol.rv.exact !== true
+                               text: (revealCol.rv.errorMm !== undefined ? Number(revealCol.rv.errorMm).toFixed(1) : "—") + " mm"
                                color: _txt; font.family: "Consolas"; font.pixelSize: 22; font.bold: true }
-                        Text { text: (revealCol.rv.xPhrase || "") + " · " + (revealCol.rv.yPhrase || "")
-                               color: _txtSec; font.pixelSize: 12 }
-                        Text { text: "Actual score: " + (revealCol.rv.actualScore !== undefined ? Number(revealCol.rv.actualScore).toFixed(1) : "—")
-                               color: _txtMut; font.pixelSize: 11 }
+                        Text { visible: revealCol.rv.errorRingSpacings !== undefined
+                               text: "Approximately " + Number(revealCol.rv.errorRingSpacings || 0).toFixed(1) + " ring spacings"
+                               color: _txtMut; font.pixelSize: 10 }
+                        Text { text: "HORIZONTAL"; color: _txtMut; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1; topPadding: 2 }
+                        Text { width: parent.width; wrapMode: Text.WordWrap; text: revealCol.rv.horizontalSentence || ""
+                               color: _txtSec; font.pixelSize: 11 }
+                        Text { text: "VERTICAL"; color: _txtMut; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1; topPadding: 2 }
+                        Text { width: parent.width; wrapMode: Text.WordWrap; text: revealCol.rv.verticalSentence || ""
+                               color: _txtSec; font.pixelSize: 11 }
+                        Text { text: "ACTUAL SCORE"; color: _txtMut; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1; topPadding: 2 }
+                        Text { text: (revealCol.rv.actualScore !== undefined ? Number(revealCol.rv.actualScore).toFixed(1) : "—")
+                               color: _txt; font.family: "Consolas"; font.pixelSize: 14; font.bold: true }
+                        Text { text: "CALL QUALITY"; color: _txtMut; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1; topPadding: 2 }
+                        Text { width: parent.width; wrapMode: Text.WordWrap; text: revealCol.rv.bandText || ""
+                               color: _txtSec; font.pixelSize: 11 }
                     }
                 }
             }
