@@ -127,7 +127,7 @@ Item {
                 Image {
                     source: "qrc:/images/logo/techaim_color.png"
                     anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
-                    height: 40; fillMode: Image.PreserveAspectFit
+                    height: 52; fillMode: Image.PreserveAspectFit
                 }
             }
             Rectangle { width: parent.width; height: 2; color: "#a80038" }

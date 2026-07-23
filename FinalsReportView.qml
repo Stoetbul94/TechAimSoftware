@@ -178,14 +178,14 @@ Item {
                     // ── Report header (finals-local; the shared ReportHeader
                     //    stays untouched for qualification reports) ─────────
                     Item {
-                        width: parent.width; height: 88
+                        width: parent.width; height: 104
                         Column {
                             anchors.left: parent.left
                             anchors.verticalCenter: parent.verticalCenter
                             spacing: 6
                             Image {
                                 source: "qrc:/images/logo/techaim_color.png"
-                                height: 30
+                                height: 56
                                 width: sourceSize.height > 0 ? height * sourceSize.width / sourceSize.height : 0
                                 fillMode: Image.PreserveAspectFit
                                 smooth: true; mipmap: true

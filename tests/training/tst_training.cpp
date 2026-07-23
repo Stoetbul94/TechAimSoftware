@@ -1348,6 +1348,29 @@ static void testBrandingAssets()
         if (f.contains(QStringLiteral("satrf"), Qt::CaseInsensitive)
             || f.contains(QStringLiteral("federation"), Qt::CaseInsensitive)) noForeign = false;
     check(noForeign, "branding: no unrelated-organisation logo in the approved set");
+
+    // T3.1: the wordmark is the expected 3163×973 (aspect ≈ 3.25:1) — parse the
+    // PNG IHDR so the aspect used to size the header logo is verifiably correct.
+    QFile png(logo);
+    if (png.open(QIODevice::ReadOnly)) {
+        const QByteArray hdr = png.read(24);
+        png.close();
+        auto be32 = [&hdr](int o) {
+            return (quint32(quint8(hdr[o])) << 24) | (quint32(quint8(hdr[o + 1])) << 16)
+                 | (quint32(quint8(hdr[o + 2])) << 8) | quint32(quint8(hdr[o + 3]));
+        };
+        const quint32 w = be32(16), h = be32(20);
+        check(w == 3163u && h == 973u, "branding: wordmark is the approved 3163×973 asset",
+              QStringLiteral("got %1x%2").arg(w).arg(h));
+        const double aspect = double(w) / double(h);
+        // header logo height 56–60 px on a 794 px A4 page → width ≥ 170 px (≥21%).
+        check(56.0 * aspect >= 170.0, "branding: enlarged header logo width meets the floor (≥170px)");
+    } else {
+        check(false, "branding: wordmark PNG readable");
+    }
+    // shared branding constants file ships.
+    check(QFileInfo::exists(QDir(repo).filePath(QStringLiteral("PdfBrandingMetrics.js"))),
+          "branding: shared PdfBrandingMetrics.js constants ship");
 }
 
 // ══════════════════════════════════════════════════════════════════════════

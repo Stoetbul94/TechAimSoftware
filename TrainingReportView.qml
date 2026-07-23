@@ -92,18 +92,17 @@ Item {
             // branded header: accent bar + Tech Aim wordmark + report title,
             // with athlete/discipline/date/session meta right-aligned.
             Item {
-                width: parent.width; height: 58
+                width: parent.width; height: 88
                 Row {
                     anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; spacing: 12
-                    Rectangle { width: 6; height: 46; radius: 3; color: view.red; anchors.verticalCenter: parent.verticalCenter }
+                    Rectangle { width: 6; height: 74; radius: 3; color: view.red; anchors.verticalCenter: parent.verticalCenter }
                     Column {
-                        anchors.verticalCenter: parent.verticalCenter; spacing: 3
-                        // Approved light-background Tech Aim wordmark. Aspect
-                        // preserved; mipmap keeps the PDF grab (3–4×) crisp;
-                        // transparent PNG drawn onto the white page.
+                        anchors.verticalCenter: parent.verticalCenter; spacing: 4
+                        // Approved light-background Tech Aim wordmark, enlarged
+                        // (T3.1). Aspect preserved; mipmap keeps the PDF grab crisp.
                         Image {
                             source: "qrc:/images/logo/techaim_color.png"
-                            height: 24
+                            height: 60
                             width: sourceSize.height > 0 ? height * sourceSize.width / sourceSize.height : 0
                             fillMode: Image.PreserveAspectFit; smooth: true; mipmap: true
                         }
@@ -135,7 +134,7 @@ Item {
             }
             Rectangle { width: parent.width; height: 2; color: view.red; opacity: 0.85 }
             Text { text: "Not an official competition result"; color: view.sub; font.pixelSize: 9; font.italic: true }
-            Item { id: inner; width: parent.width; height: parent.height - 150 }
+            Item { id: inner; width: parent.width; height: parent.height - 180 }
         }
         // branded footer: small wordmark + tagline (left), page X of Y (right)
         Item {

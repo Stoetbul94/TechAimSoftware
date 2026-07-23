@@ -84,6 +84,9 @@ void CustomPrint::createFinalsPdf()
     QPdfWriter pdfWriter(fileName);
     pdfWriter.setPageSize(QPageSize(QPageSize::A4));
     pdfWriter.setPageMargins(QMargins(30, 30, 30, 30));
+    // T3.1: standardised Tech Aim metadata (no dev/Demo paths).
+    pdfWriter.setTitle(QStringLiteral("Tech Aim 3P Final Report"));
+    pdfWriter.setCreator(QStringLiteral("Tech Aim Electronic Target Control"));
     QPainter painter(&pdfWriter);
     quint32 iWidth = pdfWriter.width();
     quint32 iHeight = pdfWriter.height();
@@ -182,6 +185,9 @@ void CustomPrint::createSummryPdf()
     QPdfWriter pdfWriter(fileName);
     pdfWriter.setPageSize(QPageSize(QPageSize::A4));
     pdfWriter.setPageMargins(QMargins(30, 30, 30, 30));
+    // T3.1: standardised Tech Aim metadata (no dev/Demo paths).
+    pdfWriter.setTitle(QStringLiteral("Tech Aim Match Summary Report"));
+    pdfWriter.setCreator(QStringLiteral("Tech Aim Electronic Target Control"));
     QPainter painter(&pdfWriter);
     quint32 iWidth = pdfWriter.width();
     quint32 iHeight = pdfWriter.height();
@@ -653,6 +659,9 @@ void CustomPrint::createPdf(QString filePath)
     QPdfWriter pdfWriter(filePath);
     pdfWriter.setPageSize(QPageSize(QPageSize::A4));
     pdfWriter.setPageMargins(QMargins(30, 30, 30, 30));
+    // T3.1: standardised Tech Aim metadata (no dev/Demo paths).
+    pdfWriter.setTitle(QStringLiteral("Tech Aim Match Report"));
+    pdfWriter.setCreator(QStringLiteral("Tech Aim Electronic Target Control"));
     QPainter painter(&pdfWriter);
     quint32 iWidth = pdfWriter.width();
     quint32 iHeight = pdfWriter.height();
