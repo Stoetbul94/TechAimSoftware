@@ -73,6 +73,11 @@ Item {
     // Position Transition (T4): POSTRANS owns all state; 50m 3P only.
     property bool isPositionTransitionMatch: false
     property int posTransShotSeq: 0
+    // ANY Training Lab programme is active — competition overlays (the match
+    // countdown clock, sighter-time indicator, last-shot bubble) must be fully
+    // suppressed for all of them, not only Technical Blocks.
+    readonly property bool isTrainingModeAny: isTrainingMatch || isCallDiagnoseMatch
+                                              || isPositionTransitionMatch
     // Hidden-mode display cache: polar display records buffered while the
     // visibility mode hides impacts; revealed (appended to the face) at block
     // review. Never rendered before reveal.
