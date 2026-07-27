@@ -21,6 +21,8 @@
 #include "Finals3PController.h"
 #include "Finals3PTypes.h"
 #include "app/ProductIdentity.h"
+#include "app/LanguageService.h"
+#include <QSettings>
 #include "FinalsAudioService.h"
 #include "reliability/storage/StoragePaths.h"
 #include "reliability/journal/JournalValidator.h"
@@ -1163,6 +1165,77 @@ static void runProductIdentityChecks()
           "flavour: SETA_OEM reserved, NOT buildable (no OEM assets yet)");
 }
 
+// ── P0 Phase F: localisation contract ───────────────────────────────────
+static void runLocalisationChecks()
+{
+    std::printf("--- P0 localisation ---\n");
+    const QList<ta::app::LanguageOption> langs = LanguageService::supportedLanguages();
+    check(langs.size() == 2, "i18n: exactly two languages offered");
+    check(langs.first().code == QLatin1String("en"),
+          "i18n: English is first (source + fallback language)");
+    check(!langs.first().beta, "i18n: English is not a beta translation");
+
+    bool hasDe = false, deIsBeta = false;
+    for (const ta::app::LanguageOption& o : langs)
+        if (o.code == QLatin1String("de-DE")) { hasDe = true; deIsBeta = o.beta; }
+    check(hasDe, "i18n: de-DE offered");
+    check(deIsBeta, "i18n: German is flagged BETA (no certification claimed)");
+
+    // The compiled catalogue must be embedded in the binary: a deployed
+    // install has no translations/ directory beside the executable.
+    check(QFile::exists(QStringLiteral(":/translations/techaim_de_DE.qm")),
+          "i18n: German catalogue embedded in the binary");
+
+    // Persistence + fallback, against an isolated config file.
+    const QString cfg = QDir::temp().filePath(
+        QStringLiteral("techaim_i18n_%1.ini").arg(QCoreApplication::applicationPid()));
+    QFile::remove(cfg);
+    {
+        LanguageService svc(cfg);
+        svc.applyPersistedLanguage();
+        check(svc.languageCode() == QLatin1String("en"),
+              "i18n: defaults to English when nothing is persisted");
+        check(!svc.isBetaTranslation(), "i18n: default is not a beta translation");
+
+        check(svc.selectLanguage(QStringLiteral("de-DE")), "i18n: German selectable");
+        check(svc.languageCode() == QLatin1String("de-DE"), "i18n: selection applied");
+        check(svc.isBetaTranslation(), "i18n: German reports itself as beta");
+        check(svc.lastLoadDiagnostic().isEmpty(),
+              "i18n: German catalogue loaded with no diagnostic");
+
+        check(!svc.selectLanguage(QStringLiteral("fr-FR")),
+              "i18n: unsupported language refused");
+        check(svc.languageCode() == QLatin1String("de-DE"),
+              "i18n: refused selection leaves the language unchanged");
+    }
+    {   // survives a restart
+        LanguageService svc(cfg);
+        svc.applyPersistedLanguage();
+        check(svc.languageCode() == QLatin1String("de-DE"),
+              "i18n: language persists across restart");
+    }
+    {   // an unknown persisted code must fall back, not fail
+        QSettings s(cfg, QSettings::IniFormat);
+        s.setValue(QStringLiteral("App_Settings/ui_language"), QStringLiteral("xx-XX"));
+        s.sync();
+        LanguageService svc(cfg);
+        svc.applyPersistedLanguage();
+        check(svc.languageCode() == QLatin1String("en"),
+              "i18n: unknown persisted code falls back to English");
+    }
+    QFile::remove(cfg);
+
+    // Language must never be able to change brand identity.
+    const ta::app::ProductIdentity& p = ta::app::identity();
+    LanguageService svc2{QString()};   // braces: (QString()) would declare a function
+    svc2.selectLanguage(QStringLiteral("de-DE"));
+    check(ta::app::identity().displayName == p.displayName
+          && ta::app::identity().executableBaseName == p.executableBaseName
+          && ta::app::identity().organisationName == p.organisationName
+          && ta::app::identity().defaultTheme == p.defaultTheme,
+          "i18n: selecting German does not touch brand/theme/executable/AppData identity");
+}
+
 int main(int argc, char** argv)
 {
     qputenv("TECHAIM_FINALS_TIMESCALE", "60");
@@ -1187,6 +1260,7 @@ int main(int argc, char** argv)
 
     std::printf("=== Finals3PController Phase A acceptance tests ===\n");
     runProductIdentityChecks();
+    runLocalisationChecks();
     runFullFinal();
     runSecondaryChecks();
     runTimeoutFinal();
