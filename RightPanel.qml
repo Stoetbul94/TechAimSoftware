@@ -1763,7 +1763,11 @@ Item {
 //                            font.pointSize: isSingleDecimal ? parent.height*0.37 : parent.height*0.32
 //                            font.bold: true
 
-                            onTextChanged: {
+                            // Formal parameter declared: injecting signal
+                            // parameters into the handler scope is deprecated
+                            // in Qt 6 and warned about on every launch. The
+                            // value is identical to this element's own text.
+                            onTextChanged: function(text) {
                                 var textLength = text.length
                                 if (textLength == 5)
                                     font.pointSize = parent.height*0.2

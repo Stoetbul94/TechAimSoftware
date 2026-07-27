@@ -446,8 +446,11 @@ ApplicationWindow {
 //    visibility: "FullScreen"
     visibility: "Maximized"
 
-    onVisibilityChanged: {
-        console.log("wiiiiiin visibility changed .... ", visibility)
+    // Formal parameter declared: injecting signal parameters into the handler
+    // scope is deprecated in Qt 6 and warned about on every launch.
+    onVisibilityChanged: function(visibility) {
+        if (APPSETTINGS.getDeveloperMode())
+            console.log("window visibility changed:", visibility)
         appVisiblityModeChanged(visibility)
     }
 
