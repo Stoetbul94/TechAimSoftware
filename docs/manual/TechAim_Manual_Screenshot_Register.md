@@ -1,18 +1,22 @@
 # Tech Aim Manual — Screenshot Register
 
-Document version 1.1 (P0-J refinement) · Application commit `84db7a2`
+Document version 1.2 (P0.1) · Application commit `169eef9`
 
-**No screenshots have been captured.** GUI capture is not available in the
-build environment used for P0-J, so every entry below is **PENDING** with
-human capture instructions. Placeholders are *not* committed as images —
+**No screenshots have been captured (P0.1 re-confirmed).** Driving the Qt
+desktop application and capturing its window is not possible in this
+environment, so every entry below remains **PENDING** with human capture
+instructions. Placeholders are *not* committed as images —
 `docs/manual/images/` stays empty until real captures exist, so a missing
 image can never be mistaken for an approved one.
+
+**Diagrams, by contrast, are COMPLETE** — all 11 are generated from committed
+source and embedded in the operator manual (see the Diagrams section).
 
 ## Capture rules (apply to every screenshot)
 
 - **Operating mode: Demo.** No physical target, no real results.
-- **Synthetic athlete names only** — use `A. Muster`, `B. Beispiel`,
-  `C. Sample`. Never a real athlete.
+- **Synthetic identity only** — athlete **Alex Example**, club **Tech Aim Demo
+  Club**. Never a real athlete or club.
 - **No personal information**, no real confidential results.
 - **No private filesystem paths** — a personal user-profile folder must never
   be visible. Export to a neutral folder before capturing any path.
@@ -92,9 +96,11 @@ Status: **PENDING** = not captured · **CAPTURED** = image exists ·
 
 ## Human capture instructions
 
-1. Build and launch `TechAim.exe`; set **Demo** in Settings and restart.
+0. **Set `app_mode=Demo`** in `release/config.ini` before capturing, and
+   **restore `app_mode=Live` immediately afterwards**.
+1. Build and launch `TechAim.exe`; confirm Demo in Settings.
 2. Set the window to 1536 × 960.
-3. Use a synthetic athlete name.
+3. Use athlete **Alex Example**, club **Tech Aim Demo Club**.
 4. Work through the register in order — SS-05/SS-06 must be captured as a pair
    (non-3P vs 3P) to show the Position Transition gating.
 5. For SS-08 and SS-17, **actively confirm** no match countdown and no red
@@ -109,19 +115,25 @@ Status: **PENDING** = not captured · **CAPTURED** = image exists ·
 
 ## Diagrams
 
-Diagrams are **text-described** in the manuals and rendered at PDF generation.
-None are committed as images yet.
+**All 11 diagrams are COMPLETE.** Source:
+`diagrams/make_diagrams.py` (run it to regenerate every SVG). SVG was chosen
+over Mermaid because the publication pipeline is Pandoc -> HTML -> headless
+Chromium, which does not run JavaScript at print time — a Mermaid fenced block
+would appear as raw code in the PDF.
+
+All 11 are embedded in `TechAim_Operator_Manual_EN.md` and therefore appear in
+the generated PDF.
 
 | ID | Purpose | Status |
 |---|---|---|
-| DG-01 | Application workflow: launch → discipline → event/programme → session → results | PENDING |
-| DG-02 | Live vs Demo, and the source gate that rejects mismatched input | PENDING |
-| DG-03 | Session lifecycle: new → active → completed → closed | PENDING |
-| DG-04 | Recovery lifecycle: interruption → detection → resume/discard | PENDING |
-| DG-05 | Training Lab programme selection and discipline gating | PENDING |
-| DG-06 | Technical Blocks workflow | PENDING |
-| DG-07 | Call & Diagnose workflow (hidden actual → call → confirm → reveal) | PENDING |
-| DG-08 | Position Transition workflow (setup → ready → sighters → verification → review → transition) | PENDING |
-| DG-09 | Report and export workflow | PENDING |
-| DG-10 | Troubleshooting escalation path | PENDING |
-| DG-11 | Update process | WINDOWS RC1 DEPENDENT |
+| DG-01 | Application workflow: launch → discipline → event/programme → session → results | COMPLETE |
+| DG-02 | Live vs Demo, and the source gate that rejects mismatched input | COMPLETE |
+| DG-03 | Session lifecycle: new → active → completed → closed | COMPLETE |
+| DG-04 | Recovery lifecycle: interruption → detection → resume/discard | COMPLETE |
+| DG-05 | Training Lab programme selection and discipline gating | COMPLETE |
+| DG-06 | Technical Blocks workflow | COMPLETE |
+| DG-07 | Call & Diagnose workflow (hidden actual → call → confirm → reveal) | COMPLETE |
+| DG-08 | Position Transition workflow (setup → ready → sighters → verification → review → transition) | COMPLETE |
+| DG-09 | Report and export workflow | COMPLETE |
+| DG-10 | Troubleshooting escalation path | COMPLETE |
+| DG-11 | Update process | COMPLETE (renders the gap explicitly; the process itself stays WINDOWS RC1 DEPENDENT) |
