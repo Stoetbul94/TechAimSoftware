@@ -101,7 +101,12 @@ RecoveryCandidate RecoveryCoordinator::classifyFile(const QString& path)
         c.matchType = s.matchType;
         c.operatingMode = s.operatingMode;   // F10: recorded mode (empty = Unknown/Legacy)
         c.sessionKind = s.sessionKind;       // T1: Training vs competition
-        c.trainingProgramId = s.trainingProgramId;
+        // T2/T4: Call & Diagnose and Position Transition are also
+        // sessionKind=Training but record their programme id in cdProgramId /
+        // ptProgramId — surface whichever is set so the recovery dispatcher
+        // routes to the right controller.
+        c.trainingProgramId = !s.trainingProgramId.isEmpty() ? s.trainingProgramId
+                            : (!s.cdProgramId.isEmpty() ? s.cdProgramId : s.ptProgramId);
         c.trainingBlock = s.trainingCurrentBlock;
         c.disciplineLabel = disciplineLabel(s.discipline, s.matchType);
         c.startedAtIso = s.createdAtIso;

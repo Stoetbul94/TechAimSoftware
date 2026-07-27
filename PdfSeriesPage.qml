@@ -38,7 +38,7 @@ Item {
                     // Brand logo (replaces the text wordmark; see ReportHeader).
                     Image {
                         source: "qrc:/images/logo/techaim_color.png"
-                        height: 20
+                        height: 40
                         width: sourceSize.height > 0 ? height * sourceSize.width / sourceSize.height : 0
                         fillMode: Image.PreserveAspectFit
                         smooth: true

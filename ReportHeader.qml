@@ -23,7 +23,7 @@ Item {
     property var    extraPairs: []       // additional [{l,v}] appended after built-ins (e.g. Shots/Score/Time)
     property color  accent: "#a80038"
 
-    implicitHeight: 78
+    implicitHeight: 104
 
     // meta as [label, value] pairs; empties dropped
     function metaPairs() {
@@ -47,14 +47,14 @@ Item {
         anchors.left: parent.left
         anchors.verticalCenter: parent.verticalCenter
         spacing: 12
-        Rectangle { width: 6; height: 44; radius: 3; color: header.accent; anchors.verticalCenter: parent.verticalCenter }
+        Rectangle { width: 6; height: 72; radius: 3; color: header.accent; anchors.verticalCenter: parent.verticalCenter }
         Column {
-            anchors.verticalCenter: parent.verticalCenter; spacing: 4
-            // Brand logo (replaces the text wordmark). Color variant — report
-            // pages are always white. mipmap keeps the PDF grab (3-4x) crisp.
+            anchors.verticalCenter: parent.verticalCenter; spacing: 5
+            // Brand logo (T3.1: enlarged). Color variant — report pages are
+            // always white. mipmap keeps the PDF grab (3-4x) crisp.
             Image {
                 source: "qrc:/images/logo/techaim_color.png"
-                height: 26
+                height: 56
                 width: sourceSize.height > 0 ? height * sourceSize.width / sourceSize.height : 0
                 fillMode: Image.PreserveAspectFit
                 smooth: true

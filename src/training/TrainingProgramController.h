@@ -174,6 +174,10 @@ public:
     Q_INVOKABLE QVariantMap trainingReportModel() const;
     // Shot plot for a REVEALED block (review/comparison only).
     Q_INVOKABLE QVariantList blockShotPlot(int blockIndex1) const;
+    // T3 Group Pattern Coach: measured group shape/movement for a COMPLETED
+    // block (>= 5 shots) — properties with evidence + confidence, plus a
+    // coach discussion prompt. Measured only; never a technical-cause claim.
+    Q_INVOKABLE QVariantMap groupPattern(int blockIndex1) const;
 
     // test seam (harness injects clock/file before startTraining)
     ta::rel::SessionStore* storeForTesting() { return m_store.get(); }

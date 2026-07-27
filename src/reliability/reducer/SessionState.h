@@ -241,6 +241,52 @@ struct TrainingBlockData {
     }
 };
 
+// T2: one Call & Diagnose shot — the ACTUAL measured impact plus the athlete's
+// call (added later, hence hasCall). The actual is authoritative in the journal
+// even while hidden in the UI. Call-to-actual error is DERIVED (analytics),
+// never stored.
+struct CallDiagnoseShotRecord {
+    ShotCore actual;
+    qint16 shotNumber = 0;
+    qint8  position = 0;
+    bool   hasCall = false;
+    qint32 calledXHundredthMm = 0;
+    qint32 calledYHundredthMm = 0;
+    qint32 callSplitMs = 0;
+    QString note;
+    bool operator==(const CallDiagnoseShotRecord& o) const
+    {
+        return actual == o.actual && shotNumber == o.shotNumber
+            && position == o.position && hasCall == o.hasCall
+            && calledXHundredthMm == o.calledXHundredthMm
+            && calledYHundredthMm == o.calledYHundredthMm
+            && callSplitMs == o.callSplitMs && note == o.note;
+    }
+};
+
+// T4: one Position Transition record — a position (K/P/S) worked in a given
+// repeat: measured setup timing, its sighters, the counted verification shots,
+// the per-item checklist state and an athlete note. Group/first-shot metrics
+// are DERIVED (analytics), never stored.
+struct PtPositionRecord {
+    qint8   position = 0;         // 0 K, 1 P, 2 S
+    qint16  repeat = 1;           // 1-based
+    qint32  setupDurationMs = 0;  // begin-of-setup → Position Ready
+    qint32  readyMonoMs = 0;      // Position Ready monotonic timestamp
+    QVector<ShotCore> sighters;   // measured, never counted
+    QVector<ShotCore> verifShots; // counted verification shots (order preserved)
+    QVector<qint8>    checklist;  // per-item state (0 unset/1 checked/2 skipped/3 n-a)
+    QString note;
+    bool    completed = false;
+    bool operator==(const PtPositionRecord& o) const
+    {
+        return position == o.position && repeat == o.repeat
+            && setupDurationMs == o.setupDurationMs && readyMonoMs == o.readyMonoMs
+            && sighters == o.sighters && verifShots == o.verifShots
+            && checklist == o.checklist && note == o.note && completed == o.completed;
+    }
+};
+
 using DisciplineState =
     std::variant<std::monostate, QualificationState, Finals3PState,
                  TrainingState, Finals10mState>;
@@ -289,6 +335,34 @@ struct SessionState {
     qint16  trainingSighterBeforeBlock = 1;// block the current sighter phase precedes
     QVector<ShotCore> trainingSighters;    // all sighter shots (audit/recovery)
     QVector<qint8>    trainingSighterPos;  // parallel: 3P position of each sighter
+    // T2: Call & Diagnose programme (still sessionKind = "Training";
+    // cdProgramId = "call_and_diagnose"). Sighters reuse the fields above.
+    bool    cdActive = false;
+    bool    cdCompleted = false;
+    bool    cdCallingActive = false;       // false = sighter phase; true = calling
+    QString cdProgramId;
+    QString cdFocus;                       // technical focus (recovery)
+    qint16  cdShotCount = 0;               // called shots per position (or total)
+    qint8   cdCurrentPosition = 0;
+    bool    cdThreePositions = false;
+    QString cdSessionNote;
+    QVector<CallDiagnoseShotRecord> cdShots;
+    // T4: Position Transition programme (sessionKind=Training,
+    // programId=position_transition; 50m 3P only).
+    bool    ptActive = false;
+    bool    ptCompleted = false;
+    QString ptProgramId;
+    QString ptSequence;                    // e.g. "K,P,S"
+    QString ptFocus;
+    qint16  ptVerificationShots = 0;
+    qint16  ptRepeats = 1;
+    qint8   ptChecklistMode = 0;
+    qint8   ptCurrentPosition = 0;         // position id currently active
+    qint16  ptCurrentRepeat = 1;
+    bool    ptInSetup = false;             // true = PositionSetup phase (no counted shots)
+    bool    ptVerifying = false;           // true = VerificationActive
+    QString ptSessionNote;
+    QVector<PtPositionRecord> ptRecords;
     // lifecycle
     bool started = false;
     Lifecycle lifecycle = Lifecycle::None;

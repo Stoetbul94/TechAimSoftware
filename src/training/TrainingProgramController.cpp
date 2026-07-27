@@ -1,6 +1,8 @@
 #include "TrainingProgramController.h"
 
 #include "mode/OperatingMode.h"
+#include "GroupPatternAnalyzer.h"
+#include "TargetGeometry.h"
 
 #include <QCoreApplication>
 #include <QDebug>
@@ -766,6 +768,7 @@ QVariantMap TrainingProgramController::trainingReportModel() const
         bm[QStringLiteral("plot")] = blockShotPlot(b.blockIndex);
         bm[QStringLiteral("delta")] = blockDelta(b.blockIndex);
         bm[QStringLiteral("observations")] = blockObservations(b.blockIndex);
+        bm[QStringLiteral("groupPattern")] = groupPattern(b.blockIndex);
         bm[QStringLiteral("positionName")] = m_cfg.threePositions
                 ? positionLabel(static_cast<Position>(b.position)) : QString();
         blocks.append(bm);
@@ -792,6 +795,71 @@ QVariantList TrainingProgramController::blockShotPlot(int blockIndex1) const
         return out;
     }
     return out;
+}
+
+QVariantMap TrainingProgramController::groupPattern(int blockIndex1) const
+{
+    QVariantMap m;
+    if (!m_store) return m;
+    for (const TrainingBlockData& b : st().trainingBlocks) {
+        if (b.blockIndex != blockIndex1) continue;
+        if (!b.completed && m_phase == 2) return m;      // no live-block leak
+        QVector<double> xs, ys;
+        for (const ShotCore& s : b.shots) {
+            xs.append(s.xHundredthMm / 100.0);
+            ys.append(s.yHundredthMm / 100.0);
+        }
+        const GroupPatternResult gp =
+            analyzeGroup(xs, ys, issfRingSpacingMm(m_cfg.discipline));
+        m[QStringLiteral("hasData")] = gp.hasData;
+        m[QStringLiteral("shotCount")] = gp.shotCount;
+        m[QStringLiteral("blockIndex")] = b.blockIndex;
+        m[QStringLiteral("positionName")] = m_cfg.threePositions
+            ? positionLabel(static_cast<Position>(b.position)) : QString();
+        m[QStringLiteral("diameterMm")] = gp.diameterMm;
+        m[QStringLiteral("radiusMm")] = gp.radiusMm;
+        m[QStringLiteral("hSpreadMm")] = gp.hSpreadMm;
+        m[QStringLiteral("vSpreadMm")] = gp.vSpreadMm;
+        m[QStringLiteral("hvRatio")] = gp.hvRatio;
+        m[QStringLiteral("centreOffsetMm")] = gp.centreOffsetMm;
+        m[QStringLiteral("driftMm")] = gp.driftMm;
+        m[QStringLiteral("primaryLabel")] = gp.primaryLabel();
+        QVariantList props;
+        QString primaryKey;
+        for (const GroupProperty& p : gp.properties) {
+            QVariantMap pm;
+            pm[QStringLiteral("key")] = p.key;
+            pm[QStringLiteral("label")] = p.label;
+            pm[QStringLiteral("evidence")] = p.evidence;
+            pm[QStringLiteral("confidence")] = confidenceLabel(p.confidence);
+            props.append(pm);
+            if (primaryKey.isEmpty()) primaryKey = p.key;
+        }
+        m[QStringLiteral("properties")] = props;
+        // coach discussion PROMPT — a question, never a cause statement.
+        QString prompt;
+        if (primaryKey == QLatin1String("vertical_string"))
+            prompt = QStringLiteral("Did the aiming picture appear to move mainly vertically?");
+        else if (primaryKey == QLatin1String("horizontal_string"))
+            prompt = QStringLiteral("Did the aiming picture appear to move mainly horizontally?");
+        else if (primaryKey == QLatin1String("diagonal_string"))
+            prompt = QStringLiteral("Did the hold appear to move diagonally through the block?");
+        else if (primaryKey == QLatin1String("two_clusters"))
+            prompt = QStringLiteral("Was there a noticeable change between the two clusters?");
+        else if (primaryKey == QLatin1String("progressive_drift"))
+            prompt = QStringLiteral("Did the group begin to drift later in the block?");
+        else if (primaryKey == QLatin1String("isolated_outlier"))
+            prompt = QStringLiteral("What felt different on the isolated shot?");
+        else if (primaryKey == QLatin1String("group_expansion"))
+            prompt = QStringLiteral("Did anything change as the block progressed?");
+        else if (primaryKey == QLatin1String("tight_offset"))
+            prompt = QStringLiteral("Where were you aiming relative to the centre?");
+        m[QStringLiteral("prompt")] = prompt;
+        m[QStringLiteral("disclaimer")] =
+            QStringLiteral("This describes the measured group shape. It does not identify the technical cause.");
+        return m;
+    }
+    return m;
 }
 
 // ── T1 closure: in-place recovery ────────────────────────────────────────

@@ -849,6 +849,140 @@ ReduceResult SessionReducer::apply(const SessionState& current,
             (void)e;
             next.trainingCompleted = true;
             next.lifecycle = Lifecycle::Complete;
+        },
+        // ── Call & Diagnose (T2) ──
+        [&](const CallDiagnoseSessionStarted& e) {
+            if (!current.started) { failure = illegal("CallDiagnoseSessionStarted"); return; }
+            next.cdActive = true;
+            next.cdProgramId = e.programId;
+            next.cdFocus = e.technicalFocus;
+            next.cdShotCount = e.shotCount;
+            next.cdThreePositions = e.threePositions;
+            next.cdCurrentPosition = e.startPosition;
+            next.cdCallingActive = false;
+            // opens in the SIGHTERS phase (reuse the Training sighter machinery)
+            next.trainingInSighterPhase = true;
+            next.trainingSighterPosition = e.startPosition;
+            next.trainingSighterBeforeBlock = 1;
+        },
+        [&](const CallDiagnoseStarted& e) {
+            // Sighters → calling for this position.
+            next.cdCallingActive = true;
+            next.cdCurrentPosition = e.position;
+            next.trainingInSighterPhase = false;
+        },
+        [&](const CallDiagnoseShotReceived& e) {
+            // The actual impact is stored durably (hidden in the UI). Exactly
+            // one unresolved shot may exist — the controller enforces this;
+            // the reducer simply records it.
+            CallDiagnoseShotRecord rec;
+            rec.actual = e.shot;
+            rec.shotNumber = e.shotNumber;
+            rec.position = e.position;
+            rec.hasCall = false;
+            next.cdShots.append(rec);
+        },
+        [&](const CallDiagnoseCallRecorded& e) {
+            for (CallDiagnoseShotRecord& rec : next.cdShots)
+                if (rec.position == e.position && rec.shotNumber == e.shotNumber) {
+                    rec.hasCall = true;
+                    rec.calledXHundredthMm = e.calledXHundredthMm;
+                    rec.calledYHundredthMm = e.calledYHundredthMm;
+                    rec.callSplitMs = e.callSplitMs;
+                    return;
+                }
+        },
+        [&](const CallDiagnoseNoteSaved& e) {
+            for (CallDiagnoseShotRecord& rec : next.cdShots)
+                if (rec.position == e.position && rec.shotNumber == e.shotNumber) {
+                    rec.note = e.note; return;
+                }
+        },
+        [&](const CallDiagnoseCompleted& e) {
+            next.cdCompleted = true;
+            next.cdSessionNote = e.sessionNote;
+            next.lifecycle = Lifecycle::Complete;
+        },
+        // ── Position Transition (T4) ──
+        [&](const PositionTransitionSessionStarted& e) {
+            if (!current.started) { failure = illegal("PositionTransitionSessionStarted"); return; }
+            next.ptActive = true;
+            next.ptProgramId = e.programId;
+            next.ptSequence = e.sequence;
+            next.ptFocus = e.technicalFocus;
+            next.ptVerificationShots = e.verificationShots;
+            next.ptRepeats = e.repeats;
+            next.ptChecklistMode = e.checklistMode;
+            next.ptCurrentRepeat = 1;
+            next.ptInSetup = false;
+            next.ptVerifying = false;
+        },
+        [&](const PositionSetupStarted& e) {
+            next.ptCurrentPosition = e.position;
+            next.ptCurrentRepeat = e.repeat;
+            next.ptInSetup = true;
+            next.ptVerifying = false;
+            // create the record if new
+            for (const PtPositionRecord& r : next.ptRecords)
+                if (r.position == e.position && r.repeat == e.repeat) return;
+            PtPositionRecord r; r.position = e.position; r.repeat = e.repeat;
+            next.ptRecords.append(r);
+        },
+        [&](const PositionChecklistUpdated& e) {
+            for (PtPositionRecord& r : next.ptRecords)
+                if (r.position == e.position && r.repeat == e.repeat) {
+                    while (r.checklist.size() <= e.itemIndex) r.checklist.append(0);
+                    r.checklist[e.itemIndex] = e.state;
+                    return;
+                }
+        },
+        [&](const PositionReady& e) {
+            next.ptInSetup = false;
+            for (PtPositionRecord& r : next.ptRecords)
+                if (r.position == e.position && r.repeat == e.repeat) {
+                    r.setupDurationMs = e.setupDurationMs;
+                    return;
+                }
+        },
+        [&](const PositionSighterAccepted& e) {
+            for (PtPositionRecord& r : next.ptRecords)
+                if (r.position == e.position && r.repeat == e.repeat) {
+                    r.sighters.append(e.shot); return;
+                }
+        },
+        [&](const PositionVerificationStarted& e) {
+            next.ptVerifying = true;
+            for (PtPositionRecord& r : next.ptRecords)
+                if (r.position == e.position && r.repeat == e.repeat) {
+                    r.readyMonoMs = e.readyMonoMs; return;
+                }
+        },
+        [&](const PositionVerificationShotAccepted& e) {
+            for (PtPositionRecord& r : next.ptRecords)
+                if (r.position == e.position && r.repeat == e.repeat) {
+                    r.verifShots.append(e.shot); return;
+                }
+        },
+        [&](const PositionVerificationCompleted& e) {
+            next.ptVerifying = false;
+            for (PtPositionRecord& r : next.ptRecords)
+                if (r.position == e.position && r.repeat == e.repeat) {
+                    r.completed = true; return;
+                }
+        },
+        [&](const PositionNoteSaved& e) {
+            for (PtPositionRecord& r : next.ptRecords)
+                if (r.position == e.position && r.repeat == e.repeat) {
+                    r.note = e.note; return;
+                }
+        },
+        [&](const NextPositionTransitionStarted& e) {
+            (void)e;   // the following PositionSetupStarted sets current pos/repeat
+        },
+        [&](const PositionTransitionCompleted& e) {
+            next.ptCompleted = true;
+            next.ptSessionNote = e.sessionNote;
+            next.lifecycle = Lifecycle::Complete;
         }
     }, envelope.payload);
 

@@ -236,6 +236,35 @@ Item {
                         }
                     }
 
+                    // GROUP PATTERN INSIGHTS (T3) — measured shape/movement + evidence
+                    Rectangle {
+                        width: parent.width; radius: 8; color: "#12161C"; border.color: _line; border.width: 1
+                        property var gp: (hud.reviewOpen && hud.ctl) ? hud.ctl.groupPattern(hud.ctl.currentBlock) : ({})
+                        visible: gp.hasData === true
+                        height: gpCol.implicitHeight + 22
+                        Column {
+                            id: gpCol
+                            anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top; anchors.margins: 11
+                            spacing: 6
+                            Text { text: "GROUP PATTERN INSIGHTS"; color: _red; font.pixelSize: 11; font.bold: true; font.letterSpacing: 1 }
+                            Repeater {
+                                model: parent.parent.gp.properties || []
+                                delegate: Column { width: gpCol.width; spacing: 1
+                                    Row { spacing: 8
+                                        Text { text: modelData.label; color: _green; font.pixelSize: 12; font.bold: true }
+                                        Rectangle { width: cf.implicitWidth + 12; height: 16; radius: 8; color: "#0d2018"; border.color: _line; border.width: 1
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            Text { id: cf; anchors.centerIn: parent; text: modelData.confidence + " evidence"; color: _txtSec; font.pixelSize: 8 } } }
+                                    Text { width: gpCol.width; wrapMode: Text.WordWrap; text: modelData.evidence; color: _txtSec; font.pixelSize: 11 } }
+                            }
+                            Text { visible: (parent.parent.gp.prompt || "") !== ""
+                                   width: gpCol.width; wrapMode: Text.WordWrap
+                                   text: "Coach discussion: " + parent.parent.gp.prompt; color: _txt; font.pixelSize: 11; font.italic: true; topPadding: 2 }
+                            Text { width: gpCol.width; wrapMode: Text.WordWrap
+                                   text: parent.parent.gp.disclaimer || ""; color: _txtMut; font.pixelSize: 9 }
+                        }
+                    }
+
                     Text { text: "ATHLETE NOTE"; color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 4 }
                     Text { text: "What did you notice during this block?"; color: _txtMut; font.pixelSize: 11 }
                     Rectangle {

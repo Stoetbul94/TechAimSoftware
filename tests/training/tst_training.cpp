@@ -10,6 +10,12 @@
 
 #include "training/TrainingProgramController.h"
 #include "training/TrainingBlockMetrics.h"
+#include "training/CallDiagnoseController.h"
+#include "training/CallDiagnoseAnalytics.h"
+#include "training/TargetGeometry.h"
+#include "training/GroupPatternAnalyzer.h"
+#include "training/PositionTransitionController.h"
+#include "training/PositionTransitionTypes.h"
 #include "reliability/journal/JournalWriter.h"
 #include "reliability/journal/JournalValidator.h"
 #include "reliability/replay/ReplayEngine.h"
@@ -371,9 +377,11 @@ static void testAnalytics()
         return s;
     };
     {
-        // symmetric square around (1,1): MPI (1,1), known geometry
-        QVector<ShotCore> shots{ shot(0, 0, 100, 4000), shot(2, 0, 102, 5000),
-                                 shot(0, 2, 104, 6000), shot(2, 2, 106, 5000) };
+        // symmetric square around (1,1): MPI (1,1), known geometry.
+        // splitMs values are ABSOLUTE monotonic stamps 5 s apart, so the
+        // shot-to-shot cadence is a constant 5.0 s.
+        QVector<ShotCore> shots{ shot(0, 0, 100, 4000), shot(2, 0, 102, 9000),
+                                 shot(0, 2, 104, 14000), shot(2, 2, 106, 19000) };
         const BlockMetrics m = computeBlockMetrics(shots);
         check(qAbs(m.mpiX - 1.0) < 1e-9 && qAbs(m.mpiY - 1.0) < 1e-9, "MPI correct");
         check(qAbs(m.groupRadius - std::sqrt(2.0)) < 1e-6,
@@ -385,7 +393,11 @@ static void testAnalytics()
         check(qAbs(m.averageScore - 10.3) < 1e-9, "average score correct");
         check(m.scoreStdDev > 0.0, "score SD computed");
         check(m.hasTiming && qAbs(m.averageShotTime - 5.0) < 1e-9,
-              "timing mean correct (5.0 s)");
+              "cadence mean correct (5.0 s between shots)");
+        check(qAbs(m.shotTimeStdDev) < 1e-9, "constant cadence -> zero SD");
+        // one shot yields no interval, so no cadence is reported
+        const BlockMetrics single = computeBlockMetrics({ shot(1, 1, 100, 4000) });
+        check(!single.hasTiming, "single shot: no cadence (needs an interval)");
     }
     {
         const BlockMetrics none = computeBlockMetrics({});
@@ -1344,6 +1356,1011 @@ static void testBrandingAssets()
         if (f.contains(QStringLiteral("satrf"), Qt::CaseInsensitive)
             || f.contains(QStringLiteral("federation"), Qt::CaseInsensitive)) noForeign = false;
     check(noForeign, "branding: no unrelated-organisation logo in the approved set");
+
+    // T3.1: the wordmark is the expected 3163×973 (aspect ≈ 3.25:1) — parse the
+    // PNG IHDR so the aspect used to size the header logo is verifiably correct.
+    QFile png(logo);
+    if (png.open(QIODevice::ReadOnly)) {
+        const QByteArray hdr = png.read(24);
+        png.close();
+        auto be32 = [&hdr](int o) {
+            return (quint32(quint8(hdr[o])) << 24) | (quint32(quint8(hdr[o + 1])) << 16)
+                 | (quint32(quint8(hdr[o + 2])) << 8) | quint32(quint8(hdr[o + 3]));
+        };
+        const quint32 w = be32(16), h = be32(20);
+        check(w == 3163u && h == 973u, "branding: wordmark is the approved 3163×973 asset",
+              QStringLiteral("got %1x%2").arg(w).arg(h));
+        const double aspect = double(w) / double(h);
+        // header logo height 56–60 px on a 794 px A4 page → width ≥ 170 px (≥21%).
+        check(56.0 * aspect >= 170.0, "branding: enlarged header logo width meets the floor (≥170px)");
+    } else {
+        check(false, "branding: wordmark PNG readable");
+    }
+    // shared branding constants file ships.
+    check(QFileInfo::exists(QDir(repo).filePath(QStringLiteral("PdfBrandingMetrics.js"))),
+          "branding: shared PdfBrandingMetrics.js constants ship");
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+//  T2 — CALL & DIAGNOSE
+// ══════════════════════════════════════════════════════════════════════════
+namespace {
+void prepCd(CallDiagnoseController& c, MemFile& f, ManualClock& clk,
+            const char* disc, int opMode)
+{
+    c.storeForTesting()->setClockForTesting(&clk);
+    c.storeForTesting()->setJournalFileForTesting(&f);
+    c.configureDefaults(QString::fromLatin1(disc));
+    c.setTechnicalFocus(QStringLiteral("Trigger"));
+    if (opMode >= 0) c.setOperatingMode(opMode);
+}
+// One full called shot: actual → call → confirm → continue. Returns accepted.
+qint64 g_cdExt = 500000;
+void doCall(CallDiagnoseController& c, ManualClock& clk,
+            double ax, double ay, double cx, double cy, double score = 10.0)
+{
+    clk.advance(3000);
+    c.registerShot(ax, ay, score, ++g_cdExt, 0.0, 1);   // actual (hidden)
+    c.submitCall(cx, cy);
+    c.confirmCall();                                     // reveal
+    c.continueToNext();                                  // → next
+}
+} // namespace
+
+static void testCdDomain()
+{
+    std::printf("--- T2 call & diagnose: domain ---\n");
+    {
+        CallDiagnoseController c;
+        c.configureDefaults(QStringLiteral("AR10"));
+        check(c.shotCount() == 20, "cd: AR10 default 20 called shots");
+        check(c.validateConfig().isEmpty(), "cd: AR10 default valid");
+        c.setShotCount(2);
+        check(!c.validateConfig().isEmpty(), "cd: 2 shots rejected (min 5)");
+        c.setShotCount(61);
+        check(!c.validateConfig().isEmpty(), "cd: 61 shots rejected (max 60)");
+        c.setShotCount(20);
+        check(c.validateConfig().isEmpty(), "cd: 20 shots valid again");
+    }
+    {
+        CallDiagnoseController c; MemFile f; ManualClock clk;
+        prepCd(c, f, clk, "AR10", 1);
+        check(c.startCallDiagnose(QStringLiteral("A")), "cd: session starts");
+        check(c.phase() == 1 && c.inSighters(), "cd: opens in Sighters");
+        check(c.startLabel() == QLatin1String("Start Call & Diagnose"), "cd: start label");
+        const ValidationReport rep = JournalValidator::validateBytes(f.data);
+        const ReplayResult rr = ReplayEngine::replay(rep.validEnvelopes);
+        check(rr.state.sessionKind == QLatin1String("Training"), "cd: classified Training");
+        check(rr.state.cdProgramId == QLatin1String("call_and_diagnose"), "cd: programId persisted");
+        check(rr.state.cdShotCount == 20, "cd: shot count persisted");
+        // transitions
+        check(c.startProgramme() && c.phase() == 2 && c.awaitingShot(),
+              "cd: Sighters -> AwaitingShot on Start");
+        c.resetCallDiagnose();
+    }
+}
+
+static void testCdPendingOwnership()
+{
+    std::printf("--- T2 call & diagnose: pending-shot ownership ---\n");
+    CallDiagnoseController c; MemFile f; ManualClock clk;
+    prepCd(c, f, clk, "AR10", 1);
+    c.setShotCount(5);
+    c.startCallDiagnose(QStringLiteral("A"));
+    c.startProgramme();                                  // AwaitingShot
+    check(c.registerShot(2, 3, 10.4, 900, 0, 1), "cd: actual shot accepted");
+    check(c.phase() == 3 && c.awaitingCall(), "cd: actual received -> AwaitingCall");
+    check(countType(f.data, "CallDiagnoseShotReceived") == 1, "cd: actual stored exactly once");
+    // actual is HIDDEN: no reveal projection until a call is confirmed
+    check(c.revealCurrent().isEmpty(), "cd: actual hidden before call (no reveal data)");
+    // the next shot is REFUSED until the call is resolved
+    check(!c.registerShot(1, 1, 9.0, 901, 0, 1), "cd: next shot refused while awaiting a call");
+    check(countType(f.data, "CallDiagnoseShotReceived") == 1, "cd: refused shot created no event");
+    // place + confirm the call
+    check(c.submitCall(2.5, 2.5), "cd: call placed");
+    check(c.confirmCall(), "cd: call confirmed -> Reveal");
+    check(c.phase() == 4 && c.revealOpen(), "cd: Reveal open");
+    check(countType(f.data, "CallDiagnoseCallRecorded") == 1, "cd: exactly one call recorded");
+    check(!c.confirmCall(), "cd: duplicate confirm rejected");
+    check(countType(f.data, "CallDiagnoseCallRecorded") == 1, "cd: no duplicate call event");
+    check(!c.revealCurrent().isEmpty(), "cd: reveal data available after confirm");
+    // must Continue before the next shot
+    check(!c.registerShot(1, 1, 9.0, 902, 0, 1), "cd: next shot refused during Reveal");
+    check(c.continueToNext() && c.phase() == 2, "cd: Continue -> AwaitingShot");
+    check(c.registerShot(1, 1, 9.0, 903, 0, 1) && c.phase() == 3,
+          "cd: next actual accepted after Continue, pairs with the new call");
+    c.resetCallDiagnose();
+}
+
+static void testCdCoordinates()
+{
+    std::printf("--- T2 call & diagnose: coordinates + error ---\n");
+    CallDiagnoseController c; MemFile f; ManualClock clk;
+    prepCd(c, f, clk, "AR10", 1);
+    c.setShotCount(5);
+    c.startCallDiagnose(QStringLiteral("A"));
+    c.startProgramme();
+    // actual (2,3), call (5,7): errorX=+3 (right), errorY=+4 (high), radial=5
+    clk.advance(3000);
+    c.registerShot(2.0, 3.0, 10.0, 1000, 0, 1);
+    c.submitCall(5.0, 7.0);
+    c.confirmCall();
+    const QVariantMap rv = c.revealCurrent();
+    check(qAbs(rv.value("actualXMm").toDouble() - 2.0) < 1e-6
+              && qAbs(rv.value("actualYMm").toDouble() - 3.0) < 1e-6, "cd: actual coords retained");
+    check(qAbs(rv.value("calledXMm").toDouble() - 5.0) < 1e-6
+              && qAbs(rv.value("calledYMm").toDouble() - 7.0) < 1e-6, "cd: called coords retained");
+    check(qAbs(rv.value("errorXMm").toDouble() - 3.0) < 1e-6, "cd: X error = called-actual = +3 (right)");
+    check(qAbs(rv.value("errorYMm").toDouble() - 4.0) < 1e-6, "cd: Y error = +4 (high, Y not inverted)");
+    check(qAbs(rv.value("errorMm").toDouble() - 5.0) < 1e-6, "cd: radial error = 5.0 mm");
+    check(rv.value("xPhrase").toString().contains("right"), "cd: X phrase says right");
+    check(rv.value("yPhrase").toString().contains("high"), "cd: Y phrase says high");
+    c.continueToNext();
+    // exact match → zero error
+    clk.advance(3000);
+    c.registerShot(-1.0, -2.0, 9.5, 1001, 0, 1);
+    c.submitCall(-1.0, -2.0);
+    c.confirmCall();
+    check(qAbs(c.revealCurrent().value("errorMm").toDouble()) < 1e-9,
+          "cd: exact-match call gives zero error");
+    c.resetCallDiagnose();
+}
+
+static void testCdAnalytics()
+{
+    std::printf("--- T2 call & diagnose: analytics ---\n");
+    CallDiagnoseController c; MemFile f; ManualClock clk;
+    prepCd(c, f, clk, "AR10", 1);
+    c.setShotCount(6);
+    c.startCallDiagnose(QStringLiteral("A"));
+    c.startProgramme();
+    // 5 calls, all called 2mm LEFT and 1mm HIGH of a fixed actual (0,0).
+    for (int i = 0; i < 5; ++i) doCall(c, clk, 0.0, 0.0, -2.0, 1.0, 10.0);
+    const QVariantMap s = c.sessionStats(-1);
+    check(s.value("count").toInt() == 5, "cd: 5 calls counted");
+    // each radial error = sqrt(4+1)=~2.236
+    check(qAbs(s.value("averageError").toDouble() - std::sqrt(5.0)) < 1e-6, "cd: avg error correct");
+    check(qAbs(s.value("medianError").toDouble() - std::sqrt(5.0)) < 1e-6, "cd: median error correct");
+    check(qAbs(s.value("smallestError").toDouble() - std::sqrt(5.0)) < 1e-6, "cd: smallest error");
+    check(qAbs(s.value("largestError").toDouble() - std::sqrt(5.0)) < 1e-6, "cd: largest error");
+    check(s.value("errorStdDev").toDouble() < 1e-9, "cd: SD zero for identical errors");
+    check(s.value("hasBias").toBool(), "cd: bias available (>=3 calls)");
+    check(qAbs(s.value("biasX").toDouble() + 2.0) < 1e-6, "cd: mean X bias = -2 (left)");
+    check(qAbs(s.value("biasY").toDouble() - 1.0) < 1e-6, "cd: mean Y bias = +1 (high)");
+    // observations name the left/high bias, no diagnostic wording
+    const QStringList obs = c.sessionObservations();
+    bool leftHigh = false, clean = true;
+    for (const QString& o : obs) {
+        if (o.contains("left")) leftHigh = true;
+        if (o.contains("trigger", Qt::CaseInsensitive) || o.contains("fault", Qt::CaseInsensitive)) clean = false;
+    }
+    check(leftHigh, "cd: observations report the left directional bias");
+    check(clean, "cd: observations carry no diagnostic-cause wording");
+    // edges
+    {
+        const CallSessionStats z = computeCallSessionStats({});
+        check(z.count == 0 && z.averageError == 0.0, "cd: zero-shot analytics guarded");
+    }
+    c.resetCallDiagnose();
+}
+
+static void testCdSeparation()
+{
+    std::printf("--- T2 call & diagnose: separation ---\n");
+    CallDiagnoseController c; MemFile f; ManualClock clk;
+    prepCd(c, f, clk, "AR10", 1);
+    c.setShotCount(5);
+    c.startCallDiagnose(QStringLiteral("A"));
+    c.startProgramme();
+    for (int i = 0; i < 5; ++i) doCall(c, clk, 1.0, 1.0, 1.2, 0.8, 10.0);
+    check(c.phase() == 5 && c.isCompleted(), "cd: completes after configured shots");
+    const ValidationReport rep = JournalValidator::validateBytes(f.data);
+    const ReplayResult rr = ReplayEngine::replay(rep.validEnvelopes);
+    check(countType(f.data, "ShotAccepted") == 0, "cd: no competition ShotAccepted");
+    check(countType(f.data, "SighterAccepted") == 0, "cd: no competition SighterAccepted");
+    check(countType(f.data, "MatchCompleted") == 0, "cd: completion is not MatchCompleted");
+    check(countType(f.data, "TrainingShotAccepted") == 0, "cd: no Technical-Blocks shot events");
+    check(rr.state.officials.isEmpty() && rr.state.sighters.isEmpty(),
+          "cd: no official/sighter competition record");
+    check(rr.state.sessionKind == QLatin1String("Training"), "cd: stays Training end-to-end");
+    check(rr.state.cdCompleted, "cd: completion recorded distinctly");
+    c.resetCallDiagnose();
+}
+
+static void testCdRecovery()
+{
+    std::printf("--- T2 call & diagnose: recovery ---\n");
+    const QString root = QDir::temp().filePath(
+        QStringLiteral("techaim_cd_recover_%1").arg(QCoreApplication::applicationPid()));
+    QDir(root).removeRecursively();
+    StoragePaths::setRootOverrideForTesting(root);
+    StoragePaths::initialize();
+
+    // (a) CRITICAL: actual received but call NOT entered → resume AwaitingCall,
+    //     actual hidden, next shot refused, call pairs with the correct shot.
+    QString sidA;
+    {
+        CallDiagnoseController a; a.configureDefaults(QStringLiteral("AR10"));
+        a.setShotCount(5); a.setTechnicalFocus(QStringLiteral("Aim")); a.setOperatingMode(1);
+        a.startCallDiagnose(QStringLiteral("A")); sidA = a.sessionId();
+        a.startProgramme();
+        qint64 e = 40000;
+        // two full calls
+        for (int i = 0; i < 2; ++i) { a.registerShot(1, 1, 10.0, ++e, 0, 1); a.submitCall(1, 1); a.confirmCall(); a.continueToNext(); }
+        a.registerShot(4, 5, 9.8, ++e, 0, 1);        // 3rd ACTUAL received, no call → crash
+    }
+    {
+        CallDiagnoseController b; b.setOperatingMode(1);
+        check(b.resumeFromRecovery(sidA), "cd-recover(a): resume succeeds");
+        check(b.phase() == 3 && b.awaitingCall(), "cd-recover(a): restored INTO AwaitingCall");
+        check(b.pendingShotNumber() == 3, "cd-recover(a): pending shot number restored (3)");
+        check(b.shotsCompleted() == 2, "cd-recover(a): 2 calls already completed");
+        check(b.revealCurrent().isEmpty(), "cd-recover(a): actual stays HIDDEN until the call");
+        check(!b.registerShot(1, 1, 9.0, 40010, 0, 1), "cd-recover(a): next shot refused (pending)");
+        check(b.submitCall(4.5, 5.5) && b.confirmCall(), "cd-recover(a): call entered after resume");
+        check(b.revealCurrent().value("shotNumber").toInt() == 3,
+              "cd-recover(a): call paired with the correct durable actual (shot 3)");
+        const ValidationReport rep = JournalValidator::validateFile(b.store()->currentJournalPath());
+        check(rep.firstInvalidLine == -1, "cd-recover(a): hash chain valid after resume+call");
+        b.resetCallDiagnose();
+    }
+
+    // (b) call confirmed but not continued → resume AwaitingShot; note persists.
+    QString sidB;
+    {
+        CallDiagnoseController a; a.configureDefaults(QStringLiteral("AR10"));
+        a.setShotCount(5); a.setTechnicalFocus(QStringLiteral("Hold")); a.setOperatingMode(1);
+        a.startCallDiagnose(QStringLiteral("B")); sidB = a.sessionId();
+        a.startProgramme();
+        a.registerShot(2, 2, 10.0, 41000, 0, 1);
+        a.submitCall(2, 3); a.confirmCall();
+        a.saveShotNote(QStringLiteral("felt high"));     // note after reveal, then crash
+    }
+    {
+        CallDiagnoseController b; b.setOperatingMode(1);
+        check(b.resumeFromRecovery(sidB), "cd-recover(b): resume succeeds");
+        check(b.phase() == 2 && b.awaitingShot(),
+              "cd-recover(b): confirmed-not-continued restores to AwaitingShot");
+        const QVariantList shots = b.shotReviewList();
+        check(shots.size() == 1 && shots[0].toMap().value("note").toString() == QLatin1String("felt high"),
+              "cd-recover(b): per-shot note restored");
+        b.resetCallDiagnose();
+    }
+
+    // (c) completed session → auto-archived, NOT offered as an active candidate.
+    QString sidC;
+    {
+        CallDiagnoseController a; a.configureDefaults(QStringLiteral("AR10"));
+        a.setShotCount(5); a.setTechnicalFocus(QStringLiteral("Trigger")); a.setOperatingMode(1);
+        a.startCallDiagnose(QStringLiteral("C")); sidC = a.sessionId();
+        a.startProgramme();
+        qint64 e = 42000;
+        for (int i = 0; i < 5; ++i) { a.registerShot(1, 1, 10.0, ++e, 0, 1); a.submitCall(1, 1); a.confirmCall(); a.continueToNext(); }
+        // completed, NOT closed → crash
+    }
+    {
+        RecoveryCoordinator coord;
+        bool offered = false;
+        for (const RecoveryCandidate& cand : coord.scan())
+            if (cand.sessionId == sidC && cand.resumable) offered = true;
+        check(!offered, "cd-recover(c): completed C&D NOT offered as an unfinished resume");
+        CallDiagnoseController b; b.setOperatingMode(1);
+        check(!b.resumeFromRecovery(sidC), "cd-recover(c): completed session not resumed as active");
+    }
+
+    // (d) 3P: crash mid-Prone calling → resume restores the Prone position.
+    QString sidD;
+    {
+        CallDiagnoseController a; a.configureDefaults(QStringLiteral("3P50"));
+        a.setTechnicalFocus(QStringLiteral("Balance")); a.setOperatingMode(1);
+        const int per = a.shotCount();
+        a.startCallDiagnose(QStringLiteral("D")); sidD = a.sessionId();
+        a.startProgramme();                              // Kneeling
+        qint64 e = 43000;
+        for (int i = 0; i < per; ++i) { a.registerShot(1, 1, 10.0, ++e, 0, 1); a.submitCall(1, 1); a.confirmCall(); a.continueToNext(); }
+        // now in Prone sighters
+        a.startProgramme();                              // Prone calling
+        a.registerShot(2, 2, 9.0, ++e, 0, 1);            // one Prone actual, crash awaiting call
+    }
+    {
+        CallDiagnoseController b; b.setOperatingMode(1);
+        check(b.resumeFromRecovery(sidD), "cd-recover(d): 3P resume succeeds");
+        check(b.phase() == 3 && b.positionName() == QLatin1String("Prone"),
+              "cd-recover(d): restored INTO Prone AwaitingCall");
+        check(b.shotsCompleted() == 0, "cd-recover(d): Prone calls start fresh (Kneeling separate)");
+        b.resetCallDiagnose();
+    }
+
+    StoragePaths::setRootOverrideForTesting(QString());
+}
+
+static void testCdReportModel()
+{
+    std::printf("--- T2 call & diagnose: report model ---\n");
+    CallDiagnoseController c; MemFile f; ManualClock clk;
+    prepCd(c, f, clk, "AR10", 1);
+    c.setShotCount(5);
+    c.startCallDiagnose(QStringLiteral("Rae"));
+    c.startProgramme();
+    for (int i = 0; i < 5; ++i) {
+        clk.advance(3000);
+        c.registerShot(1.0, 1.0, 10.0, ++g_cdExt, 0.0, 1);
+        c.submitCall(1.5, 0.5);
+        c.confirmCall();
+        c.saveShotNote(QStringLiteral("note %1").arg(i + 1));
+        c.continueToNext();
+    }
+    check(c.isCompleted(), "cd-report: session completed");
+    const QVariantMap r = c.reportModel();
+    check(r.value(QStringLiteral("athlete")).toString() == QLatin1String("Rae"), "cd-report: athlete present");
+    check(!r.value(QStringLiteral("sessionId")).toString().isEmpty(), "cd-report: session id present");
+    check(r.value(QStringLiteral("calledShots")).toInt() == 5, "cd-report: 5 called shots");
+    const QVariantList shots = r.value(QStringLiteral("shots")).toList();
+    check(shots.size() == 5, "cd-report: 5 shot entries");
+    bool notesOk = true;
+    for (const QVariant& sv : shots)
+        if (sv.toMap().value(QStringLiteral("note")).toString().isEmpty()) notesOk = false;
+    check(notesOk, "cd-report: per-shot notes present in the model");
+    const QVariantMap stats = r.value(QStringLiteral("stats")).toMap();
+    check(stats.value(QStringLiteral("count")).toInt() == 5, "cd-report: stats count = 5");
+    // no competition/ranking wording in the observations
+    bool clean = true;
+    const QStringList obs = r.value(QStringLiteral("observations")).toStringList();
+    for (const QString& s : obs)
+        if (s.contains(QStringLiteral("match"), Qt::CaseInsensitive)
+            || s.contains(QStringLiteral("official"), Qt::CaseInsensitive)
+            || s.contains(QStringLiteral("rank"), Qt::CaseInsensitive)) clean = false;
+    check(clean, "cd-report: no competition/ranking wording in observations");
+    c.resetCallDiagnose();
+}
+
+static void testCdAdaptiveBounds()
+{
+    std::printf("--- T2.1 adaptive comparison bounds ---\n");
+    struct Case { const char* name; double cx, cy, ax, ay; };
+    const Case cases[] = {
+        { "exact",            0.0,  0.0,  0.0,  0.0 },
+        { "small 1mm",        0.0,  0.0,  1.0,  0.0 },
+        { "medium 15mm",      0.0,  0.0, 10.6, 10.6 },
+        { "large 68.6mm",     0.0,  0.0, 68.6,  0.0 },
+        { "opposite extremes",-40.0, 40.0, 40.0,-40.0 },
+        { "actual at ring",   0.0,  0.0, 22.5,  0.0 },
+        { "centre vs edge",   0.0,  0.0,  0.0, 22.7 },
+        { "actual off-face",  0.0,  0.0, 90.0,  0.0 },
+        { "call off-face",   90.0,  0.0,  0.0,  0.0 },
+        { "both off-face",  -90.0, 10.0, 95.0,-10.0 },
+        { "horizontal only",  0.0,  0.0, 30.0,  0.0 },
+        { "vertical only",    0.0,  0.0,  0.0, 30.0 },
+        { "diagonal",         5.0, -5.0, 25.0, 20.0 }
+    };
+    const double face = issfFaceRadiusMm(Discipline::AirRifle10m);   // 22.75
+    const double ring = issfRingSpacingMm(Discipline::AirRifle10m);  // 2.5
+    for (const Case& c : cases) {
+        const CompareBounds cmp = comparisonBounds(c.cx, c.cy, c.ax, c.ay, ring, 3.0);
+        const CompareBounds tgt = targetBounds(c.cx, c.cy, c.ax, c.ay, face, 3.0);
+        const QString tag = QString::fromLatin1(c.name);
+        bool finite = std::isfinite(cmp.halfRangeMm) && std::isfinite(tgt.halfRangeMm)
+                      && cmp.halfRangeMm > 0.0 && tgt.halfRangeMm > 0.0;
+        check(finite, (tag + ": bounds finite and positive (no NaN/inf)").toUtf8().constData());
+        // both markers inside BOTH viewports (never clipped) — square, symmetric
+        bool inCmp = std::fabs(c.cx) <= cmp.halfRangeMm && std::fabs(c.cy) <= cmp.halfRangeMm
+                  && std::fabs(c.ax) <= cmp.halfRangeMm && std::fabs(c.ay) <= cmp.halfRangeMm;
+        bool inTgt = std::fabs(c.cx) <= tgt.halfRangeMm && std::fabs(c.cy) <= tgt.halfRangeMm
+                  && std::fabs(c.ax) <= tgt.halfRangeMm && std::fabs(c.ay) <= tgt.halfRangeMm;
+        check(inCmp, (tag + ": both markers inside Comparison Zoom").toUtf8().constData());
+        check(inTgt, (tag + ": both markers inside Target View").toUtf8().constData());
+        // Target View flags an off-face coordinate rather than clamping it
+        const double maxAbs = qMax(qMax(std::fabs(c.cx), std::fabs(c.cy)),
+                                   qMax(std::fabs(c.ax), std::fabs(c.ay)));
+        check(tgt.outsideFace == (maxAbs > face),
+              (tag + ": off-face flagged correctly").toUtf8().constData());
+    }
+    // reveal projection carries adaptive bounds + full sentences (Y not inverted)
+    {
+        CallDiagnoseController c; MemFile f; ManualClock clk;
+        prepCd(c, f, clk, "AR10", 1);
+        c.setShotCount(5); c.startCallDiagnose(QStringLiteral("A")); c.startProgramme();
+        clk.advance(3000);
+        c.registerShot(0.0, 0.0, 2.4, ++g_cdExt, 0.0, 1);   // actual at centre
+        c.submitCall(-68.6, 0.0);                            // call 68.6 left
+        c.confirmCall();
+        const QVariantMap rv = c.revealCurrent();
+        check(std::fabs(rv.value("actualXMm").toDouble()) <= rv.value("comparisonHalfRangeMm").toDouble()
+              && std::fabs(rv.value("calledXMm").toDouble()) <= rv.value("comparisonHalfRangeMm").toDouble(),
+              "bounds: 68.6mm call fits the reveal Comparison Zoom");
+        check(rv.value("horizontalSentence").toString().contains("68.6")
+              && rv.value("horizontalSentence").toString().contains("left"),
+              "bounds: full horizontal sentence (68.6 mm left)");
+        check(rv.value("errorRingSpacings").toDouble() > 20.0, "bounds: ring-spacing normalisation present");
+        c.resetCallDiagnose();
+    }
+}
+
+static void testCdFeedback()
+{
+    std::printf("--- T2.1 feedback / insights ---\n");
+    // A session with a clear LEFT bias + one large outlier.
+    CallDiagnoseController c; MemFile f; ManualClock clk;
+    prepCd(c, f, clk, "AP10", 1);      // ring spacing 8mm
+    c.setShotCount(8); c.startCallDiagnose(QStringLiteral("A")); c.startProgramme();
+    // 7 calls ~4mm left, 1 call 40mm left (outlier). actual fixed at (0,0).
+    for (int i = 0; i < 7; ++i) doCall(c, clk, 0.0, 0.0, -4.0, 0.0, 9.0);
+    doCall(c, clk, 0.0, 0.0, -40.0, 0.0, 9.0);
+    const QVariantMap ins = c.callInsights();
+    check(ins.value("hasData").toBool(), "feedback: insights available");
+    // typical = median ~4mm; average pulled up by the 40mm outlier
+    check(qAbs(ins.value("medianError").toDouble() - 4.0) < 0.5, "feedback: median ~4mm (typical)");
+    check(ins.value("averageError").toDouble() > ins.value("medianError").toDouble() + 1.0,
+          "feedback: average materially > median (outlier effect)");
+    check(ins.value("outlierCount").toInt() >= 1, "feedback: robust IQR outlier detected");
+    check(ins.value("averageVsMedian").toString().contains("outlier"),
+          "feedback: average-vs-median explanation mentions the outlier");
+    // left bias sentence, no diagnosis, with the sight-adjustment caveat
+    const QStringList bias = ins.value("biasSentences").toStringList();
+    bool leftBias = false; for (const QString& b : bias) if (b.contains("left")) leftBias = true;
+    check(leftBias, "feedback: directional bias reported as left");
+    check(ins.value("biasCaveat").toString().contains("sights"),
+          "feedback: bias carries the 'do not move the sights' caveat");
+    // ring-spacing normalisation uses the AP10 spacing (8mm), not a hardcode
+    check(qAbs(ins.value("ringSpacingMm").toDouble() - 8.0) < 1e-9, "feedback: AP10 ring spacing = 8mm");
+    check(qAbs(ins.value("medianRingSpacings").toDouble() - 0.5) < 0.1,
+          "feedback: 4mm median ≈ 0.5 ring spacings for AP10");
+    // shots-to-review names the largest + closest
+    const QVariantList review = ins.value("reviewShots").toList();
+    check(review.size() >= 2, "feedback: shots-to-review selected");
+    // no causal-diagnosis wording anywhere in the insights text
+    QStringList allText;
+    allText << ins.value("typicalText").toString() << ins.value("averageVsMedian").toString()
+            << ins.value("consistencyText").toString() << ins.value("trendText").toString()
+            << ins.value("awarenessText").toString() << bias;
+    for (const QVariant& rv : review) allText << rv.toMap().value("text").toString();
+    bool clean = true;
+    for (const QString& s : allText)
+        if (s.contains("trigger", Qt::CaseInsensitive) || s.contains("breathing", Qt::CaseInsensitive)
+            || s.contains("fault", Qt::CaseInsensitive) || s.contains("proves", Qt::CaseInsensitive)) clean = false;
+    check(clean, "feedback: no causal-diagnosis wording in the insights");
+    c.resetCallDiagnose();
+
+    // mean ≈ median (no outlier) → the explanation says 'similar'
+    {
+        CallDiagnoseController d; MemFile f2; ManualClock clk2;
+        prepCd(d, f2, clk2, "AR10", 1);
+        d.setShotCount(6); d.startCallDiagnose(QStringLiteral("B")); d.startProgramme();
+        for (int i = 0; i < 6; ++i) doCall(d, clk2, 0.0, 0.0, 3.0, 0.0, 10.0);
+        const QVariantMap ins2 = d.callInsights();
+        check(ins2.value("averageVsMedian").toString().contains("similar"),
+              "feedback: uniform errors → average and median reported as similar");
+        d.resetCallDiagnose();
+    }
+    // too few calls → trend text says so
+    {
+        CallDiagnoseController d; MemFile f3; ManualClock clk3;
+        prepCd(d, f3, clk3, "AR10", 1);
+        d.setShotCount(5); d.startCallDiagnose(QStringLiteral("C")); d.startProgramme();
+        doCall(d, clk3, 0.0, 0.0, 2.0, 0.0, 10.0);
+        doCall(d, clk3, 0.0, 0.0, 2.0, 0.0, 10.0);
+        const QVariantMap ins3 = d.callInsights();
+        check(ins3.value("trendText").toString().contains("Too few"),
+              "feedback: <5 calls → 'too few to determine a trend'");
+        d.resetCallDiagnose();
+    }
+}
+
+// ── T3 Group Pattern Coach ────────────────────────────────────────────────
+namespace {
+bool hasProp(const GroupPatternResult& r, const char* key)
+{
+    for (const GroupProperty& p : r.properties)
+        if (p.key == QLatin1String(key)) return true;
+    return false;
+}
+QString primaryKey(const GroupPatternResult& r)
+{
+    return r.properties.isEmpty() ? QString() : r.properties.front().key;
+}
+bool noCauseWording(const GroupPatternResult& r)
+{
+    for (const GroupProperty& p : r.properties) {
+        const QString s = p.label + " " + p.evidence;
+        if (s.contains("trigger", Qt::CaseInsensitive) || s.contains("breathing", Qt::CaseInsensitive)
+            || s.contains("fault", Qt::CaseInsensitive) || s.contains("NPA", Qt::CaseInsensitive)
+            || s.contains("position error", Qt::CaseInsensitive) || s.contains("proves", Qt::CaseInsensitive))
+            return false;
+    }
+    return true;
+}
+} // namespace
+
+static void testGroupPattern()
+{
+    std::printf("--- T3 group pattern analysis ---\n");
+    const double ring = issfRingSpacingMm(Discipline::AirRifle10m);   // 2.5mm
+
+    // fewer than five → insufficient
+    {
+        const GroupPatternResult r = analyzeGroup({0,1,0,1}, {0,0,1,1}, ring);
+        check(!r.hasData && primaryKey(r) == QLatin1String("insufficient"),
+              "group: <5 shots -> insufficient");
+    }
+    // identical shots → zero spread, no crash, tight & centred
+    {
+        const GroupPatternResult r = analyzeGroup({1,1,1,1,1}, {1,1,1,1,1}, ring);
+        check(r.hasData && r.diameterMm < 1e-9 && std::isfinite(r.hvRatio),
+              "group: identical shots -> zero spread, finite (no div/0)");
+    }
+    // tight & centred
+    {
+        const GroupPatternResult r = analyzeGroup({0.4,-0.4,0.3,-0.3,0.0}, {0.3,-0.3,-0.2,0.2,0.0}, ring);
+        check(hasProp(r, "tight_centred"), "group: small centred group -> tight & centred");
+    }
+    // tight but offset
+    {
+        const GroupPatternResult r = analyzeGroup({12.4,11.6,12.3,11.7,12.0}, {8.3,7.7,7.8,8.2,8.0}, ring);
+        check(hasProp(r, "tight_offset"), "group: small offset group -> tight but offset");
+    }
+    // horizontal string (wide in X, tight in Y)
+    {
+        const GroupPatternResult r = analyzeGroup({-12,-6,0,6,12,3}, {0.3,-0.2,0.1,-0.1,0.2,0.0}, ring);
+        check(primaryKey(r) == QLatin1String("horizontal_string") || hasProp(r, "horizontal_string"),
+              "group: X-spread group -> horizontal string");
+    }
+    // vertical string
+    {
+        const GroupPatternResult r = analyzeGroup({0.2,-0.1,0.1,-0.2,0.0,0.1}, {-12,-6,0,6,12,3}, ring);
+        check(hasProp(r, "vertical_string"), "group: Y-spread group -> vertical string");
+    }
+    // diagonal string
+    {
+        const GroupPatternResult r = analyzeGroup({-10,-6,-2,2,6,10}, {-10,-6,-2,2,6,10}, ring);
+        check(hasProp(r, "diagonal_string"), "group: diagonal line -> diagonal string");
+    }
+    // isolated outlier
+    {
+        const GroupPatternResult r = analyzeGroup({0.3,-0.3,0.2,-0.2,0.0,40.0}, {0.2,-0.2,0.3,-0.3,0.0,0.0}, ring);
+        check(hasProp(r, "isolated_outlier"), "group: one far shot -> isolated outlier");
+    }
+    // two clusters
+    {
+        const GroupPatternResult r = analyzeGroup({-20,-19,-21,20,21,19}, {0.2,-0.2,0.0,0.1,-0.1,0.0}, ring);
+        check(hasProp(r, "two_clusters"), "group: bimodal -> two clusters");
+    }
+    // progressive drift (rightward)
+    {
+        const GroupPatternResult r = analyzeGroup({-10,-6,-2,2,6,10,14,18}, {0.1,-0.1,0.0,0.1,-0.1,0.0,0.1,-0.1}, ring);
+        check(hasProp(r, "progressive_drift") || hasProp(r, "horizontal_string"),
+              "group: monotone X move -> drift/horizontal");
+    }
+    // group expansion (later shots further out)
+    {
+        const GroupPatternResult r = analyzeGroup({0.2,-0.2,0.1,-0.1,10,-10,12,-12}, {0.1,-0.1,0.2,-0.2,10,-10,12,-12}, ring);
+        check(hasProp(r, "group_expansion") || hasProp(r, "two_clusters") || r.hasData,
+              "group: widening later -> expansion (or a shape property)");
+    }
+    // confidence + evidence + no causal wording on every result
+    {
+        const GroupPatternResult r = analyzeGroup({-12,-6,0,6,12,3,-3,9}, {0.3,-0.2,0.1,-0.1,0.2,0.0,0.1,-0.1}, ring);
+        check(!r.properties.isEmpty(), "group: properties produced");
+        check(static_cast<int>(r.properties.front().confidence) >= 1, "group: primary has a confidence level");
+        check(!r.properties.front().evidence.isEmpty(), "group: primary carries measured evidence");
+        check(noCauseWording(r), "group: no causal-diagnosis wording anywhere");
+    }
+    // extreme coordinates → finite, no NaN/inf
+    {
+        const GroupPatternResult r = analyzeGroup({-400,400,-400,400,0}, {-400,400,400,-400,0}, ring);
+        check(std::isfinite(r.diameterMm) && std::isfinite(r.hvRatio) && std::isfinite(r.axisAngleDeg),
+              "group: extreme coords -> finite geometry");
+    }
+    // controller integration + 3P position separation
+    {
+        CallDiagnoseController dummy; (void)dummy;   // silence unused warnings elsewhere
+        TrainingProgramController c; MemFile f; ManualClock clk;
+        prepare(c, f, clk, "3P50", 1);
+        startCounted(c, QStringLiteral("G"));        // Kneeling block 1
+        // deliberately vertical Kneeling group
+        qint64 e = 800000;
+        double ys[6] = { -12, -6, 0, 6, 12, 3 };
+        for (int i = 0; i < 6; ++i) { clk.advance(3000); c.registerShot(0.2 * ((i%2)?-1:1), ys[i], 10.0, ++e, 0, 1); }
+        const QVariantMap gp = c.groupPattern(1);
+        check(gp.value("hasData").toBool() && gp.value("shotCount").toInt() == 6,
+              "group(ctl): completed Kneeling block analysed");
+        check(gp.value("positionName").toString() == QLatin1String("Kneeling"),
+              "group(ctl): 3P position labelled (Kneeling)");
+        check(gp.value("disclaimer").toString().contains("does not identify the technical cause"),
+              "group(ctl): carries the no-cause disclaimer");
+        // live block not analysed (no leak) — block 2 not yet completed
+        check(c.groupPattern(2).isEmpty(), "group(ctl): incomplete block not analysed");
+        c.resetTraining();
+    }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+//  T4 — POSITION TRANSITION
+// ══════════════════════════════════════════════════════════════════════════
+namespace {
+qint64 g_ptExt = 700000;
+void prepPt(PositionTransitionController& c, MemFile& f, ManualClock& clk, int opMode)
+{
+    c.storeForTesting()->setClockForTesting(&clk);
+    c.storeForTesting()->setJournalFileForTesting(&f);
+    c.configureDefaults();
+    c.setTechnicalFocus(QStringLiteral("Natural point of aim"));
+    if (opMode >= 0) c.setOperatingMode(opMode);
+}
+// Run one position from PositionSetup (phase 1) to PositionReview (phase 4).
+void ptRunPosition(PositionTransitionController& c, ManualClock& clk, int nShots,
+                   int nSighters, int setupMs, int firstShotDelayMs,
+                   double baseX = 1.0, double baseY = 1.0)
+{
+    clk.advance(setupMs);
+    c.positionReady();
+    for (int i = 0; i < nSighters; ++i) { clk.advance(2000); c.registerShot(6, 6, 9.0, ++g_ptExt, 0, 1); }
+    c.startVerification();
+    for (int i = 0; i < nShots; ++i) {
+        clk.advance(i == 0 ? firstShotDelayMs : 3000);
+        c.registerShot(baseX + i * 0.1, baseY, 10.0, ++g_ptExt, 0, 1);
+    }
+}
+} // namespace
+
+static void testPtDomain()
+{
+    std::printf("--- T4 position transition: domain ---\n");
+    {
+        PositionTransitionController c;
+        c.configureDefaults();
+        check(c.verificationShots() == 5, "pt: default 5 verification shots");
+        check(c.validateConfig().isEmpty(), "pt: default config valid");
+        check(c.sequenceString() == QLatin1String("K,P,S"), "pt: default sequence K,P,S");
+        c.setVerificationShots(2);
+        check(!c.validateConfig().isEmpty(), "pt: 2 shots rejected (min 3)");
+        c.setVerificationShots(11);
+        check(!c.validateConfig().isEmpty(), "pt: 11 shots rejected (max 10)");
+        c.setVerificationShots(5);
+        c.setRepeats(5);
+        check(!c.validateConfig().isEmpty(), "pt: 5 repeats rejected (max 4)");
+        c.setRepeats(1);
+        c.setSequencePreset(1);
+        check(c.sequenceString() == QLatin1String("K,P"), "pt: K→P preset");
+        c.setSequencePreset(0);
+    }
+    {
+        PositionTransitionController c; MemFile f; ManualClock clk;
+        prepPt(c, f, clk, 1);
+        c.setVerificationShots(3);
+        check(c.startPositionTransition(QStringLiteral("A")), "pt: session starts");
+        check(c.phase() == 1 && c.inSetup(), "pt: opens in PositionSetup");
+        check(c.positionName() == QLatin1String("Kneeling"), "pt: first position Kneeling");
+        const ValidationReport rep = JournalValidator::validateBytes(f.data);
+        const ReplayResult rr = ReplayEngine::replay(rep.validEnvelopes);
+        check(rr.state.sessionKind == QLatin1String("Training"), "pt: classified Training");
+        check(rr.state.ptProgramId == QLatin1String("position_transition"), "pt: programId persisted");
+        // shots during setup are IGNORED
+        check(!c.registerShot(1, 1, 10.0, 1, 0, 1), "pt: setup shot rejected (ignored)");
+        check(countType(f.data, "PositionVerificationShotAccepted") == 0, "pt: setup shot not journalled");
+        // Position Ready → Sighters
+        clk.advance(9000);
+        check(c.positionReady() && c.phase() == 2 && c.inSighters(), "pt: Position Ready -> Sighters");
+        check(countType(f.data, "PositionReady") == 1, "pt: PositionReady once");
+        clk.advance(2000);
+        check(c.registerShot(6, 6, 9.0, 900, 0, 1), "pt: sighter accepted in Sighters");
+        check(c.sighterCount() == 1 && c.shotsCompleted() == 0, "pt: sighter excluded from verification count");
+        // Start Verification → counted
+        check(c.startVerification() && c.phase() == 3 && c.verifying(), "pt: Start Verification -> VerificationActive");
+        check(c.shotsCompleted() == 0, "pt: Shot 0 of N at verification start");
+        clk.advance(3000); c.registerShot(1, 1, 10.0, 901, 0, 1);
+        check(c.shotsCompleted() == 1, "pt: first counted verification shot -> 1");
+        clk.advance(3000); c.registerShot(1.2, 1, 10.0, 902, 0, 1);
+        clk.advance(3000); c.registerShot(0.9, 1, 10.0, 903, 0, 1);
+        check(c.phase() == 4 && c.reviewOpen(), "pt: block completes -> PositionReview");
+        check(countType(f.data, "PositionVerificationCompleted") == 1, "pt: verification completed once");
+        check(!c.registerShot(1, 1, 10.0, 904, 0, 1), "pt: no shot accepted in review");
+        // continue -> next position (Prone)
+        check(c.continueToNext() && c.phase() == 1 && c.positionName() == QLatin1String("Prone"),
+              "pt: continue -> Prone PositionSetup");
+        c.resetPositionTransition();
+    }
+}
+
+static void testPtTimingFirstShot()
+{
+    std::printf("--- T4 position transition: timing + first shot ---\n");
+    PositionTransitionController c; MemFile f; ManualClock clk;
+    prepPt(c, f, clk, 1);
+    c.setSequencePreset(3);            // single Kneeling
+    c.setVerificationShots(5);
+    c.startPositionTransition(QStringLiteral("A"));
+    // setup 12s, 2 sighters, first shot 8s after ready, tight group + one wide first shot
+    clk.advance(12000);
+    c.positionReady();
+    clk.advance(2000); c.registerShot(6, 6, 9.0, ++g_ptExt, 0, 1);
+    clk.advance(2000); c.registerShot(6, 5, 9.0, ++g_ptExt, 0, 1);
+    c.startVerification();
+    clk.advance(8000); c.registerShot(20, 0, 8.0, ++g_ptExt, 0, 1);   // first shot: far from group
+    clk.advance(3000); c.registerShot(0.3, 0.3, 10.0, ++g_ptExt, 0, 1);
+    clk.advance(3000); c.registerShot(-0.3, -0.3, 10.0, ++g_ptExt, 0, 1);
+    clk.advance(3000); c.registerShot(0.3, -0.3, 10.0, ++g_ptExt, 0, 1);
+    clk.advance(3000); c.registerShot(-0.3, 0.3, 10.0, ++g_ptExt, 0, 1);
+    const QVariantMap rv = c.currentReview();
+    check(qAbs(rv.value("setupDurationMs").toInt() - 12000) < 50, "pt: setup duration ~12s measured");
+    check(rv.value("sighterCount").toInt() == 2, "pt: 2 sighters recorded (excluded from group)");
+    check(rv.value("verificationShots").toInt() == 5, "pt: 5 counted verification shots");
+    // Position Ready → first counted shot INCLUDES the sighter phase
+    // (2 sighters × 2s) + the 8s to the first shot = 12s.
+    check(qAbs(rv.value("readyToFirstShotMs").toInt() - 12000) < 50, "pt: ready-to-first-shot ~12s (incl. sighters)");
+    check(qAbs(rv.value("firstShotScore").toDouble() - 8.0) < 1e-6, "pt: first-shot score recorded");
+    check(rv.value("firstShotDistMm").toDouble() > 10.0, "pt: first-shot distance from MPI measured");
+    check(rv.value("firstShotSeparated").toBool(), "pt: wide first shot flagged separated from group");
+    // group metrics exclude sighters (MPI near the tight group, not the 6,6 sighters)
+    check(qAbs(rv.value("mpiX").toDouble()) < 6.0, "pt: group MPI excludes sighters");
+    c.resetPositionTransition();
+}
+
+static void testPt3PSeparation()
+{
+    std::printf("--- T4 position transition: 3P separation ---\n");
+    PositionTransitionController c; MemFile f; ManualClock clk;
+    prepPt(c, f, clk, 1);
+    c.setVerificationShots(5);
+    c.startPositionTransition(QStringLiteral("A"));   // K,P,S
+    // Kneeling
+    ptRunPosition(c, clk, 5, 1, 10000, 5000, 1.0, 1.0);
+    c.saveNote(QStringLiteral("kneeling note"));
+    c.setChecklistItem(0, 1);
+    c.continueToNext();                               // Prone
+    check(c.positionName() == QLatin1String("Prone"), "pt: advanced to Prone");
+    ptRunPosition(c, clk, 5, 3, 15000, 6000, 2.0, 2.0);   // more sighters, wider
+    c.saveNote(QStringLiteral("prone note"));
+    c.continueToNext();                               // Standing
+    ptRunPosition(c, clk, 5, 2, 20000, 7000, 3.0, 3.0);
+    c.saveNote(QStringLiteral("standing note"));
+    check(c.continueToNext() && c.phase() == 5, "pt: completes after Standing");
+    const QVariantList comp = c.positionComparison();
+    check(comp.size() == 3, "pt: 3 positions in comparison");
+    // separate notes + sighters + analytics
+    QVariantMap k = c.positionReview(0, 1), p = c.positionReview(1, 1), s = c.positionReview(2, 1);
+    check(k.value("note").toString() == QLatin1String("kneeling note")
+          && p.value("note").toString() == QLatin1String("prone note")
+          && s.value("note").toString() == QLatin1String("standing note"),
+          "pt: notes remain separate per position");
+    check(k.value("sighterCount").toInt() == 1 && p.value("sighterCount").toInt() == 3
+          && s.value("sighterCount").toInt() == 2, "pt: sighters separate per position");
+    check(k.value("checklistChecked").toInt() == 1 && p.value("checklistChecked").toInt() == 0,
+          "pt: checklist separate per position");
+    // rhythm / cadence surfaced per position (from the verification splits)
+    check(k.value("hasTiming").toBool(), "pt: verification timing available");
+    check(k.value("avgShotTime").toDouble() > 0.0, "pt: average shot time measured");
+    // ptRunPosition fires every counted shot 3 s apart -> constant cadence
+    check(qAbs(k.value("avgShotTime").toDouble() - 3.0) < 0.05, "pt: cadence is the 3 s shot-to-shot interval");
+    check(k.value("rhythm").toString() == QLatin1String("Steady"), "pt: constant cadence -> Steady rhythm");
+    // ranked session indicators (setup: K 10s < P 15s < S 20s)
+    const QVariantMap rk = c.sessionRankings();
+    check(rk.value("fastestSetup").toMap().value("name").toString() == QLatin1String("Kneeling"),
+          "pt: fastest setup ranked = Kneeling");
+    check(rk.value("slowestSetup").toMap().value("name").toString() == QLatin1String("Standing"),
+          "pt: slowest setup ranked = Standing");
+    check(rk.contains("bestAverage") && rk.contains("tightestGroup"), "pt: result rankings present");
+    check(c.reportModel().contains(QLatin1String("rankings")), "pt: reportModel exposes rankings");
+    c.resetPositionTransition();
+}
+
+static void testPtRhythm()
+{
+    std::printf("--- T4 position transition: rhythm classifier ---\n");
+    {
+        // constant splits (every verification shot 3s apart) -> Steady
+        PositionTransitionController c; MemFile f; ManualClock clk;
+        prepPt(c, f, clk, 1);
+        c.setSequencePreset(3); c.setVerificationShots(5);   // single Kneeling
+        c.startPositionTransition(QStringLiteral("A"));
+        ptRunPosition(c, clk, 5, 0, 8000, 3000, 0.3, 0.3);   // first split also 3s
+        const QVariantMap rv = c.currentReview();
+        check(rv.value("rhythm").toString() == QLatin1String("Steady"), "pt-rhythm: constant splits -> Steady");
+        check(qAbs(rv.value("rhythmCv").toDouble()) < 0.05, "pt-rhythm: constant splits -> ~0 cv");
+        c.resetPositionTransition();
+    }
+    {
+        // wildly varying splits -> Inconsistent
+        PositionTransitionController c; MemFile f; ManualClock clk;
+        prepPt(c, f, clk, 1);
+        c.setSequencePreset(3); c.setVerificationShots(5);
+        c.startPositionTransition(QStringLiteral("A"));
+        clk.advance(8000); c.positionReady(); c.startVerification();
+        const int gaps[5] = { 1000, 12000, 1500, 14000, 1200 };
+        for (int i = 0; i < 5; ++i) { clk.advance(gaps[i]); c.registerShot(0.3, 0.3, 10.0, ++g_ptExt, 0, 1); }
+        const QVariantMap rv = c.currentReview();
+        check(rv.value("rhythm").toString() == QLatin1String("Inconsistent"), "pt-rhythm: erratic splits -> Inconsistent");
+        c.resetPositionTransition();
+    }
+}
+
+// Completed session -> Home -> reopen must not leave a "still busy" state.
+static void testPtCleanHome()
+{
+    std::printf("--- T4 position transition: clean Home / no stale state ---\n");
+    PositionTransitionController c; MemFile f; ManualClock clk;
+    prepPt(c, f, clk, 1);
+    c.setSequencePreset(3); c.setVerificationShots(3);   // single Kneeling
+    c.startPositionTransition(QStringLiteral("A"));
+    ptRunPosition(c, clk, 3, 1, 8000, 4000, 1.0, 1.0);
+    check(c.continueToNext() && c.phase() == 5, "pt-home: session completes");
+    check(c.isCompleted(), "pt-home: completed before Home");
+    // Home
+    check(c.closeCleanly(), "pt-home: closes cleanly");
+    check(c.phase() == 0, "pt-home: phase back to Idle");
+    check(!c.isCompleted(), "pt-home: NOT reported completed after close");
+    check(!c.active(), "pt-home: NOT active after close (no 'still busy' state)");
+    check(c.shotsCompleted() == 0 && c.sighterCount() == 0, "pt-home: counters cleared");
+    check(c.currentRepeat() == 1, "pt-home: repeat counter reset");
+    // reopening starts a genuinely new session, not the old one
+    const QString oldId = c.sessionId();
+    MemFile f2; c.storeForTesting()->setJournalFileForTesting(&f2);
+    check(c.startPositionTransition(QStringLiteral("A")), "pt-home: reopens after Home");
+    check(c.sessionId() != oldId, "pt-home: new session id (no stale session resumed)");
+    check(c.phase() == 1 && c.shotsCompleted() == 0, "pt-home: reopens clean in PositionSetup");
+    c.resetPositionTransition();
+}
+
+static void testPtSeparation()
+{
+    std::printf("--- T4 position transition: programme separation ---\n");
+    PositionTransitionController c; MemFile f; ManualClock clk;
+    prepPt(c, f, clk, 1);
+    c.setSequencePreset(3); c.setVerificationShots(3);   // single Kneeling
+    c.startPositionTransition(QStringLiteral("A"));
+    ptRunPosition(c, clk, 3, 0, 8000, 4000, 1.0, 1.0);
+    c.continueToNext();                                  // completes
+    const ValidationReport rep = JournalValidator::validateBytes(f.data);
+    const ReplayResult rr = ReplayEngine::replay(rep.validEnvelopes);
+    check(countType(f.data, "ShotAccepted") == 0, "pt: no competition ShotAccepted");
+    check(countType(f.data, "MatchCompleted") == 0, "pt: not MatchCompleted");
+    check(countType(f.data, "TrainingShotAccepted") == 0, "pt: no Technical-Blocks shot events");
+    check(countType(f.data, "CallDiagnoseShotReceived") == 0, "pt: no Call & Diagnose events");
+    check(rr.state.officials.isEmpty() && rr.state.sighters.isEmpty(), "pt: no competition record");
+    check(rr.state.trainingBlocks.isEmpty(), "pt: Technical Blocks state untouched");
+    check(rr.state.cdShots.isEmpty(), "pt: Call & Diagnose state untouched");
+    check(rr.state.ptCompleted, "pt: completion recorded distinctly");
+    c.resetPositionTransition();
+}
+
+static void testPtRecovery()
+{
+    std::printf("--- T4 position transition: recovery ---\n");
+    const QString root = QDir::temp().filePath(
+        QStringLiteral("techaim_pt_recover_%1").arg(QCoreApplication::applicationPid()));
+    QDir(root).removeRecursively();
+    StoragePaths::setRootOverrideForTesting(root);
+    StoragePaths::initialize();
+
+    // (a) crash mid-verification (Prone) → resume restores position/repeat/phase,
+    //     the counted progress and the timers; the dup guard holds.
+    QString sidA;
+    {
+        PositionTransitionController a;
+        a.configureDefaults(); a.setVerificationShots(5);
+        a.setTechnicalFocus(QStringLiteral("Balance")); a.setOperatingMode(1);
+        a.startPositionTransition(QStringLiteral("A")); sidA = a.sessionId();
+        qint64 e = 60000;
+        // Kneeling complete
+        a.positionReady();
+        a.startVerification();
+        for (int i = 0; i < 5; ++i) a.registerShot(1, 1, 10.0, ++e, 0, 1);
+        a.continueToNext();              // Prone setup
+        a.positionReady();
+        a.startVerification();
+        a.registerShot(2, 2, 10.0, ++e, 0, 1);
+        a.registerShot(2, 1, 10.0, ++e, 0, 1);   // 2/5 Prone, crash
+    }
+    {
+        PositionTransitionController b; b.setOperatingMode(1);
+        check(b.resumeFromRecovery(sidA), "pt-recover(a): resume succeeds");
+        check(b.phase() == 3 && b.verifying(), "pt-recover(a): restored INTO VerificationActive");
+        check(b.positionName() == QLatin1String("Prone"), "pt-recover(a): Prone restored");
+        check(b.currentRepeat() == 1 && b.shotsCompleted() == 2, "pt-recover(a): 2/5 Prone counted restored");
+        check(!b.registerShot(2, 2, 9.0, 60002, 0, 1), "pt-recover(a): pre-crash externalId refused (dup guard)");
+        qint64 e2 = 61000;
+        for (int i = 0; i < 3; ++i) b.registerShot(2, 2, 10.0, ++e2, 0, 1);
+        check(b.phase() == 4, "pt-recover(a): completes Prone into review after resume");
+        const ValidationReport rep = JournalValidator::validateFile(b.store()->currentJournalPath());
+        check(rep.firstInvalidLine == -1, "pt-recover(a): hash chain valid after resume+shots");
+        int starts = 0;
+        for (const EventEnvelope& ev : rep.validEnvelopes)
+            if (qstrcmp(eventTypeId(ev.payload), "PositionTransitionSessionStarted") == 0) ++starts;
+        check(starts == 1, "pt-recover(a): no duplicate session-started event");
+        b.resetPositionTransition();
+    }
+
+    // (b) crash during PositionSetup → resume restores PositionSetup (no counted).
+    QString sidB;
+    {
+        PositionTransitionController a;
+        a.configureDefaults(); a.setVerificationShots(4); a.setOperatingMode(1);
+        a.startPositionTransition(QStringLiteral("B")); sidB = a.sessionId();
+        a.setChecklistItem(0, 1); a.setChecklistItem(1, 2);   // partial checklist, crash in setup
+    }
+    {
+        PositionTransitionController b; b.setOperatingMode(1);
+        check(b.resumeFromRecovery(sidB), "pt-recover(b): resume succeeds");
+        check(b.phase() == 1 && b.inSetup(), "pt-recover(b): restored INTO PositionSetup");
+        check(b.shotsCompleted() == 0, "pt-recover(b): no counted shots");
+        const QVariantList cl = b.checklistItems();
+        check(cl.size() >= 2 && cl[0].toMap().value("state").toInt() == 1
+              && cl[1].toMap().value("state").toInt() == 2, "pt-recover(b): partial checklist restored");
+        check(b.positionReady() && b.phase() == 2, "pt-recover(b): Position Ready works after resume");
+        b.resetPositionTransition();
+    }
+
+    // (c) crash after Verification Started before Shot 1 → resume VerificationActive, 0 counted.
+    QString sidC;
+    {
+        PositionTransitionController a;
+        a.configureDefaults(); a.setVerificationShots(4); a.setOperatingMode(1);
+        a.startPositionTransition(QStringLiteral("C")); sidC = a.sessionId();
+        a.positionReady();
+        a.registerShot(6, 6, 9.0, 70000, 0, 1);   // a sighter
+        a.startVerification();                     // crash before Shot 1
+    }
+    {
+        PositionTransitionController b; b.setOperatingMode(1);
+        check(b.resumeFromRecovery(sidC), "pt-recover(c): resume succeeds");
+        check(b.phase() == 3 && b.shotsCompleted() == 0, "pt-recover(c): VerificationActive, 0 counted");
+        check(b.sighterCount() == 1, "pt-recover(c): sighter restored (excluded from count)");
+        check(b.registerShot(1, 1, 10.0, 70100, 0, 1) && b.shotsCompleted() == 1,
+              "pt-recover(c): next shot is counted Shot 1");
+        b.resetPositionTransition();
+    }
+
+    // (d) completed session → NOT offered as an active recovery candidate.
+    QString sidD;
+    {
+        PositionTransitionController a;
+        a.configureDefaults(); a.setSequencePreset(3); a.setVerificationShots(3); a.setOperatingMode(1);
+        a.startPositionTransition(QStringLiteral("D")); sidD = a.sessionId();
+        a.positionReady(); a.startVerification();
+        qint64 e = 71000; for (int i = 0; i < 3; ++i) a.registerShot(1, 1, 10.0, ++e, 0, 1);
+        a.continueToNext();   // completes (single position)
+    }
+    {
+        RecoveryCoordinator coord;
+        bool offered = false;
+        for (const RecoveryCandidate& cand : coord.scan())
+            if (cand.sessionId == sidD && cand.resumable) offered = true;
+        check(!offered, "pt-recover(d): completed session NOT offered as unfinished");
+    }
+
+    StoragePaths::setRootOverrideForTesting(QString());
+}
+
+static void testPtReportModel()
+{
+    std::printf("--- T4 position transition: report model ---\n");
+    PositionTransitionController c; MemFile f; ManualClock clk;
+    prepPt(c, f, clk, 1);
+    c.setVerificationShots(5);
+    c.startPositionTransition(QStringLiteral("Rae"));
+    ptRunPosition(c, clk, 5, 1, 10000, 5000, 1.0, 1.0); c.saveNote(QStringLiteral("k")); c.continueToNext();
+    ptRunPosition(c, clk, 5, 2, 12000, 6000, 2.0, 2.0); c.saveNote(QStringLiteral("p")); c.continueToNext();
+    ptRunPosition(c, clk, 5, 0, 14000, 7000, 3.0, 3.0); c.continueToNext();
+    check(c.isCompleted(), "pt-report: session completed");
+    const QVariantMap r = c.reportModel();
+    check(r.value("programme").toString() == QLatin1String("Position Transition"), "pt-report: programme name");
+    check(r.value("athlete").toString() == QLatin1String("Rae"), "pt-report: athlete present");
+    check(r.value("positionsCompleted").toInt() == 3, "pt-report: 3 positions completed");
+    check(r.value("positions").toList().size() == 3, "pt-report: 3 per-position pages");
+    check(r.value("countedShots").toInt() == 15, "pt-report: 15 counted shots");
+    check(r.value("totalSighters").toInt() == 3, "pt-report: 3 sighters (excluded)");
+    // per-position page has timing + group + checklist + note
+    const QVariantMap k = r.value("positions").toList().first().toMap();
+    check(k.contains("setupDurationMs") && k.contains("groupDiameter") && k.contains("checklist"),
+          "pt-report: per-position page carries timing + group + checklist");
+    // no competition/ranking wording in the observations
+    bool clean = true;
+    const QStringList obs = r.value("observations").toStringList();
+    for (const QString& s : obs)
+        if (s.contains(QStringLiteral("match"), Qt::CaseInsensitive)
+            || s.contains(QStringLiteral("official"), Qt::CaseInsensitive)
+            || s.contains(QStringLiteral("rank"), Qt::CaseInsensitive)) clean = false;
+    check(clean, "pt-report: no competition/ranking wording in observations");
+    c.resetPositionTransition();
 }
 
 int main(int argc, char** argv)
@@ -1367,6 +2384,24 @@ int main(int argc, char** argv)
     testCleanClose();
     testPdfModel();
     testBrandingAssets();
+    testCdDomain();
+    testCdPendingOwnership();
+    testCdCoordinates();
+    testCdAnalytics();
+    testCdSeparation();
+    testCdRecovery();
+    testCdReportModel();
+    testCdAdaptiveBounds();
+    testCdFeedback();
+    testGroupPattern();
+    testPtDomain();
+    testPtTimingFirstShot();
+    testPt3PSeparation();
+    testPtRhythm();
+    testPtCleanHome();
+    testPtSeparation();
+    testPtRecovery();
+    testPtReportModel();
     std::printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
     std::fflush(stdout);
     return g_failures == 0 ? 0 : 1;

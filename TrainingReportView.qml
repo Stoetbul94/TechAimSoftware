@@ -92,18 +92,17 @@ Item {
             // branded header: accent bar + Tech Aim wordmark + report title,
             // with athlete/discipline/date/session meta right-aligned.
             Item {
-                width: parent.width; height: 58
+                width: parent.width; height: 88
                 Row {
                     anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; spacing: 12
-                    Rectangle { width: 6; height: 46; radius: 3; color: view.red; anchors.verticalCenter: parent.verticalCenter }
+                    Rectangle { width: 6; height: 74; radius: 3; color: view.red; anchors.verticalCenter: parent.verticalCenter }
                     Column {
-                        anchors.verticalCenter: parent.verticalCenter; spacing: 3
-                        // Approved light-background Tech Aim wordmark. Aspect
-                        // preserved; mipmap keeps the PDF grab (3–4×) crisp;
-                        // transparent PNG drawn onto the white page.
+                        anchors.verticalCenter: parent.verticalCenter; spacing: 4
+                        // Approved light-background Tech Aim wordmark, enlarged
+                        // (T3.1). Aspect preserved; mipmap keeps the PDF grab crisp.
                         Image {
                             source: "qrc:/images/logo/techaim_color.png"
-                            height: 24
+                            height: 60
                             width: sourceSize.height > 0 ? height * sourceSize.width / sourceSize.height : 0
                             fillMode: Image.PreserveAspectFit; smooth: true; mipmap: true
                         }
@@ -135,7 +134,7 @@ Item {
             }
             Rectangle { width: parent.width; height: 2; color: view.red; opacity: 0.85 }
             Text { text: "Not an official competition result"; color: view.sub; font.pixelSize: 9; font.italic: true }
-            Item { id: inner; width: parent.width; height: parent.height - 150 }
+            Item { id: inner; width: parent.width; height: parent.height - 180 }
         }
         // branded footer: small wordmark + tagline (left), page X of Y (right)
         Item {
@@ -318,6 +317,18 @@ Item {
                 Text { text: "OBSERVED"; color: view.sub; font.pixelSize: 10; font.bold: true; topPadding: 6 }
                 Repeater { model: b.observations ? b.observations : []
                     Text { width: 700; wrapMode: Text.WordWrap; text: "· " + modelData; color: view.ink; font.pixelSize: 11 } }
+                // GROUP PATTERN INSIGHTS (T3)
+                Column {
+                    width: 700; spacing: 2; visible: (b.groupPattern && b.groupPattern.hasData === true)
+                    Text { text: "GROUP PATTERN INSIGHTS"; color: view.red; font.pixelSize: 10; font.bold: true; topPadding: 6 }
+                    Repeater { model: (b.groupPattern ? (b.groupPattern.properties || []) : [])
+                        Column { width: 700; spacing: 0
+                            Text { text: modelData.label + "  (" + modelData.confidence + " evidence)"; color: view.ink; font.pixelSize: 10; font.bold: true }
+                            Text { width: 700; wrapMode: Text.WordWrap; text: modelData.evidence; color: view.sub; font.pixelSize: 10 } } }
+                    Text { visible: (b.groupPattern.prompt || "") !== ""; width: 700; wrapMode: Text.WordWrap
+                           text: "Coach discussion: " + b.groupPattern.prompt; color: view.ink; font.pixelSize: 10; font.italic: true }
+                    Text { width: 700; wrapMode: Text.WordWrap; text: b.groupPattern.disclaimer || ""; color: view.sub; font.pixelSize: 9 }
+                }
                 Text { text: "ATHLETE NOTE"; color: view.sub; font.pixelSize: 10; font.bold: true; topPadding: 6 }
                 Text { width: 700; wrapMode: Text.WordWrap; color: view.ink; font.pixelSize: 11
                        text: (b.note && b.note.length > 0) ? b.note : "—" }

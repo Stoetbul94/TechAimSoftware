@@ -1232,7 +1232,7 @@ Item {
             // "phantom shot"). The finals face highlights the last shot red
             // via the overlay itself; cross-window review needs the full
             // record and is out of this marker's reach by design.
-            visible: !shootingPage.isFinalsMatch && !shootingPage.isFinals10mMatch && !shootingPage.isTrainingMatch && globalModelOfData.count > 1
+            visible: !shootingPage.isFinalsMatch && !shootingPage.isFinals10mMatch && !shootingPage.isTrainingModeAny && globalModelOfData.count > 1
             //            border.width: 1
             //            border.color: "red"
             z: 100
@@ -1320,7 +1320,7 @@ Item {
         anchors.right: parent.right
         // 3P FINAL: qualification sighter-corner indicator hidden — the HUD
         // strip shows SIGHTING/MATCH state.
-        visible: !shootingPage.isFinalsMatch && !shootingPage.isFinals10mMatch && !shootingPage.isTrainingMatch
+        visible: !shootingPage.isFinalsMatch && !shootingPage.isFinals10mMatch && !shootingPage.isTrainingModeAny
 
         width: 0.2*parent.width
         height: width
@@ -1436,7 +1436,7 @@ Item {
         height: 40
         // 3P FINAL: the qualification match clock never shows — the Finals
         // HUD strip is the only time source (FINALS3P.remainingFormatted).
-        visible: APPSETTINGS.timer() && !shootingPage.isFinalsMatch && !shootingPage.isFinals10mMatch && !shootingPage.isTrainingMatch
+        visible: APPSETTINGS.timer() && !shootingPage.isFinalsMatch && !shootingPage.isFinals10mMatch && !shootingPage.isTrainingModeAny
         color: "transparent"
 
         Row {
@@ -1496,12 +1496,17 @@ Item {
 
         font.pixelSize: (0.5*finalShootNotificationRect.height)
 
-        visible:!appMode
+        visible: !appMode && countText.visible
         color: "red"
     }
 
     Text {
         id: countText
+        // Competition raw shot counter. Training Lab programmes count their own
+        // work in the right panel (Shot X of N / verification blocks), so this
+        // red "000" must not render — on a fresh training face it read as a
+        // phantom "0 registered shot" marker.
+        visible: !shootingPage.isTrainingModeAny
         text: (globalModelOfData.count < 10) ? ("00"+globalModelOfData.count) :
                                                (globalModelOfData.count > 99 ?
                                                     globalModelOfData.count : "0"+globalModelOfData.count)
@@ -1530,7 +1535,7 @@ Item {
         // exclusive), keeping clear of the shot counter at top-left.
         // 3P FINAL: no qualification clocks at all (FINALS3P HUD is the only
         // time source), so this must not appear when the match clock hides.
-        visible: !timerNotification.visible && !shootingPage.isFinalsMatch && !shootingPage.isFinals10mMatch && !shootingPage.isTrainingMatch
+        visible: !timerNotification.visible && !shootingPage.isFinalsMatch && !shootingPage.isFinals10mMatch && !shootingPage.isTrainingModeAny
 
         Row {
             id:stRow
