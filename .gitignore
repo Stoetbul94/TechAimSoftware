@@ -38,3 +38,4 @@ build-*/
 release-package/
 tests/training/debug/
 tests/training/release/
+docs/manual/output/
