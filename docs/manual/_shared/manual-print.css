@@ -1,0 +1,98 @@
+/* Tech Aim manual print stylesheet (P0.1).
+   Used for both HTML review and the headless-Chromium PDF route.
+   Chromium's --print-to-pdf gives no header/footer with document metadata,
+   so page numbering and the running title are supplied here. */
+
+@page {
+  size: A4;
+  margin: 20mm 18mm 20mm 18mm;
+}
+
+/* Page numbers. Chromium supports counter(page) in @page margin boxes. */
+@page {
+  @bottom-right { content: counter(page); font-size: 9pt; color: #555; }
+}
+
+:root {
+  --ta-red:  #C40046;   /* Tech Aim brand red — matches the application */
+  --ta-ink:  #14171C;
+  --ta-sub:  #5C636E;
+  --ta-line: #D5D9DF;
+}
+
+body {
+  font-family: "Segoe UI", "DejaVu Sans", Arial, sans-serif;  /* DejaVu covers umlauts + ß */
+  font-size: 10.5pt;
+  line-height: 1.45;
+  color: var(--ta-ink);
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+h1, h2, h3, h4 { color: var(--ta-ink); line-height: 1.25; }
+h1 { font-size: 20pt; border-bottom: 2px solid var(--ta-red); padding-bottom: 4pt; }
+h2 { font-size: 15pt; border-bottom: 1px solid var(--ta-line); padding-bottom: 3pt; }
+h3 { font-size: 12.5pt; }
+h4 { font-size: 11pt; }
+
+/* No isolated heading at the foot of a page, and never break inside one. */
+h1, h2, h3, h4 { break-after: avoid-page; break-inside: avoid; }
+h1 { break-before: page; }
+h1:first-of-type { break-before: auto; }   /* no leading blank page */
+
+/* Keep a paragraph or list from being orphaned from its heading. */
+p, li { orphans: 3; widows: 3; }
+
+/* Tables must fit the page and stay readable in grayscale. */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 9pt;
+  break-inside: avoid;
+  margin: 6pt 0;
+}
+th, td {
+  border: 1px solid var(--ta-line);
+  padding: 3pt 5pt;
+  text-align: left;
+  vertical-align: top;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;      /* long German compounds must wrap, not clip */
+}
+th { background: #F2F3F5; font-weight: 600; }
+
+/* Paths, commands and decision trees must wrap rather than run off the page. */
+pre, code {
+  font-family: "Consolas", "DejaVu Sans Mono", monospace;
+  font-size: 8.5pt;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+pre {
+  background: #F7F8F9;
+  border: 1px solid var(--ta-line);
+  border-left: 3px solid var(--ta-red);
+  padding: 6pt 8pt;
+  break-inside: avoid;
+}
+
+blockquote {
+  border-left: 3px solid var(--ta-red);
+  margin: 6pt 0;
+  padding: 2pt 10pt;
+  color: var(--ta-sub);
+  break-inside: avoid;
+}
+
+img { max-width: 100%; height: auto; break-inside: avoid; }
+
+/* Links: readable when the manual is printed in grayscale. */
+a { color: var(--ta-ink); text-decoration: underline; }
+
+/* Pandoc's table of contents. */
+nav#TOC { break-after: page; }
+nav#TOC ul { list-style: none; padding-left: 12pt; }
+nav#TOC > ul { padding-left: 0; }
+nav#TOC a { text-decoration: none; }
