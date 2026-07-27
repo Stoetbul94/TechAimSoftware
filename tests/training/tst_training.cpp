@@ -377,9 +377,11 @@ static void testAnalytics()
         return s;
     };
     {
-        // symmetric square around (1,1): MPI (1,1), known geometry
-        QVector<ShotCore> shots{ shot(0, 0, 100, 4000), shot(2, 0, 102, 5000),
-                                 shot(0, 2, 104, 6000), shot(2, 2, 106, 5000) };
+        // symmetric square around (1,1): MPI (1,1), known geometry.
+        // splitMs values are ABSOLUTE monotonic stamps 5 s apart, so the
+        // shot-to-shot cadence is a constant 5.0 s.
+        QVector<ShotCore> shots{ shot(0, 0, 100, 4000), shot(2, 0, 102, 9000),
+                                 shot(0, 2, 104, 14000), shot(2, 2, 106, 19000) };
         const BlockMetrics m = computeBlockMetrics(shots);
         check(qAbs(m.mpiX - 1.0) < 1e-9 && qAbs(m.mpiY - 1.0) < 1e-9, "MPI correct");
         check(qAbs(m.groupRadius - std::sqrt(2.0)) < 1e-6,
@@ -391,7 +393,11 @@ static void testAnalytics()
         check(qAbs(m.averageScore - 10.3) < 1e-9, "average score correct");
         check(m.scoreStdDev > 0.0, "score SD computed");
         check(m.hasTiming && qAbs(m.averageShotTime - 5.0) < 1e-9,
-              "timing mean correct (5.0 s)");
+              "cadence mean correct (5.0 s between shots)");
+        check(qAbs(m.shotTimeStdDev) < 1e-9, "constant cadence -> zero SD");
+        // one shot yields no interval, so no cadence is reported
+        const BlockMetrics single = computeBlockMetrics({ shot(1, 1, 100, 4000) });
+        check(!single.hasTiming, "single shot: no cadence (needs an interval)");
     }
     {
         const BlockMetrics none = computeBlockMetrics({});
@@ -2120,6 +2126,77 @@ static void testPt3PSeparation()
           && s.value("sighterCount").toInt() == 2, "pt: sighters separate per position");
     check(k.value("checklistChecked").toInt() == 1 && p.value("checklistChecked").toInt() == 0,
           "pt: checklist separate per position");
+    // rhythm / cadence surfaced per position (from the verification splits)
+    check(k.value("hasTiming").toBool(), "pt: verification timing available");
+    check(k.value("avgShotTime").toDouble() > 0.0, "pt: average shot time measured");
+    // ptRunPosition fires every counted shot 3 s apart -> constant cadence
+    check(qAbs(k.value("avgShotTime").toDouble() - 3.0) < 0.05, "pt: cadence is the 3 s shot-to-shot interval");
+    check(k.value("rhythm").toString() == QLatin1String("Steady"), "pt: constant cadence -> Steady rhythm");
+    // ranked session indicators (setup: K 10s < P 15s < S 20s)
+    const QVariantMap rk = c.sessionRankings();
+    check(rk.value("fastestSetup").toMap().value("name").toString() == QLatin1String("Kneeling"),
+          "pt: fastest setup ranked = Kneeling");
+    check(rk.value("slowestSetup").toMap().value("name").toString() == QLatin1String("Standing"),
+          "pt: slowest setup ranked = Standing");
+    check(rk.contains("bestAverage") && rk.contains("tightestGroup"), "pt: result rankings present");
+    check(c.reportModel().contains(QLatin1String("rankings")), "pt: reportModel exposes rankings");
+    c.resetPositionTransition();
+}
+
+static void testPtRhythm()
+{
+    std::printf("--- T4 position transition: rhythm classifier ---\n");
+    {
+        // constant splits (every verification shot 3s apart) -> Steady
+        PositionTransitionController c; MemFile f; ManualClock clk;
+        prepPt(c, f, clk, 1);
+        c.setSequencePreset(3); c.setVerificationShots(5);   // single Kneeling
+        c.startPositionTransition(QStringLiteral("A"));
+        ptRunPosition(c, clk, 5, 0, 8000, 3000, 0.3, 0.3);   // first split also 3s
+        const QVariantMap rv = c.currentReview();
+        check(rv.value("rhythm").toString() == QLatin1String("Steady"), "pt-rhythm: constant splits -> Steady");
+        check(qAbs(rv.value("rhythmCv").toDouble()) < 0.05, "pt-rhythm: constant splits -> ~0 cv");
+        c.resetPositionTransition();
+    }
+    {
+        // wildly varying splits -> Inconsistent
+        PositionTransitionController c; MemFile f; ManualClock clk;
+        prepPt(c, f, clk, 1);
+        c.setSequencePreset(3); c.setVerificationShots(5);
+        c.startPositionTransition(QStringLiteral("A"));
+        clk.advance(8000); c.positionReady(); c.startVerification();
+        const int gaps[5] = { 1000, 12000, 1500, 14000, 1200 };
+        for (int i = 0; i < 5; ++i) { clk.advance(gaps[i]); c.registerShot(0.3, 0.3, 10.0, ++g_ptExt, 0, 1); }
+        const QVariantMap rv = c.currentReview();
+        check(rv.value("rhythm").toString() == QLatin1String("Inconsistent"), "pt-rhythm: erratic splits -> Inconsistent");
+        c.resetPositionTransition();
+    }
+}
+
+// Completed session -> Home -> reopen must not leave a "still busy" state.
+static void testPtCleanHome()
+{
+    std::printf("--- T4 position transition: clean Home / no stale state ---\n");
+    PositionTransitionController c; MemFile f; ManualClock clk;
+    prepPt(c, f, clk, 1);
+    c.setSequencePreset(3); c.setVerificationShots(3);   // single Kneeling
+    c.startPositionTransition(QStringLiteral("A"));
+    ptRunPosition(c, clk, 3, 1, 8000, 4000, 1.0, 1.0);
+    check(c.continueToNext() && c.phase() == 5, "pt-home: session completes");
+    check(c.isCompleted(), "pt-home: completed before Home");
+    // Home
+    check(c.closeCleanly(), "pt-home: closes cleanly");
+    check(c.phase() == 0, "pt-home: phase back to Idle");
+    check(!c.isCompleted(), "pt-home: NOT reported completed after close");
+    check(!c.active(), "pt-home: NOT active after close (no 'still busy' state)");
+    check(c.shotsCompleted() == 0 && c.sighterCount() == 0, "pt-home: counters cleared");
+    check(c.currentRepeat() == 1, "pt-home: repeat counter reset");
+    // reopening starts a genuinely new session, not the old one
+    const QString oldId = c.sessionId();
+    MemFile f2; c.storeForTesting()->setJournalFileForTesting(&f2);
+    check(c.startPositionTransition(QStringLiteral("A")), "pt-home: reopens after Home");
+    check(c.sessionId() != oldId, "pt-home: new session id (no stale session resumed)");
+    check(c.phase() == 1 && c.shotsCompleted() == 0, "pt-home: reopens clean in PositionSetup");
     c.resetPositionTransition();
 }
 
@@ -2320,6 +2397,8 @@ int main(int argc, char** argv)
     testPtDomain();
     testPtTimingFirstShot();
     testPt3PSeparation();
+    testPtRhythm();
+    testPtCleanHome();
     testPtSeparation();
     testPtRecovery();
     testPtReportModel();

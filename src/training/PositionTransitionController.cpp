@@ -87,7 +87,11 @@ bool PositionTransitionController::hasNext() const
 
 const PtPositionRecord* PositionTransitionController::record(int position, int repeat) const
 {
-    if (!m_store) return nullptr;
+    // Once the session is closed (Home), the controller must report a clean
+    // slate: the store keeps the folded state of the closed session, and
+    // reading it here left stale counters/reviews behind after Home. The
+    // summary and PDF are built while the session is still open (phase 5).
+    if (!m_store || !m_store->active()) return nullptr;
     for (const PtPositionRecord& r : st().ptRecords)
         if (r.position == position && r.repeat == repeat) return &r;
     return nullptr;
@@ -500,6 +504,19 @@ QVariantList PositionTransitionController::checklistItems() const
     return out;
 }
 
+// Classify shot-to-shot cadence from the coefficient of variation of the
+// inter-shot times. Empty (no verdict) unless timing landed on every shot and
+// there are at least three shots to define a cadence.
+static QString ptRhythmLabel(const BlockMetrics& bm)
+{
+    if (!bm.hasTiming || bm.shotCount < 3 || bm.averageShotTime <= 0.0)
+        return QString();
+    const double cv = bm.shotTimeStdDev / bm.averageShotTime;
+    if (cv < 0.20) return QStringLiteral("Steady");
+    if (cv < 0.40) return QStringLiteral("Variable");
+    return QStringLiteral("Inconsistent");
+}
+
 QVariantMap PositionTransitionController::positionReview(int position, int repeat) const
 {
     QVariantMap m;
@@ -526,6 +543,12 @@ QVariantMap PositionTransitionController::positionReview(int position, int repea
     m[QStringLiteral("hSpread")] = bm.horizontalSpread; m[QStringLiteral("vSpread")] = bm.verticalSpread;
     m[QStringLiteral("scoreSd")] = bm.scoreStdDev;
     m[QStringLiteral("timingSd")] = bm.shotTimeStdDev;
+    // shot rhythm / cadence (from splitMs on the verification shots)
+    m[QStringLiteral("hasTiming")] = bm.hasTiming;
+    m[QStringLiteral("avgShotTime")] = bm.averageShotTime;
+    m[QStringLiteral("rhythmCv")] =
+        (bm.hasTiming && bm.averageShotTime > 0.0) ? bm.shotTimeStdDev / bm.averageShotTime : 0.0;
+    m[QStringLiteral("rhythm")] = ptRhythmLabel(bm);
     // first-shot metrics
     if (!r->verifShots.isEmpty()) {
         const ShotCore& fs = r->verifShots.first();
@@ -641,7 +664,73 @@ QStringList PositionTransitionController::sessionObservations() const
         out << QStringLiteral("%1 had the fastest first shot after Position Ready (%2 s).").arg(fastestPos).arg(fastestMs / 1000);
     if (!mostSighterPos.isEmpty() && mostSighters > 0)
         out << QStringLiteral("%1 required the most sighters (%2).").arg(mostSighterPos).arg(mostSighters);
+    // widest verification group (measured extreme spread)
+    QString widestPos; double widestDia = -1.0;
+    for (const QVariant& v : comp) {
+        const QVariantMap r = v.toMap();
+        if (!r.value(QStringLiteral("hasGroup")).toBool()) continue;
+        const double gd = r.value(QStringLiteral("groupDiameter")).toDouble();
+        if (gd > widestDia) { widestDia = gd; widestPos = r.value(QStringLiteral("positionName")).toString(); }
+    }
+    if (!widestPos.isEmpty() && widestDia > 0.0)
+        out << QStringLiteral("%1 had the widest verification group (%2 mm).")
+                  .arg(widestPos).arg(QString::number(widestDia, 'f', 1));
+    // Fast onto the target but the widest group in the SAME position — both
+    // facts measured; the reading stays hedged (this does not identify a cause).
+    if (!widestPos.isEmpty() && widestPos == fastestPos && fastestMs != INT_MAX)
+        out << QStringLiteral("%1 reached the first shot quickest yet spread the widest — worth checking whether the position was fully settled before firing.")
+                  .arg(widestPos);
+    // shot rhythm — procedural, so comparable across positions
+    QString steadyPos, jumpyPos; double steadyCv = 1e18, jumpyCv = -1.0;
+    for (const QVariant& v : comp) {
+        const QVariantMap r = v.toMap();
+        if (r.value(QStringLiteral("rhythm")).toString().isEmpty()) continue;
+        const double cv = r.value(QStringLiteral("rhythmCv")).toDouble();
+        const QString name = r.value(QStringLiteral("positionName")).toString();
+        if (cv < steadyCv) { steadyCv = cv; steadyPos = name; }
+        if (cv > jumpyCv)  { jumpyCv = cv;  jumpyPos = name; }
+    }
+    if (!steadyPos.isEmpty() && !jumpyPos.isEmpty() && steadyPos != jumpyPos)
+        out << QStringLiteral("Shot rhythm was steadiest in %1 and most variable in %2.").arg(steadyPos, jumpyPos);
     out << QStringLiteral("Positions have different stability demands — compare each position to itself across repeats, not against another position.");
+    return out;
+}
+
+QVariantMap PositionTransitionController::sessionRankings() const
+{
+    QVariantMap out;
+    const QVariantList comp = positionComparison();
+    if (comp.isEmpty()) return out;
+    QString fastSetupN, slowSetupN, tightGroupN, bestAvgN, steadyN;
+    int fastSetup = INT_MAX, slowSetup = -1;
+    double tightGroup = 1e18, bestAvg = -1.0, steadyCv = 1e18;
+    for (const QVariant& v : comp) {
+        const QVariantMap r = v.toMap();
+        const QString name = r.value(QStringLiteral("positionName")).toString();
+        const int setup = r.value(QStringLiteral("setupDurationMs")).toInt();
+        if (setup < fastSetup) { fastSetup = setup; fastSetupN = name; }
+        if (setup > slowSetup) { slowSetup = setup; slowSetupN = name; }
+        if (r.value(QStringLiteral("hasGroup")).toBool()) {
+            const double gd = r.value(QStringLiteral("groupDiameter")).toDouble();
+            if (gd < tightGroup) { tightGroup = gd; tightGroupN = name; }
+        }
+        const double avg = r.value(QStringLiteral("averageScore")).toDouble();
+        if (avg > bestAvg) { bestAvg = avg; bestAvgN = name; }
+        if (!r.value(QStringLiteral("rhythm")).toString().isEmpty()) {
+            const double cv = r.value(QStringLiteral("rhythmCv")).toDouble();
+            if (cv < steadyCv) { steadyCv = cv; steadyN = name; }
+        }
+    }
+    auto put = [&](const char* key, const QString& n, const QVariant& val) {
+        if (n.isEmpty()) return;
+        QVariantMap m; m[QStringLiteral("name")] = n; m[QStringLiteral("value")] = val;
+        out[QLatin1String(key)] = m;
+    };
+    put("fastestSetup", fastSetupN, fastSetup == INT_MAX ? 0 : fastSetup);
+    put("slowestSetup", slowSetupN, slowSetup < 0 ? 0 : slowSetup);
+    put("tightestGroup", tightGroupN, tightGroup >= 1e18 ? 0.0 : tightGroup);
+    put("bestAverage", bestAvgN, bestAvg < 0.0 ? 0.0 : bestAvg);
+    put("steadiestRhythm", steadyN, steadyCv >= 1e18 ? 0.0 : steadyCv);
     return out;
 }
 
@@ -739,6 +828,7 @@ QVariantMap PositionTransitionController::reportModel() const
     r[QStringLiteral("comparison")] = positionComparison();
     r[QStringLiteral("insights")] = sessionInsights();
     r[QStringLiteral("observations")] = sessionObservations();
+    r[QStringLiteral("rankings")] = sessionRankings();
     return r;
 }
 

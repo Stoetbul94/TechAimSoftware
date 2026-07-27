@@ -38,10 +38,12 @@ struct BlockMetrics {
     double groupDiameter = 0.0;    // extreme spread
     double horizontalSpread = 0.0; // sample SD of x
     double verticalSpread = 0.0;   // sample SD of y
-    // timing (seconds, from splitMs) — valid only when every shot carried one
+    // Cadence (seconds) — the interval BETWEEN consecutive shots, derived from
+    // the absolute monotonic splitMs stamps. Valid only when every shot carried
+    // a stamp and there are >= 2 shots (one shot yields no interval).
     bool   hasTiming = false;
-    double averageShotTime = 0.0;
-    double shotTimeStdDev = 0.0;
+    double averageShotTime = 0.0;  // mean shot-to-shot interval
+    double shotTimeStdDev = 0.0;   // sample SD of those intervals
 };
 
 // Compute metrics for one block's measured shots (order preserved).

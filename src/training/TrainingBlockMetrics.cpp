@@ -39,14 +39,14 @@ BlockMetrics computeBlockMetrics(const QVector<ta::rel::ShotCore>& shots)
 
     // score stats (decimal units from fixed-point tenths)
     QVector<double> scores; scores.reserve(shots.size());
-    QVector<double> times;  times.reserve(shots.size());
+    QVector<qint64> stamps;  stamps.reserve(shots.size());
     bool allTimed = true;
     for (const ta::rel::ShotCore& s : shots) {
         const double sc = s.scoreTenths / 10.0;
         scores.append(sc);
         m.totalScore += sc;
         if (s.splitMs > 0)
-            times.append(s.splitMs / 1000.0);
+            stamps.append(s.splitMs);
         else
             allTimed = false;
     }
@@ -78,13 +78,25 @@ BlockMetrics computeBlockMetrics(const QVector<ta::rel::ShotCore>& shots)
         m.verticalSpread = stats.verticalSpread;
     }
 
-    // timing stats only when every shot carried a split (no fabricated timing)
-    if (allTimed && !times.isEmpty()) {
-        m.hasTiming = true;
-        double sum = 0.0;
-        for (double t : times) sum += t;
-        m.averageShotTime = sum / times.size();
-        m.shotTimeStdDev = sampleStdDev(times);
+    // Timing stats only when every shot carried a stamp (no fabricated timing).
+    // ShotCore::splitMs is an ABSOLUTE monotonic stamp (see the controllers,
+    // which also use it for first->last block spans), so the per-shot cadence
+    // is the interval BETWEEN consecutive shots. The first shot has no
+    // predecessor and contributes no interval — the time from the start signal
+    // to the first shot is a separate, programme-owned metric.
+    if (allTimed && stamps.size() >= 2) {
+        QVector<double> gaps;  gaps.reserve(stamps.size() - 1);
+        for (int i = 1; i < stamps.size(); ++i) {
+            const double d = (stamps[i] - stamps[i - 1]) / 1000.0;
+            if (d >= 0.0) gaps.append(d);      // ignore any out-of-order stamp
+        }
+        if (!gaps.isEmpty()) {
+            m.hasTiming = true;
+            double sum = 0.0;
+            for (double t : gaps) sum += t;
+            m.averageShotTime = sum / gaps.size();
+            m.shotTimeStdDev = sampleStdDev(gaps);
+        }
     }
     return m;
 }

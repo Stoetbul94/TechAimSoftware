@@ -127,6 +127,7 @@ public:
     Q_INVOKABLE QVariantList repeatComparison() const;     // same position across repeats
     Q_INVOKABLE QStringList sessionObservations() const;
     Q_INVOKABLE QVariantMap sessionInsights() const;       // "What You Should Take"
+    Q_INVOKABLE QVariantMap sessionRankings() const;       // fastest setup / tightest group / etc.
     Q_INVOKABLE int sessionDurationSec() const;
     Q_INVOKABLE QVariantList verificationPlot(int position, int repeat) const;
     Q_INVOKABLE QVariantMap reportModel() const;

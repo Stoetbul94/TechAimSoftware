@@ -25,6 +25,14 @@ Item {
     readonly property color _txtMut: "#6F7A86"
 
     function ms(v) { return v === undefined ? "—" : (Math.floor(v/1000) + "." + Math.floor((v%1000)/100) + " s") }
+    // seconds → "N.n s" for cadence values already expressed in seconds
+    function secs(v) { return (v === undefined || v <= 0) ? "—" : (Number(v).toFixed(1) + " s") }
+    function rhythmColor(label) {
+        if (label === "Steady") return _green
+        if (label === "Variable") return "#E8A13C"
+        if (label === "Inconsistent") return _redHi
+        return _txtMut
+    }
 
     // ── POSITION REVIEW ──────────────────────────────────────────────────
     Rectangle {
@@ -181,6 +189,19 @@ Item {
                     property var rep: (hud.summaryOpen && hud.ctl) ? hud.ctl.reportModel() : ({})
                     property var comp: (smCol.rep.comparison) ? smCol.rep.comparison : []
                     property var ins: (smCol.rep.insights) ? smCol.rep.insights : ({})
+                    property var rank: (smCol.rep.rankings) ? smCol.rep.rankings : ({})
+                    // normalisers for the cross-position comparison bars
+                    property real maxSetup: {
+                        var mx = 1
+                        for (var i = 0; i < comp.length; ++i) mx = Math.max(mx, comp[i].setupDurationMs || 0)
+                        return mx
+                    }
+                    property real maxDia: {
+                        var mx = 1
+                        for (var i = 0; i < comp.length; ++i) if (comp[i].hasGroup) mx = Math.max(mx, comp[i].groupDiameter || 0)
+                        return mx
+                    }
+                    property int cardCols: Math.max(1, Math.min(3, comp.length))
 
                     Text { text: "POSITION TRANSITION COMPLETE"; color: _txt; font.pixelSize: 22; font.bold: true }
                     Text { text: "TRAINING SESSION"; color: _red; font.pixelSize: 11; font.bold: true; font.letterSpacing: 2 }
@@ -209,31 +230,121 @@ Item {
                         }
                     }
 
-                    // position comparison table
-                    Text { text: "POSITION COMPARISON"; color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 4 }
-                    Column { width: parent.width; spacing: 3
-                        Row { spacing: 8
-                            Text { text: "POSITION"; color: _txtMut; font.pixelSize: 9; width: 120 }
-                            Text { text: "SETUP"; color: _txtMut; font.pixelSize: 9; width: 60 }
-                            Text { text: "SIGHT"; color: _txtMut; font.pixelSize: 9; width: 44 }
-                            Text { text: "R→1st"; color: _txtMut; font.pixelSize: 9; width: 56 }
-                            Text { text: "1ST"; color: _txtMut; font.pixelSize: 9; width: 40 }
-                            Text { text: "DIA mm"; color: _txtMut; font.pixelSize: 9; width: 56 }
-                            Text { text: "AVG"; color: _txtMut; font.pixelSize: 9; width: 44 }
-                            Text { text: "PATTERN"; color: _txtMut; font.pixelSize: 9 } }
-                        Repeater { model: smCol.comp
-                            delegate: Row { spacing: 8; property var r: modelData
-                                Text { width: 120; color: _txt; font.pixelSize: 11; font.bold: true
-                                       text: r.positionName + " R" + r.repeat }
-                                Text { width: 60; color: _txt; font.family: "Consolas"; font.pixelSize: 10; text: hud.ms(r.setupDurationMs) }
-                                Text { width: 44; color: _txtSec; font.family: "Consolas"; font.pixelSize: 10; text: "" + r.sighterCount }
-                                Text { width: 56; color: _txtSec; font.family: "Consolas"; font.pixelSize: 10; text: hud.ms(r.readyToFirstShotMs) }
-                                Text { width: 40; color: _txt; font.family: "Consolas"; font.pixelSize: 10; text: r.firstShotScore!==undefined?Number(r.firstShotScore).toFixed(1):"—" }
-                                Text { width: 56; color: _txt; font.family: "Consolas"; font.pixelSize: 10; text: r.hasGroup?Number(r.groupDiameter).toFixed(1):"—" }
-                                Text { width: 44; color: _txt; font.family: "Consolas"; font.pixelSize: 10; text: Number(r.averageScore||0).toFixed(1) }
-                                Text { color: _green; font.pixelSize: 9; elide: Text.ElideRight; width: 150
-                                       text: (r.groupPattern && r.groupPattern.primaryLabel) ? r.groupPattern.primaryLabel : "" } } }
+                    // ranked indicators (procedural + result highlights)
+                    Text { text: "SESSION HIGHLIGHTS"; color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 4 }
+                    Flow { width: parent.width; spacing: 8
+                        Repeater {
+                            model: {
+                                var k = smCol.rank; if (!k) return []
+                                var out = []
+                                if (k.fastestSetup) out.push({ i: "⚡", l: "Fastest setup", n: k.fastestSetup.name, v: hud.ms(k.fastestSetup.value), c: _green })
+                                if (k.slowestSetup) out.push({ i: "⏳", l: "Slowest setup", n: k.slowestSetup.name, v: hud.ms(k.slowestSetup.value), c: "#E8A13C" })
+                                if (k.tightestGroup) out.push({ i: "◎", l: "Tightest group", n: k.tightestGroup.name, v: Number(k.tightestGroup.value).toFixed(1) + " mm", c: _green })
+                                if (k.bestAverage) out.push({ i: "★", l: "Best average", n: k.bestAverage.name, v: Number(k.bestAverage.value).toFixed(1), c: _green })
+                                if (k.steadiestRhythm) out.push({ i: "♪", l: "Steadiest rhythm", n: k.steadiestRhythm.name, v: "", c: _green })
+                                return out
+                            }
+                            delegate: Rectangle {
+                                width: hlRow.implicitWidth + 20; height: 40; radius: 8
+                                color: "#1D2026"; border.color: _line; border.width: 1
+                                Row { id: hlRow; anchors.centerIn: parent; spacing: 8
+                                    Text { text: modelData.i; color: modelData.c; font.pixelSize: 16; anchors.verticalCenter: parent.verticalCenter }
+                                    Column { anchors.verticalCenter: parent.verticalCenter; spacing: 0
+                                        Text { text: modelData.l; color: _txtMut; font.pixelSize: 8; font.bold: true; font.letterSpacing: 1 }
+                                        Text { text: modelData.n + (modelData.v ? "  ·  " + modelData.v : ""); color: _txt; font.pixelSize: 12; font.bold: true } } }
+                            }
+                        }
                     }
+
+                    // per-position cards
+                    Text { text: "POSITIONS"; color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 8 }
+                    Flow { width: parent.width; spacing: 10
+                        Repeater { model: smCol.comp
+                            delegate: Rectangle {
+                                property var r: modelData
+                                width: (smCol.width - (smCol.cardCols - 1) * 10) / smCol.cardCols
+                                height: cardCol.implicitHeight + 24
+                                radius: 10; color: "#181B21"; border.color: _line; border.width: 1
+                                Column {
+                                    id: cardCol; anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right
+                                    anchors.margins: 12; spacing: 8
+                                    // header: position + rhythm badge
+                                    Row { width: parent.width
+                                        Text { text: r.positionName + " R" + r.repeat; color: _txt; font.pixelSize: 15; font.bold: true
+                                               width: parent.width - rhBadge.width; elide: Text.ElideRight }
+                                        Rectangle { id: rhBadge; visible: (r.rhythm||"") !== ""
+                                            width: rhTxt.implicitWidth + 14; height: 18; radius: 9
+                                            color: "transparent"; border.color: hud.rhythmColor(r.rhythm); border.width: 1
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            Text { id: rhTxt; anchors.centerIn: parent; text: r.rhythm||""; color: hud.rhythmColor(r.rhythm); font.pixelSize: 9; font.bold: true } }
+                                    }
+                                    // mini group plot
+                                    Rectangle {
+                                        width: parent.width; height: parent.width * 0.72; radius: 8
+                                        color: "#0C0E12"; border.color: _line; border.width: 1
+                                        property var shots: (hud.summaryOpen && hud.ctl) ? hud.ctl.verificationPlot(r.position, r.repeat) : []
+                                        property real rangeMm: {
+                                            var mx = 8
+                                            for (var i = 0; i < shots.length; ++i) mx = Math.max(mx, Math.abs(shots[i].xMm), Math.abs(shots[i].yMm))
+                                            return mx * 1.25
+                                        }
+                                        readonly property real plotR: Math.min(width, height)/2 - 10
+                                        Repeater { model: [1.0,0.6,0.3]
+                                            Rectangle { width: parent.plotR*2*modelData; height: width; radius: width/2
+                                                anchors.centerIn: parent; color: "transparent"; border.color: "#23262d"; border.width: 1 } }
+                                        Rectangle { anchors.centerIn: parent; width: parent.plotR*2; height: 1; color: "#1c1f26" }
+                                        Rectangle { anchors.centerIn: parent; width: 1; height: parent.plotR*2; color: "#1c1f26" }
+                                        Rectangle { visible: r.hasGroup === true; width: 10; height: 10; radius: 5; color: "transparent"; border.color: _green; border.width: 2
+                                            x: parent.width/2 + (r.mpiX/parent.rangeMm)*parent.plotR - 5
+                                            y: parent.height/2 - (r.mpiY/parent.rangeMm)*parent.plotR - 5 }
+                                        Repeater { model: parent.shots
+                                            Rectangle { width: 8; height: 8; radius: 4
+                                                color: modelData.first ? "#3DA9FC" : "#e8003d"; border.color: "white"; border.width: 1
+                                                x: parent.width/2 + (modelData.xMm/parent.rangeMm)*parent.plotR - width/2
+                                                y: parent.height/2 - (modelData.yMm/parent.rangeMm)*parent.plotR - height/2 } }
+                                    }
+                                    // metric grid
+                                    Grid { width: parent.width; columns: 2; columnSpacing: 8; rowSpacing: 5
+                                        Repeater {
+                                            model: [
+                                                { l: "Setup", v: hud.ms(r.setupDurationMs) },
+                                                { l: "Sighters", v: "" + (r.sighterCount||0) },
+                                                { l: "Ready→1st", v: hud.ms(r.readyToFirstShotMs) },
+                                                { l: "First shot", v: (r.firstShotScore!==undefined?Number(r.firstShotScore).toFixed(1):"—") },
+                                                { l: "Average", v: Number(r.averageScore||0).toFixed(1) },
+                                                { l: "Group dia", v: (r.hasGroup?Number(r.groupDiameter).toFixed(1)+" mm":"—") },
+                                                { l: "MPI X/Y", v: Number(r.mpiX||0).toFixed(1)+"/"+Number(r.mpiY||0).toFixed(1) },
+                                                { l: "Avg shot", v: hud.secs(r.avgShotTime) }
+                                            ]
+                                            delegate: Column { width: (parent.width-8)/2; spacing: 1
+                                                Text { text: modelData.l; color: _txtMut; font.pixelSize: 9 }
+                                                Text { text: modelData.v; color: _txt; font.family: "Consolas"; font.pixelSize: 12; font.bold: true } }
+                                        }
+                                    }
+                                    // comparison bars (relative to session max)
+                                    Column { width: parent.width; spacing: 4; topPadding: 2
+                                        Column { width: parent.width; spacing: 2
+                                            Text { text: "Setup vs session"; color: _txtMut; font.pixelSize: 8 }
+                                            Rectangle { width: parent.width; height: 6; radius: 3; color: "#0C0E12"
+                                                Rectangle { height: parent.height; radius: 3; color: "#E8A13C"
+                                                    width: parent.width * Math.min(1, (r.setupDurationMs||0)/smCol.maxSetup) } } }
+                                        Column { width: parent.width; spacing: 2; visible: r.hasGroup === true
+                                            Text { text: "Group vs session"; color: _txtMut; font.pixelSize: 8 }
+                                            Rectangle { width: parent.width; height: 6; radius: 3; color: "#0C0E12"
+                                                Rectangle { height: parent.height; radius: 3; color: _green
+                                                    width: parent.width * Math.min(1, (r.groupDiameter||0)/smCol.maxDia) } } }
+                                    }
+                                    // interpretation
+                                    Text { visible: (r.groupPattern && r.groupPattern.primaryLabel) ? true : false
+                                           width: parent.width; wrapMode: Text.WordWrap
+                                           text: "◆ " + ((r.groupPattern && r.groupPattern.primaryLabel) ? r.groupPattern.primaryLabel : "")
+                                           color: _green; font.pixelSize: 10 }
+                                }
+                            }
+                        }
+                    }
+                    Text { text: "● counted   ◆ first shot (blue)   ◎ MPI (green)   ·   rings are relative, not ISSF scoring zones";
+                           color: _txtMut; font.pixelSize: 9; topPadding: 2 }
 
                     // What You Should Take
                     Text { text: "WHAT YOU SHOULD TAKE FROM THIS SESSION"; color: _redHi; font.pixelSize: 12; font.bold: true; topPadding: 6 }

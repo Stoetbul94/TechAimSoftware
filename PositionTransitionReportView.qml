@@ -56,6 +56,7 @@ Item {
                                  Qt.size(pageW, pageH))
     }
     function ms(v) { return v === undefined ? "—" : (Math.floor(v/1000) + "." + Math.floor((v%1000)/100) + " s") }
+    function secs(v) { return (v === undefined || v <= 0) ? "—" : (Number(v).toFixed(1) + " s") }
 
     component ReportPage: Rectangle {
         width: view.pageW; height: view.pageH; color: "white"
@@ -155,6 +156,25 @@ Item {
         Column {
             width: parent.width; spacing: 6
             Text { text: "POSITION COMPARISON"; color: view.ink; font.pixelSize: 15; font.bold: true }
+            // ranked session highlights
+            Text { text: "SESSION HIGHLIGHTS"; color: view.red; font.pixelSize: 11; font.bold: true; topPadding: 2 }
+            Flow { width: 714; spacing: 8
+                Repeater {
+                    model: {
+                        var k = view.model.rankings; if (!k) return []
+                        var out = []
+                        if (k.fastestSetup)    out.push("⚡ Fastest setup: " + k.fastestSetup.name + " (" + view.ms(k.fastestSetup.value) + ")")
+                        if (k.slowestSetup)    out.push("⏳ Slowest setup: " + k.slowestSetup.name + " (" + view.ms(k.slowestSetup.value) + ")")
+                        if (k.tightestGroup)   out.push("◎ Tightest group: " + k.tightestGroup.name + " (" + Number(k.tightestGroup.value).toFixed(1) + " mm)")
+                        if (k.bestAverage)     out.push("★ Best average: " + k.bestAverage.name + " (" + Number(k.bestAverage.value).toFixed(1) + ")")
+                        if (k.steadiestRhythm) out.push("♪ Steadiest rhythm: " + k.steadiestRhythm.name)
+                        return out
+                    }
+                    Rectangle { width: hlTxt.implicitWidth + 16; height: 24; radius: 5; color: "#F4F5F7"; border.color: view.line; border.width: 1
+                        Text { id: hlTxt; anchors.centerIn: parent; text: modelData; color: view.ink; font.pixelSize: 10; font.bold: true } }
+                }
+            }
+            Item { height: 6; width: 1 }
             Row { spacing: 0
                 Repeater { model: ["POSITION","SETUP","SIGHT","R→1st","1ST","DIA mm","AVG SCORE"]
                     Text { text: modelData; color: view.sub; font.pixelSize: 10; font.bold: true; width: 100 } } }
@@ -168,6 +188,15 @@ Item {
                     Text { width: 100; color: view.ink; font.pixelSize: 10; text: r.firstShotScore!==undefined?Number(r.firstShotScore).toFixed(1):"—" }
                     Text { width: 100; color: view.ink; font.pixelSize: 10; text: r.hasGroup?Number(r.groupDiameter).toFixed(1):"—" }
                     Text { width: 100; color: view.ink; font.pixelSize: 10; text: Number(r.averageScore||0).toFixed(1) } } }
+            Item { height: 8; width: 1 }
+            // shot rhythm / cadence per position
+            Text { text: "SHOT RHYTHM"; color: view.sub; font.pixelSize: 10; font.bold: true }
+            Repeater { model: (view.model.comparison || [])
+                Row { spacing: 8; property var r: modelData
+                    Text { width: 140; color: view.ink; font.pixelSize: 10; font.bold: true; text: r.positionName + " R" + r.repeat }
+                    Text { width: 130; color: view.ink; font.pixelSize: 10
+                           text: (r.rhythm && r.rhythm.length>0) ? r.rhythm : "—" }
+                    Text { color: view.sub; font.pixelSize: 10; text: "avg shot " + view.secs(r.avgShotTime) } } }
             Item { height: 8; width: 1 }
             Text { text: "Positions have different stability demands — compare each position to itself across repeats, not against another position."
                    width: 700; wrapMode: Text.WordWrap; color: view.sub; font.pixelSize: 10; font.italic: true }
@@ -216,6 +245,7 @@ Item {
                         KV { k: "Group diameter"; v: r.hasGroup?Number(r.groupDiameter).toFixed(1)+" mm":"—"; width: 360 }
                         KV { k: "MPI (X/Y)"; v: Number(r.mpiX||0).toFixed(1)+" / "+Number(r.mpiY||0).toFixed(1)+" mm"; width: 360 }
                         KV { k: "H/V spread"; v: r.hasGroup?Number(r.hSpread).toFixed(1)+" / "+Number(r.vSpread).toFixed(1)+" mm":"—"; width: 360 }
+                        KV { k: "Shot rhythm"; v: (r.rhythm && r.rhythm.length>0) ? (r.rhythm + " · avg " + view.secs(r.avgShotTime)) : "—"; width: 360 }
                     }
                 }
                 // checklist
