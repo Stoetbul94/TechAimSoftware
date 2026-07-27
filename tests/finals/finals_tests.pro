@@ -14,9 +14,11 @@ SOURCES += \
     tst_finals3p.cpp \
     ../../src/finals/Finals3PController.cpp \
     ../../src/finals/FinalsReportBuilder.cpp \
-    ../../src/finals/FinalsAudioService.cpp
+    ../../src/finals/FinalsAudioService.cpp \
+    ../../src/app/ProductIdentity.cpp
 
 HEADERS += \
+    ../../src/app/ProductIdentity.h \
     ../../src/finals/Finals3PController.h \
     ../../src/finals/Finals3PTypes.h \
     ../../src/finals/Finals3PConfig.h \

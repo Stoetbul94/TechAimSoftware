@@ -3,8 +3,33 @@ QT += charts qml quick printsupport widgets xml
 CONFIG += c++17
 #QMAKE_CXXFLAGS += /std:c++17
 
-VERSION = 4.0
-QMAKE_TARGET_PRODUCT = "SETA"
+# ── P0 Phase C: product identity for the Windows version resource ────────
+# TARGET fixes the executable name to TechAim.exe regardless of the project
+# filename. Keep these in step with src/app/ProductIdentity.cpp — that is the
+# authoritative source; these are the values qmake bakes into the PE
+# VERSIONINFO block, which qmake cannot read from C++.
+TARGET = TechAim
+VERSION = 0.9.0
+# The version resource is hand-authored (TechAim.rc) rather than generated
+# from QMAKE_TARGET_*: qmake leaves InternalName empty and marks the binary
+# VFT_DLL. RC_FILE takes precedence over the QMAKE_TARGET_* variables.
+win32: RC_FILE = TechAim.rc
+
+# Release-clean: a previously built Seta.exe sits in the SAME output folder
+# and stays launchable after the rename, so an operator (or a stale shortcut)
+# could run an outdated binary that looks like the product. Delete known
+# legacy executables from the output directory on every successful link.
+# Resolve the output directory at qmake time: the generated make DESTDIR
+# carries a trailing comment, so $(DESTDIR) would expand to "release/ " and
+# delete the directory rather than the file. shell_path() picks the right
+# separators for whichever shell qmake configured, and both rm -f and del
+# exit 0 when the legacy file is already absent.
+CONFIG(release, debug|release): LEGACY_OUT_DIR = $$OUT_PWD/release
+else:                           LEGACY_OUT_DIR = $$OUT_PWD/debug
+LEGACY_EXES = Seta.exe Seeds.exe
+for(legacy, LEGACY_EXES) {
+    QMAKE_POST_LINK += $$quote($(DEL_FILE) $$shell_quote($$shell_path($$LEGACY_OUT_DIR/$$legacy)))$$escape_expand(\\n\\t)
+}
 
 # F9B: build identity embedded at COMPILE time (no runtime git). qmake runs
 # git once at build-configuration time; the app never shells out to git and
@@ -37,6 +62,7 @@ SOURCES += main.cpp \
     src/finals10m/Finals10mController.cpp \
     src/qualification/QualificationController.cpp \
     src/incident/EstIncidentController.cpp \
+    src/app/ProductIdentity.cpp \
     src/mode/OperatingModeService.cpp \
     src/training/TrainingProgramController.cpp \
     src/training/TrainingBlockMetrics.cpp \
@@ -74,6 +100,8 @@ HEADERS += \
     src/finals/FinalsAudioService.h \
     src/qualification/QualificationController.h \
     src/incident/EstIncidentController.h \
+    src/app/ProductIdentity.h \
+    src/app/ProductIdentityBridge.h \
     src/mode/OperatingMode.h \
     src/mode/OperatingModeService.h
 

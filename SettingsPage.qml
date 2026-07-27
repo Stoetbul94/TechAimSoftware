@@ -474,8 +474,21 @@ Item {
                 color: "#9a9ba0"; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1
             }
             Text {
-                text: "TechAim " + (typeof BUILDINFO !== "undefined" ? BUILDINFO.version : "?")
+                // Prose form is "Tech Aim" (spaced); the unspaced "TechAim"
+                // is reserved for the executable and file prefixes.
+                text: PRODUCT.fullProductName
                 color: "white"; font.pixelSize: 12; font.bold: true
+                width: parent.width; wrapMode: Text.WordWrap
+            }
+            Text {
+                text: PRODUCT.displayName + " " + PRODUCT.version + " · " + PRODUCT.releaseChannel
+                color: "#c9ced6"; font.pixelSize: 10
+                width: parent.width; wrapMode: Text.WordWrap
+            }
+            Text {
+                text: PRODUCT.legalPublisher
+                color: "#c9ced6"; font.pixelSize: 10
+                width: parent.width; wrapMode: Text.WordWrap
             }
             Text {
                 text: (typeof BUILDINFO !== "undefined" ? BUILDINFO.config : "?") + qsTr(" build")

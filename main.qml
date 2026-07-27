@@ -8,7 +8,9 @@ ApplicationWindow {
     visible: true
     width: 640
     height: 480
-    title: qsTr("Hello World")
+    // Window caption + Windows taskbar text. Product identity comes from the
+    // PRODUCT context property (src/app/ProductIdentity.*), never hardcoded.
+    title: PRODUCT.fullProductName
 
     property bool isOpenGLEnabled: true
     property string userName: "Tachus"

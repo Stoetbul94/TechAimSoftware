@@ -272,7 +272,7 @@ Item {
                         anchors.leftMargin: 34
                         anchors.rightMargin: 34
                         anchors.bottomMargin: 20
-                        softwareVersion: "Seta 4.0"
+                        softwareVersion: PRODUCT.softwareVersionLabel
                         generatedText: "Generated " + new Date().toLocaleString(Qt.locale(""), "ddd yyyy-MM-dd hh:mm")
                     }
                 }
