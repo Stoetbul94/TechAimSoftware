@@ -121,6 +121,8 @@ legitimately appear in the same system.
 
 ---
 
+![DG-01 Application workflow](diagrams/DG-01_application_workflow.svg)
+
 ## Part 2 — Getting started
 
 🛠 **Range Operator**
@@ -240,6 +242,8 @@ report and presenting it as a result.
 
 ---
 
+![DG-02 Live versus Demo](diagrams/DG-02_live_vs_demo.svg)
+
 ## Part 5 — Disciplines and events
 
 🎯🛠
@@ -325,6 +329,8 @@ never enter averages, group diameter, MPI, spread or cadence.
 
 ---
 
+![DG-05 Training Lab programme selection](diagrams/DG-05_training_lab_selection.svg)
+
 ## Part 8 — Technical Blocks
 
 🎯🧑‍🏫
@@ -396,6 +402,8 @@ metrics*, *Group Pattern says insufficient data*.
 
 ---
 
+![DG-06 Technical Blocks workflow](diagrams/DG-06_technical_blocks.svg)
+
 ## Part 9 — Call & Diagnose
 
 🎯🧑‍🏫
@@ -455,6 +463,8 @@ from call bias; calling after glancing at the target.
 **[HUMAN VISUAL CHECK REQUIRED]** (marker placement, zoom).
 
 ---
+
+![DG-07 Call & Diagnose workflow](diagrams/DG-07_call_and_diagnose.svg)
 
 ## Part 10 — Group Pattern Coach
 
@@ -600,6 +610,8 @@ recovery) · **[HUMAN VISUAL CHECK REQUIRED]** (summary layout and PDF).
 
 ---
 
+![DG-08 Position Transition workflow](diagrams/DG-08_position_transition.svg)
+
 ## Part 12 — Reports and PDF export
 
 🧑‍🏫🛠
@@ -638,6 +650,8 @@ German PDF output (umlauts, wrapping, overflow).
 
 ---
 
+![DG-09 Report and export workflow](diagrams/DG-09_report_export.svg)
+
 ## Part 13 — Session lifecycle
 
 🛠
@@ -665,6 +679,8 @@ timing. **What is not:** video, audio, biometric data.
 **VERIFIED FROM CODE AND TESTS** (clean-close lifecycle for Training programmes).
 
 ---
+
+![DG-03 Session lifecycle](diagrams/DG-03_session_lifecycle.svg)
 
 ## Part 14 — Recovery
 
@@ -709,6 +725,8 @@ and see the troubleshooting guide.
 **VERIFIED FROM CODE AND TESTS** (detection, resume, completed-session exclusion).
 
 ---
+
+![DG-04 Recovery lifecycle](diagrams/DG-04_recovery_lifecycle.svg)
 
 ## Part 15 — Range incidents
 
@@ -790,6 +808,8 @@ independence) · **[HUMAN VISUAL CHECK REQUIRED]** (other controls).
 
 ---
 
+![DG-10 Troubleshooting escalation](diagrams/DG-10_troubleshooting_escalation.svg)
+
 ## Part 18 — Updates and beta feedback
 
 🛠
@@ -807,6 +827,8 @@ and programme, what you did / expected / observed, and the exported report if
 relevant.
 
 ---
+
+![DG-11 Update process (NOT YET AVAILABLE)](diagrams/DG-11_update_flow.svg)
 
 ## Part 19 — Troubleshooting index
 
