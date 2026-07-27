@@ -86,7 +86,8 @@ def main():
         check("0.9.0" in t, "product version present: %s" % d)
         check("Pre-Beta Validation" in t or "Pre-Beta" in t,
               "release channel present: %s" % d)
-        check("3741980" in t, "application commit present: %s" % d)
+        check(re.search(r"[Cc]ommit `[0-9a-f]{7,}`", t) is not None,
+              "application commit present: %s" % d)
         # Never the unspaced brand in running prose as the product name.
         check("TechAim Electronic" not in t,
               "brand spelled 'Tech Aim' in prose: %s" % d)
@@ -189,11 +190,61 @@ def main():
 
     # --- validation checklist must not claim unearned verification -------
     chk = docs["TechAim_Manual_Validation_Checklist.md"]
-    check("MANUAL VALIDATION REQUIRED" in chk,
-          "validation checklist defines MVR status")
-    check("VERIFIED MANUALLY" in chk, "validation checklist defines VM status")
-    check("no VM entries" in chk or "There are currently no VM entries" in chk,
+    for status in ["VERIFIED FROM CODE AND TESTS",
+                   "VERIFIED BY EXISTING MANUAL TEST",
+                   "HUMAN VISUAL CHECK REQUIRED",
+                   "WINDOWS RC1 DEPENDENT",
+                   "PHYSICAL TARGET DEPENDENT",
+                   "GERMAN REVIEW REQUIRED"]:
+        check(status in chk, "validation checklist defines status: %s" % status)
+    check("no MT entries" in chk,
           "validation checklist states that nothing is manually verified yet")
+    # The superseded vocabulary must not linger anywhere.
+    for d, t in docs.items():
+        check("MANUAL VALIDATION REQUIRED" not in t,
+              "superseded status label removed: %s" % d)
+        check("PHYSICAL HARDWARE DEPENDENT" not in t,
+              "superseded hardware label removed: %s" % d)
+
+    # --- release blockers must be recorded, not softened ------------------
+    check("LEGAL REPLACEMENT REQUIRED BEFORE EXTERNAL BETA" in chk,
+          "EULA artwork marked LEGAL REPLACEMENT REQUIRED (checklist)")
+    manual_t = docs["TechAim_Operator_Manual_EN.md"]
+    check("LEGAL REPLACEMENT REQUIRED BEFORE EXTERNAL BETA" in manual_t,
+          "EULA artwork marked LEGAL REPLACEMENT REQUIRED (manual)")
+    check("not Live-hardware certified" in manual_t
+          or "not** Live-hardware certified" in manual_t,
+          "manual states the system is NOT Live-hardware certified")
+    # No document may claim Live/hardware certification.
+    for d, t in docs.items():
+        low = t.lower()
+        for bad in ["live hardware certified", "live-target certified",
+                    "issf certified", "issf-certified software is",
+                    "seta certified"]:
+            if bad in low:
+                idx = low.find(bad)
+                window = low[max(0, idx - 200):idx + 200]
+                check(any(n in window for n in ["not ", "nicht ", "no "]),
+                      "certification claim is negated (%s): %s" % (bad, d))
+
+    # --- the application icon must not be invented ------------------------
+    reg_t = docs["TechAim_Manual_Screenshot_Register.md"]
+    check("no approved" in reg_t and "ico" in reg_t.lower(),
+          "screenshot register records that no approved .ico exists")
+    check("PENDING — BLOCKED" in reg_t,
+          "application-icon screenshot is registered as blocked")
+
+    # --- screenshot rejection rules --------------------------------------
+    for rule in ["Seta / Seeds", "Hello World", "Seta.exe",
+                 "end-user agreement artwork"]:
+        check(rule in reg_t, "screenshot rejection rule present: %s" % rule)
+
+    # --- German pending-localisation list must be precise ----------------
+    gs_t = docs["TechAim_German_Translation_Status.md"]
+    check("pending localisation" in gs_t.lower(),
+          "German status lists sections pending localisation")
+    check("Part 20" in gs_t and "Part 12" in gs_t,
+          "German pending list names specific manual parts")
 
     # --- German status must state real numbers ---------------------------
     gs = docs["TechAim_German_Translation_Status.md"]

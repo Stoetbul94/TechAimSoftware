@@ -1,6 +1,6 @@
 # Tech Aim Manual — Review Findings
 
-Document version 1.0 (P0-J) · Application commit `3741980`
+Document version 1.1 (P0-J refinement) · Application commit `84db7a2`
 
 A usability review of the P0-J documentation from four reader perspectives.
 Findings are recorded honestly, including where the documentation is currently
@@ -86,7 +86,7 @@ operator planning backup needs the exact path.
 Section 2 of the troubleshooting guide tells an operator how to react when the
 connection fails, but no document explains how to *configure* it in the first
 place (COM port, protocol settings). This is genuinely unverified —
-`[PHYSICAL HARDWARE DEPENDENT]` — but it is a gap an operator will hit
+`[PHYSICAL TARGET DEPENDENT]` — but it is a gap an operator will hit
 immediately.
 *Recommendation:* write it during hardware validation.
 
@@ -127,12 +127,30 @@ Several procedures (main-screen regions, callouts, the "no timer / no red
 **F-12 (Medium) — no diagrams.** Eleven are specified and described in text;
 none rendered.
 
-**F-13 (Medium) — no PDF output yet.** The manuals are Markdown only. No PDF
-pipeline has been run, so pagination, orphan headings, glyph coverage and
-grayscale legibility are untested.
+**F-13 (Medium) — HTML generates; PDF does not.** The Pandoc pipeline produces
+all six documents as HTML cleanly. **PDF output requires a LaTeX engine that is
+not installed**, so pagination, orphan headings, glyph coverage and grayscale
+legibility remain untested.
+*Recommendation:* install a PDF engine and run `build-manuals.ps1 -Format pdf`.
 
 **F-14 (Low) — audience labels are only in the operator manual.** The Quick
 Start and Troubleshooting guides do not carry 🎯/🧑‍🏫/🛠 markers.
+
+**F-15 (High) — supplied brand artwork conflicts with the product.** Two SVG
+files (`logo.svg`, `logo-mark.svg`) were supplied from outside the repository
+using a slate/amber palette (`#1f2937` / `#f59e0b`). The Tech Aim application
+uses red `#C40046` throughout its interface and on every exported report.
+Adopting them would put a **third** visual identity in front of the reader,
+and both are plain Arial-text placeholders rather than finished artwork. They
+are recorded as CANDIDATE — BRAND APPROVAL REQUIRED in
+`_shared/brand-assets.md` and are **not used**; the manuals continue to use
+the wordmark the application itself ships.
+*Recommendation:* decide the brand direction at product level and apply it to
+the application first, then to the manuals — not the other way round.
+
+**F-16 (High) — there is no approved Windows application icon.** No `.ico`
+exists, so screenshot SS-31 is registered PENDING — BLOCKED. No icon has been
+invented or mocked. Blocks a professional-looking installer at RC1.
 
 ---
 
@@ -140,8 +158,8 @@ Start and Troubleshooting guides do not carry 🎯/🧑‍🏫/🛠 markers.
 
 | Severity | Count | Nature |
 |---|---|---|
-| High | 5 | installer procedure, German terminology check, German layout, screenshots, (F-08/F-09 blocking German beta) |
-| Medium | 7 | interpretation guidance, worked example, pattern illustrations, data paths, connection setup, partial German manual, diagrams, PDF |
+| High | 7 | installer procedure (F-05), German terminology check (F-08), German layout (F-09), screenshots (F-11), brand-artwork conflict (F-15), no application icon (F-16) |
+| Medium | 7 | interpretation guidance, worked example, pattern illustrations, data paths, connection setup, partial German manual, diagrams, PDF engine |
 | Low | 2 | cosmetic/structural |
 
 **The text is accurate and honest about its own limits. What it lacks is

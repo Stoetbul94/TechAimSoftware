@@ -1,18 +1,17 @@
 # Tech Aim Electronic Target Control — Quick Start Guide
 
 Product version 0.9.0 · Release channel: Pre-Beta Validation
-Document version 1.0 (P0-J) · Language: English (controlled master edition)
-Published 2026-07-27 · Application commit `3741980`
+Document version 1.1 (P0-J refinement) · Language: English (controlled master edition)
+Published 2026-07-27 · Application commit `84db7a2`
 Publisher: JAC SHOOTING SOLUTIONS (PTY) LTD
 
 **Status: Pre-Beta Documentation. Internal evaluation — not for public
 distribution.**
 
 > **Verification notice.** Procedures below were written from the current
-> source code and from automated tests. Steps marked
-> **[MANUAL VALIDATION REQUIRED]** have **not** been performed against a
-> running build by the author of this document. Confirm them before relying
-> on them in front of an athlete. See
+> source code and from automated tests. Steps marked **[HUMAN VISUAL CHECK
+> REQUIRED]** have **not** been seen on screen by the author of this document.
+> Confirm them before relying on them in front of an athlete. See
 > `TechAim_Manual_Validation_Checklist.md`.
 
 ---
@@ -59,7 +58,7 @@ This guide gets you through one complete session. The full reference is
 `TechAim.exe`; a build that still shows *Seta* is outdated. Only one instance
 can run at a time — a second launch shows **"Tech Aim is already running."**
 
-[MANUAL VALIDATION REQUIRED] — window caption and taskbar text.
+[HUMAN VISUAL CHECK REQUIRED] — window caption and taskbar text.
 
 ## 5. Selecting English or German
 
@@ -94,7 +93,7 @@ Changing mode uses **Restart Now** or **Restart Later**.
 **Live mode only.** Confirm the connection indicator shows the target is
 connected before starting.
 
-[MANUAL VALIDATION REQUIRED] / [PHYSICAL HARDWARE DEPENDENT] — the exact
+[HUMAN VISUAL CHECK REQUIRED] / [PHYSICAL TARGET DEPENDENT] — the exact
 indicator appearance and the connection procedure need confirmation against
 real hardware.
 
@@ -105,7 +104,7 @@ Select or enter the athlete on the home screen before starting.
 **Why it matters:** the athlete name is written into the session record and
 printed on every exported report.
 
-[MANUAL VALIDATION REQUIRED]
+[HUMAN VISUAL CHECK REQUIRED]
 
 ## 9. Selecting a discipline
 
@@ -185,7 +184,7 @@ there is enough data, and observations.
 **If it fails:** see *PDF will not export* in
 `TechAim_Troubleshooting_EN.md`.
 
-[MANUAL VALIDATION REQUIRED] — destination dialog and default folder.
+[HUMAN VISUAL CHECK REQUIRED] — destination dialog and default folder.
 
 ## 17. Returning Home correctly
 

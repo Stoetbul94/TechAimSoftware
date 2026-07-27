@@ -1,18 +1,20 @@
 # Tech Aim Electronic Target Control — Operator Manual
 
 Product version 0.9.0 · Release channel: Pre-Beta Validation
-Document version 1.0 (P0-J) · Language: English (controlled master edition)
-Published 2026-07-27 · Application commit `3741980`
+Document version 1.1 (P0-J refinement) · Language: English (controlled master edition)
+Published 2026-07-27 · Application commit `84db7a2` (doc v1.1)
 Publisher: JAC SHOOTING SOLUTIONS (PTY) LTD
 
 **Status: Pre-Beta Documentation. Internal evaluation — not for public
 distribution.**
 
 > **Verification notice.** This manual is written from the current source
-> code, controllers, reachable QML screens and passing tests. Sections marked
-> **[MANUAL VALIDATION REQUIRED]** have **not** been performed against a
-> running build. Sections marked **[WINDOWS RC1 DEPENDENT]** or **[PHYSICAL
-> HARDWARE DEPENDENT]** cannot be completed yet. Per-procedure status is in
+> code, controllers, reachable QML screens and passing tests. Every procedure
+> carries one status: **VERIFIED FROM CODE AND TESTS**, **VERIFIED BY EXISTING
+> MANUAL TEST**, **[HUMAN VISUAL CHECK REQUIRED]**, **[WINDOWS RC1
+> DEPENDENT]**, **[PHYSICAL TARGET DEPENDENT]** or **[GERMAN REVIEW
+> REQUIRED]**. Nothing is currently VERIFIED BY EXISTING MANUAL TEST — no
+> interactive session has been run against this build. Per-procedure status:
 > `TechAim_Manual_Validation_Checklist.md`.
 
 **Audience labels:** 🎯 Athlete · 🧑‍🏫 Coach · 🛠 Range Operator
@@ -85,10 +87,18 @@ Anything not listed under *supported scope* is not present. Full list:
 1. German is a **partial beta translation** (~100 of 583 strings); the rest
    render in English, so German sessions are mixed-language.
 2. German layout and German PDF output are **not visually verified**.
-3. The end-user agreement artwork still shows a **SETA-era document** naming a
-   different entity. **Legal blocker for public release.**
-4. There is **no application icon**; Windows shows its default.
-5. 25 m Pistol is unimplemented; the 50 m Rifle 10-ring radius awaits rulebook
+3. The end-user agreement artwork still shows a **SETA-era document** naming
+   an entity other than JAC SHOOTING SOLUTIONS (PTY) LTD.
+   **LEGAL REPLACEMENT REQUIRED BEFORE EXTERNAL BETA.** That artwork is
+   deliberately **not reproduced anywhere in this manual** and must not be
+   treated as the product's licence terms.
+4. There is **no approved Windows application icon** (`.ico`); Windows shows
+   its default. No icon may be invented or mocked up — see
+   `_shared/brand-assets.md`.
+5. **The system has not been accepted against a physical Live target.** It is
+   **not** Live-hardware certified. Every Live-target procedure in this manual
+   is PHYSICAL TARGET DEPENDENT and unconfirmed.
+6. 25 m Pistol is unimplemented; the 50 m Rifle 10-ring radius awaits rulebook
    confirmation; the licence-expiry check is disabled.
 
 ### Safe operation
@@ -132,7 +142,7 @@ specification are finalised with the installer.
 
 **Expected result:** the home screen appears; only one instance runs.
 
-**[MANUAL VALIDATION REQUIRED]** — title bar and About screen appearance.
+**[HUMAN VISUAL CHECK REQUIRED]** — title bar and About screen appearance.
 
 ### Application identity
 
@@ -142,7 +152,7 @@ specification are finalised with the installer.
 | Settings ▸ ABOUT / BUILD | product name, version, channel, publisher, commit, build time |
 | Windows file properties | Company, description, `TechAim.exe`, 0.9.0.0 |
 
-**VERIFIED AUTOMATICALLY** — version resource and startup identity.
+**VERIFIED FROM CODE AND TESTS** — version resource and startup identity.
 
 ### Language, operating mode, navigation, closing
 
@@ -179,7 +189,7 @@ and are deliberately gated off for all three Training programmes.
 If one appears during Training, that is a defect — see *Timer appears during
 Training* and *Red 000 appears during Training* in the troubleshooting guide.
 
-**VERIFIED AUTOMATICALLY** (gating) · **[MANUAL VALIDATION REQUIRED]** (visual).
+**VERIFIED FROM CODE AND TESTS** (gating) · **[HUMAN VISUAL CHECK REQUIRED]** (visual).
 
 **Screenshots:** SS-01…SS-04 — see `TechAim_Manual_Screenshot_Register.md`.
 
@@ -226,7 +236,7 @@ or **Restart Later**. Restart relaunches the same executable.
 **COMMON MISTAKES** — leaving Demo on before a real session; exporting a Demo
 report and presenting it as a result.
 
-**[MANUAL VALIDATION REQUIRED]** — the restart round trip.
+**[HUMAN VISUAL CHECK REQUIRED]** — the restart round trip.
 
 ---
 
@@ -253,8 +263,8 @@ results and reports follow in [Part 12](#part-12--reports-and-pdf-export).
   calibration; treat 50 m absolute scores as provisional.
 - Demo results are never official.
 
-**[MANUAL VALIDATION REQUIRED]** — per-discipline event lists and score
-displays. **[PHYSICAL HARDWARE DEPENDENT]** — scoring against known impacts.
+**[HUMAN VISUAL CHECK REQUIRED]** — per-discipline event lists and score
+displays. **[PHYSICAL TARGET DEPENDENT]** — scoring against known impacts.
 
 ---
 
@@ -274,7 +284,7 @@ displays. **[PHYSICAL HARDWARE DEPENDENT]** — scoring against known impacts.
 
 Open Practice gives freedom; the Training Lab adds *structure and measurement*.
 
-**[MANUAL VALIDATION REQUIRED]** — configuration options and end-of-session
+**[HUMAN VISUAL CHECK REQUIRED]** — configuration options and end-of-session
 behaviour.
 
 ---
@@ -381,8 +391,8 @@ metrics*, *Group Pattern says insufficient data*.
 **RELATED** — [Part 10](#part-10--group-pattern-coach),
 [Part 12](#part-12--reports-and-pdf-export).
 
-**VERIFIED AUTOMATICALLY** (metrics, sighter exclusion, cadence) ·
-**[MANUAL VALIDATION REQUIRED]** (screen flow).
+**VERIFIED FROM CODE AND TESTS** (metrics, sighter exclusion, cadence) ·
+**[HUMAN VISUAL CHECK REQUIRED]** (screen flow).
 
 ---
 
@@ -441,8 +451,8 @@ reviewing (**SHOTS TO REVIEW WITH YOUR COACH**), and observations.
 **COMMON MISTAKES** — treating call error as a scoring fault; adjusting sights
 from call bias; calling after glancing at the target.
 
-**VERIFIED AUTOMATICALLY** (one-pending-shot rule, hidden actual, analytics) ·
-**[MANUAL VALIDATION REQUIRED]** (marker placement, zoom).
+**VERIFIED FROM CODE AND TESTS** (one-pending-shot rule, hidden actual, analytics) ·
+**[HUMAN VISUAL CHECK REQUIRED]** (marker placement, zoom).
 
 ---
 
@@ -486,7 +496,7 @@ a meaningless composite.
 **Examples** must use synthetic or authorised Demo data. Do not publish real
 athlete data without permission.
 
-**VERIFIED AUTOMATICALLY** (analyzer + thresholds).
+**VERIFIED FROM CODE AND TESTS** (analyzer + thresholds).
 
 ---
 
@@ -584,9 +594,9 @@ Kneeling, prone and standing metrics are kept **separate**.
 Selecting **Home** closes the session durably and clears the UI. Reopening
 must **not** show stale counters or suggest a session is still in progress.
 
-**VERIFIED AUTOMATICALLY** (phases, ignored setup shots, sighter exclusion,
+**VERIFIED FROM CODE AND TESTS** (phases, ignored setup shots, sighter exclusion,
 timers, rhythm classifier, per-position separation, clean-Home lifecycle,
-recovery) · **[MANUAL VALIDATION REQUIRED]** (summary layout and PDF).
+recovery) · **[HUMAN VISUAL CHECK REQUIRED]** (summary layout and PDF).
 
 ---
 
@@ -605,7 +615,7 @@ recovery) · **[MANUAL VALIDATION REQUIRED]** (summary layout and PDF).
 | 10 m Final | final completion |
 | 3P Final | final completion |
 | Coach report | report window |
-| Incident report | incident workflow **[MANUAL VALIDATION REQUIRED]** |
+| Incident report | incident workflow **[HUMAN VISUAL CHECK REQUIRED]** |
 
 ### Exporting
 
@@ -623,7 +633,7 @@ reports must always carry it.
 
 **IF IT FAILS** — see *PDF will not export* in the troubleshooting guide.
 
-**[MANUAL VALIDATION REQUIRED]** — filenames, default folder, page rendering,
+**[HUMAN VISUAL CHECK REQUIRED]** — filenames, default folder, page rendering,
 German PDF output (umlauts, wrapping, overflow).
 
 ---
@@ -652,7 +662,7 @@ On closing with an active session, Tech Aim offers **Save and Close** or
 **What is stored:** the append-only session record — shots, phases, notes,
 timing. **What is not:** video, audio, biometric data.
 
-**VERIFIED AUTOMATICALLY** (clean-close lifecycle for Training programmes).
+**VERIFIED FROM CODE AND TESTS** (clean-close lifecycle for Training programmes).
 
 ---
 
@@ -696,7 +706,7 @@ this check it is reported rather than quietly used.
 resumed shot count is wrong, or a recovery fails validation. Preserve the data
 and see the troubleshooting guide.
 
-**VERIFIED AUTOMATICALLY** (detection, resume, completed-session exclusion).
+**VERIFIED FROM CODE AND TESTS** (detection, resume, completed-session exclusion).
 
 ---
 
@@ -728,7 +738,7 @@ note, save.
 > outcome.** Rule decisions (re-shoots, time allowances, disqualification)
 > belong to the Jury.
 
-**[MANUAL VALIDATION REQUIRED]** — dialog flow and incident export.
+**[HUMAN VISUAL CHECK REQUIRED]** — dialog flow and incident export.
 
 ---
 
@@ -751,8 +761,8 @@ Language and brand are independent: **selecting German never changes the logo,
 theme, executable name, publisher or data location**, and never changes the
 operating mode.
 
-**VERIFIED AUTOMATICALLY** (language persistence, fallback, brand
-independence) · **[MANUAL VALIDATION REQUIRED]** (other controls).
+**VERIFIED FROM CODE AND TESTS** (language persistence, fallback, brand
+independence) · **[HUMAN VISUAL CHECK REQUIRED]** (other controls).
 
 ---
 

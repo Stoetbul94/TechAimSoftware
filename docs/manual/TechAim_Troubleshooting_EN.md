@@ -1,8 +1,8 @@
 # Tech Aim Electronic Target Control — Troubleshooting Guide
 
 Product version 0.9.0 · Release channel: Pre-Beta Validation
-Document version 1.0 (P0-J) · Language: English (controlled master edition)
-Published 2026-07-27 · Application commit `3741980`
+Document version 1.1 (P0-J refinement) · Language: English (controlled master edition)
+Published 2026-07-27 · Application commit `84db7a2`
 Publisher: JAC SHOOTING SOLUTIONS (PTY) LTD
 
 **Status: Pre-Beta Documentation. Internal evaluation — not for public
@@ -152,7 +152,7 @@ it.
 
 ## 2. Target connection
 
-**[PHYSICAL HARDWARE DEPENDENT]** — this whole section needs confirmation
+**[PHYSICAL TARGET DEPENDENT]** — this whole section needs confirmation
 against a real target.
 
 ### 2.1 Target offline / indicator turns red
@@ -203,7 +203,7 @@ real result.
 
 ## 3. Scoring and coordinates
 
-**[PHYSICAL HARDWARE DEPENDENT]**
+**[PHYSICAL TARGET DEPENDENT]**
 
 ### 3.1 Shot appears on the wrong side / axis reversed
 
