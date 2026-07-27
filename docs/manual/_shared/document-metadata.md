@@ -60,13 +60,18 @@ page footer.
 
 Procedures in these manuals carry exactly one status:
 
+These are the ONLY six status values. Every rendered document must show the
+**complete phrase** — never a two-letter abbreviation. Abbreviations are
+permitted solely as internal constants inside `tests/docs/check_manuals.py`,
+and even there the full phrase is what is asserted.
+
 | Status | Meaning |
 |---|---|
-| **VERIFIED AUTOMATICALLY** | Covered by a passing test in a harness. |
-| **VERIFIED MANUALLY** | A person performed it against a running build and confirmed it. |
-| **MANUAL VALIDATION REQUIRED** | Written from source, but **not** performed against a running build. Treat as unconfirmed. |
+| **VERIFIED FROM CODE AND TESTS** | A passing harness test or direct source inspection covers it. |
+| **VERIFIED BY EXISTING MANUAL TEST** | A person performed it against a running build and recorded the result. |
+| **HUMAN VISUAL CHECK REQUIRED** | Written from source, but **not** seen on screen. Treat as unconfirmed. |
 | **WINDOWS RC1 DEPENDENT** | Cannot be finalised until installer/signing exists. |
-| **PHYSICAL HARDWARE DEPENDENT** | Needs a real electronic target. |
+| **PHYSICAL TARGET DEPENDENT** | Needs a real electronic target. |
 | **GERMAN REVIEW REQUIRED** | Needs a native German technical reviewer. |
 
 A procedure is **never** marked verified because it looks plausible.

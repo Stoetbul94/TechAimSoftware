@@ -190,21 +190,81 @@ def main():
 
     # --- validation checklist must not claim unearned verification -------
     chk = docs["TechAim_Manual_Validation_Checklist.md"]
-    for status in ["VERIFIED FROM CODE AND TESTS",
-                   "VERIFIED BY EXISTING MANUAL TEST",
-                   "HUMAN VISUAL CHECK REQUIRED",
-                   "WINDOWS RC1 DEPENDENT",
-                   "PHYSICAL TARGET DEPENDENT",
-                   "GERMAN REVIEW REQUIRED"]:
-        check(status in chk, "validation checklist defines status: %s" % status)
-    check("no MT entries" in chk,
+
+    # Status vocabulary is repository-wide, so scan EVERY tracked .md under
+    # docs/, not just the manual set.
+    doc_corpus = {}
+    for base, _dirs, files in os.walk(os.path.join(ROOT, "docs")):
+        if "output" in base:
+            continue
+        for f in files:
+            if f.endswith(".md"):
+                fp = os.path.join(base, f)
+                rel = os.path.relpath(fp, ROOT).replace("\\", "/")
+                with io.open(fp, encoding="utf-8") as fh:
+                    doc_corpus[rel] = fh.read()
+    # STATUS_PHRASES are the ONLY user-facing status values. Abbreviations are
+    # permitted here, as internal test constants; what is ASSERTED is always
+    # the complete phrase, because that is what a rendered document must show.
+    STATUS_PHRASES = {
+        "CT":  "VERIFIED FROM CODE AND TESTS",
+        "MT":  "VERIFIED BY EXISTING MANUAL TEST",
+        "HV":  "HUMAN VISUAL CHECK REQUIRED",
+        "RC1": "WINDOWS RC1 DEPENDENT",
+        "PT":  "PHYSICAL TARGET DEPENDENT",
+        "DE":  "GERMAN REVIEW REQUIRED",
+    }
+    for phrase in STATUS_PHRASES.values():
+        check(phrase in chk, "validation checklist defines status: %s" % phrase)
+    check("no VERIFIED BY EXISTING MANUAL TEST entries" in chk,
           "validation checklist states that nothing is manually verified yet")
-    # The superseded vocabulary must not linger anywhere.
-    for d, t in docs.items():
-        check("MANUAL VALIDATION REQUIRED" not in t,
-              "superseded status label removed: %s" % d)
-        check("PHYSICAL HARDWARE DEPENDENT" not in t,
-              "superseded hardware label removed: %s" % d)
+
+    # Superseded vocabulary must not linger in ANY repository document.
+    SUPERSEDED = ["VERIFIED AUTOMATICALLY", "VERIFIED MANUALLY",
+                  "MANUAL VALIDATION REQUIRED", "PHYSICAL HARDWARE DEPENDENT",
+                  "PHYSICAL HARDWARE VALIDATION REQUIRED"]
+    for d, t in doc_corpus.items():
+        for bad in SUPERSEDED:
+            check(bad not in t, "superseded status label absent (%s): %s" % (bad, d))
+        check("[VERIFIED]" not in t and "[HUMAN]" not in t,
+              "superseded bracket markers absent: %s" % d)
+
+    # No external-facing document may use a BARE abbreviation as a status.
+    # Only the bold form is checked: "DE" also legitimately labels the German
+    # LANGUAGE column of the screenshot register, and "PT" appears in prose.
+    for d, t in doc_corpus.items():
+        bare = re.findall(r"\*\*(?:CT|MT|HV|RC1|PT|DE)\*\*", t)
+        check(not bare,
+              "no abbreviated status in a rendered document (%d found): %s"
+              % (len(bare), d))
+
+    # The documents that actually carry VALIDATION statuses must spell at
+    # least one out in full. Scoped explicitly rather than by heuristic: the
+    # ISSF rules documents also have a "Status" column, but it records rule
+    # confirmation, which is an unrelated vocabulary.
+    VALIDATION_DOCS = [
+        "docs/manual/TechAim_Manual_Validation_Checklist.md",
+        "docs/manual/TechAim_Operator_Manual_EN.md",
+        "docs/manual/TechAim_Quick_Start_EN.md",
+        "docs/manual/TechAim_Troubleshooting_EN.md",
+        "docs/manual/TechAim_Manual_Review_Findings.md",
+        "docs/manual/manual-pdf-validation.md",
+        "docs/manual/target-connection-validation.md",
+        "docs/manual/_shared/document-metadata.md",
+        "docs/pre-beta-manual-acceptance.md",
+        "docs/german-beta-visual-review.md",
+    ]
+    for d in VALIDATION_DOCS:
+        check(d in doc_corpus, "validation-status document present: %s" % d)
+        if d in doc_corpus:
+            check(any(ph in doc_corpus[d] for ph in STATUS_PHRASES.values()),
+                  "uses a complete status phrase: %s" % d)
+
+    # Where the checklist gives a legend, it must sit beside its table.
+    legend_at = chk.find("| Status | Meaning |")
+    table_at  = chk.find("| # | Procedure |")
+    check(0 <= legend_at < table_at,
+          "status legend appears immediately before the traceability table")
 
     # --- release blockers must be recorded, not softened ------------------
     check("LEGAL REPLACEMENT REQUIRED BEFORE EXTERNAL BETA" in chk,

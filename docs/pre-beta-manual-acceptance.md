@@ -3,13 +3,21 @@
 **Build:** Tech Aim Electronic Target Control 0.9.0 · Pre-Beta Validation
 **Executable:** `release/TechAim.exe`
 
-Two kinds of entry appear below:
+Entries use the controlled status vocabulary
+(`docs/manual/_shared/document-metadata.md`), always as the **complete
+phrase**:
 
-- **[VERIFIED]** — checked automatically in this environment; the evidence is
-  named. No human repeat needed unless something changed.
-- **[HUMAN]** — requires a person at the screen or at the range. **Not
-  performed.** Interactive GUI control and physical target hardware are not
-  available here, so no visual acceptance is claimed for these.
+- **VERIFIED FROM CODE AND TESTS** — checked automatically in this
+  environment; the evidence is named. No human repeat needed unless something
+  changed.
+- **HUMAN VISUAL CHECK REQUIRED** — requires a person at the screen. **Not
+  performed.** Interactive GUI control is not available here, so no visual
+  acceptance is claimed.
+- **PHYSICAL TARGET DEPENDENT** — needs a real electronic target.
+- **WINDOWS RC1 DEPENDENT** — needs the installer / signing pipeline.
+- **GERMAN REVIEW REQUIRED** — needs a native German technical reviewer.
+- **VERIFIED BY EXISTING MANUAL TEST** — a person performed it and recorded
+  the result. **There are currently no entries with this status.**
 
 ---
 
@@ -17,20 +25,20 @@ Two kinds of entry appear below:
 
 | # | Check | Status |
 |---|---|---|
-| 1.1 | Executable is `TechAim.exe` | **[VERIFIED]** `release/` contains only `TechAim.exe` |
-| 1.2 | Stale `Seta.exe` removed from output | **[VERIFIED]** post-link clean; directory listing confirms |
-| 1.3 | Windows version resource correct | **[VERIFIED]** `Get-Item .VersionInfo` — company, description, InternalName `TechAim`, OriginalFilename `TechAim.exe`, product, 0.9.0.0, "Windows Pre-Beta Validation Build" |
-| 1.4 | Startup log identity | **[VERIFIED]** `Tech Aim 0.9.0 Release build · commit <sha> · Pre-Beta Validation · flavour TECH_AIM` |
-| 1.5 | Session data root unchanged | **[VERIFIED]** `%LOCALAPPDATA%\TechAim\TechAim` |
-| 1.6 | No user-facing Seta/Seeds/Tachus product identity | **[VERIFIED]** identity assertions in the 3P finals harness |
-| 1.7 | SETA hardware/supplier references retained | **[VERIFIED]** audit doc, class C — lane server + shot-data file share untouched |
-| 1.8 | Window caption and taskbar read "Tech Aim Electronic Target Control" | **[HUMAN]** — binding verified to load without error, but the rendered caption was not seen |
-| 1.9 | Settings ▸ About shows product, version, channel, publisher | **[HUMAN]** |
-| 1.10 | Application icon | **[HUMAN]** — **known gap: no `.ico` exists**, Windows shows the default |
+| 1.1 | Executable is `TechAim.exe` | **VERIFIED FROM CODE AND TESTS** `release/` contains only `TechAim.exe` |
+| 1.2 | Stale `Seta.exe` removed from output | **VERIFIED FROM CODE AND TESTS** post-link clean; directory listing confirms |
+| 1.3 | Windows version resource correct | **VERIFIED FROM CODE AND TESTS** `Get-Item .VersionInfo` — company, description, InternalName `TechAim`, OriginalFilename `TechAim.exe`, product, 0.9.0.0, "Windows Pre-Beta Validation Build" |
+| 1.4 | Startup log identity | **VERIFIED FROM CODE AND TESTS** `Tech Aim 0.9.0 Release build · commit <sha> · Pre-Beta Validation · flavour TECH_AIM` |
+| 1.5 | Session data root unchanged | **VERIFIED FROM CODE AND TESTS** `%LOCALAPPDATA%\TechAim\TechAim` |
+| 1.6 | No user-facing Seta/Seeds/Tachus product identity | **VERIFIED FROM CODE AND TESTS** identity assertions in the 3P finals harness |
+| 1.7 | SETA hardware/supplier references retained | **VERIFIED FROM CODE AND TESTS** audit doc, class C — lane server + shot-data file share untouched |
+| 1.8 | Window caption and taskbar read "Tech Aim Electronic Target Control" | **HUMAN VISUAL CHECK REQUIRED** — binding verified to load without error, but the rendered caption was not seen |
+| 1.9 | Settings ▸ About shows product, version, channel, publisher | **HUMAN VISUAL CHECK REQUIRED** |
+| 1.10 | Application icon | **WINDOWS RC1 DEPENDENT** — **known gap: no approved `.ico` exists**, Windows shows the default |
 
 ## 2. English flows
 
-All **[HUMAN]**. Confirm each screen opens, is readable, and no control is
+All **HUMAN VISUAL CHECK REQUIRED**. Confirm each screen opens, is readable, and no control is
 clipped or unreachable.
 
 - [ ] Homepage / athlete selection / discipline selection
@@ -51,17 +59,17 @@ clipped or unreachable.
 
 | # | Check | Status |
 |---|---|---|
-| 3.1 | German catalogue loads | **[VERIFIED]** `UI language: de-DE (beta translation)`, no load diagnostic |
-| 3.2 | Language persists across restart | **[VERIFIED]** `[App_Settings] ui_language` read back on next launch |
-| 3.3 | Unknown language code falls back to English + logs | **[VERIFIED]** code path + startup log |
-| 3.4 | Untranslated strings render English, never blank/key | **[VERIFIED]** by design — Qt source-language fallback; 483 strings currently rely on it |
-| 3.5 | Language does not change brand, theme, executable or app_mode | **[VERIFIED]** LanguageService has no access to ProductIdentity or mode state |
-| 3.6 | Selector shows "Deutsch (Beta)" and the beta note | **[HUMAN]** |
-| 3.7 | Live switch retranslates without a restart | **[HUMAN]** |
-| 3.8 | Umlauts and ß render on screen | **[HUMAN]** |
-| 3.9 | **Mixed-language screens are expected** — confirm acceptable for beta | **[HUMAN]** |
+| 3.1 | German catalogue loads | **VERIFIED FROM CODE AND TESTS** `UI language: de-DE (beta translation)`, no load diagnostic |
+| 3.2 | Language persists across restart | **VERIFIED FROM CODE AND TESTS** `[App_Settings] ui_language` read back on next launch |
+| 3.3 | Unknown language code falls back to English + logs | **VERIFIED FROM CODE AND TESTS** code path + startup log |
+| 3.4 | Untranslated strings render English, never blank/key | **VERIFIED FROM CODE AND TESTS** by design — Qt source-language fallback; 483 strings currently rely on it |
+| 3.5 | Language does not change brand, theme, executable or app_mode | **VERIFIED FROM CODE AND TESTS** LanguageService has no access to ProductIdentity or mode state |
+| 3.6 | Selector shows "Deutsch (Beta)" and the beta note | **HUMAN VISUAL CHECK REQUIRED** |
+| 3.7 | Live switch retranslates without a restart | **HUMAN VISUAL CHECK REQUIRED** |
+| 3.8 | Umlauts and ß render on screen | **HUMAN VISUAL CHECK REQUIRED** |
+| 3.9 | **Mixed-language screens are expected** — confirm acceptable for beta | **HUMAN VISUAL CHECK REQUIRED** |
 
-### German layout — all [HUMAN]
+### German layout — all HUMAN VISUAL CHECK REQUIRED
 
 Check at **1536×960, 1366×768, 1280×720, 1100×700, maximised, restored**:
 
@@ -76,26 +84,27 @@ Check at **1536×960, 1366×768, 1280×720, 1100×700, maximised, restored**:
 
 | # | Check | Status |
 |---|---|---|
-| 4.1 | Technical Blocks / Call & Diagnose / Group Pattern / Position Transition logic | **[VERIFIED]** training harness 567/0 |
-| 4.2 | Position Transition shot cadence is the shot-to-shot interval | **[VERIFIED]** cadence tests |
-| 4.3 | No stray match timer in training modes | **[VERIFIED]** gate change; **[HUMAN]** visual confirm |
-| 4.4 | No ghost "000" counter | **[VERIFIED]** gate change; **[HUMAN]** visual confirm |
-| 4.5 | No stale state after Home | **[VERIFIED]** clean-Home lifecycle test |
-| 4.6 | **Technical Blocks "Avg shot time" now reads differently** (it was averaging absolute timestamps) — sanity-check against a real session | **[HUMAN]** |
+| 4.1 | Technical Blocks / Call & Diagnose / Group Pattern / Position Transition logic | **VERIFIED FROM CODE AND TESTS** training harness 567/0 |
+| 4.2 | Position Transition shot cadence is the shot-to-shot interval | **VERIFIED FROM CODE AND TESTS** cadence tests |
+| 4.3 | No stray match timer in training modes | **VERIFIED FROM CODE AND TESTS** gate change; **HUMAN VISUAL CHECK REQUIRED** visual confirm |
+| 4.4 | No ghost "000" counter | **VERIFIED FROM CODE AND TESTS** gate change; **HUMAN VISUAL CHECK REQUIRED** visual confirm |
+| 4.5 | No stale state after Home | **VERIFIED FROM CODE AND TESTS** clean-Home lifecycle test |
+| 4.6 | **Technical Blocks "Avg shot time" now reads differently** (it was averaging absolute timestamps) — sanity-check against a real session | **HUMAN VISUAL CHECK REQUIRED** |
 
-## 5. Reports and PDFs — all [HUMAN]
+## 5. Reports and PDFs — all HUMAN VISUAL CHECK REQUIRED
 
 - [ ] Enlarged Tech Aim logo correct on every report type
 - [ ] Software attribution reads "Tech Aim 0.9.0" (was "Seta 4.0")
 - [ ] PDF metadata author/creator is Tech Aim
-- [ ] German PDFs: umlauts, no missing glyphs, no overflow, page numbers visible
+- [ ] German PDFs: umlauts, no missing glyphs, no overflow, page numbers
+      visible — also **GERMAN REVIEW REQUIRED**
 - [ ] Training disclaimer present on training reports and **absent** from
       competition reports
 - [ ] Athlete notes unchanged; Demo/Live status accurate
 - [ ] No development paths leak into output
 - [ ] Generated filenames contain no problematic filesystem characters
 
-## 6. Recovery — all [HUMAN]
+## 6. Recovery — all HUMAN VISUAL CHECK REQUIRED
 
 - [ ] Kill mid-session → recovery offers the session; resume is correct
 - [ ] Clean close → no candidate offered
@@ -107,13 +116,13 @@ Check at **1536×960, 1366×768, 1280×720, 1100×700, maximised, restored**:
 
 | # | Check | Status |
 |---|---|---|
-| 7.1 | Restart relaunches `TechAim.exe`, not a legacy name | **[VERIFIED]** by inspection — restart uses `applicationFilePath()`, so it re-launches itself by resolved path; no code references `Seta.exe` |
-| 7.2 | Live → Demo and Demo → Live restart | **[HUMAN]** |
-| 7.3 | Path containing spaces; installed path | **[HUMAN]** |
-| 7.4 | Second instance blocked with "Tech Aim is already running" | **[HUMAN]** |
-| 7.5 | A legacy `Seta.exe` and `TechAim.exe` cannot run concurrently | **[VERIFIED]** by construction — this build also holds the legacy lock; **[HUMAN]** to confirm against a real old binary |
+| 7.1 | Restart relaunches `TechAim.exe`, not a legacy name | **VERIFIED FROM CODE AND TESTS** by inspection — restart uses `applicationFilePath()`, so it re-launches itself by resolved path; no code references `Seta.exe` |
+| 7.2 | Live → Demo and Demo → Live restart | **HUMAN VISUAL CHECK REQUIRED** |
+| 7.3 | Path containing spaces; installed path | **HUMAN VISUAL CHECK REQUIRED** |
+| 7.4 | Second instance blocked with "Tech Aim is already running" | **HUMAN VISUAL CHECK REQUIRED** |
+| 7.5 | A legacy `Seta.exe` and `TechAim.exe` cannot run concurrently | **VERIFIED FROM CODE AND TESTS** by construction — this build also holds the legacy lock; **HUMAN VISUAL CHECK REQUIRED** to confirm against a real old binary |
 
-## 8. Physical range — all [HUMAN]
+## 8. Physical range — all PHYSICAL TARGET DEPENDENT
 
 Nothing below can be exercised here; all of it needs real hardware.
 

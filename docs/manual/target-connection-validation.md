@@ -4,7 +4,7 @@ Document version 1.0 (P0.1) · Application commit `169eef9`
 
 Closes review finding **F-07** (target connection setup undocumented) as far as
 the source permits. **Everything requiring real hardware is marked
-PHYSICAL HARDWARE VALIDATION REQUIRED and has not been performed.**
+PHYSICAL TARGET DEPENDENT and has not been performed.**
 
 **No SETA protocol details are guessed.** Where the vendor protocol is not
 evident from this repository, that is stated rather than inferred.
@@ -74,7 +74,7 @@ Recorded from the project's working notes, **not** from vendor documentation:
 - `config.ini` needs `app_mode=Live` and `is_single_decimal=1`
   (coordinates in tenths of a millimetre)
 
-**PHYSICAL HARDWARE VALIDATION REQUIRED** — none of this has been exercised in
+**PHYSICAL TARGET DEPENDENT** — none of this has been exercised in
 this phase.
 
 ## 6. What is NOT documented, and will not be guessed

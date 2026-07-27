@@ -325,7 +325,7 @@ so should any coaching conversation built on it.
 Across every programme, **sighters are excluded from counted metrics.** They
 never enter averages, group diameter, MPI, spread or cadence.
 
-**VERIFIED AUTOMATICALLY.**
+**VERIFIED FROM CODE AND TESTS.**
 
 ---
 
