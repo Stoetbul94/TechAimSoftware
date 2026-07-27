@@ -1,11 +1,25 @@
 {
   "version": "0.0.1",
+  "_comment": [
+    "Tech Aim is a Qt Widgets/QML DESKTOP application. It serves no HTTP and",
+    "cannot be previewed in a browser pane - build it with",
+    "'qmake Seta.pro && mingw32-make -f Makefile.Release' (Qt 6.5.3 MinGW) and",
+    "run release/TechAim.exe directly.",
+    "",
+    "The previous entry here could never start: it spawned 'qmake' (not on the",
+    "spawned process PATH -> ENOENT), passed -spec win32-msvc and nmake (this",
+    "project builds with MinGW, not MSVC), and launched release/Seta.exe",
+    "(renamed to TechAim.exe in P0).",
+    "",
+    "What IS previewable is the published documentation. Generate it first:",
+    "  powershell -File docs\\manual\\build-manuals.ps1 -Format html"
+  ],
   "configurations": [
     {
-      "name": "Seta10 (Qt build + run)",
-      "runtimeExecutable": "qmake",
-      "runtimeArgs": ["Seta.pro", "-spec", "win32-msvc", "&&", "nmake", "&&", "release\\Seta.exe"],
-      "port": 0
+      "name": "Tech Aim manuals (generated HTML)",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8777", "--directory", "docs/manual/output"],
+      "port": 8777
     }
   ]
 }
