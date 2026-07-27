@@ -8,8 +8,8 @@
 > Master-Ausgabe**. Bei Abweichungen gilt die englische Fassung.
 
 Produktversion 0.9.0 · Release-Kanal: Pre-Beta Validation
-Dokumentversion 1.0 (P0-J) · Sprache: Deutsch (Beta)
-Veröffentlicht 2026-07-27 · Anwendungs-Commit `3741980`
+Dokumentversion 1.1 (P0-J refinement) · Sprache: Deutsch (Beta)
+Veröffentlicht 2026-07-27 · Anwendungs-Commit `84db7a2`
 Herausgeber: JAC SHOOTING SOLUTIONS (PTY) LTD
 
 **Status: Pre-Beta-Dokumentation. Interne Evaluierung — nicht zur
@@ -88,7 +88,7 @@ Der Moduswechsel erfolgt über **Jetzt neu starten (Restart Now)** oder
 **Nur im Live-Modus.** Vor dem Start prüfen, ob die Verbindungsanzeige die
 Scheibe als verbunden ausweist.
 
-*[MANUAL VALIDATION REQUIRED / PHYSISCHE HARDWARE ERFORDERLICH]*
+*[HUMAN VISUAL CHECK REQUIRED / PHYSICAL TARGET DEPENDENT]*
 
 ## 8. Sportler auswählen
 

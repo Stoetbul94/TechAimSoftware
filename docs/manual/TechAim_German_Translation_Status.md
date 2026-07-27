@@ -1,6 +1,6 @@
 # Tech Aim — German Translation Status
 
-Document version 1.0 (P0-J) · Application commit `3741980`
+Document version 1.1 (P0-J refinement) · Application commit `84db7a2`
 
 **GERMAN BETA TRANSLATION — NATIVE TECHNICAL REVIEW REQUIRED**
 
@@ -53,9 +53,51 @@ than 17%, because some visible text is not counted in the 583 at all.
 
 | Document | Status |
 |---|---|
-| `TechAim_Quick_Start_DE.md` | German beta — native review required |
-| `TechAim_Operator_Manual_DE.md` | German beta — **structural translation**; several parts summarised with an explicit pointer to the English master |
-| `TechAim_Troubleshooting_DE.md` | German beta — **key faults translated**; the remainder points to the English master |
+| `TechAim_Quick_Start_DE.md` | German beta — **complete draft**, native review required |
+| `TechAim_Operator_Manual_DE.md` | German beta — **partial**; see the pending list below |
+| `TechAim_Troubleshooting_DE.md` | German beta — **partial**; see the pending list below |
+
+### Precise list of German manual sections pending localisation
+
+Nothing below is blank or hidden — each is summarised in German with an
+explicit pointer to the English master. This list is the authoritative record
+of what a German-only reader still cannot get from the German documents.
+
+**`TechAim_Operator_Manual_DE.md`**
+
+| Section | Current state | Pending |
+|---|---|---|
+| Parts 1–4 | fully translated | — |
+| **Parts 5–6** — Disciplines/events, Open Practice | summarised, key limitations translated | full per-discipline workflow detail |
+| Parts 7–11 — Training Lab, all four programmes | fully translated | native terminology review |
+| **Part 12** — Reports and PDF export | summarised | full report-by-report walkthrough |
+| Parts 13–14 — Session lifecycle, Recovery | fully translated | native terminology review |
+| **Part 15** — Range incidents | summarised, categories left in English UI form | German incident category names once the UI provides them |
+| **Part 16** — Settings | summarised, control names in English UI form | full setting-by-setting detail |
+| **Part 17** — Data and privacy | summarised | full text; blocked on RC1 for exact paths |
+| **Part 18** — Updates | summarised | blocked on RC1 |
+| **Part 19** — Troubleshooting index | pointer only | index table |
+| **Part 20** — Glossary | pointer only | full German glossary (source terms exist in `docs/german-translation-glossary.md`) |
+
+**`TechAim_Troubleshooting_DE.md`**
+
+| Section | Current state | Pending |
+|---|---|---|
+| Application (1.0–1.4) | translated | — |
+| Target connection (2.1–2.3) | translated | — |
+| Training Lab (3.1–3.8) | translated | — |
+| Reports (4.1–4.3) | translated | — |
+| Recovery (5.1–5.4) | translated | — |
+| Decision trees A, B, C | fully translated | — |
+| **Scoring and coordinates** | **absent** | whole section |
+| **Windows and security** | marked RC1 dependent | blocked on RC1 |
+| **Decision tree D** | marked RC1 dependent | blocked on RC1 |
+
+**Blocking dependency:** several of these cannot be completed by a translator
+alone. Where the *interface* is still English, translating the manual would
+produce German instructions naming controls the reader cannot find. Those
+sections deliberately keep the English UI label in brackets and stay
+summarised until the UI strings are wrapped and translated.
 
 The German manuals follow `docs/german-translation-glossary.md` and the
 application catalogue. **Manual terminology must match the UI**; where a UI

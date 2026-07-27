@@ -15,7 +15,7 @@
 
 Produktversion 0.9.0 · Release-Kanal: Pre-Beta Validation
 Dokumentversion 1.0 (P0-J) · Sprache: Deutsch (Beta)
-Veröffentlicht 2026-07-27 · Anwendungs-Commit `3741980`
+Veröffentlicht 2026-07-27 · Anwendungs-Commit `84db7a2`
 Herausgeber: JAC SHOOTING SOLUTIONS (PTY) LTD
 
 **Status: Pre-Beta-Dokumentation. Interne Evaluierung — nicht zur

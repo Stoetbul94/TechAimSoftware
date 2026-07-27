@@ -9,7 +9,7 @@
 > die häufigsten Fälle sowie die Entscheidungsbäume ab.
 
 Produktversion 0.9.0 · Dokumentversion 1.0 (P0-J) · Sprache: Deutsch (Beta)
-Anwendungs-Commit `3741980` · Herausgeber: JAC SHOOTING SOLUTIONS (PTY) LTD
+Anwendungs-Commit `84db7a2` · Herausgeber: JAC SHOOTING SOLUTIONS (PTY) LTD
 
 **Status: Pre-Beta-Dokumentation. Interne Evaluierung.**
 
