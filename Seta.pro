@@ -63,6 +63,7 @@ SOURCES += main.cpp \
     src/qualification/QualificationController.cpp \
     src/incident/EstIncidentController.cpp \
     src/app/ProductIdentity.cpp \
+    src/app/LanguageService.cpp \
     src/mode/OperatingModeService.cpp \
     src/training/TrainingProgramController.cpp \
     src/training/TrainingBlockMetrics.cpp \
@@ -102,6 +103,7 @@ HEADERS += \
     src/incident/EstIncidentController.h \
     src/app/ProductIdentity.h \
     src/app/ProductIdentityBridge.h \
+    src/app/LanguageService.h \
     src/mode/OperatingMode.h \
     src/mode/OperatingModeService.h
 
@@ -139,10 +141,11 @@ include(Reliability.pri)
 # QSoundEffect for the finals audio cues (FinalsAudioService).
 QT += multimedia
 
-# translations.qrc removed (S2.3): the file never existed and no root-level
-# translation assets do either (QModMaster's live in the vendored module).
+# P0 Phase F: compiled .qm catalogues ship INSIDE the binary, so a deployed
+# install cannot lose its translations to a missing file on disk.
 RESOURCES += qml.qrc \
-    images.qrc
+    images.qrc \
+    techaim_translations.qrc
 
 DISTFILES += \
     images/loginPage/combo_down.png \
@@ -183,30 +186,80 @@ HEADERS += \
 
 include(ModReader/qModMaster.pro)
 
+# P0 Phase F. English is the SOURCE language and needs no catalogue.
+# The legacy german/french/italain/spanish/chinese .ts files were
+# Tachus-era stubs covering only the vendored QModMaster forms (every entry
+# "unfinished"); they are not product catalogues and are not built.
 TRANSLATIONS += \
-    translations/german.ts \
-    translations/italain.ts \
-    translations/french.ts \
-    translations/spanish.ts \
-    translations/chinese.ts
+    translations/techaim_de_DE.ts
 
 lupdate_only{
-SOURCES = main.qml \
-        CenterPane.qml \
-        ClosePopupDialog.qml \
-        Header.qml \
-        LeftPanel.qml \
-        LoginPage.qml \
-        MatchReport.qml \
-        MatchReportInfo.qml \
-        ModConnectorDialog.qml \
-        PdfPage.qml \
-        PdfSeriesPage.qml \
-        RightPanel.qml \
-        SeriesComponent.qml \
-        SettingsPage.qml \
-        ShootingPage.qml \
-        SummaryPage.qml
+SOURCES = CallDiagnoseHud.qml 
+        CallDiagnoseReportView.qml 
+        CallDiagnoseRightPanel.qml 
+        CenterPane.qml 
+        CoachDashboardView.qml 
+        CoachDetailedView.qml 
+        CoachPrintView.qml 
+        CoachReportCard.qml 
+        CoachReportWindow.qml 
+        ConnectionError.qml 
+        Finals10mCommandPanel.qml 
+        Finals10mHud.qml 
+        Finals10mRightPanel.qml 
+        FinalsAdvanceControl.qml 
+        FinalsCommandOverlay.qml 
+        FinalsDeveloperDrawer.qml 
+        FinalsHud.qml 
+        FinalsIncidentToast.qml 
+        FinalsPerformanceBlock.qml 
+        FinalsProgressIndicator.qml 
+        FinalsReportTarget.qml 
+        FinalsReportView.qml 
+        FinalsTopStrip.qml 
+        FloatingWindow.qml 
+        FloatingWindowGrip.qml 
+        Header.qml 
+        HeatMapCanvas.qml 
+        IncidentWindow.qml 
+        IssfTargetCanvas.qml 
+        LeftPanel.qml 
+        LoginPage.qml 
+        MatchReportInfo.qml 
+        MatchReportView.qml 
+        MetricCard.qml 
+        MetricChip.qml 
+        ModConnectorDialog.qml 
+        PdfPage.qml 
+        PdfSeriesPage.qml 
+        PersistenceBanner.qml 
+        PositionTransitionHud.qml 
+        PositionTransitionReportView.qml 
+        PositionTransitionRightPanel.qml 
+        RecoveryDialog.qml 
+        Report3P.qml 
+        Report3PSeries.qml 
+        ReportFooter.qml 
+        ReportHeader.qml 
+        ReportWindow.qml 
+        RightPanel.qml 
+        SectionTitle.qml 
+        SeriesCard.qml 
+        SeriesComponent.qml 
+        SettingsPage.qml 
+        ShootingPage.qml 
+        ShotTargetCanvas.qml 
+        StatChip.qml 
+        SummaryReportView.qml 
+        TechAimDialog.qml 
+        TechAimDialogManager.qml 
+        Theme.qml 
+        TrainingHud.qml 
+        TrainingReportView.qml 
+        TrainingRightPanel.qml 
+        VIcon.qml 
+        WindowManager.qml 
+        main.qml
 }
 
 #INCLUDEPATH += "C:/Program Files (x86)/Windows Kits/10/Include/10.0.17763.0/ucrt"

@@ -40,6 +40,7 @@
 #include "src/reliability/storage/StoragePaths.h"
 #include "src/app/ProductIdentity.h"
 #include "src/app/ProductIdentityBridge.h"
+#include "src/app/LanguageService.h"
 #include "logfile.h"
 #include <memory>
 #include <QLockFile>
@@ -238,28 +239,13 @@ int main(int argc, char *argv[])
     ///////////////////////////////////////////////////////////
 
 
-    //// translations
-    QTranslator translator;
-    //qrc:/images/leftPanel/pistol_box_copy.png
-    //    translator.load(QLocale(), "Test", QString(), ":/Translations/Translations");
-
-    QFile file("://translations/french.qm");
-    if (!file.open(QIODevice::ReadOnly))
-        qDebug() << "Can't find it!";
-
-    QString curDir = QDir::currentPath();
-    //    curDir.append("/french.qm");
-    //    bool isTrlsFileLoaded = translator.load("C://Work/tachus/Merging_app_modReader/translations/german.qm");
-    bool isTrlsFileLoaded = translator.load("german.qm");
-
-    if(!isTrlsFileLoaded) {
-        qDebug() << "FILE NOT LOADED " << translator.isEmpty();
-    }
-    else {
-        qDebug() << "FILE LOADED";
-        qApp->installTranslator(&translator);
-    }
-    ////
+    // P0 Phase F — UI language. Replaces the Tachus-era block that probed for
+    // a french.qm and then loaded "german.qm" from the process CWD (it never
+    // resolved in a deployed install). Catalogues now ship in the binary and
+    // the choice persists in config.ini. Installed BEFORE the QML engine
+    // loads so the first frame is already in the selected language.
+    // The service is created after AppSettings below (it needs the resolved
+    // config path); see languageService.
 
     // ── Session Reliability Layer (M0): storage initialization ──────────
     // Resolve the AppData root, create the directory tree, probe that
@@ -294,6 +280,13 @@ int main(int argc, char *argv[])
     }
 
     AppSettings *appsettings = new AppSettings("config.ini");
+
+    // Language is persisted alongside app_mode. Applied here, before the QML
+    // engine is created. Language selection deliberately touches translations
+    // ONLY — never the brand, theme, executable identity or app_mode.
+    LanguageService* languageService =
+        new LanguageService(appsettings->getConfigFilePath(), appsettings);
+    languageService->applyPersistedLanguage();
 
     // F10: operating-mode authority (Live target vs Demo simulation). Parsed
     // case-consistently from config.ini; an invalid/missing value falls back to
@@ -389,6 +382,10 @@ int main(int argc, char *argv[])
     // QML must take product names from here instead of hardcoding them.
     ProductIdentityBridge* productBridge = new ProductIdentityBridge(&app);
     engine.rootContext()->setContextProperty("PRODUCT", productBridge);
+    // P0 Phase F: the engine lets a live language switch re-evaluate every
+    // qsTr() binding, so most screens change without a restart.
+    languageService->setQmlEngine(&engine);
+    engine.rootContext()->setContextProperty("LANGUAGE", languageService);
     // F10: operating-mode authority for QML (badge, Settings selector, gate).
     engine.rootContext()->setContextProperty("OPMODE", opMode);
     // Push the running mode into the finals controllers (declared above) so the
