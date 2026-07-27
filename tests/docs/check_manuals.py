@@ -251,6 +251,73 @@ def main():
     check("583" in gs and "100" in gs and "483" in gs,
           "German status states the real catalogue numbers")
 
+    # --- P0.1: diagrams -------------------------------------------------
+    diag_dir = os.path.join(MAN, "diagrams")
+    check(os.path.isfile(os.path.join(diag_dir, "make_diagrams.py")),
+          "diagram source script is committed")
+    svgs = sorted(f for f in os.listdir(diag_dir)) if os.path.isdir(diag_dir) else []
+    svgs = [f for f in svgs if f.endswith(".svg")]
+    check(len(svgs) == 11, "all 11 diagrams rendered (found %d)" % len(svgs))
+    for f in svgs:
+        p_svg = os.path.join(diag_dir, f)
+        check(os.path.getsize(p_svg) > 500, "diagram non-trivial: %s" % f)
+    # every diagram referenced by a manual must exist
+    for d in EN_DOCS + DE_DOCS:
+        for ref in re.findall(r"!\[[^\]]*\]\((diagrams/[^)]+)\)", docs[d]):
+            check(os.path.isfile(os.path.join(MAN, ref)),
+                  "referenced diagram exists: %s (%s)" % (ref, d))
+    # the update diagram must not present updates as available
+    upd = io.open(os.path.join(diag_dir, "DG-11_update_flow.svg"), encoding="utf-8").read()
+    check("NOT YET AVAILABLE" in upd and "RC1 DEPENDENT" in upd,
+          "update diagram marks the process as not yet available")
+
+    # --- P0.1: publication pipeline + records ---------------------------
+    for f in ["manual-pdf-toolchain.md", "manual-pdf-validation.md",
+              "target-connection-validation.md", "build-manuals.ps1",
+              "_shared/brand-assets.md", "_shared/windows-icon-specification.md",
+              "_shared/manual-print.css"]:
+        check(os.path.isfile(os.path.join(MAN, f)), "P0.1 artefact exists: %s" % f)
+    for f in ["docs/legal/eula-replacement-requirements.md",
+              "docs/german-beta-visual-review.md"]:
+        check(os.path.isfile(os.path.join(ROOT, f)), "P0.1 artefact exists: %s" % f)
+
+    build = io.open(os.path.join(MAN, "build-manuals.ps1"), encoding="utf-8").read()
+    check("LASTEXITCODE" in build, "build script checks exit codes")
+    check("resource-path" in build, "build script resolves image paths")
+    check("did not embed" in build, "build script fails on unembedded images")
+    check("suspiciously small" in build, "build script rejects truncated output")
+
+    pdfval = io.open(os.path.join(MAN, "manual-pdf-validation.md"), encoding="utf-8").read()
+    check("NO PDF IS APPROVED" in pdfval,
+          "PDF record does not claim approval without visual inspection")
+    check("NOT PERFORMED" in pdfval, "PDF record marks visual checks not performed")
+
+    # --- P0.1: no false visual-verification claims -----------------------
+    reg_v = docs["TechAim_Manual_Screenshot_Register.md"]
+    check("No screenshots have been captured" in reg_v,
+          "screenshot register does not claim captures")
+    check("Alex Example" in reg_v, "screenshot register names the synthetic athlete")
+    ger = io.open(os.path.join(ROOT, "docs/german-beta-visual-review.md"),
+                  encoding="utf-8").read()
+    check("was NOT performed" in ger or "NOT performed" in ger,
+          "German visual review does not claim to have been performed")
+    check("mixed-language evaluation preview" in ger,
+          "German review gives an explicit recommendation")
+    eula = io.open(os.path.join(ROOT, "docs/legal/eula-replacement-requirements.md"),
+                   encoding="utf-8").read()
+    # normalise line wrapping before matching prose
+    eula_flat = re.sub(r"\s+", " ", eula)
+    check("does not contain, draft or approve legal terms" in eula_flat,
+          "EULA audit does not draft legal wording")
+    check("LEGAL REPLACEMENT REQUIRED BEFORE EXTERNAL BETA" in eula,
+          "EULA audit records the blocker")
+    icon = io.open(os.path.join(MAN, "_shared/windows-icon-specification.md"),
+                   encoding="utf-8").read()
+    check("NO APPROVED ICON EXISTS" in icon, "icon status recorded accurately")
+    rc = io.open(os.path.join(ROOT, "TechAim.rc"), encoding="utf-8").read()
+    check("ICON" not in rc.upper().replace("ICONS", ""),
+          "TechAim.rc has NOT been given an icon before one is approved")
+
     # --- internal document cross-references resolve ----------------------
     bad_links = []
     for d, t in docs.items():
