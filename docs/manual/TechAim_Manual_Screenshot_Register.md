@@ -1,6 +1,6 @@
 # Tech Aim Manual — Screenshot Register
 
-Document version 1.0 (P0-J) · Application commit `3741980`
+Document version 1.1 (P0-J refinement) · Application commit `84db7a2`
 
 **No screenshots have been captured.** GUI capture is not available in the
 build environment used for P0-J, so every entry below is **PENDING** with
@@ -19,9 +19,24 @@ image can never be mistaken for an approved one.
 - **No development artefacts** — no Qt Creator, no console, no repository
   paths.
 - **Identity must be current**: the window must read *Tech Aim Electronic
-  Target Control*. **Any screenshot showing Seta/Seeds is rejected.**
+  Target Control*.
 - **Window size 1536 × 960** unless the entry says otherwise; PNG.
 - Capture the **application window only**, not the whole desktop.
+
+**A screenshot is REJECTED outright if it shows any of:**
+
+| Rejection cause | Why |
+|---|---|
+| Old **Seta / Seeds** software identity | superseded product name |
+| The **"Hello World"** window title | pre-P0 defect, now fixed |
+| An obsolete **`Seta.exe`** anywhere (title bar, path, taskbar) | superseded executable |
+| The **old end-user agreement artwork** | names an entity other than JAC SHOOTING SOLUTIONS (PTY) LTD — **LEGAL REPLACEMENT REQUIRED BEFORE EXTERNAL BETA** |
+| Personal athlete data or real confidential results | privacy |
+| Developer filesystem paths | leaks the build environment |
+
+Any capture showing one of these must be deleted and retaken, not cropped.
+
+Brand artwork rules for manual documents: `_shared/brand-assets.md`.
 
 ## Callout legend (use consistently)
 
@@ -73,6 +88,7 @@ Status: **PENDING** = not captured · **CAPTURED** = image exists ·
 | SS-28 | German docs | DE | Home screen | — | Demo | Deutsch (Beta) active | 1,2,3 | PENDING |
 | SS-29 | German docs | DE | Training Lab active screen | 50m 3P | Demo | shows the **mixed-language** reality honestly | 4,6 | PENDING |
 | SS-30 | German docs | DE | Settings — LANGUAGE | — | Demo | Deutsch (Beta) selected + beta note | — | PENDING |
+| SS-31 | Part 2 · brand assets | EN | Windows application icon (Explorer + taskbar) | — | — | **BLOCKED — no approved `.ico` exists.** Do not invent, mock or substitute an icon. | — | PENDING — BLOCKED |
 
 ## Human capture instructions
 
