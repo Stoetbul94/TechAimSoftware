@@ -1,6 +1,7 @@
 # Tech Aim Manual — Review Findings
 
-Document version 1.1 (P0-J refinement) · Application baseline commit `21b40db` · Documentation source commit `cc69939`
+Document version 1.1 ({{DOCUMENT_VERSION}}) · Application baseline commit `{{APPLICATION_BASELINE_COMMIT}}` · Documentation source commit `{{DOCUMENTATION_SOURCE_COMMIT}}`
+Built {{DOCUMENT_BUILD_TIMESTAMP}}
 
 A usability review of the P0-J documentation from four reader perspectives.
 Findings are recorded honestly, including where the documentation is currently

@@ -8,8 +8,8 @@
 > Master-Ausgabe**. Bei Abweichungen gilt die englische Fassung.
 
 Produktversion 0.9.0 · Release-Kanal: Pre-Beta Validation
-Dokumentversion 1.1 (P0-J refinement) · Sprache: Deutsch (Beta)
-Veröffentlicht 2026-07-27 · Anwendungs-Basis-Commit `21b40db` · Dokumentations-Commit `cc69939`
+Dokumentversion 1.1 ({{DOCUMENT_VERSION}}) · Sprache: Deutsch (Beta)
+Erstellt {{DOCUMENT_BUILD_TIMESTAMP}} · Anwendungs-Basis-Commit `{{APPLICATION_BASELINE_COMMIT}}` · Dokumentations-Commit `{{DOCUMENTATION_SOURCE_COMMIT}}`
 Herausgeber: JAC SHOOTING SOLUTIONS (PTY) LTD
 
 **Status: Pre-Beta-Dokumentation. Interne Evaluierung — nicht zur

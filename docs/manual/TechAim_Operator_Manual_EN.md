@@ -1,8 +1,8 @@
 # Tech Aim Electronic Target Control — Operator Manual
 
 Product version 0.9.0 · Release channel: Pre-Beta Validation
-Document version 1.2 (P0.1) · Language: English (controlled master edition)
-Published 2026-07-27 · Application baseline commit `21b40db` · Documentation source commit `cc69939`
+Document version 1.2 ({{DOCUMENT_VERSION}}) · Language: English (controlled master edition)
+Built {{DOCUMENT_BUILD_TIMESTAMP}} · Application baseline commit `{{APPLICATION_BASELINE_COMMIT}}` · Documentation source commit `{{DOCUMENTATION_SOURCE_COMMIT}}`
 Publisher: JAC SHOOTING SOLUTIONS (PTY) LTD
 
 **Status: Pre-Beta Documentation. Internal evaluation — not for public

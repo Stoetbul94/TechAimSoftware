@@ -1,6 +1,7 @@
 # Manual PDF Validation Record
 
-Document version 1.0 (P0.1) · Application baseline commit `21b40db` · Documentation source commit `cc69939`
+Document version 1.0 ({{DOCUMENT_VERSION}}) · Application baseline commit `{{APPLICATION_BASELINE_COMMIT}}` · Documentation source commit `{{DOCUMENTATION_SOURCE_COMMIT}}`
+Built {{DOCUMENT_BUILD_TIMESTAMP}}
 Generated: Pandoc → self-contained HTML → headless Chromium
 (`Chrome 141`, `--print-to-pdf`)
 
@@ -17,20 +18,33 @@ Generated: Pandoc → self-contained HTML → headless Chromium
 
 ## 1. Generation results
 
-All six generated successfully. The build script fails on a non-zero exit, a
-missing file, or a file below a minimum-size threshold — it cannot report
-success on a failed conversion.
+**STATUS: GENERATED — HUMAN VISUAL CHECK REQUIRED.**
 
-| # | Filename | Pages | Size | Extracted text | Status |
-|---|---|---|---|---|---|
-| 1 | `TechAim_Quick_Start_EN.pdf` | 6 | 197 KB | 8,860 chars | GENERATED |
-| 2 | `TechAim_Operator_Manual_EN.pdf` | 23 | 698 KB | 30,122 chars | GENERATED (includes all 11 diagrams) |
-| 3 | `TechAim_Troubleshooting_EN.pdf` | 12 | 241 KB | 18,983 chars | GENERATED |
-| 4 | `TechAim_Quick_Start_DE_Beta.pdf` | 6 | 176 KB | 7,726 chars | GENERATED |
-| 5 | `TechAim_Operator_Manual_DE_Beta.pdf` | 9 | 450 KB | 15,742 chars | GENERATED |
-| 6 | `TechAim_Troubleshooting_DE_Beta.pdf` | 8 | 171 KB | 11,333 chars | GENERATED |
+- **Output directory:** `docs/manual/output/` (gitignored)
+- **Generation engine:** Pandoc (Markdown → self-contained HTML) → **headless
+  Chromium** (`chrome.exe`, `--print-to-pdf`)
+- **Provenance:** stamped at build time from placeholders; see
+  `TechAim_Manual_Build_Manifest.json` beside the output.
 
-**Total 64 pages, 1.93 MB.** File sizes are reasonable for distribution.
+| Filename | Pages | Size | SHA-256 (first 16) |
+|---|---|---|---|
+| `TechAim_Quick_Start_EN.pdf` | 6 | 198 KB | `68501777fe358880…` |
+| `TechAim_Operator_Manual_EN.pdf` | 23 | 704 KB | `c6e68d2f374f5779…` |
+| `TechAim_Troubleshooting_EN.pdf` | 12 | 242 KB | `bd131cef545e51d0…` |
+| `TechAim_Quick_Start_DE_Beta.pdf` | 6 | 176 KB | `3f5e8d2d54918f60…` |
+| `TechAim_Operator_Manual_DE_Beta.pdf` | 9 | 451 KB | `750e5f54a693858c…` |
+| `TechAim_Troubleshooting_DE_Beta.pdf` | 8 | 172 KB | `b198cb20039cc7ae…` |
+
+**Total 64 pages.** Every value above is reproduced in the build manifest and
+verified against the files on disk by `tests/docs/check_generated_manuals.py`.
+
+### Content verification (automated)
+
+| Question | Answer |
+|---|---|
+| Do all 11 diagrams appear? | **Yes** — 11 SVGs embedded as data URIs; the build fails if any `<img>` does not embed. |
+| Are screenshots placeholders or actual captures? | **Neither — there are none.** No screenshot exists, so none is embedded and no placeholder image is committed. The manifest records `screenshotsEmbedded: false`. |
+| Did page-by-page visual inspection occur? | **No.** PDF page rendering is unavailable in this environment (`pdftoppm`/poppler absent), so no page has been seen. |
 
 ## 2. Structural checks performed (automated)
 

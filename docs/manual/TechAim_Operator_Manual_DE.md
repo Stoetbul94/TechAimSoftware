@@ -14,8 +14,8 @@
 > und **kein** unvollständiger Status verborgen.
 
 Produktversion 0.9.0 · Release-Kanal: Pre-Beta Validation
-Dokumentversion 1.0 (P0-J) · Sprache: Deutsch (Beta)
-Veröffentlicht 2026-07-27 · Anwendungs-Basis-Commit `21b40db` · Dokumentations-Commit `cc69939`
+Dokumentversion 1.0 ({{DOCUMENT_VERSION}}) · Sprache: Deutsch (Beta)
+Erstellt {{DOCUMENT_BUILD_TIMESTAMP}} · Anwendungs-Basis-Commit `{{APPLICATION_BASELINE_COMMIT}}` · Dokumentations-Commit `{{DOCUMENTATION_SOURCE_COMMIT}}`
 Herausgeber: JAC SHOOTING SOLUTIONS (PTY) LTD
 
 **Status: Pre-Beta-Dokumentation. Interne Evaluierung — nicht zur

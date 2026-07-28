@@ -86,8 +86,10 @@ def main():
         check("0.9.0" in t, "product version present: %s" % d)
         check("Pre-Beta Validation" in t or "Pre-Beta" in t,
               "release channel present: %s" % d)
-        check(re.search(r"[Cc]ommit `[0-9a-f]{7,}`", t) is not None,
-              "application commit present: %s" % d)
+        # Provenance is a build-time placeholder in tracked source; the
+        # concrete value is asserted against generated OUTPUT further down.
+        check("{{APPLICATION_BASELINE_COMMIT}}" in t,
+              "application baseline placeholder present: %s" % d)
         # Never the unspaced brand in running prose as the product name.
         check("TechAim Electronic" not in t,
               "brand spelled 'Tech Aim' in prose: %s" % d)
@@ -391,6 +393,53 @@ def main():
     check("ICON" not in rc.upper().replace("ICONS", ""),
           "TechAim.rc has NOT been given an icon before one is approved")
 
+    # --- provenance is stamped at BUILD TIME, not committed --------------
+    # Tracked Markdown must carry PLACEHOLDERS. Committing a concrete hash to
+    # identify the commit containing that edit is self-defeating: the commit
+    # changes HEAD, so the stamp is stale the instant it lands.
+    PLACEHOLDERS = ["{{APPLICATION_BASELINE_COMMIT}}",
+                    "{{DOCUMENTATION_SOURCE_COMMIT}}",
+                    "{{DOCUMENT_BUILD_TIMESTAMP}}",
+                    "{{DOCUMENT_VERSION}}"]
+    manual_md = [f for f in os.listdir(MAN) if f.endswith(".md")]
+    for f in sorted(manual_md):
+        t = io.open(os.path.join(MAN, f), encoding="utf-8").read()
+        for ph in PLACEHOLDERS:
+            check(ph in t, "tracked source uses %s: %s" % (ph, f))
+        # No concrete hash may be committed as provenance.
+        check(not re.search(r"(?:baseline|source) commit `[0-9a-f]{7,}`", t),
+              "no hardcoded provenance hash in tracked source: %s" % f)
+        check(not re.search(r"(?:Basis|Dokumentations)-Commit `[0-9a-f]{7,}`", t),
+              "no hardcoded provenance hash in tracked German source: %s" % f)
+
+    check(os.path.isfile(os.path.join(MAN, "stamp-commits.py")),
+          "build-time stamper is committed")
+    stamper = io.open(os.path.join(MAN, "stamp-commits.py"), encoding="utf-8").read()
+    check("TRACKED MARKDOWN IS NEVER MODIFIED" in stamper,
+          "stamper documents that it never mutates tracked source")
+    check("--out" in stamper and "shutil.copytree" in stamper,
+          "stamper writes to a staging directory")
+    check("raise StampError" in stamper,
+          "stamper fails hard rather than inserting unknown values")
+    for p_ in ["translations/", "images/", "*.pri", "*.rc", "*.qrc", "*.ini"]:
+        check('"%s"' % p_ in stamper,
+              "application baseline includes %s" % p_)
+    check("docs/" not in stamper.split("APP_PATHS")[1].split("]")[0],
+          "application baseline excludes documentation paths")
+
+    build = io.open(os.path.join(MAN, "build-manuals.ps1"), encoding="utf-8").read()
+    check("stamp-commits.py" in build or "$stamper" in build,
+          "build pipeline invokes the stamper")
+    check("stamping failed" in build, "a failed stamping stops the build")
+    check("unresolved placeholder in generated HTML" in build,
+          "build fails if a placeholder survives into output")
+    check("Wait-Settled" in build,
+          "build waits for output to settle before hashing")
+    check("TechAim_Manual_Build_Manifest.json" in build,
+          "build emits the machine-readable manifest")
+    check("HUMAN VISUAL CHECK REQUIRED" in build,
+          "manifest records visual status as not approved")
+
     # --- commit identity: two DIFFERENT values, shown separately ---------
     # Documentation is edited far more often than the application, so one
     # hardcoded "Application commit" silently misreports which BUILD the
@@ -398,19 +447,17 @@ def main():
     for d in EN_DOCS + DE_DOCS:
         t = docs[d]
         if d.endswith("_DE.md"):
-            check("Anwendungs-Basis-Commit `" in t,
-                  "shows the application baseline commit: %s" % d)
-            check("Dokumentations-Commit `" in t,
-                  "shows the documentation source commit: %s" % d)
+            check("Anwendungs-Basis-Commit `{{APPLICATION_BASELINE_COMMIT}}`" in t,
+                  "German edition stamps the application baseline: %s" % d)
+            check("Dokumentations-Commit `{{DOCUMENTATION_SOURCE_COMMIT}}`" in t,
+                  "German edition stamps the documentation source: %s" % d)
         else:
-            check("Application baseline commit `" in t,
-                  "shows the application baseline commit: %s" % d)
-            check("Documentation source commit `" in t,
-                  "shows the documentation source commit: %s" % d)
+            check("Application baseline commit `{{APPLICATION_BASELINE_COMMIT}}`" in t,
+                  "stamps the application baseline: %s" % d)
+            check("Documentation source commit `{{DOCUMENTATION_SOURCE_COMMIT}}`" in t,
+                  "stamps the documentation source: %s" % d)
         check(not re.search(r"Application commit `[0-9a-f]+`", t),
               "no single conflated 'Application commit': %s" % d)
-    check(os.path.isfile(os.path.join(MAN, "stamp-commits.py")),
-          "commit stamping is generated, not hand-maintained")
 
     # --- uninstall must not be claimed, and the two records must differ --
     om = docs["TechAim_Operator_Manual_EN.md"]

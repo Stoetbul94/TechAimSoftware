@@ -1,6 +1,7 @@
 # Tech Aim Manual — Screenshot Register
 
-Document version 1.3 (P0.1) · Application baseline commit `21b40db` · Documentation source commit `cc69939`
+Document version 1.3 ({{DOCUMENT_VERSION}}) · Application baseline commit `{{APPLICATION_BASELINE_COMMIT}}` · Documentation source commit `{{DOCUMENTATION_SOURCE_COMMIT}}`
+Built {{DOCUMENT_BUILD_TIMESTAMP}}
 
 **No screenshots have been captured (P0.1 re-confirmed).** Driving the Qt
 desktop application and capturing its window is not possible in this

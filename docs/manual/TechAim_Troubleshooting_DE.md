@@ -8,8 +8,9 @@
 > Master-Ausgabe** und enthält **alle** Störungsbilder. Diese Fassung deckt
 > die häufigsten Fälle sowie die Entscheidungsbäume ab.
 
-Produktversion 0.9.0 · Dokumentversion 1.0 (P0-J) · Sprache: Deutsch (Beta)
-Anwendungs-Basis-Commit `21b40db` · Dokumentations-Commit `cc69939` · Herausgeber: JAC SHOOTING SOLUTIONS (PTY) LTD
+Produktversion 0.9.0 · Dokumentversion 1.0 ({{DOCUMENT_VERSION}}) · Sprache: Deutsch (Beta)
+Anwendungs-Basis-Commit `{{APPLICATION_BASELINE_COMMIT}}` · Dokumentations-Commit `{{DOCUMENTATION_SOURCE_COMMIT}}`
+Erstellt {{DOCUMENT_BUILD_TIMESTAMP}} · Herausgeber: JAC SHOOTING SOLUTIONS (PTY) LTD
 
 **Status: Pre-Beta-Dokumentation. Interne Evaluierung.**
 
