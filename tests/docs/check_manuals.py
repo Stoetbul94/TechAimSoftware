@@ -391,6 +391,77 @@ def main():
     check("ICON" not in rc.upper().replace("ICONS", ""),
           "TechAim.rc has NOT been given an icon before one is approved")
 
+    # --- commit identity: two DIFFERENT values, shown separately ---------
+    # Documentation is edited far more often than the application, so one
+    # hardcoded "Application commit" silently misreports which BUILD the
+    # manual describes.
+    for d in EN_DOCS + DE_DOCS:
+        t = docs[d]
+        if d.endswith("_DE.md"):
+            check("Anwendungs-Basis-Commit `" in t,
+                  "shows the application baseline commit: %s" % d)
+            check("Dokumentations-Commit `" in t,
+                  "shows the documentation source commit: %s" % d)
+        else:
+            check("Application baseline commit `" in t,
+                  "shows the application baseline commit: %s" % d)
+            check("Documentation source commit `" in t,
+                  "shows the documentation source commit: %s" % d)
+        check(not re.search(r"Application commit `[0-9a-f]+`", t),
+              "no single conflated 'Application commit': %s" % d)
+    check(os.path.isfile(os.path.join(MAN, "stamp-commits.py")),
+          "commit stamping is generated, not hand-maintained")
+
+    # --- uninstall must not be claimed, and the two records must differ --
+    om = docs["TechAim_Operator_Manual_EN.md"]
+    om_flat = re.sub(r"\s+", " ", om)
+    check("What uninstall preserves or removes is not yet defined" in om_flat,
+          "uninstall behaviour is not claimed")
+    check("Uninstall does not remove exported reports" not in om_flat,
+          "the unverified uninstall claim is gone")
+    check("they are the durable record" not in om_flat,
+          "the 'PDFs are the durable record' claim is gone")
+    check("portable, human-readable record" in om_flat,
+          "PDFs described as the portable, human-readable record")
+    check("Session and recovery data are stored separately" in om_flat,
+          "session/recovery data described as stored separately")
+    check("Keeping one does not keep the other" in om_flat.replace("**", ""),
+          "manual states that one record does not substitute for the other")
+
+    # --- historical design specifications --------------------------------
+    # These record the ORIGINAL design of a system that has since shipped.
+    # They must never again claim the system is unimplemented.
+    HISTORICAL = ["docs/recovery-system-architecture.md",
+                  "docs/session-reliability-implementation-spec.md"]
+    UNIMPLEMENTED_CLAIMS = [
+        "nothing implemented", "nothing committed", "no production code",
+        "DESIGN FOR REVIEW", "SPECIFICATION FOR REVIEW",
+    ]
+    for h in HISTORICAL:
+        check(h in doc_corpus, "historical design document present: %s" % h)
+        if h not in doc_corpus:
+            continue
+        t = doc_corpus[h]
+        for claim in UNIMPLEMENTED_CLAIMS:
+            check(claim.lower() not in t.lower(),
+                  "no 'unimplemented' claim (%s): %s" % (claim, h))
+        check("HISTORICAL DESIGN SPECIFICATION" in t,
+              "carries the historical-design header: %s" % h)
+        check("implemented through M0" in t and "Phases A" in t,
+              "states that the design was subsequently implemented: %s" % h)
+        check("not, by itself, the final as-built verification record" in
+              re.sub(r"\s+", " ", t),
+              "does not claim to be the as-built verification record: %s" % h)
+        check("Design versus as-built status" in t,
+              "has a design-versus-as-built section: %s" % h)
+        for bucket in ["Implemented as designed", "Implemented differently",
+                       "Superseded", "Still pending"]:
+            check(bucket in t, "as-built section covers '%s': %s" % (bucket, h))
+        # must link to the current implementation documentation
+        check("session-reliability-m3-recovery.md" in t,
+              "links to current recovery documentation: %s" % h)
+        check("src/reliability" in t, "links to the as-built source: %s" % h)
+
     # --- internal document cross-references resolve ----------------------
     bad_links = []
     for d, t in docs.items():

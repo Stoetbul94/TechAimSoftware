@@ -1,6 +1,6 @@
 # Tech Aim — German Translation Status
 
-Document version 1.1 (P0-J refinement) · Application commit `84db7a2`
+Document version 1.1 (P0-J refinement) · Application baseline commit `21b40db` · Documentation source commit `cc69939`
 
 **GERMAN BETA TRANSLATION — NATIVE TECHNICAL REVIEW REQUIRED**
 

@@ -1,6 +1,6 @@
 # Manual PDF Validation Record
 
-Document version 1.0 (P0.1) · Application commit `169eef9`
+Document version 1.0 (P0.1) · Application baseline commit `21b40db` · Documentation source commit `cc69939`
 Generated: Pandoc → self-contained HTML → headless Chromium
 (`Chrome 141`, `--print-to-pdf`)
 

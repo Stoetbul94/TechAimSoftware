@@ -1,6 +1,6 @@
 # Target Connection — Implementation Audit and Physical Test Script
 
-Document version 1.0 (P0.1) · Application commit `169eef9`
+Document version 1.0 (P0.1) · Application baseline commit `21b40db` · Documentation source commit `cc69939`
 
 Closes review finding **F-07** (target connection setup undocumented) as far as
 the source permits. **Everything requiring real hardware is marked

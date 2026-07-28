@@ -2,7 +2,7 @@
 
 Product version 0.9.0 · Release channel: Pre-Beta Validation
 Document version 1.1 (P0-J refinement) · Language: English (controlled master edition)
-Published 2026-07-27 · Application commit `84db7a2`
+Published 2026-07-27 · Application baseline commit `21b40db` · Documentation source commit `cc69939`
 Publisher: JAC SHOOTING SOLUTIONS (PTY) LTD
 
 **Status: Pre-Beta Documentation. Internal evaluation — not for public

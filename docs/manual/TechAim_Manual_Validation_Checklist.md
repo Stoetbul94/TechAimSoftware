@@ -1,6 +1,6 @@
 # Tech Aim Manual — Validation Traceability
 
-Document version 1.2 (P0.1) · Application commit `21b40db`
+Document version 1.2 (P0.1) · Application baseline commit `21b40db` · Documentation source commit `cc69939`
 
 Every documented procedure is traced to the screen/component that implements
 it, the controller or action behind it, and the check that proves it.

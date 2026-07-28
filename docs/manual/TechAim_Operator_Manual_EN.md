@@ -1,8 +1,8 @@
 # Tech Aim Electronic Target Control — Operator Manual
 
 Product version 0.9.0 · Release channel: Pre-Beta Validation
-Document version 1.1 (P0-J refinement) · Language: English (controlled master edition)
-Published 2026-07-27 · Application commit `84db7a2` (doc v1.1)
+Document version 1.2 (P0.1) · Language: English (controlled master edition)
+Published 2026-07-27 · Application baseline commit `21b40db` · Documentation source commit `cc69939`
 Publisher: JAC SHOOTING SOLUTIONS (PTY) LTD
 
 **Status: Pre-Beta Documentation. Internal evaluation — not for public
@@ -797,9 +797,23 @@ independence) · **[HUMAN VISUAL CHECK REQUIRED]** (other controls).
 
 **Exact paths are confirmed at Windows RC1. [WINDOWS RC1 DEPENDENT]**
 
-- **Uninstall** does not remove exported reports; treat application data as
-  removable and back up anything you must keep.
-- **Back up exported PDFs** — they are the durable record.
+- **What uninstall preserves or removes is not yet defined.**
+  **[WINDOWS RC1 DEPENDENT]** — there is no installer or uninstaller in this
+  build, so no uninstall behaviour has been specified or tested. Do not assume
+  that uninstalling will preserve exported reports or session data. Until this
+  is defined and verified at Windows RC1, **back up anything you need to keep
+  before removing the application by any means.**
+- **Two different records, kept in two different places.**
+  - **Exported PDFs are the portable, human-readable record** — the form you
+    can file, print, email or hand to an athlete or coach. They live wherever
+    you chose to export them and are not managed by the application.
+  - **Session and recovery data are stored separately** by the application, in
+    its own Windows local application-data location. This is what recovery
+    resumes from and what the append-only session record consists of. It is
+    not human-readable and is not a substitute for an exported report.
+  - Keeping one does **not** keep the other. Back up the exported PDFs you
+    need, and treat the application's data location as separate — its exact
+    path and retention are **[WINDOWS RC1 DEPENDENT]**.
 - **Athlete notes are stored verbatim** in the session record and appear in
   reports. Do not enter medical, personal or sensitive information.
 - **Support bundles:** send only version, mode, discipline, the description of
