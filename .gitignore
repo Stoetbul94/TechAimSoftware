@@ -45,3 +45,6 @@ tests/finals10m/release/
 tst_audio_clips/
 tests/training/release/
 docs/manual/output/
+
+# Generated manual review packs (never committed)
+manual-preview/
