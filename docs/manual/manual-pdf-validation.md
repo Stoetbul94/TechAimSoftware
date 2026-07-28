@@ -64,7 +64,7 @@ Every row below is **HUMAN VISUAL CHECK REQUIRED**.
 | 3.7 | No clipped headings | NOT PERFORMED |
 | 3.8 | No isolated heading at the foot of a page | NOT PERFORMED |
 | 3.9 | No unintended blank pages | NOT PERFORMED |
-| 3.10 | Diagrams legible at print size | NOT PERFORMED — 11 diagrams now embedded and confirmed present in the PDF |
+| 3.10 | Diagrams legible at print size, in grayscale, not clipped at a page break | **HUMAN VISUAL CHECK REQUIRED** — NOT PERFORMED. All 11 are generated, committed and confirmed *present* in the PDF; nobody has *looked* at one |
 | 3.11 | Screenshots legible | **BLOCKED** — no screenshots exist yet |
 | 3.12 | Tables fit the page width | NOT PERFORMED |
 | 3.13 | Paths, commands and decision trees wrap rather than run off | NOT PERFORMED |

@@ -289,6 +289,8 @@ def main():
 
     # --- the application icon must not be invented ------------------------
     reg_t = docs["TechAim_Manual_Screenshot_Register.md"]
+    docs_extra_pdfval = io.open(os.path.join(MAN, "manual-pdf-validation.md"),
+                                encoding="utf-8").read()
     check("no approved" in reg_t and "ico" in reg_t.lower(),
           "screenshot register records that no approved .ico exists")
     check("PENDING — BLOCKED" in reg_t,
@@ -326,6 +328,17 @@ def main():
         for ref in re.findall(r"!\[[^\]]*\]\((diagrams/[^)]+)\)", docs[d]):
             check(os.path.isfile(os.path.join(MAN, ref)),
                   "referenced diagram exists: %s (%s)" % (ref, d))
+    # Diagrams are rendered, NOT visually approved. The register and the PDF
+    # validation record must both say so, so "COMPLETE" can never be read as
+    # "somebody looked at it".
+    check("HUMAN VISUAL CHECK REQUIRED" in reg_t,
+          "screenshot register records diagram status as visual-check-required")
+    check("RENDERED but not yet inspected" in reg_t,
+          "screenshot register does not claim diagrams are visually approved")
+    pdfv = docs_extra_pdfval
+    check("HUMAN VISUAL CHECK REQUIRED" in pdfv and "nobody has *looked*" in pdfv,
+          "PDF record states diagram legibility is unverified")
+
     # the update diagram must not present updates as available
     upd = io.open(os.path.join(diag_dir, "DG-11_update_flow.svg"), encoding="utf-8").read()
     check("NOT YET AVAILABLE" in upd and "RC1 DEPENDENT" in upd,

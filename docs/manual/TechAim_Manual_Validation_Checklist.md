@@ -92,6 +92,7 @@ An installation, Windows-security, PDF-layout or Live-target procedure is
 | 61 | End-user agreement artwork | login screen | `images/loginPage/End User Agreement SETA-*.png` | shows a SETA-era agreement naming another entity — **must not be reproduced or approved in any manual** | **LEGAL REPLACEMENT REQUIRED BEFORE EXTERNAL BETA** |
 | 62 | Windows application icon | Explorer / taskbar | none embedded | no approved `.ico` exists; none may be invented | **WINDOWS RC1 DEPENDENT** + BRAND APPROVAL REQUIRED |
 | 63 | Live target acceptance | whole system | — | no physical target exercised | **PHYSICAL TARGET DEPENDENT** — the system is **not** Live-hardware certified |
+| 63b | Instructional diagrams (DG-01..DG-11) | operator manual | `diagrams/make_diagrams.py` | source committed; regeneration byte-identical; all 11 confirmed embedded in the PDF | **VERIFIED FROM CODE AND TESTS** (generated + embedded) / **HUMAN VISUAL CHECK REQUIRED** (legibility in the final PDF) |
 | 64 | Manual PDF layout | generated PDFs | `build-manuals.ps1` | HTML generates; PDF needs a LaTeX engine | **HUMAN VISUAL CHECK REQUIRED** + **WINDOWS RC1 DEPENDENT** |
 
 ## Summary

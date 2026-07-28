@@ -1,6 +1,6 @@
 # Tech Aim Manual — Screenshot Register
 
-Document version 1.2 (P0.1) · Application commit `169eef9`
+Document version 1.3 (P0.1) · Application commit `dd040f4`
 
 **No screenshots have been captured (P0.1 re-confirmed).** Driving the Qt
 desktop application and capturing its window is not possible in this
@@ -9,8 +9,10 @@ instructions. Placeholders are *not* committed as images —
 `docs/manual/images/` stays empty until real captures exist, so a missing
 image can never be mistaken for an approved one.
 
-**Diagrams, by contrast, are COMPLETE** — all 11 are generated from committed
-source and embedded in the operator manual (see the Diagrams section).
+**Diagrams are RENDERED but not yet inspected** — all 11 are generated from
+committed source and embedded in the operator manual, so they are *present*.
+Their status is **HUMAN VISUAL CHECK REQUIRED** until they have been looked at
+in the final PDFs (see the Diagrams section).
 
 ## Capture rules (apply to every screenshot)
 
@@ -124,16 +126,23 @@ would appear as raw code in the PDF.
 All 11 are embedded in `TechAim_Operator_Manual_EN.md` and therefore appear in
 the generated PDF.
 
+**Status of every diagram: HUMAN VISUAL CHECK REQUIRED.** "COMPLETE" below
+means the SVG is generated, committed and confirmed embedded in the PDF — it
+does **not** mean anyone has looked at it in the final PDF. Legibility at A4
+print size, in grayscale, and free of clipping at a page break is unverified
+and stays that way until the page-by-page inspection in
+`manual-pdf-validation.md` section 3 is done.
+
 | ID | Purpose | Status |
 |---|---|---|
-| DG-01 | Application workflow: launch → discipline → event/programme → session → results | COMPLETE |
-| DG-02 | Live vs Demo, and the source gate that rejects mismatched input | COMPLETE |
-| DG-03 | Session lifecycle: new → active → completed → closed | COMPLETE |
-| DG-04 | Recovery lifecycle: interruption → detection → resume/discard | COMPLETE |
-| DG-05 | Training Lab programme selection and discipline gating | COMPLETE |
-| DG-06 | Technical Blocks workflow | COMPLETE |
-| DG-07 | Call & Diagnose workflow (hidden actual → call → confirm → reveal) | COMPLETE |
-| DG-08 | Position Transition workflow (setup → ready → sighters → verification → review → transition) | COMPLETE |
-| DG-09 | Report and export workflow | COMPLETE |
-| DG-10 | Troubleshooting escalation path | COMPLETE |
-| DG-11 | Update process | COMPLETE (renders the gap explicitly; the process itself stays WINDOWS RC1 DEPENDENT) |
+| DG-01 | Application workflow: launch → discipline → event/programme → session → results | COMPLETE (rendered) — HUMAN VISUAL CHECK REQUIRED |
+| DG-02 | Live vs Demo, and the source gate that rejects mismatched input | COMPLETE (rendered) — HUMAN VISUAL CHECK REQUIRED |
+| DG-03 | Session lifecycle: new → active → completed → closed | COMPLETE (rendered) — HUMAN VISUAL CHECK REQUIRED |
+| DG-04 | Recovery lifecycle: interruption → detection → resume/discard | COMPLETE (rendered) — HUMAN VISUAL CHECK REQUIRED |
+| DG-05 | Training Lab programme selection and discipline gating | COMPLETE (rendered) — HUMAN VISUAL CHECK REQUIRED |
+| DG-06 | Technical Blocks workflow | COMPLETE (rendered) — HUMAN VISUAL CHECK REQUIRED |
+| DG-07 | Call & Diagnose workflow (hidden actual → call → confirm → reveal) | COMPLETE (rendered) — HUMAN VISUAL CHECK REQUIRED |
+| DG-08 | Position Transition workflow (setup → ready → sighters → verification → review → transition) | COMPLETE (rendered) — HUMAN VISUAL CHECK REQUIRED |
+| DG-09 | Report and export workflow | COMPLETE (rendered) — HUMAN VISUAL CHECK REQUIRED |
+| DG-10 | Troubleshooting escalation path | COMPLETE (rendered) — HUMAN VISUAL CHECK REQUIRED |
+| DG-11 | Update process | COMPLETE (rendered) — HUMAN VISUAL CHECK REQUIRED; renders the gap explicitly, the process itself stays WINDOWS RC1 DEPENDENT |

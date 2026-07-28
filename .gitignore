@@ -38,4 +38,10 @@ build-*/
 release-package/
 tests/training/debug/
 tests/training/release/
+tests/finals10m/debug/
+tests/finals10m/release/
+# Created at runtime by the finals audio fallback test (mkpath + writes a
+# stub stop.wav); it is an artifact, not a committed fixture.
+tst_audio_clips/
+tests/training/release/
 docs/manual/output/
