@@ -295,7 +295,7 @@ def main():
                                 encoding="utf-8").read()
     check("no approved" in reg_t and "ico" in reg_t.lower(),
           "screenshot register records that no approved .ico exists")
-    check("PENDING — BLOCKED" in reg_t,
+    check("BLOCKED — APPROVED ICON REQUIRED" in reg_t,
           "application-icon screenshot is registered as blocked")
 
     # --- screenshot rejection rules --------------------------------------
@@ -401,7 +401,11 @@ def main():
                     "{{DOCUMENTATION_SOURCE_COMMIT}}",
                     "{{DOCUMENT_BUILD_TIMESTAMP}}",
                     "{{DOCUMENT_VERSION}}"]
-    manual_md = [f for f in os.listdir(MAN) if f.endswith(".md")]
+    # Evidence/log records are not published manuals: they are not stamped,
+    # not rendered, and carry no provenance front matter.
+    NOT_PUBLISHED = {"screenshot-capture-log.md"}
+    manual_md = [f for f in os.listdir(MAN)
+                 if f.endswith(".md") and f not in NOT_PUBLISHED]
     for f in sorted(manual_md):
         t = io.open(os.path.join(MAN, f), encoding="utf-8").read()
         for ph in PLACEHOLDERS:

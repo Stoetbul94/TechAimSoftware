@@ -3,10 +3,27 @@
 Document version 1.3 ({{DOCUMENT_VERSION}}) · Application baseline commit `{{APPLICATION_BASELINE_COMMIT}}` · Documentation source commit `{{DOCUMENTATION_SOURCE_COMMIT}}`
 Built {{DOCUMENT_BUILD_TIMESTAMP}}
 
-**No screenshots have been captured (P0.1 re-confirmed).** Driving the Qt
-desktop application and capturing its window is not possible in this
-environment, so every entry below remains **PENDING** with human capture
-instructions. Placeholders are *not* committed as images —
+**No screenshots have been captured. Phase J.1 outcome: GUI capture is
+POSSIBLE, but the capture set is BLOCKED on two defects.**
+
+Phase J.1 proved this environment can launch `TechAim.exe`, locate and
+maximise its window, capture it as PNG and read the result back — a real
+capture of the Start-session screen was produced and inspected. Capture was
+then stopped, not completed, because:
+
+1. **The window title reads `SETA - Tech Aim Electronic Target Control`.**
+   `main.qml:440` imperatively assigns `title = ... : "SETA"`, destroying the
+   `PRODUCT.fullProductName` binding. Every window-level capture would be
+   rejected by the rules below.
+2. **Real athlete data cannot be isolated.** Redirecting `LOCALAPPDATA` does
+   not work (Qt uses the Windows shell API), and no supported data-root
+   override exists, so captures would show a real athlete name and would write
+   into the real session archive.
+
+Full evidence, environment and unblocking options:
+`docs/manual/screenshot-capture-log.md`.
+
+Every entry below therefore carries a blocked status with Placeholders are *not* committed as images —
 `docs/manual/images/` stays empty until real captures exist, so a missing
 image can never be mistaken for an approved one.
 
@@ -60,42 +77,48 @@ reader needs to read.**
 
 ## Register
 
-Status: **PENDING** = not captured · **CAPTURED** = image exists ·
-**VALIDATED** = image checked against the capture rules and the manual text.
+Permitted statuses:
+**CAPTURED — HUMAN VISUAL CHECK REQUIRED** · **BLOCKED — APPLICATION DEFECT +
+REAL DATA NOT ISOLATED** · **BLOCKED — GUI AUTOMATION UNAVAILABLE** ·
+**BLOCKED — LEGAL REPLACEMENT REQUIRED** · **BLOCKED — APPROVED ICON
+REQUIRED** · **BLOCKED — PHYSICAL TARGET DEPENDENT** · **NOT APPLICABLE**
+
+No entry may read "pending" for a screenshot that was actually captured, and
+none may read captured merely because a file exists.
 
 | ID | Manual section | Lang | Screen | Discipline | Mode | Required state / data | Callouts | Status |
 |---|---|---|---|---|---|---|---|---|
-| SS-01 | Quick Start 12 · Manual Part 3 | EN | Home screen | — | Demo | fresh launch, no session | 1,2,3,8 | PENDING |
-| SS-02 | Part 3 | EN | Athlete / session details | 10m AR | Demo | synthetic athlete selected | 1 | PENDING |
-| SS-03 | Part 5 | EN | Discipline selection | — | Demo | all supported disciplines visible | — | PENDING |
-| SS-04 | Part 5 | EN | Event selection | 10m AR | Demo | event list for the discipline | — | PENDING |
-| SS-05 | Part 7 | EN | Training Lab catalogue | 10m AR | Demo | shows programmes available for a **non-3P** discipline | — | PENDING |
-| SS-06 | Part 7 · Part 11 | EN | Training Lab catalogue | 50m 3P | Demo | **Position Transition present** — contrast with SS-05 | — | PENDING |
-| SS-07 | Part 8 | EN | Technical Blocks setup | 10m AR | Demo | focus + visibility mode set | — | PENDING |
-| SS-08 | Part 8 | EN | Technical Blocks active block | 10m AR | Demo | mid-block, right panel shows Shot n of N; **no match timer, no red 000** | 4,6,7 | PENDING |
-| SS-09 | Part 8 | EN | Block Review | 10m AR | Demo | ≥5 counted shots so metrics + pattern populate | 5 | PENDING |
-| SS-10 | Part 8 | EN | Technical Blocks final summary | 10m AR | Demo | ≥2 blocks so BLOCK COMPARISON populates | — | PENDING |
-| SS-11 | Part 9 | EN | Call & Diagnose awaiting call | 10m AP | Demo | actual impact **hidden**, CONFIRM CALL visible | 4,6 | PENDING |
-| SS-12 | Part 9 | EN | Call & Diagnose reveal | 10m AP | Demo | CALL + ACTUAL + connecting vector visible | 5 | PENDING |
-| SS-13 | Part 9 | EN | Call & Diagnose summary | 10m AP | Demo | enough shots for typical accuracy + bias | — | PENDING |
-| SS-14 | Part 11 | EN | Position Transition setup | 50m 3P | Demo | sequence K→P→S, verification shots set | — | PENDING |
-| SS-15 | Part 11 | EN | POSITION SETUP phase | 50m 3P | Demo | setup timer running, checklist visible | 4,6 | PENDING |
-| SS-16 | Part 11 | EN | Position sighters | 50m 3P | Demo | after POSITION READY, ≥1 sighter fired | 4 | PENDING |
-| SS-17 | Part 11 | EN | Verification active | 50m 3P | Demo | Shot n of N; **no match timer, no red 000** | 4,7 | PENDING |
-| SS-18 | Part 11 | EN | Position Review | 50m 3P | Demo | timing cards + group plot + pattern | 5 | PENDING |
-| SS-19 | Part 11 | EN | Transition prompt | 50m 3P | Demo | BEGIN TRANSITION TO … visible | 6 | PENDING |
-| SS-20 | Part 11 | EN | POSITION TRANSITION COMPLETE | 50m 3P | Demo | **full K→P→S** so HIGHLIGHTS + all three position cards populate | — | PENDING |
-| SS-21 | Part 16 · QS 5 | EN | Settings — LANGUAGE | — | Demo | English selected, Deutsch (Beta) visible | — | PENDING |
-| SS-22 | Part 4 · Part 16 | EN | Settings — OPERATING MODE | — | Demo | Current mode: Demo | 2 | PENDING |
-| SS-23 | Part 14 | EN | Recovery dialog | 10m AR | Demo | force-close mid-session, then relaunch | — | PENDING |
-| SS-24 | Part 15 | EN | Incident dialog | 10m AR | Demo | category + scope selection visible | — | PENDING |
-| SS-25 | Part 12 | EN | Exported PDF — page 1 | 50m 3P | Demo | Position Transition report, logo + header | — | PENDING |
-| SS-26 | Part 12 | EN | Exported PDF — comparison page | 50m 3P | Demo | **check for overflow** after the highlights/rhythm additions | — | PENDING |
-| SS-27 | Part 2 · Part 18 | EN | Settings — ABOUT / BUILD | — | Demo | version, commit, built, publisher | — | PENDING |
-| SS-28 | German docs | DE | Home screen | — | Demo | Deutsch (Beta) active | 1,2,3 | PENDING |
-| SS-29 | German docs | DE | Training Lab active screen | 50m 3P | Demo | shows the **mixed-language** reality honestly | 4,6 | PENDING |
-| SS-30 | German docs | DE | Settings — LANGUAGE | — | Demo | Deutsch (Beta) selected + beta note | — | PENDING |
-| SS-31 | Part 2 · brand assets | EN | Windows application icon (Explorer + taskbar) | — | — | **BLOCKED — no approved `.ico` exists.** Do not invent, mock or substitute an icon. | — | PENDING — BLOCKED |
+| SS-01 | Quick Start 12 · Manual Part 3 | EN | Home screen | — | Demo | fresh launch, no session | 1,2,3,8 | BLOCKED — APPLICATION DEFECT + REAL DATA NOT ISOLATED |
+| SS-02 | Part 3 | EN | Athlete / session details | 10m AR | Demo | synthetic athlete selected | 1 | BLOCKED — APPLICATION DEFECT + REAL DATA NOT ISOLATED |
+| SS-03 | Part 5 | EN | Discipline selection | — | Demo | all supported disciplines visible | — | BLOCKED — APPLICATION DEFECT + REAL DATA NOT ISOLATED |
+| SS-04 | Part 5 | EN | Event selection | 10m AR | Demo | event list for the discipline | — | BLOCKED — APPLICATION DEFECT + REAL DATA NOT ISOLATED |
+| SS-05 | Part 7 | EN | Training Lab catalogue | 10m AR | Demo | shows programmes available for a **non-3P** discipline | — | BLOCKED — APPLICATION DEFECT + REAL DATA NOT ISOLATED |
+| SS-06 | Part 7 · Part 11 | EN | Training Lab catalogue | 50m 3P | Demo | **Position Transition present** — contrast with SS-05 | — | BLOCKED — APPLICATION DEFECT + REAL DATA NOT ISOLATED |
+| SS-07 | Part 8 | EN | Technical Blocks setup | 10m AR | Demo | focus + visibility mode set | — | BLOCKED — APPLICATION DEFECT + REAL DATA NOT ISOLATED |
+| SS-08 | Part 8 | EN | Technical Blocks active block | 10m AR | Demo | mid-block, right panel shows Shot n of N; **no match timer, no red 000** | 4,6,7 | BLOCKED — APPLICATION DEFECT + REAL DATA NOT ISOLATED |
+| SS-09 | Part 8 | EN | Block Review | 10m AR | Demo | ≥5 counted shots so metrics + pattern populate | 5 | BLOCKED — APPLICATION DEFECT + REAL DATA NOT ISOLATED |
+| SS-10 | Part 8 | EN | Technical Blocks final summary | 10m AR | Demo | ≥2 blocks so BLOCK COMPARISON populates | — | BLOCKED — APPLICATION DEFECT + REAL DATA NOT ISOLATED |
+| SS-11 | Part 9 | EN | Call & Diagnose awaiting call | 10m AP | Demo | actual impact **hidden**, CONFIRM CALL visible | 4,6 | BLOCKED — APPLICATION DEFECT + REAL DATA NOT ISOLATED |
+| SS-12 | Part 9 | EN | Call & Diagnose reveal | 10m AP | Demo | CALL + ACTUAL + connecting vector visible | 5 | BLOCKED — APPLICATION DEFECT + REAL DATA NOT ISOLATED |
+| SS-13 | Part 9 | EN | Call & Diagnose summary | 10m AP | Demo | enough shots for typical accuracy + bias | — | BLOCKED — APPLICATION DEFECT + REAL DATA NOT ISOLATED |
+| SS-14 | Part 11 | EN | Position Transition setup | 50m 3P | Demo | sequence K→P→S, verification shots set | — | BLOCKED — APPLICATION DEFECT + REAL DATA NOT ISOLATED |
+| SS-15 | Part 11 | EN | POSITION SETUP phase | 50m 3P | Demo | setup timer running, checklist visible | 4,6 | BLOCKED — APPLICATION DEFECT + REAL DATA NOT ISOLATED |
+| SS-16 | Part 11 | EN | Position sighters | 50m 3P | Demo | after POSITION READY, ≥1 sighter fired | 4 | BLOCKED — APPLICATION DEFECT + REAL DATA NOT ISOLATED |
+| SS-17 | Part 11 | EN | Verification active | 50m 3P | Demo | Shot n of N; **no match timer, no red 000** | 4,7 | BLOCKED — APPLICATION DEFECT + REAL DATA NOT ISOLATED |
+| SS-18 | Part 11 | EN | Position Review | 50m 3P | Demo | timing cards + group plot + pattern | 5 | BLOCKED — APPLICATION DEFECT + REAL DATA NOT ISOLATED |
+| SS-19 | Part 11 | EN | Transition prompt | 50m 3P | Demo | BEGIN TRANSITION TO … visible | 6 | BLOCKED — APPLICATION DEFECT + REAL DATA NOT ISOLATED |
+| SS-20 | Part 11 | EN | POSITION TRANSITION COMPLETE | 50m 3P | Demo | **full K→P→S** so HIGHLIGHTS + all three position cards populate | — | BLOCKED — APPLICATION DEFECT + REAL DATA NOT ISOLATED |
+| SS-21 | Part 16 · QS 5 | EN | Settings — LANGUAGE | — | Demo | English selected, Deutsch (Beta) visible | — | BLOCKED — APPLICATION DEFECT + REAL DATA NOT ISOLATED |
+| SS-22 | Part 4 · Part 16 | EN | Settings — OPERATING MODE | — | Demo | Current mode: Demo | 2 | BLOCKED — APPLICATION DEFECT + REAL DATA NOT ISOLATED |
+| SS-23 | Part 14 | EN | Recovery dialog | 10m AR | Demo | force-close mid-session, then relaunch | — | BLOCKED — APPLICATION DEFECT + REAL DATA NOT ISOLATED |
+| SS-24 | Part 15 | EN | Incident dialog | 10m AR | Demo | category + scope selection visible | — | BLOCKED — APPLICATION DEFECT + REAL DATA NOT ISOLATED |
+| SS-25 | Part 12 | EN | Exported PDF — page 1 | 50m 3P | Demo | Position Transition report, logo + header | — | BLOCKED — APPLICATION DEFECT + REAL DATA NOT ISOLATED |
+| SS-26 | Part 12 | EN | Exported PDF — comparison page | 50m 3P | Demo | **check for overflow** after the highlights/rhythm additions | — | BLOCKED — APPLICATION DEFECT + REAL DATA NOT ISOLATED |
+| SS-27 | Part 2 · Part 18 | EN | Settings — ABOUT / BUILD | — | Demo | version, commit, built, publisher | — | BLOCKED — APPLICATION DEFECT + REAL DATA NOT ISOLATED |
+| SS-28 | German docs | DE | Home screen | — | Demo | Deutsch (Beta) active | 1,2,3 | BLOCKED — APPLICATION DEFECT + REAL DATA NOT ISOLATED |
+| SS-29 | German docs | DE | Training Lab active screen | 50m 3P | Demo | shows the **mixed-language** reality honestly | 4,6 | BLOCKED — APPLICATION DEFECT + REAL DATA NOT ISOLATED |
+| SS-30 | German docs | DE | Settings — LANGUAGE | — | Demo | Deutsch (Beta) selected + beta note | — | BLOCKED — APPLICATION DEFECT + REAL DATA NOT ISOLATED |
+| SS-31 | Part 2 · brand assets | EN | Windows application icon (Explorer + taskbar) | — | — | **BLOCKED — no approved `.ico` exists.** Do not invent, mock or substitute an icon. | — | BLOCKED — APPROVED ICON REQUIRED |
 
 ## Human capture instructions
 
