@@ -17,6 +17,8 @@
 #include <cstdio>
 
 #include <QFile>
+#include <QDir>
+#include <QRegularExpression>
 
 #include "Finals3PController.h"
 #include "Finals3PTypes.h"
@@ -1236,6 +1238,72 @@ static void runLocalisationChecks()
           "i18n: selecting German does not touch brand/theme/executable/AppData identity");
 }
 
+
+// ── J.1A: window-title identity ─────────────────────────────────────────
+// The legacy `title = isDefaultIcon ? "TACHUS" : "SETA"` in main.qml made the
+// window and taskbar read "SETA - Tech Aim Electronic Target Control". These
+// checks read the actual QML/C++ sources so the override cannot come back.
+static QString readRepoFile(const QString& rel)
+{
+    // tests/finals/release/ -> repo root
+    QDir d(QCoreApplication::applicationDirPath());
+    d.cdUp(); d.cdUp(); d.cdUp();
+    QFile f(d.filePath(rel));
+    if (!f.open(QIODevice::ReadOnly)) return QString();
+    return QString::fromUtf8(f.readAll());
+}
+
+static void runWindowTitleChecks()
+{
+    std::printf("--- J.1A window title identity ---\n");
+    const ta::app::ProductIdentity& p = ta::app::identity();
+    check(p.fullProductName == QLatin1String("Tech Aim Electronic Target Control"),
+          "title: ProductIdentity full name is the Tech Aim product name");
+
+    QString mainQml = readRepoFile(QStringLiteral("main.qml"));
+    check(!mainQml.isEmpty(), "title: main.qml readable");
+    if (mainQml.isEmpty()) return;
+
+    check(mainQml.contains(QLatin1String("title: PRODUCT.fullProductName")),
+          "title: the window title binds to ProductIdentity");
+
+    // Strip // comments before checking for legacy literals: the comment that
+    // records WHY the override was removed necessarily quotes it, and a
+    // comment cannot set a window title. Only executable QML is examined.
+    QString code;
+    const QStringList lines = mainQml.split(QLatin1Char('\n'));
+    for (const QString& ln : lines) {
+        const int c = ln.indexOf(QLatin1String("//"));
+        code += (c >= 0 ? ln.left(c) : ln);
+        code += QLatin1Char('\n');
+    }
+    mainQml = code;
+
+    // No imperative reassignment may survive anywhere in the file.
+    check(!mainQml.contains(QLatin1String("title = isDefaultIcon")),
+          "title: the legacy isDefaultIcon title override is gone");
+    const QRegularExpression assign(
+        QStringLiteral("(^|[^A-Za-z_.])title\\s*=\\s*[\"']"));
+    check(!assign.match(mainQml).hasMatch(),
+          "title: no literal string is assigned to title at runtime");
+
+    // No legacy product name may appear as a title value in product QML.
+    check(!mainQml.contains(QLatin1String("\"SETA\"")),
+          "title: main.qml carries no \"SETA\" literal");
+    check(!mainQml.contains(QLatin1String("\"TACHUS\"")),
+          "title: main.qml carries no \"TACHUS\" literal");
+    check(!mainQml.contains(QLatin1String("\"Seta\"")),
+          "title: main.qml carries no \"Seta\" literal");
+    check(!mainQml.contains(QLatin1String("\"Seeds\"")),
+          "title: main.qml carries no \"Seeds\" literal");
+
+    // Valid SETA HARDWARE references must survive untouched.
+    const QString appSettings = readRepoFile(QStringLiteral("appsettings.h"));
+    check(appSettings.contains(QLatin1String("SetaServerPath"))
+          || appSettings.contains(QLatin1String("setSetaServerPath")),
+          "title: valid SETA hardware/supplier symbols retained");
+}
+
 int main(int argc, char** argv)
 {
     qputenv("TECHAIM_FINALS_TIMESCALE", "60");
@@ -1260,6 +1328,7 @@ int main(int argc, char** argv)
 
     std::printf("=== Finals3PController Phase A acceptance tests ===\n");
     runProductIdentityChecks();
+    runWindowTitleChecks();
     runLocalisationChecks();
     runFullFinal();
     runSecondaryChecks();

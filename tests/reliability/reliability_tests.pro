@@ -30,6 +30,8 @@ SOURCES += \
     main.cpp \
     test_support.cpp \
     tst_storagepaths.cpp \
+    tst_capture_profile.cpp \
+    ../../src/app/DocumentationCapture.cpp \
     tst_fixedpoint.cpp \
     tst_events.cpp \
     tst_serializer.cpp \
