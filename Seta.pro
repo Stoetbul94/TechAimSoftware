@@ -64,6 +64,7 @@ SOURCES += main.cpp \
     src/incident/EstIncidentController.cpp \
     src/app/ProductIdentity.cpp \
     src/app/LanguageService.cpp \
+    src/app/DocumentationCapture.cpp \
     src/mode/OperatingModeService.cpp \
     src/training/TrainingProgramController.cpp \
     src/training/TrainingBlockMetrics.cpp \
@@ -104,6 +105,7 @@ HEADERS += \
     src/app/ProductIdentity.h \
     src/app/ProductIdentityBridge.h \
     src/app/LanguageService.h \
+    src/app/DocumentationCapture.h \
     src/mode/OperatingMode.h \
     src/mode/OperatingModeService.h
 

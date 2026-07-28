@@ -41,8 +41,10 @@
 #include "src/app/ProductIdentity.h"
 #include "src/app/ProductIdentityBridge.h"
 #include "src/app/LanguageService.h"
+#include "src/app/DocumentationCapture.h"
 #include "logfile.h"
 #include <memory>
+#include <QFileInfo>
 #include <QLockFile>
 #include <QProcess>
 #include <QDir>
@@ -247,6 +249,42 @@ int main(int argc, char *argv[])
     // The service is created after AppSettings below (it needs the resolved
     // config path); see languageService.
 
+    // ── J.1A: isolated documentation-capture profile ────────────────────
+    // Developer/documentation facility only; there is no Settings UI for it.
+    // BOTH --documentation-capture and --data-root <absolute> are required.
+    // Absent either, nothing below runs and the production root is used
+    // exactly as before. On any validation failure the application EXITS —
+    // it never silently falls back to production.
+    bool documentationCaptureActive = false;
+    {
+        const ta::app::CaptureRequest req =
+            ta::app::parseCaptureArguments(QCoreApplication::arguments());
+        if (req.requested) {
+            const QString installDir =
+                QFileInfo(QCoreApplication::applicationFilePath()).absolutePath();
+            const ta::app::CaptureResult cap = ta::app::prepareCaptureRoot(
+                req.dataRoot,
+                ta::rel::StoragePaths::productionDataRoot(),
+                installDir,
+                QStringLiteral(APP_GIT_SHA),
+                QStringLiteral(APP_GIT_SHA));
+            if (!cap.ok) {
+                qCritical().noquote()
+                    << "DOCUMENTATION CAPTURE REFUSED:" << cap.operatorMessage
+                    << "|" << cap.technicalDetail;
+                return 2;                      // never fall back to production
+            }
+            ta::rel::StoragePaths::setRootOverrideForTesting(cap.resolvedRoot);
+            documentationCaptureActive = true;
+            qInfo().noquote() << "DOCUMENTATION CAPTURE PROFILE ACTIVE - isolated data root:"
+                              << cap.resolvedRoot;
+        } else if (!req.dataRoot.isEmpty()) {
+            qCritical().noquote() << "DOCUMENTATION CAPTURE REFUSED: --data-root requires "
+                                     "--documentation-capture";
+            return 2;
+        }
+    }
+
     // ── Session Reliability Layer (M0): storage initialization ──────────
     // Resolve the AppData root, create the directory tree, probe that
     // session storage is durably writable. Never silent: failure blocks
@@ -309,6 +347,17 @@ int main(int argc, char *argv[])
     qInfo().noquote() << "Operating mode:" << opMode->runningModeToken()
                       << (opMode->isLive() ? "(physical target input)"
                                            : "(simulated input)");
+
+    // J.1A: the capture profile is Demo-ONLY. Refusing Live here means a
+    // capture profile can never record physical-target input, and the
+    // existing source gate continues to reject physical shots in Demo.
+    if (documentationCaptureActive && opMode->isLive()) {
+        qCritical().noquote()
+            << "DOCUMENTATION CAPTURE REFUSED: the capture profile requires Demo mode,"
+            << "but the effective operating mode is Live. Set app_mode=Demo in the"
+            << "capture profile's config.ini.";
+        return 2;
+    }
 
     QScreen *srn = QApplication::screens().at(0);
     qreal dotsPerInch = (qreal)srn->logicalDotsPerInch();
