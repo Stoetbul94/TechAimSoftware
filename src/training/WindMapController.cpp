@@ -1,6 +1,7 @@
 #include "WindMapController.h"
 
 #include "mode/OperatingMode.h"
+#include "WindMapAnalytics.h"
 
 #include <QCoreApplication>
 #include <QDateTime>
@@ -677,6 +678,214 @@ QVariantMap WindMapController::reviewSummary() const
         "A record of the conditions you observed alongside the shots you fired. "
         "Training material only — never an official result.");
     return m;
+}
+
+// ── Stage 6.1: the analysis view model ─────────────────────────────────────
+//
+// A pure PROJECTION of WindMapAnalyticsEngine output. Every number here is
+// COPIED from the engine; nothing is recomputed, re-derived or rounded into a
+// different value. That is what lets the on-screen analysis and the PDF share
+// one model and be asserted equal to the engine.
+//
+// A metric whose sample does not support it is NOT emitted as a number. The
+// has* flag travels with it so a view cannot print a zero that looks like a
+// measurement.
+
+namespace {
+
+QVariantMap groupToVariant(const ta::training::GroupStats& g)
+{
+    QVariantMap m;
+    m[QStringLiteral("label")] = g.label;
+    m[QStringLiteral("n")] = g.n;
+    m[QStringLiteral("evidence")] = ta::training::evidenceLabel(g.evidence);
+    m[QStringLiteral("hasReading")] = g.key.hasReading;
+    m[QStringLiteral("calm")] = g.key.calm;
+
+    m[QStringLiteral("hasMeanScore")] = g.hasMeanScore;
+    if (g.hasMeanScore) m[QStringLiteral("meanScore")] = g.meanScore;
+
+    m[QStringLiteral("hasMpi")] = g.hasMpi;
+    if (g.hasMpi) {
+        m[QStringLiteral("mpiXMm")] = g.mpiXMm;
+        m[QStringLiteral("mpiYMm")] = g.mpiYMm;
+    } else {
+        m[QStringLiteral("shotsNeededForMpi")] = g.shotsNeededForMpi();
+    }
+
+    m[QStringLiteral("hasDispersion")] = g.hasDispersion;
+    if (g.hasDispersion) {
+        m[QStringLiteral("meanRadiusMm")] = g.meanRadiusMm;
+        m[QStringLiteral("groupDiameterMm")] = g.groupDiameterMm;
+        m[QStringLiteral("horizontalSpreadMm")] = g.horizontalSpreadMm;
+        m[QStringLiteral("verticalSpreadMm")] = g.verticalSpreadMm;
+        m[QStringLiteral("scoreStdDev")] = g.scoreStdDev;
+        m[QStringLiteral("radiusStdDev")] = g.radiusStdDev;
+    } else {
+        m[QStringLiteral("shotsNeededForDispersion")] = g.shotsNeededForDispersion();
+    }
+    return m;
+}
+
+QVariantMap shiftToVariant(const ta::training::ShiftVector& v)
+{
+    QVariantMap m;
+    m[QStringLiteral("label")] = v.label;
+    m[QStringLiteral("n")] = v.n;
+    m[QStringLiteral("referenceN")] = v.referenceN;
+    m[QStringLiteral("valid")] = v.valid;
+    m[QStringLiteral("evidence")] = ta::training::evidenceLabel(v.evidence);
+    if (v.valid) {
+        m[QStringLiteral("dxMm")] = v.dxMm;
+        m[QStringLiteral("dyMm")] = v.dyMm;
+        m[QStringLiteral("magnitudeMm")] = v.magnitudeMm;
+        m[QStringLiteral("bearingDegrees")] = v.bearingDegrees;
+        m[QStringLiteral("directionWords")] = v.directionWords;
+    } else {
+        m[QStringLiteral("shotsNeeded")] = v.shotsNeeded;
+    }
+    return m;
+}
+
+} // namespace
+
+QVariantMap WindMapController::analysisModel() const
+{
+    QVariantMap out;
+    if (!m_store || !m_store->active()) return out;
+
+    const ta::training::SessionAnalysis a =
+        ta::training::WindMapAnalyticsEngine::analyse(st());
+    if (!a.valid) return out;
+
+    const ta::rel::SessionState& s = st();
+
+    // 1. SESSION OVERVIEW — the tested Stage 5.1 definitions, unchanged.
+    QVariantMap session;
+    session[QStringLiteral("programme")] = QStringLiteral("Wind Map — Post-Session Review");
+    session[QStringLiteral("sessionId")] = s.sessionId;
+    session[QStringLiteral("athlete")] = s.athlete;
+    session[QStringLiteral("createdAtIso")] = s.createdAtIso;
+    session[QStringLiteral("operatingMode")] = s.operatingMode.isEmpty()
+        ? QStringLiteral("Legacy") : s.operatingMode;
+    session[QStringLiteral("disciplineId")] = a.disciplineId;
+    session[QStringLiteral("disciplineName")] = a.threePositions
+        ? QStringLiteral("50 m Rifle 3 Positions") : QStringLiteral("50 m Rifle Prone");
+    session[QStringLiteral("threePositions")] = a.threePositions;
+    session[QStringLiteral("completed")] = s.wmCompleted;
+    QStringList posNames;
+    for (const ta::training::PositionAnalysis& p : a.positions) posNames << p.positionName;
+    session[QStringLiteral("positionsRepresented")] = posNames;
+    out[QStringLiteral("session")] = session;
+
+    QVariantMap summary;
+    summary[QStringLiteral("countedShots")] = a.countedShots;
+    summary[QStringLiteral("sighterShots")] = a.sighterShots;
+    summary[QStringLiteral("uniqueConditions")] = a.uniqueConditions;
+    summary[QStringLiteral("conditionEntries")] = a.conditionEntries;
+    summary[QStringLiteral("countedWithReading")] = a.countedWithReading;
+    summary[QStringLiteral("countedCalm")] = a.countedCalm;
+    summary[QStringLiteral("countedNoReading")] = a.countedNoReading;
+    // Data quality is a STATEMENT OF COVERAGE, not a score.
+    const int usable = a.countedWithReading + a.countedCalm;
+    QString quality;
+    if (a.countedShots == 0)                 quality = QStringLiteral("No counted shots");
+    else if (a.countedNoReading == 0)        quality = QStringLiteral("Every counted shot carries a reading");
+    else if (usable >= a.countedShots / 2)   quality = QStringLiteral("%1 of %2 counted shots carry a reading")
+                                                          .arg(usable).arg(a.countedShots);
+    else                                     quality = QStringLiteral("Only %1 of %2 counted shots carry a reading")
+                                                          .arg(usable).arg(a.countedShots);
+    summary[QStringLiteral("dataQuality")] = quality;
+    out[QStringLiteral("summary")] = summary;
+
+    // 2-8. PER POSITION — each with its OWN reference centre and groupings.
+    QVariantList positions;
+    for (const ta::training::PositionAnalysis& p : a.positions) {
+        QVariantMap pm;
+        pm[QStringLiteral("position")] = p.position;
+        pm[QStringLiteral("positionName")] = p.positionName;
+        pm[QStringLiteral("countedShots")] = p.countedShots;
+        pm[QStringLiteral("sighterShots")] = p.sighterShots;
+        pm[QStringLiteral("hasOverallMpi")] = p.hasOverallMpi;
+        if (p.hasOverallMpi) {
+            pm[QStringLiteral("overallMpiXMm")] = p.overallMpiXMm;
+            pm[QStringLiteral("overallMpiYMm")] = p.overallMpiYMm;
+        }
+        QVariantMap ref;
+        ref[QStringLiteral("kind")] = ta::training::referenceKindLabel(p.reference.kind);
+        ref[QStringLiteral("label")] = p.reference.label;
+        ref[QStringLiteral("valid")] = p.reference.valid;
+        ref[QStringLiteral("n")] = p.reference.n;
+        if (p.reference.valid) {
+            ref[QStringLiteral("xMm")] = p.reference.xMm;
+            ref[QStringLiteral("yMm")] = p.reference.yMm;
+        }
+        pm[QStringLiteral("reference")] = ref;
+
+        QVariantList dirs, bands, exact, shifts;
+        for (const ta::training::GroupStats& g : p.byDirection)      dirs.append(groupToVariant(g));
+        for (const ta::training::GroupStats& g : p.bySpeedBand)      bands.append(groupToVariant(g));
+        for (const ta::training::GroupStats& g : p.byExactCondition) exact.append(groupToVariant(g));
+        for (const ta::training::ShiftVector& v : p.shifts)          shifts.append(shiftToVariant(v));
+        pm[QStringLiteral("byDirection")] = dirs;
+        pm[QStringLiteral("bySpeedBand")] = bands;
+        pm[QStringLiteral("byExactCondition")] = exact;
+        pm[QStringLiteral("shifts")] = shifts;
+        positions.append(pm);
+    }
+    out[QStringLiteral("positions")] = positions;
+
+    // 9. WHAT THE DATA SUGGESTS — rendered, never re-worded by the view.
+    QVariantList findings;
+    for (const ta::training::Finding& f : a.findings) {
+        QVariantMap fm;
+        fm[QStringLiteral("category")] = ta::training::patternCategoryLabel(f.category);
+        fm[QStringLiteral("text")] = f.text;
+        fm[QStringLiteral("suggestion")] = f.suggestion;
+        fm[QStringLiteral("n")] = f.n;
+        fm[QStringLiteral("shotsNeeded")] = f.shotsNeeded;
+        findings.append(fm);
+    }
+    out[QStringLiteral("findings")] = findings;
+
+    // 7. TIMELINE + the raw appendix rows. Same source, different projection:
+    // the timeline carries the boundary markers, the rows carry every recorded
+    // field the PDF appendix must reproduce.
+    QVariantList timeline, shotRows;
+    for (const ta::training::TimelineEntry& e : a.timeline) {
+        QVariantMap tm;
+        tm[QStringLiteral("shotId")] = e.shotId;
+        tm[QStringLiteral("sighter")] = e.sighter;
+        tm[QStringLiteral("type")] = e.sighter ? QStringLiteral("Sighter")
+                                               : QStringLiteral("Counted");
+        tm[QStringLiteral("position")] = e.position;
+        tm[QStringLiteral("positionName")] = e.positionName;
+        tm[QStringLiteral("xMm")] = e.xMm;
+        tm[QStringLiteral("yMm")] = e.yMm;
+        tm[QStringLiteral("score")] = e.score;
+        tm[QStringLiteral("conditionLabel")] = e.conditionLabel;
+        tm[QStringLiteral("conditionChangedBefore")] = e.conditionChangedBefore;
+        tm[QStringLiteral("phaseChangedBefore")] = e.phaseChangedBefore;
+        timeline.append(tm);
+
+        // The appendix row keeps the IMMUTABLE snapshot exactly as recorded.
+        QVariantMap rw = tm;
+        rw[QStringLiteral("timestampMs")] = static_cast<qlonglong>(e.splitMs);
+        rw[QStringLiteral("hasWindReading")] = e.wind.hasReading();
+        rw[QStringLiteral("calm")] = e.wind.isCalm();
+        rw[QStringLiteral("directionDegrees")] = e.wind.isMeasured() ? e.wind.directionDegrees : 0;
+        rw[QStringLiteral("directionLabel")] = e.wind.isMeasured()
+            ? ta::training::windSectorLabel(e.wind.sector()) : QString();
+        rw[QStringLiteral("speedMetresPerSecond")] = e.wind.isMeasured()
+            ? e.wind.speedMetresPerSecond() : 0.0;
+        rw[QStringLiteral("note")] = e.wind.note;
+        shotRows.append(rw);
+    }
+    out[QStringLiteral("timeline")] = timeline;
+    out[QStringLiteral("shotRows")] = shotRows;
+
+    out[QStringLiteral("limitations")] = a.limitations;
+    return out;
 }
 
 QVariantList WindMapController::reviewShots() const

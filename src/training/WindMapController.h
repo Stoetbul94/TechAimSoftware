@@ -142,6 +142,16 @@ public:
     Q_INVOKABLE QVariantMap reviewSummary() const;
     Q_INVOKABLE QVariantList reviewShots() const;
 
+    // ── Stage 6.1: the ANALYSIS VIEW MODEL ──────────────────────────────
+    // The single structure the on-screen analysis and (Stage 6.2) the PDF
+    // both consume. It is a pure PROJECTION of WindMapAnalyticsEngine output:
+    // it copies values and formats labels, and computes no metric of its own.
+    // QML must never recalculate anything it finds here.
+    //
+    // Keys: session, summary, positions[], findings[], timeline[], shotRows[],
+    // limitations[]. See docs/training-lab-wind-map-analysis.md.
+    Q_INVOKABLE QVariantMap analysisModel() const;
+
     // property readers
     int phase() const { return static_cast<int>(m_phase); }
     QString phaseName() const { return ta::training::windMapPhaseName(m_phase); }
