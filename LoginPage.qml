@@ -392,13 +392,19 @@ Item {
 
     Rectangle { anchors.fill: parent; color: _bg }
 
-    // ── Header (74 px — compact app bar + session title) ─────────────────────
+    // ── Header (56 px — session title only) ──────────────────────────────────
+    // UI-B: the app-identity row that used to live here (target icon,
+    // "TECH AIM", "ELECTRONIC TARGET CONTROL") duplicated the shell Header,
+    // which already renders the logo and wordmark directly above this bar. Two
+    // stacked brand rows read as a rendering fault and cost ~20 px on a screen
+    // that was already clipping its content, so this bar now carries only the
+    // page title and the operating-mode badge.
     Rectangle {
         id: headerBar
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
-        height: 74
+        height: 56
         color: "#0C0E12"
 
         Rectangle { anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom; width: 3; color: _red }
@@ -412,56 +418,15 @@ Item {
             height: 26; fillMode: Image.PreserveAspectFit; opacity: 0.55
         }
 
-        // App identity (top row)
+        // Session title row
         Row {
-            id: identityRow
-            anchors.top: parent.top; anchors.topMargin: 11
+            anchors.verticalCenter: parent.verticalCenter
             anchors.left: parent.left; anchors.leftMargin: 20
-            height: 18; spacing: 10
-
-            Canvas {
-                id: targetIcon
-                width: 18; height: 18
-                anchors.verticalCenter: parent.verticalCenter
-                onPaint: {
-                    var ctx = getContext("2d")
-                    ctx.clearRect(0, 0, width, height)
-                    var cx = 9, cy = 9
-                    var rings = [8, 5.5, 3.5, 1.5]
-                    for (var i = 0; i < rings.length; i++) {
-                        ctx.beginPath()
-                        ctx.arc(cx, cy, rings[i], 0, Math.PI * 2)
-                        ctx.strokeStyle = i % 2 === 0 ? "#C40046" : "#ffffff22"
-                        ctx.lineWidth = 1.2
-                        ctx.stroke()
-                    }
-                    ctx.beginPath(); ctx.arc(cx, cy, 1.2, 0, Math.PI * 2)
-                    ctx.fillStyle = "#C40046"; ctx.fill()
-                }
-            }
-            Text {
-                text: "TECH AIM"; color: _txt
-                font.family: theme.fontFamily; font.pixelSize: 12
-                font.bold: true; font.letterSpacing: 2.5
-                anchors.verticalCenter: parent.verticalCenter
-            }
-            Rectangle { width: 1; height: 12; color: _borderStr; anchors.verticalCenter: parent.verticalCenter }
-            Text {
-                text: "ELECTRONIC TARGET CONTROL"; color: _txtMut
-                font.family: theme.fontFamily; font.pixelSize: 11; font.letterSpacing: 1.5
-                anchors.verticalCenter: parent.verticalCenter
-            }
-        }
-
-        // Session title row (bottom)
-        Row {
-            anchors.bottom: parent.bottom; anchors.bottomMargin: 11
-            anchors.left: parent.left; anchors.leftMargin: 20
-            height: 28; spacing: 12
+            height: 30; spacing: 12
 
             Text {
                 text: "Start session"; color: _txt
-                font.family: theme.fontFamily; font.pixelSize: 23; font.bold: true
+                font.family: theme.fontFamily; font.pixelSize: 22; font.bold: true
                 anchors.verticalCenter: parent.verticalCenter
             }
             Rectangle {
@@ -493,7 +458,7 @@ Item {
         Rectangle {
             id: leftPanel
             anchors.top: parent.top; anchors.left: parent.left
-            anchors.bottom: contentFooter.top; anchors.bottomMargin: 8
+            anchors.bottom: actionBar.top; anchors.bottomMargin: 8
             width: Math.floor(parent.width * 0.44)
             color: _surface; radius: 10
             border.color: _borderSub; border.width: 1; clip: true
@@ -502,16 +467,44 @@ Item {
 
             Text {
                 id: panelTitle
-                anchors.top: parent.top; anchors.topMargin: 20
+                anchors.top: parent.top; anchors.topMargin: 18
                 anchors.left: parent.left; anchors.leftMargin: 22
-                text: "Session details"
+                text: "Session setup"
                 color: _txt; font.family: theme.fontFamily; font.pixelSize: 16; font.bold: true
             }
+
+            // UI-B: the setup fields used to be one rigid anchor chain pinned
+            // directly to the panel. Because the chain has no upper bound, on a
+            // shorter window it simply overflowed and `clip: true` swallowed
+            // whatever fell off the end — which is how the Start button became
+            // invisible. Scrolling the fields makes overflow impossible at any
+            // window height, and lets the action bar own the bottom of the page.
+            Flickable {
+                id: setupScroll
+                anchors.top: panelTitle.bottom; anchors.topMargin: 14
+                anchors.left: parent.left; anchors.right: parent.right
+                anchors.bottom: parent.bottom; anchors.bottomMargin: 16
+                clip: true
+                contentWidth: width
+                contentHeight: setupInner.height
+                boundsBehavior: Flickable.StopAtBounds
+                ScrollBar.vertical: ScrollBar {
+                    policy: setupScroll.contentHeight > setupScroll.height
+                            ? ScrollBar.AsNeeded : ScrollBar.AlwaysOff
+                }
+
+            // The inner Item keeps the original full-panel width, so every
+            // child's existing 22 px left/right margins resolve to the same
+            // insets they had before.
+            Item {
+                id: setupInner
+                width: setupScroll.width
+                height: summaryCard.y + summaryCard.height + 4
 
             // ── ATHLETE ───────────────────────────────────────────────────────
             Text {
                 id: athleteLabel
-                anchors.top: panelTitle.bottom; anchors.topMargin: 16
+                anchors.top: parent.top; anchors.topMargin: 0
                 anchors.left: parent.left; anchors.leftMargin: 22
                 text: "ATHLETE"
                 color: _txtMut; font.family: theme.fontFamily
@@ -522,7 +515,7 @@ Item {
                 anchors.top: athleteLabel.bottom; anchors.topMargin: 6
                 anchors.left: parent.left;   anchors.leftMargin: 22
                 anchors.right: parent.right; anchors.rightMargin: 22
-                height: 46; color: _input; radius: 6
+                height: 52; color: _input; radius: 6
                 border.color: name_text_field.activeFocus ? _red : _borderSub
                 border.width: name_text_field.activeFocus ? 2 : 1
 
@@ -534,6 +527,16 @@ Item {
                     font.family: theme.fontFamily; font.pixelSize: 14
                     color: _txt; maximumLength: 20
                     onTextChanged: { username_loginPage = text }
+                }
+                // UI-B: TextInput has no placeholderText, so a fresh install
+                // showed an unlabelled empty box with no hint that a name is
+                // wanted. This is display only — it never contributes text.
+                Text {
+                    anchors.left: parent.left; anchors.leftMargin: 15
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: name_text_field.text === "" && !name_text_field.activeFocus
+                    text: qsTr("Athlete name")
+                    color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 14
                 }
                 Rectangle {
                     id: historyBtn
@@ -550,12 +553,12 @@ Item {
                 id: userHistoryList
                 anchors.top: athleteBox.bottom
                 anchors.left: athleteBox.left; anchors.right: athleteBox.right
-                height: Math.min(count, 4) * 46
+                height: Math.min(count, 4) * 52
                 visible: false; clip: true; z: 20
                 model: APPSETTINGS.getUserHistoryCount()
                 onVisibleChanged: { model = 0; model = APPSETTINGS.getUserHistoryCount() }
                 delegate: Rectangle {
-                    width: userHistoryList.width; height: 46
+                    width: userHistoryList.width; height: 52
                     color: _surfaceAlt; border.color: _borderSub; border.width: 1
                     Text {
                         anchors.verticalCenter: parent.verticalCenter; anchors.left: parent.left; anchors.leftMargin: 14
@@ -586,11 +589,11 @@ Item {
                 anchors.top: connLabel.bottom; anchors.topMargin: 6
                 anchors.left: parent.left;   anchors.leftMargin: 22
                 anchors.right: parent.right; anchors.rightMargin: 22
-                height: 46; spacing: 8
+                height: 52; spacing: 8
                 visible: showComportConnector
 
                 Rectangle {
-                    width: parent.width - connStatusBtn.width - 8; height: 46
+                    width: parent.width - connStatusBtn.width - 8; height: 52
                     color: _input; radius: 6
                     border.color: port_name_text_field.activeFocus ? _red : _borderSub
                     border.width: port_name_text_field.activeFocus ? 2 : 1
@@ -605,7 +608,7 @@ Item {
                 }
                 Rectangle {
                     id: connStatusBtn
-                    width: 130; height: 46; radius: 6
+                    width: 148; height: 52; radius: 6
                     color: mod_connected ? "#0d2018" : _surfaceAlt
                     border.color: mod_connected ? _green : _borderSub; border.width: 1
                     Row {
@@ -668,12 +671,12 @@ Item {
                 anchors.top: opModeSectionLabel.bottom; anchors.topMargin: 6
                 anchors.left: parent.left;   anchors.leftMargin: 22
                 anchors.right: parent.right; anchors.rightMargin: 22
-                height: 46; spacing: 8
+                height: 52; spacing: 8
                 property bool opLive: (typeof OPMODE !== "undefined") ? OPMODE.live : appMode
 
                 // Live target pill
                 Rectangle {
-                    width: (parent.width - parent.spacing) / 2; height: 46; radius: 6
+                    width: (parent.width - parent.spacing) / 2; height: 52; radius: 6
                     color: opModeRow.opLive ? "#0d2018" : _input
                     border.color: opModeRow.opLive ? _green : _borderSub
                     border.width: opModeRow.opLive ? 2 : 1
@@ -694,7 +697,7 @@ Item {
                 }
                 // Demo pill
                 Rectangle {
-                    width: (parent.width - parent.spacing) / 2; height: 46; radius: 6
+                    width: (parent.width - parent.spacing) / 2; height: 52; radius: 6
                     color: !opModeRow.opLive ? "#2a0b10" : _input
                     border.color: !opModeRow.opLive ? _red : _borderSub
                     border.width: !opModeRow.opLive ? 2 : 1
@@ -800,7 +803,7 @@ Item {
                 anchors.top: networkSectionLabel.bottom; anchors.topMargin: 6
                 anchors.left: parent.left;   anchors.leftMargin: 22
                 anchors.right: parent.right; anchors.rightMargin: 22
-                height: 50; color: _input; radius: 6
+                height: 56; color: _input; radius: 6
                 border.color: netEnabled ? _red : _borderSub; border.width: 1
                 property bool netEnabled: true
 
@@ -822,7 +825,7 @@ Item {
                             font.family: theme.fontFamily; font.pixelSize: 12; font.bold: true
                         }
                         Text {
-                            text: netowrk_path_text.text !== "" ? netowrk_path_text.text : "Tap to set folder…"
+                            text: netowrk_path_text.text !== "" ? netowrk_path_text.text : "No folder selected — click to choose"
                             color: netowrk_path_text.text !== "" ? _txtMut : _red
                             font.family: "Consolas"; font.pixelSize: 10
                             elide: Text.ElideMiddle; width: networkShareCard.width - 100
@@ -840,12 +843,12 @@ Item {
                     id: netToggleTrack
                     anchors.right: parent.right; anchors.rightMargin: 12
                     anchors.verticalCenter: parent.verticalCenter
-                    width: 38; height: 20; radius: 10
+                    width: 46; height: 26; radius: 13
                     color: networkShareCard.netEnabled ? _red : _borderStr
                     Rectangle {
                         anchors.verticalCenter: parent.verticalCenter
-                        x: networkShareCard.netEnabled ? parent.width - width - 2 : 2
-                        width: 16; height: 16; radius: 8; color: "white"
+                        x: networkShareCard.netEnabled ? parent.width - width - 3 : 3
+                        width: 20; height: 20; radius: 10; color: "white"
                         Behavior on x { NumberAnimation { duration: 120 } }
                     }
                     MouseArea {
@@ -862,39 +865,56 @@ Item {
                 }
             }
 
-            // ── SELECTED PROFILE ──────────────────────────────────────────────
-            Text {
-                id: profileLabel
-                anchors.top: networkShareCard.bottom; anchors.topMargin: 16
-                anchors.left: parent.left; anchors.leftMargin: 22
-                text: (trainingConfirmed || cdConfirmed || ptConfirmed) ? "SELECTED PROGRAMME" : "SELECTED PROFILE"
-                color: _txtMut; font.family: theme.fontFamily
-                font.pixelSize: 10; font.bold: true; font.letterSpacing: 2
-            }
-            Text {
-                id: profileName
-                anchors.top: profileLabel.bottom; anchors.topMargin: 4
-                anchors.left: parent.left; anchors.leftMargin: 22
-                text: ptConfirmed ? "Position Transition"
-                      : (cdConfirmed ? "Call & Diagnose"
-                      : (trainingConfirmed ? "Technical Blocks" : getDisciplineName() + " — ISSF"))
-                color: _txt; font.family: theme.fontFamily; font.pixelSize: 16; font.bold: true
-            }
-            Text {
-                visible: trainingConfirmed && trainingDisciplineId() === "3P50"
-                anchors.top: profileName.bottom; anchors.topMargin: 2
-                anchors.left: parent.left; anchors.leftMargin: 22
-                text: "POSITION FLOW   Kneeling → Prone → Standing"
-                color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 9; font.letterSpacing: 1
-            }
-
-            // ── INFO TILES (T1: programme summary when Training confirmed) ────
-            Grid {
-                id: infoTiles
-                anchors.top: profileName.bottom; anchors.topMargin: 12
+            // ── SELECTED PROGRAMME SUMMARY ────────────────────────────────────
+            // UI-B: this was a heading plus six individually-bordered stat tiles,
+            // all shouting at the same volume. It is now ONE card: the programme
+            // name reads first, and the six values sit below a divider as quiet
+            // label/value pairs. Identical data, identical expressions — only the
+            // visual weight changed.
+            Rectangle {
+                id: summaryCard
+                anchors.top: networkShareCard.bottom; anchors.topMargin: 18
                 anchors.left: parent.left;   anchors.leftMargin: 22
                 anchors.right: parent.right; anchors.rightMargin: 22
-                columns: 3; spacing: 8
+                height: summaryInner.implicitHeight + 28
+                color: _surfaceAlt; radius: 8
+                border.color: _borderSub; border.width: 1
+
+                Column {
+                    id: summaryInner
+                    anchors.left: parent.left;   anchors.leftMargin: 14
+                    anchors.right: parent.right; anchors.rightMargin: 14
+                    anchors.top: parent.top;     anchors.topMargin: 14
+                    spacing: 4
+
+                    Text {
+                        id: profileLabel
+                        text: (trainingConfirmed || cdConfirmed || ptConfirmed) ? "SELECTED PROGRAMME" : "SELECTED PROFILE"
+                        color: _txtMut; font.family: theme.fontFamily
+                        font.pixelSize: 10; font.bold: true; font.letterSpacing: 2
+                    }
+                    Text {
+                        id: profileName
+                        text: ptConfirmed ? "Position Transition"
+                              : (cdConfirmed ? "Call & Diagnose"
+                              : (trainingConfirmed ? "Technical Blocks" : getDisciplineName() + " — ISSF"))
+                        color: _txt; font.family: theme.fontFamily; font.pixelSize: 17; font.bold: true
+                        width: parent.width; elide: Text.ElideRight
+                    }
+                    Text {
+                        visible: trainingConfirmed && trainingDisciplineId() === "3P50"
+                        text: "POSITION FLOW   Kneeling → Prone → Standing"
+                        color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 9; font.letterSpacing: 1
+                    }
+                    Item { width: 1; height: 6 }
+                    Rectangle { width: parent.width; height: 1; color: _borderSub }
+                    Item { width: 1; height: 8 }
+
+            // ── INFO GRID (T1: programme summary when Training confirmed) ─────
+            Grid {
+                id: infoTiles
+                width: parent.width
+                columns: 3; rowSpacing: 12; columnSpacing: 10
                 Repeater {
                     model: ptConfirmed ? [
                         { lbl: "SEQUENCE",  val: POSTRANS.sequenceString() },
@@ -925,170 +945,35 @@ Item {
                         { lbl: "DISTANCE",  val: gameRange + " m" },
                         { lbl: "RULES",     val: "ISSF 2026" }
                     ]
-                    delegate: Rectangle {
-                        width: (infoTiles.width - 16) / 3; height: 52
-                        color: _surfaceAlt; radius: 6; border.color: _borderSub; border.width: 1
-                        Column {
-                            anchors.centerIn: parent; spacing: 4
-                            Text {
-                                text: modelData.lbl; color: _txtMut
-                                font.family: theme.fontFamily; font.pixelSize: 9; font.letterSpacing: 1.5
-                                anchors.horizontalCenter: parent.horizontalCenter
-                            }
-                            Text {
-                                text: modelData.val; color: _txt
-                                font.family: "Consolas"; font.pixelSize: 13; font.bold: true
-                                anchors.horizontalCenter: parent.horizontalCenter
-                            }
+                    delegate: Column {
+                        width: (infoTiles.width - infoTiles.columnSpacing * 2) / 3
+                        spacing: 3
+                        Text {
+                            text: modelData.lbl; color: _txtMut
+                            font.family: theme.fontFamily; font.pixelSize: 9
+                            font.bold: true; font.letterSpacing: 1.4
+                        }
+                        Text {
+                            text: modelData.val; color: _txt
+                            font.family: theme.fontFamily; font.pixelSize: 14; font.bold: true
+                            width: parent.width; elide: Text.ElideRight
                         }
                     }
                 }
             }
 
-            // ── ACTION BUTTONS ────────────────────────────────────────────────
-            Row {
-                anchors.bottom: parent.bottom; anchors.bottomMargin: 18
-                anchors.left: parent.left;   anchors.leftMargin: 22
-                anchors.right: parent.right; anchors.rightMargin: 22
-                height: 52; spacing: 10
+                }   // summaryInner
+            }       // summaryCard
+            }       // setupInner
+            }       // setupScroll
 
-                Rectangle {
-                    width: (parent.width - 10) * 0.40; height: 52
-                    color: "transparent"; radius: 8; border.color: _borderStr; border.width: 1
-                    Text {
-                        text: "Load saved session"
-                        color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 12; anchors.centerIn: parent
-                    }
-                    MouseArea {
-                        anchors.fill: parent; hoverEnabled: true
-                        onEntered: parent.border.color = _txtMut
-                        onExited:  parent.border.color = _borderStr
-                        onClicked: {
-                            APPSETTINGS.uploadGame()
-                            username_loginPage = APPSETTINGS.getUserName()
-                            gameMode  = APPSETTINGS.getGameMode()
-                            gameEvent = APPSETTINGS.getGameEvent()
-                            gameType  = APPSETTINGS.getGameType()
-                            if (gameType == 0) MODREADER.changeSighterMode(false)
-                            if (userName != "") { isSaveGame = true; startButtonClickedOnLoadGame() }
-                        }
-                    }
-                }
-
-                Rectangle {
-                    id: startSessionRect
-                    width: (parent.width - 10) * 0.60; height: 52
-                    color: _startHov ? _redHover : _red; radius: 8
-                    opacity: startMouse.visible ? 1.0 : 0.4
-                    property bool _startHov: false
-                    Text {
-                        text: ptConfirmed ? "Start transitions  →"
-                              : (cdConfirmed ? "Start calling  →"
-                              : (trainingConfirmed ? "Start training  →" : "Start session  →"))
-                        color: "white"; font.family: theme.fontFamily; font.pixelSize: 15; font.bold: true
-                        anchors.centerIn: parent
-                    }
-                    MouseArea {
-                        id: startMouse
-                        anchors.fill: parent; hoverEnabled: true
-                        onEntered: startSessionRect._startHov = true
-                        onExited:  startSessionRect._startHov = false
-                        onClicked: {
-                            // TRAINING LAB (T4): Position Transition — new Training
-                            // session (kind=Training, position_transition; 3P only).
-                            if (ptConfirmed) {
-                                if (!POSTRANS.startPositionTransition(username_loginPage)) {
-                                    dialogManager.showError(qsTr("Cannot start Position Transition"),
-                                        POSTRANS.lastStartError !== "" ? POSTRANS.lastStartError
-                                            : qsTr("The session could not be started."))
-                                    return
-                                }
-                                shootingPage.enterPositionTransitionMode()
-                                rootItem.visible = false
-                                return
-                            }
-                            // TRAINING LAB (T2): Call & Diagnose — new Training
-                            // session (kind=Training, call_and_diagnose). Opens in
-                            // Sighters; NEVER a qualification/Final session.
-                            if (cdConfirmed) {
-                                if (!CALLDIAG.startCallDiagnose(username_loginPage)) {
-                                    dialogManager.showError(qsTr("Cannot start Call & Diagnose"),
-                                        CALLDIAG.lastStartError !== ""
-                                            ? CALLDIAG.lastStartError
-                                            : qsTr("The session could not be started."))
-                                    return
-                                }
-                                shootingPage.enterCallDiagnoseMode()
-                                rootItem.visible = false
-                                return
-                            }
-                            // TRAINING LAB (T1): explicit Start training — new
-                            // Training session (kind=Training, technical_blocks,
-                            // mode/discipline/focus/visibility persisted, Block 1
-                            // started once). NEVER a qualification/Final session.
-                            if (trainingConfirmed) {
-                                if (!TRAINING.startTraining(username_loginPage)) {
-                                    // T1.1: specific, actionable reason from the
-                                    // controller (lastStartError is a real property).
-                                    dialogManager.showError(qsTr("Cannot start training"),
-                                        TRAINING.lastStartError !== ""
-                                            ? TRAINING.lastStartError
-                                            : qsTr("The training session could not be started."))
-                                    return
-                                }
-                                shootingPage.enterTrainingMode()
-                                rootItem.visible = false
-                                return
-                            }
-                            if (!appMode) {
-                                MODREADER.appendToLogFile("Application running in demo mode")
-                                if (connectToMaster && !MODREADER.isMasterSystemConnected()) {
-                                    dialogManager.showError(qsTr("Master Not Connected"),
-                                        qsTr("The master system is not connected.\n\nPlease press \u201CConnect\u201D and try again.")); return
-                                }
-                                rootItem.visible = false
-                            } else {
-                                MODREADER.appendToLogFile("Application running in Live mode")
-                                if (connectToMaster && !MODREADER.isMasterSystemConnected()) {
-                                    MODREADER.appendToLogFile("Master application required")
-                                    dialogManager.showError(qsTr("Master Not Connected"),
-                                        qsTr("The master system is not connected.\n\nPlease press \u201CConnect\u201D and try again.")); return
-                                }
-                                if (masterConnectBtn && port_name_text_field.text != "") {
-                                    MODREADER.appendToLogFile("Application with port text field")
-                                    MODREADER.connectedModbus(port_name_text_field.text)
-                                    mod_connected = MODREADER.isModBusConnected()
-                                }
-                                if (!MODREADER.isModBusConnected()) {
-                                    validateLogin.text = "Com port not connected"; validateLogin.visible = true
-                                } else if (!MODREADER.isHardwareConnected()) {
-                                    validateLogin.text = "Hardware not connected."; validateLogin.visible = true
-                                } else if (!MODREADER.checkAutoFeedMode()) {
-                                    validateLogin.text = "Auto feed mode is off"; validateLogin.visible = false
-                                } else if (validate()) {
-                                    MODREADER.appendToLogFile("Validation was successful"); rootItem.visible = false
-                                } else { MODREADER.appendToLogFile("Com-port connected but validation failed") }
-                            }
-                            APPSETTINGS.saveMatch(true)
-                            APPSETTINGS.updateUserHistoryData(name_text_field.text)
-                            MODREADER.saveNameAndPort(name_text_field.text, port_name_text_field.text, netowrk_path_text.text)
-                            // Only start hardware polling in LIVE mode. In demo a
-                            // COM port may be open with no target answering, and
-                            // on_pushButton_clicked's blocking reads would freeze
-                            // the transition to the shooting page.
-                            if (appMode && mod_connected) { MODREADER.on_pushButton_clicked(); MODREADER.on_pushButton_2_clicked() }
-                            MODREADER.resetShootinCount()
-                        }
-                    }
-                }
-            }
         } // leftPanel
 
         // ── RIGHT PANEL ───────────────────────────────────────────────────────
         Rectangle {
             id: rightPanel
             anchors.top: parent.top; anchors.right: parent.right
-            anchors.bottom: contentFooter.top; anchors.bottomMargin: 8
+            anchors.bottom: actionBar.top; anchors.bottomMargin: 8
             anchors.left: leftPanel.right; anchors.leftMargin: 10
             color: _surface; radius: 10
             border.color: _borderSub; border.width: 1; clip: true
@@ -1114,10 +999,10 @@ Item {
                 anchors.top: rightSubtitle.bottom; anchors.topMargin: 14
                 anchors.left: parent.left;   anchors.leftMargin: 22
                 anchors.right: parent.right; anchors.rightMargin: 22
-                height: 52; spacing: 8
+                height: 58; spacing: 8
 
                 Rectangle {
-                    width: (parent.width - 8) / 2; height: 52; radius: 8
+                    width: (parent.width - 8) / 2; height: 58; radius: 8
                     color: gameMode === 0 ? _redDark : _surfaceAlt
                     border.color: gameMode === 0 ? _red : _borderSub
                     border.width: gameMode === 0 ? 2 : 1
@@ -1144,7 +1029,7 @@ Item {
                 }
 
                 Rectangle {
-                    width: (parent.width - 8) / 2; height: 52; radius: 8
+                    width: (parent.width - 8) / 2; height: 58; radius: 8
                     color: gameMode === 1 ? _redDark : _surfaceAlt
                     border.color: gameMode === 1 ? _red : _borderSub
                     border.width: gameMode === 1 ? 2 : 1
@@ -1180,14 +1065,14 @@ Item {
                 anchors.topMargin: gameMode === 1 ? 8 : 0
                 anchors.left: parent.left;   anchors.leftMargin: 22
                 anchors.right: parent.right; anchors.rightMargin: 22
-                height: gameMode === 1 ? (gameRange === 50 ? 80 : 36) : 0
+                height: gameMode === 1 ? (gameRange === 50 ? 96 : 44) : 0
                 spacing: 8; clip: true
 
                 // Distance row: 10m | 50m
                 Row {
-                    width: parent.width; height: 36; spacing: 8
+                    width: parent.width; height: 44; spacing: 8
                     Rectangle {
-                        width: (parent.width - 8) / 2; height: 36; radius: 6
+                        width: (parent.width - 8) / 2; height: 44; radius: 6
                         color: gameRange === 10 ? _redDark : _input
                         border.color: gameRange === 10 ? _red : _borderSub
                         Text {
@@ -1203,7 +1088,7 @@ Item {
                     }
                     Rectangle {
                         id: rifle50Mouse
-                        width: (parent.width - 8) / 2; height: 36; radius: 6
+                        width: (parent.width - 8) / 2; height: 44; radius: 6
                         color: gameRange === 50 ? _redDark : _input
                         border.color: gameRange === 50 ? _red : _borderSub
                         Text {
@@ -1221,10 +1106,10 @@ Item {
 
                 // Prone | 3 Positions — only shown for 50m
                 Row {
-                    width: parent.width; height: 36; spacing: 8
+                    width: parent.width; height: 44; spacing: 8
                     visible: gameRange === 50
                     Rectangle {
-                        width: (parent.width - 8) / 2; height: 36; radius: 6
+                        width: (parent.width - 8) / 2; height: 44; radius: 6
                         color: gameSubMode === 0 ? _redDark : _input
                         border.color: gameSubMode === 0 ? _red : _borderSub
                         Text {
@@ -1239,7 +1124,7 @@ Item {
                         }
                     }
                     Rectangle {
-                        width: (parent.width - 8) / 2; height: 36; radius: 6
+                        width: (parent.width - 8) / 2; height: 44; radius: 6
                         color: gameSubMode === 1 ? _redDark : _input
                         border.color: gameSubMode === 1 ? _red : _borderSub
                         Text {
@@ -1275,7 +1160,7 @@ Item {
 
                     component EventCard: Rectangle {
                         property int eventIndex: 0
-                        width: eventColumn.width; height: 72; radius: 8
+                        width: eventColumn.width; height: 78; radius: 8
                         color: gameEvent === eventIndex ? _redDark : _surfaceAlt
                         border.color: gameEvent === eventIndex ? _red : _borderSub
                         border.width: gameEvent === eventIndex ? 2 : 1
@@ -1369,6 +1254,14 @@ Item {
                     // Official: 60 shots — Pistol, 10m Rifle, 50m Prone, 50m 3 Pos (20+20+20)
                     EventCard { eventIndex: 4 }
 
+                    Text {
+                        text: "FINALS"
+                        color: _txtMut; font.family: theme.fontFamily
+                        font.pixelSize: 9; font.bold: true; font.letterSpacing: 2
+                        topPadding: 16; bottomPadding: 8
+                        visible: gameRange === 10 || (gameMode === 1 && gameRange === 50 && gameSubMode === 1)
+                    }
+
                     // 3P FINAL (35) — ISSF final training mode; only offered in
                     // the 50m Rifle 3 Positions flow. Separate finals domain
                     // (isFinalsMatch) — see docs/3p-finals-discipline.md.
@@ -1388,17 +1281,55 @@ Item {
                     // compact presets; Training Lab opens the programme
                     // catalogue in this panel.
                     Text {
-                        text: "PRACTICE & DEVELOPMENT"
+                        text: "TRAINING LAB"
                         color: _txtMut; font.family: theme.fontFamily
                         font.pixelSize: 9; font.bold: true; font.letterSpacing: 2
-                        topPadding: 14; bottomPadding: 8
+                        topPadding: 16; bottomPadding: 8
+                    }
+                    // TRAINING LAB — gateway to the programme catalogue.
+                    Rectangle {
+                        width: eventColumn.width; height: 78; radius: 8
+                        color: _surfaceAlt
+                        border.color: trainingConfirmed ? _red : _borderSub
+                        border.width: trainingConfirmed ? 2 : 1
+                        Row {
+                            anchors.left: parent.left; anchors.leftMargin: 12
+                            anchors.right: parent.right; anchors.rightMargin: 12
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 12
+                            Rectangle {
+                                width: 38; height: 38; radius: 19
+                                color: trainingConfirmed ? _red : _borderStr
+                                anchors.verticalCenter: parent.verticalCenter
+                                Text { text: "TL"; color: "white"; font.family: "Consolas"
+                                       font.pixelSize: 12; font.bold: true; anchors.centerIn: parent }
+                            }
+                            Column {
+                                anchors.verticalCenter: parent.verticalCenter; spacing: 3
+                                width: parent.width - 38 - 30 - 24
+                                Text { text: "TRAINING LAB"
+                                       color: _txt; font.family: theme.fontFamily
+                                       font.pixelSize: 13; font.bold: true }
+                                Text { text: "Structured technical practice and athlete feedback.\nTechnical Blocks · Shot calling · Group analysis"
+                                       color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 10 }
+                            }
+                            Text { text: "→"; color: _red; font.pixelSize: 20; font.bold: true
+                                   anchors.verticalCenter: parent.verticalCenter }
+                        }
+                        MouseArea { anchors.fill: parent; onClicked: practiceView = 1 }
+                    }
+                    Text {
+                        text: "PRACTICE"
+                        color: _txtMut; font.family: theme.fontFamily
+                        font.pixelSize: 9; font.bold: true; font.letterSpacing: 2
+                        topPadding: 16; bottomPadding: 8
                     }
                     // OPEN PRACTICE — one card; presets select the existing
                     // practice events (identical behaviour to the old rows).
                     Rectangle {
                         readonly property bool selected: gameEvent >= 0 && gameEvent <= 3 && !trainingConfirmed
                         width: eventColumn.width
-                        height: selected ? 132 : 72
+                        height: selected ? 148 : 78
                         radius: 8
                         color: selected ? _redDark : _surfaceAlt
                         border.color: selected ? _red : _borderSub
@@ -1435,7 +1366,7 @@ Item {
                                            ? [ {e: 1, t: "20"}, {e: 3, t: "40"}, {e: 5, t: "No limit"} ]
                                            : [ {e: 0, t: "10"}, {e: 1, t: "20"}, {e: 2, t: "30"}, {e: 3, t: "40"}, {e: 5, t: "No limit"} ]
                                     delegate: Rectangle {
-                                        width: 72; height: 44; radius: 6
+                                        width: 84; height: 48; radius: 6
                                         color: gameEvent === modelData.e ? _red : _input
                                         border.color: gameEvent === modelData.e ? _red : _borderSub
                                         Text { anchors.centerIn: parent
@@ -1452,39 +1383,6 @@ Item {
                             enabled: !parent.selected
                             onClicked: { trainingConfirmed = false; cdConfirmed = false; ptConfirmed = false; gameEvent = 1 }
                         }
-                    }
-                    Item { width: 1; height: 8 }
-                    // TRAINING LAB — gateway to the programme catalogue.
-                    Rectangle {
-                        width: eventColumn.width; height: 72; radius: 8
-                        color: _surfaceAlt
-                        border.color: trainingConfirmed ? _red : _borderSub
-                        border.width: trainingConfirmed ? 2 : 1
-                        Row {
-                            anchors.left: parent.left; anchors.leftMargin: 12
-                            anchors.right: parent.right; anchors.rightMargin: 12
-                            anchors.verticalCenter: parent.verticalCenter
-                            spacing: 12
-                            Rectangle {
-                                width: 38; height: 38; radius: 19
-                                color: trainingConfirmed ? _red : _borderStr
-                                anchors.verticalCenter: parent.verticalCenter
-                                Text { text: "TL"; color: "white"; font.family: "Consolas"
-                                       font.pixelSize: 12; font.bold: true; anchors.centerIn: parent }
-                            }
-                            Column {
-                                anchors.verticalCenter: parent.verticalCenter; spacing: 3
-                                width: parent.width - 38 - 30 - 24
-                                Text { text: "TRAINING LAB"
-                                       color: _txt; font.family: theme.fontFamily
-                                       font.pixelSize: 13; font.bold: true }
-                                Text { text: "Structured technical practice and athlete feedback.\nTechnical Blocks · Shot calling · Group analysis"
-                                       color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 10 }
-                            }
-                            Text { text: "→"; color: _red; font.pixelSize: 20; font.bold: true
-                                   anchors.verticalCenter: parent.verticalCenter }
-                        }
-                        MouseArea { anchors.fill: parent; onClicked: practiceView = 1 }
                     }
                     Item { width: 1; height: 8 }
                     // T1.1: the separate FREE PRACTICE section is gone — one
@@ -2127,6 +2025,190 @@ Item {
                 }
             }
         } // rightPanel
+
+        // ── Bottom action area (UI-B) ────────────────────────────────
+        // The primary actions used to sit at the bottom of the LEFT panel, inside
+        // the same clipped anchor chain as the setup fields — so on a shorter
+        // window they were pushed out of sight. They now own a full-width bar
+        // that spans both columns and can never be clipped, with a one-line recap
+        // of exactly what is about to start.
+        Rectangle {
+            id: actionBar
+            anchors.bottom: contentFooter.top; anchors.bottomMargin: 8
+            anchors.left: parent.left; anchors.right: parent.right
+            height: 88
+            color: _surface; radius: 10
+            border.color: _borderSub; border.width: 1
+
+            Rectangle {
+                anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom
+                width: 3; color: _red; radius: 2
+            }
+
+            Column {
+                anchors.left: parent.left; anchors.leftMargin: 22
+                anchors.right: actionRow.left; anchors.rightMargin: 20
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 5
+
+                Text {
+                    text: "READY TO START"
+                    color: _txtMut; font.family: theme.fontFamily
+                    font.pixelSize: 10; font.bold: true; font.letterSpacing: 2
+                }
+                Text {
+                    width: parent.width; elide: Text.ElideRight
+                    text: {
+                        var who = username_loginPage !== "" ? username_loginPage : "No athlete entered"
+                        var what = ptConfirmed ? "Position Transition"
+                                 : (cdConfirmed ? "Call & Diagnose"
+                                 : (trainingConfirmed ? "Technical Blocks"
+                                 : getEventCardTitle(gameEvent)))
+                        return who + "   \u00b7   " + what + "   \u00b7   " + (appMode ? "Live target" : "Demo / Simulation")
+                    }
+                    color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 13
+                }
+            }
+
+            // ── ACTION BUTTONS ────────────────────────────────────────────────
+            Row {
+                id: actionRow
+                anchors.bottom: parent.bottom; anchors.bottomMargin: 18
+                anchors.left: parent.left;   anchors.leftMargin: 22
+                anchors.right: parent.right; anchors.rightMargin: 22
+                height: 52; spacing: 10
+
+                Rectangle {
+                    width: 210; height: 56
+                    color: "transparent"; radius: 8; border.color: _borderStr; border.width: 1
+                    Text {
+                        text: "Load saved session"
+                        color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 14; anchors.centerIn: parent
+                    }
+                    MouseArea {
+                        anchors.fill: parent; hoverEnabled: true
+                        onEntered: parent.border.color = _txtMut
+                        onExited:  parent.border.color = _borderStr
+                        onClicked: {
+                            APPSETTINGS.uploadGame()
+                            username_loginPage = APPSETTINGS.getUserName()
+                            gameMode  = APPSETTINGS.getGameMode()
+                            gameEvent = APPSETTINGS.getGameEvent()
+                            gameType  = APPSETTINGS.getGameType()
+                            if (gameType == 0) MODREADER.changeSighterMode(false)
+                            if (userName != "") { isSaveGame = true; startButtonClickedOnLoadGame() }
+                        }
+                    }
+                }
+
+                Rectangle {
+                    id: startSessionRect
+                    width: 268; height: 56
+                    color: _startHov ? _redHover : _red; radius: 8
+                    opacity: startMouse.visible ? 1.0 : 0.4
+                    property bool _startHov: false
+                    Text {
+                        text: ptConfirmed ? "Start transitions  →"
+                              : (cdConfirmed ? "Start calling  →"
+                              : (trainingConfirmed ? "Start training  →" : "Start session  →"))
+                        color: "white"; font.family: theme.fontFamily; font.pixelSize: 16; font.bold: true
+                        anchors.centerIn: parent
+                    }
+                    MouseArea {
+                        id: startMouse
+                        anchors.fill: parent; hoverEnabled: true
+                        onEntered: startSessionRect._startHov = true
+                        onExited:  startSessionRect._startHov = false
+                        onClicked: {
+                            // TRAINING LAB (T4): Position Transition — new Training
+                            // session (kind=Training, position_transition; 3P only).
+                            if (ptConfirmed) {
+                                if (!POSTRANS.startPositionTransition(username_loginPage)) {
+                                    dialogManager.showError(qsTr("Cannot start Position Transition"),
+                                        POSTRANS.lastStartError !== "" ? POSTRANS.lastStartError
+                                            : qsTr("The session could not be started."))
+                                    return
+                                }
+                                shootingPage.enterPositionTransitionMode()
+                                rootItem.visible = false
+                                return
+                            }
+                            // TRAINING LAB (T2): Call & Diagnose — new Training
+                            // session (kind=Training, call_and_diagnose). Opens in
+                            // Sighters; NEVER a qualification/Final session.
+                            if (cdConfirmed) {
+                                if (!CALLDIAG.startCallDiagnose(username_loginPage)) {
+                                    dialogManager.showError(qsTr("Cannot start Call & Diagnose"),
+                                        CALLDIAG.lastStartError !== ""
+                                            ? CALLDIAG.lastStartError
+                                            : qsTr("The session could not be started."))
+                                    return
+                                }
+                                shootingPage.enterCallDiagnoseMode()
+                                rootItem.visible = false
+                                return
+                            }
+                            // TRAINING LAB (T1): explicit Start training — new
+                            // Training session (kind=Training, technical_blocks,
+                            // mode/discipline/focus/visibility persisted, Block 1
+                            // started once). NEVER a qualification/Final session.
+                            if (trainingConfirmed) {
+                                if (!TRAINING.startTraining(username_loginPage)) {
+                                    // T1.1: specific, actionable reason from the
+                                    // controller (lastStartError is a real property).
+                                    dialogManager.showError(qsTr("Cannot start training"),
+                                        TRAINING.lastStartError !== ""
+                                            ? TRAINING.lastStartError
+                                            : qsTr("The training session could not be started."))
+                                    return
+                                }
+                                shootingPage.enterTrainingMode()
+                                rootItem.visible = false
+                                return
+                            }
+                            if (!appMode) {
+                                MODREADER.appendToLogFile("Application running in demo mode")
+                                if (connectToMaster && !MODREADER.isMasterSystemConnected()) {
+                                    dialogManager.showError(qsTr("Master Not Connected"),
+                                        qsTr("The master system is not connected.\n\nPlease press \u201CConnect\u201D and try again.")); return
+                                }
+                                rootItem.visible = false
+                            } else {
+                                MODREADER.appendToLogFile("Application running in Live mode")
+                                if (connectToMaster && !MODREADER.isMasterSystemConnected()) {
+                                    MODREADER.appendToLogFile("Master application required")
+                                    dialogManager.showError(qsTr("Master Not Connected"),
+                                        qsTr("The master system is not connected.\n\nPlease press \u201CConnect\u201D and try again.")); return
+                                }
+                                if (masterConnectBtn && port_name_text_field.text != "") {
+                                    MODREADER.appendToLogFile("Application with port text field")
+                                    MODREADER.connectedModbus(port_name_text_field.text)
+                                    mod_connected = MODREADER.isModBusConnected()
+                                }
+                                if (!MODREADER.isModBusConnected()) {
+                                    validateLogin.text = "Com port not connected"; validateLogin.visible = true
+                                } else if (!MODREADER.isHardwareConnected()) {
+                                    validateLogin.text = "Hardware not connected."; validateLogin.visible = true
+                                } else if (!MODREADER.checkAutoFeedMode()) {
+                                    validateLogin.text = "Auto feed mode is off"; validateLogin.visible = false
+                                } else if (validate()) {
+                                    MODREADER.appendToLogFile("Validation was successful"); rootItem.visible = false
+                                } else { MODREADER.appendToLogFile("Com-port connected but validation failed") }
+                            }
+                            APPSETTINGS.saveMatch(true)
+                            APPSETTINGS.updateUserHistoryData(name_text_field.text)
+                            MODREADER.saveNameAndPort(name_text_field.text, port_name_text_field.text, netowrk_path_text.text)
+                            // Only start hardware polling in LIVE mode. In demo a
+                            // COM port may be open with no target answering, and
+                            // on_pushButton_clicked's blocking reads would freeze
+                            // the transition to the shooting page.
+                            if (appMode && mod_connected) { MODREADER.on_pushButton_clicked(); MODREADER.on_pushButton_2_clicked() }
+                            MODREADER.resetShootinCount()
+                        }
+                    }
+                }
+            }
+        }
 
         // ── Footer strip ──────────────────────────────────────────────────────
         Rectangle {
