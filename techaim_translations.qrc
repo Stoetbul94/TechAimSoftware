@@ -1,0 +1,8 @@
+<RCC>
+    <!-- P0 Phase F: compiled translation catalogues, shipped inside the
+         binary so a deployed install cannot lose them to a missing file.
+         English is the source language and needs no catalogue. -->
+    <qresource prefix="/translations">
+        <file alias="techaim_de_DE.qm">translations/techaim_de_DE.qm</file>
+    </qresource>
+</RCC>

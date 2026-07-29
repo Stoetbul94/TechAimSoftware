@@ -1,0 +1,46 @@
+// Windows version resource for TechAim.exe (P0 Phase C).
+//
+// Authored explicitly rather than generated from QMAKE_TARGET_*, because
+// qmake's generated resource leaves InternalName empty and emits
+// FILETYPE VFT_DLL for an application. This file is the auditable input to
+// the future signing pipeline, so every field is stated.
+//
+// Keep in step with src/app/ProductIdentity.cpp and APP_VERSION_STR in
+// Seta.pro. Deliberately makes NO certification claim: this is a pre-beta
+// validation build, not certified, not ISSF-approved, not SETA-approved.
+
+#include <windows.h>
+
+VS_VERSION_INFO VERSIONINFO
+    FILEVERSION    0,9,0,0
+    PRODUCTVERSION 0,9,0,0
+    FILEFLAGSMASK  VS_FFI_FILEFLAGSMASK
+#ifdef _DEBUG
+    FILEFLAGS      VS_FF_DEBUG | VS_FF_PRERELEASE
+#else
+    FILEFLAGS      VS_FF_PRERELEASE
+#endif
+    FILEOS         VOS_NT_WINDOWS32
+    FILETYPE       VFT_APP
+    FILESUBTYPE    VFT2_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"        // US English, Unicode
+        BEGIN
+            VALUE "CompanyName",      "JAC SHOOTING SOLUTIONS (PTY) LTD\0"
+            VALUE "FileDescription",  "Tech Aim Electronic Target Control\0"
+            VALUE "FileVersion",      "0.9.0.0\0"
+            VALUE "InternalName",     "TechAim\0"
+            VALUE "LegalCopyright",   "Copyright (C) JAC SHOOTING SOLUTIONS (PTY) LTD\0"
+            VALUE "OriginalFilename", "TechAim.exe\0"
+            VALUE "ProductName",      "Tech Aim Electronic Target Control\0"
+            VALUE "ProductVersion",   "0.9.0.0\0"
+            VALUE "Comments",         "Windows Pre-Beta Validation Build\0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409, 1200
+    END
+END

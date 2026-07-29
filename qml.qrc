@@ -1,6 +1,12 @@
 <RCC>
     <qresource prefix="/">
         <file>Theme.qml</file>
+        <file>src/ui/theme/DesignTokens.qml</file>
+        <file>src/ui/theme/Typography.qml</file>
+        <file>src/ui/theme/Spacing.qml</file>
+        <file>src/ui/components/TaButton.qml</file>
+        <file>src/ui/components/TaStatusChip.qml</file>
+        <file>src/ui/components/TaWarningBanner.qml</file>
         <file>VIcon.qml</file>
         <file>main.qml</file>
         <file>Header.qml</file>

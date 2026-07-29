@@ -80,7 +80,7 @@ Item {
             anchors.leftMargin: 24
             anchors.rightMargin: 24
             anchors.bottomMargin: 16
-            softwareVersion: "Seta 4.0"
+            softwareVersion: PRODUCT.softwareVersionLabel
             pageText: qsTr("Page ") + rootItem.pageIndex
         }
     }

@@ -8,7 +8,9 @@ ApplicationWindow {
     visible: true
     width: 640
     height: 480
-    title: qsTr("Hello World")
+    // Window caption + Windows taskbar text. Product identity comes from the
+    // PRODUCT context property (src/app/ProductIdentity.*), never hardcoded.
+    title: PRODUCT.fullProductName
 
     property bool isOpenGLEnabled: true
     property string userName: "Tachus"
@@ -435,7 +437,17 @@ ApplicationWindow {
     Component.onCompleted: {
         MODREADER.setIsSingleDecimal(isSingleDecimal)
         shootingPage.setCurrentGameType(1)
-        title = isDefaultIcon ? "TACHUS" : "SETA"
+        // The legacy `title = isDefaultIcon ? "TACHUS" : "SETA"` lived here.
+        // Assigning to `title` DESTROYS the declarative binding at the top of
+        // this file, so the window and taskbar showed
+        // "SETA - Tech Aim Electronic Target Control" (Qt appends the
+        // application display name to a title that does not already end with
+        // it). The binding to PRODUCT.fullProductName is now left intact and
+        // is the ONLY source of the window title.
+        //
+        // A future SETA OEM edition must obtain its title from the central
+        // ProductIdentity / BuildFlavour system, never from a runtime
+        // assignment here.
         MODREADER.setGame_range(gameRange)
         MODREADER.setShotPerSeries(shootsPerSeries)
         //MODREADER.on_pushButton_clicked();
@@ -444,8 +456,11 @@ ApplicationWindow {
 //    visibility: "FullScreen"
     visibility: "Maximized"
 
-    onVisibilityChanged: {
-        console.log("wiiiiiin visibility changed .... ", visibility)
+    // Formal parameter declared: injecting signal parameters into the handler
+    // scope is deprecated in Qt 6 and warned about on every launch.
+    onVisibilityChanged: function(visibility) {
+        if (APPSETTINGS.getDeveloperMode())
+            console.log("window visibility changed:", visibility)
         appVisiblityModeChanged(visibility)
     }
 

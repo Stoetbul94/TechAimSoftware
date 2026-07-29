@@ -38,7 +38,13 @@
 #include "src/training/CallDiagnoseController.h"
 #include "src/training/PositionTransitionController.h"
 #include "src/reliability/storage/StoragePaths.h"
+#include "src/app/ProductIdentity.h"
+#include "src/app/ProductIdentityBridge.h"
+#include "src/app/LanguageService.h"
+#include "src/app/DocumentationCapture.h"
 #include "logfile.h"
+#include <memory>
+#include <QFileInfo>
 #include <QLockFile>
 #include <QProcess>
 #include <QDir>
@@ -132,8 +138,16 @@ int main(int argc, char *argv[])
     // what QStandardPaths::AppLocalDataLocation resolves against. Every
     // existing QSettings call passes explicit org strings or filenames, so
     // nothing else shifts.
-    QCoreApplication::setOrganizationName(QStringLiteral("TechAim"));
-    QCoreApplication::setApplicationName(QStringLiteral("TechAim"));
+    // P0 Phase B: these now derive from the ONE product-identity source
+    // (src/app/ProductIdentity.*) instead of being spelled out here. The
+    // resolved values are unchanged from M0 ("TechAim"/"TechAim"), so the
+    // AppLocalDataLocation root and every existing journal path stay exactly
+    // where they are — the rename must not move anyone's session data.
+    const ta::app::ProductIdentity& product = ta::app::identity();
+    QCoreApplication::setOrganizationName(product.organisationName);
+    QCoreApplication::setApplicationName(product.organisationName);
+    QCoreApplication::setOrganizationDomain(product.organisationDomain);
+    QGuiApplication::setApplicationDisplayName(product.fullProductName);
 
     // F9B: build identity embedded at COMPILE time (Seta.pro DEFINES + the
     // compiler's __DATE__/__TIME__). The app never runs git; the customer
@@ -151,20 +165,35 @@ int main(int argc, char *argv[])
 #endif
     QCoreApplication::setApplicationVersion(QStringLiteral(APP_VERSION_STR));
     const QString kBuildTimestamp = QStringLiteral(__DATE__ " " __TIME__);
-    qInfo().noquote() << "TechAim" << APP_VERSION_STR
+    qInfo().noquote() << product.displayName << APP_VERSION_STR
                       << APP_BUILD_CONFIG << "build · commit" << APP_GIT_SHA
-                      << "· built" << kBuildTimestamp;
+                      << "· built" << kBuildTimestamp
+                      << "·" << product.releaseChannel
+                      << "· flavour" << ta::app::flavourName(ta::app::currentFlavour());
 
     ///////////////////////////////////////////////////////////
     /// single instance app
     ///////////////////////////////////////////////////////////
-    QLockFile lockFile(QDir::temp().absoluteFilePath("tachus_seta.lock"));
+    // P0 Phase E — single-instance migration. The identifier moves to the
+    // Tech Aim name, but this build ALSO holds the legacy lock: during the
+    // migration release a renamed TechAim.exe and an old Seta.exe must never
+    // run concurrently against the same config.ini and session store. Taking
+    // both locks makes either one block the other in both directions.
+    QLockFile lockFile(QDir::temp().absoluteFilePath(
+        product.executableBaseName + QStringLiteral(".lock")));
+    std::unique_ptr<QLockFile> legacyLock;
+    bool blockedByLegacy = false;
+    for (const QString& legacyName : product.legacyLockFileNames) {
+        auto lk = std::make_unique<QLockFile>(QDir::temp().absoluteFilePath(legacyName));
+        if (!lk->tryLock(100)) { blockedByLegacy = true; break; }
+        legacyLock = std::move(lk);   // held for the process lifetime
+    }
 
     /* Trying to close the Lock File, if the attempt is unsuccessful for 100 milliseconds,
          * then there is a Lock File already created by another process.
          / Therefore, we throw a warning and close the program
          * */
-    if(!lockFile.tryLock(100)){
+    if(!lockFile.tryLock(100) || blockedByLegacy){
         // TechAim dialog framework (C5): this fires BEFORE the QML engine
         // exists, so it cannot use dialogManager — a small frameless
         // TechAim-styled widget dialog replaces the native QMessageBox.
@@ -185,8 +214,10 @@ int main(int argc, char *argv[])
         title->setStyleSheet("color: #f2f3f5; font-family: 'Segoe UI';"
                              " font-size: 16px; font-weight: bold;"
                              " background: transparent; border: none;");
-        QLabel* body = new QLabel("Another instance of TechAim is already open.\n"
-                                  "Only one instance can run at a time.", card);
+        QLabel* body = new QLabel(
+            QCoreApplication::translate("Startup", "%1 is already running.\n"
+                                        "Only one instance can run at a time.")
+                .arg(product.displayName), card);
         body->setStyleSheet("color: #b6b9c0; font-family: 'Segoe UI';"
                             " font-size: 12px; background: transparent; border: none;");
         QPushButton* ok = new QPushButton("Close", card);
@@ -210,28 +241,49 @@ int main(int argc, char *argv[])
     ///////////////////////////////////////////////////////////
 
 
-    //// translations
-    QTranslator translator;
-    //qrc:/images/leftPanel/pistol_box_copy.png
-    //    translator.load(QLocale(), "Test", QString(), ":/Translations/Translations");
+    // P0 Phase F — UI language. Replaces the Tachus-era block that probed for
+    // a french.qm and then loaded "german.qm" from the process CWD (it never
+    // resolved in a deployed install). Catalogues now ship in the binary and
+    // the choice persists in config.ini. Installed BEFORE the QML engine
+    // loads so the first frame is already in the selected language.
+    // The service is created after AppSettings below (it needs the resolved
+    // config path); see languageService.
 
-    QFile file("://translations/french.qm");
-    if (!file.open(QIODevice::ReadOnly))
-        qDebug() << "Can't find it!";
-
-    QString curDir = QDir::currentPath();
-    //    curDir.append("/french.qm");
-    //    bool isTrlsFileLoaded = translator.load("C://Work/tachus/Merging_app_modReader/translations/german.qm");
-    bool isTrlsFileLoaded = translator.load("german.qm");
-
-    if(!isTrlsFileLoaded) {
-        qDebug() << "FILE NOT LOADED " << translator.isEmpty();
+    // ── J.1A: isolated documentation-capture profile ────────────────────
+    // Developer/documentation facility only; there is no Settings UI for it.
+    // BOTH --documentation-capture and --data-root <absolute> are required.
+    // Absent either, nothing below runs and the production root is used
+    // exactly as before. On any validation failure the application EXITS —
+    // it never silently falls back to production.
+    bool documentationCaptureActive = false;
+    {
+        const ta::app::CaptureRequest req =
+            ta::app::parseCaptureArguments(QCoreApplication::arguments());
+        if (req.requested) {
+            const QString installDir =
+                QFileInfo(QCoreApplication::applicationFilePath()).absolutePath();
+            const ta::app::CaptureResult cap = ta::app::prepareCaptureRoot(
+                req.dataRoot,
+                ta::rel::StoragePaths::productionDataRoot(),
+                installDir,
+                QStringLiteral(APP_GIT_SHA),
+                QStringLiteral(APP_GIT_SHA));
+            if (!cap.ok) {
+                qCritical().noquote()
+                    << "DOCUMENTATION CAPTURE REFUSED:" << cap.operatorMessage
+                    << "|" << cap.technicalDetail;
+                return 2;                      // never fall back to production
+            }
+            ta::rel::StoragePaths::setRootOverrideForTesting(cap.resolvedRoot);
+            documentationCaptureActive = true;
+            qInfo().noquote() << "DOCUMENTATION CAPTURE PROFILE ACTIVE - isolated data root:"
+                              << cap.resolvedRoot;
+        } else if (!req.dataRoot.isEmpty()) {
+            qCritical().noquote() << "DOCUMENTATION CAPTURE REFUSED: --data-root requires "
+                                     "--documentation-capture";
+            return 2;
+        }
     }
-    else {
-        qDebug() << "FILE LOADED";
-        qApp->installTranslator(&translator);
-    }
-    ////
 
     // ── Session Reliability Layer (M0): storage initialization ──────────
     // Resolve the AppData root, create the directory tree, probe that
@@ -267,6 +319,13 @@ int main(int argc, char *argv[])
 
     AppSettings *appsettings = new AppSettings("config.ini");
 
+    // Language is persisted alongside app_mode. Applied here, before the QML
+    // engine is created. Language selection deliberately touches translations
+    // ONLY — never the brand, theme, executable identity or app_mode.
+    LanguageService* languageService =
+        new LanguageService(appsettings->getConfigFilePath(), appsettings);
+    languageService->applyPersistedLanguage();
+
     // F10: operating-mode authority (Live target vs Demo simulation). Parsed
     // case-consistently from config.ini; an invalid/missing value falls back to
     // Live (matching the product's existing default) WITHOUT enabling Demo
@@ -288,6 +347,17 @@ int main(int argc, char *argv[])
     qInfo().noquote() << "Operating mode:" << opMode->runningModeToken()
                       << (opMode->isLive() ? "(physical target input)"
                                            : "(simulated input)");
+
+    // J.1A: the capture profile is Demo-ONLY. Refusing Live here means a
+    // capture profile can never record physical-target input, and the
+    // existing source gate continues to reject physical shots in Demo.
+    if (documentationCaptureActive && opMode->isLive()) {
+        qCritical().noquote()
+            << "DOCUMENTATION CAPTURE REFUSED: the capture profile requires Demo mode,"
+            << "but the effective operating mode is Live. Set app_mode=Demo in the"
+            << "capture profile's config.ini.";
+        return 2;
+    }
 
     QScreen *srn = QApplication::screens().at(0);
     qreal dotsPerInch = (qreal)srn->logicalDotsPerInch();
@@ -357,6 +427,14 @@ int main(int argc, char *argv[])
     buildInfo[QStringLiteral("commit")]  = QStringLiteral(APP_GIT_SHA);
     buildInfo[QStringLiteral("built")]   = kBuildTimestamp;
     engine.rootContext()->setContextProperty("BUILDINFO", buildInfo);
+    // P0 Phase B: product identity for QML. Read-only build-time facts —
+    // QML must take product names from here instead of hardcoding them.
+    ProductIdentityBridge* productBridge = new ProductIdentityBridge(&app);
+    engine.rootContext()->setContextProperty("PRODUCT", productBridge);
+    // P0 Phase F: the engine lets a live language switch re-evaluate every
+    // qsTr() binding, so most screens change without a restart.
+    languageService->setQmlEngine(&engine);
+    engine.rootContext()->setContextProperty("LANGUAGE", languageService);
     // F10: operating-mode authority for QML (badge, Settings selector, gate).
     engine.rootContext()->setContextProperty("OPMODE", opMode);
     // Push the running mode into the finals controllers (declared above) so the

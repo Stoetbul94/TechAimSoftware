@@ -183,6 +183,24 @@ const EventMeta kRows[] = {
                                        ReducerClass::Mutating),
     row<PositionTransitionCompleted>(DurabilityClass::Sync, BroadcastClass::Broadcast,
                                      ReducerClass::Mutating),
+
+    // Wind Map (Training Lab Release 2). Lifecycle and accepted shots must be
+    // durable before anything acts on them, so they are Sync. A wind-condition
+    // change is frequent and low-stakes on its own — but it is the value every
+    // later shot snapshots, so it is Sync too: losing it would silently change
+    // what subsequent shots recorded.
+    row<WindMapSessionStarted>(DurabilityClass::Sync, BroadcastClass::Broadcast,
+                               ReducerClass::Mutating),
+    row<WindConditionChanged>(DurabilityClass::Sync, BroadcastClass::Broadcast,
+                              ReducerClass::Mutating),
+    row<WindMapSighterAccepted>(DurabilityClass::Sync, BroadcastClass::Broadcast,
+                                ReducerClass::Mutating),
+    row<WindMapShotAccepted>(DurabilityClass::Sync, BroadcastClass::Broadcast,
+                             ReducerClass::Mutating),
+    row<WindMapPositionChanged>(DurabilityClass::Sync, BroadcastClass::Broadcast,
+                                ReducerClass::Mutating),
+    row<WindMapSessionCompleted>(DurabilityClass::Sync, BroadcastClass::Broadcast,
+                                 ReducerClass::Mutating),
 };
 
 struct RegistryIndex {

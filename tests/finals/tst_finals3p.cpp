@@ -17,9 +17,14 @@
 #include <cstdio>
 
 #include <QFile>
+#include <QDir>
+#include <QRegularExpression>
 
 #include "Finals3PController.h"
 #include "Finals3PTypes.h"
+#include "app/ProductIdentity.h"
+#include "app/LanguageService.h"
+#include <QSettings>
 #include "FinalsAudioService.h"
 #include "reliability/storage/StoragePaths.h"
 #include "reliability/journal/JournalValidator.h"
@@ -1094,6 +1099,211 @@ static void runRecoveryChecks()
     }
 }
 
+// ── P0 Phase B/C/D: product identity ────────────────────────────────────
+// Identity is a build-time fact, so these assert the ONE source of truth and
+// the surfaces that must never drift back to a legacy product name.
+static void runProductIdentityChecks()
+{
+    std::printf("--- P0 product identity ---\n");
+    const ta::app::ProductIdentity& p = ta::app::identity();
+
+    check(p.displayName == QLatin1String("Tech Aim"),
+          "identity: display brand is 'Tech Aim' (spaced prose form)");
+    check(p.fullProductName == QLatin1String("Tech Aim Electronic Target Control"),
+          "identity: full product name");
+    check(p.executableBaseName == QLatin1String("TechAim"),
+          "identity: executable base name is unspaced 'TechAim'");
+    check(p.legalPublisher == QLatin1String("JAC SHOOTING SOLUTIONS (PTY) LTD"),
+          "identity: legal publisher");
+    check(p.applicationId == QLatin1String("za.co.techaim.electronic-target-control"),
+          "identity: reverse-DNS application id");
+    check(p.releaseChannel == QLatin1String("Pre-Beta Validation"),
+          "identity: release channel is pre-beta (no production claim)");
+    check(p.defaultTheme == QLatin1String("techaim-dark")
+          && p.defaultLanguage == QLatin1String("en"),
+          "identity: default theme + language");
+
+    // The AppData/QSettings identity must stay "TechAim": changing it would
+    // move every existing journal, snapshot and recovery candidate.
+    check(p.organisationName == QLatin1String("TechAim"),
+          "identity: organisation name unchanged (session data must not move)");
+
+    // Report attribution replaces the old hardcoded "Seta 4.0".
+    check(p.softwareVersionLabel().startsWith(QLatin1String("Tech Aim ")),
+          "identity: report software label is Tech Aim, not Seta");
+    check(!p.softwareVersionLabel().contains(QLatin1String("Seta")),
+          "identity: report software label carries no legacy product name");
+
+    // No user-facing product string may name a legacy product.
+    const QStringList facing = { p.displayName, p.fullProductName,
+                                 p.releaseDescription, p.executableBaseName,
+                                 p.legalPublisher, p.reportAuthor, p.reportCreator };
+    bool clean = true;
+    for (const QString& s : facing)
+        if (s.contains(QLatin1String("Seta"), Qt::CaseInsensitive)
+            || s.contains(QLatin1String("Seeds"), Qt::CaseInsensitive)
+            || s.contains(QLatin1String("Tachus"), Qt::CaseInsensitive))
+            clean = false;
+    check(clean, "identity: no user-facing Seta/Seeds/Tachus product identity");
+
+    // Legacy names are still RECOGNISED (migration + single-instance) but are
+    // never presented as the product.
+    check(p.legacyApplicationNames.contains(QLatin1String("Seta"))
+          && p.legacyApplicationNames.contains(QLatin1String("Tachus")),
+          "identity: legacy application names retained for migration");
+    check(p.legacyLockFileNames.contains(QLatin1String("tachus_seta.lock")),
+          "identity: legacy single-instance lock recognised");
+
+    // Build flavour: TECH_AIM is the only producible edition. SETA_OEM is a
+    // reserved value that must NOT be buildable yet.
+    check(ta::app::currentFlavour() == ta::app::BuildFlavour::TechAim,
+          "flavour: this build is TECH_AIM");
+    check(ta::app::flavourName(ta::app::BuildFlavour::TechAim) == QLatin1String("TECH_AIM")
+          && ta::app::flavourName(ta::app::BuildFlavour::SetaOem) == QLatin1String("SETA_OEM"),
+          "flavour: both flavour names defined");
+    check(ta::app::isFlavourBuildable(ta::app::BuildFlavour::TechAim),
+          "flavour: TECH_AIM is buildable");
+    check(!ta::app::isFlavourBuildable(ta::app::BuildFlavour::SetaOem),
+          "flavour: SETA_OEM reserved, NOT buildable (no OEM assets yet)");
+}
+
+// ── P0 Phase F: localisation contract ───────────────────────────────────
+static void runLocalisationChecks()
+{
+    std::printf("--- P0 localisation ---\n");
+    const QList<ta::app::LanguageOption> langs = LanguageService::supportedLanguages();
+    check(langs.size() == 2, "i18n: exactly two languages offered");
+    check(langs.first().code == QLatin1String("en"),
+          "i18n: English is first (source + fallback language)");
+    check(!langs.first().beta, "i18n: English is not a beta translation");
+
+    bool hasDe = false, deIsBeta = false;
+    for (const ta::app::LanguageOption& o : langs)
+        if (o.code == QLatin1String("de-DE")) { hasDe = true; deIsBeta = o.beta; }
+    check(hasDe, "i18n: de-DE offered");
+    check(deIsBeta, "i18n: German is flagged BETA (no certification claimed)");
+
+    // The compiled catalogue must be embedded in the binary: a deployed
+    // install has no translations/ directory beside the executable.
+    check(QFile::exists(QStringLiteral(":/translations/techaim_de_DE.qm")),
+          "i18n: German catalogue embedded in the binary");
+
+    // Persistence + fallback, against an isolated config file.
+    const QString cfg = QDir::temp().filePath(
+        QStringLiteral("techaim_i18n_%1.ini").arg(QCoreApplication::applicationPid()));
+    QFile::remove(cfg);
+    {
+        LanguageService svc(cfg);
+        svc.applyPersistedLanguage();
+        check(svc.languageCode() == QLatin1String("en"),
+              "i18n: defaults to English when nothing is persisted");
+        check(!svc.isBetaTranslation(), "i18n: default is not a beta translation");
+
+        check(svc.selectLanguage(QStringLiteral("de-DE")), "i18n: German selectable");
+        check(svc.languageCode() == QLatin1String("de-DE"), "i18n: selection applied");
+        check(svc.isBetaTranslation(), "i18n: German reports itself as beta");
+        check(svc.lastLoadDiagnostic().isEmpty(),
+              "i18n: German catalogue loaded with no diagnostic");
+
+        check(!svc.selectLanguage(QStringLiteral("fr-FR")),
+              "i18n: unsupported language refused");
+        check(svc.languageCode() == QLatin1String("de-DE"),
+              "i18n: refused selection leaves the language unchanged");
+    }
+    {   // survives a restart
+        LanguageService svc(cfg);
+        svc.applyPersistedLanguage();
+        check(svc.languageCode() == QLatin1String("de-DE"),
+              "i18n: language persists across restart");
+    }
+    {   // an unknown persisted code must fall back, not fail
+        QSettings s(cfg, QSettings::IniFormat);
+        s.setValue(QStringLiteral("App_Settings/ui_language"), QStringLiteral("xx-XX"));
+        s.sync();
+        LanguageService svc(cfg);
+        svc.applyPersistedLanguage();
+        check(svc.languageCode() == QLatin1String("en"),
+              "i18n: unknown persisted code falls back to English");
+    }
+    QFile::remove(cfg);
+
+    // Language must never be able to change brand identity.
+    const ta::app::ProductIdentity& p = ta::app::identity();
+    LanguageService svc2{QString()};   // braces: (QString()) would declare a function
+    svc2.selectLanguage(QStringLiteral("de-DE"));
+    check(ta::app::identity().displayName == p.displayName
+          && ta::app::identity().executableBaseName == p.executableBaseName
+          && ta::app::identity().organisationName == p.organisationName
+          && ta::app::identity().defaultTheme == p.defaultTheme,
+          "i18n: selecting German does not touch brand/theme/executable/AppData identity");
+}
+
+
+// ── J.1A: window-title identity ─────────────────────────────────────────
+// The legacy `title = isDefaultIcon ? "TACHUS" : "SETA"` in main.qml made the
+// window and taskbar read "SETA - Tech Aim Electronic Target Control". These
+// checks read the actual QML/C++ sources so the override cannot come back.
+static QString readRepoFile(const QString& rel)
+{
+    // tests/finals/release/ -> repo root
+    QDir d(QCoreApplication::applicationDirPath());
+    d.cdUp(); d.cdUp(); d.cdUp();
+    QFile f(d.filePath(rel));
+    if (!f.open(QIODevice::ReadOnly)) return QString();
+    return QString::fromUtf8(f.readAll());
+}
+
+static void runWindowTitleChecks()
+{
+    std::printf("--- J.1A window title identity ---\n");
+    const ta::app::ProductIdentity& p = ta::app::identity();
+    check(p.fullProductName == QLatin1String("Tech Aim Electronic Target Control"),
+          "title: ProductIdentity full name is the Tech Aim product name");
+
+    QString mainQml = readRepoFile(QStringLiteral("main.qml"));
+    check(!mainQml.isEmpty(), "title: main.qml readable");
+    if (mainQml.isEmpty()) return;
+
+    check(mainQml.contains(QLatin1String("title: PRODUCT.fullProductName")),
+          "title: the window title binds to ProductIdentity");
+
+    // Strip // comments before checking for legacy literals: the comment that
+    // records WHY the override was removed necessarily quotes it, and a
+    // comment cannot set a window title. Only executable QML is examined.
+    QString code;
+    const QStringList lines = mainQml.split(QLatin1Char('\n'));
+    for (const QString& ln : lines) {
+        const int c = ln.indexOf(QLatin1String("//"));
+        code += (c >= 0 ? ln.left(c) : ln);
+        code += QLatin1Char('\n');
+    }
+    mainQml = code;
+
+    // No imperative reassignment may survive anywhere in the file.
+    check(!mainQml.contains(QLatin1String("title = isDefaultIcon")),
+          "title: the legacy isDefaultIcon title override is gone");
+    const QRegularExpression assign(
+        QStringLiteral("(^|[^A-Za-z_.])title\\s*=\\s*[\"']"));
+    check(!assign.match(mainQml).hasMatch(),
+          "title: no literal string is assigned to title at runtime");
+
+    // No legacy product name may appear as a title value in product QML.
+    check(!mainQml.contains(QLatin1String("\"SETA\"")),
+          "title: main.qml carries no \"SETA\" literal");
+    check(!mainQml.contains(QLatin1String("\"TACHUS\"")),
+          "title: main.qml carries no \"TACHUS\" literal");
+    check(!mainQml.contains(QLatin1String("\"Seta\"")),
+          "title: main.qml carries no \"Seta\" literal");
+    check(!mainQml.contains(QLatin1String("\"Seeds\"")),
+          "title: main.qml carries no \"Seeds\" literal");
+
+    // Valid SETA HARDWARE references must survive untouched.
+    const QString appSettings = readRepoFile(QStringLiteral("appsettings.h"));
+    check(appSettings.contains(QLatin1String("SetaServerPath"))
+          || appSettings.contains(QLatin1String("setSetaServerPath")),
+          "title: valid SETA hardware/supplier symbols retained");
+}
+
 int main(int argc, char** argv)
 {
     qputenv("TECHAIM_FINALS_TIMESCALE", "60");
@@ -1117,6 +1327,9 @@ int main(int argc, char** argv)
     }
 
     std::printf("=== Finals3PController Phase A acceptance tests ===\n");
+    runProductIdentityChecks();
+    runWindowTitleChecks();
+    runLocalisationChecks();
     runFullFinal();
     runSecondaryChecks();
     runTimeoutFinal();

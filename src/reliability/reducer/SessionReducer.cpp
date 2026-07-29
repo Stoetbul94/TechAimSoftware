@@ -132,6 +132,30 @@ ReduceResult SessionReducer::apply(const SessionState& current,
     const Lifecycle life = current.lifecycle;
     const bool active = life == Lifecycle::Active;
 
+    // Wind Map: a position is valid only for the discipline in play. 3P uses
+    // 1..3 (K/P/S); Prone uses 0 and nothing else. Anything else fails CLOSED
+    // rather than being coerced into a neighbouring position.
+    auto windMapPositionOk = [](const SessionState& st, qint8 pos) {
+        return st.wmThreePositions ? (pos >= 1 && pos <= 3) : (pos == 0);
+    };
+    // Copies the event's wind snapshot verbatim into the record. Nothing is
+    // recomputed, defaulted or inferred here — an absent reading stays absent.
+    auto makeWindMapRecord = [](const WindSnapshotFields& w, const ShotCore& shot,
+                                qint32 shotId, qint8 position, bool sighter) {
+        WindMapShotRecord r;
+        r.shot = shot;
+        r.shotId = shotId;
+        r.position = position;
+        r.sighter = sighter;
+        r.windValid = w.windValid;
+        r.windCalm = w.windCalm;
+        r.windDirectionDegrees = w.windDirectionDegrees;
+        r.windSpeedHundredthMs = w.windSpeedHundredthMs;
+        r.windSource = w.windSource;
+        r.windRecordedMs = w.windRecordedMs;
+        r.windNote = w.windNote;
+        return r;
+    };
     auto illegal = [&](const char* what) {
         return rejected(current, ReliabilityError::InvalidStateTransition,
                         QStringLiteral("%1 illegal in lifecycle %2 / phase %3")
@@ -982,6 +1006,103 @@ ReduceResult SessionReducer::apply(const SessionState& current,
         [&](const PositionTransitionCompleted& e) {
             next.ptCompleted = true;
             next.ptSessionNote = e.sessionNote;
+            next.lifecycle = Lifecycle::Complete;
+        },
+
+        // ── Wind Map (Training Lab Release 2) ────────────────────────────
+        // Post-session review programme. Nothing here scores, corrects or
+        // advises: the reducer records what the athlete observed and what the
+        // shot did, and keeps the association honest.
+        [&](const WindMapSessionStarted& e) {
+            if (!current.started) { failure = illegal("WindMapSessionStarted"); return; }
+            // Rule 8/10 — supported disciplines only, and unknown fails CLOSED.
+            // The payload validator already rejects anything else; this is the
+            // reducer refusing to be the place a bad id slips through.
+            if (e.disciplineId != QLatin1String("PRONE50")
+                && e.disciplineId != QLatin1String("3P50")) {
+                failure = rejected(current, ReliabilityError::InvalidStateTransition,
+                    QStringLiteral("WindMapSessionStarted: unsupported discipline '%1'")
+                        .arg(e.disciplineId), seq);
+                return;
+            }
+            next.wmActive = true;
+            next.wmCompleted = false;
+            next.wmProgramId = QStringLiteral("wind_map");
+            next.wmDisciplineId = e.disciplineId;
+            next.wmThreePositions = e.is3P;
+            next.wmPositionSequence = e.positionSequence;
+            // 3P starts at the first position of the sequence; Prone has none.
+            next.wmCurrentPosition = e.is3P ? qint8(1) : qint8(0);
+            next.wmNextShotId = 1;
+            next.wmConditionChanges = 0;
+            next.wmShots.clear();
+            // No standing condition until the athlete sets one. This is
+            // "No wind reading recorded", NOT a calm and NOT 0 degrees North.
+            next.wmWindValid = false;
+            next.wmWindCalm = false;
+            next.wmWindDirectionDegrees = 0;
+            next.wmWindSpeedHundredthMs = 0;
+            next.wmWindSource = 0;
+            next.wmWindRecordedMs = 0;
+            next.wmWindNote.clear();
+        },
+        [&](const WindConditionChanged& e) {
+            if (!next.wmActive) { failure = illegal("WindConditionChanged"); return; }
+            // Replaces the STANDING condition only. It must never reach back
+            // into wmShots: a shot already recorded keeps the snapshot it was
+            // given, which is the whole point of snapshotting at accept time.
+            next.wmWindValid = e.windValid;
+            next.wmWindCalm = e.windCalm;
+            next.wmWindDirectionDegrees = e.windDirectionDegrees;
+            next.wmWindSpeedHundredthMs = e.windSpeedHundredthMs;
+            next.wmWindSource = e.windSource;
+            next.wmWindRecordedMs = e.windRecordedMs;
+            next.wmWindNote = e.windNote;
+            ++next.wmConditionChanges;
+        },
+        [&](const WindMapSighterAccepted& e) {
+            if (!next.wmActive) { failure = illegal("WindMapSighterAccepted"); return; }
+            if (!windMapPositionOk(next, e.position)) {
+                failure = rejected(current, ReliabilityError::InvalidStateTransition,
+                    QStringLiteral("WindMapSighterAccepted: position %1 invalid for this discipline")
+                        .arg(int(e.position)), seq);
+                return;
+            }
+            next.wmShots.push_back(makeWindMapRecord(e, e.shot, e.shotId, e.position, true));
+            next.wmNextShotId = e.shotId + 1;
+        },
+        [&](const WindMapShotAccepted& e) {
+            if (!next.wmActive) { failure = illegal("WindMapShotAccepted"); return; }
+            if (!windMapPositionOk(next, e.position)) {
+                failure = rejected(current, ReliabilityError::InvalidStateTransition,
+                    QStringLiteral("WindMapShotAccepted: position %1 invalid for this discipline")
+                        .arg(int(e.position)), seq);
+                return;
+            }
+            next.wmShots.push_back(makeWindMapRecord(e, e.shot, e.shotId, e.position, false));
+            next.wmNextShotId = e.shotId + 1;
+        },
+        [&](const WindMapPositionChanged& e) {
+            if (!next.wmActive) { failure = illegal("WindMapPositionChanged"); return; }
+            // Kneeling / Prone / Standing stay separate. A position change is
+            // meaningless outside 3P and is refused rather than ignored.
+            if (!next.wmThreePositions) {
+                failure = rejected(current, ReliabilityError::InvalidStateTransition,
+                    QStringLiteral("WindMapPositionChanged: not a 3P Wind Map session"), seq);
+                return;
+            }
+            if (!windMapPositionOk(next, e.toPosition)) {
+                failure = rejected(current, ReliabilityError::InvalidStateTransition,
+                    QStringLiteral("WindMapPositionChanged: position %1 invalid")
+                        .arg(int(e.toPosition)), seq);
+                return;
+            }
+            next.wmCurrentPosition = e.toPosition;
+        },
+        [&](const WindMapSessionCompleted& e) {
+            if (!next.wmActive) { failure = illegal("WindMapSessionCompleted"); return; }
+            (void)e;   // counts are derived from wmShots, never taken on trust
+            next.wmCompleted = true;
             next.lifecycle = Lifecycle::Complete;
         }
     }, envelope.payload);

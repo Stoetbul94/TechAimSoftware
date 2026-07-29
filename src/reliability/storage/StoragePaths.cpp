@@ -50,6 +50,13 @@ QString StoragePaths::applicationDataRoot()
     return QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
 }
 
+QString StoragePaths::productionDataRoot()
+{
+    // Deliberately ignores s_rootOverride: this is what the application WOULD
+    // use in normal operation, and is the value the capture validator refuses.
+    return QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
+}
+
 QString StoragePaths::dir(const char* leaf)
 {
     return applicationDataRoot() + QLatin1Char('/') + QLatin1String(leaf);

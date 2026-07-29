@@ -34,6 +34,49 @@ rule changes, update the rules document, the tests, and the implementation
 detailed reference. Cross-discipline EST/interruption rules live in
 `docs/issf-rules/est-malfunctions.md`.
 
+## TECH AIM UI PROJECT MEMORY — REQUIRED READING
+
+**Before any homepage, theme, branding or UI work**, read all of:
+
+- `docs/project/Current_Project_State.md` — where the product actually is
+- `docs/design/TechAim_Design_System.md` — palette, typography, spacing, rules
+- `docs/design/Component_Catalogue.md` — component contracts and their status
+- `docs/design/Screen_Layout_Rules.md` — responsive and German-expansion rules
+- `docs/ui/UI_Decision_Log.md` — accepted decisions and their reasoning
+- `docs/ui/UI_Defect_Register.md` — known defects and their evidence
+- `docs/ui/Homepage_Acceptance_Checklist.md` — what is proven and what is not
+- `docs/ui/Homepage_As_Built.md` — the homepage as implemented, not as designed
+
+**No future UI phase may silently reverse an accepted design decision.** A
+decision changes only by adding a new entry that supersedes it; the superseded
+entry stays in the log with its status updated. Never edit a decision away.
+
+**No defect may be closed without evidence.** Code changing is not closure. A
+defect is fully resolved only with a fixed commit, passing build and tests, a
+real application screenshot, and a passing acceptance-checklist line. Where a
+screenshot cannot be produced, the correct status is
+`RESOLVED — AUTOMATED EVIDENCE, HUMAN VISUAL CHECK REQUIRED` — not `RESOLVED`.
+
+### Workflow for every UI phase
+
+1. Read the project-memory documents above.
+2. Identify the affected decision IDs.
+3. Identify the affected defect IDs.
+4. State, per decision, whether it is **preserved** or **superseded** — and if
+   superseded, add the new entry before implementing.
+5. Implement the change.
+6. Add regression evidence (an automated test where practical; where not,
+   record why and require human visual evidence).
+7. Update `Homepage_Acceptance_Checklist.md`.
+8. Update `UI_Defect_Register.md`.
+9. Update `Homepage_As_Built.md` if behaviour changed.
+10. Update `Current_Project_State.md`.
+11. Commit the documentation with the implementation, or in a focused
+    follow-up commit.
+
+Do not describe a concept mockup as the application. Concept files stay stamped
+**CONCEPT MOCKUP — NOT CURRENT APPLICATION** and are never cited as evidence.
+
 ## Architecture, in short
 
 - `ModReader/qModMaster.pro` is `include()`d directly into `Seta.pro` — one

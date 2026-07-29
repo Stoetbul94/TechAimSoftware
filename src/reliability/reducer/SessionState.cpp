@@ -31,7 +31,61 @@ bool SessionState::operator==(const SessionState& o) const
         && totalTenths == o.totalTenths
         && stageSubtotalTenths == o.stageSubtotalTenths
         && stageStatuses == o.stageStatuses && timer == o.timer
-        && lastSeq == o.lastSeq && disc == o.disc;
+        && lastSeq == o.lastSeq && disc == o.disc
+        // Wind Map (state v4). Included precisely BECAUSE it is
+        // snapshot-serialised: this is what makes snapshotsAgreeWithFold a
+        // real check on the Wind Map projection rather than a no-op.
+        && wmActive == o.wmActive && wmCompleted == o.wmCompleted
+        && wmProgramId == o.wmProgramId && wmDisciplineId == o.wmDisciplineId
+        && wmThreePositions == o.wmThreePositions
+        && wmCurrentPosition == o.wmCurrentPosition
+        && wmPositionSequence == o.wmPositionSequence
+        && wmConditionChanges == o.wmConditionChanges
+        && wmNextShotId == o.wmNextShotId
+        && wmWindValid == o.wmWindValid && wmWindCalm == o.wmWindCalm
+        && wmWindDirectionDegrees == o.wmWindDirectionDegrees
+        && wmWindSpeedHundredthMs == o.wmWindSpeedHundredthMs
+        && wmWindSource == o.wmWindSource
+        && wmWindRecordedMs == o.wmWindRecordedMs
+        && wmWindNote == o.wmWindNote
+        && wmShots == o.wmShots
+        // Training Lab programmes (state v5). Same reasoning as Wind Map:
+        // these are snapshot-serialised, so comparing them here is what makes
+        // ReplayEngine::snapshotsAgreeWithFold a real check on them.
+        && sessionKind == o.sessionKind
+        && trainingActive == o.trainingActive
+        && trainingCompleted == o.trainingCompleted
+        && trainingProgramId == o.trainingProgramId
+        && trainingBlockCount == o.trainingBlockCount
+        && trainingShotsPerBlock == o.trainingShotsPerBlock
+        && trainingVisibility == o.trainingVisibility
+        && trainingFocus == o.trainingFocus
+        && trainingCurrentBlock == o.trainingCurrentBlock
+        && trainingCurrentPosition == o.trainingCurrentPosition
+        && trainingBlocks == o.trainingBlocks
+        && trainingInSighterPhase == o.trainingInSighterPhase
+        && trainingSighterPosition == o.trainingSighterPosition
+        && trainingSighterBeforeBlock == o.trainingSighterBeforeBlock
+        && trainingSighters == o.trainingSighters
+        && trainingSighterPos == o.trainingSighterPos
+        && cdActive == o.cdActive && cdCompleted == o.cdCompleted
+        && cdCallingActive == o.cdCallingActive
+        && cdProgramId == o.cdProgramId && cdFocus == o.cdFocus
+        && cdShotCount == o.cdShotCount
+        && cdCurrentPosition == o.cdCurrentPosition
+        && cdThreePositions == o.cdThreePositions
+        && cdSessionNote == o.cdSessionNote
+        && cdShots == o.cdShots
+        && ptActive == o.ptActive && ptCompleted == o.ptCompleted
+        && ptProgramId == o.ptProgramId && ptSequence == o.ptSequence
+        && ptFocus == o.ptFocus
+        && ptVerificationShots == o.ptVerificationShots
+        && ptRepeats == o.ptRepeats && ptChecklistMode == o.ptChecklistMode
+        && ptCurrentPosition == o.ptCurrentPosition
+        && ptCurrentRepeat == o.ptCurrentRepeat
+        && ptInSetup == o.ptInSetup && ptVerifying == o.ptVerifying
+        && ptSessionNote == o.ptSessionNote
+        && ptRecords == o.ptRecords;
 }
 
 // ── serialization ─────────────────────────────────────────────────────
@@ -189,6 +243,203 @@ QByteArray serializeSessionState(const SessionState& s)
     }
     w.endArray();
 
+    // ── Training Lab programmes (state v5) ───────────────────────────────
+    // Technical Blocks, Call & Diagnose and Position Transition were NOT
+    // snapshot-serialised before this. They were safe only because nothing in
+    // production emits a StateSnapshot, and ReplayEngine folds just the tail
+    // after one — so enabling periodic snapshots would have silently truncated
+    // all three at the boundary. Same fix as Wind Map: persist the projection,
+    // and compare it in operator== so snapshotsAgreeWithFold is a real check.
+    //
+    // sessionKind is serialised here too. Without it a recovered Training
+    // session reads as a competition session, which is worse than losing the
+    // projection: RecoveryCoordinator classifies on this field.
+    w.field("sessionKind", s.sessionKind);
+
+    w.beginObjectField("training");
+    w.field("active", s.trainingActive);
+    w.field("completed", s.trainingCompleted);
+    w.field("programId", s.trainingProgramId);
+    w.field("blockCount", static_cast<qint64>(s.trainingBlockCount));
+    w.field("shotsPerBlock", static_cast<qint64>(s.trainingShotsPerBlock));
+    w.field("visibility", static_cast<qint64>(s.trainingVisibility));
+    w.field("focus", s.trainingFocus);
+    w.field("currentBlock", static_cast<qint64>(s.trainingCurrentBlock));
+    w.field("currentPosition", static_cast<qint64>(s.trainingCurrentPosition));
+    // Sighter phase state. Sighters are kept completely separate from counted
+    // blocks, and that separation has to survive recovery intact.
+    w.field("inSighterPhase", s.trainingInSighterPhase);
+    w.field("sighterPosition", static_cast<qint64>(s.trainingSighterPosition));
+    w.field("sighterBeforeBlock", static_cast<qint64>(s.trainingSighterBeforeBlock));
+    w.endObject();
+
+    w.beginArrayField("trainingBlocks");
+    for (const TrainingBlockData& b : s.trainingBlocks) {
+        w.beginObject();
+        w.field("blockIndex", static_cast<qint64>(b.blockIndex));
+        w.field("position", static_cast<qint64>(b.position));
+        w.field("completed", b.completed);
+        w.field("note", b.note);
+        w.beginArrayField("shots");
+        for (const ShotCore& sh : b.shots) {
+            w.beginObject();
+            EventSerializer::serializeShotCoreFields(sh, w);
+            w.endObject();
+        }
+        w.endArray();
+        w.endObject();
+    }
+    w.endArray();
+
+    // Sighters are written as ONE array of {shot, position} objects rather
+    // than the in-memory parallel vectors, so the two can never desync across
+    // a snapshot boundary.
+    w.beginArrayField("trainingSighters");
+    for (int i = 0; i < s.trainingSighters.size(); ++i) {
+        w.beginObject();
+        EventSerializer::serializeShotCoreFields(s.trainingSighters[i], w);
+        w.field("position", static_cast<qint64>(
+            i < s.trainingSighterPos.size() ? s.trainingSighterPos[i] : qint8(0)));
+        w.endObject();
+    }
+    w.endArray();
+
+    w.beginObjectField("callDiagnose");
+    w.field("active", s.cdActive);
+    w.field("completed", s.cdCompleted);
+    // The phase flag. A session interrupted in the sighter phase must not
+    // resume in the calling phase, or vice versa.
+    w.field("callingActive", s.cdCallingActive);
+    w.field("programId", s.cdProgramId);
+    w.field("focus", s.cdFocus);
+    w.field("shotCount", static_cast<qint64>(s.cdShotCount));
+    w.field("currentPosition", static_cast<qint64>(s.cdCurrentPosition));
+    w.field("threePositions", s.cdThreePositions);
+    w.field("sessionNote", s.cdSessionNote);
+    w.endObject();
+
+    // Each record carries the ACTUAL shot and, separately, whether a call has
+    // been made for it. hasCall=false is the "awaiting the athlete's call"
+    // state: the actual shot is already recorded but must not be revealed or
+    // discarded on recovery.
+    w.beginArrayField("cdShots");
+    for (const CallDiagnoseShotRecord& c : s.cdShots) {
+        w.beginObject();
+        EventSerializer::serializeShotCoreFields(c.actual, w);
+        w.field("shotNumber", static_cast<qint64>(c.shotNumber));
+        w.field("position", static_cast<qint64>(c.position));
+        w.field("hasCall", c.hasCall);
+        w.field("calledXHundredthMm", static_cast<qint64>(c.calledXHundredthMm));
+        w.field("calledYHundredthMm", static_cast<qint64>(c.calledYHundredthMm));
+        w.field("callSplitMs", static_cast<qint64>(c.callSplitMs));
+        w.field("note", c.note);
+        w.endObject();
+    }
+    w.endArray();
+
+    w.beginObjectField("positionTransition");
+    w.field("active", s.ptActive);
+    w.field("completed", s.ptCompleted);
+    w.field("programId", s.ptProgramId);
+    w.field("sequence", s.ptSequence);
+    w.field("focus", s.ptFocus);
+    w.field("verificationShots", static_cast<qint64>(s.ptVerificationShots));
+    w.field("repeats", static_cast<qint64>(s.ptRepeats));
+    w.field("checklistMode", static_cast<qint64>(s.ptChecklistMode));
+    w.field("currentPosition", static_cast<qint64>(s.ptCurrentPosition));
+    w.field("currentRepeat", static_cast<qint64>(s.ptCurrentRepeat));
+    // inSetup / verifying are what keep setup, sighters and counted
+    // verification shots distinguishable after a crash.
+    w.field("inSetup", s.ptInSetup);
+    w.field("verifying", s.ptVerifying);
+    w.field("sessionNote", s.ptSessionNote);
+    w.endObject();
+
+    w.beginArrayField("ptRecords");
+    for (const PtPositionRecord& p : s.ptRecords) {
+        w.beginObject();
+        w.field("position", static_cast<qint64>(p.position));
+        w.field("repeat", static_cast<qint64>(p.repeat));
+        // Setup timing and the ready stamp are the rhythm/cadence inputs; they
+        // are recorded values, never re-derived, so they must persist.
+        w.field("setupDurationMs", static_cast<qint64>(p.setupDurationMs));
+        w.field("readyMonoMs", static_cast<qint64>(p.readyMonoMs));
+        w.field("note", p.note);
+        w.field("completed", p.completed);
+        w.beginArrayField("sighters");
+        for (const ShotCore& sh : p.sighters) {
+            w.beginObject();
+            EventSerializer::serializeShotCoreFields(sh, w);
+            w.endObject();
+        }
+        w.endArray();
+        w.beginArrayField("verifShots");
+        for (const ShotCore& sh : p.verifShots) {
+            w.beginObject();
+            EventSerializer::serializeShotCoreFields(sh, w);
+            w.endObject();
+        }
+        w.endArray();
+        w.beginArrayField("checklist");
+        for (qint8 c : p.checklist) {
+            w.beginObject();
+            w.field("v", static_cast<qint64>(c));
+            w.endObject();
+        }
+        w.endArray();
+        w.endObject();
+    }
+    w.endArray();
+
+    // ── Wind Map (state v4) ──────────────────────────────────────────────
+    // Wind Map projections ARE snapshot-serialised, unlike the other Training
+    // programmes. The reason is concrete: ReplayEngine::replay defaults to the
+    // snapshot fast path and folds only the tail after the last StateSnapshot,
+    // so anything absent from the snapshot is silently lost at that boundary.
+    // Relying on "no production code emits snapshots today" would be relying
+    // on an undocumented accident. Field order frozen; all fields always
+    // written so the bytes are deterministic.
+    w.beginObjectField("windMap");
+    w.field("active", s.wmActive);
+    w.field("completed", s.wmCompleted);
+    w.field("programId", s.wmProgramId);
+    w.field("disciplineId", s.wmDisciplineId);
+    w.field("threePositions", s.wmThreePositions);
+    w.field("currentPosition", static_cast<qint64>(s.wmCurrentPosition));
+    w.field("positionSequence", s.wmPositionSequence);
+    w.field("conditionChanges", static_cast<qint64>(s.wmConditionChanges));
+    w.field("nextShotId", static_cast<qint64>(s.wmNextShotId));
+    // The STANDING condition. windValid=false is a real recorded state
+    // ("No wind reading recorded") and must survive as itself.
+    w.field("windValid", s.wmWindValid);
+    w.field("windCalm", s.wmWindCalm);
+    w.field("windDirDeg", static_cast<qint64>(s.wmWindDirectionDegrees));
+    w.field("windSpeedHundredthMs", static_cast<qint64>(s.wmWindSpeedHundredthMs));
+    w.field("windSource", static_cast<qint64>(s.wmWindSource));
+    w.field("windRecordedMs", s.wmWindRecordedMs);
+    w.field("windNote", s.wmWindNote);
+    w.endObject();
+
+    // Every recorded shot with ITS OWN immutable snapshot. Sighter/counted
+    // classification travels with the record so the two never merge.
+    w.beginArrayField("windMapShots");
+    for (const WindMapShotRecord& r : s.wmShots) {
+        w.beginObject();
+        EventSerializer::serializeShotCoreFields(r.shot, w);
+        w.field("shotId", static_cast<qint64>(r.shotId));
+        w.field("position", static_cast<qint64>(r.position));
+        w.field("sighter", r.sighter);
+        w.field("windValid", r.windValid);
+        w.field("windCalm", r.windCalm);
+        w.field("windDirDeg", static_cast<qint64>(r.windDirectionDegrees));
+        w.field("windSpeedHundredthMs", static_cast<qint64>(r.windSpeedHundredthMs));
+        w.field("windSource", static_cast<qint64>(r.windSource));
+        w.field("windRecordedMs", r.windRecordedMs);
+        w.field("windNote", r.windNote);
+        w.endObject();
+    }
+    w.endArray();
+
     w.beginObjectField("timer");
     w.field("active", s.timer.active);
     w.field("timerId", static_cast<qint64>(s.timer.timerId));
@@ -332,6 +583,32 @@ struct StateReader {
         if (v.isUndefined())
             return def;
         return reqInt(key, min, max);
+    }
+    // Same contract as optIntDef for the other two scalar kinds — needed by
+    // state v4 (Wind Map), where an older snapshot simply has no such key.
+    bool optBoolDef(const char* key, bool def)
+    {
+        const QJsonValue v = o.value(QLatin1String(key));
+        if (v.isUndefined())
+            return def;
+        if (!v.isBool()) {
+            fail(ReliabilityError::InvalidFieldType,
+                 QStringLiteral("'%1' not a bool").arg(QLatin1String(key)));
+            return def;
+        }
+        return v.toBool();
+    }
+    QString optStringDef(const char* key, const QString& def = QString())
+    {
+        const QJsonValue v = o.value(QLatin1String(key));
+        if (v.isUndefined())
+            return def;
+        if (!v.isString()) {
+            fail(ReliabilityError::InvalidFieldType,
+                 QStringLiteral("'%1' not a string").arg(QLatin1String(key)));
+            return def;
+        }
+        return v.toString();
     }
 };
 
@@ -579,6 +856,224 @@ ReliabilityResult deserializeSessionState(const QByteArray& json, SessionState* 
             break;
         }
         s.estIncidents.append(i);
+    }
+
+    // ── Training Lab programmes (state v5) ───────────────────────────────
+    // Every key optional: a v1-v4 snapshot simply has none of them and
+    // restores to "no programme", which is what those snapshots meant.
+    s.sessionKind = r.optStringDef("sessionKind");
+    {
+        const QJsonValue tv = r.o.value(QLatin1String("training"));
+        if (tv.isObject()) {
+            StateReader tr{tv.toObject()};
+            s.trainingActive = tr.optBoolDef("active", false);
+            s.trainingCompleted = tr.optBoolDef("completed", false);
+            s.trainingProgramId = tr.optStringDef("programId");
+            s.trainingBlockCount = static_cast<qint16>(tr.optIntDef("blockCount", 0, 0, INT16_MAX));
+            s.trainingShotsPerBlock = static_cast<qint16>(tr.optIntDef("shotsPerBlock", 0, 0, INT16_MAX));
+            s.trainingVisibility = static_cast<qint8>(tr.optIntDef("visibility", 0, 0, 127));
+            s.trainingFocus = tr.optStringDef("focus");
+            s.trainingCurrentBlock = static_cast<qint16>(tr.optIntDef("currentBlock", 0, 0, INT16_MAX));
+            s.trainingCurrentPosition = static_cast<qint8>(tr.optIntDef("currentPosition", 0, 0, 127));
+            s.trainingInSighterPhase = tr.optBoolDef("inSighterPhase", false);
+            s.trainingSighterPosition = static_cast<qint8>(tr.optIntDef("sighterPosition", 0, 0, 127));
+            s.trainingSighterBeforeBlock = static_cast<qint16>(tr.optIntDef("sighterBeforeBlock", 1, 0, INT16_MAX));
+            if (tr.failed) { r.failed = true; r.err = tr.err; }
+        } else if (!tv.isUndefined()) {
+            r.fail(ReliabilityError::InvalidFieldType, QStringLiteral("'training' not an object"));
+        }
+    }
+    for (const QJsonValue& v : r.optArray("trainingBlocks")) {
+        if (!v.isObject()) {
+            r.fail(ReliabilityError::InvalidFieldType, QStringLiteral("training block is not an object"));
+            break;
+        }
+        StateReader br{v.toObject()};
+        TrainingBlockData b;
+        b.blockIndex = static_cast<qint16>(br.reqInt("blockIndex", 0, INT16_MAX));
+        b.position = static_cast<qint8>(br.reqInt("position", 0, 127));
+        b.completed = br.optBoolDef("completed", false);
+        b.note = br.optStringDef("note");
+        for (const QJsonValue& sv : br.optArray("shots")) {
+            if (!sv.isObject()) {
+                r.fail(ReliabilityError::InvalidFieldType, QStringLiteral("training shot is not an object"));
+                break;
+            }
+            ShotCore sh;
+            const ReliabilityResult sr = EventSerializer::deserializeShotCore(sv.toObject(), &sh);
+            if (!sr.ok) { r.failed = true; r.err = sr.error; break; }
+            b.shots.append(sh);
+        }
+        if (br.failed) { r.failed = true; r.err = br.err; break; }
+        if (r.failed) break;
+        s.trainingBlocks.append(b);
+    }
+    for (const QJsonValue& v : r.optArray("trainingSighters")) {
+        if (!v.isObject()) {
+            r.fail(ReliabilityError::InvalidFieldType, QStringLiteral("training sighter is not an object"));
+            break;
+        }
+        const QJsonObject obj = v.toObject();
+        ShotCore sh;
+        const ReliabilityResult sr = EventSerializer::deserializeShotCore(obj, &sh);
+        if (!sr.ok) { r.failed = true; r.err = sr.error; break; }
+        StateReader sr2{obj};
+        const qint8 pos = static_cast<qint8>(sr2.optIntDef("position", 0, 0, 127));
+        if (sr2.failed) { r.failed = true; r.err = sr2.err; break; }
+        s.trainingSighters.append(sh);
+        s.trainingSighterPos.append(pos);
+    }
+    {
+        const QJsonValue cv = r.o.value(QLatin1String("callDiagnose"));
+        if (cv.isObject()) {
+            StateReader cr{cv.toObject()};
+            s.cdActive = cr.optBoolDef("active", false);
+            s.cdCompleted = cr.optBoolDef("completed", false);
+            s.cdCallingActive = cr.optBoolDef("callingActive", false);
+            s.cdProgramId = cr.optStringDef("programId");
+            s.cdFocus = cr.optStringDef("focus");
+            s.cdShotCount = static_cast<qint16>(cr.optIntDef("shotCount", 0, 0, INT16_MAX));
+            s.cdCurrentPosition = static_cast<qint8>(cr.optIntDef("currentPosition", 0, 0, 127));
+            s.cdThreePositions = cr.optBoolDef("threePositions", false);
+            s.cdSessionNote = cr.optStringDef("sessionNote");
+            if (cr.failed) { r.failed = true; r.err = cr.err; }
+        } else if (!cv.isUndefined()) {
+            r.fail(ReliabilityError::InvalidFieldType, QStringLiteral("'callDiagnose' not an object"));
+        }
+    }
+    for (const QJsonValue& v : r.optArray("cdShots")) {
+        if (!v.isObject()) {
+            r.fail(ReliabilityError::InvalidFieldType, QStringLiteral("call/diagnose shot is not an object"));
+            break;
+        }
+        const QJsonObject obj = v.toObject();
+        CallDiagnoseShotRecord c;
+        const ReliabilityResult sr = EventSerializer::deserializeShotCore(obj, &c.actual);
+        if (!sr.ok) { r.failed = true; r.err = sr.error; break; }
+        StateReader cr{obj};
+        c.shotNumber = static_cast<qint16>(cr.reqInt("shotNumber", 0, INT16_MAX));
+        c.position = static_cast<qint8>(cr.reqInt("position", 0, 127));
+        c.hasCall = cr.optBoolDef("hasCall", false);
+        c.calledXHundredthMm = static_cast<qint32>(cr.optIntDef("calledXHundredthMm", 0, INT32_MIN, INT32_MAX));
+        c.calledYHundredthMm = static_cast<qint32>(cr.optIntDef("calledYHundredthMm", 0, INT32_MIN, INT32_MAX));
+        c.callSplitMs = static_cast<qint32>(cr.optIntDef("callSplitMs", 0, INT32_MIN, INT32_MAX));
+        c.note = cr.optStringDef("note");
+        if (cr.failed) { r.failed = true; r.err = cr.err; break; }
+        s.cdShots.append(c);
+    }
+    {
+        const QJsonValue pv = r.o.value(QLatin1String("positionTransition"));
+        if (pv.isObject()) {
+            StateReader pr{pv.toObject()};
+            s.ptActive = pr.optBoolDef("active", false);
+            s.ptCompleted = pr.optBoolDef("completed", false);
+            s.ptProgramId = pr.optStringDef("programId");
+            s.ptSequence = pr.optStringDef("sequence");
+            s.ptFocus = pr.optStringDef("focus");
+            s.ptVerificationShots = static_cast<qint16>(pr.optIntDef("verificationShots", 0, 0, INT16_MAX));
+            s.ptRepeats = static_cast<qint16>(pr.optIntDef("repeats", 1, 0, INT16_MAX));
+            s.ptChecklistMode = static_cast<qint8>(pr.optIntDef("checklistMode", 0, 0, 127));
+            s.ptCurrentPosition = static_cast<qint8>(pr.optIntDef("currentPosition", 0, 0, 127));
+            s.ptCurrentRepeat = static_cast<qint16>(pr.optIntDef("currentRepeat", 1, 0, INT16_MAX));
+            s.ptInSetup = pr.optBoolDef("inSetup", false);
+            s.ptVerifying = pr.optBoolDef("verifying", false);
+            s.ptSessionNote = pr.optStringDef("sessionNote");
+            if (pr.failed) { r.failed = true; r.err = pr.err; }
+        } else if (!pv.isUndefined()) {
+            r.fail(ReliabilityError::InvalidFieldType, QStringLiteral("'positionTransition' not an object"));
+        }
+    }
+    for (const QJsonValue& v : r.optArray("ptRecords")) {
+        if (!v.isObject()) {
+            r.fail(ReliabilityError::InvalidFieldType, QStringLiteral("pt record is not an object"));
+            break;
+        }
+        StateReader pr{v.toObject()};
+        PtPositionRecord p;
+        p.position = static_cast<qint8>(pr.reqInt("position", 0, 127));
+        p.repeat = static_cast<qint16>(pr.reqInt("repeat", 0, INT16_MAX));
+        p.setupDurationMs = static_cast<qint32>(pr.optIntDef("setupDurationMs", 0, INT32_MIN, INT32_MAX));
+        p.readyMonoMs = static_cast<qint32>(pr.optIntDef("readyMonoMs", 0, INT32_MIN, INT32_MAX));
+        p.note = pr.optStringDef("note");
+        p.completed = pr.optBoolDef("completed", false);
+        for (const QJsonValue& sv : pr.optArray("sighters")) {
+            if (!sv.isObject()) { r.fail(ReliabilityError::InvalidFieldType, QStringLiteral("pt sighter is not an object")); break; }
+            ShotCore sh;
+            const ReliabilityResult sr = EventSerializer::deserializeShotCore(sv.toObject(), &sh);
+            if (!sr.ok) { r.failed = true; r.err = sr.error; break; }
+            p.sighters.append(sh);
+        }
+        for (const QJsonValue& sv : pr.optArray("verifShots")) {
+            if (!sv.isObject()) { r.fail(ReliabilityError::InvalidFieldType, QStringLiteral("pt verification shot is not an object")); break; }
+            ShotCore sh;
+            const ReliabilityResult sr = EventSerializer::deserializeShotCore(sv.toObject(), &sh);
+            if (!sr.ok) { r.failed = true; r.err = sr.error; break; }
+            p.verifShots.append(sh);
+        }
+        for (const QJsonValue& cv2 : pr.optArray("checklist")) {
+            if (!cv2.isObject()) { r.fail(ReliabilityError::InvalidFieldType, QStringLiteral("pt checklist entry is not an object")); break; }
+            StateReader kr{cv2.toObject()};
+            p.checklist.append(static_cast<qint8>(kr.reqInt("v", -128, 127)));
+            if (kr.failed) { r.failed = true; r.err = kr.err; break; }
+        }
+        if (pr.failed) { r.failed = true; r.err = pr.err; break; }
+        if (r.failed) break;
+        s.ptRecords.append(p);
+    }
+
+    // ── Wind Map (state v4) ──────────────────────────────────────────────
+    // Optional throughout: a v1-v3 snapshot has no windMap key and restores to
+    // the defaults, which is exactly "no Wind Map session". Nothing is
+    // inferred — an absent wind reading stays absent.
+    {
+        const QJsonValue wmv = r.o.value(QLatin1String("windMap"));
+        if (wmv.isObject()) {
+            StateReader wr{wmv.toObject()};
+            s.wmActive = wr.optBoolDef("active", false);
+            s.wmCompleted = wr.optBoolDef("completed", false);
+            s.wmProgramId = wr.optStringDef("programId");
+            s.wmDisciplineId = wr.optStringDef("disciplineId");
+            s.wmThreePositions = wr.optBoolDef("threePositions", false);
+            s.wmCurrentPosition = static_cast<qint8>(wr.optIntDef("currentPosition", 0, 0, 3));
+            s.wmPositionSequence = wr.optStringDef("positionSequence");
+            s.wmConditionChanges = static_cast<qint32>(wr.optIntDef("conditionChanges", 0, 0, INT32_MAX));
+            s.wmNextShotId = static_cast<qint32>(wr.optIntDef("nextShotId", 1, 0, INT32_MAX));
+            s.wmWindValid = wr.optBoolDef("windValid", false);
+            s.wmWindCalm = wr.optBoolDef("windCalm", false);
+            s.wmWindDirectionDegrees = static_cast<qint16>(wr.optIntDef("windDirDeg", 0, 0, 359));
+            s.wmWindSpeedHundredthMs = static_cast<qint32>(wr.optIntDef("windSpeedHundredthMs", 0, 0, 100000));
+            s.wmWindSource = static_cast<qint8>(wr.optIntDef("windSource", 0, 0, 1));
+            s.wmWindRecordedMs = wr.optIntDef("windRecordedMs", 0, 0, std::numeric_limits<qint64>::max());
+            s.wmWindNote = wr.optStringDef("windNote");
+            if (wr.failed) { r.failed = true; r.err = wr.err; }
+        } else if (!wmv.isUndefined()) {
+            r.fail(ReliabilityError::InvalidFieldType,
+                   QStringLiteral("'windMap' not an object"));
+        }
+    }
+    for (const QJsonValue& v : r.optArray("windMapShots")) {
+        if (!v.isObject()) {
+            r.fail(ReliabilityError::InvalidFieldType,
+                   QStringLiteral("wind map shot is not an object"));
+            break;
+        }
+        const QJsonObject obj = v.toObject();
+        WindMapShotRecord rec;
+        const ReliabilityResult sr = EventSerializer::deserializeShotCore(obj, &rec.shot);
+        if (!sr.ok) { r.failed = true; r.err = sr.error; break; }
+        StateReader wr{obj};
+        rec.shotId = static_cast<qint32>(wr.reqInt("shotId", 0, INT32_MAX));
+        rec.position = static_cast<qint8>(wr.reqInt("position", 0, 3));
+        rec.sighter = wr.optBoolDef("sighter", false);
+        rec.windValid = wr.optBoolDef("windValid", false);
+        rec.windCalm = wr.optBoolDef("windCalm", false);
+        rec.windDirectionDegrees = static_cast<qint16>(wr.optIntDef("windDirDeg", 0, 0, 359));
+        rec.windSpeedHundredthMs = static_cast<qint32>(wr.optIntDef("windSpeedHundredthMs", 0, 0, 100000));
+        rec.windSource = static_cast<qint8>(wr.optIntDef("windSource", 0, 0, 1));
+        rec.windRecordedMs = wr.optIntDef("windRecordedMs", 0, 0, std::numeric_limits<qint64>::max());
+        rec.windNote = wr.optStringDef("windNote");
+        if (wr.failed) { r.failed = true; r.err = wr.err; break; }
+        s.wmShots.append(rec);
     }
 
     s.totalTenths = static_cast<qint32>(r.reqInt("totalTenths", INT32_MIN, INT32_MAX));

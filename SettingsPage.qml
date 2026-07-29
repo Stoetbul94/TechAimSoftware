@@ -454,11 +454,77 @@ Item {
         }
     }
 
+    // ── Language (P0 Phase F) ────────────────────────────────────────────
+    // Full-width touch targets. Changing language affects TRANSLATIONS ONLY:
+    // never the brand, theme, executable identity or the operating mode.
+    Rectangle {
+        id: languageSection
+        anchors.top: operatingModeSection.bottom
+        anchors.left: settings_popup.left
+        anchors.topMargin: 6
+        width: settings_popup.width
+        height: langCol.implicitHeight + 16
+        color: "#26272c"
+        border.color: "#3a3b40"; border.width: 1
+        Column {
+            id: langCol
+            anchors.left: parent.left; anchors.right: parent.right
+            anchors.top: parent.top; anchors.margins: 8; spacing: 6
+            Text {
+                text: qsTr("LANGUAGE")
+                color: "#9a9ba0"; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1
+            }
+            Repeater {
+                model: LANGUAGE.availableLanguages
+                delegate: Rectangle {
+                    property bool selected: modelData.code === LANGUAGE.languageCode
+                    width: langCol.width; height: 44; radius: 6
+                    color: selected ? "#a80038" : (langMouse.pressed ? "#34353c" : "#2c2d33")
+                    border.color: selected ? "#c40046" : "#3a3b40"; border.width: 1
+                    Text {
+                        anchors.left: parent.left; anchors.leftMargin: 12
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: modelData.label
+                        color: parent.selected ? "white" : "#c9ced6"
+                        font.pixelSize: 13; font.bold: parent.selected
+                    }
+                    Text {
+                        anchors.right: parent.right; anchors.rightMargin: 12
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: parent.selected ? "✓" : ""
+                        color: "white"; font.pixelSize: 15; font.bold: true
+                    }
+                    MouseArea {
+                        id: langMouse
+                        anchors.fill: parent
+                        onClicked: LANGUAGE.selectLanguage(modelData.code)
+                    }
+                }
+            }
+            // The German catalogue is an untested beta: say so rather than
+            // implying a certified translation.
+            Text {
+                visible: LANGUAGE.isBetaTranslation
+                width: langCol.width; wrapMode: Text.WordWrap
+                text: qsTr("German is a beta translation awaiting native review. "
+                           + "Untranslated text stays in English.")
+                color: "#9a9ba0"; font.pixelSize: 10
+            }
+            // Shown only if a live switch could not retranslate everything.
+            Text {
+                visible: LANGUAGE.restartRequired
+                width: langCol.width; wrapMode: Text.WordWrap
+                text: qsTr("Restart required to finish applying the language.")
+                color: "#e8a13c"; font.pixelSize: 10; font.bold: true
+            }
+        }
+    }
+
     // ── About / build identity (F9B) — embedded at compile time; lets the
     // operator confirm the release executable matches the committed source.
     Rectangle {
         id: aboutSection
-        anchors.top: operatingModeSection.bottom
+        anchors.top: languageSection.bottom
         anchors.left: settings_popup.left
         anchors.topMargin: 6
         width: settings_popup.width
@@ -474,8 +540,21 @@ Item {
                 color: "#9a9ba0"; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1
             }
             Text {
-                text: "TechAim " + (typeof BUILDINFO !== "undefined" ? BUILDINFO.version : "?")
+                // Prose form is "Tech Aim" (spaced); the unspaced "TechAim"
+                // is reserved for the executable and file prefixes.
+                text: PRODUCT.fullProductName
                 color: "white"; font.pixelSize: 12; font.bold: true
+                width: parent.width; wrapMode: Text.WordWrap
+            }
+            Text {
+                text: PRODUCT.displayName + " " + PRODUCT.version + " · " + PRODUCT.releaseChannel
+                color: "#c9ced6"; font.pixelSize: 10
+                width: parent.width; wrapMode: Text.WordWrap
+            }
+            Text {
+                text: PRODUCT.legalPublisher
+                color: "#c9ced6"; font.pixelSize: 10
+                width: parent.width; wrapMode: Text.WordWrap
             }
             Text {
                 text: (typeof BUILDINFO !== "undefined" ? BUILDINFO.config : "?") + qsTr(" build")

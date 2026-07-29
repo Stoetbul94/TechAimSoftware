@@ -1,5 +1,6 @@
 #include "FinalsReportBuilder.h"
 #include "Finals3PTypes.h"
+#include "app/ProductIdentity.h"
 
 #include <QMap>
 #include <QStringList>
@@ -169,7 +170,7 @@ FinalsReportData FinalsReportBuilder::build(const QVariantList& officialShots,
     d.summary.sessionType = meta.value(QStringLiteral("sessionType"),
                                        QStringLiteral("Final (Training)")).toString();
     d.summary.softwareVersion = meta.value(QStringLiteral("softwareVersion"),
-                                           QStringLiteral("Seta 4.0")).toString();
+                                           ta::app::identity().softwareVersionLabel()).toString();
     d.summary.lane = meta.value(QStringLiteral("lane")).toString();
     d.summary.targetId = meta.value(QStringLiteral("targetId")).toString();
     d.summary.cumulativeTotal = cumulativeTotal;

@@ -273,7 +273,7 @@ Item {
                 anchors.leftMargin: 28
                 anchors.rightMargin: 28
                 anchors.bottomMargin: 20
-                softwareVersion: "Seta 4.0"
+                softwareVersion: PRODUCT.softwareVersionLabel
                 generatedText: qsTr("Generated ") + new Date().toLocaleString(Qt.locale(""), "ddd yyyy-MM-dd hh:mm")
                 pageText: qsTr("Page 1")
             }

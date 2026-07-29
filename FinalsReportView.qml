@@ -434,7 +434,7 @@ Item {
                     anchors.left: parent.left; anchors.right: parent.right
                     anchors.bottom: parent.bottom
                     anchors.leftMargin: 34; anchors.rightMargin: 34; anchors.bottomMargin: 20
-                    softwareVersion: "Seta 4.0"
+                    softwareVersion: PRODUCT.softwareVersionLabel
                     generatedText: "Generated " + finalsReport.generatedStamp
                     pageText: "Page 1 / 4"
                 }
@@ -539,7 +539,7 @@ Item {
                     anchors.left: parent.left; anchors.right: parent.right
                     anchors.bottom: parent.bottom
                     anchors.leftMargin: 34; anchors.rightMargin: 34; anchors.bottomMargin: 20
-                    softwareVersion: "Seta 4.0"
+                    softwareVersion: PRODUCT.softwareVersionLabel
                     generatedText: "Generated " + finalsReport.generatedStamp
                     pageText: "Page 2 / 4"
                 }
@@ -610,7 +610,7 @@ Item {
                     anchors.left: parent.left; anchors.right: parent.right
                     anchors.bottom: parent.bottom
                     anchors.leftMargin: 34; anchors.rightMargin: 34; anchors.bottomMargin: 20
-                    softwareVersion: "Seta 4.0"
+                    softwareVersion: PRODUCT.softwareVersionLabel
                     generatedText: "Generated " + finalsReport.generatedStamp
                     pageText: "Page 3 / 4"
                 }
@@ -780,7 +780,7 @@ Item {
                     anchors.left: parent.left; anchors.right: parent.right
                     anchors.bottom: parent.bottom
                     anchors.leftMargin: 34; anchors.rightMargin: 34; anchors.bottomMargin: 20
-                    softwareVersion: "Seta 4.0"
+                    softwareVersion: PRODUCT.softwareVersionLabel
                     generatedText: "Generated " + finalsReport.generatedStamp
                     pageText: "Page 4 / 4"
                 }

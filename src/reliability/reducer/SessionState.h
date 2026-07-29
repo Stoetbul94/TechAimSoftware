@@ -287,6 +287,36 @@ struct PtPositionRecord {
     }
 };
 
+// Wind Map (Training Lab Release 2): one recorded shot with its IMMUTABLE
+// wind snapshot. The snapshot is copied at accept time and is never rewritten
+// — changing the standing condition afterwards must not alter a shot that has
+// already been recorded. A shot with windValid == false has NO reading, which
+// is a different fact from a recorded calm and is never back-filled.
+struct WindMapShotRecord {
+    ShotCore shot;
+    qint32   shotId = 0;
+    qint8    position = 0;        // 0 n/a (Prone), 1 K, 2 P, 3 S
+    bool     sighter = false;
+    // immutable snapshot
+    bool     windValid = false;
+    bool     windCalm = false;
+    qint16   windDirectionDegrees = 0;
+    qint32   windSpeedHundredthMs = 0;
+    qint8    windSource = 0;
+    qint64   windRecordedMs = 0;
+    QString  windNote;
+    bool operator==(const WindMapShotRecord& o) const
+    {
+        return shot == o.shot && shotId == o.shotId && position == o.position
+            && sighter == o.sighter
+            && windValid == o.windValid && windCalm == o.windCalm
+            && windDirectionDegrees == o.windDirectionDegrees
+            && windSpeedHundredthMs == o.windSpeedHundredthMs
+            && windSource == o.windSource && windRecordedMs == o.windRecordedMs
+            && windNote == o.windNote;
+    }
+};
+
 using DisciplineState =
     std::variant<std::monostate, QualificationState, Finals3PState,
                  TrainingState, Finals10mState>;
@@ -297,7 +327,18 @@ using DisciplineState =
 // v3 (Phase E): adds creditDecision / backupReview / raisedAtMonoMs /
 // sightingGrantedSeq to each incident record. Backward compatible — v2
 // records lack the keys and deserialize to the defaults above.
-inline constexpr qint32 kSessionStateVersion = 3;
+// v4 (Training Lab Release 2): adds the `windMap` object and `windMapShots`
+// array. Backward compatible — a v1-v3 snapshot has neither key and restores
+// to "no Wind Map session". Wind Map is snapshot-serialised because
+// ReplayEngine defaults to the snapshot fast path and folds only the tail
+// after the last StateSnapshot; state left out of a snapshot is lost there.
+// v5 (Stage 4.1): adds `sessionKind`, `training` + `trainingBlocks` +
+// `trainingSighters`, `callDiagnose` + `cdShots`, and `positionTransition` +
+// `ptRecords`. Backward compatible — a v1-v4 snapshot has none of those keys
+// and restores to "no programme", which is what it meant. The version moves
+// because a v4 snapshot genuinely exists (the regenerated golden fixture) and
+// does NOT contain them; a reader must be able to tell the two apart.
+inline constexpr qint32 kSessionStateVersion = 5;
 
 struct SessionState {
     // identity & configuration
@@ -363,6 +404,28 @@ struct SessionState {
     bool    ptVerifying = false;           // true = VerificationActive
     QString ptSessionNote;
     QVector<PtPositionRecord> ptRecords;
+    // Wind Map (Release 2): sessionKind=Training, wmProgramId="wind_map";
+    // 50m Prone and 50m 3P only. The standing condition is projected here so
+    // recovery restores exactly what was active; each shot carries its own
+    // snapshot in wmShots and is never re-derived from this.
+    bool    wmActive = false;
+    bool    wmCompleted = false;
+    QString wmProgramId;
+    QString wmDisciplineId;                // "PRONE50" | "3P50"
+    bool    wmThreePositions = false;
+    qint8   wmCurrentPosition = 0;
+    QString wmPositionSequence;
+    // standing condition (the value the NEXT accepted shot will snapshot)
+    bool    wmWindValid = false;
+    bool    wmWindCalm = false;
+    qint16  wmWindDirectionDegrees = 0;
+    qint32  wmWindSpeedHundredthMs = 0;
+    qint8   wmWindSource = 0;
+    qint64  wmWindRecordedMs = 0;
+    QString wmWindNote;
+    qint32  wmConditionChanges = 0;
+    qint32  wmNextShotId = 1;
+    QVector<WindMapShotRecord> wmShots;    // sighters AND counted, arrival order
     // lifecycle
     bool started = false;
     Lifecycle lifecycle = Lifecycle::None;

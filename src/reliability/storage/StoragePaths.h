@@ -61,6 +61,11 @@ public:
 
     // ── directories ──────────────────────────────────────────────────────
     static QString applicationDataRoot();
+
+    // The root the application would use with NO override in force. Needed by
+    // the documentation-capture validator, which must be able to REFUSE a
+    // requested capture root that is the production root (or inside it).
+    static QString productionDataRoot();
     static QString currentSessionsDirectory();
     static QString archivedSessionsDirectory();
     static QString corruptedSessionsDirectory();

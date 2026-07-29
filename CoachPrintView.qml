@@ -417,7 +417,7 @@ Rectangle {
 
                     ReportFooter {
                         width: parent.width
-                        softwareVersion: "Seta 4.0"
+                        softwareVersion: PRODUCT.softwareVersionLabel
                         generatedText: "Generated " + Qt.formatDateTime(new Date(),"ddd yyyy-MM-dd HH:mm")
                     }
 

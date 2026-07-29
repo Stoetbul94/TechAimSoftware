@@ -148,6 +148,27 @@ void writeConfig(OrderedJsonWriter& w, const DisciplineConfig& c)
     w.endObject();
 }
 
+// Wind Map — the immutable condition snapshot carried by every accepted-shot
+// event. Written flat and always in the same field order so the journal hash
+// is stable. `windValid=false` is written as the single field, so a
+// no-reading shot is unmistakable in the raw journal and can never be read
+// back as a calm or as 0 degrees North.
+void writeWindSnapshot(OrderedJsonWriter& w, const WindSnapshotFields& s)
+{
+    w.field("windValid", s.windValid);
+    if (!s.windValid)
+        return;
+    w.field("windCalm", s.windCalm);
+    if (!s.windCalm) {
+        w.field("windDirDeg", static_cast<qint64>(s.windDirectionDegrees));
+        w.field("windSpeedHundredthMs", static_cast<qint64>(s.windSpeedHundredthMs));
+    }
+    w.field("windSource", static_cast<qint64>(s.windSource));
+    w.field("windRecordedMs", s.windRecordedMs);
+    if (!s.windNote.isEmpty())
+        w.field("windNote", s.windNote);
+}
+
 void writeShotCore(OrderedJsonWriter& w, const ShotCore& s)
 {
     EventSerializer::serializeShotCoreFields(s, w);
@@ -556,6 +577,35 @@ void EventSerializer::serializePayloadInto(const DomainEvent& event,
             w.field("completedPositions", static_cast<qint64>(e.completedPositions));
             if (!e.sessionNote.isEmpty())
                 w.field("sessionNote", e.sessionNote);
+        },
+        [&](const WindMapSessionStarted& e) {
+            w.field("disciplineId", e.disciplineId);
+            w.field("is3P", e.is3P);
+            w.field("positionSequence", e.positionSequence);
+        },
+        [&](const WindConditionChanged& e) {
+            writeWindSnapshot(w, e);
+        },
+        [&](const WindMapSighterAccepted& e) {
+            writeShotCore(w, e.shot);
+            w.field("shotId", static_cast<qint64>(e.shotId));
+            w.field("position", static_cast<qint64>(e.position));
+            writeWindSnapshot(w, e);
+        },
+        [&](const WindMapShotAccepted& e) {
+            writeShotCore(w, e.shot);
+            w.field("shotId", static_cast<qint64>(e.shotId));
+            w.field("position", static_cast<qint64>(e.position));
+            writeWindSnapshot(w, e);
+        },
+        [&](const WindMapPositionChanged& e) {
+            w.field("fromPosition", static_cast<qint64>(e.fromPosition));
+            w.field("toPosition", static_cast<qint64>(e.toPosition));
+        },
+        [&](const WindMapSessionCompleted& e) {
+            w.field("countedShots", static_cast<qint64>(e.countedShots));
+            w.field("sighterShots", static_cast<qint64>(e.sighterShots));
+            w.field("conditionChanges", static_cast<qint64>(e.conditionChanges));
         }
     }, event);
 }
@@ -702,6 +752,30 @@ Discipline readDiscipline(FieldReader& r, const char* key)
         return Discipline::None;
     }
     return d;
+}
+
+// Reads the wind snapshot. Absence of a field is NEVER treated as a default
+// reading: a missing windValid, or windValid=false, produces an explicitly
+// empty snapshot. Nothing here infers or back-fills.
+void readWindSnapshot(FieldReader& r, WindSnapshotFields* s)
+{
+    s->windValid = r.o.contains(QLatin1String("windValid")) && r.reqBool("windValid");
+    if (!s->windValid) {
+        *static_cast<WindSnapshotFields*>(s) = WindSnapshotFields{};
+        return;
+    }
+    s->windCalm = r.o.contains(QLatin1String("windCalm")) && r.reqBool("windCalm");
+    if (!s->windCalm) {
+        s->windDirectionDegrees = static_cast<qint16>(r.reqInt("windDirDeg", 0, 359));
+        s->windSpeedHundredthMs = static_cast<qint32>(r.reqInt("windSpeedHundredthMs", 0, 100000));
+    } else {
+        s->windDirectionDegrees = 0;
+        s->windSpeedHundredthMs = 0;
+    }
+    s->windSource = static_cast<qint8>(r.reqInt("windSource", 0, 1));
+    s->windRecordedMs = r.reqInt("windRecordedMs", 0, Q_INT64_C(9223372036854775807));
+    if (r.o.contains(QLatin1String("windNote")))
+        s->windNote = r.optString("windNote");
 }
 
 ShotCore readShotCore(FieldReader& r)
@@ -1233,6 +1307,41 @@ ReliabilityResult EventSerializer::deserializePayload(const QString& typeId,
         e.completedPositions = static_cast<qint16>(r.reqInt("completedPositions", 0, 1000));
         if (r.o.contains(QLatin1String("sessionNote")))
             e.sessionNote = r.optString("sessionNote");
+        *out = e;
+    } else if (typeId == QLatin1String(WindMapSessionStarted::kType)) {
+        WindMapSessionStarted e;
+        e.disciplineId = r.reqString("disciplineId");
+        e.is3P = r.reqBool("is3P");
+        e.positionSequence = r.optString("positionSequence");
+        *out = e;
+    } else if (typeId == QLatin1String(WindConditionChanged::kType)) {
+        WindConditionChanged e;
+        readWindSnapshot(r, &e);
+        *out = e;
+    } else if (typeId == QLatin1String(WindMapSighterAccepted::kType)) {
+        WindMapSighterAccepted e;
+        e.shot = readShotCore(r);
+        e.shotId = static_cast<qint32>(r.reqInt("shotId", 1, 1000000));
+        e.position = static_cast<qint8>(r.reqInt("position", 0, 3));
+        readWindSnapshot(r, &e);
+        *out = e;
+    } else if (typeId == QLatin1String(WindMapShotAccepted::kType)) {
+        WindMapShotAccepted e;
+        e.shot = readShotCore(r);
+        e.shotId = static_cast<qint32>(r.reqInt("shotId", 1, 1000000));
+        e.position = static_cast<qint8>(r.reqInt("position", 0, 3));
+        readWindSnapshot(r, &e);
+        *out = e;
+    } else if (typeId == QLatin1String(WindMapPositionChanged::kType)) {
+        WindMapPositionChanged e;
+        e.fromPosition = static_cast<qint8>(r.reqInt("fromPosition", 0, 3));
+        e.toPosition = static_cast<qint8>(r.reqInt("toPosition", 0, 3));
+        *out = e;
+    } else if (typeId == QLatin1String(WindMapSessionCompleted::kType)) {
+        WindMapSessionCompleted e;
+        e.countedShots = static_cast<qint32>(r.reqInt("countedShots", 0, 1000000));
+        e.sighterShots = static_cast<qint32>(r.reqInt("sighterShots", 0, 1000000));
+        e.conditionChanges = static_cast<qint32>(r.reqInt("conditionChanges", 0, 1000000));
         *out = e;
     } else {
         return ReliabilityResult::failure(ReliabilityError::UnsupportedEventType,

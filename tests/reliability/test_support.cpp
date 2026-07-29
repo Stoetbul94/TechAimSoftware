@@ -3,6 +3,11 @@
 int g_checks = 0;
 int g_failures = 0;
 
+void check(bool ok, const QString& name, const QString& detail)
+{
+    check(ok, qUtf8Printable(name), detail);
+}
+
 void check(bool ok, const char* name, const QString& detail)
 {
     ++g_checks;

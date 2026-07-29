@@ -1,10 +1,46 @@
 {
   "version": "0.0.1",
+  "_comment": [
+    "TWO configurations, for two different purposes.",
+    "",
+    "1. 'Tech Aim manuals (generated HTML)' - PREVIEWABLE. Serves the",
+    "   generated manual HTML over HTTP so it can be opened in the browser",
+    "   pane. Generate the output first:",
+    "     powershell -File docs\\manual\\build-manuals.ps1 -Format html",
+    "",
+    "2. 'TechAim.exe (desktop launch)' - NOT PREVIEWABLE. Tech Aim is a Qt",
+    "   Widgets/QML DESKTOP application: it opens its own window and serves",
+    "   no HTTP, so a browser preview pane has nothing to show. This entry",
+    "   exists so the launch/debug command is recorded in one place; run it",
+    "   from a terminal, not through preview_start.",
+    "",
+    "   It launches an ALREADY-BUILT binary and does not build. Build first:",
+    "     qmake Seta.pro",
+    "     mingw32-make -f Makefile.Release -j4",
+    "   with Qt 6.5.3 MinGW on PATH:",
+    "     C:/Qt/6.5.3/mingw_64/bin and C:/Qt/Tools/mingw1120_64/bin",
+    "   After QML edits force a qrc regen: rm -f release/qrc_qml.cpp release/qrc_qml.o",
+    "   For diagnostics run it with QT_FORCE_STDERR_LOGGING=1 and read stderr.",
+    "",
+    "   Operating mode and language come from release/config.ini",
+    "   ([App_Settings] app_mode / ui_language). config.ini is untracked.",
+    "",
+    "HISTORY: the original single entry could never start (spawn qmake",
+    "ENOENT). It spawned 'qmake', which is not on the spawned process PATH;",
+    "passed -spec win32-msvc and nmake although this project builds with",
+    "MinGW; and launched release/Seta.exe, renamed to TechAim.exe in P0."
+  ],
   "configurations": [
     {
-      "name": "Seta10 (Qt build + run)",
-      "runtimeExecutable": "qmake",
-      "runtimeArgs": ["Seta.pro", "-spec", "win32-msvc", "&&", "nmake", "&&", "release\\Seta.exe"],
+      "name": "Tech Aim manuals (generated HTML)",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8777", "--directory", "docs/manual/output"],
+      "port": 8777
+    },
+    {
+      "name": "TechAim.exe (desktop launch)",
+      "runtimeExecutable": "release/TechAim.exe",
+      "runtimeArgs": [],
       "port": 0
     }
   ]

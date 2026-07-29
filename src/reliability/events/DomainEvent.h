@@ -97,7 +97,15 @@ using DomainEvent = std::variant<
     PositionVerificationCompleted,
     PositionNoteSaved,
     NextPositionTransitionStarted,
-    PositionTransitionCompleted>;
+    PositionTransitionCompleted,
+    // Wind Map (Training Lab Release 2) — appended at the END so all prior
+    // variant indexes and journal hashes never move.
+    WindMapSessionStarted,
+    WindConditionChanged,
+    WindMapSighterAccepted,
+    WindMapShotAccepted,
+    WindMapPositionChanged,
+    WindMapSessionCompleted>;
 
 // Stable type identifier of the alternative currently held.
 inline const char* eventTypeId(const DomainEvent& event)
