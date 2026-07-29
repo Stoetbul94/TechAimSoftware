@@ -38,6 +38,7 @@ int main(int argc, char** argv)
     run_homepage_layout_tests();
     run_windmap_tests();
     run_windmap_recovery_tests();
+    run_training_parity_tests();
     run_fixture_tests(writeFixtures);
 
     std::printf("=== %d checks, %d failures ===\n", g_checks, g_failures);
