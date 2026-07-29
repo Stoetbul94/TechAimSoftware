@@ -387,4 +387,69 @@ void run_windmap_qml_tests()
             if (analysis.contains(QLatin1String(b), Qt::CaseInsensitive)) { wordsOk = false; bad += QLatin1String(b); }
         check(wordsOk, "11. no correction / hold / aim-off / sight-adjustment wording", bad);
     }
+
+    // ── 12. UI-WIND-002: every used type must be IMPORTED ───────────────
+    {
+        // The defect this exists to stop recurring: WindMapAnalysisView.qml
+        // used ScrollBar while importing only QtQuick. The type never
+        // resolved, the whole component failed to instantiate, and a completed
+        // session showed only the capture HUD's basic review.
+        //
+        // Every §1-§11 check still PASSED, because a file that never loads
+        // still contains all the right strings. A static string check cannot
+        // see this; an import-coverage check can.
+        struct File { const char* name; const QString* src; };
+        const File files[] = {
+            { "WindMapAnalysisView.qml", &analysis },
+            { "WindMapHud.qml",          &hud },
+            { "WindMapRightPanel.qml",   &panel },
+            { "TrainingTopBar.qml",      &bar },
+        };
+        // Types that live in QtQuick.Controls, not QtQuick.
+        const char* controlsTypes[] = {
+            "ScrollBar", "ScrollView", "Button", "CheckBox", "ComboBox", "Slider",
+            "TextField", "TextArea", "SpinBox", "TabBar", "TabButton", "Switch",
+            "RadioButton", "ProgressBar", "ToolTip", "Menu", "Popup", "Dialog",
+        };
+        bool allCovered = true;
+        QString gaps;
+        for (const File& f : files) {
+            const bool importsControls = f.src->contains(QStringLiteral("import QtQuick.Controls"));
+            for (const char* t : controlsTypes) {
+                // Match a type USE: the name followed by '{' or '.'.
+                const QString name = QLatin1String(t);
+                const bool used = f.src->contains(name + QStringLiteral(" {"))
+                               || f.src->contains(name + QStringLiteral("."));
+                if (used && !importsControls) {
+                    allCovered = false;
+                    gaps += QStringLiteral("%1 uses %2 without importing QtQuick.Controls; ")
+                                .arg(QLatin1String(f.name), name);
+                }
+            }
+        }
+        check(allCovered,
+              "12. every QtQuick.Controls type used is backed by its import", gaps);
+
+        // The specific regression, named so a failure is unmistakable.
+        check(!analysis.contains(QStringLiteral("ScrollBar"))
+              || analysis.contains(QStringLiteral("import QtQuick.Controls")),
+              "12. UI-WIND-002: the analysis view imports QtQuick.Controls for ScrollBar");
+
+        // Section navigation must exist and be reachable without a hidden tab.
+        const char* navSections[] = { "Overview", "Target Plot", "Conditions",
+                                      "Timeline", "Findings" };
+        bool nav = true;
+        QString missingNav;
+        for (const char* n : navSections)
+            if (!analysis.contains(QLatin1String(n))) { nav = false; missingNav += QLatin1String(n); }
+        check(nav, "12. the five navigation sections are present", missingNav);
+        check(analysis.contains(QStringLiteral("Session Overview")),
+              "12. 3P offers a Session Overview tab alongside the positions");
+        check(analysis.contains(QStringLiteral("sampleNote")),
+              "12. an insufficient sample explains itself in words");
+        check(analysis.contains(QStringLiteral("Not enough shots yet for a group centre")),
+              "12. an unplottable position shows a clear placeholder, never a blank");
+        check(analysis.contains(QStringLiteral("WHAT THE DATA SUGGESTS — PREVIEW")),
+              "12. findings are previewed on the first screen");
+    }
 }

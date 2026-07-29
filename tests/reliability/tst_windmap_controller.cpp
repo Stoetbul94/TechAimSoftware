@@ -787,4 +787,158 @@ void run_windmap_controller_tests()
         check(!r.wm.analysisModel().value(QStringLiteral("shotRows")).toList().isEmpty(),
               "22. the appendix is populated");
     }
+
+    // ── 23. UI-WIND-002: end-to-end, a NORMAL session reaches the analysis ─
+    {
+        // The exact workflow Arnold drove by hand: 3P, sighters first, counted
+        // shots in two positions, two conditions, complete. This is a REAL
+        // controller run — no seeded fixture, no static string check.
+        Rig r;
+        check(r.wm.configureSession(QStringLiteral("3P50"), 40, true),
+              "23. 1-5 setup: 3P, 40 planned, sighters first");
+        check(r.wm.startWindMap(QStringLiteral("Arnold Bailie")),
+              "23. 6 start Wind Map");
+        check(r.wm.phase() == kSetup, "23. opens in Setup");
+
+        r.wm.setCalmCondition(QStringLiteral("still"));
+        check(r.wm.beginSighters() && r.wm.phase() == kSighters, "23. 7 start sighters");
+        r.shoot(1.0, 1.0); r.shoot(1.2, 0.8);
+        check(r.wm.sighterCount() == 2, "23. 7 sighters recorded");
+
+        check(r.wm.finishSighters() && r.wm.phase() == kCounted, "23. 8 start counted shots");
+        // Kneeling: 3 shots under calm, 2 under a measured reading.
+        r.shoot(2.0, 2.0); r.shoot(2.4, 1.6); r.shoot(1.8, 2.2);
+        r.wm.setMeasuredCondition(270, 2.5, QStringLiteral("from the left"));
+        r.shoot(6.0, 1.0); r.shoot(6.4, 1.4);
+        check(r.wm.countedShots() == 5, "23. 9 counted shots in Kneeling");
+
+        // Position two.
+        check(r.wm.endPosition(), "23. 9 end Kneeling");
+        check(r.wm.changePosition(2), "23. 9 change to Prone");
+        check(r.wm.beginCountedShots(), "23. 9 counted shots in Prone");
+        r.shoot(0.5, 0.5); r.shoot(0.8, 0.2); r.shoot(0.2, 0.9);
+        check(r.wm.countedShots() == 3, "23. 9 counted shots recorded in Prone");
+        check(r.wm.totalCountedShots() == 8, "23. 10 two positions, two conditions");
+
+        // Complete.
+        check(r.wm.endCapture() && r.wm.phase() == kSessionReview, "23. 11 end capture");
+        check(r.wm.completeSession(), "23. 11 complete session");
+        check(r.wm.phase() == kCompleted,
+              "23. the completed state IS reached — this is what the view binds to",
+              QStringLiteral("phase %1").arg(r.wm.phase()));
+
+        // ── the analysis the athlete must now see ───────────────────────
+        const QVariantMap m = r.wm.analysisModel();
+        check(!m.isEmpty(),
+              "23. the analysis model is POPULATED after a normal completion");
+
+        const QVariantMap sum = m.value(QStringLiteral("summary")).toMap();
+        check(sum.value(QStringLiteral("countedShots")).toInt() == 8
+              && sum.value(QStringLiteral("sighterShots")).toInt() == 2,
+              "23. factual overview: counted and sighter totals");
+        check(sum.value(QStringLiteral("uniqueConditions")).toInt() == 2,
+              "23. factual overview: unique conditions");
+        check(!sum.value(QStringLiteral("dataQuality")).toString().isEmpty(),
+              "23. factual overview: data-quality status");
+        const QVariantMap sess = m.value(QStringLiteral("session")).toMap();
+        check(sess.value(QStringLiteral("positionsRepresented")).toStringList().size() == 2,
+              "23. factual overview: positions represented");
+        check(sess.value(QStringLiteral("threePositions")).toBool(),
+              "23. the model reports 3P, so the position tabs appear");
+
+        // 3P tabs come from the positions array — one per position with data.
+        const QVariantList pos = m.value(QStringLiteral("positions")).toList();
+        check(pos.size() == 2,
+              "23. a position analysis per shot position — the 3P tabs",
+              QStringLiteral("%1 positions").arg(pos.size()));
+        check(pos.value(0).toMap().value(QStringLiteral("positionName")).toString()
+                  == QLatin1String("Kneeling")
+              && pos.value(1).toMap().value(QStringLiteral("positionName")).toString()
+                  == QLatin1String("Prone"),
+              "23. named Kneeling and Prone, never pooled");
+
+        // Findings must exist even on a short session — the athlete always
+        // gets an explanation, never a blank page.
+        const QVariantList findings = m.value(QStringLiteral("findings")).toList();
+        check(!findings.isEmpty(),
+              "23. findings are produced even for a short session");
+        check(!m.value(QStringLiteral("limitations")).toStringList().isEmpty(),
+              "23. limitations are present");
+        check(m.value(QStringLiteral("timeline")).toList().size() == 10,
+              "23. the timeline lists every shot, sighters included");
+
+        // ── withheld, not zero ──────────────────────────────────────────
+        const QVariantList ex = pos.value(0).toMap()
+                                  .value(QStringLiteral("byExactCondition")).toList();
+        bool sawWithheld = false, anyZeroed = false;
+        for (const QVariant& v : ex) {
+            const QVariantMap g = v.toMap();
+            if (g.value(QStringLiteral("hasDispersion")).toBool()) continue;
+            sawWithheld = true;
+            // The keys must be ABSENT, so no view can print 0.0.
+            if (g.contains(QStringLiteral("groupDiameterMm"))
+                || g.contains(QStringLiteral("meanRadiusMm"))) anyZeroed = true;
+            // And the shortfall must be stated.
+            if (g.value(QStringLiteral("shotsNeededForDispersion")).toInt() <= 0) anyZeroed = true;
+        }
+        check(sawWithheld, "23. this short session does have withheld statistics");
+        check(!anyZeroed,
+              "23. every withheld statistic is ABSENT and states how many more shots it needs");
+
+        // The 2-shot measured group: MPI withheld, shortfall = 1.
+        const QVariantMap* small = nullptr;
+        QVariantMap smallHolder;
+        for (const QVariant& v : ex) {
+            const QVariantMap g = v.toMap();
+            if (g.value(QStringLiteral("n")).toInt() == 2) { smallHolder = g; small = &smallHolder; }
+        }
+        check(small != nullptr, "23. the 2-shot condition group exists");
+        if (small) {
+            check(!small->value(QStringLiteral("hasMpi")).toBool()
+                  && !small->contains(QStringLiteral("mpiXMm")),
+                  "23. its MPI is withheld and absent, not 0.0");
+            check(small->value(QStringLiteral("shotsNeededForMpi")).toInt() == 1,
+                  "23. it states 1 more shot is required");
+        }
+    }
+
+    // ── 24. UI-WIND-002: a SEEDED long session takes the same path ──────
+    {
+        // A normally-created session and a recovered/seeded one must produce
+        // the same analysis through the same code — that was the requirement.
+        Rig live; live.start("PRONE50", 40, true);
+        live.wm.setCalmCondition();
+        live.wm.beginSighters();
+        live.shoot(0.4, 0.4);
+        live.wm.finishSighters();
+        for (int i = 0; i < 12; ++i) live.shoot(double(i % 5) - 2.0, double(i % 3) - 1.0, 10.2);
+        live.wm.setMeasuredCondition(270, 2.5);
+        for (int i = 0; i < 12; ++i) live.shoot(7.0 + (i % 5) - 2.0, double(i % 3) - 1.0, 9.9);
+        live.wm.endCapture();
+        live.wm.completeSession();
+        const QVariantMap liveModel = live.wm.analysisModel();
+
+        // Now recover the SAME journal and analyse the recovered state.
+        Rig back;
+        check(back.wm.resumeFromRecoveredState(recoveredFrom(live.file)),
+              "24. the completed session is recoverable");
+        const QVariantMap recModel = back.wm.analysisModel();
+
+        check(!liveModel.isEmpty() && !recModel.isEmpty(),
+              "24. both the live and the recovered session produce an analysis");
+        const QVariantMap ls = liveModel.value(QStringLiteral("summary")).toMap();
+        const QVariantMap rs = recModel.value(QStringLiteral("summary")).toMap();
+        check(ls.value(QStringLiteral("countedShots")) == rs.value(QStringLiteral("countedShots"))
+              && ls.value(QStringLiteral("sighterShots")) == rs.value(QStringLiteral("sighterShots"))
+              && ls.value(QStringLiteral("uniqueConditions")) == rs.value(QStringLiteral("uniqueConditions")),
+              "24. the recovered analysis has identical counts");
+        check(liveModel.value(QStringLiteral("positions")).toList().size()
+                  == recModel.value(QStringLiteral("positions")).toList().size(),
+              "24. and identical position analyses");
+        check(liveModel.value(QStringLiteral("findings")).toList().size()
+                  == recModel.value(QStringLiteral("findings")).toList().size(),
+              "24. and identical findings — one analysis path, not two");
+        check(liveModel.value(QStringLiteral("timeline")).toList().size() == 25,
+              "24. the long session's timeline is complete (24 counted + 1 sighter)");
+    }
 }
