@@ -54,7 +54,7 @@ Test binary: `tests/reliability/release/reliability_tests.exe` · **1059 checks,
 | No horizontal scrolling configured | PASS | `UI-HOME-002: content width is pinned` | `contentWidth: width` |
 | Mouse-wheel scrolling works | HUMAN VISUAL CHECK REQUIRED | — | No input path available |
 | Touch / flick scrolling works | HUMAN VISUAL CHECK REQUIRED | — | |
-| Final event fully reachable | PASS | HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29 | No clipped content seen at 1536 × 960 |
+| Final event fully reachable | PASS | HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29 | Appearance only — no clipped content at 1536 × 960. Reaching it BY SCROLLING was not exercised |
 | Open Practice expansion reachable | HUMAN VISUAL CHECK REQUIRED | — | |
 | Scroll does not alter selection | HUMAN VISUAL CHECK REQUIRED | — | No code path couples them |
 
@@ -71,7 +71,7 @@ Test binary: `tests/reliability/release/reliability_tests.exe` · **1059 checks,
 | Practice not labelled ISSF | PASS | `UI-HOME-003: practice is labelled as practice` | |
 | All six event kinds handled | PASS | `UI-HOME-003: event kind … is handled` ×6 | |
 | Controller receives same event | PASS | `UI-HOME-003: controller dispatch … is unchanged` ×3 | Dispatch untouched |
-| Highlighted card equals selected event | PASS | HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29 | Summary matched the highlighted card on review |
+| Highlighted card equals selected event | PASS | HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29 | For the state on screen. Transitioning between every event type was not exercised |
 | Shot plan matches selected event | HUMAN VISUAL CHECK REQUIRED | — | |
 | Scoring matches selected event | HUMAN VISUAL CHECK REQUIRED | — | |
 | Switching cards updates once | HUMAN VISUAL CHECK REQUIRED | — | |
@@ -85,7 +85,7 @@ Test binary: `tests/reliability/release/reliability_tests.exe` · **1059 checks,
 | No-folder state not shown as success | PASS | `UI-HOME-004: the on-but-unconfigured case reads as incomplete` | Amber warning, not success |
 | Validity state available | PASS | `UI-HOME-004: share-validity state is available` | `shareConfigured` / `shareIncomplete` exist |
 | Incomplete surfaced to the operator | PASS | `UI-HOME-004: an incomplete share is surfaced in the readiness line` | Advisory only |
-| Choose-folder action is obvious | PASS | HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29 | Reviewed on screen at 1536 × 960 |
+| Choose-folder action is obvious | PASS | HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29 | Affordance only — the picker itself was not opened |
 | Start correctly gated | PASS | — | Deliberately **not** gated: sharing is not a precondition for shooting |
 | Footer share status matches | PASS | HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29 | Reviewed on screen at 1536 × 960 |
 
@@ -144,7 +144,7 @@ produced — automated capture remains blocked (see the defect register §3).
 | No clipped event cards | PASS | HUMAN VISUAL APPROVAL — ARNOLD BAILIE | | `d4674d0` |
 | Start action visible | PASS | HUMAN VISUAL APPROVAL — ARNOLD BAILIE | | `d4674d0` |
 | Load action reachable | PASS | HUMAN VISUAL APPROVAL — ARNOLD BAILIE | | `d4674d0` |
-| Final event reachable | PASS | HUMAN VISUAL APPROVAL — ARNOLD BAILIE | Appearance only; scrolling not stepped through | `d4674d0` |
+| Final event reachable | PASS | HUMAN VISUAL APPROVAL — ARNOLD BAILIE | Appearance only; scrolling not stepped through (UI-HOME-002) | `d4674d0` |
 | Selected Profile matches card | PASS | HUMAN VISUAL APPROVAL — ARNOLD BAILIE | Matched the highlighted card on review | `d4674d0` |
 | Panels keep sensible widths | PASS | HUMAN VISUAL APPROVAL — ARNOLD BAILIE | | `d4674d0` |
 | German labels do not overlap | NOT TESTED | — | German catalogue never run | `d4674d0` |
@@ -204,12 +204,19 @@ Window size never opened. The supported floor.
 | Structural checks passed | 58 |
 | Checks failing | **0** |
 | Visual checks passed at 1536 × 960 | 8 |
+| Defects fully closed | 7 |
+| Defects appearance-approved, interaction unverified | 3 — UI-HOME-002, 003, 004 |
 | Checks NOT TESTED — three unreviewed window sizes | 13 |
 | Checks NOT TESTED — German catalogue | 4 |
 | Behaviour not stepped through during review | 11 |
 
-**Version B is accepted.** All ten reported defects are closed with automated
-and visual evidence.
+**Version B is accepted.** Every reported defect has a fix, passing automated
+checks and an approved rendered result. Seven are fully closed. **Three —
+UI-HOME-002, 003 and 004 — are appearance-approved but interaction-unverified**
+and carry the status `RESOLVED — AUTOMATED EVIDENCE AND VISUAL LAYOUT APPROVAL;
+MANUAL INTERACTION CHECK NOT PERFORMED`. Scrolling by wheel and touch,
+transitioning between every event type, and the folder picker were never driven
+by hand. That is a verification gap, not a design question.
 
 **What acceptance does not assert.** Three supported window sizes were never
 opened; German was never run; and interaction — wheel and touch scrolling,

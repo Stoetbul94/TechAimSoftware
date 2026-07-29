@@ -148,7 +148,11 @@ rows = [l for l in reg.split("\n")
         if l.startswith("| UI-HOME-") and l.count("|") >= 11]
 check(len(rows) == 10, "every defect has exactly one register row (%d)" % len(rows))
 
+# Three statuses begin with RESOLVED. The middle one exists so that a defect
+# about INTERACTION cannot be closed on a static visual review.
 SEV_OK = ("RESOLVED", "PARTIALLY RESOLVED", "OPEN", "BLOCKED")
+INTERACTION_UNVERIFIED = ("RESOLVED — AUTOMATED EVIDENCE AND VISUAL LAYOUT "
+                          "APPROVAL; MANUAL INTERACTION CHECK NOT PERFORMED")
 for row in rows:
     cells = [c.strip() for c in row.split("|")]
     did = cells[1].replace("*", "").strip()
@@ -235,9 +239,28 @@ for stage in ["Specification review", "journal", "recovery", "analytics",
 
 # Full resolution still demands a visual-evidence cell — re-asserted now that
 # all ten claim it.
+statuses = {r.split("|")[1].replace("*", "").strip():
+            r.split("|")[6].replace("*", "").strip() for r in rows}
 full = [r for r in rows
         if r.split("|")[6].replace("*", "").strip() == "RESOLVED — AUTOMATED AND VISUAL EVIDENCE"]
-check(len(full) == 10, "all ten defects are fully resolved (%d)" % len(full))
+check(len(full) == 7, "seven defects are fully resolved (%d)" % len(full))
+
+# The guard that matters: scrolling, event transitions and the folder picker
+# were never driven by hand, so the three defects about those interactions
+# must say so rather than claim full closure.
+for _did in ("UI-HOME-002", "UI-HOME-003", "UI-HOME-004"):
+    check(statuses.get(_did) == INTERACTION_UNVERIFIED,
+          "%s is recorded as interaction-unverified, not fully resolved" % _did,
+          "status = %r" % statuses.get(_did))
+check(all(v.startswith("RESOLVED") for v in statuses.values()),
+      "every defect has a fix and is at least resolved")
+
+for _label, _body in (("defect register", reg), ("acceptance checklist", chk),
+                      ("as-built", built), ("current state", state)):
+    check("MANUAL INTERACTION CHECK NOT PERFORMED" in _body
+          or "interaction-unverified" in _body
+          or "driven by hand" in _body,
+          "%s records that manual interaction was not performed" % _label)
 for r in full:
     did = r.split("|")[1].replace("*", "").strip()
     vis = r.split("|")[9].replace("*", "").strip()

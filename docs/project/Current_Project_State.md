@@ -40,8 +40,10 @@ starting — see `CLAUDE.md`, *Tech Aim UI project memory*.
 
 **Version B is the accepted Tech Aim Beta homepage** (UI-DEC-012), approved by
 **HUMAN VISUAL APPROVAL — ARNOLD BAILIE** on 2026-07-29 against commit
-`d4674d0`. All ten defects (UI-HOME-001…010) are closed with automated and
-visual evidence.
+`d4674d0`. Every defect (UI-HOME-001…010) has a fix, passing automated checks
+and an approved rendered result. **Seven are fully closed; three — UI-HOME-002,
+003, 004 — are appearance-approved but interaction-unverified**, because
+scrolling, event transitions and the folder picker were never driven by hand.
 
 **The homepage is closed to styling change** unless a new defect is found.
 
@@ -73,8 +75,9 @@ Reliability grew 902 → 988 (UI-1, +86) → 1041 (UI-2 P0, +53) → 1059 (UI-2 
 **Reviewed and approved** — HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29,
 at 1536 × 960 in English against commit `d4674d0`.
 
-**Not reviewed:** 1366 × 768, 1280 × 720 and 1100 × 700 were never opened, and
-the German catalogue has never been run on this page. Both are recorded as
+**Not reviewed:** 1366 × 768, 1280 × 720 and 1100 × 700 were never opened; the
+German catalogue has never been run on this page; and no interaction was driven
+by hand (wheel/touch scrolling, event transitions, the folder picker). Both are recorded as
 NOT TESTED in the acceptance checklist. Neither blocks the accepted design.
 
 **No screenshot file exists.** Automated capture remains blocked by endpoint

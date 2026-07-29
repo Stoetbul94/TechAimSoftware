@@ -8,12 +8,24 @@ and a passing acceptance-checklist line. Code changing is not closure.
 
 **Approval status.** The homepage was reviewed on screen and approved —
 **HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29** — against application
-commit `d4674d0`. All ten defects are closed. Details, and the limits of what
-the review covered, are in §3.
+commit `d4674d0`. **Version B is accepted.** Seven defects are fully closed;
+three (UI-HOME-002, 003, 004) concern *interaction* that was never driven by
+hand and carry a status that says so. Details in §3.
 
-Status values: `RESOLVED — AUTOMATED AND VISUAL EVIDENCE` ·
-`RESOLVED — AUTOMATED EVIDENCE, HUMAN VISUAL CHECK REQUIRED` ·
-`PARTIALLY RESOLVED` · `OPEN` · `BLOCKED`
+Status values:
+- `RESOLVED — AUTOMATED AND VISUAL EVIDENCE` — fix, passing checks, and the
+  behaviour itself seen to work.
+- `RESOLVED — AUTOMATED EVIDENCE AND VISUAL LAYOUT APPROVAL; MANUAL INTERACTION
+  CHECK NOT PERFORMED` — fix, passing checks, and the *rendered result*
+  approved, but the interaction the defect concerns was never driven by hand.
+- `RESOLVED — AUTOMATED EVIDENCE, HUMAN VISUAL CHECK REQUIRED`
+- `PARTIALLY RESOLVED` · `OPEN` · `BLOCKED`
+
+**Why the middle status exists.** Three of these defects are about behaviour —
+scrolling, changing selection, choosing a folder. Looking at a static screen
+cannot settle them. Calling them fully resolved on visual approval alone would
+overstate the evidence, so they carry a status that says exactly what is and
+is not known.
 
 ---
 
@@ -22,9 +34,9 @@ Status values: `RESOLVED — AUTOMATED AND VISUAL EVIDENCE` ·
 | Defect ID | Screen | Description | Severity | Original evidence | Status | Fixed commit | Automated evidence | Visual evidence | Notes |
 |---|---|---|---|---|---|---|---|---|---|
 | UI-HOME-001 | Homepage — action bar | "READY TO START" and "Load saved session" overlapped in the lower-left | P0 | Arnold's review of the running build | RESOLVED — AUTOMATED AND VISUAL EVIDENCE | `41c09a3` | `home: the Start action sits INSIDE the bottom action bar` | HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29 (§3) | Root cause: `actionRow` carried **both** `anchors.left` and `anchors.right`, so it spanned the full bar from x=22 over the recap text. Height was 52 against 56 px children. Now fixed 490 px, right-anchored; the readiness block's width is derived from that fixed width, not from a live anchor. |
-| UI-HOME-002 | Homepage — event panel | No usable vertical scrolling; Open Practice clipped, lower content unreachable | P0 | Arnold's review | RESOLVED — AUTOMATED AND VISUAL EVIDENCE | `41c09a3` | `home: the setup column scrolls`; structural check of `eventScroll` | HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29 (§3) | `ScrollView` → `Flickable` with `contentHeight` bound explicitly to the Column. A ScrollView measures its content's implicit height, which was unreliable with conditionally-visible cards and a card that changes height on selection. Adds always-on scrollbar while overflowing, 20 px bottom padding, no horizontal scrolling. Approved on appearance: no clipped content, final card reachable. Wheel and touch scrolling were **not separately exercised** during the review. |
-| UI-HOME-003 | Homepage — selection state | Selected card and Selected Profile summary could disagree | P0 | Arnold's review: Open Practice highlighted while the summary read "10m Air Pistol — ISSF" | RESOLVED — AUTOMATED AND VISUAL EVIDENCE | `41c09a3` | selection-state tests (§4) | HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29 (§3) | Confirmed real: the summary was hardcoded to `getDisciplineName() + " — ISSF"` for every non-training event. Now derived from `selectedProgrammeKind()`. Practice reads "— Open Practice" and no longer claims ISSF. Controller dispatch unchanged. Approved on appearance: the summary matches the highlighted card. Switching between every event type was **not separately exercised** during the review. |
-| UI-HOME-004 | Homepage — network share | Could show "Share enabled" while no folder was selected | P0 | Arnold's review | RESOLVED — AUTOMATED AND VISUAL EVIDENCE | `41c09a3` + `d4674d0` | `UI-HOME-004` ×8 | HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29 (§3) | Card gating landed in `41c09a3`; the register previously recorded this as OPEN, which was **wrong** — corrected here. `d4674d0` finished the surround: the no-folder prompt was drawn in the ERROR colour and the footer reported a bare "Share on". Sharing stays advisory and never gates Start. |
+| UI-HOME-002 | Homepage — event panel | No usable vertical scrolling; Open Practice clipped, lower content unreachable | P0 | Arnold's review | RESOLVED — AUTOMATED EVIDENCE AND VISUAL LAYOUT APPROVAL; MANUAL INTERACTION CHECK NOT PERFORMED | `41c09a3` | `home: the setup column scrolls`; structural check of `eventScroll` | HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29 (§3) | `ScrollView` → `Flickable` with `contentHeight` bound explicitly to the Column. A ScrollView measures its content's implicit height, which was unreliable with conditionally-visible cards and a card that changes height on selection. Adds always-on scrollbar while overflowing, 20 px bottom padding, no horizontal scrolling. Scrolling STRUCTURE is automated-test verified (Flickable, bound contentHeight, scrollbar, bottom padding, no horizontal scroll) and the visible layout is approved — no clipped content, final card reachable. **Mouse-wheel and touch/flick behaviour were not manually exercised.** |
+| UI-HOME-003 | Homepage — selection state | Selected card and Selected Profile summary could disagree | P0 | Arnold's review: Open Practice highlighted while the summary read "10m Air Pistol — ISSF" | RESOLVED — AUTOMATED EVIDENCE AND VISUAL LAYOUT APPROVAL; MANUAL INTERACTION CHECK NOT PERFORMED | `41c09a3` | selection-state tests (§4) | HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29 (§3) | Confirmed real: the summary was hardcoded to `getDisciplineName() + " — ISSF"` for every non-training event. Now derived from `selectedProgrammeKind()`. Practice reads "— Open Practice" and no longer claims ISSF. Controller dispatch unchanged. Static selected-state presentation is visually approved — the summary matched the highlighted card — and state propagation is automated-test verified through `selectedProgrammeKind()` and the three controller-dispatch checks. **Every event transition was not manually exercised.** |
+| UI-HOME-004 | Homepage — network share | Could show "Share enabled" while no folder was selected | P0 | Arnold's review | RESOLVED — AUTOMATED EVIDENCE AND VISUAL LAYOUT APPROVAL; MANUAL INTERACTION CHECK NOT PERFORMED | `41c09a3` + `d4674d0` | `UI-HOME-004` ×8 | HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29 (§3) | Card gating landed in `41c09a3`; the register previously recorded this as OPEN, which was **wrong** — corrected here. `d4674d0` finished the surround: the no-folder prompt was drawn in the ERROR colour and the footer reported a bare "Share on". Sharing stays advisory and never gates Start. The displayed Network Share state is visually approved and the validity logic is automated-test verified (enabled requires a folder; on-but-unconfigured reads as incomplete in card, footer and readiness line; never gates Start). **The folder picker was not manually exercised.** |
 | UI-HOME-005 | Homepage — status | LIVE and Connected repeated across heading, badge and footer | P1 | Arnold's review | RESOLVED — AUTOMATED AND VISUAL EVIDENCE | `d4674d0` | `UI-HOME-005` ×3 | HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29 (§3) | Read-only badge removed from the page title. **Two indicators kept deliberately**: the operating-mode control (where the mode can be changed) and the footer strip. Demo/Live confusion is a result-integrity risk, so a test asserts both survivors remain. |
 | UI-HOME-006 | Homepage — header | Duplicate Tech Aim branding in the Start-session header | P1 | Arnold's review | RESOLVED — AUTOMATED AND VISUAL EVIDENCE | `8022033` + `d4674d0` | `UI-HOME-006` ×5 | HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29 (§3) | `8022033` removed the duplicated identity row and cut the bar 74→56 px; `d4674d0` removed the residual logo image. The homepage now renders no logo of its own (UI-DEC-005). |
 | UI-HOME-007 | Homepage — event cards | Inconsistent selection / navigation indicators | P1 | Arnold's review | RESOLVED — AUTOMATED AND VISUAL EVIDENCE | `8022033` + `d4674d0` | `UI-HOME-007` ×5 | HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29 (§3) | Four labelled groups and the EventCard radio landed in `8022033`; `d4674d0` gave Open Practice the same radio in the same position. The Training Lab arrow remains genuine navigation. |
@@ -36,15 +48,22 @@ Status values: `RESOLVED — AUTOMATED AND VISUAL EVIDENCE` ·
 
 | Status | Count | IDs |
 |---|---:|---|
-| RESOLVED — AUTOMATED AND VISUAL EVIDENCE | **10** | 001–010 |
+| RESOLVED — AUTOMATED AND VISUAL EVIDENCE | **7** | 001, 005, 006, 007, 008, 009, 010 |
+| RESOLVED — AUTOMATED EVIDENCE AND VISUAL LAYOUT APPROVAL; MANUAL INTERACTION CHECK NOT PERFORMED | **3** | 002, 003, 004 |
 | RESOLVED — AUTOMATED EVIDENCE, HUMAN VISUAL CHECK REQUIRED | 0 | — |
 | PARTIALLY RESOLVED | 0 | — |
 | OPEN | 0 | — |
 | BLOCKED | 0 | — |
 
-**All ten defects are closed.** Each has a fix, a passing automated check and
-human visual approval. Two carry a caveat about behaviour the review did not
-separately exercise — see their Notes.
+**Every defect has a fix and passing automated evidence, and the rendered
+result is approved.** Seven are fully closed. Three are appearance-approved
+but interaction-unverified: scrolling by wheel and touch, transitioning
+between every event type, and the folder picker were never driven by hand.
+
+**This does not reopen Version B.** The design is accepted (UI-DEC-012). What
+remains is a verification gap, not a design question, and it is cheap to close
+whenever someone sits in front of the application and exercises those three
+interactions.
 
 ## 3. Visual evidence
 

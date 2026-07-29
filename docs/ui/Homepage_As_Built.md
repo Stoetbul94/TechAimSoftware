@@ -244,7 +244,11 @@ selected-programme summary, the network share state, typography and branding.
 - **1366 × 768, 1280 × 720 and 1100 × 700 were never opened** — NOT TESTED.
 - **German was never run** — the catalogue has not been loaded on this page.
 - **Interaction was not stepped through** as a test script: wheel and touch
-  scrolling, switching between every event type, and the folder picker.
+  scrolling, switching between every event type, and the folder picker. The
+  three defects that concern those interactions (UI-HOME-002, 003, 004) are
+  therefore recorded as `RESOLVED — AUTOMATED EVIDENCE AND VISUAL LAYOUT
+  APPROVAL; MANUAL INTERACTION CHECK NOT PERFORMED` rather than fully
+  closed. Structure and rendered result are verified; the behaviour is not.
 - **No screenshot file exists.** Automated capture remains blocked by endpoint
   security, which blocks both synthetic input and the screen-capture helper.
   No bypass was attempted. The approval is a reviewer sign-off against the
