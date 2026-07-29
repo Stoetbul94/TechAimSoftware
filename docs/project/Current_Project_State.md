@@ -35,8 +35,8 @@ starting — see `CLAUDE.md`, *Tech Aim UI project memory*.
 | | |
 |---|---|
 | Latest completed | **UI-2 — Version B homepage · ACCEPTED 2026-07-29** |
-| Current | **TRAINING LAB RELEASE 2 — WIND MAP · stage 2 (implementation specification) — awaiting review** |
-| Next approved | Review the implementation spec, then stage 3 (domain + events) |
+| Current | **TRAINING LAB RELEASE 2 — WIND MAP · stage 5 (controller, recovery dispatch, QML workflow) — implemented, human visual check outstanding** |
+| Next approved | Wind Map analytics + report (stage 6), once stage 5 is accepted |
 
 **Version B is the accepted Tech Aim Beta homepage** (UI-DEC-012), approved by
 **HUMAN VISUAL APPROVAL — ARNOLD BAILIE** on 2026-07-29 against commit
@@ -51,15 +51,20 @@ scrolling, event transitions and the folder picker were never driven by hand.
 
 | Suite | Result |
 |---|---|
-| Reliability (incl. UI-1 brand + UI-2 layout) | **1059 / 0** |
+| Reliability (incl. UI-1 brand, UI-2 layout, Wind Map) | **1815 / 0** |
 | Documentation — manuals | **979 / 0** |
 | Documentation — project memory | **155 / 0** |
-| Training | not re-run this phase — no training code touched |
-| Finals 10m | not re-run this phase — no finals code touched |
-| 3P Finals | not re-run this phase — no finals code touched |
+| Training | **567 / 0** |
+| Finals 10m | **143 / 0** |
+| 3P Finals | **233 / 0** |
 | qmllint | clean on all shipped QML |
 
-Reliability grew 902 → 988 (UI-1, +86) → 1041 (UI-2 P0, +53) → 1059 (UI-2 completion, +18).
+Reliability grew 902 → 988 (UI-1, +86) → 1041 (UI-2 P0, +53) → 1059 (UI-2
+completion, +18) → 1695 (Wind Map stages 3–4.1) → 1815 (Wind Map stage 5:
+controller/workflow/resume + QML source guards, +120).
+
+The reliability harness is `QT = core`. `WindMapController.cpp` compiles into
+it, which is the proof that the controller carries no QML/GUI dependency.
 
 ## 5. Build and runtime
 
@@ -120,11 +125,38 @@ commits, and the homepage is closed to styling change (UI-DEC-012).
 **Stage 1 complete and APPROVED** — all seven specification questions
 answered 2026-07-29 (`docs/training-lab-wind-map-spec-review.md` §7).
 
-**Stage 2 complete, awaiting review** —
+**Stage 2 complete and APPROVED** —
 `docs/training-lab-wind-map-implementation-spec.md` defines the domain model,
-six events, reducer state, four controller phases, journal format, recovery
+six events, reducer state, controller phases, journal format, recovery
 behaviour, analytics formulas, minimum-sample rules, 3P separation, UI
 workflow, report structure, a 21-case test plan and ten explicit non-goals.
+
+**Stage 3 (domain + events) ACCEPTED** at `d023d21`; **Stage 4 (recovery
+proof)** and **Stage 4.1 (Training snapshot parity)** ACCEPTED at `cbacae6`
+(`docs/training-lab-wind-map-recovery-audit.md`,
+`docs/training-snapshot-parity-audit.md`).
+
+**Stage 5 implemented** — `docs/training-lab-wind-map-capture.md`. The
+programme is now usable end to end: `WindMapController` (`WINDMAP`), the
+Training Lab catalogue entry (50 m rifle only), the setup view, the capture
+panel with the eight-sector compass ring, manual condition entry, the factual
+session review, and recovery dispatch. Stage 5 found that the workflow phase
+had to become **durable** — without it a session interrupted after
+`finishSighters()` but before the first counted shot resumes into the wrong
+phase and misclassifies the next shot — so `WindMapPhaseChanged` was
+appended to the event catalogue and `SessionState::wmPhase` snapshot-serialised
+(state v5 → v6).
+
+**Stage 5 is NOT accepted yet:** the automated evidence is complete
+(reliability 1815/0, training 567/0, finals10m 143/0, 3P finals 233/0, clean
+application build, clean launch check) but the visual check is
+**MANUAL-ASSISTED VISUAL CHECK REQUIRED** — automatic capture remains
+blocked by endpoint security and no workaround was attempted.
+
+**Analytics and the PDF report are deliberately NOT implemented.** Stage 5
+produces a factual capture record only: no condition comparison, no coaching
+narrative, no target-filter view, no PDF, no WeatherStation integration, no
+sight-click or aiming advice.
 
 Approved scope: `Wind Map — Post-Session Review`, **50 m Rifle Prone and 3P
 only**, manual wind entry stored as numeric degrees + m/s, a standing condition
@@ -132,10 +164,7 @@ that each accepted shot snapshots **immutably**, sighters recorded but excluded
 from counted statistics, and **descriptive-only** analytics — correlation
 never causation, every figure shown with its sample size.
 
-**No application code has been written.** Implementation is gated on review of
-the implementation specification.
-
-Required stages, in order:
+Required stages, in order (1–5 done; 6–8 outstanding for analytics/report):
 
 1. **Specification review** — read `docs/issf-rules/README.md` and the
    applicable discipline files first. If the rules needed are incomplete,
