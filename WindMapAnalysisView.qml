@@ -1,4 +1,8 @@
 import QtQuick 2.15
+// UI-WIND-002: ScrollBar lives in QtQuick.Controls. Without this import
+// the type never resolves and the WHOLE view fails to instantiate, so a
+// completed session showed only the capture HUD's basic review.
+import QtQuick.Controls 2.15
 
 // Wind Map — completed-session ANALYSIS REVIEW (Stage 6.1).
 //
@@ -20,6 +24,9 @@ Item {
     // The model, re-read whenever the view is shown.
     property var model: ({})
     property int positionIndex: 0
+    // UI-WIND-002: explicit section navigation. The athlete must not have
+    // to discover a hidden tab or scroll blindly to find the analysis.
+    property string section: "overview"
     property string conditionFilter: ""       // "" = all
     property bool showSighters: false
 
@@ -54,8 +61,32 @@ Item {
     }
     function mm(v, d) { return v === undefined ? "—" : Number(v).toFixed(d === undefined ? 1 : d) }
     // A metric is shown ONLY when the model says its sample supports it.
+    // A withheld statistic renders as an em dash, NEVER as 0.0.
     function metric(g, key, flag, d) {
         return g[flag] === true ? mm(g[key], d) : "—"
+    }
+    function plural(n, one, many) { return n === 1 ? one : many }
+    // Plain-English explanation of what a sample does and does not support.
+    // The numbers come from the model — this only words them.
+    function sampleNote(g) {
+        if (!g || g.n === undefined) return ""
+        if (g.hasDispersion === true) return ""
+        if (g.hasMpi !== true) {
+            var needM = g.shotsNeededForMpi
+            return qsTr("%1 %2 recorded. %3 more %4 required before a group centre can be reported.")
+                     .arg(g.n).arg(view.plural(g.n, qsTr("shot"), qsTr("shots")))
+                     .arg(needM).arg(view.plural(needM, qsTr("shot is"), qsTr("shots are")))
+        }
+        var needD = g.shotsNeededForDispersion
+        return qsTr("%1 shots recorded. %2 more %3 required for a group comparison.")
+                 .arg(g.n).arg(needD).arg(view.plural(needD, qsTr("shot is"), qsTr("shots are")))
+    }
+    // Does this position have enough data to plot anything at all?
+    function hasPlottableData() {
+        var g = view.pos.byExactCondition
+        if (!g) return false
+        for (var i = 0; i < g.length; ++i) if (g[i].hasMpi === true) return true
+        return false
     }
 
     Rectangle { anchors.fill: parent; color: "#EA0F1116" }
@@ -83,7 +114,32 @@ Item {
                    color: view._amber; font.family: theme.fontFamily
                    font.pixelSize: 10; font.bold: true; font.letterSpacing: 1.5 }
 
-            // 8. 3P TABS — Kneeling · Prone · Standing · Overview.
+            // UI-WIND-002: SECTION navigation, always visible, never hidden.
+            Row {
+                spacing: 6
+                Repeater {
+                    model: [
+                        { label: qsTr("Overview"),    key: "overview" },
+                        { label: qsTr("Target Plot"), key: "plot" },
+                        { label: qsTr("Conditions"),  key: "conditions" },
+                        { label: qsTr("Timeline"),    key: "timeline" },
+                        { label: qsTr("Findings"),    key: "findings" }
+                    ]
+                    delegate: Rectangle {
+                        width: secT.implicitWidth + 26; height: 32; radius: 16
+                        color: view.section === modelData.key ? view._red : view._panel
+                        border.color: view.section === modelData.key ? view._red : view._line
+                        border.width: 1
+                        Text { id: secT; anchors.centerIn: parent; text: modelData.label
+                               color: view.section === modelData.key ? "white" : view._txtSec
+                               font.family: theme.fontFamily; font.pixelSize: 12; font.bold: true }
+                        MouseArea { anchors.fill: parent
+                                    onClicked: { view.section = modelData.key; body.contentY = 0 } }
+                    }
+                }
+            }
+
+            // 3P POSITION tabs — Kneeling · Prone · Standing · Session Overview.
             Row {
                 spacing: 6; visible: view.threeP
                 Repeater {
@@ -91,17 +147,17 @@ Item {
                         var t = []
                         for (var i = 0; i < view.positions.length; ++i)
                             t.push({ label: view.positions[i].positionName, idx: i })
-                        t.push({ label: qsTr("Overview"), idx: -1 })
+                        t.push({ label: qsTr("Session Overview"), idx: -1 })
                         return t
                     }
                     delegate: Rectangle {
-                        width: tabT.implicitWidth + 26; height: 32; radius: 16
-                        color: view.positionIndex === modelData.idx ? view._red : view._panel
-                        border.color: view.positionIndex === modelData.idx ? view._red : view._line
+                        width: tabT.implicitWidth + 26; height: 30; radius: 15
+                        color: view.positionIndex === modelData.idx ? "#0d2018" : view._panel
+                        border.color: view.positionIndex === modelData.idx ? view._green : view._line
                         border.width: 1
                         Text { id: tabT; anchors.centerIn: parent; text: modelData.label
-                               color: view.positionIndex === modelData.idx ? "white" : view._txtSec
-                               font.family: theme.fontFamily; font.pixelSize: 12; font.bold: true }
+                               color: view.positionIndex === modelData.idx ? view._green : view._txtSec
+                               font.family: theme.fontFamily; font.pixelSize: 11; font.bold: true }
                         MouseArea { anchors.fill: parent; onClicked: view.positionIndex = modelData.idx }
                     }
                 }
@@ -122,8 +178,9 @@ Item {
                 width: body.width; spacing: 18; bottomPadding: 16
 
                 // ── 1. SESSION OVERVIEW ─────────────────────────────────
-                SectionHead { text: qsTr("1 · SESSION OVERVIEW") }
+                SectionHead { text: qsTr("1 · SESSION OVERVIEW"); visible: view.section === "overview" }
                 Grid {
+                    visible: view.section === "overview"
                     width: parent.width; columns: 4; rowSpacing: 10; columnSpacing: 10
                     Repeater {
                         model: [
@@ -152,14 +209,72 @@ Item {
                         }
                     }
                 }
-                Text { width: parent.width; wrapMode: Text.WordWrap
+                Text { visible: view.section === "overview"
+                       width: parent.width; wrapMode: Text.WordWrap
                        text: qsTr("Data quality: ") + (view.summary.dataQuality || "—")
                        color: view._txtSec; font.family: theme.fontFamily; font.pixelSize: 11 }
 
+                // UI-WIND-002: a WHAT THE DATA SUGGESTS preview on the first
+                // screen, so the athlete sees feedback without hunting for it.
+                Column {
+                    visible: view.section === "overview"
+                    width: parent.width; spacing: 6
+                    SectionHead { text: qsTr("WHAT THE DATA SUGGESTS — PREVIEW") }
+                    Repeater {
+                        model: {
+                            var f = view.model.findings ? view.model.findings : []
+                            return f.slice(0, 2)
+                        }
+                        delegate: Rectangle {
+                            width: parent.width; height: pvCol.implicitHeight + 18; radius: 8
+                            color: view._panel; border.color: view._line; border.width: 1
+                            Column {
+                                id: pvCol
+                                anchors.left: parent.left; anchors.leftMargin: 12
+                                anchors.right: parent.right; anchors.rightMargin: 12
+                                anchors.verticalCenter: parent.verticalCenter; spacing: 3
+                                Text { text: modelData.category.toUpperCase() + (modelData.n > 0 ? ("   n=" + modelData.n) : "")
+                                       color: view._red; font.family: theme.fontFamily
+                                       font.pixelSize: 9; font.bold: true; font.letterSpacing: 1 }
+                                Text { width: parent.width; wrapMode: Text.WordWrap; text: modelData.text
+                                       color: view._txt; font.family: theme.fontFamily; font.pixelSize: 12 }
+                            }
+                        }
+                    }
+                    Text {
+                        visible: (view.model.findings ? view.model.findings.length : 0) > 2
+                        text: qsTr("More in Findings →"); color: view._green
+                        font.family: theme.fontFamily; font.pixelSize: 11
+                        MouseArea { anchors.fill: parent; onClicked: { view.section = "findings"; body.contentY = 0 } }
+                    }
+                }
+
                 // ── 2. CONDITION-COLOURED TARGET PLOT ───────────────────
-                SectionHead { text: qsTr("2 · CONDITION-COLOURED TARGET PLOT"); visible: view.positionIndex >= 0 }
+                SectionHead { text: qsTr("2 · CONDITION-COLOURED TARGET PLOT")
+                             visible: view.positionIndex >= 0 && (view.section === "plot" || view.section === "overview") }
+                // A clear insufficient-data placeholder, so the section is never
+                // silently blank.
+                Rectangle {
+                    visible: view.positionIndex >= 0 && !view.hasPlottableData()
+                             && (view.section === "plot" || view.section === "overview")
+                    width: parent.width; height: 90; radius: 8
+                    color: view._panel; border.color: view._amber; border.width: 1
+                    Column {
+                        anchors.centerIn: parent; spacing: 4; width: parent.width - 32
+                        Text { width: parent.width; horizontalAlignment: Text.AlignHCenter
+                               text: qsTr("Not enough shots yet for a group centre")
+                               color: view._amber; font.family: theme.fontFamily
+                               font.pixelSize: 13; font.bold: true }
+                        Text { width: parent.width; horizontalAlignment: Text.AlignHCenter
+                               wrapMode: Text.WordWrap
+                               text: qsTr("A mean point of impact needs at least 3 shots in a condition, and a group comparison at least 5. Every shot you recorded is listed in the Timeline.")
+                               color: view._txtSec; font.family: theme.fontFamily; font.pixelSize: 11 }
+                    }
+                }
                 Row {
-                    width: parent.width; spacing: 16; visible: view.positionIndex >= 0
+                    width: parent.width; spacing: 16
+                    visible: view.positionIndex >= 0 && view.hasPlottableData()
+                             && (view.section === "plot" || view.section === "overview")
                     Rectangle {
                         id: plotBox
                         width: parent.width * 0.52; height: width
@@ -232,7 +347,11 @@ Item {
                         }
                         // reference centre
                         Rectangle {
-                            visible: view.pos.reference && view.pos.reference.valid === true
+                            // `a && a.b` yields UNDEFINED when a is undefined —
+                            // JS returns the left operand — and QML cannot
+                            // assign undefined to a bool. Compare explicitly.
+                            visible: view.pos.reference !== undefined
+                                     && view.pos.reference.valid === true
                             width: 16; height: 16; radius: 8
                             color: "transparent"; border.color: "white"; border.width: 2
                             x: plotBox.px(view.pos.reference ? view.pos.reference.xMm : 0) - 8
@@ -302,18 +421,33 @@ Item {
                 }
 
                 // ── 3. CONDITION COMPARISON TABLE ───────────────────────
-                SectionHead { text: qsTr("3 · CONDITION COMPARISON"); visible: view.positionIndex >= 0 }
+                SectionHead { text: qsTr("3 · CONDITION COMPARISON"); visible: view.positionIndex >= 0 && view.section === "conditions" }
                 MetricTable {
-                    visible: view.positionIndex >= 0
+                    visible: view.positionIndex >= 0 && view.section === "conditions"
                     width: parent.width
                     rows: view.pos.byExactCondition ? view.pos.byExactCondition : []
                     shifts: view.pos.shifts ? view.pos.shifts : []
                 }
+                // Per-condition sample notes, so a withheld row explains itself.
+                Column {
+                    visible: view.positionIndex >= 0 && view.section === "conditions"
+                    width: parent.width; spacing: 3
+                    Repeater {
+                        model: view.pos.byExactCondition ? view.pos.byExactCondition : []
+                        delegate: Text {
+                            visible: view.sampleNote(modelData) !== ""
+                            width: parent.width; wrapMode: Text.WordWrap
+                            text: modelData.label + ": " + view.sampleNote(modelData)
+                            color: view._amber; font.family: theme.fontFamily; font.pixelSize: 10
+                        }
+                    }
+                }
 
                 // ── 4. MPI SHIFT VIEW ───────────────────────────────────
-                SectionHead { text: qsTr("4 · OBSERVED GROUP-CENTRE SHIFT"); visible: view.positionIndex >= 0 }
+                SectionHead { text: qsTr("4 · OBSERVED GROUP-CENTRE SHIFT"); visible: view.positionIndex >= 0 && view.section === "conditions" }
                 Column {
-                    width: parent.width; spacing: 6; visible: view.positionIndex >= 0
+                    width: parent.width; spacing: 6
+                    visible: view.positionIndex >= 0 && view.section === "conditions"
                     Text { width: parent.width; wrapMode: Text.WordWrap
                            text: qsTr("Measured from the %1. These describe where each group's centre sat. They are observations, not instructions.")
                                     .arg(view.pos.reference ? view.pos.reference.label : "reference")
@@ -353,10 +487,10 @@ Item {
                 }
 
                 // ── 5. DIRECTION-SECTOR VIEW ────────────────────────────
-                SectionHead { text: qsTr("5 · DIRECTION SECTORS"); visible: view.positionIndex >= 0 }
+                SectionHead { text: qsTr("5 · DIRECTION SECTORS"); visible: view.positionIndex >= 0 && view.section === "conditions" }
                 Grid {
                     width: parent.width; columns: 5; rowSpacing: 8; columnSpacing: 8
-                    visible: view.positionIndex >= 0
+                    visible: view.positionIndex >= 0 && view.section === "conditions"
                     Repeater {
                         // All eight sectors plus Calm and No reading, so an
                         // EMPTY sector reads "No data" and never a zeroed stat.
@@ -406,9 +540,9 @@ Item {
                 }
 
                 // ── 6. SPEED-BAND VIEW ──────────────────────────────────
-                SectionHead { text: qsTr("6 · SPEED BANDS"); visible: view.positionIndex >= 0 }
+                SectionHead { text: qsTr("6 · SPEED BANDS"); visible: view.positionIndex >= 0 && view.section === "conditions" }
                 MetricTable {
-                    visible: view.positionIndex >= 0
+                    visible: view.positionIndex >= 0 && view.section === "conditions"
                     width: parent.width
                     rows: {
                         var order = ["Calm","0-2.0 m/s","2.0-4.0 m/s","4.0-7.0 m/s","over 7.0 m/s","No reading"]
@@ -423,9 +557,9 @@ Item {
                 }
 
                 // ── 7. TIMELINE ─────────────────────────────────────────
-                SectionHead { text: qsTr("7 · TIMELINE") }
+                SectionHead { text: qsTr("7 · TIMELINE"); visible: view.section === "timeline" }
                 Column {
-                    width: parent.width; spacing: 0
+                    width: parent.width; spacing: 0; visible: view.section === "timeline"
                     Row {
                         width: parent.width; spacing: 8; height: 22
                         Text { width: parent.width * 0.07; text: qsTr("#");        color: view._txtMut; font.pixelSize: 10 }
@@ -485,9 +619,9 @@ Item {
                 }
 
                 // ── 9. WHAT THE DATA SUGGESTS ───────────────────────────
-                SectionHead { text: qsTr("9 · WHAT THE DATA SUGGESTS") }
+                SectionHead { text: qsTr("9 · WHAT THE DATA SUGGESTS"); visible: view.section === "findings" }
                 Column {
-                    width: parent.width; spacing: 8
+                    width: parent.width; spacing: 8; visible: view.section === "findings"
                     Repeater {
                         model: view.model.findings ? view.model.findings : []
                         delegate: Rectangle {
@@ -518,9 +652,9 @@ Item {
                     }
                 }
 
-                SectionHead { text: qsTr("LIMITATIONS") }
+                SectionHead { text: qsTr("LIMITATIONS"); visible: view.section === "findings" }
                 Column {
-                    width: parent.width; spacing: 4
+                    width: parent.width; spacing: 4; visible: view.section === "findings"
                     Repeater {
                         model: view.model.limitations ? view.model.limitations : []
                         delegate: Text { width: parent.width; wrapMode: Text.WordWrap

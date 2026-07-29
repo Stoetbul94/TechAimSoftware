@@ -47,7 +47,7 @@ Item {
         anchors.margins: 16; spacing: 2
         Text { text: "TRAINING LAB"; color: _red; font.pixelSize: 11; font.bold: true; font.letterSpacing: 2 }
         Text { text: "Wind Map"; color: _txt; font.pixelSize: 17; font.bold: true }
-        Text { visible: ctl && ctl.threePositions
+        Text { visible: ctl !== null && ctl.threePositions
                text: ctl ? ctl.positionName : ""; color: _green; font.pixelSize: 13; font.bold: true }
         Text { text: ctl ? ctl.phaseName : ""; color: _txtMut; font.pixelSize: 10 }
     }
