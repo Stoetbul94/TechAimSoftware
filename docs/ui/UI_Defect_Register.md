@@ -1,6 +1,8 @@
 # Tech Aim — UI Defect Register
 
-Homepage defects raised from Arnold's review of the running Version B build.
+Defects raised from Arnold's reviews of the running build. §1 covers the
+Version B homepage (`UI-HOME-*`); §1a covers the Training Lab Wind Map
+programme (`UI-WIND-*`).
 
 **Closure rule.** A defect is `RESOLVED — AUTOMATED AND VISUAL EVIDENCE` only
 when it has a fixed commit, passing build/tests, a real application screenshot,
@@ -44,6 +46,45 @@ is not known.
 | UI-HOME-009 | Homepage — Open Practice | Expanded card too tall, contributing to clipping | P1 | Arnold's review | RESOLVED — AUTOMATED AND VISUAL EVIDENCE | `d4674d0` | `UI-HOME-009` ×2 | HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29 (§3) | Collapsed height now matches every other event card exactly (78). Selecting it adds only the preset row plus one gap (56) instead of growing to 148. |
 | UI-HOME-010 | Homepage — action bar | Bar unbalanced, controls overlapped | P0 | Arnold's review | RESOLVED — AUTOMATED AND VISUAL EVIDENCE | `41c09a3` | as UI-HOME-001 | HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29 (§3) | Same root cause and fix as UI-HOME-001. Left region = readiness/validation; right = Load saved session (210) + Start (268). Start is the strongest action and right-aligned. |
 
+
+## 1a. Wind Map register (Training Lab Release 2)
+
+| Defect ID | Screen | Description | Severity | Original evidence | Status | Fixed commit | Automated evidence | Visual evidence | Notes |
+|---|---|---|---|---|---|---|---|---|---|
+| UI-WIND-001 | Wind Map capture — 50 m 3P (and Prone) | Wind Map 3P capture screen renders Final 35 / Ceremony / timing state | **P0 — workflow boundary** | Arnold's manual Stage 5 review of the running build, 2026-07-29 | OPEN | — | — | Real application screenshots (Arnold) | See §1b for the confirmed root cause. A Training Lab programme must never present as an ISSF Final. |
+
+### 1b. UI-WIND-001 — confirmed root cause
+
+`ShootingPage.qml`'s `statusStrip` is the **competition** top bar. It carries
+**no visibility gate of its own**, and its three inner rows gate only on
+`isFinals10mMatch`, `isFinalsMatch` and `isTrainingMatch` (Technical Blocks).
+Wind Map is in none of those gates, so during a Wind Map session the strip
+renders competition state:
+
+| Element | Why it appears |
+|---|---|
+| **FINAL 35** | `currentGameDisplay1/2` and `currentmatchDisplay` still hold whatever the last selected **event card** set. Selecting the 3P Final card (`gameEvent === 6`) runs `main.qml::updateGameType()` → `setFinalsGameType()`, which writes `"FINAL 35"` and `matchShootCount = 35`. Entering Training Lab never clears it. |
+| **0 / 35 counter** | `globalMatchModel.count + " / " + matchShootCount` — gated only on `!isFinals10mMatch && !isTrainingMatch`. |
+| **SIGHTING / MATCH**, **SIGHT / KNEEL / PRONE / STAND** | the phase stepper `Row` — same gate. |
+| **Phase chip** | gated on `!isFinalsMatch && !isFinals10mMatch && !isTrainingMatch`. |
+
+The defect is therefore **inherited presentation state**, not a stray Finals
+controller: `FinalsHud`, `Finals10mHud`, `Finals10mRightPanel` and the finals
+command overlays are all correctly gated on `isFinalsMatch` /
+`isFinals10mMatch`, which `enterWindMapMode()` clears. `Finals3PController`
+is never started, no finals event is journalled, and the Wind Map session
+remains `sessionKind=Training` / `programId=wind_map` throughout. **The
+defect is presentational — no Wind Map data was recorded as a Final.**
+
+### 1c. The same hole exists in two sibling programmes
+
+`statusStrip` gates on `isTrainingMatch` only. **Call & Diagnose**
+(`isCallDiagnoseMatch`) and **Position Transition** (`isPositionTransitionMatch`)
+are equally ungated and will show the same inherited competition state.
+This was found while diagnosing UI-WIND-001 and is recorded here so it is not
+lost; it is **out of scope for Stage 5.1**, which was scoped to Wind Map.
+Recommended as a focused follow-up.
+
 ## 2. Summary
 
 | Status | Count | IDs |
@@ -52,7 +93,7 @@ is not known.
 | RESOLVED — AUTOMATED EVIDENCE AND VISUAL LAYOUT APPROVAL; MANUAL INTERACTION CHECK NOT PERFORMED | **3** | 002, 003, 004 |
 | RESOLVED — AUTOMATED EVIDENCE, HUMAN VISUAL CHECK REQUIRED | 0 | — |
 | PARTIALLY RESOLVED | 0 | — |
-| OPEN | 0 | — |
+| OPEN | **1** | UI-WIND-001 |
 | BLOCKED | 0 | — |
 
 **Every defect has a fix and passing automated evidence, and the rendered
