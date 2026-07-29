@@ -70,7 +70,10 @@ void run_windmap_qml_tests()
     if (!(okPanel && okHud && okBar && okLogin && okShoot && okMain))
         return;
 
-    const QString windMapQml = panel + hud + bar;
+    bool okAnalysis = false;
+    const QString analysis = stripComments(qmlSource("WindMapAnalysisView.qml", &okAnalysis));
+    check(okAnalysis, "0. the analysis view was read");
+    const QString windMapQml = panel + hud + bar + analysis;
 
     // ── 1. no domain events are constructed in QML ──────────────────────
     {
@@ -179,14 +182,17 @@ void run_windmap_qml_tests()
               "7. the resume carries the duplicate guard past recovered shots");
     }
 
-    // ── 8. no PDF or analytics were smuggled into this stage ────────────
+    // ── 8. no metric is computed outside the engine ─────────────────────
     {
-        check(!windMapQml.contains(QStringLiteral("exportPdf"))
-              && !windMapQml.contains(QStringLiteral("CUSTOMPRINT"))
-              && !windMapQml.contains(QStringLiteral("PDFEXPORT")),
-              "8. Stage 5 produces no PDF export");
+        // Stage 6.1 adds an Export PDF ACTION; the PDF itself is Stage 6.2.
+        // What must hold now and after it lands: QML never calculates a report
+        // value and never reaches a second analytics engine.
         check(!windMapQml.contains(QStringLiteral("COACHREPORT")),
-              "8. Stage 5 wires in no analytics engine");
+              "8. the Wind Map UI wires in no other analytics engine");
+        check(!windMapQml.contains(QStringLiteral("CUSTOMPRINT.create")),
+              "8. no PDF is generated from QML-side calculations");
+        check(!hud.contains(QStringLiteral("exportPdf")),
+              "8. the capture HUD offers no export — the analysis owns it");
     }
 
     // ── 9. UI-WIND-001: no Finals shell anywhere in Wind Map ────────────
@@ -318,5 +324,67 @@ void run_windmap_qml_tests()
         if (okF3 && okF10)
             check(!f3.contains(QStringLiteral("WINDMAP")) && !f10.contains(QStringLiteral("WINDMAP")),
                   "10. no Wind Map binding leaked into a Finals screen");
+    }
+
+    // ── 11. Stage 6.1: the analysis view RECALCULATES NOTHING ───────────
+    {
+        check(analysis.contains(QStringLiteral("analysisModel()")),
+              "11. the view reads the engine-backed model");
+        // Arithmetic that would mean a metric was recomputed in QML. Formatting
+        // (toFixed, the plot's own pixel mapping) is fine; deriving a statistic
+        // is not.
+        const char* recompute[] = {
+            "Math.sqrt", "Math.pow", "/ count", "/ n)", "sum +=", "total +=",
+            "mean =", "average", "stdDev", "variance",
+        };
+        bool clean = true; QString found;
+        for (const char* r : recompute)
+            if (analysis.contains(QLatin1String(r))) { clean = false; found += QLatin1String(r) + QStringLiteral(" "); }
+        check(clean, "11. no metric is recalculated in the analysis view", found);
+
+        // A withheld metric must be gated on its has* flag, never printed raw.
+        check(analysis.contains(QStringLiteral("function metric(")),
+              "11. metrics go through one flag-checked formatter");
+        check(analysis.contains(QStringLiteral("hasDispersion")) && analysis.contains(QStringLiteral("hasMpi")),
+              "11. the view honours the engine's sample-threshold flags");
+
+        // All ten sections are present.
+        const char* sections[] = {
+            "1 · SESSION OVERVIEW", "2 · CONDITION-COLOURED TARGET PLOT",
+            "3 · CONDITION COMPARISON", "4 · OBSERVED GROUP-CENTRE SHIFT",
+            "5 · DIRECTION SECTORS", "6 · SPEED BANDS", "7 · TIMELINE",
+            "9 · WHAT THE DATA SUGGESTS", "LIMITATIONS",
+        };
+        bool all = true; QString missing;
+        for (const char* sec : sections)
+            if (!analysis.contains(QString::fromUtf8(sec))) { all = false; missing += QString::fromUtf8(sec) + QStringLiteral(" | "); }
+        check(all, "11. every analysis section is present", missing);
+
+        // Filters and the 3P tabs.
+        check(analysis.contains(QStringLiteral("conditionFilter")) && analysis.contains(QStringLiteral("showSighters"))
+              && analysis.contains(QStringLiteral("positionIndex")),
+              "11. condition, sighter and position filters exist");
+        check(analysis.contains(QStringLiteral("Overview")),
+              "11. the 3P tabs include an Overview");
+        check(analysis.contains(QStringLiteral("No data")),
+              "11. an empty direction sector reads 'No data', not a zeroed statistic");
+
+        // The three actions after completion.
+        check(analysis.contains(QStringLiteral("Export PDF"))
+              && analysis.contains(QStringLiteral("New Wind Map session"))
+              && analysis.contains(QStringLiteral("Home")),
+              "11. Export PDF, New session and Home are all offered");
+        check(shoot.contains(QStringLiteral("WINDMAP.phase === 6")),
+              "11. the analysis replaces the capture summary once complete");
+
+        // Wording: descriptive, never an instruction.
+        check(analysis.contains(QStringLiteral("OBSERVED GROUP-CENTRE SHIFT")),
+              "11. the shift section is worded as an observation");
+        const char* banned[] = { "correction", "hold off", "aim off", "sight adjustment",
+                                 "sight click", "aim at", "hold left", "hold right" };
+        bool wordsOk = true; QString bad;
+        for (const char* b : banned)
+            if (analysis.contains(QLatin1String(b), Qt::CaseInsensitive)) { wordsOk = false; bad += QLatin1String(b); }
+        check(wordsOk, "11. no correction / hold / aim-off / sight-adjustment wording", bad);
     }
 }

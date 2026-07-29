@@ -19,10 +19,13 @@
 //   · A resume re-journals NOTHING.
 
 #include "training/WindMapController.h"
+#include "training/WindMapAnalytics.h"
 #include "reliability/events/EventSerializer.h"
 #include "reliability/journal/JournalValidator.h"
 #include "reliability/replay/ReplayEngine.h"
 #include "test_support.h"
+
+#include <cmath>
 
 using namespace ta::rel;
 using namespace ta::training;
@@ -548,5 +551,240 @@ void run_windmap_controller_tests()
         check(m.value(QStringLiteral("countedWithReading")).toInt() == 0
               && m.value(QStringLiteral("countedCalm")).toInt() == 1,
               "18. the sighters' measured reading is excluded from the counted split");
+    }
+
+    // ── 19. Stage 6.1: the analysis view model EQUALS the engine ────────
+    {
+        // The single rule that makes one model safe for both the screen and
+        // the PDF: the view model is a PROJECTION, never a recalculation.
+        // Every number here is compared against the engine's own output.
+        Rig r; r.start("PRONE50", 40, true);
+        r.wm.setCalmCondition();
+        r.wm.beginSighters();
+        r.shoot(0.4, 0.4); r.shoot(0.5, 0.5);
+        r.wm.finishSighters();
+        // Calm reference: 6 counted shots around the origin.
+        for (int i = 0; i < 6; ++i) r.shoot(double(i) - 2.5, 0.0);
+        // W 2.5: 6 counted shots offset to the right.
+        r.wm.setMeasuredCondition(270, 2.5);
+        for (int i = 0; i < 6; ++i) r.shoot(8.0 + double(i) - 2.5, 1.0);
+        // A condition with too few shots to compare.
+        r.wm.setMeasuredCondition(45, 5.0);
+        r.shoot(3.0, 3.0); r.shoot(3.2, 3.2);
+        // And one with no reading at all.
+        r.wm.setNoReadingCondition();
+        r.shoot(-4.0, 0.0);
+        r.wm.endCapture();
+
+        const SessionAnalysis a =
+            WindMapAnalyticsEngine::analyse(r.wm.storeForTesting()->state());
+        const QVariantMap m = r.wm.analysisModel();
+        check(!m.isEmpty() && a.valid, "19. both the engine and the model produced output");
+
+        // ── summary counts ──────────────────────────────────────────────
+        const QVariantMap sum = m.value(QStringLiteral("summary")).toMap();
+        check(sum.value(QStringLiteral("countedShots")).toInt() == a.countedShots
+              && sum.value(QStringLiteral("sighterShots")).toInt() == a.sighterShots
+              && sum.value(QStringLiteral("uniqueConditions")).toInt() == a.uniqueConditions
+              && sum.value(QStringLiteral("conditionEntries")).toInt() == a.conditionEntries
+              && sum.value(QStringLiteral("countedWithReading")).toInt() == a.countedWithReading
+              && sum.value(QStringLiteral("countedCalm")).toInt() == a.countedCalm
+              && sum.value(QStringLiteral("countedNoReading")).toInt() == a.countedNoReading,
+              "19. every summary count equals the engine's");
+
+        // ── positions, groups and every metric ──────────────────────────
+        const QVariantList pos = m.value(QStringLiteral("positions")).toList();
+        check(pos.size() == a.positions.size(), "19. the same number of positions");
+        bool allEqual = true;
+        QString firstDiff;
+        auto same = [](double x, double y) { return std::fabs(x - y) < 1e-12; };
+        for (int i = 0; i < a.positions.size() && i < pos.size(); ++i) {
+            const PositionAnalysis& pa = a.positions[i];
+            const QVariantMap pm = pos[i].toMap();
+            if (pm.value(QStringLiteral("countedShots")).toInt() != pa.countedShots) {
+                allEqual = false; firstDiff = QStringLiteral("countedShots");
+            }
+            // reference centre
+            const QVariantMap ref = pm.value(QStringLiteral("reference")).toMap();
+            if (ref.value(QStringLiteral("valid")).toBool() != pa.reference.valid
+                || ref.value(QStringLiteral("n")).toInt() != pa.reference.n) {
+                allEqual = false; firstDiff = QStringLiteral("reference");
+            }
+            if (pa.reference.valid
+                && (!same(ref.value(QStringLiteral("xMm")).toDouble(), pa.reference.xMm)
+                    || !same(ref.value(QStringLiteral("yMm")).toDouble(), pa.reference.yMm))) {
+                allEqual = false; firstDiff = QStringLiteral("reference centre");
+            }
+            // every grouping
+            struct Pair { const QVector<GroupStats>* eng; const char* key; };
+            const Pair pairs[] = {
+                { &pa.byDirection,      "byDirection" },
+                { &pa.bySpeedBand,      "bySpeedBand" },
+                { &pa.byExactCondition, "byExactCondition" },
+            };
+            for (const Pair& pr : pairs) {
+                const QVariantList gl = pm.value(QLatin1String(pr.key)).toList();
+                if (gl.size() != pr.eng->size()) {
+                    allEqual = false; firstDiff = QLatin1String(pr.key); continue;
+                }
+                for (int j = 0; j < gl.size(); ++j) {
+                    const GroupStats& g = (*pr.eng)[j];
+                    const QVariantMap gm = gl[j].toMap();
+                    if (gm.value(QStringLiteral("label")).toString() != g.label
+                        || gm.value(QStringLiteral("n")).toInt() != g.n
+                        || gm.value(QStringLiteral("hasMpi")).toBool() != g.hasMpi
+                        || gm.value(QStringLiteral("hasDispersion")).toBool() != g.hasDispersion) {
+                        allEqual = false; firstDiff = QStringLiteral("%1 flags").arg(QLatin1String(pr.key));
+                    }
+                    if (g.hasMeanScore
+                        && !same(gm.value(QStringLiteral("meanScore")).toDouble(), g.meanScore)) {
+                        allEqual = false; firstDiff = QStringLiteral("meanScore");
+                    }
+                    if (g.hasMpi
+                        && (!same(gm.value(QStringLiteral("mpiXMm")).toDouble(), g.mpiXMm)
+                            || !same(gm.value(QStringLiteral("mpiYMm")).toDouble(), g.mpiYMm))) {
+                        allEqual = false; firstDiff = QStringLiteral("mpi");
+                    }
+                    if (g.hasDispersion
+                        && (!same(gm.value(QStringLiteral("meanRadiusMm")).toDouble(), g.meanRadiusMm)
+                            || !same(gm.value(QStringLiteral("groupDiameterMm")).toDouble(), g.groupDiameterMm)
+                            || !same(gm.value(QStringLiteral("horizontalSpreadMm")).toDouble(), g.horizontalSpreadMm)
+                            || !same(gm.value(QStringLiteral("verticalSpreadMm")).toDouble(), g.verticalSpreadMm)
+                            || !same(gm.value(QStringLiteral("scoreStdDev")).toDouble(), g.scoreStdDev))) {
+                        allEqual = false; firstDiff = QStringLiteral("dispersion");
+                    }
+                }
+            }
+            // shift vectors
+            const QVariantList sl = pm.value(QStringLiteral("shifts")).toList();
+            if (sl.size() != pa.shifts.size()) {
+                allEqual = false; firstDiff = QStringLiteral("shifts");
+            }
+            for (int j = 0; j < sl.size() && j < pa.shifts.size(); ++j) {
+                const ShiftVector& v = pa.shifts[j];
+                const QVariantMap sm = sl[j].toMap();
+                if (sm.value(QStringLiteral("valid")).toBool() != v.valid
+                    || sm.value(QStringLiteral("n")).toInt() != v.n) {
+                    allEqual = false; firstDiff = QStringLiteral("shift flags");
+                }
+                if (v.valid
+                    && (!same(sm.value(QStringLiteral("dxMm")).toDouble(), v.dxMm)
+                        || !same(sm.value(QStringLiteral("dyMm")).toDouble(), v.dyMm)
+                        || !same(sm.value(QStringLiteral("magnitudeMm")).toDouble(), v.magnitudeMm))) {
+                    allEqual = false; firstDiff = QStringLiteral("shift values");
+                }
+            }
+        }
+        check(allEqual, "19. EVERY position, group, metric and shift equals the engine",
+              firstDiff);
+
+        // ── findings, timeline, limitations ─────────────────────────────
+        const QVariantList fl = m.value(QStringLiteral("findings")).toList();
+        check(fl.size() == a.findings.size(), "19. the same findings");
+        bool findingsEqual = true;
+        for (int i = 0; i < fl.size() && i < a.findings.size(); ++i)
+            if (fl[i].toMap().value(QStringLiteral("text")).toString() != a.findings[i].text
+                || fl[i].toMap().value(QStringLiteral("suggestion")).toString() != a.findings[i].suggestion)
+                findingsEqual = false;
+        check(findingsEqual, "19. the findings are RENDERED, not re-worded");
+        check(m.value(QStringLiteral("timeline")).toList().size() == a.timeline.size(),
+              "19. the timeline carries every shot");
+        check(m.value(QStringLiteral("limitations")).toStringList() == a.limitations,
+              "19. the limitations are carried verbatim");
+    }
+
+    // ── 20. a withheld metric is ABSENT, not zero ───────────────────────
+    {
+        // A view must not be able to print a 0 that looks like a measurement.
+        Rig r; r.start("PRONE50");
+        r.wm.setMeasuredCondition(45, 5.0);
+        r.wm.beginCountedShots();
+        r.shoot(3.0, 3.0); r.shoot(3.2, 3.2);      // n = 2: below every threshold
+        r.wm.endCapture();
+        const QVariantMap m = r.wm.analysisModel();
+        const QVariantList pos = m.value(QStringLiteral("positions")).toList();
+        const QVariantList ex = pos.value(0).toMap().value(QStringLiteral("byExactCondition")).toList();
+        check(ex.size() == 1, "20. one group");
+        const QVariantMap g = ex.value(0).toMap();
+        check(!g.value(QStringLiteral("hasMpi")).toBool(), "20. MPI is withheld at n=2");
+        check(!g.contains(QStringLiteral("mpiXMm")),
+              "20. and the key is ABSENT — a view cannot read a misleading 0");
+        check(!g.contains(QStringLiteral("groupDiameterMm")),
+              "20. no dispersion key is emitted either");
+        check(g.value(QStringLiteral("shotsNeededForMpi")).toInt() == 1
+              && g.value(QStringLiteral("shotsNeededForDispersion")).toInt() == 3,
+              "20. the shortfall is reported instead");
+    }
+
+    // ── 21. 3P: each position keeps its OWN reference in the model ──────
+    {
+        Rig r; r.start("3P50");
+        r.wm.setCalmCondition();
+        r.wm.beginCountedShots();
+        for (int i = 0; i < 5; ++i) r.shoot(20.0 + double(i) - 2.0, 20.0);   // Kneeling
+        r.wm.endPosition(); r.wm.changePosition(2); r.wm.beginCountedShots();
+        for (int i = 0; i < 5; ++i) r.shoot(double(i) - 2.0, 0.0);           // Prone
+        r.wm.endPosition(); r.wm.changePosition(3); r.wm.beginCountedShots();
+        for (int i = 0; i < 5; ++i) r.shoot(-20.0 + double(i) - 2.0, -20.0); // Standing
+        r.wm.endCapture();
+
+        const QVariantMap m = r.wm.analysisModel();
+        const QVariantList pos = m.value(QStringLiteral("positions")).toList();
+        check(pos.size() == 3, "21. three position analyses in the model");
+        const QVariantMap k = pos.value(0).toMap();
+        const QVariantMap pr = pos.value(1).toMap();
+        const QVariantMap st = pos.value(2).toMap();
+        check(k.value(QStringLiteral("positionName")).toString() == QLatin1String("Kneeling")
+              && st.value(QStringLiteral("positionName")).toString() == QLatin1String("Standing"),
+              "21. named and ordered K -> P -> S");
+        const double kx = k.value(QStringLiteral("reference")).toMap()
+                           .value(QStringLiteral("xMm")).toDouble();
+        const double px = pr.value(QStringLiteral("reference")).toMap()
+                            .value(QStringLiteral("xMm")).toDouble();
+        const double sx = st.value(QStringLiteral("reference")).toMap()
+                            .value(QStringLiteral("xMm")).toDouble();
+        check(std::fabs(kx - 20.0) < 1e-9 && std::fabs(px) < 1e-9 && std::fabs(sx + 20.0) < 1e-9,
+              "21. each position carries its OWN reference centre — never pooled",
+              QStringLiteral("%1 / %2 / %3").arg(kx).arg(px).arg(sx));
+        check(k.value(QStringLiteral("countedShots")).toInt() == 5
+              && pr.value(QStringLiteral("countedShots")).toInt() == 5
+              && st.value(QStringLiteral("countedShots")).toInt() == 5,
+              "21. no position absorbed another's shots");
+    }
+
+    // ── 22. the raw appendix keeps the immutable snapshots ──────────────
+    {
+        Rig r; r.start("PRONE50");
+        r.wm.setMeasuredCondition(270, 2.5, QStringLiteral("gusting"));
+        r.wm.beginCountedShots();
+        r.shoot(1.5, -2.5, 10.4);
+        r.wm.setNoReadingCondition();
+        r.shoot(2.0, 2.0, 9.7);
+        r.wm.endCapture();
+        const QVariantList rows = r.wm.analysisModel().value(QStringLiteral("shotRows")).toList();
+        check(rows.size() == 2, "22. one row per shot");
+        const QVariantMap a0 = rows.value(0).toMap();
+        // Every field the PDF appendix must reproduce.
+        check(a0.value(QStringLiteral("shotId")).toInt() == 1
+              && a0.value(QStringLiteral("type")).toString() == QLatin1String("Counted")
+              && a0.contains(QStringLiteral("positionName"))
+              && std::fabs(a0.value(QStringLiteral("score")).toDouble() - 10.4) < 1e-9
+              && std::fabs(a0.value(QStringLiteral("xMm")).toDouble() - 1.5) < 1e-9
+              && std::fabs(a0.value(QStringLiteral("yMm")).toDouble() + 2.5) < 1e-9
+              && a0.contains(QStringLiteral("timestampMs")),
+              "22. shot number, type, position, score, X/Y and timestamp are kept");
+        check(a0.value(QStringLiteral("hasWindReading")).toBool()
+              && a0.value(QStringLiteral("directionDegrees")).toInt() == 270
+              && a0.value(QStringLiteral("directionLabel")).toString() == QLatin1String("W")
+              && std::fabs(a0.value(QStringLiteral("speedMetresPerSecond")).toDouble() - 2.5) < 1e-9
+              && a0.value(QStringLiteral("note")).toString() == QLatin1String("gusting"),
+              "22. the immutable wind snapshot is reproduced, note included");
+        const QVariantMap a1 = rows.value(1).toMap();
+        check(!a1.value(QStringLiteral("hasWindReading")).toBool()
+              && a1.value(QStringLiteral("directionLabel")).toString().isEmpty(),
+              "22. a no-reading shot stays a no-reading shot in the appendix");
+        // Speed is m/s in the model too — hundredths never leave the domain.
+        check(!r.wm.analysisModel().value(QStringLiteral("shotRows")).toList().isEmpty(),
+              "22. the appendix is populated");
     }
 }
