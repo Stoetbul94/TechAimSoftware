@@ -35,6 +35,7 @@ int main(int argc, char** argv)
     run_operatingmode_tests();
     run_capture_profile_tests();
     run_brand_package_tests();
+    run_homepage_layout_tests();
     run_fixture_tests(writeFixtures);
 
     std::printf("=== %d checks, %d failures ===\n", g_checks, g_failures);

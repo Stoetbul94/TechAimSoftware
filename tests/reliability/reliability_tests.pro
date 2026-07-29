@@ -35,6 +35,7 @@ SOURCES += \
     ../../src/app/ProductIdentity.cpp \
     ../../src/app/BrandPackage.cpp \
     tst_brandpackage.cpp \
+    tst_homepage_layout.cpp \
     tst_fixedpoint.cpp \
     tst_events.cpp \
     tst_serializer.cpp \

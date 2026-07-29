@@ -113,6 +113,7 @@ void run_recovery_tests();
 void run_operatingmode_tests();
 void run_capture_profile_tests();
 void run_brand_package_tests();
+void run_homepage_layout_tests();
 void run_fixture_tests(bool regenerate);
 
 #endif // TA_REL_TEST_SUPPORT_H
