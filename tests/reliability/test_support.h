@@ -115,6 +115,7 @@ void run_capture_profile_tests();
 void run_brand_package_tests();
 void run_homepage_layout_tests();
 void run_windmap_tests();
+void run_windmap_recovery_tests();
 void run_fixture_tests(bool regenerate);
 
 #endif // TA_REL_TEST_SUPPORT_H

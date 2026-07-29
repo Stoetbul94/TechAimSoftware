@@ -38,6 +38,7 @@ SOURCES += \
     tst_brandpackage.cpp \
     tst_homepage_layout.cpp \
     tst_windmap.cpp \
+    tst_windmap_recovery.cpp \
     tst_fixedpoint.cpp \
     tst_events.cpp \
     tst_serializer.cpp \
