@@ -11,6 +11,7 @@ include(../../Reliability.pri)
 # Phase B0: the qualification write-path seam. QtCore-only — compiling it in
 # this GUI-free harness proves it carries no QML/GUI dependency.
 INCLUDEPATH += $$PWD/../../src
+INCLUDEPATH += $$PWD/../../src/training
 SOURCES += $$PWD/../../src/qualification/QualificationController.cpp
 SOURCES += $$PWD/../../src/incident/EstIncidentController.cpp
 SOURCES += $$PWD/../../src/mode/OperatingModeService.cpp
@@ -36,6 +37,7 @@ SOURCES += \
     ../../src/app/BrandPackage.cpp \
     tst_brandpackage.cpp \
     tst_homepage_layout.cpp \
+    tst_windmap.cpp \
     tst_fixedpoint.cpp \
     tst_events.cpp \
     tst_serializer.cpp \

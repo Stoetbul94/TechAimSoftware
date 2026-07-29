@@ -239,6 +239,20 @@ void run_serializer_tests()
             PositionNoteSaved{0, 1, QStringLiteral("settled quickly")},
             NextPositionTransitionStarted{0, 1, 1},
             PositionTransitionCompleted{3, QStringLiteral("good rhythm")},
+            // Wind Map (Release 2). The wind snapshot is the base class, so it
+            // comes first in each braced initialiser.
+            WindMapSessionStarted{QStringLiteral("3P50"), true, QStringLiteral("K-P-S")},
+            WindConditionChanged{{true, false, 270, 250, 0, 7000, QStringLiteral("gusting")}},
+            WindMapSighterAccepted{{true, true, 0, 0, 0, 7100, QString()},
+                                   ShotCore{0, 0, 0, 0, 40, 8, 95, 0, 5000, 0, 0, 11, true},
+                                   1, 1},
+            // A counted shot with NO wind reading — the absence must survive
+            // the journal exactly as absence.
+            WindMapShotAccepted{{false, false, 0, 0, 0, 0, QString()},
+                                ShotCore{1, 1, 0, 0, -342, 108, 102, 0, 46000, 0, 0, 12, true},
+                                2, 1},
+            WindMapPositionChanged{1, 2},
+            WindMapSessionCompleted{40, 6, 9},
         };
         check(catalogue.size() == static_cast<int>(std::variant_size_v<DomainEvent>),
               "round-trip covers every event type",
