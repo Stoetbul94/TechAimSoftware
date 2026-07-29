@@ -337,6 +337,83 @@ Item {
         return "—"
     }
 
+    // ── AUTHORITATIVE SELECTED-PROGRAMME STATE ────────────────────────────
+    // One source of truth for "what is selected". Previously the Selected
+    // Profile label, the Start button wording and the action-bar recap each
+    // derived this independently, which is how the panel could show
+    // "10m Air Pistol — ISSF" while an Open Practice card was highlighted:
+    // the label always said "<discipline> — ISSF" regardless of the event.
+    //
+    // These are PRESENTATION only. The controller dispatch in the Start
+    // handler is unchanged and still keys off ptConfirmed / cdConfirmed /
+    // trainingConfirmed exactly as before.
+
+    // "POSTRANS" | "CALLDIAG" | "TRAINING" | "FINAL" | "OFFICIAL" | "PRACTICE"
+    function selectedProgrammeKind() {
+        if (ptConfirmed)       return "POSTRANS"
+        if (cdConfirmed)       return "CALLDIAG"
+        if (trainingConfirmed) return "TRAINING"
+        if (gameEvent === 6 || gameEvent === 7) return "FINAL"
+        if (gameEvent === 4)   return "OFFICIAL"
+        return "PRACTICE"
+    }
+
+    // The name shown in Selected Profile AND in the action-bar recap.
+    function selectedProgrammeName() {
+        var k = selectedProgrammeKind()
+        if (k === "POSTRANS") return qsTr("Position Transition")
+        if (k === "CALLDIAG") return qsTr("Call & Diagnose")
+        if (k === "TRAINING") return qsTr("Technical Blocks")
+        if (k === "FINAL")    return getEventCardTitle(gameEvent)
+        if (k === "OFFICIAL") return getDisciplineName() + qsTr(" — ISSF")
+        // Practice is NOT an ISSF programme and must not claim to be.
+        return getDisciplineName() + qsTr(" — Open Practice")
+    }
+
+    // The section heading above the summary.
+    function selectedProgrammeLabel() {
+        var k = selectedProgrammeKind()
+        if (k === "POSTRANS" || k === "CALLDIAG" || k === "TRAINING")
+            return qsTr("SELECTED PROGRAMME")
+        if (k === "FINAL")    return qsTr("SELECTED FINAL")
+        if (k === "PRACTICE") return qsTr("SELECTED PRACTICE")
+        return qsTr("SELECTED MATCH")
+    }
+
+    // Start button wording — derived from the same kind, so it can never
+    // disagree with the summary.
+    function startButtonText() {
+        var k = selectedProgrammeKind()
+        if (k === "POSTRANS") return qsTr("Start transitions  →")
+        if (k === "CALLDIAG") return qsTr("Start calling  →")
+        if (k === "TRAINING") return qsTr("Start training  →")
+        if (k === "PRACTICE") return qsTr("Start practice  →")
+        return qsTr("Start session  →")
+    }
+
+    // ── READINESS ─────────────────────────────────────────────────────────
+    // Network sharing with no destination folder is not a working state: it
+    // reported "Share enabled" while nothing could be written. Sharing is only
+    // genuinely configured when it is switched on AND has a folder.
+    readonly property bool shareRequested: networkShareCard.netEnabled
+    readonly property bool shareConfigured: networkShareCard.netEnabled
+                                            && netowrk_path_text.text !== ""
+    readonly property bool shareIncomplete: networkShareCard.netEnabled
+                                            && netowrk_path_text.text === ""
+
+    // Advisory only — it never blocks Start. Sharing is a convenience, not a
+    // precondition for shooting, so an incomplete share must not stop a match.
+    readonly property bool readinessOk: !shareIncomplete
+
+    function readinessSummary() {
+        if (shareIncomplete)
+            return qsTr("Network share is on but no folder is selected — results will not be shared.")
+        var who = username_loginPage !== "" ? username_loginPage
+                                            : qsTr("No athlete entered")
+        return who + "   ·   " + selectedProgrammeName()
+             + "   ·   " + (appMode ? qsTr("Live target") : qsTr("Demo / Simulation"))
+    }
+
     function disableControls() {
         if (APPSETTINGS.getDeveloperMode()) console.log("Inside disable controls ....")
         pistolMouse.visible   = false
@@ -821,8 +898,16 @@ Item {
                 anchors.left: parent.left;   anchors.leftMargin: 22
                 anchors.right: parent.right; anchors.rightMargin: 22
                 height: 56; color: _input; radius: 6
-                border.color: netEnabled ? _red : _borderSub; border.width: 1
-                property bool netEnabled: true
+                // Incomplete is a WARNING state, not a success state. The card
+                // used to show an enabled accent border while nothing could
+                // actually be written anywhere.
+                border.color: shareIncomplete ? _warnTxt
+                                              : (shareConfigured ? _red : _borderSub)
+                border.width: 1
+                // Start OFF unless a destination folder already exists.
+                // "Share enabled / No folder selected" was never a working
+                // configuration, and it is not a sensible default either.
+                property bool netEnabled: netowrk_path_text.text !== ""
 
                 Row {
                     id: netInfoRow
@@ -831,14 +916,18 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter; spacing: 10
                     Text {
                         text: "☁"; font.pixelSize: 16
-                        color: networkShareCard.netEnabled ? _red : _txtMut
+                        color: shareIncomplete ? _warnTxt
+                                               : (shareConfigured ? _red : _txtMut)
                         anchors.verticalCenter: parent.verticalCenter
                     }
                     Column {
                         anchors.verticalCenter: parent.verticalCenter; spacing: 2
                         Text {
-                            text: networkShareCard.netEnabled ? "Share enabled" : "Share disabled"
-                            color: networkShareCard.netEnabled ? _txt : _txtSec
+                            text: shareIncomplete ? qsTr("Share incomplete")
+                                 : (shareConfigured ? qsTr("Share enabled")
+                                                    : qsTr("Share disabled"))
+                            color: shareIncomplete ? _warnTxt
+                                                   : (shareConfigured ? _txt : _txtSec)
                             font.family: theme.fontFamily; font.pixelSize: 12; font.bold: true
                         }
                         Text {
@@ -906,15 +995,14 @@ Item {
 
                     Text {
                         id: profileLabel
-                        text: (trainingConfirmed || cdConfirmed || ptConfirmed) ? "SELECTED PROGRAMME" : "SELECTED PROFILE"
+                        text: selectedProgrammeLabel()
                         color: _txtMut; font.family: theme.fontFamily
-                        font.pixelSize: 10; font.bold: true; font.letterSpacing: 2
+                        font.pixelSize: theme.type.label.size
+                        font.bold: true; font.letterSpacing: theme.type.label.spacing
                     }
                     Text {
                         id: profileName
-                        text: ptConfirmed ? "Position Transition"
-                              : (cdConfirmed ? "Call & Diagnose"
-                              : (trainingConfirmed ? "Technical Blocks" : getDisciplineName() + " — ISSF"))
+                        text: selectedProgrammeName()
                         color: _txt; font.family: theme.fontFamily; font.pixelSize: 17; font.bold: true
                         width: parent.width; elide: Text.ElideRight
                     }
@@ -1158,8 +1246,18 @@ Item {
                 }
             }
 
-            // Scrollable event cards
-            ScrollView {
+            // ── Scrollable event list ─────────────────────────────────────────
+            // Was a ScrollView, which sizes itself from its content's implicit
+            // height. With a Column of conditionally-visible cards and an
+            // Open Practice card that changes height when selected, that
+            // measurement was unreliable and the list simply clipped — the
+            // last cards could not be reached at all.
+            //
+            // A Flickable with contentHeight bound explicitly to the Column is
+            // deterministic: it always knows how tall the content is, so the
+            // final card is always reachable. Mouse wheel and touch both drive
+            // a Flickable natively.
+            Flickable {
                 id: eventScroll
                 visible: practiceView === 0
                 anchors.top: subDisciplineRow.bottom; anchors.topMargin: 12
@@ -1167,13 +1265,25 @@ Item {
                 anchors.right: parent.right; anchors.rightMargin: 22
                 anchors.bottom: parent.bottom; anchors.bottomMargin: 18
                 clip: true
-                ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-                ScrollBar.vertical.policy: ScrollBar.AsNeeded
+                // Horizontal scrolling is prohibited on this page: it is how a
+                // clipped discipline would hide itself (UI-0 finding F1).
+                contentWidth: width
+                contentHeight: eventColumn.height
+                boundsBehavior: Flickable.StopAtBounds
+                flickDeceleration: 2500
+                ScrollBar.vertical: ScrollBar {
+                    policy: eventScroll.contentHeight > eventScroll.height
+                            ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
+                    width: 8
+                }
 
                 Column {
                     id: eventColumn
-                    width: eventScroll.availableWidth
+                    width: eventScroll.width
                     spacing: 0
+                    // Breathing room after the final card so it is fully
+                    // reachable rather than flush against the panel edge.
+                    bottomPadding: 20
 
                     component EventCard: Rectangle {
                         property int eventIndex: 0
@@ -2062,38 +2172,45 @@ Item {
                 width: 3; color: _red; radius: 2
             }
 
+            // Left region — readiness / validation state. Its width is derived
+            // from the action row's FIXED width rather than from a live anchor
+            // to that row, so the two regions can never intersect at any
+            // window size.
             Column {
+                id: readinessBlock
                 anchors.left: parent.left; anchors.leftMargin: 22
-                anchors.right: actionRow.left; anchors.rightMargin: 20
                 anchors.verticalCenter: parent.verticalCenter
+                width: Math.max(0, actionBar.width - actionRow.width - 22 - 18 - 24)
                 spacing: 5
 
                 Text {
-                    text: "READY TO START"
-                    color: _txtMut; font.family: theme.fontFamily
-                    font.pixelSize: 10; font.bold: true; font.letterSpacing: 2
+                    width: parent.width; elide: Text.ElideRight
+                    text: rootItem.readinessOk ? qsTr("READY TO START")
+                                               : qsTr("CHECK BEFORE STARTING")
+                    color: rootItem.readinessOk ? _txtMut : _warnTxt
+                    font.family: theme.fontFamily
+                    font.pixelSize: theme.type.label.size
+                    font.bold: true; font.letterSpacing: theme.type.label.spacing
                 }
                 Text {
                     width: parent.width; elide: Text.ElideRight
-                    text: {
-                        var who = username_loginPage !== "" ? username_loginPage : "No athlete entered"
-                        var what = ptConfirmed ? "Position Transition"
-                                 : (cdConfirmed ? "Call & Diagnose"
-                                 : (trainingConfirmed ? "Technical Blocks"
-                                 : getEventCardTitle(gameEvent)))
-                        return who + "   \u00b7   " + what + "   \u00b7   " + (appMode ? "Live target" : "Demo / Simulation")
-                    }
-                    color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 13
+                    text: rootItem.readinessSummary()
+                    color: _txtSec; font.family: theme.fontFamily
+                    font.pixelSize: theme.type.body.size
                 }
             }
 
             // ── ACTION BUTTONS ────────────────────────────────────────────────
+            // Fixed width, right-anchored. This row previously carried BOTH a
+            // left and a right anchor, so it spanned the entire bar starting at
+            // x=22 and drew straight over the readiness text — the reported
+            // overlap. Its height was also 52 while its children are 56.
             Row {
                 id: actionRow
-                anchors.bottom: parent.bottom; anchors.bottomMargin: 18
-                anchors.left: parent.left;   anchors.leftMargin: 22
-                anchors.right: parent.right; anchors.rightMargin: 22
-                height: 52; spacing: 10
+                anchors.right: parent.right; anchors.rightMargin: 18
+                anchors.verticalCenter: parent.verticalCenter
+                width: 210 + 12 + 268
+                height: 56; spacing: 12
 
                 Rectangle {
                     width: 210; height: 56
@@ -2125,10 +2242,9 @@ Item {
                     opacity: startMouse.visible ? 1.0 : 0.4
                     property bool _startHov: false
                     Text {
-                        text: ptConfirmed ? "Start transitions  →"
-                              : (cdConfirmed ? "Start calling  →"
-                              : (trainingConfirmed ? "Start training  →" : "Start session  →"))
-                        color: "white"; font.family: theme.fontFamily; font.pixelSize: 16; font.bold: true
+                        text: startButtonText()
+                        color: _onAccent; font.family: theme.fontFamily
+                        font.pixelSize: theme.type.buttonText.size + 2; font.bold: true
                         anchors.centerIn: parent
                     }
                     MouseArea {
