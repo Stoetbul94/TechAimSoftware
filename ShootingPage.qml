@@ -73,11 +73,14 @@ Item {
     // Position Transition (T4): POSTRANS owns all state; 50m 3P only.
     property bool isPositionTransitionMatch: false
     property int posTransShotSeq: 0
+    // Wind Map (R2): WINDMAP owns all state; 50m Prone and 50m 3P only.
+    property bool isWindMapMatch: false
+    property int windMapShotSeq: 0
     // ANY Training Lab programme is active — competition overlays (the match
     // countdown clock, sighter-time indicator, last-shot bubble) must be fully
     // suppressed for all of them, not only Technical Blocks.
     readonly property bool isTrainingModeAny: isTrainingMatch || isCallDiagnoseMatch
-                                              || isPositionTransitionMatch
+                                              || isPositionTransitionMatch || isWindMapMatch
     // Hidden-mode display cache: polar display records buffered while the
     // visibility mode hides impacts; revealed (appended to the face) at block
     // review. Never rendered before reveal.
@@ -484,8 +487,10 @@ Item {
         // paper) is Training-inappropriate — hidden during a Technical Blocks
         // session, and its height collapses so the target reclaims the space.
         // Training's own actions live in TrainingRightPanel / the review view.
-        height: (isTrainingMatch || isCallDiagnoseMatch || isPositionTransitionMatch) ? 0 : 62
+        height: (isTrainingMatch || isCallDiagnoseMatch || isPositionTransitionMatch
+                 || isWindMapMatch) ? 0 : 62
         visible: !isTrainingMatch && !isCallDiagnoseMatch && !isPositionTransitionMatch
+                 && !isWindMapMatch
         color: "#15161a"
         z: 40
 
@@ -611,6 +616,11 @@ Item {
                     return
                 return
             }
+            if (isWindMapMatch) {
+                if (!exitWindMapToHome())
+                    return
+                return
+            }
             loginPage.visible = true
             resetDataModels()
         }
@@ -634,7 +644,8 @@ Item {
         // Final-specific Finals10mRightPanel occupies the same slot. Its width
         // is preserved (visible:false keeps the layout) so the target keeps its
         // size. Qualification/3P use this panel unchanged.
-        visible: !isFinals10mMatch && !isTrainingMatch && !isCallDiagnoseMatch && !isPositionTransitionMatch
+        visible: !isFinals10mMatch && !isTrainingMatch && !isCallDiagnoseMatch
+                 && !isPositionTransitionMatch && !isWindMapMatch
         onSwitchToSighter:
         {
             if(sighterEnable)
@@ -730,6 +741,19 @@ Item {
             // POSITION TRANSITION (T4): shots route to POSTRANS (setup shots
             // ignored, sighters shown, verification counted). Sighters draw on
             // the live target; counted shots reveal at the position review.
+            // WIND MAP (R2): shots route to WINDMAP. The controller classifies
+            // them from its DURABLE phase (sighter vs counted) and attaches an
+            // immutable copy of the standing wind condition to each one.
+            if (isWindMapMatch) {
+                // Held for the accepted-shot router below: the marker is drawn
+                // only AFTER the shot is journalled, never before.
+                shootingPage.windMapLastX = centerPanel.lastShotXmm
+                shootingPage.windMapLastY = centerPanel.lastShotYmm
+                WINDMAP.registerShot(centerPanel.lastShotXmm, centerPanel.lastShotYmm,
+                                     currentCalculatedScore, ++shootingPage.windMapShotSeq,
+                                     xPosition, centerPanel.lastShotSource)
+                return
+            }
             if (isPositionTransitionMatch) {
                 POSTRANS.registerShot(centerPanel.lastShotXmm, centerPanel.lastShotYmm,
                                       currentCalculatedScore, ++shootingPage.posTransShotSeq,
@@ -1321,6 +1345,86 @@ Item {
         var path = (dir && dir.length ? dir + "/" : "") + "TechAim_PositionTransition_" + athlete + "_" + date + "_" + sid + ".pdf"
         posTransReportView.exportPdf(path)
     }
+    // ── WIND MAP (Release 2) ─────────────────────────────────────────────
+    WindMapRightPanel {
+        id: windMapRightPanel
+        visible: isWindMapMatch
+        width: rightPanel.width; height: rightPanel.height
+        anchors.right: parent.right; anchors.top: statusStrip.bottom
+        z: 11
+        ctl: WINDMAP
+        connected: shootingPage.trainingTargetConnected
+    }
+    WindMapHud {
+        id: windMapHud
+        visible: isWindMapMatch
+        anchors.fill: parent
+        z: 60
+        ctl: WINDMAP
+        onHomeRequested: shootingPage.homeFromWindMap()
+        onNewSessionRequested: shootingPage.newWindMapSession()
+    }
+    // Sighters are drawn on the live target so the athlete can see them;
+    // counted shots are drawn too — Wind Map hides nothing, it only records
+    // what was standing at the time.
+    Connections {
+        target: WINDMAP
+        enabled: isWindMapMatch
+        function onShotAccepted(sighter, shotId, position) {
+            shootingPage.trainingAppendSighterMarker(shootingPage.windMapLastX,
+                                                     shootingPage.windMapLastY)
+        }
+    }
+    property real windMapLastX: 0
+    property real windMapLastY: 0
+
+    function enterWindMapMode() {
+        isWindMapMatch = true
+        isTrainingMatch = false; isCallDiagnoseMatch = false; isPositionTransitionMatch = false
+        isFinalsMatch = false; isFinals10mMatch = false; is3PMatch = false
+        windMapShotSeq = 0
+        globalMatchModel.clear(); globalSlighterModel.clear(); globalModelOfData.clear()
+        centerPanel.backEndShootCount = 0
+        sligterMode = true
+        matchFinished = false
+        rightPanel.resetRightPanelModels()
+    }
+    function exitWindMapToHome() {
+        if (!WINDMAP.closeSessionCleanly()) {
+            dialogManager.showError(qsTr("Wind Map could not be closed safely"),
+                (WINDMAP.lastError && WINDMAP.lastError.length > 0 ? WINDMAP.lastError + "\n\n" : "")
+                + qsTr("Your session is preserved and can be recovered. Please try again."))
+            return false
+        }
+        isWindMapMatch = false
+        loginPage.wmConfirmed = false
+        resetDataModels()
+        loginPage.visible = true
+        return true
+    }
+    function homeFromWindMap() { exitWindMapToHome() }
+    function newWindMapSession() {
+        if (!WINDMAP.closeSessionCleanly()) {
+            dialogManager.showError(qsTr("Wind Map could not be closed safely"),
+                qsTr("Your session is preserved and can be recovered. Please try again."))
+            return
+        }
+        isWindMapMatch = false
+        resetDataModels()
+        loginPage.visible = true
+        loginPage.practiceView = 1
+    }
+    function restoreWindMapSession(sessionId) {
+        if (!WINDMAP.resumeFromRecovery(sessionId))
+            return false
+        enterWindMapMode()
+        // Keep the duplicate guard past every recovered external id so a
+        // retransmitted shot cannot be accepted twice after the resume.
+        windMapShotSeq = Math.max(windMapShotSeq, WINDMAP.recoveredMaxExternalId())
+        loginPage.visible = false
+        return true
+    }
+
     function restorePositionTransitionSession(sessionId) {
         if (!POSTRANS.resumeFromRecovery(sessionId))
             return false
