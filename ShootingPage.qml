@@ -347,7 +347,13 @@ Item {
         color: "#15161a"
         z: 40
 
+        // UI-WIND-001: the competition identity row must not render during a
+        // Wind Map session. currentGameDisplay*/currentmatchDisplay still hold
+        // whatever the last selected EVENT CARD set (the 3P Final card leaves
+        // "FINAL 35"), and a Training Lab programme may never present as a
+        // Final. WindMapTopBar occupies this band instead.
         Row {
+            visible: !isWindMapMatch
             anchors.left: parent.left; anchors.leftMargin: 16
             anchors.verticalCenter: parent.verticalCenter
             spacing: 12
@@ -378,7 +384,10 @@ Item {
         Row {
             anchors.centerIn: parent
             spacing: 6
-            visible: !isFinals10mMatch && !isTrainingMatch
+            // UI-WIND-001: Wind Map has its own two-phase model (sighters /
+            // counted shots) owned by WindMapController. The competition
+            // stepper would read a Final/qualification phase it does not have.
+            visible: !isFinals10mMatch && !isTrainingMatch && !isWindMapMatch
             Repeater {
                 model: is3PMatch ? [qsTr("SIGHT"), qsTr("KNEEL"), qsTr("PRONE"), qsTr("STAND")]
                                  : [qsTr("SIGHTING"), qsTr("MATCH")]
@@ -409,7 +418,11 @@ Item {
             }
         }
 
+        // UI-WIND-001: the OFFICIAL shot counter (globalMatchModel.count /
+        // matchShootCount) is the "0 / 35" from the defect report — Wind Map
+        // populates neither model. Its own progress is on WindMapTopBar.
         Row {
+            visible: !isWindMapMatch
             anchors.right: parent.right; anchors.rightMargin: 16
             anchors.verticalCenter: parent.verticalCenter
             spacing: 12
@@ -459,6 +472,19 @@ Item {
                     font.pixelSize: 10; font.bold: true; font.letterSpacing: 1
                 }
             }
+        }
+
+        // ── UI-WIND-001: the Wind Map TRAINING bar ──────────────────────
+        // Same band, so every anchor chaining from statusStrip.bottom is
+        // unchanged. Binds to WINDMAP only — no Finals controller, phase,
+        // stage, timer, ceremony, command or official shot count.
+        WindMapTopBar {
+            id: windMapTopBar
+            visible: isWindMapMatch
+            anchors.fill: parent
+            ctl: WINDMAP
+            athlete: window.userName
+            demoMode: !appMode
         }
     }
 

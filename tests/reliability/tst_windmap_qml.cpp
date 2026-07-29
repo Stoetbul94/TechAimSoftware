@@ -58,16 +58,19 @@ void run_windmap_qml_tests()
     fputs("\n--- wind map QML source guards (stage 5) ---\n", stdout);
 
     bool okPanel = false, okHud = false, okLogin = false, okShoot = false, okMain = false;
+    bool okBar = false;
     const QString panel = stripComments(qmlSource("WindMapRightPanel.qml", &okPanel));
     const QString hud   = stripComments(qmlSource("WindMapHud.qml", &okHud));
+    const QString bar   = stripComments(qmlSource("WindMapTopBar.qml", &okBar));
     const QString login = stripComments(qmlSource("LoginPage.qml", &okLogin));
     const QString shoot = stripComments(qmlSource("ShootingPage.qml", &okShoot));
     const QString mainq = stripComments(qmlSource("main.qml", &okMain));
-    check(okPanel && okHud && okLogin && okShoot && okMain, "0. every Wind Map QML file was read");
-    if (!(okPanel && okHud && okLogin && okShoot && okMain))
+    check(okPanel && okHud && okBar && okLogin && okShoot && okMain,
+          "0. every Wind Map QML file was read");
+    if (!(okPanel && okHud && okBar && okLogin && okShoot && okMain))
         return;
 
-    const QString windMapQml = panel + hud;
+    const QString windMapQml = panel + hud + bar;
 
     // ── 1. no domain events are constructed in QML ──────────────────────
     {
@@ -184,5 +187,81 @@ void run_windmap_qml_tests()
               "8. Stage 5 produces no PDF export");
         check(!windMapQml.contains(QStringLiteral("COACHREPORT")),
               "8. Stage 5 wires in no analytics engine");
+    }
+
+    // ── 9. UI-WIND-001: no Finals shell anywhere in Wind Map ────────────
+    {
+        // 9a. The Wind Map screens name no Finals artefact at all.
+        const char* finalsArtefacts[] = {
+            "FINAL 35", "FINAL 24", "CEREMONY", "Ceremony", "ceremony",
+            "FINALS3P", "FINALS10M", "Finals3P", "Finals10m",
+            "isFinalsMatch", "isFinals10mMatch",
+            "currentmatchDisplay", "currentGameDisplay", "matchShootCount",
+            "globalMatchModel", "finalsSeriesIndex", "stageId", "skipCeremony",
+        };
+        bool clean = true;
+        QString found;
+        for (const char* a : finalsArtefacts)
+            if (windMapQml.contains(QLatin1String(a))) { clean = false; found += QLatin1String(a) + QStringLiteral(" "); }
+        check(clean, "9a. no Wind Map screen contains or binds to any Finals artefact", found);
+
+        // 9b. The top bar binds to WINDMAP and to no other controller.
+        check(bar.contains(QStringLiteral("ctl: WINDMAP")) || shoot.contains(QStringLiteral("ctl: WINDMAP")),
+              "9b. the Wind Map top bar is bound to WINDMAP");
+        const char* otherCtl[] = { "FINALS3P.", "FINALS10M.", "QUAL.", "TRAINING.", "CALLDIAG.", "POSTRANS." };
+        bool onlyWindMap = true;
+        for (const char* c : otherCtl)
+            if (bar.contains(QLatin1String(c))) onlyWindMap = false;
+        check(onlyWindMap, "9b. the top bar reads no other programme's controller");
+
+        // 9c. Every competition row in statusStrip is gated OFF for Wind Map.
+        //     These are the exact three rows that produced the defect.
+        const int strip = shoot.indexOf(QStringLiteral("id: statusStrip"));
+        check(strip > 0, "9c. statusStrip is addressable");
+        if (strip > 0) {
+            // The band ends where the training bar is declared.
+            const int barDecl = shoot.indexOf(QStringLiteral("WindMapTopBar {"), strip);
+            check(barDecl > strip, "9c. WindMapTopBar occupies the statusStrip band");
+            const QString band = shoot.mid(strip, barDecl - strip);
+            // Three gates: identity row, phase stepper, official counter row.
+            const int gates = band.count(QStringLiteral("!isWindMapMatch"));
+            check(gates >= 3,
+                  "9c. all three competition rows are suppressed for Wind Map",
+                  QStringLiteral("found %1 gates").arg(gates));
+            // The official counter must be inside a gated row.
+            const int counter = band.indexOf(QStringLiteral("globalMatchModel.count"));
+            check(counter > 0 && band.lastIndexOf(QStringLiteral("visible: !isWindMapMatch"), counter) > 0,
+                  "9c. the official 0/N shot counter is inside a Wind-Map-gated row");
+        }
+
+        // 9d. The training bar shows the required Training identity instead.
+        check(bar.contains(QStringLiteral("TRAINING LAB")) && bar.contains(QStringLiteral("WIND MAP")),
+              "9d. the bar identifies the programme as Training Lab / Wind Map");
+        check(bar.contains(QStringLiteral("SIGHTERS")) && bar.contains(QStringLiteral("COUNTED SHOTS")),
+              "9d. the bar shows the Wind Map phase, not a competition phase");
+        check(bar.contains(QStringLiteral("ctl.countedShots")) && bar.contains(QStringLiteral("ctl.shotPlan")),
+              "9d. shot progress comes from WindMapController, not a match model");
+        check(bar.contains(QStringLiteral("positionName")),
+              "9d. the 3P position is shown from the controller projection");
+        check(bar.contains(QStringLiteral("NOT AN OFFICIAL COMPETITION RESULT")),
+              "9d. the capture screen states it is not an official result");
+    }
+
+    // ── 10. the Finals screens themselves are untouched ─────────────────
+    {
+        // The finals components keep their own gates; Stage 5.1 must not have
+        // widened or weakened them.
+        check(shoot.contains(QStringLiteral("visible: isFinalsMatch"))
+              && shoot.contains(QStringLiteral("visible: isFinals10mMatch")),
+              "10. FinalsHud / Finals10mHud keep their original gates");
+        check(shoot.contains(QStringLiteral("!isFinals10mMatch && !isTrainingMatch")),
+              "10. the existing Finals/Training gates are preserved, not replaced");
+        bool okF3 = false, okF10 = false;
+        const QString f3  = stripComments(qmlSource("FinalsHud.qml", &okF3));
+        const QString f10 = stripComments(qmlSource("Finals10mHud.qml", &okF10));
+        check(okF3 && okF10, "10. the Finals HUDs were read");
+        if (okF3 && okF10)
+            check(!f3.contains(QStringLiteral("WINDMAP")) && !f10.contains(QStringLiteral("WINDMAP")),
+                  "10. no Wind Map binding leaked into a Finals screen");
     }
 }
