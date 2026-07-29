@@ -35,8 +35,8 @@ starting — see `CLAUDE.md`, *Tech Aim UI project memory*.
 | | |
 |---|---|
 | Latest completed | **UI-2 — Version B homepage · ACCEPTED 2026-07-29** |
-| Current | **TRAINING LAB RELEASE 2 — WIND MAP · stage 5 (controller, recovery dispatch, QML workflow) — implemented, human visual check outstanding** |
-| Next approved | Wind Map analytics + report (stage 6), once stage 5 is accepted |
+| Current | **TRAINING LAB RELEASE 2 — WIND MAP · stages 5.2 + 6.1 (shared Training shell boundary, analysis review) — implemented, human visual check outstanding** |
+| Next approved | Stage 6.2 — branded Wind Map PDF report, consuming `analysisModel()` unchanged |
 
 **Version B is the accepted Tech Aim Beta homepage** (UI-DEC-012), approved by
 **HUMAN VISUAL APPROVAL — ARNOLD BAILIE** on 2026-07-29 against commit
@@ -51,7 +51,7 @@ scrolling, event transitions and the folder picker were never driven by hand.
 
 | Suite | Result |
 |---|---|
-| Reliability (incl. UI-1 brand, UI-2 layout, Wind Map) | **1815 / 0** |
+| Reliability (incl. UI-1 brand, UI-2 layout, Wind Map) | **1953 / 0** |
 | Documentation — manuals | **979 / 0** |
 | Documentation — project memory | **155 / 0** |
 | Training | **567 / 0** |
@@ -61,7 +61,9 @@ scrolling, event transitions and the folder picker were never driven by hand.
 
 Reliability grew 902 → 988 (UI-1, +86) → 1041 (UI-2 P0, +53) → 1059 (UI-2
 completion, +18) → 1695 (Wind Map stages 3–4.1) → 1815 (Wind Map stage 5:
-controller/workflow/resume + QML source guards, +120).
+controller/workflow/resume + QML source guards, +120) → 1911 (stage 6
+analytics engine, +96) → 1953 (stages 5.2 + 6.1: shared Training shell
+boundary, analysis review model and engine/view equality, +42).
 
 The reliability harness is `QT = core`. `WindMapController.cpp` compiles into
 it, which is the proof that the controller carries no QML/GUI dependency.
@@ -153,10 +155,27 @@ application build, clean launch check) but the visual check is
 **MANUAL-ASSISTED VISUAL CHECK REQUIRED** — automatic capture remains
 blocked by endpoint security and no workaround was attempted.
 
-**Analytics and the PDF report are deliberately NOT implemented.** Stage 5
-produces a factual capture record only: no condition comparison, no coaching
-narrative, no target-filter view, no PDF, no WeatherStation integration, no
-sight-click or aiming advice.
+**The PDF report is NOT implemented.** Stage 6.2 will consume
+`analysisModel()` unchanged — no separate PDF calculation is permitted.
+
+**Stage 5.1 ACCEPTED** — `8a1fe26`. UI-WIND-001 (Wind Map 3P capture screen
+rendering Final 35 / Ceremony / timing state) is **closed** with
+**HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29** at **1536 × 960
+logical**. Other resolutions are recorded as NOT TESTED.
+
+**Stages 5.2 + 6.1 implemented** — `docs/training-lab-wind-map-analysis.md`.
+5.2 replaced four drifting per-programme gates with ONE shared boundary
+(`isTrainingModeAny`) and one shared `TrainingTopBar` for all four Training Lab
+programmes, closing the same defect in Call & Diagnose, Position Transition and
+Technical Blocks (UI-TRAIN-001/002/003, registered before the fix). 6.1 added
+`WINDMAP.analysisModel()` and the ten-section analysis review, with the
+analytics engine as the only calculation authority — asserted by a value-by-
+value equality test between the engine and the view model.
+
+**UI-TRAIN-001/002/003 remain OPEN**: the code is fixed and automated evidence
+passes, but none of the three sibling capture screens has been reviewed on
+screen. **The Wind Map analysis review has not been visually reviewed at any
+resolution.**
 
 Approved scope: `Wind Map — Post-Session Review`, **50 m Rifle Prone and 3P
 only**, manual wind entry stored as numeric degrees + m/s, a standing condition
