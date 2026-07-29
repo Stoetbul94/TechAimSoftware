@@ -45,7 +45,7 @@ enum class WindSource : quint8 {     // future-proofing, Release 1 = Manual only
 struct WindCondition {               // what the athlete set
     bool    calm            = false; // true => direction/speed not meaningful
     qint16  directionDegrees = 0;    // 0..359, 0 = N, clockwise. Ignored when calm
-    double  speedMetresPerSecond = 0.0;
+    qint32  speedHundredthMs = 0;    // AUTHORITATIVE: hundredths of m/s
     WindSource source       = WindSource::Manual;
     qint64  recordedMsSinceEpoch = 0;
     QString note;                    // optional, short
@@ -63,6 +63,30 @@ struct WindMapShot {                 // one shot + its IMMUTABLE snapshot
     WindCondition wind;              // snapshot taken at accept time
 };
 ```
+
+### 2.0 Fixed-point speed — AUTHORITATIVE (corrected in stage 3)
+
+Speed is stored as **hundredths of a metre per second** in a `qint32`, not as
+a double. The journal writer has no `double` overload: every numeric payload
+field in this catalogue is an integer so replay is bit-exact and journal
+hashes are stable. `2.5 m/s` stores as `250`, matching the hundredth-mm
+convention already used for shot coordinates.
+
+| Rule | Where |
+|---|---|
+| UI and reports display **m/s** | `speedMetresPerSecond()` |
+| Journals store the **integer** | `speedHundredthMs` |
+| No manual scaling in QML | conversion exists only in the two helpers below |
+| NaN / infinite / negative rejected **before** conversion | `metresPerSecondToHundredths()` |
+| Deterministic rounding | `std::llround` (half away from zero) |
+| Maximum bounded, overflow rejected | `kMaxWindSpeedHundredthMs = 100000` (1000.00 m/s) |
+
+```cpp
+bool   metresPerSecondToHundredths(double metresPerSecond, qint32* out);
+double hundredthsToMetresPerSecond(qint32 hundredths);
+```
+
+The raw hundredths value is storage. **It must never be shown to an operator.**
 
 ### 2.1 Direction convention
 
@@ -152,8 +176,21 @@ Folding rules — pure, no I/O, no Qt GUI:
 | `WindMapPositionChanged` | sets `currentPosition` |
 | `WindMapSessionCompleted` | phase → `Completed` |
 
-`StateSnapshot` carries `WindMapState` as its discipline state, as the other
-Training programmes do.
+### 4.1 Snapshot serialization — state v4 (CORRECTED in stage 4)
+
+Wind Map projections **are** snapshot-serialised, unlike the other Training
+programmes. `ReplayEngine::replay` defaults to the snapshot fast path and
+folds only the tail after the last `StateSnapshot`, so state absent from a
+snapshot is lost at that boundary. The other programmes are safe only because
+nothing currently emits a snapshot — an accident, not a guarantee.
+
+State version 3 → 4 adds a `windMap` object (standing condition + session
+fields) and a `windMapShots` array (each shot with **its own** immutable
+snapshot). Wind Map fields are also part of `SessionState::operator==`, which
+turns `ReplayEngine::snapshotsAgreeWithFold()` into a real check on the
+projection. Serialization and equality must always change together.
+
+Full audit and proof: `docs/training-lab-wind-map-recovery-audit.md`.
 
 ---
 
