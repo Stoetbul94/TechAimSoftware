@@ -51,7 +51,49 @@ is not known.
 
 | Defect ID | Screen | Description | Severity | Original evidence | Status | Fixed commit | Automated evidence | Visual evidence | Notes |
 |---|---|---|---|---|---|---|---|---|---|
-| UI-WIND-001 | Wind Map capture — 50 m 3P (and Prone) | Wind Map 3P capture screen renders Final 35 / Ceremony / timing state | **P0 — workflow boundary** | Arnold's manual Stage 5 review of the running build, 2026-07-29 | OPEN | — | — | Real application screenshots (Arnold) | See §1b for the confirmed root cause. A Training Lab programme must never present as an ISSF Final. |
+| UI-WIND-001 | Wind Map capture — 50 m 3P (and Prone) | Wind Map 3P capture screen renders Final 35 / Ceremony / timing state | **P0 — workflow boundary** | Arnold's manual Stage 5 review of the running build, 2026-07-29 | RESOLVED — AUTOMATED AND VISUAL EVIDENCE | `8a1fe26` | `tst_windmap_qml.cpp` §9 ×10, §10 ×4 | **HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29**, corrected build `8a1fe26`, reviewed at **1536 × 960 logical** (§1d) | Root cause in §1b. The three competition rows are gated off for Wind Map and `TrainingTopBar` occupies the same 42 px band, so no anchor moved. The defect was presentational only — no Wind Map data was ever recorded as a Final. |
+
+| UI-TRAIN-001 | Call & Diagnose capture | Call & Diagnose may inherit competition / Final presentation state | **P0 — workflow boundary** | Stage 5.1 audit of UI-WIND-001, 2026-07-29 | OPEN | — | — | Not yet reviewed on screen | Confirmed by source audit (§1e). Leaks the identity row, the phase stepper, the official shot counter AND the phase chip. |
+| UI-TRAIN-002 | Position Transition capture | Position Transition may inherit competition / Final presentation state | **P0 — workflow boundary** | Stage 5.1 audit of UI-WIND-001, 2026-07-29 | OPEN | — | — | Not yet reviewed on screen | Confirmed by source audit (§1e). Same four leaks as UI-TRAIN-001. |
+| UI-TRAIN-003 | Technical Blocks capture | Technical Blocks inherits the competition identity row | **P1 — workflow boundary** | Stage 5.1 audit of UI-WIND-001, 2026-07-29 | OPEN | — | — | Not yet reviewed on screen | Found by the same audit and **not in the original brief**. Narrower than 001/002 — the stepper, counter and chip are already gated on `isTrainingMatch` — but the identity row still shows `currentGameDisplay` / `currentmatchDisplay`, so "FINAL 35" can appear. |
+
+### 1d. UI-WIND-001 — visual evidence
+
+**HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29.** The corrected Wind Map
+3P training shell was reviewed in the running application at commit `8a1fe26`.
+
+| | |
+|---|---|
+| Build reviewed | `8a1fe26` (Demo, isolated documentation-capture profile) |
+| Resolution reviewed | **1536 × 960 logical** (primary display, after DPI scaling) |
+| Other resolutions | **NOT TESTED** — not opened |
+
+Approved: the 3P capture screen presents as Training Lab / Wind Map with no
+Final label, no Ceremony, no Final timer, no stage chip and no official shot
+counter.
+
+### 1e. UI-TRAIN-001/002/003 — four-programme audit
+
+Audited by reading every gate on `statusStrip` in `ShootingPage.qml` after the
+Stage 5.1 fix. `statusStrip` is the COMPETITION top bar; a row with no gate for
+a programme renders that programme's screen with inherited competition state.
+
+| Row | Gate before Stage 5.2 | Technical Blocks | Call & Diagnose | Position Transition | Wind Map |
+|---|---|:--:|:--:|:--:|:--:|
+| Identity (`currentGameDisplay` + `currentmatchDisplay` + athlete) | `!isWindMapMatch` | **LEAKS** | **LEAKS** | **LEAKS** | fixed 5.1 |
+| Phase stepper (SIGHTING/MATCH · SIGHT/KNEEL/PRONE/STAND) | `!isFinals10mMatch && !isTrainingMatch && !isWindMapMatch` | gated | **LEAKS** | **LEAKS** | fixed 5.1 |
+| Official shot counter (`globalMatchModel.count` / `matchShootCount`) | `!isFinals10mMatch && !isTrainingMatch` | gated | **LEAKS** | **LEAKS** | fixed 5.1 |
+| Phase chip | `!isFinalsMatch && !isFinals10mMatch && !isTrainingMatch` | gated | **LEAKS** | **LEAKS** | fixed 5.1 |
+
+The identity row is the one that carries **"FINAL 35"**: `currentGameDisplay1/2`
+and `currentmatchDisplay` hold whatever the last selected event card set, and
+selecting the 3P Final card leaves them there. **All four programmes were
+exposed to it**; three still are.
+
+**Root cause is structural, not per-programme.** Each gate was written by
+adding one more `!isXMatch` term as each programme landed. The correct
+boundary is a single one: *is any Training Lab programme active?* — which
+already exists as `isTrainingModeAny`.
 
 ### 1b. UI-WIND-001 — confirmed root cause
 
@@ -76,24 +118,21 @@ is never started, no finals event is journalled, and the Wind Map session
 remains `sessionKind=Training` / `programId=wind_map` throughout. **The
 defect is presentational — no Wind Map data was recorded as a Final.**
 
-### 1c. The same hole exists in two sibling programmes
+### 1c. The same hole exists in the sibling programmes
 
-`statusStrip` gates on `isTrainingMatch` only. **Call & Diagnose**
-(`isCallDiagnoseMatch`) and **Position Transition** (`isPositionTransitionMatch`)
-are equally ungated and will show the same inherited competition state.
-This was found while diagnosing UI-WIND-001 and is recorded here so it is not
-lost; it is **out of scope for Stage 5.1**, which was scoped to Wind Map.
-Recommended as a focused follow-up.
+Found while diagnosing UI-WIND-001 and deliberately left out of scope for
+Stage 5.1, which was scoped to Wind Map. Now registered as **UI-TRAIN-001**,
+**UI-TRAIN-002** and **UI-TRAIN-003** and audited in full in §1e.
 
 ## 2. Summary
 
 | Status | Count | IDs |
 |---|---:|---|
-| RESOLVED — AUTOMATED AND VISUAL EVIDENCE | **7** | 001, 005, 006, 007, 008, 009, 010 |
+| RESOLVED — AUTOMATED AND VISUAL EVIDENCE | **8** | UI-HOME 001, 005, 006, 007, 008, 009, 010 · **UI-WIND-001** |
 | RESOLVED — AUTOMATED EVIDENCE AND VISUAL LAYOUT APPROVAL; MANUAL INTERACTION CHECK NOT PERFORMED | **3** | 002, 003, 004 |
 | RESOLVED — AUTOMATED EVIDENCE, HUMAN VISUAL CHECK REQUIRED | 0 | — |
 | PARTIALLY RESOLVED | 0 | — |
-| OPEN | **1** | UI-WIND-001 |
+| OPEN | **3** | UI-TRAIN-001, UI-TRAIN-002, UI-TRAIN-003 |
 | BLOCKED | 0 | — |
 
 **Every defect has a fix and passing automated evidence, and the rendered
