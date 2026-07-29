@@ -35,8 +35,8 @@ starting — see `CLAUDE.md`, *Tech Aim UI project memory*.
 | | |
 |---|---|
 | Latest completed | **UI-2 — Version B homepage · ACCEPTED 2026-07-29** |
-| Current | none — between phases |
-| Next approved | **TRAINING LAB RELEASE 2 — WIND MAP** |
+| Current | **TRAINING LAB RELEASE 2 — WIND MAP · stage 1 (specification review) — BLOCKED** |
+| Next approved | Answer the Wind Map specification questions, then stage 2 |
 
 **Version B is the accepted Tech Aim Beta homepage** (UI-DEC-012), approved by
 **HUMAN VISUAL APPROVAL — ARNOLD BAILIE** on 2026-07-29 against commit
@@ -116,6 +116,14 @@ reviewed (§6).
 
 A **separate feature phase**. Wind Map work must not be combined with homepage
 commits, and the homepage is closed to styling change (UI-DEC-012).
+
+**Stage 1 (specification review) is complete and BLOCKED.** See
+`docs/training-lab-wind-map-spec-review.md`. It found **no wind rule content
+anywhere** in `docs/issf-rules/` (every "wind" match in the repository is
+"window") and **no Wind Map prior art**. Five questions must be answered before
+stage 2 can start — what Wind Map is for, how and when wind is recorded, what
+the analytics may claim, and the discipline scope. One question (ISSF rules on
+consulting wind indicators during a match) may need an official rule lookup.
 
 Required stages, in order:
 
