@@ -1435,12 +1435,31 @@ Item {
     }
     WindMapHud {
         id: windMapHud
-        visible: isWindMapMatch
+        // Stage 6.1: once the session is COMPLETE the full analysis takes over,
+        // so the capture HUD's own summary never competes with it.
+        visible: isWindMapMatch && WINDMAP.phase !== 6
         anchors.fill: parent
         z: 60
         ctl: WINDMAP
         onHomeRequested: shootingPage.homeFromWindMap()
         onNewSessionRequested: shootingPage.newWindMapSession()
+    }
+    // Stage 6.1: the completed-session analysis. It reads WINDMAP.analysisModel()
+    // — a projection of WindMapAnalyticsEngine — and formats it. No metric is
+    // recalculated here.
+    WindMapAnalysisView {
+        id: windMapAnalysis
+        visible: isWindMapMatch && WINDMAP.phase === 6
+        anchors.fill: parent
+        z: 61
+        ctl: WINDMAP
+        onHomeRequested: shootingPage.homeFromWindMap()
+        onNewSessionRequested: shootingPage.newWindMapSession()
+        onExportPdfRequested: dialogManager.showInformation(
+            qsTr("Wind Map PDF"),
+            qsTr("The branded Wind Map PDF report is the next phase (Stage 6.2). "
+                 + "The analysis above is final and will be exported unchanged — "
+                 + "the report uses this same model, not a second calculation."))
     }
     // Sighters are drawn on the live target so the athlete can see them;
     // counted shots are drawn too — Wind Map hides nothing, it only records
