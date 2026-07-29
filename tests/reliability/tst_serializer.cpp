@@ -253,6 +253,8 @@ void run_serializer_tests()
                                 2, 1},
             WindMapPositionChanged{1, 2},
             WindMapSessionCompleted{40, 6, 9},
+            // Stage 5: the durable workflow phase (Sighters -> CountedShots).
+            WindMapPhaseChanged{2, 3},
         };
         check(catalogue.size() == static_cast<int>(std::variant_size_v<DomainEvent>),
               "round-trip covers every event type",

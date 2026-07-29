@@ -1362,6 +1362,30 @@ struct WindMapPositionChanged {
     }
 };
 
+// STAGE 5. The workflow phase, made DURABLE.
+//
+// Without this, a resumed session cannot distinguish "in sighters" from "in
+// counted shots" when no counted shot has been fired yet — and the next shot
+// would be journalled with the wrong classification. Deriving the phase from
+// the recorded shots is ambiguous precisely in that case, so it is recorded.
+//
+// Values are ta::training::WindMapPhase. Idle (0) is a controller-only value
+// and is never journalled: a transition is always between real phases.
+struct WindMapPhaseChanged {
+    static constexpr const char* kType = "WindMapPhaseChanged";
+    static constexpr qint32 kVersion = 1;
+    qint8 fromPhase = 0;           // 0 = Idle, i.e. the session's first phase
+    qint8 toPhase = 0;
+    ReliabilityResult validate() const
+    {
+        if (fromPhase < 0 || fromPhase > 6 || toPhase < 1 || toPhase > 6)
+            return evdetail::invalid(QStringLiteral("WindMapPhaseChanged: unknown phase"));
+        if (fromPhase == toPhase)
+            return evdetail::invalid(QStringLiteral("WindMapPhaseChanged: no change"));
+        return ReliabilityResult::success();
+    }
+};
+
 struct WindMapSessionCompleted {
     static constexpr const char* kType = "WindMapSessionCompleted";
     static constexpr qint32 kVersion = 1;

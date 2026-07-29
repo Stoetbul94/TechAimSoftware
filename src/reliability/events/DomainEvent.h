@@ -105,7 +105,9 @@ using DomainEvent = std::variant<
     WindMapSighterAccepted,
     WindMapShotAccepted,
     WindMapPositionChanged,
-    WindMapSessionCompleted>;
+    WindMapSessionCompleted,
+    // Stage 5: the durable workflow phase. Also appended at the END.
+    WindMapPhaseChanged>;
 
 // Stable type identifier of the alternative currently held.
 inline const char* eventTypeId(const DomainEvent& event)

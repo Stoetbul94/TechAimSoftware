@@ -327,12 +327,77 @@ struct WindConditionSnapshot {
 };
 
 // ── Session phase ───────────────────────────────────────────────────────────
+// STAGE 5 CORRECTION. Stage 3 declared a coarse four-value phase
+// (Setup/Recording/Review/Completed) and nothing carried it into the journal.
+// That is not sufficient: after a crash, "Recording" cannot tell a SIGHTER
+// phase from a COUNTED phase, and deriving it from the recorded shots is
+// ambiguous exactly when it matters — counted shots begun but none fired yet
+// would resume as Sighters and the next real shot would be misclassified as a
+// sighter. The phase is therefore an explicit, durable value carried by
+// WindMapPhaseChanged and projected as SessionState::wmPhase.
+//
+// Idle is a controller-only value: it means "no session", so it is never
+// journalled and never appears in a projection of an active session.
 enum class WindMapPhase : qint8 {
-    Setup     = 0,
-    Recording = 1,
-    Review    = 2,
-    Completed = 3,
+    Idle           = 0,
+    Setup          = 1,   // configured, condition may be set, no shots yet
+    Sighters       = 2,   // sighters — recorded, never counted in statistics
+    CountedShots   = 3,   // the counted shots of the current position
+    PositionReview = 4,   // 3P only — between positions
+    SessionReview  = 5,   // capture finished, reviewing before completion
+    Completed      = 6,
 };
+
+inline bool isJournalledWindMapPhase(qint8 raw)
+{
+    return raw >= static_cast<qint8>(WindMapPhase::Setup)
+        && raw <= static_cast<qint8>(WindMapPhase::Completed);
+}
+
+inline QString windMapPhaseName(WindMapPhase p)
+{
+    switch (p) {
+    case WindMapPhase::Idle:           return QStringLiteral("Idle");
+    case WindMapPhase::Setup:          return QStringLiteral("Setup");
+    case WindMapPhase::Sighters:       return QStringLiteral("Sighters");
+    case WindMapPhase::CountedShots:   return QStringLiteral("Counted shots");
+    case WindMapPhase::PositionReview: return QStringLiteral("Position review");
+    case WindMapPhase::SessionReview:  return QStringLiteral("Session review");
+    case WindMapPhase::Completed:      return QStringLiteral("Completed");
+    }
+    return QString();
+}
+
+// The ONLY legal transitions. Everything else fails CLOSED — an unknown or
+// out-of-order transition is refused, never clamped to the nearest legal one.
+//
+// PositionReview exists only in 3P; the caller supplies is3P so a Prone
+// session cannot enter it. Completed is terminal.
+inline bool windMapTransitionAllowed(WindMapPhase from, WindMapPhase to, bool is3P)
+{
+    if (from == to) return false;
+    switch (from) {
+    case WindMapPhase::Idle:
+        return to == WindMapPhase::Setup;
+    case WindMapPhase::Setup:
+        return to == WindMapPhase::Sighters || to == WindMapPhase::CountedShots;
+    case WindMapPhase::Sighters:
+        return to == WindMapPhase::CountedShots;
+    case WindMapPhase::CountedShots:
+        return (is3P && to == WindMapPhase::PositionReview)
+            || to == WindMapPhase::SessionReview;
+    case WindMapPhase::PositionReview:
+        // Next position restarts at its own sighters (or straight to counted).
+        return is3P && (to == WindMapPhase::Sighters
+                     || to == WindMapPhase::CountedShots
+                     || to == WindMapPhase::SessionReview);
+    case WindMapPhase::SessionReview:
+        return to == WindMapPhase::Completed;
+    case WindMapPhase::Completed:
+        return false;   // terminal
+    }
+    return false;
+}
 
 } // namespace training
 } // namespace ta

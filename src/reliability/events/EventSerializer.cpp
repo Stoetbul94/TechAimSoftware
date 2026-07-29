@@ -606,6 +606,10 @@ void EventSerializer::serializePayloadInto(const DomainEvent& event,
             w.field("countedShots", static_cast<qint64>(e.countedShots));
             w.field("sighterShots", static_cast<qint64>(e.sighterShots));
             w.field("conditionChanges", static_cast<qint64>(e.conditionChanges));
+        },
+        [&](const WindMapPhaseChanged& e) {
+            w.field("fromPhase", static_cast<qint64>(e.fromPhase));
+            w.field("toPhase", static_cast<qint64>(e.toPhase));
         }
     }, event);
 }
@@ -1342,6 +1346,12 @@ ReliabilityResult EventSerializer::deserializePayload(const QString& typeId,
         e.countedShots = static_cast<qint32>(r.reqInt("countedShots", 0, 1000000));
         e.sighterShots = static_cast<qint32>(r.reqInt("sighterShots", 0, 1000000));
         e.conditionChanges = static_cast<qint32>(r.reqInt("conditionChanges", 0, 1000000));
+        *out = e;
+    } else if (typeId == QLatin1String(WindMapPhaseChanged::kType)) {
+        WindMapPhaseChanged e;
+        // fromPhase may be 0 (Idle) — the session's very first transition.
+        e.fromPhase = static_cast<qint8>(r.reqInt("fromPhase", 0, 6));
+        e.toPhase = static_cast<qint8>(r.reqInt("toPhase", 1, 6));
         *out = e;
     } else {
         return ReliabilityResult::failure(ReliabilityError::UnsupportedEventType,

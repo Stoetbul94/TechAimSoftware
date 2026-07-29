@@ -15,6 +15,10 @@ INCLUDEPATH += $$PWD/../../src/training
 SOURCES += $$PWD/../../src/qualification/QualificationController.cpp
 SOURCES += $$PWD/../../src/incident/EstIncidentController.cpp
 SOURCES += $$PWD/../../src/mode/OperatingModeService.cpp
+# Stage 5: the Wind Map controller. Compiling it in this QT=core harness is
+# what proves it carries no QML/GUI dependency.
+SOURCES += $$PWD/../../src/training/WindMapController.cpp
+HEADERS += $$PWD/../../src/training/WindMapController.h
 HEADERS += $$PWD/../../src/qualification/QualificationController.h
 HEADERS += $$PWD/../../src/incident/EstIncidentController.h
 HEADERS += $$PWD/../../src/mode/OperatingMode.h
@@ -39,6 +43,8 @@ SOURCES += \
     tst_homepage_layout.cpp \
     tst_windmap.cpp \
     tst_windmap_recovery.cpp \
+    tst_windmap_controller.cpp \
+    tst_windmap_qml.cpp \
     tst_training_parity.cpp \
     tst_fixedpoint.cpp \
     tst_events.cpp \
