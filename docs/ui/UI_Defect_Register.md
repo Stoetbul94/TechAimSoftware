@@ -51,26 +51,79 @@ is not known.
 
 | Defect ID | Screen | Description | Severity | Original evidence | Status | Fixed commit | Automated evidence | Visual evidence | Notes |
 |---|---|---|---|---|---|---|---|---|---|
-| UI-WIND-001 | Wind Map capture — 50 m 3P (and Prone) | Wind Map 3P capture screen renders Final 35 / Ceremony / timing state | **P0 — workflow boundary** | Arnold's manual Stage 5 review of the running build, 2026-07-29 | RESOLVED — AUTOMATED AND VISUAL EVIDENCE | `8a1fe26` | `tst_windmap_qml.cpp` §9 ×10, §10 ×4 | **HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29**, corrected build `8a1fe26`, reviewed at **1536 × 960 logical** (§1d) | Root cause in §1b. The three competition rows are gated off for Wind Map and `TrainingTopBar` occupies the same 42 px band, so no anchor moved. The defect was presentational only — no Wind Map data was ever recorded as a Final. |
+| UI-WIND-001 | Wind Map capture — 50 m **3P** | Wind Map 3P capture screen renders Final 35 / Ceremony / timing state | **P0 — workflow boundary** | Arnold's manual Stage 5 review of the running build, 2026-07-29 | **CLOSED — AUTOMATED AND VISUAL EVIDENCE** | `8a1fe26` | `tst_windmap_qml.cpp` §9 ×10, §10 ×4 | **HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29**, build `5404585`, **50 m 3P capture workflow**, at **1536 × 960 logical** (§1d) | Root cause in §1b. Approval covers the **3P capture workflow only** — see §1d for exactly what was and was not exercised. |
 
 | UI-TRAIN-001 | Call & Diagnose capture | Call & Diagnose may inherit competition / Final presentation state | **P0 — workflow boundary** | Stage 5.1 audit of UI-WIND-001, 2026-07-29 | OPEN | — | — | Not yet reviewed on screen | Confirmed by source audit (§1e). Leaks the identity row, the phase stepper, the official shot counter AND the phase chip. |
 | UI-TRAIN-002 | Position Transition capture | Position Transition may inherit competition / Final presentation state | **P0 — workflow boundary** | Stage 5.1 audit of UI-WIND-001, 2026-07-29 | OPEN | — | — | Not yet reviewed on screen | Confirmed by source audit (§1e). Same four leaks as UI-TRAIN-001. |
 | UI-TRAIN-003 | Technical Blocks capture | Technical Blocks inherits the competition identity row | **P1 — workflow boundary** | Stage 5.1 audit of UI-WIND-001, 2026-07-29 | OPEN | — | — | Not yet reviewed on screen | Found by the same audit and **not in the original brief**. Narrower than 001/002 — the stepper, counter and chip are already gated on `isTrainingMatch` — but the identity row still shows `currentGameDisplay` / `currentmatchDisplay`, so "FINAL 35" can appear. |
+| UI-WIND-002 | Wind Map — completed session | Completed Wind Map session does not visibly present the Stage 6.1 analysis and feedback workflow during a normal manually-created 3P session | **P0 — feature unreachable** | Arnold's manual Stage 6.1 review, 2026-07-29, build `5404585` | **OPEN — HUMAN VISUAL EVIDENCE** | — | — | Arnold saw counted-shot information only; no plot, MPI comparison, shift, wind rose, speed bands, timeline, 3P tabs, findings or next-session feedback | Confirmed root cause in §1f. |
 
 ### 1d. UI-WIND-001 — visual evidence
 
-**HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29.** The corrected Wind Map
-3P training shell was reviewed in the running application at commit `8a1fe26`.
+**HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29**, in the running
+application, Demo mode, isolated documentation-capture profile.
 
 | | |
 |---|---|
-| Build reviewed | `8a1fe26` (Demo, isolated documentation-capture profile) |
+| Build reviewed | `5404585` |
 | Resolution reviewed | **1536 × 960 logical** (primary display, after DPI scaling) |
 | Other resolutions | **NOT TESTED** — not opened |
 
-Approved: the 3P capture screen presents as Training Lab / Wind Map with no
-Final label, no Ceremony, no Final timer, no stage chip and no official shot
+**Exercised and approved — 50 m Rifle 3 Positions only:** Training Lab →
+Wind Map setup → planned 40-shot configuration → *Fire sighters first* →
+confirm setup → start Wind Map → start sighters → record sighters → record
+counted shots → position workflow.
+
+**The corrected Training presentation is approved:** no FINAL 35, no
+Ceremony, no Final timer, no Final stage controls, no official Final shot
 counter.
+
+**NOT tested — do not claim otherwise:**
+
+- **50 m Prone** was not opened.
+- **The full 40-shot layout was not fired**; the shot count reached was well
+  below 40, so the long-session layout remains unverified.
+- Long condition labels, condition filtering, the sighter toggle and the
+  timeline were not reached, because the analysis screen never appeared
+  (**UI-WIND-002**).
+
+### 1f. UI-WIND-002 — confirmed root cause
+
+**`WindMapAnalysisView.qml` uses `ScrollBar` but imports only `QtQuick`.**
+`ScrollBar` lives in `QtQuick.Controls`, so the type never resolves and the
+component cannot be created. Confirmed with `qmllint` against the reviewed
+build:
+
+```
+WindMapAnalysisView.qml:118:33: ScrollBar was not found. Did you add all
+                                import paths? [import]
+WindMapAnalysisView.qml:118:13: unknown attached property scope ScrollBar
+WindMapAnalysisView.qml:118:13: Type ScrollBar is used but it is not resolved
+```
+
+Scope check — the fault is in **one file, one line**. `WindMapHud.qml`,
+`WindMapRightPanel.qml` and `TrainingTopBar.qml` each report **zero**
+unresolved types.
+
+**Why it was not caught.** Three separate gaps, all mine:
+
+1. The Stage 6.1 guards were **static string checks** over the QML source.
+   A file that never loads still contains all the right strings, so every
+   check passed while the screen could not exist.
+2. The launch check greps stderr for known error phrasings. It reported
+   "no new QML errors" — but the analysis view is only instantiated when a
+   Wind Map session reaches phase 6, which a **startup** launch never does.
+   The check was real; it simply could not reach this code path.
+3. `qmllint` was never run over the new files, though it finds this in
+   milliseconds.
+
+**What the athlete saw instead.** With the analysis view absent, the only
+overlay left at completion is the capture HUD's own basic review — counts and
+the raw shot table — which is exactly what was reported.
+
+**Not a sample-size issue.** The analysis must open and explain itself at any
+n, showing available metrics, withheld metrics, the current sample and how
+many more shots each withheld statistic needs.
 
 ### 1e. UI-TRAIN-001/002/003 — four-programme audit
 
@@ -128,11 +181,11 @@ Stage 5.1, which was scoped to Wind Map. Now registered as **UI-TRAIN-001**,
 
 | Status | Count | IDs |
 |---|---:|---|
-| RESOLVED — AUTOMATED AND VISUAL EVIDENCE | **8** | UI-HOME 001, 005, 006, 007, 008, 009, 010 · **UI-WIND-001** |
+| CLOSED / RESOLVED — AUTOMATED AND VISUAL EVIDENCE | **8** | UI-HOME 001, 005, 006, 007, 008, 009, 010 · **UI-WIND-001** |
 | RESOLVED — AUTOMATED EVIDENCE AND VISUAL LAYOUT APPROVAL; MANUAL INTERACTION CHECK NOT PERFORMED | **3** | 002, 003, 004 |
 | RESOLVED — AUTOMATED EVIDENCE, HUMAN VISUAL CHECK REQUIRED | 0 | — |
 | PARTIALLY RESOLVED | 0 | — |
-| OPEN | **3** | UI-TRAIN-001, UI-TRAIN-002, UI-TRAIN-003 |
+| OPEN | **4** | **UI-WIND-002** · UI-TRAIN-001, UI-TRAIN-002, UI-TRAIN-003 |
 | BLOCKED | 0 | — |
 
 **Every defect has a fix and passing automated evidence, and the rendered
