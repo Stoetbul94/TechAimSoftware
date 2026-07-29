@@ -210,7 +210,9 @@ Rectangle {
                                         ? (root.current.trainingProgramId === "call_and_diagnose"
                                             ? "CALLDIAG"
                                             : (root.current.trainingProgramId === "position_transition"
-                                                ? "POSTRANS" : "TRAINING"))
+                                                ? "POSTRANS"
+                                                : (root.current.trainingProgramId === "wind_map"
+                                                    ? "WINDMAP" : "TRAINING")))
                                         : (root.current.disciplineId || ""))
                                 root.visible = false
                             }

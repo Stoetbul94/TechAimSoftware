@@ -105,8 +105,12 @@ RecoveryCandidate RecoveryCoordinator::classifyFile(const QString& path)
         // sessionKind=Training but record their programme id in cdProgramId /
         // ptProgramId — surface whichever is set so the recovery dispatcher
         // routes to the right controller.
+        // Release 2 adds Wind Map (wmProgramId) to the same chain — a Training
+        // session carries exactly one programme id, and the dispatcher needs
+        // whichever one is set to reach the right controller.
         c.trainingProgramId = !s.trainingProgramId.isEmpty() ? s.trainingProgramId
-                            : (!s.cdProgramId.isEmpty() ? s.cdProgramId : s.ptProgramId);
+                            : (!s.cdProgramId.isEmpty() ? s.cdProgramId
+                            : (!s.ptProgramId.isEmpty() ? s.ptProgramId : s.wmProgramId));
         c.trainingBlock = s.trainingCurrentBlock;
         c.disciplineLabel = disciplineLabel(s.discipline, s.matchType);
         c.startedAtIso = s.createdAtIso;
