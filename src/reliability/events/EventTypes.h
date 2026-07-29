@@ -1234,6 +1234,148 @@ struct PositionTransitionCompleted {
     ReliabilityResult validate() const { return ReliabilityResult::success(); }
 };
 
+// ── Wind Map (Training Lab Release 2) ───────────────────────────────────────
+// Appended at the END so all prior variant indexes and journal hashes never
+// move. Reuses SessionStarted/SessionClosed and ShotCore.
+//
+// Spec: docs/training-lab-wind-map-implementation-spec.md
+//
+// THE SNAPSHOT RULE. Every accepted-shot event carries the WHOLE wind
+// condition, not a reference to a condition id. A journal line must be
+// interpretable on its own: a reference would make a shot's wind depend on
+// replaying earlier events correctly, which is exactly the coupling that makes
+// recovery fragile. It also guarantees that changing the standing condition
+// later cannot retroactively alter a recorded shot.
+//
+// A missing reading is stored EXPLICITLY (windValid = false) and is never
+// inferred or back-filled — including during recovery.
+
+// Wind fields are carried inline rather than as a nested struct so the
+// serializer stays flat and every field is individually validated.
+struct WindSnapshotFields {
+    bool    windValid = false;      // false => "No wind reading recorded"
+    bool    windCalm  = false;      // true  => an explicitly recorded calm
+    qint16  windDirectionDegrees = 0;   // [0,360); 0 and meaningless when calm
+    qint32  windSpeedHundredthMs = 0;   // hundredths of m/s; 0 when calm
+    qint8   windSource = 0;             // 0 = Manual, 1 = WeatherStation (reserved)
+    qint64  windRecordedMs = 0;
+    QString windNote;
+
+    ReliabilityResult validateWind(const char* owner) const
+    {
+        const QString who = QString::fromLatin1(owner);
+        if (!windValid) {
+            // A no-reading snapshot must be genuinely empty, so it can never be
+            // confused with a recorded calm.
+            if (windCalm || windDirectionDegrees != 0 || windSpeedHundredthMs != 0)
+                return evdetail::invalid(who + QStringLiteral(": invalid wind snapshot carries data"));
+            return ReliabilityResult::success();
+        }
+        if (windSource != 0 && windSource != 1)
+            return evdetail::invalid(who + QStringLiteral(": unknown wind source"));
+        if (windCalm) {
+            // Rule 4 — a Calm snapshot must not acquire an inferred direction.
+            if (windDirectionDegrees != 0 || windSpeedHundredthMs != 0)
+                return evdetail::invalid(who + QStringLiteral(": calm wind carries direction or speed"));
+            return ReliabilityResult::success();
+        }
+        if (windDirectionDegrees < 0 || windDirectionDegrees >= 360)
+            return evdetail::invalid(who + QStringLiteral(": wind direction out of [0,360)"));
+        if (windSpeedHundredthMs < 0 || windSpeedHundredthMs > 100000)
+            return evdetail::invalid(who + QStringLiteral(": wind speed out of range"));
+        return ReliabilityResult::success();
+    }
+};
+
+struct WindMapSessionStarted {
+    static constexpr const char* kType = "WindMapSessionStarted";
+    static constexpr qint32 kVersion = 1;
+    QString disciplineId;          // "PRONE50" | "3P50" — nothing else
+    bool    is3P = false;
+    QString positionSequence;      // e.g. "K-P-S"; empty for Prone
+    ReliabilityResult validate() const
+    {
+        // Rule 8/10 — supported disciplines only, and unknown fails CLOSED.
+        if (disciplineId != QLatin1String("PRONE50")
+            && disciplineId != QLatin1String("3P50"))
+            return evdetail::invalid(QStringLiteral("WindMapSessionStarted: unsupported discipline"));
+        if (is3P != (disciplineId == QLatin1String("3P50")))
+            return evdetail::invalid(QStringLiteral("WindMapSessionStarted: is3P disagrees with discipline"));
+        return ReliabilityResult::success();
+    }
+};
+
+struct WindConditionChanged : WindSnapshotFields {
+    static constexpr const char* kType = "WindConditionChanged";
+    static constexpr qint32 kVersion = 1;
+    ReliabilityResult validate() const { return validateWind("WindConditionChanged"); }
+};
+
+struct WindMapSighterAccepted : WindSnapshotFields {
+    static constexpr const char* kType = "WindMapSighterAccepted";
+    static constexpr qint32 kVersion = 1;
+    ShotCore shot;
+    qint32   shotId = 0;           // monotonic within the session, 1-based
+    qint8    position = 0;         // 0 = n/a (Prone), 1..3 for 3P
+    ReliabilityResult validate() const
+    {
+        if (shotId < 1)
+            return evdetail::invalid(QStringLiteral("WindMapSighterAccepted.shotId < 1"));
+        if (position < 0 || position > 3)
+            return evdetail::invalid(QStringLiteral("WindMapSighterAccepted: unknown position"));
+        const auto w = validateWind("WindMapSighterAccepted");
+        if (!w.ok) return w;
+        return shot.validate();
+    }
+};
+
+struct WindMapShotAccepted : WindSnapshotFields {
+    static constexpr const char* kType = "WindMapShotAccepted";
+    static constexpr qint32 kVersion = 1;
+    ShotCore shot;
+    qint32   shotId = 0;
+    qint8    position = 0;
+    ReliabilityResult validate() const
+    {
+        if (shotId < 1)
+            return evdetail::invalid(QStringLiteral("WindMapShotAccepted.shotId < 1"));
+        if (position < 0 || position > 3)
+            return evdetail::invalid(QStringLiteral("WindMapShotAccepted: unknown position"));
+        const auto w = validateWind("WindMapShotAccepted");
+        if (!w.ok) return w;
+        return shot.validate();
+    }
+};
+
+struct WindMapPositionChanged {
+    static constexpr const char* kType = "WindMapPositionChanged";
+    static constexpr qint32 kVersion = 1;
+    qint8 fromPosition = 0;
+    qint8 toPosition = 0;
+    ReliabilityResult validate() const
+    {
+        if (fromPosition < 0 || fromPosition > 3 || toPosition < 0 || toPosition > 3)
+            return evdetail::invalid(QStringLiteral("WindMapPositionChanged: unknown position"));
+        if (fromPosition == toPosition)
+            return evdetail::invalid(QStringLiteral("WindMapPositionChanged: no change"));
+        return ReliabilityResult::success();
+    }
+};
+
+struct WindMapSessionCompleted {
+    static constexpr const char* kType = "WindMapSessionCompleted";
+    static constexpr qint32 kVersion = 1;
+    qint32 countedShots = 0;
+    qint32 sighterShots = 0;
+    qint32 conditionChanges = 0;
+    ReliabilityResult validate() const
+    {
+        if (countedShots < 0 || sighterShots < 0 || conditionChanges < 0)
+            return evdetail::invalid(QStringLiteral("WindMapSessionCompleted: negative count"));
+        return ReliabilityResult::success();
+    }
+};
+
 } // namespace rel
 } // namespace ta
 
