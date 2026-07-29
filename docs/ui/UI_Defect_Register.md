@@ -6,9 +6,10 @@ Homepage defects raised from Arnold's review of the running Version B build.
 when it has a fixed commit, passing build/tests, a real application screenshot,
 and a passing acceptance-checklist line. Code changing is not closure.
 
-**Screenshot status.** No screenshot of the Version B homepage exists in the
-repository. Automated capture is blocked by endpoint security (see §3), so no
-defect below can currently reach full closure, regardless of code state.
+**Approval status.** The homepage was reviewed on screen and approved —
+**HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29** — against application
+commit `d4674d0`. All ten defects are closed. Details, and the limits of what
+the review covered, are in §3.
 
 Status values: `RESOLVED — AUTOMATED AND VISUAL EVIDENCE` ·
 `RESOLVED — AUTOMATED EVIDENCE, HUMAN VISUAL CHECK REQUIRED` ·
@@ -20,44 +21,72 @@ Status values: `RESOLVED — AUTOMATED AND VISUAL EVIDENCE` ·
 
 | Defect ID | Screen | Description | Severity | Original evidence | Status | Fixed commit | Automated evidence | Visual evidence | Notes |
 |---|---|---|---|---|---|---|---|---|---|
-| UI-HOME-001 | Homepage — action bar | "READY TO START" and "Load saved session" overlapped in the lower-left | P0 | Arnold's review of the running build | RESOLVED — AUTOMATED EVIDENCE, HUMAN VISUAL CHECK REQUIRED | `41c09a3` | `home: the Start action sits INSIDE the bottom action bar` | none | Root cause: `actionRow` carried **both** `anchors.left` and `anchors.right`, so it spanned the full bar from x=22 over the recap text. Height was 52 against 56 px children. Now fixed 490 px, right-anchored; the readiness block's width is derived from that fixed width, not from a live anchor. |
-| UI-HOME-002 | Homepage — event panel | No usable vertical scrolling; Open Practice clipped, lower content unreachable | P0 | Arnold's review | RESOLVED — AUTOMATED EVIDENCE, HUMAN VISUAL CHECK REQUIRED | `41c09a3` | `home: the setup column scrolls`; structural check of `eventScroll` | none | `ScrollView` → `Flickable` with `contentHeight` bound explicitly to the Column. A ScrollView measures its content's implicit height, which was unreliable with conditionally-visible cards and a card that changes height on selection. Adds always-on scrollbar while overflowing, 20 px bottom padding, no horizontal scrolling. |
-| UI-HOME-003 | Homepage — selection state | Selected card and Selected Profile summary could disagree | P0 | Arnold's review: Open Practice highlighted while the summary read "10m Air Pistol — ISSF" | RESOLVED — AUTOMATED EVIDENCE, HUMAN VISUAL CHECK REQUIRED | `41c09a3` | selection-state tests (§4) | none | Confirmed real: the summary was hardcoded to `getDisciplineName() + " — ISSF"` for every non-training event. Now derived from `selectedProgrammeKind()`. Practice reads "— Open Practice" and no longer claims ISSF. Controller dispatch unchanged. |
-| UI-HOME-004 | Homepage — network share | Could show "Share enabled" while no folder was selected | P0 | Arnold's review | RESOLVED — AUTOMATED EVIDENCE, HUMAN VISUAL CHECK REQUIRED | `41c09a3` + `d4674d0` | `UI-HOME-004` ×8 | none | Card gating landed in `41c09a3`; the register previously recorded this as OPEN, which was **wrong** — corrected here. `d4674d0` finished the surround: the no-folder prompt was drawn in the ERROR colour and the footer reported a bare "Share on". Sharing stays advisory and never gates Start. |
-| UI-HOME-005 | Homepage — status | LIVE and Connected repeated across heading, badge and footer | P1 | Arnold's review | RESOLVED — AUTOMATED EVIDENCE, HUMAN VISUAL CHECK REQUIRED | `d4674d0` | `UI-HOME-005` ×3 | none | Read-only badge removed from the page title. **Two indicators kept deliberately**: the operating-mode control (where the mode can be changed) and the footer strip. Demo/Live confusion is a result-integrity risk, so a test asserts both survivors remain. |
-| UI-HOME-006 | Homepage — header | Duplicate Tech Aim branding in the Start-session header | P1 | Arnold's review | RESOLVED — AUTOMATED EVIDENCE, HUMAN VISUAL CHECK REQUIRED | `8022033` + `d4674d0` | `UI-HOME-006` ×5 | none | `8022033` removed the duplicated identity row and cut the bar 74→56 px; `d4674d0` removed the residual logo image. The homepage now renders no logo of its own (UI-DEC-005). |
-| UI-HOME-007 | Homepage — event cards | Inconsistent selection / navigation indicators | P1 | Arnold's review | RESOLVED — AUTOMATED EVIDENCE, HUMAN VISUAL CHECK REQUIRED | `8022033` + `d4674d0` | `UI-HOME-007` ×5 | none | Four labelled groups and the EventCard radio landed in `8022033`; `d4674d0` gave Open Practice the same radio in the same position. The Training Lab arrow remains genuine navigation. |
-| UI-HOME-008 | Homepage — typography | Helper and metadata text too small or low contrast | P1 | Arnold's review | RESOLVED — AUTOMATED EVIDENCE, HUMAN VISUAL CHECK REQUIRED | `41c09a3` + `d4674d0` | `UI-HOME-008` ×2 | none | **Zero sub-10px strings remain**, asserted by test. Micro-labels moved to the `label` role, metadata and helper text to `helperText`; the restart hint went from 8px muted grey to 11px warning colour; the network path stopped being monospace. |
-| UI-HOME-009 | Homepage — Open Practice | Expanded card too tall, contributing to clipping | P1 | Arnold's review | RESOLVED — AUTOMATED EVIDENCE, HUMAN VISUAL CHECK REQUIRED | `d4674d0` | `UI-HOME-009` ×2 | none | Collapsed height now matches every other event card exactly (78). Selecting it adds only the preset row plus one gap (56) instead of growing to 148. |
-| UI-HOME-010 | Homepage — action bar | Bar unbalanced, controls overlapped | P0 | Arnold's review | RESOLVED — AUTOMATED EVIDENCE, HUMAN VISUAL CHECK REQUIRED | `41c09a3` | as UI-HOME-001 | none | Same root cause and fix as UI-HOME-001. Left region = readiness/validation; right = Load saved session (210) + Start (268). Start is the strongest action and right-aligned. |
+| UI-HOME-001 | Homepage — action bar | "READY TO START" and "Load saved session" overlapped in the lower-left | P0 | Arnold's review of the running build | RESOLVED — AUTOMATED AND VISUAL EVIDENCE | `41c09a3` | `home: the Start action sits INSIDE the bottom action bar` | HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29 (§3) | Root cause: `actionRow` carried **both** `anchors.left` and `anchors.right`, so it spanned the full bar from x=22 over the recap text. Height was 52 against 56 px children. Now fixed 490 px, right-anchored; the readiness block's width is derived from that fixed width, not from a live anchor. |
+| UI-HOME-002 | Homepage — event panel | No usable vertical scrolling; Open Practice clipped, lower content unreachable | P0 | Arnold's review | RESOLVED — AUTOMATED AND VISUAL EVIDENCE | `41c09a3` | `home: the setup column scrolls`; structural check of `eventScroll` | HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29 (§3) | `ScrollView` → `Flickable` with `contentHeight` bound explicitly to the Column. A ScrollView measures its content's implicit height, which was unreliable with conditionally-visible cards and a card that changes height on selection. Adds always-on scrollbar while overflowing, 20 px bottom padding, no horizontal scrolling. Approved on appearance: no clipped content, final card reachable. Wheel and touch scrolling were **not separately exercised** during the review. |
+| UI-HOME-003 | Homepage — selection state | Selected card and Selected Profile summary could disagree | P0 | Arnold's review: Open Practice highlighted while the summary read "10m Air Pistol — ISSF" | RESOLVED — AUTOMATED AND VISUAL EVIDENCE | `41c09a3` | selection-state tests (§4) | HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29 (§3) | Confirmed real: the summary was hardcoded to `getDisciplineName() + " — ISSF"` for every non-training event. Now derived from `selectedProgrammeKind()`. Practice reads "— Open Practice" and no longer claims ISSF. Controller dispatch unchanged. Approved on appearance: the summary matches the highlighted card. Switching between every event type was **not separately exercised** during the review. |
+| UI-HOME-004 | Homepage — network share | Could show "Share enabled" while no folder was selected | P0 | Arnold's review | RESOLVED — AUTOMATED AND VISUAL EVIDENCE | `41c09a3` + `d4674d0` | `UI-HOME-004` ×8 | HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29 (§3) | Card gating landed in `41c09a3`; the register previously recorded this as OPEN, which was **wrong** — corrected here. `d4674d0` finished the surround: the no-folder prompt was drawn in the ERROR colour and the footer reported a bare "Share on". Sharing stays advisory and never gates Start. |
+| UI-HOME-005 | Homepage — status | LIVE and Connected repeated across heading, badge and footer | P1 | Arnold's review | RESOLVED — AUTOMATED AND VISUAL EVIDENCE | `d4674d0` | `UI-HOME-005` ×3 | HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29 (§3) | Read-only badge removed from the page title. **Two indicators kept deliberately**: the operating-mode control (where the mode can be changed) and the footer strip. Demo/Live confusion is a result-integrity risk, so a test asserts both survivors remain. |
+| UI-HOME-006 | Homepage — header | Duplicate Tech Aim branding in the Start-session header | P1 | Arnold's review | RESOLVED — AUTOMATED AND VISUAL EVIDENCE | `8022033` + `d4674d0` | `UI-HOME-006` ×5 | HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29 (§3) | `8022033` removed the duplicated identity row and cut the bar 74→56 px; `d4674d0` removed the residual logo image. The homepage now renders no logo of its own (UI-DEC-005). |
+| UI-HOME-007 | Homepage — event cards | Inconsistent selection / navigation indicators | P1 | Arnold's review | RESOLVED — AUTOMATED AND VISUAL EVIDENCE | `8022033` + `d4674d0` | `UI-HOME-007` ×5 | HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29 (§3) | Four labelled groups and the EventCard radio landed in `8022033`; `d4674d0` gave Open Practice the same radio in the same position. The Training Lab arrow remains genuine navigation. |
+| UI-HOME-008 | Homepage — typography | Helper and metadata text too small or low contrast | P1 | Arnold's review | RESOLVED — AUTOMATED AND VISUAL EVIDENCE | `41c09a3` + `d4674d0` | `UI-HOME-008` ×2 | HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29 (§3) | **Zero sub-10px strings remain**, asserted by test. Micro-labels moved to the `label` role, metadata and helper text to `helperText`; the restart hint went from 8px muted grey to 11px warning colour; the network path stopped being monospace. |
+| UI-HOME-009 | Homepage — Open Practice | Expanded card too tall, contributing to clipping | P1 | Arnold's review | RESOLVED — AUTOMATED AND VISUAL EVIDENCE | `d4674d0` | `UI-HOME-009` ×2 | HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29 (§3) | Collapsed height now matches every other event card exactly (78). Selecting it adds only the preset row plus one gap (56) instead of growing to 148. |
+| UI-HOME-010 | Homepage — action bar | Bar unbalanced, controls overlapped | P0 | Arnold's review | RESOLVED — AUTOMATED AND VISUAL EVIDENCE | `41c09a3` | as UI-HOME-001 | HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29 (§3) | Same root cause and fix as UI-HOME-001. Left region = readiness/validation; right = Load saved session (210) + Start (268). Start is the strongest action and right-aligned. |
 
 ## 2. Summary
 
 | Status | Count | IDs |
 |---|---:|---|
-| RESOLVED — AUTOMATED AND VISUAL EVIDENCE | **0** | — |
-| RESOLVED — AUTOMATED EVIDENCE, HUMAN VISUAL CHECK REQUIRED | **10** | 001–010 |
+| RESOLVED — AUTOMATED AND VISUAL EVIDENCE | **10** | 001–010 |
+| RESOLVED — AUTOMATED EVIDENCE, HUMAN VISUAL CHECK REQUIRED | 0 | — |
 | PARTIALLY RESOLVED | 0 | — |
 | OPEN | 0 | — |
 | BLOCKED | 0 | — |
 
-**Every defect now has a fix and automated evidence. None is fully closed**,
-because full closure requires a real screenshot and none exists — see §3.
-Code changing is not closure.
+**All ten defects are closed.** Each has a fix, a passing automated check and
+human visual approval. Two carry a caveat about behaviour the review did not
+separately exercise — see their Notes.
 
-## 3. Screenshot evidence
+## 3. Visual evidence
 
-**BLOCKED — MANUAL-ASSISTED SCREENSHOT CAPTURE REQUIRED.**
+### HUMAN VISUAL APPROVAL — ARNOLD BAILIE
 
-Endpoint security (Bitdefender/AMSI) on the development machine blocks both
-synthetic input injection and the PowerShell screen-capture helper. It blocked
-the helper script outright with
-`This script contains malicious content and has been blocked by your antivirus
-software`. **No bypass was attempted and none should be.**
+| | |
+|---|---|
+| Reviewer | Arnold Bailie |
+| Date | 2026-07-29 |
+| Application commit | `d4674d0` |
+| Executable SHA-256 | `F40BA7230D5C29B939CF4BA5A33C306E762C26DBE85C34756176090FF4588E73` |
+| Build | 0.9.0.0, 2026-07-29 08:43 |
+| Display | 1536 × 960 (the machine's primary and only display) |
+| Language | English |
+| Verdict | **APPROVED** — Version B accepted as the Tech Aim Beta homepage |
 
-Consequence: the application cannot be driven or captured programmatically, so
-every defect above is capped at "automated evidence" until screenshots are
-supplied by hand.
+### What the approval covers
+
+The running homepage as rendered on the reviewer's screen: layout, spacing,
+the action bar, the event groups, the selected-programme summary, the network
+share state, typography and branding.
+
+### What it does not cover — recorded honestly
+
+1. **Only the primary display size was reviewed.** 1366 × 768, 1280 × 720 and
+   1100 × 700 were **not opened**. They are `NOT TESTED` in the acceptance
+   checklist. This does not block the approved design direction; it means the
+   homepage is approved at the size it was seen at.
+2. **Interaction was not systematically exercised.** Wheel and touch
+   scrolling, switching between every event type, and the folder picker were
+   not stepped through as a test script.
+3. **German was not reviewed.** The page has never been run with the German
+   catalogue.
+4. **No screenshot file was produced.** Automated capture remains blocked by
+   endpoint security, which blocks both synthetic input and the screen-capture
+   helper — it blocked the helper outright with
+   `This script contains malicious content and has been blocked by your
+   antivirus software`. **No bypass was attempted and none should be.** The
+   approval above is a reviewer sign-off, not an image artefact, and is
+   recorded as such.
+
+### Registered screenshots
 
 ### Registered screenshots
 
@@ -65,7 +94,8 @@ supplied by hand.
 |---|---|---|---|---|---|---|---|
 | `manual-preview/ui-audit/raw/01-home.png` | 1536 × 912 | `a74d3fd` | `EBA82B0F…42FD653D` | English | Demo | Open Practice, 10 shots | **Pre-Version-B.** Evidence for the UI-0 audit only. **Must not** be used as Version B evidence. |
 
-No Version B screenshot exists at any resolution.
+No Version B screenshot file exists. The approval in this section is a
+reviewer sign-off against the running build, not a captured image.
 
 ### Not evidence
 
@@ -73,13 +103,13 @@ No Version B screenshot exists at any resolution.
 stamped **CONCEPT MOCKUP — NOT CURRENT APPLICATION** on every frame. It is
 git-ignored and must never be cited as application evidence.
 
-### To unblock
+### Still worth capturing
 
-Place PNGs in `manual-preview/ui-audit/raw/` named
-`vb-home-<width>x<height>.png` for 1536×960, 1366×768, 1280×720 and 1100×700,
-captured from the isolated documentation-capture profile (Demo, English,
-synthetic athlete). They can then be registered here and the acceptance
-checklist closed against them.
+Screenshots remain useful for the operator manuals and for reviewing the three
+unreviewed window sizes. Place PNGs in `manual-preview/ui-audit/raw/` named
+`vb-home-<width>x<height>.png`, captured from the isolated documentation-capture
+profile (Demo, English, synthetic athlete), and register them above. They are no
+longer a gate on the design approval.
 
 ## 4. Regression traceability
 

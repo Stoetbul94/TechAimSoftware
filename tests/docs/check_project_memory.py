@@ -166,8 +166,8 @@ for row in rows:
         check(visual not in ("", "none", "-", "—"),
               "%s claims full resolution and cites visual evidence" % did)
 
-check("MANUAL-ASSISTED SCREENSHOT CAPTURE REQUIRED" in reg,
-      "blocked screenshot capture is recorded with the required wording")
+check("No bypass was attempted" in reg,
+      "the register records that no antivirus bypass was attempted")
 check("CONCEPT MOCKUP — NOT CURRENT APPLICATION" in reg,
       "the register names the concept stamp so mockups cannot be mistaken for evidence")
 check("Must not" in reg or "must not" in reg,
@@ -181,15 +181,15 @@ allowed = ["PASS", "FAIL", "BLOCKED", "NOT TESTED", "HUMAN VISUAL CHECK REQUIRED
 found = re.findall(r"\| (PASS|FAIL|BLOCKED|NOT TESTED|HUMAN VISUAL CHECK REQUIRED) \|", chk)
 check(len(found) > 40, "acceptance checklist records statuses (%d)" % len(found))
 check(all(f in allowed for f in found), "only permitted status values are used")
-check("NOT ACCEPTED" in chk, "the checklist does not claim acceptance without evidence")
+check("ACCEPTED" in chk, "the checklist records the acceptance verdict")
 
 # ── as-built references the real implementation ────────────────────────────
 check("LoginPage.qml" in built, "as-built names the principal QML file")
 for ident in ["actionBar", "eventScroll", "setupScroll",
               "selectedProgrammeKind", "summaryCard"]:
     check(ident in built, "as-built references the real identifier %s" % ident)
-check("HUMAN VISUAL CHECK REQUIRED" in built,
-      "as-built records that visual review is outstanding")
+check("What the approval does not cover" in built,
+      "as-built records the limits of the visual approval")
 check("concept" in built.lower(), "as-built distinguishes itself from the concept")
 
 # ── current state ──────────────────────────────────────────────────────────
@@ -203,6 +203,46 @@ check("English" in state, "current state requires English")
 check("8022033" in state, "current state records the Version B commit")
 check("41c09a3" in state, "current state records the homepage defect-fix commit")
 check("JAC SHOOTING SOLUTIONS (PTY) LTD" in state, "current state records the publisher")
+
+# ── visual approval consistency ────────────────────────────────────────────
+# Acceptance has been recorded, so the guards flip: a document claiming
+# acceptance must name the reviewer and the reviewed commit, and must STILL
+# record what was not reviewed rather than implying full coverage.
+APPROVAL = "HUMAN VISUAL APPROVAL — ARNOLD BAILIE"
+for label, body in (("defect register", reg), ("acceptance checklist", chk),
+                    ("as-built", built), ("decision log", log),
+                    ("current state", state)):
+    check(APPROVAL in body or "ARNOLD BAILIE" in body,
+          "%s records the human visual approval" % label)
+
+check("d4674d0" in chk, "the checklist names the reviewed application commit")
+check("NOT TESTED" in chk, "the checklist still records what was not reviewed")
+check("NOT REVIEWED" in chk,
+      "unreviewed window sizes are named as such, not inferred from the primary display")
+check("UI-DEC-012" in log, "the acceptance decision UI-DEC-012 is recorded")
+
+# The next phase must be named, and kept separate from homepage work.
+check("TRAINING LAB RELEASE 2 — WIND MAP" in state,
+      "current state names the next approved phase: Wind Map")
+# The document wraps this sentence, so compare on collapsed whitespace.
+_flat = " ".join(state.split())
+check("must not be combined with homepage commits" in _flat,
+      "current state keeps Wind Map separate from homepage work")
+for stage in ["Specification review", "journal", "recovery", "analytics",
+              "3P", "PDF", "Automated tests", "Focused commits"]:
+    check(stage.lower() in state.lower(),
+          "Wind Map phase requires %s" % stage)
+
+# Full resolution still demands a visual-evidence cell — re-asserted now that
+# all ten claim it.
+full = [r for r in rows
+        if r.split("|")[6].replace("*", "").strip() == "RESOLVED — AUTOMATED AND VISUAL EVIDENCE"]
+check(len(full) == 10, "all ten defects are fully resolved (%d)" % len(full))
+for r in full:
+    did = r.split("|")[1].replace("*", "").strip()
+    vis = r.split("|")[9].replace("*", "").strip()
+    check(vis not in ("", "none", "-", "—"),
+          "%s cites visual evidence for full resolution" % did)
 
 print("\n=== %d checks, %d failures ===" % (CHECKS, FAILURES))
 sys.exit(1 if FAILURES else 0)

@@ -3,8 +3,8 @@
 **Describes the homepage as implemented**, not the concept mockups.
 **Reviewed at commit:** `d4674d0` · **Principal file:** `LoginPage.qml`
 
-> Appearance is **HUMAN VISUAL CHECK REQUIRED**. No screenshot of this page
-> exists — see §28.
+> **HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29.** Accepted as the Tech
+> Aim Beta homepage at commit `d4674d0`. Scope and limits in §28.
 
 ---
 
@@ -225,13 +225,30 @@ the natural first step of the next UI phase.
 
 ## 28. Human visual review status
 
-**HUMAN VISUAL CHECK REQUIRED — no screenshot of this page exists.**
+### HUMAN VISUAL APPROVAL — ARNOLD BAILIE
 
-Automated capture is blocked by endpoint security, which blocks both synthetic
-input and the screen-capture helper. No bypass was attempted. Everything above
-is derived from the source at `41c09a3` and from tests that read that source;
-nothing here is derived from an image of the running page.
+| | |
+|---|---|
+| Reviewer | Arnold Bailie |
+| Date | 2026-07-29 |
+| Application commit | `d4674d0` |
+| Executable SHA-256 | `F40BA7230D5C29B939CF4BA5A33C306E762C26DBE85C34756176090FF4588E73` |
+| Reviewed at | 1536 × 960, English |
+| Verdict | **ACCEPTED** as the Tech Aim Beta homepage (UI-DEC-012) |
 
-Unverified until screenshots exist: actual absence of overlap, actual scrolling
-by wheel and touch, real selection propagation, layout at 1366/1280/1100,
-German label behaviour, and overall visual quality.
+Reviewed and approved: layout, spacing, the action bar, the event groups, the
+selected-programme summary, the network share state, typography and branding.
+
+### What the approval does not cover
+
+- **1366 × 768, 1280 × 720 and 1100 × 700 were never opened** — NOT TESTED.
+- **German was never run** — the catalogue has not been loaded on this page.
+- **Interaction was not stepped through** as a test script: wheel and touch
+  scrolling, switching between every event type, and the folder picker.
+- **No screenshot file exists.** Automated capture remains blocked by endpoint
+  security, which blocks both synthetic input and the screen-capture helper.
+  No bypass was attempted. The approval is a reviewer sign-off against the
+  running build, not an image artefact.
+
+Everything else in this document is derived from the source at `d4674d0` and
+from tests that read that source.

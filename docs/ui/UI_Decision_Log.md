@@ -300,3 +300,40 @@ solves the Beta problems without that cost.
 **Affected areas.** None in the application. The concept lives only in
 `manual-preview/ui-audit/concepts/home-screen-A-B-C.html`, which is git-ignored
 and stamped **CONCEPT MOCKUP — NOT CURRENT APPLICATION**.
+
+---
+
+## UI-DEC-012 — Version B accepted as the Tech Aim Beta homepage
+
+| | |
+|---|---|
+| **Date** | 2026-07-29 |
+| **Status** | ACCEPTED |
+| **Commit** | `d4674d0` (application) |
+| **Approved by** | **HUMAN VISUAL APPROVAL — ARNOLD BAILIE** |
+
+**Decision.** The Version B homepage, as built at `d4674d0`, is accepted as
+the Tech Aim Beta homepage. **No further homepage styling changes are to be
+made unless a new defect is found.**
+
+**Reasoning.** All ten reported defects (UI-HOME-001…010) are closed with a
+fix, a passing automated check and human visual approval. The page was
+reviewed on screen and approved. Continuing to adjust an approved screen
+without a defect to point at is how a settled design drifts.
+
+**Scope of the approval — recorded precisely.** Reviewed at **1536 × 960**,
+English, executable SHA-256 `F40BA723…F4588E73`. It does **not** cover
+1366 × 768, 1280 × 720 or 1100 × 700 (never opened), the German catalogue
+(never run), or interaction stepped through as a test script. Those remain
+NOT TESTED in `Homepage_Acceptance_Checklist.md` and must not be upgraded
+without someone actually looking.
+
+**Alternatives considered.** Withholding acceptance until all four window
+sizes and German were reviewed — rejected: it would block the Beta on checks
+that are not defects, and the unreviewed sizes are recorded rather than
+assumed.
+
+**Affected areas.** `LoginPage.qml` is closed to styling change. UI-DEC-001
+through UI-DEC-011 are all **preserved**; none is superseded by this entry.
+
+**Supersedes.** Nothing.

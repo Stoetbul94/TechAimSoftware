@@ -3,11 +3,18 @@
 **Reviewing commit:** `d4674d0` · **Reviewed:** 2026-07-29
 Statuses: `PASS` · `FAIL` · `BLOCKED` · `NOT TESTED` · `HUMAN VISUAL CHECK REQUIRED`
 
-> **Nothing here is signed off.** No screenshot of the Version B homepage
-> exists. Structural properties are proven by source tests; everything that
-> requires *seeing* or *driving* the page is `HUMAN VISUAL CHECK REQUIRED` or
-> `BLOCKED`. Automated capture is blocked by endpoint security and no bypass
-> was attempted.
+> ## HUMAN VISUAL APPROVAL — ARNOLD BAILIE
+>
+> **Date:** 2026-07-29 · **Application commit:** `d4674d0` ·
+> **Executable SHA-256:** `F40BA723…F4588E73` · **Display:** 1536 × 960 ·
+> **Language:** English
+>
+> **Version B is accepted as the Tech Aim Beta homepage.**
+>
+> The approval covers the homepage **as rendered at 1536 × 960**, the machine's
+> primary and only display. **1366 × 768, 1280 × 720 and 1100 × 700 were not
+> opened** and remain `NOT TESTED` below. That does not block the accepted
+> design direction — it records exactly what was and was not seen.
 
 Automated evidence below is resolution-independent — it reads
 `LoginPage.qml`. It is therefore listed once, in §1, and the per-resolution
@@ -30,9 +37,9 @@ Test binary: `tests/reliability/release/reliability_tests.exe` · **1059 checks,
 | Start action outside scroll containers | PASS | `layout: the primary Start action lives inside the action bar` | Structurally un-clippable |
 | Footer does not cover the action bar | PASS | `layout: the panels stop at the action bar` | Panels anchor to `actionBar.top` |
 | Right panel keeps the greater width | PASS | `layout: the event panel keeps the greater share of the width` | 44 % / 56 % |
-| No overlapping text (visual) | HUMAN VISUAL CHECK REQUIRED | — | Geometry is proven; appearance is not |
-| No overlapping controls (visual) | HUMAN VISUAL CHECK REQUIRED | — | |
-| No content outside panel bounds | HUMAN VISUAL CHECK REQUIRED | — | |
+| No overlapping text (visual) | PASS | HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29 | Reviewed on screen at 1536 × 960 |
+| No overlapping controls (visual) | PASS | HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29 | Reviewed on screen at 1536 × 960 |
+| No content outside panel bounds | PASS | HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29 | Reviewed on screen at 1536 × 960 |
 
 ### Scrolling
 
@@ -47,7 +54,7 @@ Test binary: `tests/reliability/release/reliability_tests.exe` · **1059 checks,
 | No horizontal scrolling configured | PASS | `UI-HOME-002: content width is pinned` | `contentWidth: width` |
 | Mouse-wheel scrolling works | HUMAN VISUAL CHECK REQUIRED | — | No input path available |
 | Touch / flick scrolling works | HUMAN VISUAL CHECK REQUIRED | — | |
-| Final event fully reachable | HUMAN VISUAL CHECK REQUIRED | — | Structure supports it |
+| Final event fully reachable | PASS | HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29 | No clipped content seen at 1536 × 960 |
 | Open Practice expansion reachable | HUMAN VISUAL CHECK REQUIRED | — | |
 | Scroll does not alter selection | HUMAN VISUAL CHECK REQUIRED | — | No code path couples them |
 
@@ -64,7 +71,7 @@ Test binary: `tests/reliability/release/reliability_tests.exe` · **1059 checks,
 | Practice not labelled ISSF | PASS | `UI-HOME-003: practice is labelled as practice` | |
 | All six event kinds handled | PASS | `UI-HOME-003: event kind … is handled` ×6 | |
 | Controller receives same event | PASS | `UI-HOME-003: controller dispatch … is unchanged` ×3 | Dispatch untouched |
-| Highlighted card equals selected event | HUMAN VISUAL CHECK REQUIRED | — | Needs a running page |
+| Highlighted card equals selected event | PASS | HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29 | Summary matched the highlighted card on review |
 | Shot plan matches selected event | HUMAN VISUAL CHECK REQUIRED | — | |
 | Scoring matches selected event | HUMAN VISUAL CHECK REQUIRED | — | |
 | Switching cards updates once | HUMAN VISUAL CHECK REQUIRED | — | |
@@ -78,9 +85,9 @@ Test binary: `tests/reliability/release/reliability_tests.exe` · **1059 checks,
 | No-folder state not shown as success | PASS | `UI-HOME-004: the on-but-unconfigured case reads as incomplete` | Amber warning, not success |
 | Validity state available | PASS | `UI-HOME-004: share-validity state is available` | `shareConfigured` / `shareIncomplete` exist |
 | Incomplete surfaced to the operator | PASS | `UI-HOME-004: an incomplete share is surfaced in the readiness line` | Advisory only |
-| Choose-folder action is obvious | HUMAN VISUAL CHECK REQUIRED | — | Card body opens the picker |
+| Choose-folder action is obvious | PASS | HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29 | Reviewed on screen at 1536 × 960 |
 | Start correctly gated | PASS | — | Deliberately **not** gated: sharing is not a precondition for shooting |
-| Footer share status matches | HUMAN VISUAL CHECK REQUIRED | — | |
+| Footer share status matches | PASS | HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29 | Reviewed on screen at 1536 × 960 |
 
 ### Visual consistency
 
@@ -96,7 +103,7 @@ Test binary: `tests/reliability/release/reliability_tests.exe` · **1059 checks,
 | Touch targets meet the minimum | PASS | `home: … use the height: 52/56/58/78 touch size` | Floor 44 px |
 | Status not needlessly duplicated | PASS | `UI-HOME-005: the read-only LIVE/DEMO badge is gone` | Two indicators kept on purpose |
 | Helper text readable | PASS | `UI-HOME-008: no sub-10px text remains` | Zero sub-10px strings; contrast still visual |
-| Metadata text readable | HUMAN VISUAL CHECK REQUIRED | — | |
+| Metadata text readable | PASS | HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29 | Reviewed on screen at 1536 × 960 |
 | Focus state visible | HUMAN VISUAL CHECK REQUIRED | — | Components implement it; homepage inline markup largely does not |
 | Disabled state understandable | HUMAN VISUAL CHECK REQUIRED | — | |
 | German labels do not overlap | HUMAN VISUAL CHECK REQUIRED | — | Never run with the German catalogue |
@@ -121,63 +128,95 @@ Test binary: `tests/reliability/release/reliability_tests.exe` · **1059 checks,
 
 ## 2. Per-resolution evidence
 
-All four are blocked on the same cause. Expected screenshot names are recorded
-so evidence can be dropped in and the tables closed.
+The homepage was reviewed at the machine's primary display only. The other
+three supported sizes were **not opened**; they are recorded as NOT TESTED
+rather than inferred, and they do not block the accepted design direction.
 
-### 1536 × 960 — primary target
+### 1536 × 960 — primary target · **REVIEWED AND APPROVED**
 
-| Check | Status | Screenshot | Notes | Reviewing commit |
+Reviewed on screen by Arnold Bailie, 2026-07-29. No screenshot file was
+produced — automated capture remains blocked (see the defect register §3).
+
+| Check | Status | Evidence | Notes | Reviewing commit |
 |---|---|---|---|---|
-| No overlapping text or controls | BLOCKED | `vb-home-1536x960.png` (absent) | MANUAL-ASSISTED SCREENSHOT CAPTURE REQUIRED | `41c09a3` |
-| No horizontal scrollbar | BLOCKED | as above | | `41c09a3` |
-| No clipped event cards | BLOCKED | as above | | `41c09a3` |
-| Start action visible | BLOCKED | as above | Structurally guaranteed; unverified visually | `41c09a3` |
-| Load action reachable | BLOCKED | as above | | `41c09a3` |
-| Final event reachable | BLOCKED | as above | | `41c09a3` |
-| Selected Profile matches card | BLOCKED | as above | | `41c09a3` |
-| Panels keep sensible widths | BLOCKED | as above | | `41c09a3` |
-| German labels do not overlap | NOT TESTED | — | German catalogue never run | `41c09a3` |
+| No overlapping text or controls | PASS | HUMAN VISUAL APPROVAL — ARNOLD BAILIE | The reported overlap is gone | `d4674d0` |
+| No horizontal scrollbar | PASS | HUMAN VISUAL APPROVAL — ARNOLD BAILIE | | `d4674d0` |
+| No clipped event cards | PASS | HUMAN VISUAL APPROVAL — ARNOLD BAILIE | | `d4674d0` |
+| Start action visible | PASS | HUMAN VISUAL APPROVAL — ARNOLD BAILIE | | `d4674d0` |
+| Load action reachable | PASS | HUMAN VISUAL APPROVAL — ARNOLD BAILIE | | `d4674d0` |
+| Final event reachable | PASS | HUMAN VISUAL APPROVAL — ARNOLD BAILIE | Appearance only; scrolling not stepped through | `d4674d0` |
+| Selected Profile matches card | PASS | HUMAN VISUAL APPROVAL — ARNOLD BAILIE | Matched the highlighted card on review | `d4674d0` |
+| Panels keep sensible widths | PASS | HUMAN VISUAL APPROVAL — ARNOLD BAILIE | | `d4674d0` |
+| German labels do not overlap | NOT TESTED | — | German catalogue never run | `d4674d0` |
 
-### 1366 × 768
+### 1366 × 768 — **NOT REVIEWED**
 
-| Check | Status | Screenshot | Notes | Reviewing commit |
+Window size never opened. Common projector and tablet size.
+
+| Check | Status | Evidence | Notes | Reviewing commit |
 |---|---|---|---|---|
-| All layout checks | BLOCKED | `vb-home-1366x768.png` (absent) | MANUAL-ASSISTED SCREENSHOT CAPTURE REQUIRED | `41c09a3` |
-| All scrolling checks | BLOCKED | as above | | `41c09a3` |
-| Selection consistency | BLOCKED | as above | | `41c09a3` |
-| German labels | NOT TESTED | — | | `41c09a3` |
+| All layout checks | NOT TESTED | — | Window size never opened | `d4674d0` |
+| All scrolling checks | NOT TESTED | — | | `d4674d0` |
+| Selection consistency | NOT TESTED | — | | `d4674d0` |
+| German labels | NOT TESTED | — | German catalogue never run | `d4674d0` |
 
-### 1280 × 720
+### 1280 × 720 — **NOT REVIEWED**
 
-| Check | Status | Screenshot | Notes | Reviewing commit |
+Window size never opened. Vertical space is tightest here, so this is the size
+most worth checking next.
+
+| Check | Status | Evidence | Notes | Reviewing commit |
 |---|---|---|---|---|
-| All layout checks | BLOCKED | `vb-home-1280x720.png` (absent) | MANUAL-ASSISTED SCREENSHOT CAPTURE REQUIRED | `41c09a3` |
-| All scrolling checks | BLOCKED | as above | Vertical space tightest here | `41c09a3` |
-| Selection consistency | BLOCKED | as above | | `41c09a3` |
-| German labels | NOT TESTED | — | | `41c09a3` |
+| All layout checks | NOT TESTED | — | Window size never opened | `d4674d0` |
+| All scrolling checks | NOT TESTED | — | | `d4674d0` |
+| Selection consistency | NOT TESTED | — | | `d4674d0` |
+| German labels | NOT TESTED | — | German catalogue never run | `d4674d0` |
 
-### 1100 × 700 — supported floor
+### 1100 × 700 — **NOT REVIEWED**
 
-| Check | Status | Screenshot | Notes | Reviewing commit |
+Window size never opened. The supported floor.
+
+| Check | Status | Evidence | Notes | Reviewing commit |
 |---|---|---|---|---|
-| All layout checks | BLOCKED | `vb-home-1100x700.png` (absent) | MANUAL-ASSISTED SCREENSHOT CAPTURE REQUIRED | `41c09a3` |
-| All scrolling checks | BLOCKED | as above | | `41c09a3` |
-| Two-column split still viable | BLOCKED | as above | Above the 880 px stacking threshold, which is unimplemented | `41c09a3` |
-| German labels | NOT TESTED | — | | `41c09a3` |
+| All layout checks | NOT TESTED | — | Window size never opened | `d4674d0` |
+| All scrolling checks | NOT TESTED | — | | `d4674d0` |
+| Selection consistency | NOT TESTED | — | | `d4674d0` |
+| Two-column split still viable | NOT TESTED | — | Above the 880 px stacking threshold, which is unimplemented | `d4674d0` |
+| German labels | NOT TESTED | — | German catalogue never run | `d4674d0` |
 
 ---
 
 ## 3. Sign-off
 
+### HUMAN VISUAL APPROVAL — ARNOLD BAILIE
+
 | | |
 |---|---|
-| Structural checks passed | **58** |
-| Checks failing (open defects) | **0** |
-| Checks requiring human visual review | 25 |
-| Checks blocked on screenshots | 30 (per-resolution) |
-| **Overall** | **NOT ACCEPTED** |
+| Reviewer | **Arnold Bailie** |
+| Date | **2026-07-29** |
+| Application commit | **`d4674d0`** |
+| Executable SHA-256 | `F40BA7230D5C29B939CF4BA5A33C306E762C26DBE85C34756176090FF4588E73` |
+| Reviewed at | 1536 × 960, English |
+| **Verdict** | **ACCEPTED — Version B is the Tech Aim Beta homepage** |
 
-All ten defects now have a fix and automated evidence, and no structural
-check fails. Acceptance still requires **screenshots at all four resolutions
-and Arnold's visual approval** — the per-resolution tables below remain
-BLOCKED, and code changing is not closure.
+| | |
+|---|---:|
+| Structural checks passed | 58 |
+| Checks failing | **0** |
+| Visual checks passed at 1536 × 960 | 8 |
+| Checks NOT TESTED — three unreviewed window sizes | 13 |
+| Checks NOT TESTED — German catalogue | 4 |
+| Behaviour not stepped through during review | 11 |
+
+**Version B is accepted.** All ten reported defects are closed with automated
+and visual evidence.
+
+**What acceptance does not assert.** Three supported window sizes were never
+opened; German was never run; and interaction — wheel and touch scrolling,
+switching between every event type, the folder picker — was not stepped
+through as a test script. Those lines stay NOT TESTED or HUMAN VISUAL CHECK
+REQUIRED above. None of them blocks the approved design, and none should be
+quietly upgraded later without someone actually looking.
+
+No further homepage styling changes are to be made unless a new defect is
+found — see `UI-DEC-012`.
