@@ -5,16 +5,32 @@
 //   reliability_tests                  run everything
 //   reliability_tests --write-fixtures regenerate the committed golden
 //                                      fixtures (then still verify them)
+//   reliability_tests --seed-windmap <absolute root>
+//                                      write Wind Map review fixtures into an
+//                                      ISOLATED data root (test tool; creates
+//                                      DATA, never input) and exit
 
 #include "test_support.h"
 
 #include <QCoreApplication>
+
+int seedWindMapSessions(const QString& root);
 
 int main(int argc, char** argv)
 {
     QCoreApplication app(argc, argv);
     const bool writeFixtures =
         app.arguments().contains(QStringLiteral("--write-fixtures"));
+
+    // Review-fixture seeding runs INSTEAD of the tests: it drives the real
+    // WindMapController to write genuine journals so a manual visual review
+    // does not need hundreds of clicks to reach a 40-shot session.
+    const int seedAt = app.arguments().indexOf(QStringLiteral("--seed-windmap"));
+    if (seedAt >= 0) {
+        const QString root = (seedAt + 1 < app.arguments().size())
+                             ? app.arguments().at(seedAt + 1) : QString();
+        return seedWindMapSessions(root);
+    }
 
     std::printf("=== Session Reliability tests (M0 storage + M1 core) ===\n");
 
