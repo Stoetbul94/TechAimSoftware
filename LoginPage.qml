@@ -36,20 +36,37 @@ Item {
 
     property color licColor: theme.brandPrimary
 
-    // ── Refined color palette ─────────────────────────────────────────────────
-    readonly property color _bg:         "#0B0D10"
-    readonly property color _surface:    "#15171C"
-    readonly property color _surfaceAlt: "#1B1E24"
-    readonly property color _input:      "#1D2026"
-    readonly property color _borderSub:  "#2A2E36"
-    readonly property color _borderStr:  "#3A404A"
-    readonly property color _red:        "#C40046"
-    readonly property color _redHover:   "#E00052"
-    readonly property color _redDark:    "#2D0A18"
-    readonly property color _txt:        "#F3F6FA"
-    readonly property color _txtSec:     "#AAB4C0"
-    readonly property color _txtMut:     "#6F7A86"
-    readonly property color _green:      "#20C997"
+    // ── Design-system bindings (UI-1) ─────────────────────────────────────────
+    // This page owned a private 13-colour palette — a local copy of values that
+    // belong to the product, which is exactly why three competing brand reds
+    // ended up shipping at once. The short names are KEPT because ~200 call
+    // sites use them, but every one now resolves to a semantic token in
+    // src/ui/theme/DesignTokens.qml. There is no hard-coded palette value in
+    // this file any more; changing the brand is a token edit, not a page edit.
+    //
+    // APPROVED 2026-07-29: the accent is #A80038, sampled from the approved
+    // logo images/logo/techaim_color.png. #C40046 becomes the hover state and
+    // #80032A the pressed state. See docs/design/TechAim_Design_System.md.
+    readonly property color _bg:         theme.tokens.backgroundPrimary
+    readonly property color _bgHeader:   theme.tokens.backgroundSecondary
+    readonly property color _surface:    theme.tokens.surfacePrimary
+    readonly property color _surfaceAlt: theme.tokens.surfaceSecondary
+    readonly property color _input:      theme.tokens.inputBackground
+    readonly property color _borderSub:  theme.tokens.borderSubtle
+    readonly property color _borderStr:  theme.tokens.borderStrong
+    readonly property color _red:        theme.tokens.accentPrimary
+    readonly property color _redHover:   theme.tokens.accentHover
+    readonly property color _redPressed: theme.tokens.accentPressed
+    readonly property color _redDark:    theme.tokens.accentSubtle
+    readonly property color _txt:        theme.tokens.textPrimary
+    readonly property color _txtSec:     theme.tokens.textSecondary
+    readonly property color _txtMut:     theme.tokens.textDisabled
+    readonly property color _green:      theme.tokens.successText
+    readonly property color _okBg:       theme.tokens.successBackground
+    readonly property color _errBg:      theme.tokens.errorBackground
+    readonly property color _warnBg:     theme.tokens.warningBackground
+    readonly property color _warnTxt:    theme.tokens.warningText
+    readonly property color _onAccent:   theme.tokens.textOnAccent
     signal loadSavedGame()
     signal sighterStartedFromServer()
     signal matchStartedFromServer()
@@ -405,7 +422,7 @@ Item {
         anchors.left: parent.left
         anchors.right: parent.right
         height: 56
-        color: "#0C0E12"
+        color: _bgHeader
 
         Rectangle { anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom; width: 3; color: _red }
         Rectangle { anchors.bottom: parent.bottom; anchors.left: parent.left; anchors.right: parent.right; height: 1; color: _borderSub }
@@ -432,7 +449,7 @@ Item {
             Rectangle {
                 height: 20; radius: 4
                 width: _modeBadge.implicitWidth + 14
-                color: appMode ? "#0d2018" : "#2a0b10"
+                color: appMode ? _okBg : _errBg
                 border.color: appMode ? _green : _red; border.width: 1
                 anchors.verticalCenter: parent.verticalCenter
                 Text {
@@ -609,7 +626,7 @@ Item {
                 Rectangle {
                     id: connStatusBtn
                     width: 148; height: 52; radius: 6
-                    color: mod_connected ? "#0d2018" : _surfaceAlt
+                    color: mod_connected ? _okBg : _surfaceAlt
                     border.color: mod_connected ? _green : _borderSub; border.width: 1
                     Row {
                         anchors.centerIn: parent; spacing: 7
@@ -677,7 +694,7 @@ Item {
                 // Live target pill
                 Rectangle {
                     width: (parent.width - parent.spacing) / 2; height: 52; radius: 6
-                    color: opModeRow.opLive ? "#0d2018" : _input
+                    color: opModeRow.opLive ? _okBg : _input
                     border.color: opModeRow.opLive ? _green : _borderSub
                     border.width: opModeRow.opLive ? 2 : 1
                     Column {
@@ -698,7 +715,7 @@ Item {
                 // Demo pill
                 Rectangle {
                     width: (parent.width - parent.spacing) / 2; height: 52; radius: 6
-                    color: !opModeRow.opLive ? "#2a0b10" : _input
+                    color: !opModeRow.opLive ? _errBg : _input
                     border.color: !opModeRow.opLive ? _red : _borderSub
                     border.width: !opModeRow.opLive ? 2 : 1
                     Column {
@@ -739,8 +756,8 @@ Item {
                 modal: true; focus: true
                 closePolicy: Popup.CloseOnEscape
                 width: 380; padding: 0
-                background: Rectangle { color: "#1B1E24"; radius: 13; border.color: _borderSub; border.width: 1 }
-                Overlay.modal: Rectangle { color: "#AA000000" }
+                background: Rectangle { color: _surfaceAlt; radius: 13; border.color: _borderSub; border.width: 1 }
+                Overlay.modal: Rectangle { color: theme.tokens.scrim }
                 contentItem: Column {
                     spacing: 12; padding: 22; width: opModeConfirm.width
                     Text {
@@ -1456,7 +1473,7 @@ Item {
                                              ? "TECHNICAL BLOCKS · BY POSITION" : "TECHNICAL BLOCKS"
                                        color: _txt; font.family: theme.fontFamily; font.pixelSize: 14; font.bold: true }
                                 Rectangle {
-                                    width: 74; height: 18; radius: 9; color: "#0d2018"
+                                    width: 74; height: 18; radius: 9; color: _okBg
                                     border.color: _green; border.width: 1
                                     anchors.verticalCenter: parent.verticalCenter
                                     Text { anchors.centerIn: parent; text: "AVAILABLE"
@@ -1516,7 +1533,7 @@ Item {
                                              ? "CALL & DIAGNOSE · BY POSITION" : "CALL & DIAGNOSE"
                                        color: _txt; font.family: theme.fontFamily; font.pixelSize: 14; font.bold: true }
                                 Rectangle {
-                                    width: 74; height: 18; radius: 9; color: "#0d2018"
+                                    width: 74; height: 18; radius: 9; color: _okBg
                                     border.color: _green; border.width: 1
                                     anchors.verticalCenter: parent.verticalCenter
                                     Text { anchors.centerIn: parent; text: "AVAILABLE"
@@ -1551,7 +1568,7 @@ Item {
                                 spacing: 8
                                 Text { text: "POSITION TRANSITION"; color: _txt; font.family: theme.fontFamily; font.pixelSize: 14; font.bold: true }
                                 Rectangle {
-                                    width: 74; height: 18; radius: 9; color: "#0d2018"; border.color: _green; border.width: 1
+                                    width: 74; height: 18; radius: 9; color: _okBg; border.color: _green; border.width: 1
                                     anchors.verticalCenter: parent.verticalCenter
                                     Text { anchors.centerIn: parent; text: "AVAILABLE"; color: _green; font.pixelSize: 9; font.bold: true } }
                             }
@@ -1761,7 +1778,7 @@ Item {
                         visible: text !== ""
                         text: ""
                         width: parent.width; wrapMode: Text.WordWrap
-                        color: "#ff9aa8"; font.family: theme.fontFamily; font.pixelSize: 11
+                        color: theme.tokens.errorText; font.family: theme.fontFamily; font.pixelSize: 11
                     }
                     Row {
                         spacing: 10; topPadding: 6
@@ -1875,7 +1892,7 @@ Item {
                         id: cdSetupError
                         visible: text !== ""; text: ""
                         width: parent.width; wrapMode: Text.WordWrap
-                        color: "#ff9aa8"; font.family: theme.fontFamily; font.pixelSize: 11
+                        color: theme.tokens.errorText; font.family: theme.fontFamily; font.pixelSize: 11
                     }
                     Row {
                         spacing: 10; topPadding: 6
@@ -2004,7 +2021,7 @@ Item {
                     }
 
                     Text { id: ptSetupError; visible: text !== ""; text: ""; width: parent.width; wrapMode: Text.WordWrap
-                           color: "#ff9aa8"; font.family: theme.fontFamily; font.pixelSize: 11 }
+                           color: theme.tokens.errorText; font.family: theme.fontFamily; font.pixelSize: 11 }
                     Row { spacing: 10; topPadding: 6
                         Rectangle { width: 110; height: 52; radius: 8; color: "transparent"; border.color: _borderStr; border.width: 1
                             Text { anchors.centerIn: parent; text: "Back"; color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 12 }
