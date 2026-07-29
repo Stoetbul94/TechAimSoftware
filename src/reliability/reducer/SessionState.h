@@ -332,7 +332,13 @@ using DisciplineState =
 // to "no Wind Map session". Wind Map is snapshot-serialised because
 // ReplayEngine defaults to the snapshot fast path and folds only the tail
 // after the last StateSnapshot; state left out of a snapshot is lost there.
-inline constexpr qint32 kSessionStateVersion = 4;
+// v5 (Stage 4.1): adds `sessionKind`, `training` + `trainingBlocks` +
+// `trainingSighters`, `callDiagnose` + `cdShots`, and `positionTransition` +
+// `ptRecords`. Backward compatible — a v1-v4 snapshot has none of those keys
+// and restores to "no programme", which is what it meant. The version moves
+// because a v4 snapshot genuinely exists (the regenerated golden fixture) and
+// does NOT contain them; a reader must be able to tell the two apart.
+inline constexpr qint32 kSessionStateVersion = 5;
 
 struct SessionState {
     // identity & configuration
