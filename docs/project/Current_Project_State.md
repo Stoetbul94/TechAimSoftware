@@ -51,7 +51,7 @@ scrolling, event transitions and the folder picker were never driven by hand.
 
 | Suite | Result |
 |---|---|
-| Reliability (incl. UI-1 brand, UI-2 layout, Wind Map) | **1953 / 0** |
+| Reliability (incl. UI-1 brand, UI-2 layout, Wind Map) | **1997 / 0** |
 | Documentation — manuals | **979 / 0** |
 | Documentation — project memory | **155 / 0** |
 | Training | **567 / 0** |
@@ -63,7 +63,9 @@ Reliability grew 902 → 988 (UI-1, +86) → 1041 (UI-2 P0, +53) → 1059 (UI-2
 completion, +18) → 1695 (Wind Map stages 3–4.1) → 1815 (Wind Map stage 5:
 controller/workflow/resume + QML source guards, +120) → 1911 (stage 6
 analytics engine, +96) → 1953 (stages 5.2 + 6.1: shared Training shell
-boundary, analysis review model and engine/view equality, +42).
+boundary, analysis review model and engine/view equality, +42) → 1997
+(UI-WIND-002: end-to-end completion-to-analysis and the import-coverage
+guard, +44).
 
 The reliability harness is `QT = core`. `WindMapController.cpp` compiles into
 it, which is the proof that the controller carries no QML/GUI dependency.
@@ -172,10 +174,20 @@ Technical Blocks (UI-TRAIN-001/002/003, registered before the fix). 6.1 added
 analytics engine as the only calculation authority — asserted by a value-by-
 value equality test between the engine and the view model.
 
+**UI-WIND-001 is CLOSED** — Arnold approved the corrected 50 m **3P capture
+workflow** on 2026-07-29 at **1536 × 960 logical**, build `5404585`. 50 m
+Prone was not opened and the full 40-shot layout was not fired.
+
+**UI-WIND-002 (P0) registered and FIXED, still OPEN pending visual evidence.**
+The completed session never showed the Stage 6.1 analysis: the view used
+`ScrollBar` without importing `QtQuick.Controls`, so it could not instantiate
+at all. The Stage 6.1 guards were static string checks and passed anyway —
+a file that never loads still contains the right strings. An end-to-end test
+and an import-coverage guard now cover it.
+
 **UI-TRAIN-001/002/003 remain OPEN**: the code is fixed and automated evidence
 passes, but none of the three sibling capture screens has been reviewed on
-screen. **The Wind Map analysis review has not been visually reviewed at any
-resolution.**
+screen.
 
 Approved scope: `Wind Map — Post-Session Review`, **50 m Rifle Prone and 3P
 only**, manual wind entry stored as numeric degrees + m/s, a standing condition

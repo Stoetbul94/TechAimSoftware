@@ -102,11 +102,75 @@ the Stage 6.2 PDF — cannot disagree with the engine.
 
 ---
 
+## 2a. UI-WIND-002 — the analysis was unreachable
+
+**Reported:** a completed Wind Map session showed only counted-shot
+information — no plot, MPI comparison, shift, wind rose, speed bands,
+timeline, 3P tabs, findings or next-session feedback.
+
+**Root cause.** `WindMapAnalysisView.qml` used `ScrollBar` while importing
+only `QtQuick`. `ScrollBar` lives in `QtQuick.Controls`, so the type never
+resolved and the component could not be created. With the analysis view
+absent, the only overlay left at completion was the capture HUD's basic
+review — counts and the raw shot table — which is exactly what was seen.
+
+Confirmed with `qmllint`; the fault is **one file, one line**. The other three
+Wind Map QML files report zero unresolved types.
+
+**Not a sample-size issue.** The analysis was unreachable at any n.
+
+### 2a.1 Why the Stage 6.1 evidence did not catch it
+
+Three gaps, recorded plainly:
+
+1. The Stage 6.1 guards were **static string checks** over the QML source.
+   A file that never loads still contains all the right strings, so every
+   check passed while the screen could not exist.
+2. The launch check greps stderr for QML errors, but the analysis view is
+   only instantiated when a session reaches **phase 6** — a startup launch
+   never gets there. The check was real; it could not reach the code path.
+3. `qmllint` was never run over the new files, though it finds this in
+   milliseconds.
+
+**What now prevents a repeat**
+
+- An **import-coverage guard**: every `QtQuick.Controls` type used in a Wind
+  Map QML file must be backed by its import.
+- An **end-to-end test** (test 23) that drives the real controller through the
+  full workflow and asserts the completed phase is reached and the analysis
+  model is populated — not a string check.
+- Test 24 proves a normally-created session and a recovered one take the
+  **same** analysis path.
+- `qmllint` over the Wind Map QML is now part of the phase checklist.
+
+### 2a.2 Navigation
+
+Five always-visible sections — **Overview · Target Plot · Conditions ·
+Timeline · Findings** — so nothing sits behind a hidden tab. For 3P the
+position row reads **Kneeling · Prone · Standing · Session Overview**.
+
+The first screen carries the factual overview, data-quality status, positions
+represented and a **What the Data Suggests preview**, so feedback is visible
+without hunting for it.
+
+### 2a.3 Insufficient samples
+
+The analysis opens and explains itself at any n:
+
+- A position with nothing plottable shows a clear placeholder naming the
+  thresholds, never a blank panel.
+- Each condition row explains itself in words — *"3 shots recorded. 2 more
+  shots are required for a group comparison."* — worded from the model's own
+  `shotsNeeded` values.
+- A withheld statistic renders as an em dash. **Never 0.0.**
+
+---
+
 ## 3. Evidence
 
 | Suite | Result |
 |---|---|
-| Reliability | **1953 / 0** |
+| Reliability | **1997 / 0** |
 | Training | 567 / 0 |
 | Finals 10m | 143 / 0 |
 | 3P Finals | 233 / 0 |
@@ -115,6 +179,13 @@ the Stage 6.2 PDF — cannot disagree with the engine.
 | Launch check | no new QML error or warning |
 
 ### 3.1 Visual status
+
+**UI-WIND-001 is CLOSED** — Arnold approved the corrected **50 m 3P capture
+workflow** at **1536 × 960 logical**, build `5404585`. 50 m Prone was not
+opened and the full 40-shot layout was not fired; neither is claimed.
+
+**The analysis review itself has still not been seen.** UI-WIND-002 stays
+**OPEN — HUMAN VISUAL EVIDENCE** until the corrected build is reviewed.
 
 **MANUAL-ASSISTED VISUAL CHECK REQUIRED.** Automatic capture remains blocked by
 endpoint security; no synthetic-input or antivirus workaround was attempted.
