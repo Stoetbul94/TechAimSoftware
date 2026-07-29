@@ -347,13 +347,14 @@ Item {
         color: "#15161a"
         z: 40
 
-        // UI-WIND-001: the competition identity row must not render during a
-        // Wind Map session. currentGameDisplay*/currentmatchDisplay still hold
-        // whatever the last selected EVENT CARD set (the 3P Final card leaves
-        // "FINAL 35"), and a Training Lab programme may never present as a
-        // Final. WindMapTopBar occupies this band instead.
+        // UI-WIND-001 / UI-TRAIN-001..003: the competition identity row must
+        // not render during ANY Training Lab session. currentGameDisplay* and
+        // currentmatchDisplay still hold whatever the last selected EVENT CARD
+        // set - the 3P Final card leaves "FINAL 35" - and a Training Lab
+        // programme may never present as a Final. TrainingTopBar occupies this
+        // band instead.
         Row {
-            visible: !isWindMapMatch
+            visible: !isTrainingModeAny
             anchors.left: parent.left; anchors.leftMargin: 16
             anchors.verticalCenter: parent.verticalCenter
             spacing: 12
@@ -384,10 +385,10 @@ Item {
         Row {
             anchors.centerIn: parent
             spacing: 6
-            // UI-WIND-001: Wind Map has its own two-phase model (sighters /
-            // counted shots) owned by WindMapController. The competition
-            // stepper would read a Final/qualification phase it does not have.
-            visible: !isFinals10mMatch && !isTrainingMatch && !isWindMapMatch
+            // UI-TRAIN-001..003: every Training programme owns its own phase
+            // model. The competition stepper would read a Final/qualification
+            // phase none of them has.
+            visible: !isFinals10mMatch && !isTrainingModeAny
             Repeater {
                 model: is3PMatch ? [qsTr("SIGHT"), qsTr("KNEEL"), qsTr("PRONE"), qsTr("STAND")]
                                  : [qsTr("SIGHTING"), qsTr("MATCH")]
@@ -418,11 +419,12 @@ Item {
             }
         }
 
-        // UI-WIND-001: the OFFICIAL shot counter (globalMatchModel.count /
-        // matchShootCount) is the "0 / 35" from the defect report — Wind Map
-        // populates neither model. Its own progress is on WindMapTopBar.
+        // UI-TRAIN-001..003: the OFFICIAL shot counter (globalMatchModel.count
+        // / matchShootCount) is the "0 / 35" from the defect report. No
+        // Training programme populates either model; each shows its own
+        // progress on TrainingTopBar.
         Row {
-            visible: !isWindMapMatch
+            visible: !isTrainingModeAny
             anchors.right: parent.right; anchors.rightMargin: 16
             anchors.verticalCenter: parent.verticalCenter
             spacing: 12
@@ -431,14 +433,14 @@ Item {
             // count would read 0 here (10m shots never populate it) and contradict
             // FINALS10M — so hide the legacy top counter for the Final.
             Text {
-                visible: !isFinals10mMatch && !isTrainingMatch
+                visible: !isFinals10mMatch && !isTrainingModeAny
                 text: globalMatchModel.count + " / " + (matchShootCount > 0 ? matchShootCount : "—")
                 color: "white"; font.family: theme.fontFamily
                 font.pixelSize: 14; font.bold: true
                 anchors.verticalCenter: parent.verticalCenter
             }
             Text {
-                visible: !isFinals10mMatch && !isTrainingMatch
+                visible: !isFinals10mMatch && !isTrainingModeAny
                 text: qsTr("SHOTS")
                 color: "#9a9ba0"; font.family: theme.fontFamily
                 font.pixelSize: 9; font.letterSpacing: 1.5
@@ -449,7 +451,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 // 3P FINAL: the HUD strip owns phase display; the qualification
                 // phase chip (SIGHTING/MATCH from sligterMode) would conflict.
-                visible: !isFinalsMatch && !isFinals10mMatch && !isTrainingMatch
+                visible: !isFinalsMatch && !isFinals10mMatch && !isTrainingModeAny
                 color: matchFinished ? "#1d7a2f" : (sligterMode ? "#8a6d00" : "#e8003d")
                 Text {
                     id: phaseChipText
@@ -474,17 +476,67 @@ Item {
             }
         }
 
-        // ── UI-WIND-001: the Wind Map TRAINING bar ──────────────────────
-        // Same band, so every anchor chaining from statusStrip.bottom is
-        // unchanged. Binds to WINDMAP only — no Finals controller, phase,
-        // stage, timer, ceremony, command or official shot count.
-        WindMapTopBar {
-            id: windMapTopBar
-            visible: isWindMapMatch
+        // ── UI-WIND-001 / UI-TRAIN-001..003: the shared TRAINING bar ────
+        // ONE bar for all four Training Lab programmes, in the same band, so
+        // every anchor chaining from statusStrip.bottom is unchanged. It reads
+        // no competition state at all - each programme passes in its own
+        // identity, phase and progress from its own controller.
+        TrainingTopBar {
+            id: trainingTopBar
+            visible: isTrainingModeAny
             anchors.fill: parent
-            ctl: WINDMAP
             athlete: window.userName
             demoMode: !appMode
+
+            programmeName: {
+                if (isWindMapMatch)            return qsTr("Wind Map")
+                if (isPositionTransitionMatch) return qsTr("Position Transition")
+                if (isCallDiagnoseMatch)       return qsTr("Call & Diagnose")
+                if (isTrainingMatch)           return qsTr("Technical Blocks")
+                return ""
+            }
+            discipline: loginPage.getDisciplineName()
+            positionName: {
+                if (isWindMapMatch)            return WINDMAP.threePositions ? WINDMAP.positionName : ""
+                if (isPositionTransitionMatch) return POSTRANS.positionName
+                return ""
+            }
+            phaseLabel: {
+                if (isWindMapMatch) {
+                    if (WINDMAP.phase === 2) return qsTr("SIGHTERS")
+                    if (WINDMAP.phase === 3) return qsTr("COUNTED SHOTS")
+                    return WINDMAP.phaseName.toUpperCase()
+                }
+                if (isPositionTransitionMatch) {
+                    if (POSTRANS.phase === 1) return qsTr("POSITION SETUP")
+                    if (POSTRANS.phase === 2) return qsTr("SIGHTERS")
+                    if (POSTRANS.phase === 3) return qsTr("VERIFICATION")
+                    if (POSTRANS.phase === 4) return qsTr("POSITION REVIEW")
+                    if (POSTRANS.phase === 5) return qsTr("COMPLETE")
+                    return ""
+                }
+                if (isCallDiagnoseMatch) return qsTr("CALL & DIAGNOSE")
+                if (isTrainingMatch)     return qsTr("TECHNICAL BLOCK")
+                return ""
+            }
+            phaseActive: {
+                if (isWindMapMatch)            return WINDMAP.phase === 3
+                if (isPositionTransitionMatch) return POSTRANS.phase === 3
+                return true
+            }
+            progressValue: {
+                if (isWindMapMatch)
+                    return WINDMAP.phase === 2 ? ("" + WINDMAP.sighterCount)
+                                               : (WINDMAP.countedShots + " / " + WINDMAP.shotPlan)
+                if (isPositionTransitionMatch)
+                    return POSTRANS.shotsCompleted + " / " + POSTRANS.verificationShots
+                return ""
+            }
+            progressLabel: {
+                if (isWindMapMatch && WINDMAP.phase === 2) return qsTr("SIGHTERS")
+                if (isWindMapMatch || isPositionTransitionMatch) return qsTr("SHOTS")
+                return ""
+            }
         }
     }
 

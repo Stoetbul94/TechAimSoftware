@@ -1,29 +1,40 @@
 import QtQuick 2.15
 
-// Wind Map (Release 2) — the TRAINING top bar. UI-WIND-001.
+// Training Lab — the SHARED training top bar. UI-WIND-001, UI-TRAIN-001/002/003.
 //
-// Occupies the same 42 px band as the competition `statusStrip`, which is
-// suppressed for Wind Map. Every anchor in ShootingPage still chains from
-// statusStrip.bottom, so nothing below moves.
+// ONE bar for all four Training Lab programmes: Technical Blocks, Call &
+// Diagnose, Position Transition and Wind Map. It occupies the same 42 px band
+// as the competition `statusStrip`, which is suppressed whenever any Training
+// programme is active, so every anchor in ShootingPage still chains from
+// statusStrip.bottom and nothing below moves.
 //
-// WHY THIS EXISTS. The competition strip carried no gate of its own and its
-// rows gated only on the Finals/Technical-Blocks flags, so a Wind Map session
-// inherited whatever the last selected event card had set — "FINAL 35", a
-// 0 / 35 counter and the SIGHTING/MATCH stepper. A Training Lab programme
-// must never present as an ISSF Final.
+// WHY ONE BAR. The competition strip's rows each grew their own gate — one
+// more `!isXMatch` term as each programme landed — and the terms fell out of
+// step. Technical Blocks gated three rows but not the identity row; Call &
+// Diagnose and Position Transition gated none of the four. The identity row is
+// the one carrying currentGameDisplay/currentmatchDisplay, i.e. "FINAL 35"
+// left behind by the last selected event card. Four near-identical bars would
+// have re-created the same drift, so the boundary is a single question —
+// is any Training Lab programme active — asked once.
 //
-// THIS BAR BINDS TO WINDMAP AND NOTHING ELSE. It reads no Finals controller,
-// no Final phase, stage, timer, ceremony, command or official shot count, and
-// no qualification model (globalMatchModel / matchShootCount). Its shot
-// progress is the Wind Map controller's own counted-shot progress.
+// THIS BAR READS NO COMPETITION STATE. No Finals controller, phase, stage,
+// timer, ceremony, command, score banner or classification; no
+// currentGameDisplay, currentmatchDisplay, matchShootCount or
+// globalMatchModel. Everything it shows is passed in by the programme that
+// owns it.
 Item {
     id: bar
-    property var ctl: null                  // WINDMAP
-    property string athlete: ""
-    property bool demoMode: false
 
-    readonly property bool inSighters: ctl && ctl.phase === 2
-    readonly property bool counting:   ctl && ctl.phase === 3
+    // ── what the owning programme supplies ──────────────────────────────
+    property string programmeName: ""     // "Wind Map", "Call & Diagnose", ...
+    property string athlete: ""
+    property string discipline: ""
+    property string positionName: ""      // "" hides the chip (non-3P)
+    property string phaseLabel: ""        // the programme's OWN phase
+    property string progressValue: ""     // e.g. "12 / 40", "Block 2 of 4"
+    property string progressLabel: ""     // e.g. "COUNTED", "SHOTS"
+    property bool   phaseActive: false    // true = the shooting phase (accent)
+    property bool   demoMode: false
 
     readonly property color _bg:     "#15161a"
     readonly property color _line:   "#3a3b40"
@@ -32,15 +43,6 @@ Item {
     readonly property color _amber:  "#E0A800"
     readonly property color _txt:    "#F3F6FA"
     readonly property color _txtSec: "#9a9ba0"
-
-    // The phase label. Wind Map has exactly two shooting phases; everything
-    // else reports itself plainly rather than borrowing a competition word.
-    function phaseLabel() {
-        if (!ctl) return ""
-        if (bar.inSighters) return qsTr("SIGHTERS")
-        if (bar.counting)   return qsTr("COUNTED SHOTS")
-        return ctl.phaseName.toUpperCase()
-    }
 
     Rectangle { anchors.fill: parent; color: bar._bg }
 
@@ -57,38 +59,38 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
         }
         Text {
-            text: qsTr("WIND MAP")
+            text: bar.programmeName
             color: bar._txt; font.family: theme.fontFamily
             font.pixelSize: 14; font.bold: true
             anchors.verticalCenter: parent.verticalCenter
         }
-        Rectangle { width: 1; height: 18; color: bar._line; anchors.verticalCenter: parent.verticalCenter }
+        Rectangle { width: 1; height: 18; color: bar._line
+                    anchors.verticalCenter: parent.verticalCenter }
         Text {
             text: bar.athlete
             color: bar._txtSec; font.family: theme.fontFamily; font.pixelSize: 12
             anchors.verticalCenter: parent.verticalCenter
         }
-        Rectangle { width: 1; height: 18; color: bar._line; anchors.verticalCenter: parent.verticalCenter }
+        Rectangle { visible: bar.discipline !== ""
+                    width: 1; height: 18; color: bar._line
+                    anchors.verticalCenter: parent.verticalCenter }
         Text {
-            // The DISCIPLINE, from the controller's own configuration — never
-            // from the competition event display.
-            text: ctl ? (ctl.threePositions ? qsTr("50m Rifle 3 Positions")
-                                            : qsTr("50m Rifle Prone")) : ""
+            visible: bar.discipline !== ""
+            text: bar.discipline
             color: bar._txtSec; font.family: theme.fontFamily; font.pixelSize: 12
             anchors.verticalCenter: parent.verticalCenter
         }
-        // 3P only: the current TRAINING position and how far through it is.
-        // Not a Final stage chip — it is a WindMapController projection and
-        // changing it is a WindMapController action.
+        // The TRAINING position. Not a Final stage chip — it is the owning
+        // controller's projection, and changing it is that controller's action.
         Rectangle {
-            visible: ctl && ctl.threePositions
+            visible: bar.positionName !== ""
             radius: 10; height: 20; width: posText.implicitWidth + 18
             color: "#0d2018"; border.color: bar._green; border.width: 1
             anchors.verticalCenter: parent.verticalCenter
             Text {
                 id: posText
                 anchors.centerIn: parent
-                text: ctl ? ctl.positionName.toUpperCase() : ""
+                text: bar.positionName.toUpperCase()
                 color: bar._green; font.family: theme.fontFamily
                 font.pixelSize: 9; font.bold: true; font.letterSpacing: 1
             }
@@ -96,7 +98,7 @@ Item {
     }
 
     // ── the honesty line ────────────────────────────────────────────────
-    // Present on the capture screen at all times, not only in the review.
+    // Present on every Training capture screen at all times.
     Text {
         anchors.centerIn: parent
         text: qsTr("NOT AN OFFICIAL COMPETITION RESULT")
@@ -104,37 +106,35 @@ Item {
         font.pixelSize: 10; font.bold: true; font.letterSpacing: 1.5
     }
 
-    // ── progress + mode ─────────────────────────────────────────────────
+    // ── the programme's own progress + mode ─────────────────────────────
     Row {
         anchors.right: parent.right; anchors.rightMargin: 16
         anchors.verticalCenter: parent.verticalCenter
         spacing: 12
 
-        // Wind Map's OWN progress. Sighters are counted as sighters; the
-        // counted-shot progress is per position in 3P, matching the panel.
         Text {
-            text: bar.inSighters
-                  ? (ctl ? (ctl.sighterCount + " " + qsTr("SIGHTERS")) : "")
-                  : (ctl ? (ctl.countedShots + " / " + ctl.shotPlan) : "")
+            visible: bar.progressValue !== ""
+            text: bar.progressValue
             color: bar._txt; font.family: theme.fontFamily
             font.pixelSize: 14; font.bold: true
             anchors.verticalCenter: parent.verticalCenter
         }
         Text {
-            visible: !bar.inSighters
-            text: qsTr("COUNTED")
+            visible: bar.progressLabel !== ""
+            text: bar.progressLabel
             color: bar._txtSec; font.family: theme.fontFamily
             font.pixelSize: 9; font.letterSpacing: 1.5
             anchors.verticalCenter: parent.verticalCenter
         }
         Rectangle {
+            visible: bar.phaseLabel !== ""
             radius: 4; height: 24; width: phaseT.implicitWidth + 20
             anchors.verticalCenter: parent.verticalCenter
-            color: bar.counting ? bar._red : "#8a6d00"
+            color: bar.phaseActive ? bar._red : "#8a6d00"
             Text {
                 id: phaseT
                 anchors.centerIn: parent
-                text: bar.phaseLabel()
+                text: bar.phaseLabel
                 color: "white"; font.family: theme.fontFamily
                 font.pixelSize: 10; font.bold: true; font.letterSpacing: 1
             }
@@ -155,7 +155,7 @@ Item {
     }
 
     Rectangle {
-        anchors.bottom: parent.bottom; anchors.left: parent.left; anchors.right: parent.right
-        height: 1; color: bar._line
+        anchors.bottom: parent.bottom; anchors.left: parent.left
+        anchors.right: parent.right; height: 1; color: bar._line
     }
 }

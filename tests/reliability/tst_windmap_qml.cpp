@@ -61,7 +61,7 @@ void run_windmap_qml_tests()
     bool okBar = false;
     const QString panel = stripComments(qmlSource("WindMapRightPanel.qml", &okPanel));
     const QString hud   = stripComments(qmlSource("WindMapHud.qml", &okHud));
-    const QString bar   = stripComments(qmlSource("WindMapTopBar.qml", &okBar));
+    const QString bar   = stripComments(qmlSource("TrainingTopBar.qml", &okBar));
     const QString login = stripComments(qmlSource("LoginPage.qml", &okLogin));
     const QString shoot = stripComments(qmlSource("ShootingPage.qml", &okShoot));
     const QString mainq = stripComments(qmlSource("main.qml", &okMain));
@@ -205,14 +205,18 @@ void run_windmap_qml_tests()
             if (windMapQml.contains(QLatin1String(a))) { clean = false; found += QLatin1String(a) + QStringLiteral(" "); }
         check(clean, "9a. no Wind Map screen contains or binds to any Finals artefact", found);
 
-        // 9b. The top bar binds to WINDMAP and to no other controller.
-        check(bar.contains(QStringLiteral("ctl: WINDMAP")) || shoot.contains(QStringLiteral("ctl: WINDMAP")),
-              "9b. the Wind Map top bar is bound to WINDMAP");
-        const char* otherCtl[] = { "FINALS3P.", "FINALS10M.", "QUAL.", "TRAINING.", "CALLDIAG.", "POSTRANS." };
-        bool onlyWindMap = true;
-        for (const char* c : otherCtl)
-            if (bar.contains(QLatin1String(c))) onlyWindMap = false;
-        check(onlyWindMap, "9b. the top bar reads no other programme's controller");
+        // 9b. The SHARED training bar reads no controller at all — every value
+        //     is passed in by whichever programme owns the screen. That is what
+        //     makes one bar safe for four programmes.
+        const char* anyCtl[] = { "FINALS3P.", "FINALS10M.", "QUAL.", "WINDMAP.",
+                                 "TRAINING.", "CALLDIAG.", "POSTRANS.", "MODREADER." };
+        bool noCtl = true;
+        QString ctlFound;
+        for (const char* c : anyCtl)
+            if (bar.contains(QLatin1String(c))) { noCtl = false; ctlFound += QLatin1String(c); }
+        check(noCtl, "9b. the shared training bar reads NO controller directly", ctlFound);
+        check(shoot.contains(QStringLiteral("TrainingTopBar {")),
+              "9b. ShootingPage supplies its values");
 
         // 9c. Every competition row in statusStrip is gated OFF for Wind Map.
         //     These are the exact three rows that produced the defect.
@@ -220,31 +224,82 @@ void run_windmap_qml_tests()
         check(strip > 0, "9c. statusStrip is addressable");
         if (strip > 0) {
             // The band ends where the training bar is declared.
-            const int barDecl = shoot.indexOf(QStringLiteral("WindMapTopBar {"), strip);
-            check(barDecl > strip, "9c. WindMapTopBar occupies the statusStrip band");
+            const int barDecl = shoot.indexOf(QStringLiteral("TrainingTopBar {"), strip);
+            check(barDecl > strip, "9c. TrainingTopBar occupies the statusStrip band");
             const QString band = shoot.mid(strip, barDecl - strip);
-            // Three gates: identity row, phase stepper, official counter row.
-            const int gates = band.count(QStringLiteral("!isWindMapMatch"));
-            check(gates >= 3,
-                  "9c. all three competition rows are suppressed for Wind Map",
+            // UI-TRAIN-001..003: ONE boundary, asked once, for all four
+            // programmes. Every competition row in the band must be gated on
+            // isTrainingModeAny — not on a per-programme !isXMatch term, which
+            // is exactly how the four gates drifted apart in the first place.
+            const int gates = band.count(QStringLiteral("!isTrainingModeAny"));
+            check(gates >= 6,
+                  "9c. every competition row is gated on the SHARED boundary",
                   QStringLiteral("found %1 gates").arg(gates));
+            check(!band.contains(QStringLiteral("!isWindMapMatch")),
+                  "9c. no per-programme gate remains in the band to drift again");
             // The official counter must be inside a gated row.
             const int counter = band.indexOf(QStringLiteral("globalMatchModel.count"));
-            check(counter > 0 && band.lastIndexOf(QStringLiteral("visible: !isWindMapMatch"), counter) > 0,
-                  "9c. the official 0/N shot counter is inside a Wind-Map-gated row");
+            check(counter > 0 && band.lastIndexOf(QStringLiteral("visible: !isTrainingModeAny"), counter) > 0,
+                  "9c. the official 0/N shot counter is inside a Training-gated row");
         }
 
         // 9d. The training bar shows the required Training identity instead.
-        check(bar.contains(QStringLiteral("TRAINING LAB")) && bar.contains(QStringLiteral("WIND MAP")),
-              "9d. the bar identifies the programme as Training Lab / Wind Map");
-        check(bar.contains(QStringLiteral("SIGHTERS")) && bar.contains(QStringLiteral("COUNTED SHOTS")),
-              "9d. the bar shows the Wind Map phase, not a competition phase");
-        check(bar.contains(QStringLiteral("ctl.countedShots")) && bar.contains(QStringLiteral("ctl.shotPlan")),
-              "9d. shot progress comes from WindMapController, not a match model");
-        check(bar.contains(QStringLiteral("positionName")),
-              "9d. the 3P position is shown from the controller projection");
+        check(bar.contains(QStringLiteral("TRAINING LAB")),
+              "9d. the bar identifies the screen as Training Lab");
+        check(bar.contains(QStringLiteral("programmeName")) && bar.contains(QStringLiteral("phaseLabel"))
+              && bar.contains(QStringLiteral("progressValue")) && bar.contains(QStringLiteral("positionName")),
+              "9d. programme, phase, position and progress are all supplied");
+        // All four programmes name themselves through the shared bar.
+        const char* programmes[] = { "Wind Map", "Position Transition",
+                                     "Call & Diagnose", "Technical Blocks" };
+        bool allNamed = true;
+        QString missing;
+        for (const char* pr : programmes)
+            if (!shoot.contains(QLatin1String(pr))) { allNamed = false; missing += QLatin1String(pr); }
+        check(allNamed, "9d. every Training Lab programme names itself in the bar", missing);
+        check(shoot.contains(QStringLiteral("WINDMAP.countedShots"))
+              && shoot.contains(QStringLiteral("POSTRANS.shotsCompleted")),
+              "9d. progress comes from each programme's OWN controller");
         check(bar.contains(QStringLiteral("NOT AN OFFICIAL COMPETITION RESULT")),
               "9d. the capture screen states it is not an official result");
+
+        // 9e. UI-TRAIN-001..003: every Training Lab programme is isolated from
+        //     inherited competition presentation state.
+        {
+            check(shoot.contains(QStringLiteral("isTrainingModeAny: isTrainingMatch || isCallDiagnoseMatch")),
+                  "9e. the shared boundary covers Technical Blocks and Call & Diagnose");
+            check(shoot.contains(QStringLiteral("isPositionTransitionMatch || isWindMapMatch")),
+                  "9e. and Position Transition and Wind Map");
+            // The three artefacts the defect reported, each reachable ONLY
+            // from a row the shared boundary now gates.
+            const char* competitionArtefacts[] = {
+                "currentGameDisplay1", "currentmatchDisplay", "matchShootCount",
+                "globalMatchModel.count",
+            };
+            const int strip2 = shoot.indexOf(QStringLiteral("id: statusStrip"));
+            const int barDecl2 = shoot.indexOf(QStringLiteral("TrainingTopBar {"), strip2);
+            const QString band2 = (strip2 > 0 && barDecl2 > strip2)
+                                  ? shoot.mid(strip2, barDecl2 - strip2) : QString();
+            bool allGated = true;
+            QString ungated;
+            for (const char* art : competitionArtefacts) {
+                const int at = band2.indexOf(QLatin1String(art));
+                if (at < 0) continue;                 // not in the band at all
+                if (band2.lastIndexOf(QStringLiteral("!isTrainingModeAny"), at) < 0) {
+                    allGated = false; ungated += QLatin1String(art) + QStringLiteral(" ");
+                }
+            }
+            check(allGated,
+                  "9e. every competition artefact in the band sits behind the shared gate",
+                  ungated);
+            // And the bar itself carries none of them.
+            bool barClean = true;
+            for (const char* art : competitionArtefacts)
+                if (bar.contains(QLatin1String(art))) barClean = false;
+            check(barClean, "9e. the training bar contains no competition artefact");
+            check(bar.contains(QStringLiteral("NOT AN OFFICIAL COMPETITION RESULT")),
+                  "9e. every Training capture screen states it is not an official result");
+        }
     }
 
     // ── 10. the Finals screens themselves are untouched ─────────────────

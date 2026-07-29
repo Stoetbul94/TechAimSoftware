@@ -50,7 +50,7 @@
         <file>CallDiagnoseReportView.qml</file>
         <file>PositionTransitionRightPanel.qml</file>
         <file>PositionTransitionHud.qml</file>
-        <file>WindMapTopBar.qml</file>
+        <file>TrainingTopBar.qml</file>
         <file>WindMapRightPanel.qml</file>
         <file>WindMapHud.qml</file>
         <file>PositionTransitionReportView.qml</file>
