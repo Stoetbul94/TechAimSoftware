@@ -32,6 +32,9 @@ SOURCES += \
     tst_storagepaths.cpp \
     tst_capture_profile.cpp \
     ../../src/app/DocumentationCapture.cpp \
+    ../../src/app/ProductIdentity.cpp \
+    ../../src/app/BrandPackage.cpp \
+    tst_brandpackage.cpp \
     tst_fixedpoint.cpp \
     tst_events.cpp \
     tst_serializer.cpp \

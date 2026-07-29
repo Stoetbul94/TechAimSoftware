@@ -15,6 +15,10 @@ extern int g_checks;
 extern int g_failures;
 
 void check(bool ok, const char* name, const QString& detail = QString());
+// UI-1: overload for checks whose NAME is composed at runtime (per-token,
+// per-asset, per-group loops). A string literal still binds to the const
+// char* overload exactly, so nothing existing changes behaviour.
+void check(bool ok, const QString& name, const QString& detail = QString());
 
 // ── fault-injection double (M1 step 17) ───────────────────────────────
 // In-memory IJournalFile with injectable faults: open/write/flush/sync
@@ -108,6 +112,7 @@ void run_store_tests();
 void run_recovery_tests();
 void run_operatingmode_tests();
 void run_capture_profile_tests();
+void run_brand_package_tests();
 void run_fixture_tests(bool regenerate);
 
 #endif // TA_REL_TEST_SUPPORT_H
