@@ -35,8 +35,8 @@ starting — see `CLAUDE.md`, *Tech Aim UI project memory*.
 | | |
 |---|---|
 | Latest completed | **UI-2 — Version B homepage · ACCEPTED 2026-07-29** |
-| Current | **TRAINING LAB RELEASE 2 — WIND MAP · stage 1 (specification review) — BLOCKED** |
-| Next approved | Answer the Wind Map specification questions, then stage 2 |
+| Current | **TRAINING LAB RELEASE 2 — WIND MAP · stage 2 (implementation specification) — awaiting review** |
+| Next approved | Review the implementation spec, then stage 3 (domain + events) |
 
 **Version B is the accepted Tech Aim Beta homepage** (UI-DEC-012), approved by
 **HUMAN VISUAL APPROVAL — ARNOLD BAILIE** on 2026-07-29 against commit
@@ -117,13 +117,23 @@ reviewed (§6).
 A **separate feature phase**. Wind Map work must not be combined with homepage
 commits, and the homepage is closed to styling change (UI-DEC-012).
 
-**Stage 1 (specification review) is complete and BLOCKED.** See
-`docs/training-lab-wind-map-spec-review.md`. It found **no wind rule content
-anywhere** in `docs/issf-rules/` (every "wind" match in the repository is
-"window") and **no Wind Map prior art**. Five questions must be answered before
-stage 2 can start — what Wind Map is for, how and when wind is recorded, what
-the analytics may claim, and the discipline scope. One question (ISSF rules on
-consulting wind indicators during a match) may need an official rule lookup.
+**Stage 1 complete and APPROVED** — all seven specification questions
+answered 2026-07-29 (`docs/training-lab-wind-map-spec-review.md` §7).
+
+**Stage 2 complete, awaiting review** —
+`docs/training-lab-wind-map-implementation-spec.md` defines the domain model,
+six events, reducer state, four controller phases, journal format, recovery
+behaviour, analytics formulas, minimum-sample rules, 3P separation, UI
+workflow, report structure, a 21-case test plan and ten explicit non-goals.
+
+Approved scope: `Wind Map — Post-Session Review`, **50 m Rifle Prone and 3P
+only**, manual wind entry stored as numeric degrees + m/s, a standing condition
+that each accepted shot snapshots **immutably**, sighters recorded but excluded
+from counted statistics, and **descriptive-only** analytics — correlation
+never causation, every figure shown with its sample size.
+
+**No application code has been written.** Implementation is gated on review of
+the implementation specification.
 
 Required stages, in order:
 
