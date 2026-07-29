@@ -1,7 +1,7 @@
 # Tech Aim — Homepage As-Built
 
 **Describes the homepage as implemented**, not the concept mockups.
-**Reviewed at commit:** `41c09a3` · **Principal file:** `LoginPage.qml`
+**Reviewed at commit:** `d4674d0` · **Principal file:** `LoginPage.qml`
 
 > Appearance is **HUMAN VISUAL CHECK REQUIRED**. No screenshot of this page
 > exists — see §28.
@@ -19,7 +19,7 @@ it requires a restart and is only permitted with no session active.
 
 ```
 ┌ shell Header.qml (40 px) — product branding ─────────────────────────┐  not this page
-├ headerBar (56) — "Start session" + LIVE/DEMO badge ──────────────────┤  fixed
+├ headerBar (56) — "Start session" ────────────────────────────────────┤  fixed
 ├ leftPanel (44%) ─────────────┬ rightPanel (56%) ─────────────────────┤
 │ panelTitle "Session setup"   │ "Choose an event" + subtitle          │  fixed
 │ ┌ setupScroll (Flickable) ─┐ │ weaponRow / subDisciplineRow          │  fixed
@@ -38,10 +38,12 @@ Panels anchor their bottom to `actionBar.top`, so the bar can never be overlaid.
 
 ## 3. Product header — `headerBar`
 
-Page title `Start session` plus a LIVE/DEMO badge. 56 px.
-The duplicated identity row was removed (UI-DEC-005); **a logo image remains**
-(UI-HOME-006, partially resolved).
-*Token: `_bgHeader` → `backgroundSecondary`. Test: `UI-HOME-006` ×3.*
+Page title `Start session` only. 56 px. No logo and no mode badge: the shell
+header above carries the Tech Aim mark (UI-DEC-005 / UI-HOME-006), and the
+operating mode is stated by the mode control in Session setup and by the footer
+strip (UI-HOME-005). Two mode indicators are kept deliberately — Demo/Live
+confusion is a result-integrity risk.
+*Token: `_bgHeader` → `backgroundSecondary`. Test: `UI-HOME-005` ×3, `UI-HOME-006` ×5.*
 
 ## 4. Session setup panel — `leftPanel` / `setupScroll`
 
@@ -66,14 +68,16 @@ only when `showComportConnector`. *Dependency: `MODREADER.connectedModbus()` /
 
 148 × 52. Connected → `successBackground`/`successText` "Connected".
 Otherwise "Not connected" (Live) or "Demo · not needed" (Demo).
-Also mirrored in `contentFooter` (UI-HOME-005, open).
+Also summarised once in `contentFooter`; the page heading no longer repeats it
+(UI-HOME-005).
 
 ## 8. Live / Demo operating mode — `opModeRow`
 
 Two 52 px pills. Selecting one opens `opModeConfirm`
 (Cancel / Restart Later / Restart Now). *Dependency: `OPMODE.selectMode()`,
-`applyModeChange()`, `requestRestart()`.* `opModeHint` shows the restart
-requirement — still 8 px (UI-HOME-008, partially resolved).
+`applyModeChange()`, `requestRestart()`.* `opModeHint` states the restart
+requirement at `helperText` size in `warningText` — it was 8 px muted grey,
+the least visible text on the screen (UI-HOME-008).
 
 ## 9. Network Share — `networkShareCard`
 
@@ -82,9 +86,12 @@ requirement — still 8 px (UI-HOME-008, partially resolved).
 opens `networkFolderDialog`.
 *Dependency: `MODREADER.setIsServerNetworkEnabled()`, `getNetworkPath()`.*
 
-> **UI-HOME-004 is OPEN.** The card can still show an enabled state with no
-> folder. `shareConfigured` / `shareIncomplete` exist and feed the readiness
-> line, but the card does not yet consume them. See UI-DEC-008 (`PROPOSED`).
+The toggle derives from whether a folder exists, so an enabled-success state
+cannot occur without one. On-but-unconfigured renders as an amber
+"Share incomplete" in the card, the footer and the readiness line. Enabling
+with no folder opens the picker. **Sharing never gates Start** — it is a
+convenience, not a precondition for shooting (UI-DEC-008 ACCEPTED).
+*Test: `UI-HOME-004` ×8.*
 
 ## 10. Selected profile summary — `summaryCard`
 
@@ -115,8 +122,10 @@ scroll region and do **not** scroll. *Test: `UI-HOME-007` ×5.*
 
 Inside the Open Practice card, revealed when selected: 84 × 48 preset chips
 (10/20/30/40/No limit; 20/40/No limit at 50 m) setting `gameEvent` 0–3/5.
-The card is `selected ? 148 : 78` — **UI-HOME-009 open**, the expanded height
-has not been reduced.
+Collapsed, the card is 78 px — identical to every other event card. Selected,
+it grows by the preset row plus one gap only (`78 + 48 + 8`), and carries the
+same radio indicator as every EventCard (UI-HOME-007). The expanded content
+stays inside the event Flickable. *Test: `UI-HOME-007` ×3, `UI-HOME-009` ×2.*
 
 ## 17. Bottom action bar — `actionBar`
 
@@ -196,15 +205,16 @@ gain. See §27.
 
 ## 26. Known limitations
 
-1. UI-HOME-004 — network share can show enabled with no folder (**open**).
-2. UI-HOME-005 — LIVE and Connected repeated (**open**).
-3. UI-HOME-006 — a logo image remains in the page header (**partial**).
-4. UI-HOME-007 — Open Practice has no selection indicator (**partial**).
-5. UI-HOME-008 — 8/9 px helper text remains outside the action bar (**partial**).
-6. UI-HOME-009 — expanded Open Practice card still 148 px (**open**).
-7. The athlete history `▾` is inert with no feedback when no history exists.
-8. No single-column layout below 880 px.
-9. Loading states are undesigned.
+All ten reported defects (UI-HOME-001…010) now have a fix and automated
+evidence. **None is fully closed** — closure needs a real screenshot and none
+exists (§28). Remaining limitations are separate from that defect list:
+
+1. The athlete history `▾` is inert with no feedback when no history exists.
+2. No single-column layout below 880 px (rule defined, not built).
+3. Loading states are undesigned.
+4. Keyboard focus is implemented in the shared components but not in most of
+   the homepage's inline markup.
+5. The page has never been run with the German catalogue.
 
 ## 27. Deferred UI migration
 

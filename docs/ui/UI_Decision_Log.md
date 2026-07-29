@@ -147,8 +147,9 @@ showed the same mark. Two stacked brand rows read as a rendering fault and cost
 **Affected areas.** `LoginPage.qml` — `headerBar` (74 → 56 px).
 `Header.qml` untouched, being shared with every other screen.
 
-**Note.** A small logo image remains in `headerBar`. See UI-HOME-006 — the
-duplicate *identity row* was removed; the residual image has not been.
+**Completed 2026-07-29.** `8022033` removed the duplicated identity row;
+`d4674d0` removed the residual logo image. The homepage now renders no logo of
+its own — the shell header carries the only Tech Aim mark (UI-HOME-006).
 
 ---
 
@@ -206,8 +207,8 @@ clipped discipline would hide itself.
 | | |
 |---|---|
 | **Date** | 2026-07-29 |
-| **Status** | **PROPOSED — NOT IMPLEMENTED** |
-| **Commit** | — |
+| **Status** | ACCEPTED |
+| **Commit** | `41c09a3` + `d4674d0` |
 
 **Decision (proposed).** An enabled-success state must not be displayed when no
 destination folder is selected.
@@ -221,10 +222,15 @@ configuration.
 - Keep it on but render an amber "Share incomplete" warning state.
 - Leave unchanged.
 
-**Status note.** An implementation of the first option was prepared and
-**declined** pending a decision on the wanted behaviour. Tracked as
-**UI-HOME-004, OPEN**. This entry stays `PROPOSED` until a behaviour is chosen;
-it is not an accepted decision and must not be cited as one.
+**Adopted 2026-07-29:** the first option. The toggle derives from whether a
+destination folder exists, so an enabled-success state cannot occur without
+one; turning sharing on with no folder opens the picker, and the on-but-
+unconfigured case renders as an amber "Share incomplete" warning in both the
+card and the footer.
+
+**Deliberately NOT gated.** An incomplete share never blocks Start. Sharing is
+a convenience; refusing to let an athlete shoot because a results folder is
+unset would be a worse failure than not sharing the results.
 
 ---
 
@@ -233,8 +239,8 @@ it is not an accepted decision and must not be cited as one.
 | | |
 |---|---|
 | **Date** | 2026-07-28 |
-| **Status** | **PARTIALLY IMPLEMENTED** |
-| **Commit** | `8022033` (grouping), remainder outstanding |
+| **Status** | ACCEPTED |
+| **Commit** | `8022033` (grouping) + `d4674d0` (indicator) |
 
 **Decision.** Event cards use one pattern: the whole card is clickable, the
 selected card takes an accent border plus tint, the selection indicator sits in
@@ -247,8 +253,8 @@ selection.
 **Implemented.** Four labelled groups; `EventCard` carries a radio indicator;
 the Training Lab arrow is genuine navigation (`practiceView = 1`).
 
-**Outstanding.** The Open Practice card still has no selection indicator.
-Tracked as **UI-HOME-007, OPEN**.
+**Completed 2026-07-29.** Open Practice now carries the same radio indicator
+in the same position (`d4674d0`), so one pattern covers every card in the list.
 
 ---
 

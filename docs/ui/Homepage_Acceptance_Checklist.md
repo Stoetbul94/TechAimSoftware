@@ -1,6 +1,6 @@
 # Tech Aim — Homepage Acceptance Checklist
 
-**Reviewing commit:** `41c09a3` · **Reviewed:** 2026-07-29
+**Reviewing commit:** `d4674d0` · **Reviewed:** 2026-07-29
 Statuses: `PASS` · `FAIL` · `BLOCKED` · `NOT TESTED` · `HUMAN VISUAL CHECK REQUIRED`
 
 > **Nothing here is signed off.** No screenshot of the Version B homepage
@@ -17,7 +17,7 @@ tables record only what genuinely varies with window size.
 
 ## 1. Structural checks — resolution-independent
 
-Test binary: `tests/reliability/release/reliability_tests.exe` · **1041 checks, 0 failures**
+Test binary: `tests/reliability/release/reliability_tests.exe` · **1059 checks, 0 failures**
 
 ### Layout
 
@@ -74,8 +74,8 @@ Test binary: `tests/reliability/release/reliability_tests.exe` · **1041 checks,
 
 | Check | Status | Test | Notes |
 |---|---|---|---|
-| Enabled state requires a valid folder | **FAIL** | `UI-HOME-004` | **UI-HOME-004 OPEN** — fix declined pending a decision (UI-DEC-008 `PROPOSED`) |
-| No-folder state not shown as success | **FAIL** | — | As above |
+| Enabled state requires a valid folder | PASS | `UI-HOME-004: sharing starts off unless a destination folder exists` | Toggle derives from folder presence |
+| No-folder state not shown as success | PASS | `UI-HOME-004: the on-but-unconfigured case reads as incomplete` | Amber warning, not success |
 | Validity state available | PASS | `UI-HOME-004: share-validity state is available` | `shareConfigured` / `shareIncomplete` exist |
 | Incomplete surfaced to the operator | PASS | `UI-HOME-004: an incomplete share is surfaced in the readiness line` | Advisory only |
 | Choose-folder action is obvious | HUMAN VISUAL CHECK REQUIRED | — | Card body opens the picker |
@@ -89,13 +89,13 @@ Test binary: `tests/reliability/release/reliability_tests.exe` · **1041 checks,
 | Accent matches approved tokens | PASS | `brand: accentPrimary is the approved #A80038` | |
 | No hard-coded palette on the homepage | PASS | `home: no hard-coded colour literals remain` | |
 | Duplicate identity row removed | PASS | `UI-HOME-006: the duplicated identity row is gone` | |
-| One primary Tech Aim logo | **HUMAN VISUAL CHECK REQUIRED** | — | **UI-HOME-006 PARTIAL** — a logo image remains in `headerBar` |
+| One primary Tech Aim logo | PASS | `UI-HOME-006: the homepage renders no logo of its own` | Shell header is the only mark |
 | Four labelled groups | PASS | `UI-HOME-007: group … is labelled` ×4 | |
 | Arrow means navigation only | PASS | `UI-HOME-007: the Training Lab arrow is genuine navigation` | |
-| Selection indicators consistent | **HUMAN VISUAL CHECK REQUIRED** | — | **UI-HOME-007 PARTIAL** — Open Practice has none |
+| Selection indicators consistent | PASS | `UI-HOME-007: Open Practice uses the same radio indicator` | One pattern across the list |
 | Touch targets meet the minimum | PASS | `home: … use the height: 52/56/58/78 touch size` | Floor 44 px |
-| Status not needlessly duplicated | **FAIL** | — | **UI-HOME-005 OPEN** |
-| Helper text readable | **HUMAN VISUAL CHECK REQUIRED** | — | **UI-HOME-008 PARTIAL** — 8/9 px survives outside the action bar |
+| Status not needlessly duplicated | PASS | `UI-HOME-005: the read-only LIVE/DEMO badge is gone` | Two indicators kept on purpose |
+| Helper text readable | PASS | `UI-HOME-008: no sub-10px text remains` | Zero sub-10px strings; contrast still visual |
 | Metadata text readable | HUMAN VISUAL CHECK REQUIRED | — | |
 | Focus state visible | HUMAN VISUAL CHECK REQUIRED | — | Components implement it; homepage inline markup largely does not |
 | Disabled state understandable | HUMAN VISUAL CHECK REQUIRED | — | |
@@ -171,11 +171,13 @@ so evidence can be dropped in and the tables closed.
 
 | | |
 |---|---|
-| Structural checks passed | 40 |
-| Checks failing (open defects) | 3 — network share ×2, duplicate status ×1 |
-| Checks requiring human visual review | 30 |
+| Structural checks passed | **58** |
+| Checks failing (open defects) | **0** |
+| Checks requiring human visual review | 25 |
 | Checks blocked on screenshots | 30 (per-resolution) |
 | **Overall** | **NOT ACCEPTED** |
 
-Acceptance requires: screenshots at all four resolutions, UI-HOME-004/005/009
-closed, UI-HOME-006/007/008 completed, and Arnold's visual approval.
+All ten defects now have a fix and automated evidence, and no structural
+check fails. Acceptance still requires **screenshots at all four resolutions
+and Arnold's visual approval** — the per-resolution tables below remain
+BLOCKED, and code changing is not closure.

@@ -1,6 +1,6 @@
 # Tech Aim — Current Project State
 
-**Updated:** 2026-07-29 · **Reviewed at commit:** `41c09a3`
+**Updated:** 2026-07-29 · **Reviewed at commit:** `d4674d0`
 
 The single place to look first. Every future UI phase must read this before
 starting — see `CLAUDE.md`, *Tech Aim UI project memory*.
@@ -26,32 +26,35 @@ starting — see `CLAUDE.md`, *Tech Aim UI project memory*.
 | Application baseline (pre-UI work) | `a74d3fd` |
 | **Version B implementation** | `8022033` |
 | Design-system foundation | `37c9e2b` docs · `1bc6b80` tokens + BrandPackage · `f62d289` homepage binding · `15a3492` tests |
-| **Homepage defect fix** | `41c09a3` |
-| Current accepted HEAD | `41c09a3` |
+| **Homepage defect fix** | `41c09a3` (P0) + `d4674d0` (completion) |
+| Project memory | `445665e` |
+| Current accepted HEAD | `d4674d0` |
 
 ## 3. Phase
 
 | | |
 |---|---|
 | Latest completed | UI-1 — Design System and Brand Package foundation |
-| Current | UI-2 — homepage defect correction · **PARTIAL** |
+| Current | UI-2 — homepage defect correction · **code complete** |
 | Next approved | **Capture real homepage screenshots and obtain visual approval** |
 
-**UI-2 is not complete.** Four of ten homepage defects are fixed with automated
-evidence; six remain open or partial. See `docs/ui/UI_Defect_Register.md`.
+**All ten homepage defects are fixed with automated evidence. None is closed**,
+because closure requires a real screenshot and none exists. UI-2 is code
+complete but **not accepted**. See `docs/ui/UI_Defect_Register.md`.
 
 ## 4. Tests
 
 | Suite | Result |
 |---|---|
-| Reliability (incl. UI-1 brand + UI-2 layout) | **1041 / 0** |
-| Documentation | **944 / 0** |
+| Reliability (incl. UI-1 brand + UI-2 layout) | **1059 / 0** |
+| Documentation — manuals | **979 / 0** |
+| Documentation — project memory | **155 / 0** |
 | Training | not re-run this phase — no training code touched |
 | Finals 10m | not re-run this phase — no finals code touched |
 | 3P Finals | not re-run this phase — no finals code touched |
 | qmllint | clean on all shipped QML |
 
-Reliability grew 902 → 988 (UI-1, +86) → 1041 (UI-2, +53).
+Reliability grew 902 → 988 (UI-1, +86) → 1041 (UI-2 P0, +53) → 1059 (UI-2 completion, +18).
 
 ## 5. Build and runtime
 
@@ -77,7 +80,7 @@ the **pre-Version-B** page. It is UI-0 evidence only.
 ## 7. Manual status
 
 Operator manuals, Quick Start and Troubleshooting exist (EN + DE beta) and pass
-944 documentation checks. **They are out of date with respect to the homepage:**
+979 documentation checks. **They are out of date with respect to the homepage:**
 every Home-screen screenshot and any prose describing the old layout needs
 regenerating after visual approval. Deferred until the page is accepted, so the
 work is done once.
@@ -87,8 +90,8 @@ work is done once.
 | # | Blocker | Owner |
 |---|---|---|
 | 1 | No Version B screenshots; homepage not visually approved | Arnold + capture |
-| 2 | UI-HOME-004 network share can show enabled with no folder | decision needed (UI-DEC-008 `PROPOSED`) |
-| 3 | UI-HOME-005/009 open; 006/007/008 partial | UI-2 completion |
+| 2 | ~~UI-HOME-004~~ resolved in `d4674d0`; UI-DEC-008 now ACCEPTED | — |
+| 3 | ~~UI-HOME-005…009~~ all resolved in `d4674d0` | — |
 | 4 | **No Windows icon** — `TechAim.rc` declares no `ICON`, so the executable ships the default Qt/MinGW icon | brand approval |
 | 5 | Manuals not regenerated for the new homepage | after #1 |
 | 6 | Licence-expiry check DISABLED; re-enabling needs approval + a test fixture | separate approval |
@@ -103,7 +106,8 @@ work is done once.
    `manual-preview/ui-audit/raw/vb-home-<w>x<h>.png`.
 2. Register them in `docs/ui/UI_Defect_Register.md` §3.
 3. Close the per-resolution tables in `docs/ui/Homepage_Acceptance_Checklist.md`.
-4. Complete UI-2: decide UI-HOME-004, then 005–009.
+4. Obtain Arnold's visual approval, moving the ten defects to
+   `RESOLVED — AUTOMATED AND VISUAL EVIDENCE`.
 5. Regenerate the manual screenshots.
 6. Then Windows RC1 preparation.
 
