@@ -164,17 +164,84 @@ void run_homepage_layout_tests()
         }
     }
 
-    // ── UI-HOME-004: network share validity (NOT IMPLEMENTED) ───────────────
+    // ── UI-HOME-004: network share validity ─────────────────────────────────
     {
-        // The helper state exists; the CARD does not yet consume it. This
-        // check documents the gap rather than asserting a fix that was
-        // declined — see UI-DEC-008 (PROPOSED) and UI-HOME-004 (OPEN).
-        const bool helpers = src.contains(QStringLiteral("shareIncomplete"))
-                          && src.contains(QStringLiteral("shareConfigured"));
-        check(helpers,
-              "UI-HOME-004: share-validity state is available for the pending fix");
+        check(src.contains(QStringLiteral("shareIncomplete"))
+              && src.contains(QStringLiteral("shareConfigured")),
+              "UI-HOME-004: share-validity state exists");
+        // Enabled must require a folder — the toggle derives from one.
+        check(src.contains(QStringLiteral("property bool netEnabled: netowrk_path_text.text !== \"\"")),
+              "UI-HOME-004: sharing starts off unless a destination folder exists");
+        // A success label may never be shown without a folder.
+        check(src.contains(QStringLiteral("shareConfigured ? qsTr(\"Share enabled\")")),
+              "UI-HOME-004: 'Share enabled' is gated on a configured share");
+        check(src.contains(QStringLiteral("shareIncomplete ? qsTr(\"Share incomplete\")")),
+              "UI-HOME-004: the on-but-unconfigured case reads as incomplete, not success");
+        // The footer must agree with the card.
+        check(src.contains(QStringLiteral("Share incomplete\"")),
+              "UI-HOME-004: the footer reports an incomplete share");
         check(src.contains(QStringLiteral("readinessSummary")),
-              "UI-HOME-004: an incomplete share is at least surfaced in the readiness line");
+              "UI-HOME-004: an incomplete share is surfaced in the readiness line");
+        // ...and must not block shooting.
+        check(src.contains(QStringLiteral("readonly property bool readinessOk: !shareIncomplete")),
+              "UI-HOME-004: an incomplete share is advisory and does not gate Start");
+        check(src.contains(QStringLiteral("networkFolderDialog.open()")),
+              "UI-HOME-004: an explicit choose-folder action exists");
+    }
+
+    // ── UI-HOME-005: status not needlessly repeated ─────────────────────────
+    {
+        const QString hdr = blockAfter(src, QStringLiteral("id: headerBar"), 900);
+        check(!hdr.contains(QStringLiteral("_modeBadge")),
+              "UI-HOME-005: the read-only LIVE/DEMO badge is gone from the page heading");
+        // Two indicators must remain: the mode CONTROL and the footer strip.
+        // Demo mode staying unmissable is a result-integrity requirement.
+        check(src.contains(QStringLiteral("DEMO / SIMULATION")),
+              "UI-HOME-005: the operating-mode control still states the mode");
+        check(src.contains(QStringLiteral("text: appMode ? \"LIVE\" : \"DEMO\"")),
+              "UI-HOME-005: the footer still states the mode");
+    }
+
+    // ── UI-HOME-006: one primary logo ───────────────────────────────────────
+    {
+        const QString hdr = blockAfter(src, QStringLiteral("id: headerBar"), 900);
+        check(!hdr.contains(QStringLiteral("theme.logoWhite")),
+              "UI-HOME-006: the duplicate logo image is gone from the page header");
+        check(!src.contains(QStringLiteral("theme.logoWhite")),
+              "UI-HOME-006: the homepage renders no logo of its own");
+    }
+
+    // ── UI-HOME-007: consistent selection indicator ─────────────────────────
+    {
+        // The card body runs to ~3.4k chars (badge, titles, preset repeater),
+        // and the indicator is declared after it.
+        const QString op = blockAfter(src, QStringLiteral("id: openPracticeCard"), 4200);
+        check(!op.isEmpty(), "UI-HOME-007: the Open Practice card is addressable");
+        check(op.contains(QStringLiteral("width: 18; height: 18; radius: 9")),
+              "UI-HOME-007: Open Practice uses the same radio indicator as every EventCard");
+        check(op.contains(QStringLiteral("openPracticeCard.selected")),
+              "UI-HOME-007: the indicator reflects the card's selected state");
+    }
+
+    // ── UI-HOME-008: no text below the readable floor ───────────────────────
+    {
+        const QRegularExpression tiny(QStringLiteral("pixelSize: [1-9]\\b"));
+        auto it = tiny.globalMatch(src);
+        QStringList found;
+        while (it.hasNext()) found << it.next().captured(0);
+        check(found.isEmpty(),
+              QString(QStringLiteral("UI-HOME-008: no sub-10px text remains (found %1)"))
+                  .arg(found.join(QStringLiteral(", "))));
+        check(src.contains(QStringLiteral("theme.type.helperText.size")),
+              "UI-HOME-008: helper text uses the typography role");
+    }
+
+    // ── UI-HOME-009: Open Practice expansion is proportionate ───────────────
+    {
+        check(src.contains(QStringLiteral("height: selected ? 78 + 48 + 8 : 78")),
+              "UI-HOME-009: collapsed matches other cards (78); expanded adds only the preset row");
+        check(!src.contains(QStringLiteral("height: selected ? 148 : 78")),
+              "UI-HOME-009: the oversized 148 px expansion is gone");
     }
 
     // ── UI-HOME-006: no duplicate identity row in the page header ───────────

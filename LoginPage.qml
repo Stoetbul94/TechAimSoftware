@@ -504,13 +504,10 @@ Item {
         Rectangle { anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom; width: 3; color: _red }
         Rectangle { anchors.bottom: parent.bottom; anchors.left: parent.left; anchors.right: parent.right; height: 1; color: _borderSub }
 
-        // Logo — right side, subtle
-        Image {
-            source: theme.logoWhite
-            anchors.right: parent.right; anchors.rightMargin: 20
-            anchors.verticalCenter: parent.verticalCenter
-            height: 26; fillMode: Image.PreserveAspectFit; opacity: 0.55
-        }
+        // UI-HOME-006: the subtle logo that used to sit here is gone. The shell
+        // Header directly above this bar already carries the Tech Aim mark, so
+        // this was the product's second logo within ~40 vertical pixels.
+        // UI-DEC-005: one primary Tech Aim logo, in the application shell.
 
         // Session title row
         Row {
@@ -523,20 +520,14 @@ Item {
                 font.family: theme.fontFamily; font.pixelSize: 22; font.bold: true
                 anchors.verticalCenter: parent.verticalCenter
             }
-            Rectangle {
-                height: 20; radius: 4
-                width: _modeBadge.implicitWidth + 14
-                color: appMode ? _okBg : _errBg
-                border.color: appMode ? _green : _red; border.width: 1
-                anchors.verticalCenter: parent.verticalCenter
-                Text {
-                    id: _modeBadge
-                    anchors.centerIn: parent
-                    text: appMode ? "LIVE" : "DEMO"
-                    color: appMode ? _green : _red
-                    font.family: theme.fontFamily; font.pixelSize: 9; font.bold: true; font.letterSpacing: 2
-                }
-            }
+            // UI-HOME-005: the LIVE/DEMO badge that used to sit beside the title
+            // is gone. Operating mode is stated in Session setup (where it can
+            // also be CHANGED) and once more in the footer status strip; a third
+            // read-only copy in the page heading was noise.
+            //
+            // Deliberately kept elsewhere: Demo mode must stay unmissable,
+            // because mistaking a Demo session for a Live one is a
+            // result-integrity risk, not a cosmetic one. Two indicators remain.
         }
     }
 
@@ -780,7 +771,7 @@ Item {
                                font.family: theme.fontFamily; font.pixelSize: 12; font.bold: true
                                anchors.horizontalCenter: parent.horizontalCenter }
                         Text { text: "Physical target"; color: _txtMut
-                               font.family: theme.fontFamily; font.pixelSize: 8
+                               font.family: theme.fontFamily; font.pixelSize: theme.type.helperText.size
                                anchors.horizontalCenter: parent.horizontalCenter }
                     }
                     MouseArea {
@@ -801,7 +792,7 @@ Item {
                                font.family: theme.fontFamily; font.pixelSize: 12; font.bold: true
                                anchors.horizontalCenter: parent.horizontalCenter }
                         Text { text: "Simulated clicks"; color: _txtMut
-                               font.family: theme.fontFamily; font.pixelSize: 8
+                               font.family: theme.fontFamily; font.pixelSize: theme.type.helperText.size
                                anchors.horizontalCenter: parent.horizontalCenter }
                     }
                     MouseArea {
@@ -817,8 +808,9 @@ Item {
                 anchors.left: parent.left; anchors.leftMargin: 22
                 anchors.right: parent.right; anchors.rightMargin: 22
                 wrapMode: Text.WordWrap
-                font.family: theme.fontFamily; font.pixelSize: 8
-                color: (typeof OPMODE !== "undefined" && OPMODE.restartRequired) ? _red : _txtMut
+                font.family: theme.fontFamily
+                font.pixelSize: theme.type.helperText.size
+                color: (typeof OPMODE !== "undefined" && OPMODE.restartRequired) ? _warnTxt : _txtSec
                 text: (typeof OPMODE !== "undefined" && OPMODE.restartRequired)
                       ? "Restart required — the selected mode takes effect on next launch."
                       : "Switch the target source. Changing mode requires an application restart."
@@ -931,9 +923,12 @@ Item {
                             font.family: theme.fontFamily; font.pixelSize: 12; font.bold: true
                         }
                         Text {
-                            text: netowrk_path_text.text !== "" ? netowrk_path_text.text : "No folder selected — click to choose"
-                            color: netowrk_path_text.text !== "" ? _txtMut : _red
-                            font.family: "Consolas"; font.pixelSize: 10
+                            text: netowrk_path_text.text !== ""
+                                  ? netowrk_path_text.text
+                                  : qsTr("No folder selected — click to choose")
+                            color: netowrk_path_text.text !== "" ? _txtMut : _warnTxt
+                            font.family: theme.fontFamily
+                            font.pixelSize: theme.type.helperText.size
                             elide: Text.ElideMiddle; width: networkShareCard.width - 100
                         }
                     }
@@ -1009,7 +1004,7 @@ Item {
                     Text {
                         visible: trainingConfirmed && trainingDisciplineId() === "3P50"
                         text: "POSITION FLOW   Kneeling → Prone → Standing"
-                        color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 9; font.letterSpacing: 1
+                        color: _txtSec; font.family: theme.fontFamily; font.pixelSize: theme.type.helperText.size; font.letterSpacing: 1
                     }
                     Item { width: 1; height: 6 }
                     Rectangle { width: parent.width; height: 1; color: _borderSub }
@@ -1055,7 +1050,7 @@ Item {
                         spacing: 3
                         Text {
                             text: modelData.lbl; color: _txtMut
-                            font.family: theme.fontFamily; font.pixelSize: 9
+                            font.family: theme.fontFamily; font.pixelSize: theme.type.helperText.size
                             font.bold: true; font.letterSpacing: 1.4
                         }
                         Text {
@@ -1375,7 +1370,7 @@ Item {
                     Text {
                         text: "OFFICIAL ISSF MATCH"
                         color: _txtMut; font.family: theme.fontFamily
-                        font.pixelSize: 9; font.bold: true; font.letterSpacing: 2
+                        font.pixelSize: theme.type.label.size; font.bold: true; font.letterSpacing: theme.type.label.spacing
                         topPadding: 4; bottomPadding: 8
                     }
                     // Official: 60 shots — Pistol, 10m Rifle, 50m Prone, 50m 3 Pos (20+20+20)
@@ -1384,7 +1379,7 @@ Item {
                     Text {
                         text: "FINALS"
                         color: _txtMut; font.family: theme.fontFamily
-                        font.pixelSize: 9; font.bold: true; font.letterSpacing: 2
+                        font.pixelSize: theme.type.label.size; font.bold: true; font.letterSpacing: theme.type.label.spacing
                         topPadding: 16; bottomPadding: 8
                         visible: gameRange === 10 || (gameMode === 1 && gameRange === 50 && gameSubMode === 1)
                     }
@@ -1410,7 +1405,7 @@ Item {
                     Text {
                         text: "TRAINING LAB"
                         color: _txtMut; font.family: theme.fontFamily
-                        font.pixelSize: 9; font.bold: true; font.letterSpacing: 2
+                        font.pixelSize: theme.type.label.size; font.bold: true; font.letterSpacing: theme.type.label.spacing
                         topPadding: 16; bottomPadding: 8
                     }
                     // TRAINING LAB — gateway to the programme catalogue.
@@ -1448,15 +1443,20 @@ Item {
                     Text {
                         text: "PRACTICE"
                         color: _txtMut; font.family: theme.fontFamily
-                        font.pixelSize: 9; font.bold: true; font.letterSpacing: 2
+                        font.pixelSize: theme.type.label.size; font.bold: true; font.letterSpacing: theme.type.label.spacing
                         topPadding: 16; bottomPadding: 8
                     }
                     // OPEN PRACTICE — one card; presets select the existing
                     // practice events (identical behaviour to the old rows).
                     Rectangle {
+                        id: openPracticeCard
                         readonly property bool selected: gameEvent >= 0 && gameEvent <= 3 && !trainingConfirmed
                         width: eventColumn.width
-                        height: selected ? 148 : 78
+                        // UI-HOME-009: the collapsed card now matches every other
+                        // event card exactly (78). Selected, it grows by just the
+                        // preset row + one gap (48 + 8) instead of the old 148,
+                        // so the shot-plan selector costs 56 px rather than 70.
+                        height: selected ? 78 + 48 + 8 : 78
                         radius: 8
                         color: selected ? _redDark : _surfaceAlt
                         border.color: selected ? _red : _borderSub
@@ -1470,23 +1470,30 @@ Item {
                                 spacing: 12
                                 Rectangle {
                                     width: 38; height: 38; radius: 19
-                                    color: parent.parent.parent.selected ? _red : _borderStr
-                                    Text { text: "OP"; color: "white"; font.family: "Consolas"
+                                    color: openPracticeCard.selected ? _red : _borderStr
+                                    Text { text: "OP"; color: _onAccent; font.family: theme.type.numericMetric.family
                                            font.pixelSize: 12; font.bold: true; anchors.centerIn: parent }
                                 }
                                 Column {
                                     spacing: 3
                                     anchors.verticalCenter: parent.verticalCenter
                                     Text { text: "OPEN PRACTICE"
-                                           color: _txt; font.family: theme.fontFamily
-                                           font.pixelSize: 13; font.bold: true }
-                                    Text { text: "A flexible shooting session. Choose a shot plan below.\nPlans come from the discipline's event definitions."
-                                           color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 10 }
+                                           color: openPracticeCard.selected ? _txt : _txtSec
+                                           font.family: theme.fontFamily
+                                           font.pixelSize: theme.type.cardTitle.size
+                                           font.bold: openPracticeCard.selected }
+                                    // UI-HOME-007 / P1-7: one line, like every
+                                    // other card's subtitle. The second sentence
+                                    // explained where plans come from, which the
+                                    // operator does not need at selection time.
+                                    Text { text: qsTr("A flexible shooting session — choose a shot plan")
+                                           color: _txtMut; font.family: theme.fontFamily
+                                           font.pixelSize: theme.type.helperText.size }
                                 }
                             }
                             // Compact presets (existing gameEvents; 10/30 stay 10m-only)
                             Row {
-                                visible: parent.parent.selected
+                                visible: openPracticeCard.selected
                                 spacing: 6
                                 Repeater {
                                     model: (gameMode === 1 && gameRange === 50)
@@ -1505,9 +1512,25 @@ Item {
                                 }
                             }
                         }
+                        // UI-HOME-007: the same radio indicator every EventCard
+                        // uses, in the same position. This card previously had
+                        // no selection indicator at all, so three different
+                        // patterns coexisted in one list.
+                        Rectangle {
+                            width: 18; height: 18; radius: 9
+                            anchors.right: parent.right; anchors.rightMargin: 12
+                            anchors.top: parent.top; anchors.topMargin: 22
+                            color: "transparent"
+                            border.color: openPracticeCard.selected ? _red : _borderStr
+                            border.width: 2
+                            Rectangle {
+                                anchors.centerIn: parent; width: 9; height: 9; radius: 5
+                                color: _red; visible: openPracticeCard.selected
+                            }
+                        }
                         MouseArea {
                             anchors.fill: parent
-                            enabled: !parent.selected
+                            enabled: !openPracticeCard.selected
                             onClicked: { trainingConfirmed = false; cdConfirmed = false; ptConfirmed = false; gameEvent = 1 }
                         }
                     }
@@ -1587,7 +1610,7 @@ Item {
                                     border.color: _green; border.width: 1
                                     anchors.verticalCenter: parent.verticalCenter
                                     Text { anchors.centerIn: parent; text: "AVAILABLE"
-                                           color: _green; font.pixelSize: 9; font.bold: true }
+                                           color: _green; font.pixelSize: theme.type.label.size; font.bold: true }
                                 }
                             }
                             Text { text: "Shoot several short groups while concentrating on one technical part of your process.\nAfter each block, TechAim reveals the measured group and lets you record a note."
@@ -1624,7 +1647,7 @@ Item {
                                 color: "transparent"; border.color: _borderStr; border.width: 1
                                 anchors.verticalCenter: parent.verticalCenter
                                 Text { id: statusT; anchors.centerIn: parent; text: status
-                                       color: _txtMut; font.pixelSize: 9; font.bold: true }
+                                       color: _txtMut; font.pixelSize: theme.type.label.size; font.bold: true }
                             }
                         }
                         // no MouseArea: not clickable, no selector, no fake setup
@@ -1647,7 +1670,7 @@ Item {
                                     border.color: _green; border.width: 1
                                     anchors.verticalCenter: parent.verticalCenter
                                     Text { anchors.centerIn: parent; text: "AVAILABLE"
-                                           color: _green; font.pixelSize: 9; font.bold: true }
+                                           color: _green; font.pixelSize: theme.type.label.size; font.bold: true }
                                 }
                             }
                             Text { text: "Call each shot before the actual impact is revealed.\nCompare where you believed the shot landed with where it actually landed."
@@ -1680,7 +1703,7 @@ Item {
                                 Rectangle {
                                     width: 74; height: 18; radius: 9; color: _okBg; border.color: _green; border.width: 1
                                     anchors.verticalCenter: parent.verticalCenter
-                                    Text { anchors.centerIn: parent; text: "AVAILABLE"; color: _green; font.pixelSize: 9; font.bold: true } }
+                                    Text { anchors.centerIn: parent; text: "AVAILABLE"; color: _green; font.pixelSize: theme.type.label.size; font.bold: true } }
                             }
                             Text { text: "Practise changing between Kneeling, Prone and Standing.\nMeasure setup time, sighters, first-shot timing and early group repeatability after each transition."
                                    color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 10 }
@@ -1696,7 +1719,7 @@ Item {
                                  visible: gameMode === 1 && gameRange === 50 }
 
                     Text { text: "INCLUDED INSIGHTS"; color: _txtMut
-                           font.family: theme.fontFamily; font.pixelSize: 9; font.bold: true
+                           font.family: theme.fontFamily; font.pixelSize: theme.type.label.size; font.bold: true
                            font.letterSpacing: 2; topPadding: 10 }
                     Text {
                         text: {
@@ -1868,7 +1891,7 @@ Item {
                                             text: ["No score or impact is shown until block review.",
                                                    "Shot positions form a group; numerical scores stay hidden.",
                                                    "Shot positions are visible; scores stay hidden."][index]
-                                            color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 9
+                                            color: _txtMut; font.family: theme.fontFamily; font.pixelSize: theme.type.helperText.size
                                         }
                                     }
                                     Text { visible: TRAINING.visibilityMode === index
@@ -2384,8 +2407,13 @@ Item {
                 }
                 Rectangle { width: 1; height: 12; color: _borderStr; anchors.verticalCenter: parent.verticalCenter }
                 Text {
-                    text: networkShareCard.netEnabled ? "☁ Share on" : "☁ Share off"
-                    color: networkShareCard.netEnabled ? _green : _txtMut
+                    // UI-HOME-004: the footer must not claim the share is on
+                    // while it has nowhere to write.
+                    text: shareIncomplete ? qsTr("☁ Share incomplete")
+                         : (shareConfigured ? qsTr("☁ Share on")
+                                            : qsTr("☁ Share off"))
+                    color: shareIncomplete ? _warnTxt
+                                           : (shareConfigured ? _green : _txtMut)
                     font.family: theme.fontFamily; font.pixelSize: 11
                     anchors.verticalCenter: parent.verticalCenter
                     MouseArea {
