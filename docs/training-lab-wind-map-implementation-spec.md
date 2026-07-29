@@ -229,13 +229,17 @@ counted-shot statistic. Shots with `valid=false` form their own
 
 **Speed bands** — Release 1 fixed bands, in m/s:
 
-| Band | Range |
-|---|---|
-| Calm | `calm == true` |
-| Light | `0 < v ≤ 2` |
-| Moderate | `2 < v ≤ 4` |
-| Strong | `4 < v ≤ 7` |
-| Very strong | `v > 7` |
+| Band | Range | Boundary rule |
+|---|---|---|
+| Calm | `calm == true` **only** | `speed == 0` alone is NOT calm — calm must be explicitly recorded |
+| Light | `0 < v ≤ 2.0` | exactly **2.0 → Light** |
+| Moderate | `2.0 < v ≤ 4.0` | exactly **4.0 → Moderate** |
+| Strong | `4.0 < v ≤ 7.0` | exactly **7.0 → Strong** |
+| Very strong | `v > 7.0` | |
+
+**APPROVED 2026-07-29.** Each boundary value belongs to the *lower* band, and
+each is a named test case. `speed == 0` with `calm == false` is a Light-band
+reading of zero, not Calm; Calm is a distinct recorded observation.
 
 Banding is applied **at analysis time**; the journal stores the raw m/s value,
 so bands can be revised later without invalidating existing sessions.
@@ -280,8 +284,39 @@ the review's wording rule:
 >
 > ❌ "This wind pushed the shots left."
 
-Prohibited in any generated string: "because", "caused", "due to the wind",
-"hold", "click", "adjust", "aim", "correct", "compensate". §11 tests this.
+#### Scope of the wording checker — CORRECTED 2026-07-29
+
+The checker applies **only to Wind Map generated analytic narrative**: the
+conclusion, summary and "What You Should Take" strings produced by
+`WindMapAnalytics`. It does **not** run over the application, UI labels,
+product identity, documentation or any other report.
+
+**Single words must not be prohibited.** "Tech Aim" contains *aim*; *click*
+means a mouse button; *hold* describes timing and UI behaviour; *adjust*
+appears in settings; *correct* appears in validation messages. A word-level
+list produces false failures on correct code.
+
+**Prohibited phrases** (case-insensitive, whitespace-normalised):
+
+| Causal | Prescriptive |
+|---|---|
+| `the wind caused` | `you should aim` |
+| `the wind pushed` | `aim to the` |
+| `caused by the wind` | `hold left` · `hold right` |
+| `due to the wind` | `add clicks` · `remove clicks` |
+| `wind moved the` | `adjust your sights` · `move your sights` |
+| `blown left` · `blown right` | `correct by` · `compensate by` |
+| | `this requires a correction` |
+
+**Permitted, and used as positive fixtures:**
+
+- "Shots recorded under this condition grouped left of the reference centre."
+- "The sample contains five counted shots."
+- "This is an observed association and does not establish causation."
+- "Insufficient samples are available for a reliable comparison."
+
+§11 tests both directions: prohibited phrases are rejected, and the permitted
+sentences above pass unchanged.
 
 ### 7.6 3P separation
 
@@ -402,12 +437,17 @@ report is inspected.
 17. 3P: three positions never pool; each has its own reference centre.
 
 ### Wording
-18. No generated string contains a prohibited term (§7.5).
-19. Every comparison string contains its sample size.
+18. No Wind Map generated narrative contains a prohibited **phrase** (§7.5).
+19. The four permitted sentences in §7.5 pass the checker unchanged — the
+    checker must not reject correct neutral wording.
+20. The checker is scoped to Wind Map analytic narrative only: strings
+    containing "Tech Aim", "click to choose", "hold time" and similar
+    application text are **not** its input and must not be flagged.
+21. Every comparison string contains its sample size.
 
 ### Boundary
-20. Zero counted shots — no crash, no statistics, an explicit empty state.
-21. All shots in one condition — comparisons withheld, not zero-valued.
+22. Zero counted shots — no crash, no statistics, an explicit empty state.
+23. All shots in one condition — comparisons withheld, not zero-valued.
 
 Baselines to hold: reliability **1059/0**, docs **986/0 + 204/0**, plus the
 new Wind Map suite. No existing baseline may regress.
