@@ -160,9 +160,34 @@ inline qint16 windSectorCentreDegrees(WindSector s)
 }
 
 // ── Speed ───────────────────────────────────────────────────────────────────
-// Stored in hundredths of m/s. A generous ceiling keeps obvious nonsense out
-// without pretending to know what a plausible range is.
-inline constexpr qint32 kMaxWindSpeedHundredthMs = 100000;   // 1000.00 m/s
+// AUTHORITATIVE REPRESENTATION: hundredths of a metre per second.
+//
+// The journal stores this integer; the operator only ever sees m/s. The raw
+// hundredths value must not be shown in the UI or a report, and QML must never
+// scale it by hand — the two helpers below are the single conversion point, so
+// a rounding change happens in one place or not at all.
+inline constexpr qint32 kMaxWindSpeedHundredthMs = 100000;   // 1000.00 m/s ceiling
+
+// m/s -> hundredths. Returns false (leaving *out untouched) for NaN, infinity,
+// a negative speed, or anything past the ceiling. Rejection happens BEFORE
+// conversion so a bad value can never overflow into a plausible-looking one.
+// Rounding is std::llround — half away from zero — and is deterministic.
+inline bool metresPerSecondToHundredths(double metresPerSecond, qint32* out)
+{
+    if (!out) return false;
+    if (!std::isfinite(metresPerSecond)) return false;
+    if (metresPerSecond < 0.0) return false;
+    const double hundredths = std::llround(metresPerSecond * 100.0);
+    if (hundredths > static_cast<double>(kMaxWindSpeedHundredthMs)) return false;
+    *out = static_cast<qint32>(hundredths);
+    return true;
+}
+
+// hundredths -> m/s. Total: every stored value is in range by construction.
+inline double hundredthsToMetresPerSecond(qint32 hundredths)
+{
+    return static_cast<double>(hundredths) / 100.0;
+}
 
 // APPROVED bands. Derived AT ANALYSIS TIME from the stored raw value, so the
 // boundaries can be revised later without invalidating existing sessions.
@@ -237,17 +262,15 @@ struct WindConditionSnapshot {
         qint16 deg = 0;
         if (!normalizeWindDegrees(directionDeg, &deg))
             return false;
-        if (!std::isfinite(speedMs) || speedMs < 0.0)
-            return false;
-        const double hundredths = std::llround(speedMs * 100.0);
-        if (hundredths > static_cast<double>(kMaxWindSpeedHundredthMs))
+        qint32 hundredths = 0;
+        if (!metresPerSecondToHundredths(speedMs, &hundredths))
             return false;
 
         WindConditionSnapshot s;
         s.valid = true;
         s.calm  = false;
         s.directionDegrees = deg;
-        s.speedHundredthMs = static_cast<qint32>(hundredths);
+        s.speedHundredthMs = hundredths;
         s.source = src;
         s.recordedMsSinceEpoch = msSinceEpoch;
         s.note = n;
@@ -259,9 +282,11 @@ struct WindConditionSnapshot {
     bool isCalm()     const { return valid && calm; }
     bool isMeasured() const { return valid && !calm; }
 
+    // The ONLY value an operator or report may see. The raw hundredths field
+    // is storage, never presentation.
     double speedMetresPerSecond() const
     {
-        return static_cast<double>(speedHundredthMs) / 100.0;
+        return hundredthsToMetresPerSecond(speedHundredthMs);
     }
 
     WindSector sector() const { return windSectorOfDegrees(directionDegrees); }

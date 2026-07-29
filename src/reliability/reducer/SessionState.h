@@ -327,7 +327,12 @@ using DisciplineState =
 // v3 (Phase E): adds creditDecision / backupReview / raisedAtMonoMs /
 // sightingGrantedSeq to each incident record. Backward compatible — v2
 // records lack the keys and deserialize to the defaults above.
-inline constexpr qint32 kSessionStateVersion = 3;
+// v4 (Training Lab Release 2): adds the `windMap` object and `windMapShots`
+// array. Backward compatible — a v1-v3 snapshot has neither key and restores
+// to "no Wind Map session". Wind Map is snapshot-serialised because
+// ReplayEngine defaults to the snapshot fast path and folds only the tail
+// after the last StateSnapshot; state left out of a snapshot is lost there.
+inline constexpr qint32 kSessionStateVersion = 4;
 
 struct SessionState {
     // identity & configuration

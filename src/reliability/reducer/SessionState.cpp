@@ -31,7 +31,24 @@ bool SessionState::operator==(const SessionState& o) const
         && totalTenths == o.totalTenths
         && stageSubtotalTenths == o.stageSubtotalTenths
         && stageStatuses == o.stageStatuses && timer == o.timer
-        && lastSeq == o.lastSeq && disc == o.disc;
+        && lastSeq == o.lastSeq && disc == o.disc
+        // Wind Map (state v4). Included precisely BECAUSE it is
+        // snapshot-serialised: this is what makes snapshotsAgreeWithFold a
+        // real check on the Wind Map projection rather than a no-op.
+        && wmActive == o.wmActive && wmCompleted == o.wmCompleted
+        && wmProgramId == o.wmProgramId && wmDisciplineId == o.wmDisciplineId
+        && wmThreePositions == o.wmThreePositions
+        && wmCurrentPosition == o.wmCurrentPosition
+        && wmPositionSequence == o.wmPositionSequence
+        && wmConditionChanges == o.wmConditionChanges
+        && wmNextShotId == o.wmNextShotId
+        && wmWindValid == o.wmWindValid && wmWindCalm == o.wmWindCalm
+        && wmWindDirectionDegrees == o.wmWindDirectionDegrees
+        && wmWindSpeedHundredthMs == o.wmWindSpeedHundredthMs
+        && wmWindSource == o.wmWindSource
+        && wmWindRecordedMs == o.wmWindRecordedMs
+        && wmWindNote == o.wmWindNote
+        && wmShots == o.wmShots;
 }
 
 // ── serialization ─────────────────────────────────────────────────────
@@ -189,6 +206,55 @@ QByteArray serializeSessionState(const SessionState& s)
     }
     w.endArray();
 
+    // ── Wind Map (state v4) ──────────────────────────────────────────────
+    // Wind Map projections ARE snapshot-serialised, unlike the other Training
+    // programmes. The reason is concrete: ReplayEngine::replay defaults to the
+    // snapshot fast path and folds only the tail after the last StateSnapshot,
+    // so anything absent from the snapshot is silently lost at that boundary.
+    // Relying on "no production code emits snapshots today" would be relying
+    // on an undocumented accident. Field order frozen; all fields always
+    // written so the bytes are deterministic.
+    w.beginObjectField("windMap");
+    w.field("active", s.wmActive);
+    w.field("completed", s.wmCompleted);
+    w.field("programId", s.wmProgramId);
+    w.field("disciplineId", s.wmDisciplineId);
+    w.field("threePositions", s.wmThreePositions);
+    w.field("currentPosition", static_cast<qint64>(s.wmCurrentPosition));
+    w.field("positionSequence", s.wmPositionSequence);
+    w.field("conditionChanges", static_cast<qint64>(s.wmConditionChanges));
+    w.field("nextShotId", static_cast<qint64>(s.wmNextShotId));
+    // The STANDING condition. windValid=false is a real recorded state
+    // ("No wind reading recorded") and must survive as itself.
+    w.field("windValid", s.wmWindValid);
+    w.field("windCalm", s.wmWindCalm);
+    w.field("windDirDeg", static_cast<qint64>(s.wmWindDirectionDegrees));
+    w.field("windSpeedHundredthMs", static_cast<qint64>(s.wmWindSpeedHundredthMs));
+    w.field("windSource", static_cast<qint64>(s.wmWindSource));
+    w.field("windRecordedMs", s.wmWindRecordedMs);
+    w.field("windNote", s.wmWindNote);
+    w.endObject();
+
+    // Every recorded shot with ITS OWN immutable snapshot. Sighter/counted
+    // classification travels with the record so the two never merge.
+    w.beginArrayField("windMapShots");
+    for (const WindMapShotRecord& r : s.wmShots) {
+        w.beginObject();
+        EventSerializer::serializeShotCoreFields(r.shot, w);
+        w.field("shotId", static_cast<qint64>(r.shotId));
+        w.field("position", static_cast<qint64>(r.position));
+        w.field("sighter", r.sighter);
+        w.field("windValid", r.windValid);
+        w.field("windCalm", r.windCalm);
+        w.field("windDirDeg", static_cast<qint64>(r.windDirectionDegrees));
+        w.field("windSpeedHundredthMs", static_cast<qint64>(r.windSpeedHundredthMs));
+        w.field("windSource", static_cast<qint64>(r.windSource));
+        w.field("windRecordedMs", r.windRecordedMs);
+        w.field("windNote", r.windNote);
+        w.endObject();
+    }
+    w.endArray();
+
     w.beginObjectField("timer");
     w.field("active", s.timer.active);
     w.field("timerId", static_cast<qint64>(s.timer.timerId));
@@ -332,6 +398,32 @@ struct StateReader {
         if (v.isUndefined())
             return def;
         return reqInt(key, min, max);
+    }
+    // Same contract as optIntDef for the other two scalar kinds — needed by
+    // state v4 (Wind Map), where an older snapshot simply has no such key.
+    bool optBoolDef(const char* key, bool def)
+    {
+        const QJsonValue v = o.value(QLatin1String(key));
+        if (v.isUndefined())
+            return def;
+        if (!v.isBool()) {
+            fail(ReliabilityError::InvalidFieldType,
+                 QStringLiteral("'%1' not a bool").arg(QLatin1String(key)));
+            return def;
+        }
+        return v.toBool();
+    }
+    QString optStringDef(const char* key, const QString& def = QString())
+    {
+        const QJsonValue v = o.value(QLatin1String(key));
+        if (v.isUndefined())
+            return def;
+        if (!v.isString()) {
+            fail(ReliabilityError::InvalidFieldType,
+                 QStringLiteral("'%1' not a string").arg(QLatin1String(key)));
+            return def;
+        }
+        return v.toString();
     }
 };
 
@@ -579,6 +671,61 @@ ReliabilityResult deserializeSessionState(const QByteArray& json, SessionState* 
             break;
         }
         s.estIncidents.append(i);
+    }
+
+    // ── Wind Map (state v4) ──────────────────────────────────────────────
+    // Optional throughout: a v1-v3 snapshot has no windMap key and restores to
+    // the defaults, which is exactly "no Wind Map session". Nothing is
+    // inferred — an absent wind reading stays absent.
+    {
+        const QJsonValue wmv = r.o.value(QLatin1String("windMap"));
+        if (wmv.isObject()) {
+            StateReader wr{wmv.toObject()};
+            s.wmActive = wr.optBoolDef("active", false);
+            s.wmCompleted = wr.optBoolDef("completed", false);
+            s.wmProgramId = wr.optStringDef("programId");
+            s.wmDisciplineId = wr.optStringDef("disciplineId");
+            s.wmThreePositions = wr.optBoolDef("threePositions", false);
+            s.wmCurrentPosition = static_cast<qint8>(wr.optIntDef("currentPosition", 0, 0, 3));
+            s.wmPositionSequence = wr.optStringDef("positionSequence");
+            s.wmConditionChanges = static_cast<qint32>(wr.optIntDef("conditionChanges", 0, 0, INT32_MAX));
+            s.wmNextShotId = static_cast<qint32>(wr.optIntDef("nextShotId", 1, 0, INT32_MAX));
+            s.wmWindValid = wr.optBoolDef("windValid", false);
+            s.wmWindCalm = wr.optBoolDef("windCalm", false);
+            s.wmWindDirectionDegrees = static_cast<qint16>(wr.optIntDef("windDirDeg", 0, 0, 359));
+            s.wmWindSpeedHundredthMs = static_cast<qint32>(wr.optIntDef("windSpeedHundredthMs", 0, 0, 100000));
+            s.wmWindSource = static_cast<qint8>(wr.optIntDef("windSource", 0, 0, 1));
+            s.wmWindRecordedMs = wr.optIntDef("windRecordedMs", 0, 0, std::numeric_limits<qint64>::max());
+            s.wmWindNote = wr.optStringDef("windNote");
+            if (wr.failed) { r.failed = true; r.err = wr.err; }
+        } else if (!wmv.isUndefined()) {
+            r.fail(ReliabilityError::InvalidFieldType,
+                   QStringLiteral("'windMap' not an object"));
+        }
+    }
+    for (const QJsonValue& v : r.optArray("windMapShots")) {
+        if (!v.isObject()) {
+            r.fail(ReliabilityError::InvalidFieldType,
+                   QStringLiteral("wind map shot is not an object"));
+            break;
+        }
+        const QJsonObject obj = v.toObject();
+        WindMapShotRecord rec;
+        const ReliabilityResult sr = EventSerializer::deserializeShotCore(obj, &rec.shot);
+        if (!sr.ok) { r.failed = true; r.err = sr.error; break; }
+        StateReader wr{obj};
+        rec.shotId = static_cast<qint32>(wr.reqInt("shotId", 0, INT32_MAX));
+        rec.position = static_cast<qint8>(wr.reqInt("position", 0, 3));
+        rec.sighter = wr.optBoolDef("sighter", false);
+        rec.windValid = wr.optBoolDef("windValid", false);
+        rec.windCalm = wr.optBoolDef("windCalm", false);
+        rec.windDirectionDegrees = static_cast<qint16>(wr.optIntDef("windDirDeg", 0, 0, 359));
+        rec.windSpeedHundredthMs = static_cast<qint32>(wr.optIntDef("windSpeedHundredthMs", 0, 0, 100000));
+        rec.windSource = static_cast<qint8>(wr.optIntDef("windSource", 0, 0, 1));
+        rec.windRecordedMs = wr.optIntDef("windRecordedMs", 0, 0, std::numeric_limits<qint64>::max());
+        rec.windNote = wr.optStringDef("windNote");
+        if (wr.failed) { r.failed = true; r.err = wr.err; break; }
+        s.wmShots.append(rec);
     }
 
     s.totalTenths = static_cast<qint32>(r.reqInt("totalTenths", INT32_MIN, INT32_MAX));
