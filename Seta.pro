@@ -63,6 +63,7 @@ SOURCES += main.cpp \
     src/qualification/QualificationController.cpp \
     src/incident/EstIncidentController.cpp \
     src/app/ProductIdentity.cpp \
+    src/app/BrandPackage.cpp \
     src/app/LanguageService.cpp \
     src/app/DocumentationCapture.cpp \
     src/mode/OperatingModeService.cpp \
@@ -103,6 +104,7 @@ HEADERS += \
     src/qualification/QualificationController.h \
     src/incident/EstIncidentController.h \
     src/app/ProductIdentity.h \
+    src/app/BrandPackage.h \
     src/app/ProductIdentityBridge.h \
     src/app/LanguageService.h \
     src/app/DocumentationCapture.h \

@@ -1,4 +1,5 @@
 import QtQuick 2.4
+import "qrc:/src/ui/theme"
 
 // Shared TechAim brand/theme constants.
 //
@@ -21,6 +22,18 @@ import QtQuick 2.4
 // error-prone today.
 
 QtObject {
+
+    // ══ UI-1 DESIGN SYSTEM ══════════════════════════════════════════════════
+    // The semantic token layer. New and refactored screens read
+    // `theme.tokens.*`, `theme.type.*` and `theme.space.*`; the legacy
+    // properties further down are retained unchanged so the ~20 screens that
+    // have not been migrated yet keep working exactly as before.
+    //
+    // Full rules: docs/design/TechAim_Design_System.md
+    readonly property DesignTokens tokens: DesignTokens { }
+    readonly property Typography   type:   Typography   { }
+    readonly property Spacing      space:  Spacing      { }
+
     // --- Brand colors (exact, from logo SVGs) ---
     readonly property color brandPrimary: "#a80038"   // deep crimson - target rings, dominant accent
     readonly property color brandAccent:  "#bf1919"   // red - tagline, secondary accent / alerts
