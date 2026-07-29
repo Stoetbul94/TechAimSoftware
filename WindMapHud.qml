@@ -115,13 +115,19 @@ Item {
                     Row {
                         width: parent.width; spacing: 10
                         Repeater {
+                            // Stage 5.1: every tile has ONE tested definition.
+                            // "CONDITIONS" was ambiguous — it showed the number
+                            // of condition-change EVENTS while reading as the
+                            // number of distinct conditions, so a four-condition
+                            // session reported 13. The two are now separate and
+                            // separately labelled.
                             model: [
-                                { k: "COUNTED SHOTS", v: "" + (rvCol.m.countedShots || 0) },
-                                { k: "SIGHTERS",      v: "" + (rvCol.m.sighterShots || 0) },
-                                { k: "CONDITIONS",    v: "" + (rvCol.m.conditionChanges || 0) },
-                                { k: "WITH READING",  v: "" + (rvCol.m.countedWithReading || 0) },
-                                { k: "CALM",          v: "" + (rvCol.m.countedCalm || 0) },
-                                { k: "NO READING",    v: "" + (rvCol.m.countedNoReading || 0) }
+                                { k: "COUNTED SHOTS",     v: "" + (rvCol.m.countedShots || 0) },
+                                { k: "SIGHTERS",          v: "" + (rvCol.m.sighterShots || 0) },
+                                { k: "UNIQUE CONDITIONS", v: "" + (rvCol.m.uniqueConditions || 0) },
+                                { k: "COUNTED · READING", v: "" + (rvCol.m.countedWithReading || 0) },
+                                { k: "COUNTED · CALM",    v: "" + (rvCol.m.countedCalm || 0) },
+                                { k: "COUNTED · NO READ", v: "" + (rvCol.m.countedNoReading || 0) }
                             ]
                             delegate: Rectangle {
                                 width: (rvCol.width - 50) / 6; height: 74; radius: 8
@@ -138,7 +144,12 @@ Item {
                             }
                         }
                     }
-                    Text { text: "Sighters are recorded but are never included in the counted totals."
+                    // Each tile's definition, stated on screen so no number can
+                    // be read as something it is not.
+                    Text { width: parent.width; wrapMode: Text.WordWrap
+                           text: "Unique conditions = distinct conditions under which counted shots were recorded. "
+                                 + "You entered a condition " + (rvCol.m.conditionEntries || 0)
+                                 + " times in total. Sighters are recorded but are never included in the counted totals."
                            color: hud._txtMut; font.pixelSize: 10 }
 
                     // 3P — the three positions side by side, never pooled.

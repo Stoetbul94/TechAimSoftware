@@ -612,16 +612,44 @@ QVariantMap WindMapController::reviewSummary() const
     m[QStringLiteral("phase")] = static_cast<int>(m_phase);
     m[QStringLiteral("phaseName")] = windMapPhaseName(m_phase);
 
-    // How many COUNTED shots carry a usable reading. Stated as a fact so the
-    // athlete can see the coverage of their own record; sighters are excluded
-    // from every count here, as approved.
+    // ── Stage 5.1: SIX DEFINED COUNTS ───────────────────────────────────
+    //
+    // The old summary had one ambiguous "CONDITIONS" tile fed straight from
+    // wmConditionChanges. That counts JOURNAL EVENTS — one per press of
+    // RECORD / CALM / NO READING — so a session whose table showed four
+    // distinct conditions reported 13. The label read as "distinct conditions
+    // observed" and the number was "times a condition was entered".
+    //
+    // Each count below has ONE definition and its own test. Nothing here mixes
+    // QML selector changes, unrecorded pending input, journal events, shots
+    // and unique conditions.
+    //
+    //   uniqueConditions   distinct condition VALUES under which COUNTED shots
+    //                      were recorded (identity = reading?/calm?/dir/speed,
+    //                      never the timestamp or note)
+    //   conditionEntries   condition-change EVENTS recorded in the journal
+    //   countedWithReading COUNTED shots whose snapshot is a measured reading
+    //   countedCalm        COUNTED shots whose snapshot is a recorded calm
+    //   countedNoReading   COUNTED shots recorded with NO reading
+    //   sighterShots       sighters (never in any counted total)
+    //
+    // INVARIANT, asserted by test:
+    //   countedWithReading + countedCalm + countedNoReading == countedShots
     int withReading = 0, calm = 0, noReading = 0;
+    QVector<WindConditionSnapshot> distinct;
     for (const WindMapShotRecord& r : s.wmShots) {
         if (r.sighter) continue;
         if (!r.windValid) ++noReading;
         else if (r.windCalm) ++calm;
         else ++withReading;
+        const WindConditionSnapshot w = snapshotFromRecord(r);
+        bool seen = false;
+        for (const WindConditionSnapshot& d : distinct)
+            if (d.sameConditionAs(w)) { seen = true; break; }
+        if (!seen) distinct.append(w);
     }
+    m[QStringLiteral("uniqueConditions")] = distinct.size();
+    m[QStringLiteral("conditionEntries")] = conditionChanges();
     m[QStringLiteral("countedWithReading")] = withReading;
     m[QStringLiteral("countedCalm")] = calm;
     m[QStringLiteral("countedNoReading")] = noReading;

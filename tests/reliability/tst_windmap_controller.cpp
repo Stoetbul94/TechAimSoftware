@@ -444,4 +444,109 @@ void run_windmap_controller_tests()
               && !m.contains(QStringLiteral("observations")),
               "15. no analytical or advisory content is produced in this stage");
     }
+
+    // ── 16. Stage 5.1: every summary count has ONE tested definition ────
+    {
+        // Reproduces the reported defect. Arnold's Prone table showed four
+        // distinct conditions while the summary said 13 — because the tile was
+        // fed from wmConditionChanges, which counts condition-change EVENTS.
+        Rig r; r.start("PRONE50");
+        r.wm.beginCountedShots();
+
+        // Four DISTINCT conditions, entered thirteen times: repeats, a
+        // re-entry of an identical value, and conditions set with no shot
+        // fired under them. Only the four distinct values are "observed
+        // conditions"; all thirteen are "condition entries".
+        r.wm.setCalmCondition();                       // 1  calm
+        r.shoot(1.0, 1.0);
+        r.wm.setCalmCondition();                       // 2  same calm again
+        r.wm.setCalmCondition(QStringLiteral("still calm"));  // 3 note differs only
+        r.shoot(1.1, 1.1);
+        r.wm.setMeasuredCondition(270, 2.5);           // 4  W 2.5
+        r.shoot(2.0, 2.0);
+        r.wm.setMeasuredCondition(270, 2.5);           // 5  identical re-entry
+        r.shoot(2.1, 2.1);
+        r.wm.setMeasuredCondition(45, 5.0);            // 6  NE 5.0
+        r.shoot(3.0, 3.0);
+        r.wm.setMeasuredCondition(45, 5.0);            // 7
+        r.wm.setMeasuredCondition(45, 5.0);            // 8   set, never shot under
+        r.wm.setNoReadingCondition();                  // 9  no reading
+        r.shoot(4.0, 4.0);
+        r.wm.setNoReadingCondition();                  // 10
+        r.wm.setCalmCondition();                       // 11 back to calm
+        r.wm.setMeasuredCondition(270, 2.5);           // 12 back to W 2.5
+        r.wm.setNoReadingCondition();                  // 13 ends on no reading
+        r.shoot(5.0, 5.0);
+
+        const QVariantMap m = r.wm.reviewSummary();
+        check(m.value(QStringLiteral("conditionEntries")).toInt() == 13,
+              "16. conditionEntries counts condition-change EVENTS (13)",
+              m.value(QStringLiteral("conditionEntries")).toString());
+        check(m.value(QStringLiteral("uniqueConditions")).toInt() == 4,
+              "16. uniqueConditions counts DISTINCT observed conditions (4)",
+              m.value(QStringLiteral("uniqueConditions")).toString());
+        check(m.value(QStringLiteral("countedShots")).toInt() == 7,
+              "16. countedShots counts counted shots only");
+        check(m.value(QStringLiteral("countedCalm")).toInt() == 2,
+              "16. countedCalm = counted shots taken under a recorded calm");
+        check(m.value(QStringLiteral("countedWithReading")).toInt() == 3,
+              "16. countedWithReading = counted shots under a measured reading");
+        check(m.value(QStringLiteral("countedNoReading")).toInt() == 2,
+              "16. countedNoReading = counted shots with NO reading");
+        // The invariant that makes the three mutually exclusive and complete.
+        check(m.value(QStringLiteral("countedWithReading")).toInt()
+              + m.value(QStringLiteral("countedCalm")).toInt()
+              + m.value(QStringLiteral("countedNoReading")).toInt()
+              == m.value(QStringLiteral("countedShots")).toInt(),
+              "16. reading + calm + no-reading == counted shots");
+        // The ambiguous key is gone.
+        check(!m.contains(QStringLiteral("conditionChanges"))
+              || m.value(QStringLiteral("conditionEntries")).isValid(),
+              "16. the ambiguous CONDITIONS value is no longer the headline tile");
+    }
+
+    // ── 17. condition identity is meaning, not the whole record ─────────
+    {
+        // sameConditionAs must ignore the timestamp and the note, or pressing
+        // CALM twice would read as two different conditions — the exact bug.
+        WindConditionSnapshot a = WindConditionSnapshot::calmAt(1000);
+        WindConditionSnapshot b = WindConditionSnapshot::calmAt(9999, WindSource::Manual,
+                                                                QStringLiteral("flags limp"));
+        check(a != b, "17. two calm entries are different RECORDS");
+        check(a.sameConditionAs(b), "17. but they are the SAME observed condition");
+
+        WindConditionSnapshot m1, m2, m3;
+        WindConditionSnapshot::measured(270, 2.5, 1000, &m1);
+        WindConditionSnapshot::measured(270, 2.5, 5000, &m2, WindSource::Manual,
+                                        QStringLiteral("gusting"));
+        WindConditionSnapshot::measured(270, 2.6, 1000, &m3);
+        check(m1.sameConditionAs(m2), "17. same direction and speed = same condition");
+        check(!m1.sameConditionAs(m3), "17. 2.5 and 2.6 m/s are different conditions");
+        check(!m1.sameConditionAs(a), "17. a measured reading is never a calm");
+
+        const WindConditionSnapshot n1 = WindConditionSnapshot::noReading();
+        const WindConditionSnapshot n2 = WindConditionSnapshot::noReading();
+        check(n1.sameConditionAs(n2), "17. every 'no reading' is the same condition");
+        check(!n1.sameConditionAs(a), "17. NO READING is never equal to CALM");
+    }
+
+    // ── 18. sighters never reach any counted definition ─────────────────
+    {
+        Rig r; r.start("PRONE50");
+        r.wm.setMeasuredCondition(90, 3.0);
+        r.wm.beginSighters();
+        r.shoot(0.5, 0.5); r.shoot(0.6, 0.6);
+        r.wm.finishSighters();
+        r.wm.setCalmCondition();
+        r.shoot(1.0, 1.0);
+        const QVariantMap m = r.wm.reviewSummary();
+        check(m.value(QStringLiteral("sighterShots")).toInt() == 2
+              && m.value(QStringLiteral("countedShots")).toInt() == 1,
+              "18. sighters and counted shots are separate totals");
+        check(m.value(QStringLiteral("uniqueConditions")).toInt() == 1,
+              "18. the sighters' condition does not become a counted unique condition");
+        check(m.value(QStringLiteral("countedWithReading")).toInt() == 0
+              && m.value(QStringLiteral("countedCalm")).toInt() == 1,
+              "18. the sighters' measured reading is excluded from the counted split");
+    }
 }

@@ -324,6 +324,27 @@ struct WindConditionSnapshot {
             && note == o.note;
     }
     bool operator!=(const WindConditionSnapshot& o) const { return !(*this == o); }
+
+    // ── Condition IDENTITY (Stage 5.1) ──────────────────────────────────
+    // What makes two conditions "the same observed condition".
+    //
+    // Deliberately NOT operator==. That compares the whole record, including
+    // recordedMsSinceEpoch and the free-text note — so pressing CALM twice
+    // produces two snapshots that are unequal but describe the SAME observed
+    // condition. Counting unique conditions on operator== would inflate the
+    // total exactly the way the ambiguous "CONDITIONS" tile did.
+    //
+    // Identity is the MEANING only: whether a reading exists, whether it was
+    // calm, and — when measured — the direction and speed.
+    bool sameConditionAs(const WindConditionSnapshot& o) const
+    {
+        if (valid != o.valid) return false;
+        if (!valid) return true;              // every "no reading" is the same
+        if (calm != o.calm) return false;
+        if (calm) return true;                // every recorded calm is the same
+        return directionDegrees == o.directionDegrees
+            && speedHundredthMs == o.speedHundredthMs;
+    }
 };
 
 // ── Session phase ───────────────────────────────────────────────────────────
