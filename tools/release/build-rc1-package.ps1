@@ -13,18 +13,31 @@
 [CmdletBinding()]
 param(
     [string]$QtBin   = 'C:\Qt\6.5.3\mingw_64\bin',
-    [string]$OutRoot = ''
+    [string]$OutRoot = '',
+    # The ROLLBACK package is built by the SAME process from a temporary
+    # worktree, so the two artefacts cannot diverge in how they were produced.
+    # -SourceRepo points at that worktree; -PackageName overrides the folder and
+    # ZIP name so an operator can never confuse the two on a USB stick.
+    [string]$SourceRepo  = '',
+    [string]$PackageName = ''
 )
 $ErrorActionPreference = 'Stop'
 
-$repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+$repo = if ([string]::IsNullOrWhiteSpace($SourceRepo)) {
+    Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+} else { $SourceRepo }
+# Documents and the support tool always come from the CURRENT checkout: the
+# rollback build predates them, and an operator needs today's instructions.
+$docRepo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $exe  = Join-Path $repo 'release\TechAim.exe'
 if (-not (Test-Path $exe)) { throw "Not built: $exe. Run qmake + mingw32-make -f Makefile.Release first." }
 if (-not (Test-Path (Join-Path $QtBin 'windeployqt.exe'))) { throw "windeployqt not found in $QtBin" }
 
 $version = '0.9.0-RC1'
-$name    = "TechAim-$version-FieldTest-Windows-x64"
-if ([string]::IsNullOrWhiteSpace($OutRoot)) { $OutRoot = Join-Path $repo 'dist' }
+$name    = if ([string]::IsNullOrWhiteSpace($PackageName)) {
+    "TechAim-$version-FieldTest-Windows-x64"
+} else { $PackageName }
+if ([string]::IsNullOrWhiteSpace($OutRoot)) { $OutRoot = Join-Path $docRepo 'dist' }
 $pkg = Join-Path $OutRoot $name
 $zip = Join-Path $OutRoot "$name.zip"
 
@@ -65,16 +78,16 @@ foreach ($d in @(
     'docs\release\0.9.0-rc1-field-test-plan.md',
     'docs\release\0.9.0-rc1-field-test-checklist.md',
     'docs\release\0.9.0-rc1-rollback.md')) {
-    $src = Join-Path $repo $d
+    $src = Join-Path $docRepo $d
     if (Test-Path $src) { Copy-Item $src (Join-Path $docsOut (Split-Path $d -Leaf)) }
 }
 foreach ($l in @('LICENSE', 'LICENSE.txt', 'docs\legal\THIRD-PARTY-NOTICES.md')) {
-    $src = Join-Path $repo $l
+    $src = Join-Path $docRepo $l
     if (Test-Path $src) { Copy-Item $src (Join-Path $pkg (Split-Path $l -Leaf)) }
 }
 
 # ---- 5. the support-bundle tool the operator runs -------------------------
-Copy-Item (Join-Path $repo 'tools\release\Make-SupportBundle.ps1') $pkg
+Copy-Item (Join-Path $docRepo 'tools\release\Make-SupportBundle.ps1') $pkg
 
 # ---- 6. Qt runtime -------------------------------------------------------
 # windeployqt in this Qt 6.5.3 MinGW install fails with "Unable to find the
