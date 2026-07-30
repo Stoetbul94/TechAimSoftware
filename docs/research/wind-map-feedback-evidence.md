@@ -1,195 +1,223 @@
 # Wind Map — evidence base for athlete feedback
 
-**Phase:** STAGE 6.1.2 · **Date:** 2026-07-30
+**Phase:** STAGE 6.1.3 · **Verified:** 2026-07-30
 **Purpose:** the reasoning behind what the Wind Map verdict system is allowed
 to say, and the limits it must respect.
 
 ---
 
-## 0. How to read this document — and a warning about it
+## 0. Verification status
 
-This file was drafted by the implementing agent from general knowledge of the
-motor-learning and shooting-analysis literature. **It has not been checked
-against the primary sources.** Every entry therefore carries a
-**verification status**:
+The Stage 6.1.2 draft of this file was written from general knowledge and
+carried unverified citations. **Every source below has now been checked
+against the publisher or PubMed record**, and the bibliographic details,
+sample sizes, designs and stated conclusions are taken from those records.
 
-| Status | Meaning |
+Two things did not survive verification and have been **removed**:
+
+- A claim that aim-trace instrumentation "measures what the target face
+  cannot", cited to nothing. It was replaceable by §1's reasoning, which needs
+  no citation.
+- Any numeric wind-deflection figure for .22 LR at 50 m. I could not verify
+  one from a primary source, so **no number is quoted anywhere**.
+
+**No page numbers, sample sizes, quotations or effect sizes appear here that
+were not read from the cited record.**
+
+### Claim classification
+
+| Label | Meaning |
 |---|---|
-| **ESTABLISHED** | A broadly accepted position in the field. Safe to rely on as a *design constraint*, but the citation details still need confirming before publication. |
-| **NEEDS VERIFICATION** | The claim is used to justify a product rule and the specific source, year or finding must be confirmed before this document is published or quoted to a customer. |
-| **REASONING** | Not a literature claim at all — a first-principles argument from the data Wind Map actually holds. Judge it on its logic, not on a citation. |
-
-**Nothing here may be quoted externally until a human has verified the
-sources.** Where a rule below depends on a claim, the rule is deliberately
-*conservative*: it withholds a conclusion rather than asserting one. That way
-a citation that turns out weaker than expected makes the product cautious, not
-wrong.
-
-I have deliberately **not** invented precise page numbers, sample sizes or
-effect sizes. Where I do not reliably know a figure, this document says so.
+| **RESEARCH-SUPPORTED** | Directly supported by a cited source, within that source's population and scope. |
+| **REASONED PRODUCT RULE** | A conservative deterministic Tech Aim rule. Not validated by external research. |
+| **COACH-APPROVED PRODUCT RULE** | Reviewed and approved by a named qualified coach. **None yet — no coach review has taken place.** |
+| **FUTURE VALIDATION REQUIRED** | A useful hypothesis that must not drive a strong athlete-facing verdict. |
 
 ---
 
-## 1. Impact-only data cannot diagnose technique
+## 1. Sources
 
-**Claim.** The position of a shot hole records the *outcome* of everything
-that happened — hold, aim, trigger release, follow-through, ammunition,
-equipment and the air the bullet passed through. It does not separate them.
+### S1 — Spancken, Steingrebe & Stein (2021)
 
-**Status:** REASONING (with ESTABLISHED support).
+| | |
+|---|---|
+| **Citation** | Spancken S, Steingrebe H, Stein T. Factors that influence performance in Olympic air-rifle and small-bore shooting: A systematic review. *PLoS ONE*. 2021;16(3):e0247353. |
+| **DOI** | [10.1371/journal.pone.0247353](https://doi.org/10.1371/journal.pone.0247353) |
+| **Design** | Systematic review, PRISMA |
+| **Included studies** | 14 (10 air-rifle, 4 small-bore) |
+| **Participants** | 268 total; mean sample 19 ± 14 per study; 77% air-rifle, 23% small-bore |
+| **Population** | Olympic air-rifle and small-bore shooters, elite and national level |
 
-The reasoning is sufficient on its own: Wind Map records only the shot
-coordinate, the score, and an athlete's observation of wind. Several distinct
-physical stories produce an identical coordinate. No inference from that
-coordinate can distinguish them.
+**Relevant results.** Sixteen performance determinants across anthropometric,
+technical-coordinative, physiological and psychological categories. Rifle
+stability and body sway differed between elite- and national-level athletes in
+both disciplines.
 
-Supporting position from the field — **NEEDS VERIFICATION** for exact
-citation: shooting-performance research consistently treats aim-trace /
-hold-stability instrumentation (e.g. SCATT, Noptel-type systems) as measuring
-something the target face cannot, which is precisely why those systems exist
-alongside electronic targets.
+**Limitations the authors state.** Different measuring systems and
+operationalisations across studies; "elite" and "national level" are not
+comparable across countries; uncontrolled covariates including non-personal
+rifles; some studies did not control for group affiliation; language
+restricted to English and German. The authors state plainly that **small-bore
+shooting is far less investigated than air-rifle shooting**.
 
-**How Tech Aim uses it.** No verdict may name a technique fault. The wide-
-groups verdict refers the athlete to Group Pattern Coach or an aim-trace tool
-instead of asserting a cause.
+**What Tech Aim MAY infer** — RESEARCH-SUPPORTED:
+- Shooting performance is multifactorial. A single observed outcome cannot be
+  attributed to one determinant.
+- The small-bore (50 m) evidence base is thin — 4 studies, 23% of
+  participants — so strong small-bore performance-determinant claims are not
+  justified.
 
-**What it does not prove.** It does not prove wind had no effect. It proves
-this data cannot isolate one.
-
----
-
-## 2. Feedback about results helps — and can also create dependence
-
-**Claim.** Augmented feedback (telling a performer about their result) aids
-skill acquisition, but feedback given too frequently or too immediately can
-degrade *retention*: the learner comes to rely on the external signal instead
-of their own internal reference.
-
-**Status:** ESTABLISHED as a field position; **NEEDS VERIFICATION** for
-citation. This is commonly associated with the *guidance hypothesis*
-(Salmoni, Schmidt & Walter, mid-1980s) and with Schmidt & Lee's motor-learning
-textbook treatment of knowledge of results. **I have not verified the year,
-wording or exact findings**, and they must be checked before publication.
-
-**How Tech Aim uses it.** Wind Map is a **post-session review** programme, not
-a live coaching feed. Nothing is asserted during shooting. The verdict always
-ends by proposing the athlete's own *next test*, rather than a correction to
-apply now.
-
-**What it does not prove.** It does not establish an optimal feedback
-frequency for shooting, and Wind Map does not claim one.
+**What Tech Aim MAY NOT infer.** Nothing about wind. This review does not
+address wind as a determinant, and it certainly does not support attributing
+a group displacement to a recorded wind condition.
 
 ---
 
-## 3. Small-bore rifle at 50 m is genuinely wind-sensitive
+### S2 — Mononen, Konttinen, Viitasalo & Era (2007)
 
-**Claim.** A .22 LR bullet at 50 m has a comparatively long flight time and
-low velocity, so lateral air movement can measurably displace the group
-centre. This is why range flags exist and why wind reading is coached.
+| | |
+|---|---|
+| **Citation** | Mononen K, Konttinen N, Viitasalo J, Era P. Relationships between postural balance, rifle stability and shooting accuracy among novice rifle shooters. *Scand J Med Sci Sports*. 2007;17(2):180–185. |
+| **DOI / PMID** | [10.1111/j.1600-0838.2006.00549.x](https://doi.org/10.1111/j.1600-0838.2006.00549.x) · PMID 17394480 |
+| **Design** | Correlational |
+| **Participants** | 58 **novice** rifle shooters |
+| **Task** | 30 shots, standing, **10 m** |
 
-**Status:** ESTABLISHED in practice; **NEEDS VERIFICATION** for any numeric
-claim.
+**Relevant result.** Shooting accuracy was related to postural balance and
+rifle stability **only at the inter-individual level**. Correlation
+coefficients between score and behavioural variables ranged from −0.29 to
+−0.45.
 
-**How Tech Aim uses it.** It justifies recording wind at all, and justifies
-treating an observed group-centre difference as *worth investigating*.
+**This is the single most important finding in this document for Tech Aim.**
+The relationship held *between* shooters and **not** *within* a shooter over
+time. A pattern that distinguishes athletes from one another does not
+transfer to explaining one athlete's variation across their own shots.
 
-**What it does not prove — and this is the important part.** It does **not**
-license converting an observed displacement into a predicted correction.
-Published ballistic tables assume a specific bullet, muzzle velocity,
-uniform full-value wind and a stable shooter. A training session has none of
-those guarantees. **A manufacturer's table is not evidence about this
-athlete's group**, and Wind Map never presents one.
+**What Tech Aim MAY infer** — RESEARCH-SUPPORTED:
+- Stability-related factors are genuinely associated with accuracy, which
+  justifies referring an athlete to Group Pattern Coach or an aim-trace tool.
+- **A between-athlete relationship does not license a within-athlete
+  inference.** Wind Map analyses one athlete's shots against their own
+  reference, which is exactly the within-athlete case this study found
+  *did not* hold.
 
----
-
-## 4. Within-athlete repeatability is what makes a pattern real
-
-**Claim.** A difference observed once, in one session, under conditions the
-athlete themselves estimated, is an *observation*. It becomes evidence of a
-repeatable pattern only when the same directional difference appears again in
-a comparable, separately completed session.
-
-**Status:** REASONING, resting on ESTABLISHED statistical principle.
-
-The reasoning: a single session confounds condition with everything that
-drifts over a session — fatigue, position settling, ammunition lot, light,
-the athlete's own adaptation. Repetition across sessions is what separates a
-condition-associated effect from session drift.
-
-**How Tech Aim uses it.** The `REPEATED` evidence level is **reserved** and
-can never be assigned from one session. A single-session comparison can reach
-`COMPARATIVE` at most, and the wording says the pattern should be repeated
-before any strategy changes.
-
-**What it does not prove.** It does not tell us how many sessions are enough.
-Wind Map does not claim a number.
+**What Tech Aim MAY NOT infer.** Nothing about wind causation. Population:
+novices, 10 m air rifle, standing — not 50 m small-bore, and the correlations
+are moderate at best.
 
 ---
 
-## 5. Association is not causation
+### S3 — Mullineaux, Underwood, Shapiro & Hall (2012)
 
-**Claim.** Two groups differing while two different conditions were *recorded*
-shows association. It does not show the condition caused the difference.
+| | |
+|---|---|
+| **Citation** | Mullineaux DR, Underwood SM, Shapiro R, Hall JW. Real-time biomechanical biofeedback effects on top-level rifle shooters. *Appl Ergon*. 2012;43(1):109–114. |
+| **DOI / PMID** | [10.1016/j.apergo.2011.04.003](https://doi.org/10.1016/j.apergo.2011.04.003) · PMID 21529773 |
+| **Design** | Randomised, biofeedback (n = 5) vs control (n = 4) |
+| **Participants** | 9 top-level rifle shooters |
+| **Intervention** | Bi-weekly, 20 shots air-rifle, 4 weeks; individualised **real-time auditory** biofeedback on postural and barrel stability |
 
-**Status:** ESTABLISHED (elementary statistical principle).
+**Relevant result.** The biofeedback group showed meaningful improvement on
+performance measures; the control group did not (small-bore shot group
+diameter change: biofeedback 2.6 mm, control 0.1 mm).
 
-Specific to Wind Map, three confounds are always present:
+**Authors' own conclusion, verbatim:** *"Biomechanical biofeedback is proposed
+to have improved performance, possibly through training better decision
+making, but the actual cause requires further research."*
 
-1. **The condition is an athlete estimate**, not a measurement, and covers the
-   firing point rather than the whole bullet path.
-2. **Conditions are not randomly assigned.** They occur in time order, so any
-   drift over the session is perfectly confounded with condition order.
-3. **Sample sizes are small** — five to fifteen shots per group is normal.
+**What Tech Aim MAY infer** — RESEARCH-SUPPORTED:
+- Structured feedback can support rifle-shooting training.
 
-**How Tech Aim uses it.** No verdict says *caused*, *because of* or *due to*.
-The permitted construction is *"observed alongside"* / *"while this condition
-was recorded"*. A prohibited-phrase test enforces this.
-
----
-
-## 6. Why a coach must confirm before a sight or hold change
-
-**Claim.** A sight or hold change based on an unrepeated, small-sample,
-self-estimated observation can degrade performance — it may encode session
-drift as a permanent offset.
-
-**Status:** REASONING.
-
-**How Tech Aim uses it.** The `COMPACT BUT OFFSET` verdict carries an explicit
-**coach decision** line, and the software never proposes a click value, a
-hold-off or an aiming point. That boundary is also a product-safety one: the
-software has no access to the athlete's equipment, zero history or ammunition,
-so it is not in a position to recommend a change to any of them.
+**What Tech Aim MAY NOT infer.**
+- **The mechanism is explicitly unestablished by the authors.** n = 9 total.
+- This is *real-time biomechanical* feedback during shooting. Wind Map is
+  **post-session** and outcome-based. The study does not transfer to it.
+- **It validates none of Tech Aim's thresholds.** No threshold in this product
+  derives from this paper.
 
 ---
 
-## 7. What this evidence base does NOT support
+### S4 — Salmoni, Schmidt & Walter (1984)
 
-Recorded plainly, so a future phase cannot quietly cross these lines:
+| | |
+|---|---|
+| **Citation** | Salmoni AW, Schmidt RA, Walter CB. Knowledge of results and motor learning: a review and critical reappraisal. *Psychol Bull*. 1984;95(3):355–386. |
+| **PMID** | 6399752 |
+| **Design** | Review and critical reappraisal |
+
+**Relevant result.** The origin of the **guidance hypothesis**: knowledge of
+results can act as guidance, so that performance deteriorates on a retention
+test once the feedback is withdrawn. High-frequency KR can improve performance
+during practice while impairing learning.
+
+**What Tech Aim MAY infer** — RESEARCH-SUPPORTED (general motor learning):
+- Post-session review is a defensible design choice. Wind Map asserts nothing
+  during shooting.
+- Feedback should build the athlete's own judgement. Every verdict ends with
+  a **test for the athlete to run**, not a correction to apply.
+
+**What Tech Aim MAY NOT infer.** This is general motor-learning literature,
+not shooting-specific, and it prescribes no feedback frequency for this sport.
+Tech Aim claims none.
+
+---
+
+## 2. Product positions that rest on reasoning, not research
+
+### R1 — Impact-only data cannot diagnose technique
+**REASONED PRODUCT RULE.** Wind Map records a coordinate, a score and the
+athlete's own wind observation. Several distinct physical stories produce an
+identical coordinate, so no inference from that coordinate can separate them.
+This needs no citation; it is a property of the data held. **S1** independently
+supports the multifactorial premise.
+
+### R2 — Association is not causation
+**REASONED PRODUCT RULE**, resting on elementary statistics. Three confounds
+are always present in a Wind Map session:
+1. the condition is an **athlete estimate** at the firing point, not a
+   measurement over the bullet path;
+2. conditions are **not randomly assigned** — they occur in time order, so
+   session drift is perfectly confounded with condition order;
+3. **samples are small** — 5 to 15 shots per group is normal.
+
+### R3 — Within-athlete repeatability across sessions
+**REASONED PRODUCT RULE**, and the one place a cited source
+(**S2**) actively strengthens the caution rather than the claim: a
+between-athlete relationship did not hold within an athlete. Wind Map's
+`REPEATED` evidence level is therefore **reserved** and unassignable from a
+single session.
+
+### R4 — Coach confirmation before a sight or hold change
+**REASONED PRODUCT RULE.** The software has no access to the athlete's
+equipment, zero history or ammunition, so it is not positioned to recommend a
+change to any of them.
+
+---
+
+## 3. What this evidence base does NOT support
 
 - Predicting a correction in clicks or mils from an observed displacement.
-- Claiming a specific probability, confidence interval or significance level.
-  **No inferential statistic is computed**, so none may be reported.
-- Attributing a single shot to wind. A single shot has no group centre.
-- Comparing one position against another as a wind experiment: the positions
-  differ in stability demand *and* were shot at different times under
-  different conditions.
+- Any probability, confidence interval or significance level. **No inferential
+  statistic is computed in Wind Map**, so none may be reported.
+- Attributing a single shot to wind — a single shot has no group centre.
+- Comparing one position against another as a wind experiment.
 - Treating "No reading" as calm, or a measured 0.0 m/s as calm.
+- **Any claim that a Tech Aim threshold is research-validated.** None is.
 
 ---
 
-## 8. Verification checklist before this document is published
+## 4. Outstanding — coach review
 
-- [ ] Confirm the guidance-hypothesis citation (authors, year, journal) and
-      that the retention claim is stated as summarised in §2.
-- [ ] Confirm a citable source for aim-trace instrumentation measuring what
-      target-face data cannot (§1).
-- [ ] Decide whether any numeric wind-deflection figure is quoted at all; if
-      so, source it and state its assumptions (§3).
-- [ ] Have a coach review §6 for practical accuracy.
-- [ ] Re-check that every rule in
-      `docs/training-lab-wind-map-verdict-rules.md` still follows from a
-      surviving claim.
+**No COACH-APPROVED PRODUCT RULE exists.** Every threshold in
+`docs/training-lab-wind-map-verdict-rules.md` is a REASONED PRODUCT RULE
+pending review by a named qualified shooting coach. The specific items
+needing a coach's judgement:
 
-Until every box is ticked, this document is **internal design rationale**, not
-a citable reference.
+- [ ] the 3.0 mm absolute displacement floor
+- [ ] the 1.0 × mean-radius scale-aware displacement bar
+- [ ] the 1.25 × compact and 1.50 × wider ratios
+- [ ] the relative wide-across-conditions rule (§ the 40 mm decision)
+- [ ] the athlete-facing wording of all nine verdicts
+
+Until a coach is named and records approval, the UI must not imply that any
+threshold carries external authority — and it does not.
