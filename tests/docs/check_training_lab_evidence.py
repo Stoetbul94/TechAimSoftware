@@ -50,6 +50,36 @@ def flat(s):
     return re.sub(r"\s+", " ", s.replace("**", ""))
 
 
+_BLOCK_COMMENT = re.compile(r"/\*.*?\*/", re.S)
+_LINE_COMMENT = re.compile(r"//[^\n]*")
+_LITERAL = re.compile(r'"(?:[^"\\\n]|\\.)*"')
+
+
+def athlete_strings(src):
+    """The text this source can actually SHOW someone.
+
+    Comments are stripped first — a comment that names a prohibited claim in
+    order to forbid it must not read as the claim itself. Adjacent string
+    literals are then joined, because a caveat wrapped across three source
+    lines is still one sentence to the reader.
+    """
+    if not src:
+        return ""
+    body = _LINE_COMMENT.sub("", _BLOCK_COMMENT.sub("", src))
+    out, pos = [], 0
+    run = []
+    for m in _LITERAL.finditer(body):
+        between = body[pos:m.start()]
+        if run and between.strip() != "":
+            out.append("".join(run))
+            run = []
+        run.append(m.group(0)[1:-1].replace('\\"', '"').replace("\\n", " "))
+        pos = m.end()
+    if run:
+        out.append("".join(run))
+    return "\n".join(out)
+
+
 print("--- Tech Aim Training Lab evidence governance ---")
 
 STANDARD = "docs/research/training-lab-evidence-standard.md"
@@ -316,36 +346,35 @@ CAVEATS = {
               "indicate that the sights or the shots should be moved.",
               "src/training/CallDiagnoseController.cpp"),
     "PT-05": ("Positions have different stability demands — compare each "
-              "position to itself across repeats, not against another position.",
-              "src/training/PositionTransitionController.cpp"),
+              "position to itself across repeats, not against another "
+              "position.",
+              "src/training/PositionTransitionController.h"),
     "PT-08": ("Measured setup and early-group data. It does not identify the "
               "technical cause.",
-              "src/training/PositionTransitionController.cpp"),
+              "src/training/PositionTransitionController.h"),
     "GP-disclaimer": ("This describes the measured group shape. It does not "
                       "identify the technical cause.",
                       "src/training/TrainingProgramController.cpp"),
 }
 for cid, (text, owner) in CAVEATS.items():
-    body = read(owner)
-    check(body is not None and text in body,
+    strs = athlete_strings(read(owner))
+    check(text in strs,
           "%s caveat is composed in C++ (%s)" % (cid, owner))
 
-# CD-04 and the group disclaimer must NOT be duplicated in QML at all.
-for cid in ("CD-04", "GP-disclaimer"):
+# EVID-PT-001 is FIXED: no caveat may be re-authored in QML at all. PT-05 was
+# the duplicated one; it now binds to POSTRANS.crossPositionCaveat.
+for cid in CAVEATS:
     text = CAVEATS[cid][0]
-    dupes = [q for q in TRAINING_QML if (read(q) or "").find(text) != -1]
+    dupes = [q for q in TRAINING_QML if text in athlete_strings(read(q))]
     check(not dupes, "%s conclusion is not re-authored in QML" % cid,
           ascii_safe(", ".join(dupes)))
 
-# PT-05 IS duplicated today - defect EVID-PT-001. Guard against drift.
-pt5 = CAVEATS["PT-05"][0]
-qml_with_pt5 = [q for q in TRAINING_QML if (read(q) or "").find(pt5) != -1]
-check("EVID-PT-001" in register,
-      "the PT-05 QML duplication is registered as a defect")
-if qml_with_pt5:
-    for q in qml_with_pt5:
-        check(pt5 in (read(q) or ""),
-              "%s holds the PT-05 caveat byte-identical to the C++ copy" % q)
+# ...and the report view must actually consume the central property, not just
+# have dropped the sentence.
+ptview = read("PositionTransitionReportView.qml") or ""
+ptview_strings = athlete_strings(ptview)
+check("POSTRANS.crossPositionCaveat" in ptview,
+      "the Position Transition report binds the central cross-position caveat")
 
 # ---- 12. future programmes require an evidence review -------------------
 FUTURE = ["First Shot & Re-entry", "Consistency Chain", "aim-trace",
@@ -384,10 +413,171 @@ for prog, rel in PROGRAMME_DOCS.items():
               "none is research-derived", ""),
           "%s claims no research-derived threshold" % prog)
 
+# ---- 13b. MANDATORY CAVEATS (Phase 1, Part 4) ---------------------------
+# Each of these protects a boundary the user named explicitly. They assert
+# against the SHIPPING SOURCE, not against documentation, so a future edit
+# that reintroduces a claim fails the build rather than a review.
+
+# The corpus is what the software can SHOW an athlete: string literals with
+# comments stripped and wrapped literals rejoined. Scanning raw source instead
+# would flag the comments that exist precisely to forbid these claims.
+def src_all(paths):
+    return "\n".join(athlete_strings(read(p)) for p in paths)
+
+training_all = src_all(TRAINING_SRC)
+qml_all = src_all(TRAINING_QML)
+both = training_all + "\n" + qml_all
+
+# 1. impact patterns never claim a specific technical cause
+CAUSE_WORDS = ["breathing", "trigger snatch", "flinch", "shoulder pressure",
+               "natural point of aim was", "follow-through error"]
+for w in CAUSE_WORDS:
+    check(w not in both.lower(),
+          "caveat: no impact pattern names '%s' as a cause" % w)
+check("It does not identify the technical cause" in training_all,
+      "caveat: the group-shape disclaimer states the limit explicitly")
+
+# 2. performance decline never becomes fatigue
+check("fatigue" not in both.lower(),
+      "caveat: no Training Lab surface asserts fatigue from score movement")
+
+# 3/4. transition duration and first-shot speed are not graded
+pt_src = athlete_strings(read("src/training/PositionTransitionController.cpp"))
+check("not automatically better" in pt_src and "not automatically worse" in pt_src,
+      "caveat: a shorter ready-to-first-shot time is not called better, nor a "
+      "longer one worse")
+check("fully settled" not in pt_src.lower(),
+      "caveat: the settling wording that implied a cause is gone")
+check("cannot show whether they are related" in pt_src,
+      "caveat: co-occurring timing and dispersion facts are not linked")
+
+# 5. call bias never produces sight-adjustment advice
+cd_src = athlete_strings(read("src/training/CallDiagnoseController.cpp"))
+check("does not indicate that the sights or the shots should be moved" in cd_src,
+      "caveat: the call-bias statement carries its no-sight-change boundary")
+for phrase in ("move your sights", "adjust your sights", "click left", "click right",
+               "come up two", "sight correction"):
+    check(phrase not in both.lower(),
+          "caveat: no sight-adjustment instruction ('%s')" % phrase)
+
+# 6. vertical stringing diagnoses nothing
+gp_src = athlete_strings(read("src/training/GroupPatternAnalyzer.cpp"))
+check("Vertical spread dominant" in gp_src,
+      "caveat: vertical stringing is named as a measured spread")
+vert_ctx = gp_src[max(0, gp_src.find("Vertical spread dominant") - 1200):
+                  gp_src.find("Vertical spread dominant") + 1200].lower()
+for w in ("breathing", "trigger", "elevation error"):
+    check(w not in vert_ctx,
+          "caveat: vertical stringing does not diagnose '%s'" % w)
+
+# 7. position differences are never attributed to wind alone
+wm_src = athlete_strings(read("src/training/WindMapVerdict.cpp"))
+check("cannot be attributed to wind alone" in wm_src,
+      "caveat: the 3P position difference is not blamed on wind")
+check("does not establish a cause" in wm_src,
+      "caveat: every Wind Map verdict carries the no-cause limitation")
+
+# 8. product rules are never called research-validated
+for w in ("research-validated", "scientifically proven", "clinically proven",
+          "evidence-based rule", "proven to improve"):
+    check(w not in both.lower(),
+          "caveat: no Training Lab source calls a product rule '%s'" % w)
+check("REASONED PRODUCT RULE" in (read("src/training/WindMapVerdict.h") or ""),
+      "caveat: the Wind Map thresholds are labelled as reasoned product rules "
+      "in the code that implements them")
+
+# 9. no coach-approved classification without a recorded reviewer
+#    (register-side checked above; source side asserts nothing claims approval)
+for w in ("coach-approved", "approved by a coach", "coach approved"):
+    check(w not in both.lower(),
+          "caveat: no source claims coach approval ('%s')" % w)
+
+# 10. QML duplicates no central caveat text — asserted at 11 above, restated
+#     here as the named Part 4 requirement so a reader finds it.
+check("POSTRANS.crossPositionCaveat" in ptview
+      and CAVEATS["PT-05"][0] not in ptview_strings,
+      "caveat: QML consumes the central caveat and holds no copy of its own")
+
+# 11. the UI model and the future PDF model carry the same verdict identity.
+#     Wind Map composes every verdict field in WindMapVerdict and the
+#     controller projects them; NO field may be assembled in QML.
+wm_ctl = read("src/training/WindMapController.cpp") or ""
+for field in ("verdictId", "evidence", "headline", "observedPattern",
+              "interpretation", "nextTrainingStep", "coachDecision", "limitations"):
+    check(field in wm_ctl,
+          "caveat: the analysis model projects the central verdict field '%s'" % field)
+wm_view = read("WindMapAnalysisView.qml") or ""
+check("verdictId" not in wm_view or "v.verdictId" in wm_view,
+      "caveat: the view reads verdict ids rather than minting them")
+for composed in ("headline =", "interpretation =", "nextTrainingStep ="):
+    check(composed not in wm_view,
+          "caveat: the Wind Map view assigns no verdict text of its own ('%s')"
+          % composed)
+
+# The analytics version must be projected, so a report can never be shown as
+# corrected when it was produced by the superseded classification.
+check("analyticsVersion" in wm_ctl and "windmap-analytics-v2" in
+      (read("src/training/WindMapAnalytics.h") or ""),
+      "caveat: every analysis is stamped with the method that produced it")
+
 # ---- 14. the register's open defects are visible ------------------------
 for did in ("EVID-WM-001", "EVID-GEN-001", "EVID-GEN-002", "EVID-PT-001"):
     check(did in register, "defect %s is recorded" % did)
 check("OPEN" in register, "the register shows open defects rather than closing them")
+
+# ---- 15. the coach review pack, and its empty-by-design decision rows ----
+pack = read("docs/research/training-lab-coach-review-pack.md")
+check(pack is not None, "the coach review pack exists")
+if pack:
+    for rule in ("TB-05", "GP-01", "PT-02", "PT-06", "CD-02", "Wind Map"):
+        check(rule in pack, "the pack presents %s for review" % rule)
+    for field in ("Current rule", "Athlete-facing wording", "Classification",
+                  "Verified research support", "Limitation", "Proposed wording",
+                  "Test examples", "Reviewer name",
+                  "Qualification or relevant experience", "Review date", "Notes"):
+        check(field in pack, "the pack records '%s' for each rule" % field)
+    check("Accept / Accept provisionally / Reject / Change" in pack,
+          "the pack offers the full decision vocabulary")
+    check("No coach approval has been recorded. No name has been entered." in pack,
+          "the pack states plainly that no approval exists yet")
+    # No name may be pre-filled into a decision row. Every decision table row
+    # of the form "| Reviewer name | X |" must have an EMPTY X.
+    prefilled = [m.group(1).strip() for m in
+                 re.finditer(r"^\|\s*Reviewer name\s*\|(.*?)\|\s*$", pack, re.M)]
+    check(all(v == "" for v in prefilled),
+          "no reviewer name is pre-filled in the pack",
+          ascii_safe(", ".join(v for v in prefilled if v)))
+    dates = [m.group(1).strip() for m in
+             re.finditer(r"^\|\s*Review date\s*\|(.*?)\|\s*$", pack, re.M)]
+    check(all(v == "" for v in dates), "no review date is pre-filled in the pack")
+    # Named individuals must not appear as approvers anywhere in the pack.
+    check("Laferla" not in pack,
+          "no coach is named as having approved anything")
+
+# ---- 16. the dispersion correction is specified and honest ---------------
+disp = read("docs/training-lab-wind-map-dispersion.md")
+check(disp is not None, "the dispersion specification exists")
+if disp:
+    check("radialRmsMm = sqrt( SUM( (x - meanX)^2 + (y - meanY)^2 ) / (n - 1) )"
+          in disp, "the exact formula is documented")
+    check("millimetres" in disp and "n - 1" in disp,
+          "units and denominator are documented")
+    check("kMinSamplesDispersion" in disp,
+          "the minimum sample requirement is documented")
+    check("windmap-analytics-v2" in disp,
+          "the analytics version is documented")
+    # The d2 overclaim must be corrected, not quietly deleted.
+    check("misapplied" in disp.lower(),
+          "the superseded d2 illustration is explicitly corrected, not dropped")
+    check("one-dimensional" in disp and "two-dimensional" in disp,
+          "the 1-D vs 2-D distinction is stated")
+    check("display only" in disp.lower(),
+          "extreme spread is recorded as display-only")
+# ...and the register carries the same correction, so the two cannot diverge.
+check("misapplied" in register.lower(),
+      "the register records the d2 correction too")
+check("windmap-analytics-v2" in register,
+      "the register records the corrected analytics version")
 
 print("\n=== %d checks, %d failures ===" % (CHECKS, FAILURES))
 sys.exit(1 if FAILURES else 0)
