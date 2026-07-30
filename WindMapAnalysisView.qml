@@ -140,25 +140,41 @@ Item {
                  .arg(g.n).arg(nd).arg(view.plural(nd, qsTr("shot is"), qsTr("shots are")))
     }
 
-    // ── UI-WIND-006: findings, scoped to what is selected ────────────────
+    // ── UI-WIND-006: VERDICTS, scoped to what is selected ────────────────
+    // Stage 6.1.3: the view renders WindMapVerdict records. It composes no
+    // verdict text of its own — every sentence below comes from the engine.
+    //
     // A session-level comparison is NEVER presented as a position result. When
-    // a position is selected only that position's findings show; the session
-    // comparison is available on Session Overview, explicitly labelled.
-    function findingsForScope() {
-        var all = view.model.findings ? view.model.findings : []
+    // a position is selected only that position's verdicts show; the session
+    // comparison appears on Session Overview, explicitly labelled.
+    function verdictsForScope() {
+        var all = view.model.verdicts ? view.model.verdicts : []
         var out = []
         for (var i = 0; i < all.length; ++i) {
-            var f = all[i]
-            if (view.sessionScope) { out.push(f); continue }
-            if (f.scopeIsSession === true) continue          // not this position's
-            if (f.position !== undefined && f.position !== view.pos.position) continue
-            out.push(f)
+            var v = all[i]
+            if (view.sessionScope) { out.push(v); continue }
+            if (v.scopeIsSession === true) continue          // not this position's
+            if (v.position !== undefined && v.position !== view.pos.position) continue
+            out.push(v)
         }
         return out
     }
-    function headlineFinding() {
-        var f = view.findingsForScope()
-        return f.length > 0 ? f[0] : null
+    // The engine already returns verdicts in priority order, so the primary is
+    // simply the first one in scope.
+    function primaryVerdict() {
+        var v = view.verdictsForScope()
+        return v.length > 0 ? v[0] : null
+    }
+    function secondaryVerdicts() {
+        var v = view.verdictsForScope()
+        return v.length > 1 ? v.slice(1) : []
+    }
+    // The verdict attached to one condition card, if the engine raised one.
+    function verdictForCondition(label) {
+        var v = view.verdictsForScope()
+        for (var i = 0; i < v.length; ++i)
+            if (v[i].comparedCondition === label) return v[i]
+        return null
     }
 
     // The group the visual and headline describe: the best-evidenced one.
@@ -351,7 +367,7 @@ Item {
                 width: parent.width; spacing: 14; bottomPadding: 14
 
                 property var lead: view.leadGroup()
-                property var find: view.headlineFinding()
+                property var find: view.primaryVerdict()
 
                 // 1 · WHAT HAPPENED
                 Rectangle {
@@ -384,10 +400,46 @@ Item {
                         }
                         Text {
                             width: parent.width; wrapMode: Text.WordWrap
-                            text: sumCol.find ? sumCol.find.text
+                            text: sumCol.find ? sumCol.find.headline
                                               : qsTr("No counted shots were recorded in this selection.")
                             color: view._txt; font.family: theme.fontFamily
                             font.pixelSize: 16
+                        }
+                        Text {
+                            visible: sumCol.find && sumCol.find.observedPattern !== ""
+                            width: parent.width; wrapMode: Text.WordWrap
+                            text: sumCol.find ? sumCol.find.observedPattern : ""
+                            color: view._txtSec; font.family: theme.fontFamily; font.pixelSize: 12
+                        }
+                        // EVIDENCE, with the plain-language explanation of the
+                        // level — these are product states, not confidence
+                        // intervals, and the explanation says so.
+                        Row {
+                            spacing: 8; visible: sumCol.find !== null
+                            Rectangle {
+                                width: evT2.implicitWidth + 16; height: 18; radius: 9
+                                color: "transparent"; border.width: 1
+                                border.color: (sumCol.find && sumCol.find.evidence === "Comparative")
+                                              ? view._green : view._amber
+                                Text { id: evT2; anchors.centerIn: parent
+                                       text: sumCol.find ? sumCol.find.evidence.toUpperCase() : ""
+                                       color: (sumCol.find && sumCol.find.evidence === "Comparative")
+                                              ? view._green : view._amber
+                                       font.pixelSize: 9; font.bold: true; font.letterSpacing: 1 }
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+                            Text {
+                                text: sumCol.find && sumCol.find.sampleCountCompared > 0
+                                      ? qsTr("%1 shots").arg(sumCol.find.sampleCountCompared) : ""
+                                color: view._txtMut; font.family: "Consolas"; font.pixelSize: 11
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+                        }
+                        Text {
+                            visible: sumCol.find !== null
+                            width: parent.width; wrapMode: Text.WordWrap
+                            text: sumCol.find ? sumCol.find.evidenceExplanation : ""
+                            color: view._txtMut; font.family: theme.fontFamily; font.pixelSize: 11
                         }
                     }
                 }
@@ -400,15 +452,9 @@ Item {
                            font.bold: true; font.letterSpacing: 2 }
                     Text {
                         width: parent.width; wrapMode: Text.WordWrap
-                        text: {
-                            if (!sumCol.find) return qsTr("Record some counted shots to see an analysis.")
-                            if (sumCol.find.scopeIsSession === true)
-                                return qsTr("This compares positions against each other. Positions have "
-                                          + "different stability demands and are analysed separately — "
-                                          + "it does not establish that wind caused the difference.")
-                            return qsTr("This describes where your shots landed under the recorded "
-                                      + "conditions. It is an observation, not a cause.")
-                        }
+                        // Straight from the verdict — the view words nothing.
+                        text: sumCol.find ? sumCol.find.interpretation
+                                          : qsTr("Record some counted shots to see an analysis.")
                         color: view._txtSec; font.family: theme.fontFamily; font.pixelSize: 13
                     }
                 }
@@ -426,10 +472,29 @@ Item {
                                font.family: theme.fontFamily; font.pixelSize: 10
                                font.bold: true; font.letterSpacing: 2 }
                         Text { width: parent.width; wrapMode: Text.WordWrap
-                               text: sumCol.find && sumCol.find.suggestion !== ""
-                                     ? sumCol.find.suggestion
+                               text: sumCol.find && sumCol.find.nextTrainingStep !== ""
+                                     ? sumCol.find.nextTrainingStep
                                      : qsTr("Record every condition you observe, and repeat a condition "
                                           + "often enough to compare it with itself.")
+                               color: view._txt; font.family: theme.fontFamily; font.pixelSize: 13 }
+                    }
+                }
+
+                // COACH DECISION — only where the verdict raises one.
+                Rectangle {
+                    visible: sumCol.find !== null && sumCol.find.coachDecision !== ""
+                    width: parent.width; height: cdCol.implicitHeight + 22; radius: 8
+                    color: view._panel; border.color: view._amber; border.width: 1
+                    Column {
+                        id: cdCol
+                        anchors.left: parent.left; anchors.leftMargin: 16
+                        anchors.right: parent.right; anchors.rightMargin: 16
+                        anchors.verticalCenter: parent.verticalCenter; spacing: 4
+                        Text { text: qsTr("COACH DECISION"); color: view._amber
+                               font.family: theme.fontFamily; font.pixelSize: 10
+                               font.bold: true; font.letterSpacing: 2 }
+                        Text { width: parent.width; wrapMode: Text.WordWrap
+                               text: sumCol.find ? sumCol.find.coachDecision : ""
                                color: view._txt; font.family: theme.fontFamily; font.pixelSize: 13 }
                     }
                 }
@@ -739,6 +804,14 @@ Item {
                                        font.family: theme.fontFamily; font.pixelSize: 12
                                        anchors.verticalCenter: parent.verticalCenter }
                             }
+                            // The athlete-relative description, shown BESIDE the
+                            // recorded compass value and only when a firing
+                            // direction was recorded.
+                            Text {
+                                visible: modelData.hasRelativeWind === true
+                                text: modelData.relativeWind; color: view._txtSec
+                                font.family: theme.fontFamily; font.pixelSize: 12; font.italic: true
+                            }
                             Grid {
                                 columns: 2; rowSpacing: 3; columnSpacing: 28
                                 Text { text: qsTr("Average score:  ") + view.metric(modelData, "meanScore", "hasMeanScore", 2)
@@ -782,6 +855,36 @@ Item {
                                    width: parent.width; wrapMode: Text.WordWrap
                                    text: view.sampleNote(modelData); color: view._amber
                                    font.family: theme.fontFamily; font.pixelSize: 11 }
+
+                            // This condition's OWN verdict, where the engine
+                            // raised one. The session verdict is never repeated
+                            // here — verdictForCondition matches on the compared
+                            // condition, so a card without one shows nothing.
+                            Column {
+                                width: parent.width; spacing: 3
+                                property var cv: view.verdictForCondition(modelData.label)
+                                visible: cv !== null
+                                Rectangle { width: parent.width; height: 1; color: view._line }
+                                Row {
+                                    spacing: 8
+                                    Text { text: parent.parent.cv ? parent.parent.cv.category.toUpperCase() : ""
+                                           color: view._red; font.family: theme.fontFamily
+                                           font.pixelSize: 9; font.bold: true; font.letterSpacing: 1 }
+                                    Text { text: parent.parent.cv ? parent.parent.cv.evidence : ""
+                                           color: view._txtMut; font.family: theme.fontFamily
+                                           font.pixelSize: 9 }
+                                }
+                                Text { width: parent.width; wrapMode: Text.WordWrap
+                                       text: parent.cv ? parent.cv.headline : ""
+                                       color: view._txt; font.family: theme.fontFamily; font.pixelSize: 12 }
+                                Text { width: parent.width; wrapMode: Text.WordWrap
+                                       text: parent.cv ? parent.cv.interpretation : ""
+                                       color: view._txtSec; font.family: theme.fontFamily; font.pixelSize: 11 }
+                                Text { visible: parent.cv && parent.cv.nextTrainingStep !== ""
+                                       width: parent.width; wrapMode: Text.WordWrap
+                                       text: qsTr("Next: ") + (parent.cv ? parent.cv.nextTrainingStep : "")
+                                       color: view._green; font.family: theme.fontFamily; font.pixelSize: 11 }
+                            }
 
                             // technical values, hidden by default with definitions
                             Text {
@@ -854,6 +957,11 @@ Item {
                        text: qsTr("Every recorded shot with the condition that was standing when it "
                                 + "was fired. Supporting evidence for the analysis above.")
                        color: view._txtSec; font.family: theme.fontFamily; font.pixelSize: 11 }
+                Text { visible: view.session.hasFiringDirection !== true
+                       width: parent.width; wrapMode: Text.WordWrap
+                       text: view.session.relativeWindNote ? view.session.relativeWindNote : ""
+                       color: view._txtMut; font.family: theme.fontFamily
+                       font.pixelSize: 10; font.italic: true }
                 Row {
                     width: parent.width; spacing: 8; height: 22
                     Text { width: parent.width * 0.06; text: qsTr("#"); color: view._txtMut; font.pixelSize: 10 }
@@ -923,6 +1031,8 @@ Item {
                                         color: view.conditionColour(modelData.conditionLabel)
                                         anchors.verticalCenter: parent.verticalCenter }
                             Text { text: modelData.conditionLabel
+                                         + (modelData.hasRelativeWind === true
+                                            ? "   (" + modelData.relativeWind + ")" : "")
                                          + (modelData.note && modelData.note !== ""
                                             ? "   — " + modelData.note : "")
                                    color: view._txtSec; font.family: theme.fontFamily; font.pixelSize: 11

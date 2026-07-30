@@ -531,13 +531,44 @@ void run_windmap_qml_tests()
         check(analysis.contains(rightWord) && analysis.contains(leftWord),
               "13. UI-WIND-007: the words right and left are used, not signed numbers");
 
-        // UI-WIND-006: scoped findings.
+        // UI-WIND-006: scoped VERDICTS (Stage 6.1.3 replaced findings).
         check(analysis.contains(QStringLiteral("scopeIsSession")),
-              "13. UI-WIND-006: the view reads each finding's scope");
-        check(analysis.contains(QStringLiteral("function findingsForScope")),
-              "13. UI-WIND-006: findings are filtered by the selected position");
+              "13. UI-WIND-006: the view reads each verdict's scope");
+        check(analysis.contains(QStringLiteral("function verdictsForScope")),
+              "13. UI-WIND-006: verdicts are filtered by the selected position");
         check(analysis.contains(QStringLiteral("scopeLabel")),
               "13. UI-WIND-006: the scope is displayed");
+
+        // Stage 6.1.3: the view renders the VERDICT model and composes no
+        // verdict text of its own.
+        check(analysis.contains(QStringLiteral("model.verdicts")),
+              "13. the view reads the verdict model");
+        check(analysis.contains(QStringLiteral("function primaryVerdict"))
+              && analysis.contains(QStringLiteral("function secondaryVerdicts")),
+              "13. one prioritised primary verdict, the rest secondary");
+        check(analysis.contains(QStringLiteral("function verdictForCondition")),
+              "13. each condition card can carry its OWN verdict");
+        // Every athlete-facing sentence comes from the engine.
+        const char* verdictFields[] = { ".headline", ".interpretation",
+                                        ".nextTrainingStep", ".coachDecision",
+                                        ".evidenceExplanation" };
+        bool fromEngine = true;
+        QString missingField;
+        for (const char* f : verdictFields)
+            if (!analysis.contains(QLatin1String(f))) {
+                fromEngine = false; missingField += QLatin1String(f);
+            }
+        check(fromEngine, "13. what happened / meaning / next step / coach / evidence "
+                          "all come from the verdict record", missingField);
+        check(analysis.contains(QStringLiteral("COACH DECISION")),
+              "13. the coach-decision block exists");
+
+        // Relative wind direction, derived and optional.
+        check(analysis.contains(QStringLiteral("hasRelativeWind"))
+              && analysis.contains(QStringLiteral("relativeWind")),
+              "13. the relative wind description is shown where available");
+        check(analysis.contains(QStringLiteral("relativeWindNote")),
+              "13. and the unavailable fallback is shown where it is not");
 
         // Overview tiles reduced to four.
         check(analysis.contains(QStringLiteral("SESSION DETAILS")),
