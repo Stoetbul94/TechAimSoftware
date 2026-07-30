@@ -1444,9 +1444,13 @@ Item {
         onHomeRequested: shootingPage.homeFromWindMap()
         onNewSessionRequested: shootingPage.newWindMapSession()
     }
-    // Stage 6.1: the completed-session analysis. It reads WINDMAP.analysisModel()
-    // — a projection of WindMapAnalyticsEngine — and formats it. No metric is
-    // recalculated here.
+    // Stage 6.1.1: the completed-session analysis. It reads
+    // WINDMAP.analysisModel() — a cached projection of WindMapAnalyticsEngine —
+    // and formats it. No metric is recalculated here.
+    //
+    // UI-WIND-008: there is deliberately NO export signal to handle. The PDF is
+    // Stage 6.2, so the view shows a disabled "PDF — COMING NEXT" control rather
+    // than a primary-styled button that opens a placeholder message.
     WindMapAnalysisView {
         id: windMapAnalysis
         visible: isWindMapMatch && WINDMAP.phase === 6
@@ -1455,11 +1459,6 @@ Item {
         ctl: WINDMAP
         onHomeRequested: shootingPage.homeFromWindMap()
         onNewSessionRequested: shootingPage.newWindMapSession()
-        onExportPdfRequested: dialogManager.showInformation(
-            qsTr("Wind Map PDF"),
-            qsTr("The branded Wind Map PDF report is the next phase (Stage 6.2). "
-                 + "The analysis above is final and will be exported unchanged — "
-                 + "the report uses this same model, not a second calculation."))
     }
     // Sighters are drawn on the live target so the athlete can see them;
     // counted shots are drawn too — Wind Map hides nothing, it only records
