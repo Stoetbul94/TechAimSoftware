@@ -4,6 +4,12 @@
 **Purpose:** the reasoning behind what the Wind Map verdict system is allowed
 to say, and the limits it must respect.
 
+> **Wind Map is the pilot programme for the Training Lab evidence standard.**
+> The shared policy generalised from this document is
+> `training-lab-evidence-standard.md`; every Training Lab claim, including Wind
+> Map's, is catalogued in `training-lab-evidence-register.md`. Where the two
+> disagree, the standard governs.
+
 ---
 
 ## 0. Verification status
