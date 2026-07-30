@@ -1,5 +1,7 @@
 #include "WindMapAnalytics.h"
 
+#include "TargetGeometry.h"
+
 #include <QtGlobal>
 #include <algorithm>
 #include <cmath>
@@ -181,6 +183,28 @@ GroupStats WindMapAnalyticsEngine::statsFor(const QVector<const TimelineEntry*>&
     g.meanRadiusMm = sumR / g.n;
     g.horizontalSpreadMm = maxX - minX;
     g.verticalSpreadMm = maxY - minY;
+
+    // ── Radial RMS dispersion — THE classification metric (EVID-WM-001) ────
+    //   radialRmsMm = sqrt( SUM((x-mx)^2 + (y-my)^2) / (n-1) )      [mm]
+    // Every shot contributes, so an extra interior shot cannot inflate it the
+    // way it inflates extreme spread. n >= kMinSamplesDispersion here, so the
+    // n-1 denominator is always >= 4.
+    //
+    // The x and y sample SDs share that denominator, which makes
+    //   radialRmsMm^2 == horizontalSdMm^2 + verticalSdMm^2
+    // an exact identity (the trace of the sample covariance matrix), asserted
+    // by test rather than assumed.
+    double sxx = 0.0, syy = 0.0;
+    for (const TimelineEntry* s : shots) {
+        const double dx = s->xMm - g.mpiXMm;
+        const double dy = s->yMm - g.mpiYMm;
+        sxx += dx * dx;
+        syy += dy * dy;
+    }
+    const double denom = static_cast<double>(g.n - 1);
+    g.horizontalSdMm = std::sqrt(sxx / denom);
+    g.verticalSdMm   = std::sqrt(syy / denom);
+    g.radialRmsMm    = std::sqrt((sxx + syy) / denom);
 
     // Group diameter = MAXIMUM SPREAD: the largest centre-to-centre distance
     // between any two shots. Not the bounding box, and not 2x the mean radius.
@@ -535,7 +559,15 @@ SessionAnalysis WindMapAnalyticsEngine::analyse(const SessionState& state, const
     if (state.wmProgramId != QLatin1String("wind_map"))
         return a;                              // fails closed: not a Wind Map session
     a.valid = true;
+    a.analyticsVersion = QString::fromLatin1(kWindMapAnalyticsVersion);
     a.disciplineId = state.wmDisciplineId;
+    // ONE ring-geometry authority: TargetGeometry. Wind Map is 50 m rifle only,
+    // so both supported ids resolve to the ISSF 50 m rifle spacing, but the
+    // lookup is routed rather than hardcoded so a future discipline is correct
+    // by construction.
+    a.ringSpacingMm = issfRingSpacingMm(
+        windMapDisciplineIs3P(state.wmDisciplineId) ? ta::rel::Discipline::ThreePositions50m
+                                                    : ta::rel::Discipline::Prone50m);
     a.threePositions = state.wmThreePositions;
     a.conditionEntries = state.wmConditionChanges;
 

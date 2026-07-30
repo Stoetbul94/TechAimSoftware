@@ -33,6 +33,17 @@ inline constexpr int kMinSamplesMpi        = 3;   // mean point of impact
 inline constexpr int kMinSamplesDispersion = 5;   // group / spread / sd
 inline constexpr int kMinSamplesComparison = 5;   // per side of a comparison
 
+// ── Analytics version ──────────────────────────────────────────────────────
+// Stamped into every SessionAnalysis so a report can say WHICH method produced
+// its verdicts. v1 classified dispersion by extreme spread (group diameter),
+// which is set by the two most distant shots and tends to grow with sample
+// count — defect EVID-WM-001. v2 classifies by radial RMS dispersion, which
+// uses every shot and is far less sample-count sensitive.
+//
+// An old session remains fully readable: nothing stored changes. Only the
+// method that INTERPRETS it does, and this string records which one ran.
+inline const char* kWindMapAnalyticsVersion = "windmap-analytics-v2";
+
 // How much of a statistic the sample supports.
 enum class Evidence : qint8 {
     Insufficient = 0,   // below kMinSamplesMpi — nothing is claimed
@@ -87,6 +98,33 @@ struct GroupStats {
     // dispersion — n >= kMinSamplesDispersion
     bool   hasDispersion = false;
     double meanRadiusMm = 0.0;       // mean distance from the group's own MPI
+
+    // ── THE CLASSIFICATION METRIC (EVID-WM-001) ────────────────────────────
+    // Radial RMS dispersion about the group's own centre, in MILLIMETRES:
+    //
+    //     radialRmsMm = sqrt( SUM((x - meanX)^2 + (y - meanY)^2) / (n - 1) )
+    //
+    // Equivalently the square root of the trace of the sample covariance
+    // matrix, so the identity radialRmsMm^2 == horizontalSdMm^2 + verticalSdMm^2
+    // holds exactly and is asserted by test.
+    //
+    // Every shot contributes, so adding interior shots does not inflate it the
+    // way it inflates an extreme-spread measure. This — never groupDiameterMm —
+    // is what the verdict engine classifies on.
+    //
+    // Minimum sample: kMinSamplesDispersion (5). The n-1 denominator means it
+    // is undefined at n < 2 and unstable just above it; the shared floor keeps
+    // it at n >= 5 in practice. Units: mm throughout.
+    double radialRmsMm = 0.0;
+    double horizontalSdMm = 0.0;     // sample SD of x (n-1 denominator), mm
+    double verticalSdMm = 0.0;       // sample SD of y (n-1 denominator), mm
+
+    // ── DESCRIPTIVE ONLY — never a classification input ────────────────────
+    // Extreme spread and the bounding-box ranges remain useful for an athlete
+    // reading "how big was that group", and stay on screen and in the report.
+    // They are order statistics: driven by the outermost shots and rising with
+    // sample count, so comparing them between groups of different size is not
+    // sound. See docs/training-lab-wind-map-dispersion.md.
     double groupDiameterMm = 0.0;    // maximum spread, extreme shot to shot
     double horizontalSpreadMm = 0.0; // max x - min x
     double verticalSpreadMm = 0.0;   // max y - min y
@@ -203,6 +241,13 @@ struct Finding {
 
 struct SessionAnalysis {
     bool    valid = false;
+    // WHICH method produced this analysis. Stamped so a stored or printed
+    // report can never be mistaken for one produced by the earlier
+    // extreme-spread classification. See kWindMapAnalyticsVersion.
+    QString analyticsVersion;
+    // Discipline ring spacing (mm), resolved once here so no consumer — and
+    // certainly no QML — re-derives target geometry.
+    double  ringSpacingMm = 0.0;
     QString disciplineId;
     bool    threePositions = false;
     int     countedShots = 0;

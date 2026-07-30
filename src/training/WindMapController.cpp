@@ -745,7 +745,12 @@ QVariantMap groupToVariant(const ta::training::GroupStats& g)
     m[QStringLiteral("hasRelativeWind")] = false;
     m[QStringLiteral("relativeWind")] = QString();
     if (g.hasDispersion) {
+        // Classification metric first — this is what the verdicts are built on.
+        m[QStringLiteral("radialRmsMm")] = g.radialRmsMm;
+        m[QStringLiteral("horizontalSdMm")] = g.horizontalSdMm;
+        m[QStringLiteral("verticalSdMm")] = g.verticalSdMm;
         m[QStringLiteral("meanRadiusMm")] = g.meanRadiusMm;
+        // Descriptive only. QML formats these; it must never compare them.
         m[QStringLiteral("groupDiameterMm")] = g.groupDiameterMm;
         m[QStringLiteral("horizontalSpreadMm")] = g.horizontalSpreadMm;
         m[QStringLiteral("verticalSpreadMm")] = g.verticalSpreadMm;
@@ -822,6 +827,11 @@ QVariantMap WindMapController::analysisModel() const
     session[QStringLiteral("createdAtIso")] = s.createdAtIso;
     session[QStringLiteral("operatingMode")] = s.operatingMode.isEmpty()
         ? QStringLiteral("Legacy") : s.operatingMode;
+    // WHICH analysis method produced this. A report rendered from an older
+    // build classified dispersion by extreme spread; this string is how the two
+    // are told apart, so it is never omitted.
+    session[QStringLiteral("analyticsVersion")] = a.analyticsVersion;
+    session[QStringLiteral("ringSpacingMm")] = a.ringSpacingMm;
     session[QStringLiteral("disciplineId")] = a.disciplineId;
     session[QStringLiteral("disciplineName")] = a.threePositions
         ? QStringLiteral("50 m Rifle 3 Positions") : QStringLiteral("50 m Rifle Prone");

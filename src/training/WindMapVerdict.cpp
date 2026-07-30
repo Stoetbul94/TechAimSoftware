@@ -76,16 +76,25 @@ bool WindMapVerdictEngine::isMeaningfulOffset(double magnitudeMm, double referen
     return magnitudeMm >= bar;
 }
 
-bool WindMapVerdictEngine::isCompact(double comparedDiameterMm, double referenceDiameterMm)
+// EVID-WM-001: both predicates take RADIAL RMS, never extreme spread.
+// The band between the two ratios is deliberately indeterminate — a ratio of
+// 1.30 yields neither compact nor wider, and no verdict is forced.
+bool WindMapVerdictEngine::isCompact(double comparedRadialRmsMm, double referenceRadialRmsMm)
 {
-    if (referenceDiameterMm <= 0.0) return false;
-    return comparedDiameterMm <= kCompactRelativeToReference * referenceDiameterMm;
+    if (referenceRadialRmsMm <= 0.0) return false;
+    return comparedRadialRmsMm <= kCompactRelativeToReference * referenceRadialRmsMm;
 }
 
-bool WindMapVerdictEngine::isWider(double comparedDiameterMm, double referenceDiameterMm)
+bool WindMapVerdictEngine::isWider(double comparedRadialRmsMm, double referenceRadialRmsMm)
 {
-    if (referenceDiameterMm <= 0.0) return false;
-    return comparedDiameterMm >= kWiderRelativeToReference * referenceDiameterMm;
+    if (referenceRadialRmsMm <= 0.0) return false;
+    return comparedRadialRmsMm >= kWiderRelativeToReference * referenceRadialRmsMm;
+}
+
+bool WindMapVerdictEngine::isElevatedDispersion(double radialRmsMm, double ringSpacingMm)
+{
+    if (ringSpacingMm <= 0.0) return false;
+    return radialRmsMm >= kElevatedDispersionRingMultiple * ringSpacingMm;
 }
 
 // ── relative wind direction ────────────────────────────────────────────────
@@ -272,28 +281,39 @@ QVector<Verdict> WindMapVerdictEngine::evaluate(const SessionAnalysis& a)
         // Checked before the per-condition verdicts: when every group is wide,
         // no single condition explains it, and saying so first is more useful.
         if (describable.size() >= 2) {
-            bool allWide = true;
-            for (const GroupStats* g : describable)
-                if (g->groupDiameterMm < kWideProvisionalMm) allWide = false;
-            if (allWide) {
+            // EVID-WM-001: classified on radial RMS against the discipline's
+            // ring spacing. The superseded 40 mm extreme-spread bar is gone.
+            bool allElevated = true;
+            double lowestRms = -1.0;
+            for (const GroupStats* g : describable) {
+                if (!isElevatedDispersion(g->radialRmsMm, a.ringSpacingMm)) allElevated = false;
+                if (lowestRms < 0.0 || g->radialRmsMm < lowestRms) lowestRms = g->radialRmsMm;
+            }
+            if (allElevated) {
                 Verdict v;
                 base(v, VerdictCategory::WideAcrossConditions, VerdictScope::Position, 5);
                 v.verdictId = QStringLiteral("pos%1.wideall").arg(p.position);
                 v.evidence = EvidenceLevel::Comparative;
                 v.sampleCountCompared = p.countedShots;
-                // Deliberately RELATIVE, descriptive wording. The threshold
-                // behind it is provisional and unreviewed, so the verdict
-                // reports the measurement and never calls the shooting poor.
-                v.headline = QStringLiteral("%1Groups remained relatively wide across the "
-                                            "recorded conditions.").arg(where);
-                v.observedPattern = QStringLiteral("Every described group measured at least "
-                                                   "%1 mm across.").arg(mm(kWideProvisionalMm));
+                // Descriptive wording only. The threshold behind it is
+                // provisional and unreviewed, so the verdict reports the
+                // measurement and never calls the athlete or the group poor.
+                v.headline = QStringLiteral("%1Dispersion remained elevated across the recorded "
+                                            "conditions.").arg(where);
+                v.observedPattern = QStringLiteral("Every described group had a radial RMS "
+                                                   "dispersion of at least %1 mm (lowest %2 mm).")
+                                        .arg(mm(kElevatedDispersionRingMultiple * a.ringSpacingMm))
+                                        .arg(mm(lowestRms));
                 v.interpretation = QStringLiteral("No single recorded condition separates these "
                                                   "groups from one another.");
                 v.nextTrainingStep = QStringLiteral("Review position stability, aiming and "
                                                     "triggering with Group Pattern Coach or an "
                                                     "aim-trace tool.");
-                v.supportingMetricIds << QStringLiteral("groupDiameterMm");
+                v.limitations << QStringLiteral("The dispersion level used here is a provisional "
+                                                "Tech Aim training rule awaiting coach review. It "
+                                                "is not an ISSF standard and not a research "
+                                                "finding.");
+                v.supportingMetricIds << QStringLiteral("radialRmsMm");
                 out.append(v);
             }
         }
@@ -316,9 +336,10 @@ QVector<Verdict> WindMapVerdictEngine::evaluate(const SessionAnalysis& a)
                              .arg(where).arg(refGroup->n).arg(refGroup->label)
                              .arg(mm(refGroup->groupDiameterMm));
             v.observedPattern = QStringLiteral("Group centre %1; average distance from that "
-                                               "centre %2 mm.")
+                                               "centre %2 mm; radial RMS dispersion %3 mm.")
                                     .arg(offsetWords(refGroup->mpiXMm, refGroup->mpiYMm))
-                                    .arg(mm(refGroup->meanRadiusMm));
+                                    .arg(mm(refGroup->meanRadiusMm))
+                                    .arg(mm(refGroup->radialRmsMm));
             v.interpretation = QStringLiteral("Only one condition was recorded, so there is "
                                               "nothing to compare it against. This describes the "
                                               "group, not an effect of the condition.");
@@ -367,10 +388,11 @@ QVector<Verdict> WindMapVerdictEngine::evaluate(const SessionAnalysis& a)
             }
 
             const bool meaningful = isMeaningfulOffset(sv.magnitudeMm, refGroup->meanRadiusMm);
+            // EVID-WM-001: radial RMS on both sides, never extreme spread.
             const bool compact = g->hasDispersion
-                              && isCompact(g->groupDiameterMm, refGroup->groupDiameterMm);
+                              && isCompact(g->radialRmsMm, refGroup->radialRmsMm);
             const bool wider = g->hasDispersion
-                            && isWider(g->groupDiameterMm, refGroup->groupDiameterMm);
+                            && isWider(g->radialRmsMm, refGroup->radialRmsMm);
             if (meaningful) anyMeaningful = true;
             if (wider || !compact) anySizeDifference = true;
 
@@ -386,12 +408,17 @@ QVector<Verdict> WindMapVerdictEngine::evaluate(const SessionAnalysis& a)
                                             "centre was %4 of the reference group.")
                                  .arg(where).arg(sv.n).arg(sv.label)
                                  .arg(offsetWords(sv.dxMm, sv.dyMm));
-                v.observedPattern = QStringLiteral("Group %1 mm across against %2 mm for %3; "
-                                                   "centre displaced %4 mm.")
-                                        .arg(mm(g->groupDiameterMm))
-                                        .arg(mm(refGroup->groupDiameterMm))
+                // Reports the metric it was CLASSIFIED on (radial RMS), with
+                // extreme spread alongside as a descriptive size the athlete
+                // can picture. The two are never interchangeable.
+                v.observedPattern = QStringLiteral("Radial RMS dispersion %1 mm against %2 mm for "
+                                                   "%3; centre displaced %4 mm. Widest shot-to-shot "
+                                                   "spread %5 mm (descriptive only).")
+                                        .arg(mm(g->radialRmsMm))
+                                        .arg(mm(refGroup->radialRmsMm))
                                         .arg(p.reference.label)
-                                        .arg(mm(sv.magnitudeMm));
+                                        .arg(mm(sv.magnitudeMm))
+                                        .arg(mm(g->groupDiameterMm));
                 v.interpretation = QStringLiteral("A group-centre difference was observed "
                                                   "alongside this recorded condition. This does "
                                                   "not prove wind was the only reason.");
@@ -401,7 +428,7 @@ QVector<Verdict> WindMapVerdictEngine::evaluate(const SessionAnalysis& a)
                 v.coachDecision = QStringLiteral("Discuss sight or wind strategy with a coach "
                                                  "only after the pattern is repeated.");
                 v.supportingMetricIds << QStringLiteral("magnitudeMm")
-                                      << QStringLiteral("groupDiameterMm")
+                                      << QStringLiteral("radialRmsMm")
                                       << QStringLiteral("meanRadiusMm");
                 out.append(v);
                 continue;
@@ -415,14 +442,16 @@ QVector<Verdict> WindMapVerdictEngine::evaluate(const SessionAnalysis& a)
                 v.comparedCondition = sv.label;
                 v.sampleCountCompared = sv.n;
                 v.evidence = EvidenceLevel::Comparative;
-                v.headline = QStringLiteral("%1The %2 group measured %3 mm compared with %4 mm "
-                                            "for %5.")
-                                 .arg(where).arg(sv.label).arg(mm(g->groupDiameterMm))
-                                 .arg(mm(refGroup->groupDiameterMm)).arg(p.reference.label);
-                v.observedPattern = QStringLiteral("%1 counted shots; horizontal spread %2 mm "
-                                                   "against %3 mm.")
-                                        .arg(sv.n).arg(mm(g->horizontalSpreadMm))
-                                        .arg(mm(refGroup->horizontalSpreadMm));
+                v.headline = QStringLiteral("%1Shots under %2 were more widely dispersed than "
+                                            "under %3 (radial RMS %4 mm against %5 mm).")
+                                 .arg(where).arg(sv.label).arg(p.reference.label)
+                                 .arg(mm(g->radialRmsMm)).arg(mm(refGroup->radialRmsMm));
+                v.observedPattern = QStringLiteral("%1 counted shots against %2. Horizontal SD "
+                                                   "%3 mm against %4 mm; vertical SD %5 mm against "
+                                                   "%6 mm.")
+                                        .arg(sv.n).arg(refGroup->n)
+                                        .arg(mm(g->horizontalSdMm)).arg(mm(refGroup->horizontalSdMm))
+                                        .arg(mm(g->verticalSdMm)).arg(mm(refGroup->verticalSdMm));
                 v.interpretation = QStringLiteral("Shot placement was less consistent while this "
                                                   "condition was recorded. The software cannot "
                                                   "determine whether the reason was changing "
@@ -431,8 +460,9 @@ QVector<Verdict> WindMapVerdictEngine::evaluate(const SessionAnalysis& a)
                 v.nextTrainingStep = QStringLiteral("Wait for a repeatable flag picture and "
                                                     "record ten shots without changing the "
                                                     "position setup.");
-                v.supportingMetricIds << QStringLiteral("groupDiameterMm")
-                                      << QStringLiteral("horizontalSpreadMm");
+                v.supportingMetricIds << QStringLiteral("radialRmsMm")
+                                      << QStringLiteral("horizontalSdMm")
+                                      << QStringLiteral("verticalSdMm");
                 out.append(v);
                 continue;
             }
@@ -456,7 +486,7 @@ QVector<Verdict> WindMapVerdictEngine::evaluate(const SessionAnalysis& a)
                                                 "Group Pattern Coach to examine position and "
                                                 "execution consistency.");
             v.supportingMetricIds << QStringLiteral("magnitudeMm")
-                                  << QStringLiteral("groupDiameterMm");
+                                  << QStringLiteral("radialRmsMm");
             out.append(v);
         }
     }
@@ -467,10 +497,13 @@ QVector<Verdict> WindMapVerdictEngine::evaluate(const SessionAnalysis& a)
     if (a.threePositions && a.positions.size() >= 2) {
         const PositionAnalysis* widest = nullptr;
         double widestVal = -1.0;
+        // EVID-WM-001 extended by one category: this compares dispersion across
+        // positions whose shot counts routinely differ, so it is the same bias
+        // class as the four named categories and moves to radial RMS with them.
         for (const PositionAnalysis& p : a.positions)
             for (const GroupStats& g : p.byExactCondition) {
                 if (!g.hasDispersion) continue;
-                if (g.groupDiameterMm > widestVal) { widestVal = g.groupDiameterMm; widest = &p; }
+                if (g.radialRmsMm > widestVal) { widestVal = g.radialRmsMm; widest = &p; }
             }
         if (widest && widestVal > 0.0) {
             Verdict v;
@@ -481,8 +514,9 @@ QVector<Verdict> WindMapVerdictEngine::evaluate(const SessionAnalysis& a)
             v.evidence = EvidenceLevel::Indicative;
             v.sampleCountCompared = widest->countedShots;
             v.positionName = widest->positionName;
-            v.headline = QStringLiteral("%1 produced the widest recorded group in this session "
-                                        "(%2 mm).").arg(widest->positionName).arg(mm(widestVal));
+            v.headline = QStringLiteral("%1 produced the most widely dispersed recorded group in "
+                                        "this session (radial RMS %2 mm).")
+                             .arg(widest->positionName).arg(mm(widestVal));
             v.observedPattern = QStringLiteral("Compared across %1 positions recorded in this "
                                                "session.").arg(a.positions.size());
             v.interpretation = QStringLiteral("Each position has different stability demands and "
@@ -495,7 +529,7 @@ QVector<Verdict> WindMapVerdictEngine::evaluate(const SessionAnalysis& a)
             v.limitations << QStringLiteral("Positions are compared against each other here. "
                                             "Compare a position with itself across sessions for "
                                             "a stronger reading.");
-            v.supportingMetricIds << QStringLiteral("groupDiameterMm");
+            v.supportingMetricIds << QStringLiteral("radialRmsMm");
             out.append(v);
         }
     }

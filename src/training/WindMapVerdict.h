@@ -120,20 +120,38 @@ inline constexpr double kOffsetMinimumMm            = 3.00;
 // Compact and wider are RELATIVE to what this athlete shot in the reference
 // condition — never an absolute standard, which would vary by athlete and
 // position. The gap between them deliberately yields no dispersion claim.
+//
+// EVID-WM-001: these ratios are applied to RADIAL RMS DISPERSION, never to
+// extreme spread. Extreme spread is an order statistic set by the two most
+// distant shots, so it tends to grow with sample count; comparing it between a
+// 5-shot and a 20-shot group could report "wider" from sample size alone.
+// Radial RMS uses every shot and does not behave that way. The RATIOS are
+// unchanged — only the metric they are applied to.
 inline constexpr double kCompactRelativeToReference = 1.25;
 inline constexpr double kWiderRelativeToReference   = 1.50;
+
 // PROVISIONAL TECH AIM RULE — COACH REVIEW REQUIRED.
 //
-// The only ABSOLUTE constant in the set, and deliberately the most cautious in
-// how it is worded. It is absolute because when every group is wide there is
-// no within-session reference to scale against — but no verified source
-// supports a millimetre figure for "wide" at 50 m, so:
-//   · it is named `Provisional` so no reader mistakes it for a settled rule;
-//   · the athlete-facing wording says groups were "relatively wide across the
-//     recorded conditions" and NEVER that the shooting was poor;
+// "Elevated dispersion across every recorded condition", expressed as a
+// multiple of the discipline's ISSF ring spacing rather than a bare millimetre
+// figure — so it scales with the target the athlete is actually shooting at,
+// the same principle Group Pattern Coach uses.
+//
+// It exists because when EVERY group is wide there is no within-session
+// reference to scale against, so some absolute-ish bar is unavoidable. It is
+// the weakest rule in the set and is treated accordingly:
+//   · no verified source supports any dispersion figure for 50 m — this is a
+//     Tech Aim product decision and nothing more;
+//   · the wording says dispersion "remained elevated", never that the athlete
+//     or the group was poor, bad, weak, unacceptable or inadequate;
 //   · it triggers a referral to Group Pattern Coach, not a judgement.
-// Decision and reasoning: docs/training-lab-wind-map-verdict-rules.md.
-inline constexpr double kWideProvisionalMm          = 40.00;
+//
+// The superseded 40 mm EXTREME-SPREAD constant is deliberately gone from the
+// code. Its value survives only as history in
+// docs/training-lab-wind-map-verdict-rules.md, so it cannot silently keep
+// classifying athletes under a new name.
+inline constexpr double kElevatedDispersionRingMultiple = 1.50;
+
 inline constexpr int    kFragmentedMinConditions    = 3;
 
 class WindMapVerdictEngine
@@ -144,9 +162,15 @@ public:
     static QVector<Verdict> evaluate(const SessionAnalysis& analysis);
 
     // Exposed for tests and for the rules document's boundary cases.
+    //
+    // The dispersion predicates take RADIAL RMS on both sides. Passing a
+    // diameter would compile and be wrong, so the parameter names say what the
+    // arguments must be and the boundary tests pin the behaviour.
     static bool isMeaningfulOffset(double magnitudeMm, double referenceMeanRadiusMm);
-    static bool isCompact(double comparedDiameterMm, double referenceDiameterMm);
-    static bool isWider(double comparedDiameterMm, double referenceDiameterMm);
+    static bool isCompact(double comparedRadialRmsMm, double referenceRadialRmsMm);
+    static bool isWider(double comparedRadialRmsMm, double referenceRadialRmsMm);
+    // Elevated dispersion for a single group, against the discipline geometry.
+    static bool isElevatedDispersion(double radialRmsMm, double ringSpacingMm);
 };
 
 // ── Relative wind direction (optional session metadata) ────────────────────
