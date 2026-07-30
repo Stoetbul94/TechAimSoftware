@@ -9,6 +9,22 @@ what the app **will** show, not what it is expected to show.
 
 ---
 
+## Build prepared for review
+
+| | |
+|---|---|
+| Banner | `Tech Aim 0.9.0 Release build · commit dd30dc6 · built Jul 30 2026 20:20:33 · Pre-Beta Validation · flavour TECH_AIM` |
+| Profile | `DOCUMENTATION CAPTURE PROFILE ACTIVE` — isolated data root, no production data touched |
+| Data root | `C:/Users/User/AppData/Local/Temp/TechAimWindMapReview614` |
+| Screen | 1536 × 960 |
+| QML errors | none in any Wind Map, Training, Position Transition or LoginPage file |
+
+`main.o` was force-rebuilt so the banner names the commit actually under
+review. The earlier binary reported `3ff8bd1` because the commit is baked in at
+qmake time and the object had not changed — the stamp, not the code, was stale.
+
+---
+
 ## How to run the review
 
 The application is already running against an isolated Demo capture profile
