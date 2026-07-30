@@ -35,7 +35,10 @@ for(legacy, LEGACY_EXES) {
 # git once at build-configuration time; the app never shells out to git and
 # the customer machine needs no Git / repo / Qt Creator. Build date/time comes
 # from the compiler (__DATE__/__TIME__ in main.cpp).
-APP_VERSION_STR = 0.9.0
+# 0.9.0-RC1 — INTERNAL FIELD TEST. This is a release candidate for controlled
+# live-range testing, not the public 1.0. The channel travels with the version
+# so a binary can never be mistaken for a general release.
+APP_VERSION_STR = 0.9.0-RC1
 GIT_SHA = $$system(git -C \"$$PWD\" rev-parse --short HEAD)
 isEmpty(GIT_SHA): GIT_SHA = unknown
 DEFINES += APP_VERSION_STR=\\\"$$APP_VERSION_STR\\\"

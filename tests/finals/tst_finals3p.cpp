@@ -1117,8 +1117,20 @@ static void runProductIdentityChecks()
           "identity: legal publisher");
     check(p.applicationId == QLatin1String("za.co.techaim.electronic-target-control"),
           "identity: reverse-DNS application id");
-    check(p.releaseChannel == QLatin1String("Pre-Beta Validation"),
-          "identity: release channel is pre-beta (no production claim)");
+    // 0.9.0-RC1: the channel is injected by the build (APP_RELEASE_CHANNEL).
+    // What matters is that it makes NO production claim and that a field-test
+    // build carries the notice, so a result can never look official.
+    check(p.releaseChannel == QLatin1String("Internal Field Test"),
+          "identity: release channel is the internal field test (no production claim)",
+          p.releaseChannel);
+    check(!p.fieldTestNotice.isEmpty()
+          && p.fieldTestNotice.contains(QLatin1String("NOT FOR OFFICIAL")),
+          "identity: the field-test build carries its limitation notice",
+          p.fieldTestNotice);
+    check(!p.releaseChannel.contains(QLatin1String("Production"), Qt::CaseInsensitive)
+          && !p.releaseChannel.contains(QLatin1String("General"), Qt::CaseInsensitive)
+          && !p.releaseChannel.contains(QLatin1String("Stable"), Qt::CaseInsensitive),
+          "identity: the channel makes no general-release claim");
     check(p.defaultTheme == QLatin1String("techaim-dark")
           && p.defaultLanguage == QLatin1String("en"),
           "identity: default theme + language");

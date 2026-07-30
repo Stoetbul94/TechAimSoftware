@@ -64,3 +64,6 @@ manual-preview/
 # Local Claude tooling: generic marketplace design/UI skill packs, not Tech Aim
 # source. .claude/launch.json IS tracked, so only this subdirectory is ignored.
 /.claude/skills/
+
+# Release packaging output (binaries, ZIPs, rollback slot) - built, not sourced.
+/dist/

@@ -568,6 +568,35 @@ Item {
                 text: qsTr("Built: ") + (typeof BUILDINFO !== "undefined" ? BUILDINFO.built : "?")
                 color: "#c9ced6"; font.pixelSize: 10
             }
+            // 0.9.0-RC1 diagnostics: everything needed to identify the exact
+            // binary that produced a result, on a machine with no repository,
+            // no Git and no Qt. Read from PRODUCT, never hardcoded here.
+            Text {
+                text: qsTr("Qt: ") + PRODUCT.qtVersion + "   ·   " + PRODUCT.architecture
+                color: "#c9ced6"; font.pixelSize: 10
+            }
+            Text {
+                text: qsTr("Windows: ") + PRODUCT.windowsVersion
+                color: "#c9ced6"; font.pixelSize: 10
+                width: parent.width; wrapMode: Text.WordWrap
+            }
+            Text {
+                // getAppMode() is historically a bool: true = Live.
+                text: qsTr("Operating mode: ")
+                      + (APPSETTINGS.getAppMode() ? qsTr("Live") : qsTr("Demo"))
+                color: "#c9ced6"; font.pixelSize: 10
+            }
+            Text {
+                text: qsTr("Analytics: ") + PRODUCT.analyticsVersion
+                color: "#c9ced6"; font.pixelSize: 10
+            }
+            // Restrained, and only in a build that IS a field test.
+            Text {
+                visible: PRODUCT.isFieldTest
+                text: PRODUCT.fieldTestNotice
+                color: "#E8B4B8"; font.pixelSize: 10; font.bold: true
+                width: parent.width; wrapMode: Text.WordWrap
+            }
         }
     }
 

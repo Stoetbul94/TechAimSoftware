@@ -55,8 +55,12 @@ struct ProductIdentity {
     QString copyrightLine;
 
     // ── release ──────────────────────────────────────────────────────────
-    QString version;                // 0.9.0
-    QString releaseChannel;         // "Pre-Beta Validation"
+    QString version;                // 0.9.0-RC1
+    QString releaseChannel;         // "Internal Field Test"
+    // Shown where a result could be mistaken for an official one. Empty in a
+    // future general release; non-empty means this build is a field-test
+    // candidate and must say so.
+    QString fieldTestNotice;        // "FIELD TEST — NOT FOR OFFICIAL COMPETITION RESULTS"
 
     // ── defaults (NOT user identity — see the language/brand note above) ──
     QString defaultTheme;
