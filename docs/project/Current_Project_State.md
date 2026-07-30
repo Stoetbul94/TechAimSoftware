@@ -35,8 +35,9 @@ starting — see `CLAUDE.md`, *Tech Aim UI project memory*.
 | | |
 |---|---|
 | Latest completed | **UI-2 — Version B homepage · ACCEPTED 2026-07-29** |
-| Current | **TRAINING LAB RELEASE 2 — WIND MAP · stage 6.1.1 (analysis UX and performance redesign) — implemented, human visual check outstanding** |
-| Next approved | Stage 6.2 — branded Wind Map PDF report, consuming `analysisModel()` unchanged |
+| Current | **TRAINING LAB EVIDENCE GOVERNANCE — shared standard established, all four implemented programmes audited. Documents and tests only; no programme behaviour changed.** |
+| Preceding | Wind Map stage 6.1.3 (research verification, verdict UI, firing direction, seeded cases) — implemented, human visual check of the verdict language outstanding |
+| Next approved | Stage 6.2 — branded Wind Map PDF report, consuming `analysisModel()` unchanged. **Gated on Arnold approving the athlete-facing verdict language.** |
 
 **Version B is the accepted Tech Aim Beta homepage** (UI-DEC-012), approved by
 **HUMAN VISUAL APPROVAL — ARNOLD BAILIE** on 2026-07-29 against commit
@@ -51,9 +52,11 @@ scrolling, event transitions and the folder picker were never driven by hand.
 
 | Suite | Result |
 |---|---|
-| Reliability (incl. UI-1 brand, UI-2 layout, Wind Map) | **2042 / 0** |
-| Documentation — manuals | **979 / 0** |
-| Documentation — project memory | **155 / 0** |
+| Reliability (incl. UI-1 brand, UI-2 layout, Wind Map) | **2126 / 0** |
+| Documentation — manuals | **1077 / 0** |
+| Documentation — project memory | **204 / 0** |
+| Documentation — Training Lab evidence governance | **822 / 0** |
+| Documentation — generated manuals | **181 / 14** — commit-stamp drift only; manuals are regenerated after acceptance |
 | Training | **567 / 0** |
 | Finals 10m | **143 / 0** |
 | 3P Finals | **233 / 0** |
@@ -66,7 +69,26 @@ analytics engine, +96) → 1953 (stages 5.2 + 6.1: shared Training shell
 boundary, analysis review model and engine/view equality, +42) → 1997
 (UI-WIND-002: end-to-end completion-to-analysis and the import-coverage
 guard, +44) → 2042 (Stage 6.1.1: analysis UX and performance
-redesign, finding scope, preparation-cost measurement, +45).
+redesign, finding scope, preparation-cost measurement, +45) → 2126 (Stage
+6.1.3: verdict engine, firing direction, verdict UI and seeded review cases,
++84).
+
+### Training Lab evidence governance
+
+**Established 2026-07-30.** One shared evidence policy plus a per-programme
+audit. **No programme algorithm, threshold or wording was changed** — the
+audit's proposed changes await review.
+
+- `docs/research/training-lab-evidence-standard.md` — the policy
+- `docs/research/training-lab-evidence-register.md` — 33 claims, 11 sources
+- `technical-blocks-evidence.md` · `call-and-diagnose-evidence.md` ·
+  `group-pattern-coach-evidence.md` · `position-transition-evidence.md`
+- `tests/docs/check_training_lab_evidence.py` — 822 checks
+
+**Headline position:** 3 research-supported claims, 28 reasoned product rules,
+**0 coach-approved rules — no coach has reviewed anything**, 2 claims downgraded
+to FUTURE VALIDATION REQUIRED, 4 wording changes required, 4 open defects
+(EVID-WM-001, EVID-PT-001, EVID-GEN-001, EVID-GEN-002).
 
 The reliability harness is `QT = core`. `WindMapController.cpp` compiles into
 it, which is the proof that the controller carries no QML/GUI dependency.

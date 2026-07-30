@@ -34,6 +34,18 @@ rule changes, update the rules document, the tests, and the implementation
 detailed reference. Cross-discipline EST/interruption rules live in
 `docs/issf-rules/est-malfunctions.md`.
 
+**Before changing any Training Lab programme's athlete-facing text, metrics,
+thresholds or recommendations** (Technical Blocks, Call & Diagnose, Group
+Pattern Coach, Position Transition, Wind Map, and every future programme), read
+`docs/research/training-lab-evidence-standard.md` and the applicable
+`docs/research/<programme>-evidence.md`. Every athlete-facing claim is
+classified in `docs/research/training-lab-evidence-register.md` and enforced by
+`tests/docs/check_training_lab_evidence.py`. **Impact data cannot name a
+technical cause** — describe the pattern, propose a controlled test, leave
+sight/technique decisions to the athlete and coach. Never present a product rule
+as research, never assert fatigue from score movement, and never invent coach
+approval (there is none).
+
 ## TECH AIM UI PROJECT MEMORY — REQUIRED READING
 
 **Before any homepage, theme, branding or UI work**, read all of:
