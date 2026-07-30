@@ -17,8 +17,9 @@ to mean.
 | REASONED PRODUCT RULES | 28 |
 | COACH-APPROVED PRODUCT RULES | **0** |
 | FUTURE VALIDATION REQUIRED | 2 (PT-03, PT-06) |
-| Claims requiring wording change | 4 (CD-08, PT-02, PT-06, TB-05) |
-| Claims requiring a threshold fix | 1 (WM-03 — sample-size bias) |
+| Claims requiring wording change | 4 — **all applied 2026-07-30** (CD-08, PT-02, PT-06, TB-05) |
+| Claims requiring a threshold fix | 1 — **corrected 2026-07-30** (WM-03, EVID-WM-001) |
+| Open defects | 2 (EVID-GEN-001 coach review, EVID-GEN-002 cross-surface tests) |
 
 ---
 
@@ -122,13 +123,29 @@ its own error and given 100% feedback performed best in retention.**
 The direct evidence base for Call & Diagnose.
 
 ### M1 — Order statistics of the sample range (mathematical property, not a source)
-For n samples from a normal distribution, the expected range is `d2(n)·σ`,
-where `d2` rises with n: 1.128 (n = 2), 2.326 (n = 5), 3.078 (n = 10),
-3.735 (n = 20). Standard statistical-process-control constants, originating with
-Tippett (1925). **Consequence for Tech Aim:** extreme spread (the "group
-diameter") systematically grows with shot count even when the underlying
-dispersion is identical, and is determined by only the two most extreme shots.
-See defect **EVID-WM-001**.
+An extreme-spread measure is an **order statistic**: it is fixed by the two
+outermost observations and discards the rest, and its expected value rises with
+sample count because a larger sample has more opportunity to contain a distant
+pair.
+
+**Correction (2026-07-30).** The first version of this entry quoted the
+control-chart constant `d2(n)` — 1.128 (n=2), 2.326 (n=5), 3.078 (n=10),
+3.735 (n=20), after Tippett (1925) — and derived an expected ratio of
+`d2(20)/d2(5) ≈ 1.61`. **That was misapplied.** `d2` describes the expected
+range of a **one-dimensional** normal sample; Tech Aim's group diameter is the
+**maximum pairwise distance among two-dimensional points**, a different
+statistic with a different distribution. The figure illustrated the direction
+of the effect, not its magnitude for this metric, and it is no longer presented
+as a derivation anywhere.
+
+**The qualitative property stands** and is what EVID-WM-001 rests on. It is now
+demonstrated deterministically instead: two groups built with identical sample
+SD at n = 5 and n = 20 differ in extreme spread by more than the 1.25 compact
+ratio (`tests/reliability/tst_windmap_dispersion.cpp`, case 5).
+
+**Consequence for Tech Aim:** extreme spread may be displayed, but may not be
+compared between groups of different size. See
+`../training-lab-wind-map-dispersion.md`.
 
 ### Claims that were considered and are NOT supported
 
@@ -255,7 +272,7 @@ named reviewer.
 | **UI location** | Training Lab setup screen |
 | **Report / PDF** | Training PDF header (configuration) |
 | **Test reference** | `tests/training/tst_training.cpp` §1 |
-| **Status** | **WORDING CHANGE REQUIRED** — the setup screen must label these as Tech Aim defaults, not recommendations |
+| **Status** | **CORRECTED 2026-07-30** — the setup screen shows `TRAINING.configurationNote`: "Tech Aim default — you or your coach may set a different number of blocks and shots per block." Composed centrally. |
 
 #### TB-06 — Visibility modes (hidden score / group only / impact without score)
 | Field | Value |
@@ -466,7 +483,7 @@ named reviewer.
 |---|---|
 | **Programme** | Call & Diagnose |
 | **Feature / metric** | A shot scoring < 8.0 whose call fell within half a ring |
-| **Athlete-facing claim** | "A low-scoring shot you still called accurately — good awareness." |
+| **Athlete-facing claim** | "Small call-to-impact difference on this shot, with a low recorded score." *(was: "…good awareness.")* |
 | **Classification** | REASONED PRODUCT RULE |
 | **Source** | none |
 | **Source verification** | n/a |
@@ -480,7 +497,7 @@ named reviewer.
 | **UI location** | `CallDiagnoseReportView.qml` shots to review |
 | **Report / PDF** | Call & Diagnose PDF |
 | **Test reference** | none currently asserts the wording |
-| **Status** | **WORDING CHANGE REQUIRED** — see `call-and-diagnose-evidence.md` §5 |
+| **Status** | **CORRECTED 2026-07-30** — the single-shot judgement is gone; the measurement remains |
 
 #### CD-09 — Awareness vs result explanation
 | Field | Value |
@@ -629,7 +646,7 @@ entries**. Per-category detection rules are in
 |---|---|
 | **Programme** | Position Transition |
 | **Feature / metric** | Coefficient of variation of inter-shot intervals, ≥ 3 shots with timing |
-| **Athlete-facing claim** | "Steady" · "Variable" · "Inconsistent" |
+| **Athlete-facing claim** | "Low" · "Moderate" · "High rhythm variability", always with "CV 0.34 over 4 shot intervals" *(was: Steady / Variable / Inconsistent, unaccompanied)* |
 | **Classification** | REASONED PRODUCT RULE |
 | **Source** | none |
 | **Source verification** | n/a |
@@ -643,7 +660,7 @@ entries**. Per-category detection rules are in
 | **UI location** | `PositionTransitionReportView.qml`, HUD |
 | **Report / PDF** | Position Transition PDF |
 | **Test reference** | `tests/training/tst_training.cpp` (T4 sections) |
-| **Status** | **WORDING CHANGE REQUIRED** — see `position-transition-evidence.md` §5 |
+| **Status** | **CORRECTED 2026-07-30** — evaluative label removed, CV and sample size now always shown. Bands and the 3-shot minimum remain in the coach review pack. |
 
 #### PT-03 — First shot in / out of group
 | Field | Value |
@@ -718,7 +735,7 @@ entries**. Per-category detection rules are in
 | **Coach review** | **REQUIRED — NOT DONE. Highest-priority wording question in this programme.** |
 | **UI location** | `PositionTransitionReportView.qml` session observations |
 | **Report / PDF** | Position Transition PDF |
-| **Status** | **WORDING CHANGE REQUIRED** — see `position-transition-evidence.md` §5 |
+| **Status** | **CORRECTED 2026-07-30** — the implied cause is gone, replaced by a controlled test. Remains FUTURE VALIDATION REQUIRED. |
 
 #### PT-07 — Position checklist and focus prompts
 | Field | Value |
@@ -806,28 +823,45 @@ documents do not.
 | Field | Value |
 |---|---|
 | **Programme** | Wind Map |
-| **Feature / metric** | `isCompact` (≤ 1.25× reference) and `isWider` (≥ 1.50× reference), applied to **extreme spread** |
+| **Feature / metric** | `isCompact` (≤ 1.25× reference) and `isWider` (≥ 1.50× reference), applied to **radial RMS dispersion** |
 | **Athlete-facing claim** | "Groups were wider under this condition than under the reference." |
 | **Classification** | REASONED PRODUCT RULE |
 | **Source** | M1 |
 | **Source verification** | n/a — arithmetic |
 | **Population studied** | n/a |
 | **Discipline studied** | all |
-| **Limitation** | **Compared conditions need only n ≥ 5 each and may differ greatly in size.** Because expected extreme spread scales with d2(n), a 20-shot condition compared against a 5-shot reference has an expected ratio of 3.735 / 2.326 ≈ **1.61 with identical underlying dispersion** — above the 1.50 "wider" threshold. The verdict can therefore fire on sample size alone. |
+| **Limitation** | Ratios remain unvalidated judgement calls. The sample-size bias is **fixed** — see below. |
 | **Tech Aim implementation** | `src/training/WindMapVerdict.cpp:79-88` |
 | **Prohibited interpretation** | Reading a width difference as a wind effect |
 | **Threshold source** | 1.25 / 1.50 — Tech Aim product decisions, classified in the verdict-rules document |
 | **Coach review** | REQUIRED — NOT DONE |
-| **Test reference** | `tests/reliability/tst_windmap_verdict.cpp` — **no test covers unequal sample sizes** |
-| **Status** | **DEFECT EVID-WM-001 — OPEN** |
+| **Test reference** | `tests/reliability/tst_windmap_dispersion.cpp` — 16-case unequal-sample matrix |
+| **Status** | **EVID-WM-001 CORRECTED 2026-07-30** (`windmap-analytics-v2`). Ratios still awaiting coach review. |
 
 ---
 
 ## Part 3 — Defects raised by this audit
 
 ### EVID-WM-001 — Wind Map group-width comparison is biased by sample size
-**Programme:** Wind Map · **Severity:** HIGH — can produce a wrong athlete-facing
-verdict · **Status:** OPEN · **Raised:** 2026-07-30
+**Programme:** Wind Map · **Severity:** HIGH — could produce a wrong
+athlete-facing verdict · **Status:** **CORRECTED 2026-07-30** · **Raised:**
+2026-07-30
+
+**Correction.** Classification moved from extreme spread to **radial RMS
+dispersion**, `sqrt(SUM((x-mx)^2+(y-my)^2)/(n-1))`, which uses every shot. The
+1.25 / 1.50 ratios are unchanged; only the metric they apply to. Extreme spread
+remains as a descriptive display figure and is no longer compared between
+groups. The superseded 40 mm constant is gone from the code; the
+elevated-dispersion rule is now radial RMS against 1.5 ring spacings. Every
+analysis is stamped `windmap-analytics-v2`. Sixteen deterministic unequal-sample
+cases guard it. Full specification: `../training-lab-wind-map-dispersion.md`.
+
+**Remaining:** the 1.25 / 1.50 ratios are still unvalidated product rules and
+appear in the coach review pack.
+
+---
+
+**Original report, retained:**
 
 `isWider` / `isCompact` compare extreme spread between two conditions whose shot
 counts need only each reach 5. Expected extreme spread grows with n (M1), so a
@@ -843,8 +877,8 @@ level when sizes differ materially. The choice needs Arnold's decision — mean
 radius changes the reported number, which is a visible product change.
 
 ### EVID-PT-001 — The PT-05 caveat is duplicated in QML instead of read from the model
-**Programme:** Position Transition · **Severity:** MEDIUM · **Status:** OPEN ·
-**Raised:** 2026-07-30
+**Programme:** Position Transition · **Severity:** MEDIUM ·
+**Status:** **FIXED 2026-07-30** · **Raised:** 2026-07-30
 
 `PositionTransitionReportView.qml:201` hard-codes the cross-position comparison
 caveat as a QML string literal, duplicating the authoritative copy at
@@ -853,10 +887,12 @@ but nothing keeps them so — this is exactly the "conclusions rewritten in QML"
 failure that standard §6 forbids, on the **single most important sentence in the
 programme** (PT-05).
 
-**Interim guard:** `tests/docs/check_training_lab_evidence.py` asserts the two
-literals are identical, so divergence fails the build.
-**Remedy** (later focused phase): have the report view read the caveat from
-`sessionObservations()` like every other observation, and delete the literal.
+**Fix.** PT-05 and PT-08 are now composed once as
+`PositionTransitionController::crossPositionCaveat()` and `reviewDisclaimer()`,
+exposed as properties. The report view binds `POSTRANS.crossPositionCaveat` and
+holds no copy. The governance checker no longer tolerates a duplicate: it fails
+if ANY central caveat text appears as a QML string literal, and separately
+requires the report view to bind the central property.
 
 ### EVID-GEN-001 — No coach has reviewed any Training Lab rule
 **Programme:** all · **Severity:** MEDIUM · **Status:** OPEN
@@ -895,9 +931,12 @@ alone would be a prohibited claim (§5, limitation 2).
 Mitigating context: the Coach Report is **coach-facing rather than
 athlete-facing**, and its labels carry an explicit confidence value.
 
-**No action taken.** Whether the Training Lab evidence standard should be
-extended to cover the Coach Report is **Arnold's decision**, and it would be its
-own phase with its own audit.
+**No action taken in this phase.** Being coach-facing or frozen does not exempt
+it from evidence governance, so it is now recorded as a **DEFERRED EVIDENCE
+AUDIT — REQUIRED BEFORE VERSION 1.0** in
+`../project/Current_Project_State.md`. Scope when it runs: the fatigue concepts
+above, the confidence values attached to them, the recovery analysis, and every
+other athlete- or coach-facing conclusion the engine produces.
 
 ---
 

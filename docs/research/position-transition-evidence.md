@@ -7,7 +7,8 @@
 This programme carries the **most causal risk in the Training Lab**, because
 timing plus group width invites a settling explanation that the data cannot
 support — and because the verified literature actively argues against the
-mechanism it currently hints at.
+mechanism it used to hint at. **That hint was corrected on 2026-07-30**; this
+document records both the finding and the fix.
 
 ---
 
@@ -22,9 +23,9 @@ ready-to-first-shot time · verification duration · verification group metrics
 (via `TrainingBlockMetrics` and `GroupPatternAnalyzer`) · first-shot score and
 distance from MPI · cadence mean and SD · a rhythm label · checklist counts.
 
-Session level: longest setup, fastest first shot, most sighters, widest group,
-a combined fast-and-wide observation, a rhythm comparison, and a mandatory
-closing caveat.
+Session level: longest setup, shortest ready-to-first-counted-shot time, most
+sighters, widest group, a combined timing-and-dispersion observation, a rhythm
+comparison, and a mandatory closing caveat.
 
 ---
 
@@ -86,11 +87,11 @@ therefore a measurement, never a target.
 | # | Athlete-facing claim | Classification | Verdict |
 |---|---|---|---|
 | PT-01 | Longest setup / fastest first shot / most sighters | REASONED PRODUCT RULE | Accepted — measured superlatives |
-| PT-02 | "Steady" / "Variable" / "Inconsistent" | REASONED PRODUCT RULE | **WORDING CHANGE REQUIRED** |
+| PT-02 | "Low" / "Moderate" / "High rhythm variability", with CV and interval count | REASONED PRODUCT RULE | **CORRECTED 2026-07-30** |
 | PT-03 | First shot in group / separated | FUTURE VALIDATION REQUIRED | **Downgraded** — display only |
 | PT-04 | Widest verification group by position | REASONED PRODUCT RULE | Accepted with PT-05 |
 | PT-05 | Cross-position comparison caveat | RESEARCH-SUPPORTED | Accepted — mandatory |
-| PT-06 | "…quickest yet spread the widest — worth checking whether the position was fully settled" | FUTURE VALIDATION REQUIRED | **WORDING CHANGE REQUIRED** |
+| PT-06 | "…this data cannot show whether they are related. Next training step: …" | FUTURE VALIDATION REQUIRED | **CORRECTED 2026-07-30** |
 | PT-07 | Checklist and counts | REASONED PRODUCT RULE | Accepted |
 | PT-08 | "…does not identify the technical cause." | RESEARCH-SUPPORTED | Accepted — mandatory |
 
@@ -120,8 +121,8 @@ may be comparable, **stability is not**.
 
 | Threshold | Value | Where | Origin |
 |---|---|---|---|
-| Rhythm: Steady | CV < 0.20 | `PositionTransitionController.cpp:515` | Product decision, no recorded rationale |
-| Rhythm: Variable | CV < 0.40 | `:516` | Product decision, no recorded rationale |
+| Rhythm: Low variability | CV < 0.20 | `PositionTransitionController.cpp` | Product decision, no recorded rationale |
+| Rhythm: Moderate variability | CV < 0.40 | same | Product decision, no recorded rationale |
 | Rhythm minimum sample | 3 shots with timing | `:512` | Product decision — **a CV over 2 intervals is extremely noisy** |
 | First shot "in group" | ≤ 1.5 × mean radius | `:560` | Product decision |
 | First shot "separated" | > 2.0 × mean radius | `:561` | Product decision |
@@ -129,11 +130,11 @@ may be comparable, **stability is not**.
 
 ---
 
-## 5. Wording changes required
+## 5. Wording changes — ALL APPLIED 2026-07-30
 
-### PT-06 — the settling hint (highest priority in this programme)
+### PT-06 — the settling hint · **CORRECTED**
 
-Current:
+Previous:
 
 > "Standing reached the first shot quickest yet spread the widest — worth
 > checking whether the position was fully settled before firing."
@@ -151,22 +152,27 @@ the right intent. The hedge is not strong enough: *"worth checking whether the
 position was fully settled"* still names a cause and invites the athlete to
 accept it.
 
-**Proposed replacement** — same two facts, no mechanism, a controlled test
+**Implemented replacement** — same two facts, no mechanism, a controlled test
 instead:
 
-> "Standing reached the first shot quickest and also had the widest group in
-> this session. These are two separate measurements; this data cannot show
-> whether they are related. Next training step: repeat Standing with a
-> deliberately longer settle before the first shot and compare the group with
-> today's."
+> "Standing had both the shortest ready-to-first-counted-shot time (12 s) and
+> the widest verification group in this session. These are two separate
+> measurements and this data cannot show whether they are related. Next training
+> step: repeat Standing with a deliberately longer interval before the first
+> counted shot and compare the group with today's."
+
+A documentation check now fails the build if the phrase "fully settled" returns
+to the source, or if the "cannot show whether they are related" boundary is
+removed.
 
 That keeps the observation, keeps its usefulness, replaces the implied cause
 with a test the athlete can actually run, and remains within the shared feedback
 model (WHAT HAPPENED → LIMITATIONS → NEXT TRAINING STEP).
 
-### PT-02 — rhythm labels
+### PT-02 — rhythm labels · **CORRECTED**
 
-Current: **Steady** · **Variable** · **Inconsistent**.
+Previous: **Steady** · **Variable** · **Inconsistent**, shown without the
+measurement behind them.
 
 **Problem.** "Inconsistent" is evaluative and reads as a criticism. No verified
 source establishes that a low cadence CV is desirable in 3P, and a CV computed
@@ -175,14 +181,19 @@ with the same weight regardless of sample size.
 
 **Proposed replacement** — descriptive, with the measurement shown:
 
-| Current | Proposed |
+| Previous | Implemented |
 |---|---|
-| Steady | "Even shot spacing" |
-| Variable | "Mixed shot spacing" |
-| Inconsistent | "Widely varying shot spacing" |
+| Steady | "Low rhythm variability" |
+| Variable | "Moderate rhythm variability" |
+| Inconsistent | "High rhythm variability" |
 
-Plus: display the CV and the interval count alongside, and **suppress the label
-below 5 shots with timing** rather than 3.
+The label now never appears without `rhythmBasis` — "CV 0.34 over 4 shot
+intervals" — so the reader can see how thin the sample is.
+
+**Not implemented, and referred to the coach:** suppressing the label below 5
+shots with timing rather than 3. That changes behaviour, the brief did not
+mandate it, and it is a question a coach can answer better than the literature
+can. It appears in `training-lab-coach-review-pack.md` §3.
 
 ### PT-03 — first shot in / out of group
 
@@ -198,7 +209,7 @@ must not feed a "first shot problem" narrative until it is validated.
 
 | Gap | Effect |
 |---|---|
-| **PT-05 is duplicated as a QML literal** (`PositionTransitionReportView.qml:201`) rather than read from the model — defect **EVID-PT-001** | The screen and the model can drift apart on the programme's most important sentence. An interim documentation check now asserts the two literals are identical |
+| ~~PT-05 duplicated as a QML literal — **EVID-PT-001**~~ | **FIXED 2026-07-30.** Composed once as `PositionTransitionController::crossPositionCaveat()`; the report view binds `POSTRANS.crossPositionCaveat`. The checker now fails if ANY central caveat appears as a QML literal |
 | **No test asserts PT-05 is present** in every session-observation list | The single most important sentence in the programme could be dropped silently |
 | **No test asserts PT-08 is present** on every position review | Same, for the per-position disclaimer |
 | No test asserts the absence of causal vocabulary ("caused", "because", "due to") in generated observations | PT-06's replacement could regress |

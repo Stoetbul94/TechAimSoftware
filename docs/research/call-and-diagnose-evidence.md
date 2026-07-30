@@ -76,7 +76,7 @@ accuracy.** Every band and cut in this programme is a Tech Aim product decision.
 | CD-05 | Median as typical; Tukey outlier explanation | REASONED PRODUCT RULE | Accepted |
 | CD-06 | "Call differences varied by about N mm" | REASONED PRODUCT RULE | Accepted |
 | CD-07 | Trend: improved / became larger / broadly stable | REASONED PRODUCT RULE | Accepted — no fatigue claim |
-| CD-08 | "…good awareness." | REASONED PRODUCT RULE | **WORDING CHANGE REQUIRED** |
+| CD-08 | "Small call-to-impact difference on this shot, with a low recorded score." | REASONED PRODUCT RULE | **CORRECTED 2026-07-30** |
 | CD-09 | Awareness-vs-result explanation | REASONED PRODUCT RULE | Accepted — an excellent guard |
 | CD-10 | "closest call of the session so far" etc. | REASONED PRODUCT RULE | Accepted |
 
@@ -129,7 +129,7 @@ headline number.
 
 ## 5. Wording changes required
 
-### CD-08 — "good awareness"
+### CD-08 — "good awareness" · **CORRECTED 2026-07-30**
 
 Current, when a shot scoring under 8.0 was called within half a ring:
 
@@ -141,10 +141,9 @@ has no basis: S11 supports error estimation as an activity, not a grading of a
 person. It also sits oddly beside CD-09, which correctly insists that call
 accuracy and score are different measurements.
 
-**Proposed replacement** (measured, same information, no judgement):
+**Implemented replacement** (measured, same information, no judgement):
 
-> "A low-scoring shot called within half a ring — the call and the impact agreed
-> closely."
+> "Small call-to-impact difference on this shot, with a low recorded score."
 
 The register entry stays REASONED PRODUCT RULE; the claim becomes an
 observation.

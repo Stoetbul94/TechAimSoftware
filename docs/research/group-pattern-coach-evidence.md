@@ -217,10 +217,11 @@ the implementation phase.
 - The **operator manual** must describe the categories as *measured shapes* and
   must not offer an interpretation table. Any manual passage that pairs a shape
   with a cause is a defect against standard §5.
-- A **Wind Map PDF (Stage 6.2)** consuming group geometry inherits GP-04 and
-  therefore EVID-WM-001. **That defect should be resolved before the Wind Map
-  PDF is built**, so the report does not print a sample-size artefact as a
-  finding.
+- **EVID-WM-001 was corrected on 2026-07-30.** Wind Map now classifies on radial
+  RMS dispersion, so a Wind Map PDF can no longer print a sample-size artefact
+  as a finding. GP-04 still stands **inside this programme**: extreme spread
+  remains display-only and must never be compared between samples of different
+  size. Specification: `../training-lab-wind-map-dispersion.md`.
 
 ---
 

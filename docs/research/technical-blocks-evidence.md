@@ -100,7 +100,7 @@ described as a Tech Aim default, never as the research-preferred format.
 | TB-02 | "The group centre was <right/left> and <high/low>" | REASONED PRODUCT RULE | Accepted — **no sight advice anywhere** |
 | TB-03 | "N mm larger/smaller than Block X" · "Group size grew/reduced N%" | REASONED PRODUCT RULE | Accepted — **no fatigue claim** |
 | TB-04 | "Block N had the highest average score / tightest group / most consistent scores" | REASONED PRODUCT RULE | Accepted — caveat recommended (§5) |
-| TB-05 | Block-structure defaults | REASONED PRODUCT RULE | **WORDING CHANGE REQUIRED** |
+| TB-05 | Block-structure defaults | REASONED PRODUCT RULE | **CORRECTED 2026-07-30** |
 | TB-06 | Visibility modes | REASONED PRODUCT RULE | Accepted — no benefit claim displayed |
 | TB-07 | Cadence figures | REASONED PRODUCT RULE | Accepted — numbers only, no label |
 | TB-08 | Sighter separation | REASONED PRODUCT RULE | Accepted |
@@ -150,15 +150,17 @@ corrected. No claim attaches to them.
 
 ## 5. Wording changes required
 
-### TB-05 — block defaults must be labelled as defaults
+### TB-05 — block defaults labelled as defaults · **CORRECTED 2026-07-30**
 
 The setup screen offers per-discipline block structures. Nothing currently tells
 the athlete these are **Tech Aim defaults** rather than a recommended or
 evidence-based structure. Given S8 and S9, presenting a blocked structure as
 preferred practice would be a claim the evidence does not support.
 
-**Required:** the setup screen and the manual describe them as *Tech Aim default
-configurations, adjustable*, with no implication of optimality. No numbers change.
+**Implemented:** the setup screen shows `TRAINING.configurationNote` — "Tech Aim
+default — you or your coach may set a different number of blocks and shots per
+block." Composed in the controller so the screen, the report and the manual
+cannot drift. No numbers changed.
 
 **Coach review is the correct route to strengthen this** — block length and
 repetition count are exactly the kind of question a qualified coach can answer
