@@ -166,11 +166,110 @@ The analysis opens and explains itself at any n:
 
 ---
 
+## 4. Stage 6.1.1 — analysis UX and performance redesign
+
+Arnold's manual review found the Stage 6.1 analysis visible and functioning but
+not usable: slow or blank first paint, two competing rows of navigation, raw
+technical metrics, an abstract plot, session-level findings shown under every
+position, and an Export PDF button that looked implemented.
+
+### 4.1 Measured root cause — not guessed
+
+Timed on this machine over a 48-shot session (44 counted + 4 sighters):
+
+| Path | Cost |
+|---|---|
+| `WindMapAnalyticsEngine::analyse()` | **0.025 – 0.046 ms** per run |
+| `analysisModel()` cold (build + project) | **0.434 ms**, exactly one build |
+| `analysisModel()` cached | **0.0012 ms** per fetch |
+
+**The entire C++ path costs under half a millisecond.** The delay was never the
+analytics. It was QML:
+
+| Cause | Evidence |
+|---|---|
+| Every section instantiated at once | sections were gated with `visible:`, which still creates every delegate |
+| One delegate per shot, three times over | timeline, plot markers and appendix rows were each a flat `Repeater` |
+| Plot span recomputed per binding | `plotBox.span` looped every row and each shot's `x`/`y` binding depended on it — O(n²) evaluations |
+| Canvas repaint loops | **not a cause** — the plot uses Items, not Canvas |
+
+**A correction to my own first measurement.** I initially timed
+`analysisModel()` in a 50-iteration loop and reported 0.007 ms as the *uncached*
+cost. That was wrong: iteration 0 populated the cache and the other 49 were
+cache hits, which is why it read six times faster than the engine it wraps. The
+cold cost is now measured on the first call only, with the build counter
+asserted at exactly 1.
+
+### 4.2 What changed
+
+**Performance.** `analysisModel()` memoises on `(sessionId, shot count, phase,
+condition changes)` — a real invalidator, not a permanent cache; a test starts a
+second session on the same controller and asserts the analysis is the new one's.
+Each page is behind a `Loader`; Shot Details uses a virtualised `ListView`; the
+plot span is recomputed on data change, not per binding. A loading state reads
+*"Preparing your Wind Map analysis…"* instead of a blank frame.
+
+**Navigation (UI-WIND-004).** Five section pills over a second identical row
+become **three pages** — SUMMARY · COMPARE CONDITIONS · SHOT DETAILS — plus
+**one** labelled position filter (Session Overview / Kneeling / Prone /
+Standing) captioned *"filters the page below"*. Tech Aim red marks the selected
+page and nothing else in the navigation.
+
+**Plain language (UI-WIND-007).** Summary answers *What happened · What this
+means · Next training step · Evidence*. Coordinates read as **right/left** and
+**high/low** — never a signed X/Y. Technical values sit behind *SHOW TECHNICAL
+MEASUREMENTS*, each with a definition.
+
+**Target (UI-WIND-005).** `WindMapTargetPlot` adds reference rings, a centre
+cross, HIGH/LOW/LEFT/RIGHT labels, a millimetre scale marker, and a legend
+defining **every** marker — including the hollow sighter ring that was
+previously unexplained. No aiming arrow.
+
+**Scoped findings (UI-WIND-006, P0).** `Finding` now carries `FindingScope`
+(Session · Position · Condition) with the position and condition it belongs to,
+tagged where each finding is raised. A position selection shows only that
+position's findings; the cross-position comparison is Session-scoped and
+labelled **SESSION-LEVEL POSITION COMPARISON**. This is an addition to the
+record — no formula and no threshold changed, and a test re-asserts the
+hand-checked dispersion answers to prove it.
+
+**PDF (UI-WIND-008).** A subdued, disabled *PDF — COMING NEXT* with no
+MouseArea and no signal.
+
+### 4.3 Evidence
+
+| Suite | Result |
+|---|---|
+| Reliability | **2042 / 0** |
+| Training · Finals 10m · 3P Finals · Docs | 567 / 143 / 233 / 204, all 0 failures |
+| `qmllint` | 0 unresolved types across all Wind Map QML |
+| Launch check | app loads, Demo, isolated profile, no Wind Map QML warning |
+
+A stale `onExportPdfRequested` binding in `ShootingPage` failed the **entire**
+QML engine load — caught by the launch check, which is exactly the gap that let
+UI-WIND-002 through.
+
+### 4.4 Visual status
+
+**MANUAL-ASSISTED VISUAL CHECK REQUIRED — the redesign has not been seen.**
+UI-WIND-003…008 remain **OPEN**. Nothing here is approved on automated evidence.
+
+Still to review at **1536 × 960** (the only resolution ever opened): Summary,
+Compare Conditions, Shot Details, Session Overview, Kneeling, Prone, Standing,
+the loading state, first and subsequent target renders, a 40+ shot timeline,
+insufficient samples, one condition only, and multiple conditions.
+
+**On-screen timings are NOT measured.** The figures above are the C++ path only.
+First-paint and page-switch timings need the running application, and the
+1-second Summary target is therefore **unverified**.
+
+---
+
 ## 3. Evidence
 
 | Suite | Result |
 |---|---|
-| Reliability | **1997 / 0** |
+| Reliability | **2042 / 0** |
 | Training | 567 / 0 |
 | Finals 10m | 143 / 0 |
 | 3P Finals | 233 / 0 |

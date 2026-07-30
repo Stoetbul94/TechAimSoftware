@@ -35,7 +35,7 @@ starting — see `CLAUDE.md`, *Tech Aim UI project memory*.
 | | |
 |---|---|
 | Latest completed | **UI-2 — Version B homepage · ACCEPTED 2026-07-29** |
-| Current | **TRAINING LAB RELEASE 2 — WIND MAP · stages 5.2 + 6.1 (shared Training shell boundary, analysis review) — implemented, human visual check outstanding** |
+| Current | **TRAINING LAB RELEASE 2 — WIND MAP · stage 6.1.1 (analysis UX and performance redesign) — implemented, human visual check outstanding** |
 | Next approved | Stage 6.2 — branded Wind Map PDF report, consuming `analysisModel()` unchanged |
 
 **Version B is the accepted Tech Aim Beta homepage** (UI-DEC-012), approved by
@@ -51,7 +51,7 @@ scrolling, event transitions and the folder picker were never driven by hand.
 
 | Suite | Result |
 |---|---|
-| Reliability (incl. UI-1 brand, UI-2 layout, Wind Map) | **1997 / 0** |
+| Reliability (incl. UI-1 brand, UI-2 layout, Wind Map) | **2042 / 0** |
 | Documentation — manuals | **979 / 0** |
 | Documentation — project memory | **155 / 0** |
 | Training | **567 / 0** |
@@ -65,7 +65,8 @@ controller/workflow/resume + QML source guards, +120) → 1911 (stage 6
 analytics engine, +96) → 1953 (stages 5.2 + 6.1: shared Training shell
 boundary, analysis review model and engine/view equality, +42) → 1997
 (UI-WIND-002: end-to-end completion-to-analysis and the import-coverage
-guard, +44).
+guard, +44) → 2042 (Stage 6.1.1: analysis UX and performance
+redesign, finding scope, preparation-cost measurement, +45).
 
 The reliability harness is `QT = core`. `WindMapController.cpp` compiles into
 it, which is the proof that the controller carries no QML/GUI dependency.
