@@ -137,6 +137,131 @@ bool seedInsufficient()
     return s.wm.endCapture();
 }
 
+// ---- Stage 6.1.3 verdict review cases -------------------------------------
+// One session per verdict category, so Arnold can read each result and check
+// what happened / evidence / what it may mean / next test / coach decision.
+// Every one is a REAL controller run - no fabricated analysis. Each is left in
+// SESSION REVIEW so the recovery dialog offers it exactly like cases A-C.
+
+// A group of n shots on a horizontal line of the given width, centred at cx.
+// Extreme spread == widthMm, so the group diameter is exactly predictable.
+void line(Seeder& s, int n, double cx, double cy, double widthMm)
+{
+    for (int i = 0; i < n; ++i) {
+        const double t = (n == 1) ? 0.0 : (double(i) / double(n - 1)) - 0.5;
+        s.shoot(cx + t * widthMm, cy, 10.0);
+    }
+}
+
+// D - COMPACT BUT OFFSET, with a firing direction so the relative wind
+// description appears. Firing 0 (north); wind from 270 (west) reads as a
+// left-to-right crosswind.
+bool seedCompactOffset()
+{
+    Seeder s;
+    if (!s.wm.configureSession(QStringLiteral("PRONE50"), 30, false)) return false;
+    if (!s.wm.setFiringDirection(0)) return false;
+    if (!s.wm.startWindMap(QStringLiteral("Case D - Compact but offset"))) return false;
+    s.wm.setCalmCondition(QStringLiteral("still, flags down"));
+    s.wm.beginCountedShots();
+    line(s, 10, 0.0, 0.0, 20.0);
+    s.wm.setMeasuredCondition(270, 2.0, QStringLiteral("steady from the left"));
+    line(s, 10, 8.0, -1.5, 20.0);
+    return s.wm.endCapture();
+}
+
+// E - WIDER UNDER A CONDITION.
+bool seedWider()
+{
+    Seeder s;
+    if (!s.wm.configureSession(QStringLiteral("PRONE50"), 30, false)) return false;
+    if (!s.wm.setFiringDirection(0)) return false;
+    if (!s.wm.startWindMap(QStringLiteral("Case E - Wider under condition"))) return false;
+    s.wm.setCalmCondition();
+    s.wm.beginCountedShots();
+    line(s, 10, 0.0, 0.0, 19.0);
+    s.wm.setMeasuredCondition(45, 5.0, QStringLiteral("gusting, picking up"));
+    line(s, 10, 0.0, 0.0, 34.0);
+    return s.wm.endCapture();
+}
+
+// F - SIMILAR ACROSS CONDITIONS.
+bool seedSimilar()
+{
+    Seeder s;
+    if (!s.wm.configureSession(QStringLiteral("PRONE50"), 30, false)) return false;
+    if (!s.wm.startWindMap(QStringLiteral("Case F - Similar across conditions"))) return false;
+    s.wm.setCalmCondition();
+    s.wm.beginCountedShots();
+    line(s, 10, 0.0, 0.0, 20.0);
+    s.wm.setMeasuredCondition(270, 2.0);
+    line(s, 10, 2.0, 0.0, 21.0);
+    return s.wm.endCapture();
+}
+
+// G - RELATIVELY WIDE ACROSS ALL CONDITIONS.
+bool seedWideAll()
+{
+    Seeder s;
+    if (!s.wm.configureSession(QStringLiteral("PRONE50"), 30, false)) return false;
+    if (!s.wm.startWindMap(QStringLiteral("Case G - Wide across conditions"))) return false;
+    s.wm.setCalmCondition();
+    s.wm.beginCountedShots();
+    line(s, 10, 0.0, 0.0, 45.0);
+    s.wm.setMeasuredCondition(270, 2.0);
+    line(s, 10, 0.0, 0.0, 48.0);
+    return s.wm.endCapture();
+}
+
+// H - FRAGMENTED DATA: many conditions, none deep enough to compare.
+bool seedFragmented()
+{
+    Seeder s;
+    if (!s.wm.configureSession(QStringLiteral("PRONE50"), 30, false)) return false;
+    if (!s.wm.startWindMap(QStringLiteral("Case H - Fragmented conditions"))) return false;
+    s.wm.beginCountedShots();
+    s.wm.setCalmCondition();             s.shoot(1.0, 1.0, 10.2); s.shoot(1.4, 0.6, 10.0);
+    s.wm.setMeasuredCondition(270, 2.0); s.shoot(3.0, 1.0, 9.8);  s.shoot(3.4, 1.4, 9.9);
+    s.wm.setMeasuredCondition(45, 5.0);  s.shoot(-2.0, 2.0, 9.5); s.shoot(-2.4, 1.6, 9.4);
+    s.wm.setMeasuredCondition(180, 1.0); s.shoot(0.5, -1.0, 9.9);
+    return s.wm.endCapture();
+}
+
+// I - ONE CONDITION ONLY: the INDICATIVE case. No firing direction recorded,
+// so the relative-wind fallback message is visible.
+bool seedIndicative()
+{
+    Seeder s;
+    if (!s.wm.configureSession(QStringLiteral("PRONE50"), 30, false)) return false;
+    if (!s.wm.startWindMap(QStringLiteral("Case I - One condition, no firing direction")))
+        return false;
+    s.wm.setMeasuredCondition(270, 2.0, QStringLiteral("steady all session"));
+    s.wm.beginCountedShots();
+    line(s, 9, 1.0, -1.0, 22.0);
+    return s.wm.endCapture();
+}
+
+// J - 3P POSITION-SPECIFIC DIFFERENCE, with a firing direction.
+bool seedPositionDifference()
+{
+    Seeder s;
+    if (!s.wm.configureSession(QStringLiteral("3P50"), 30, false)) return false;
+    if (!s.wm.setFiringDirection(90)) return false;          // firing east
+    if (!s.wm.startWindMap(QStringLiteral("Case J - 3P position difference"))) return false;
+    struct Pos { int to; double width; };
+    const Pos plan[] = { { 1, 42.0 }, { 2, 16.0 }, { 3, 28.0 } };
+    for (int i = 0; i < 3; ++i) {
+        if (i > 0) {
+            if (!s.wm.endPosition()) return false;
+            if (!s.wm.changePosition(plan[i].to)) return false;
+        }
+        s.wm.setCalmCondition();
+        s.wm.beginCountedShots();
+        line(s, 8, 0.0, 0.0, plan[i].width);
+    }
+    return s.wm.endCapture();
+}
+
 } // namespace
 
 int seedWindMapSessions(const QString& root)
@@ -164,7 +289,14 @@ int seedWindMapSessions(const QString& root)
     const Case cases[] = {
         { "A  50m Prone - 44 counted, 4 conditions, sighters", &seedProneLong },
         { "B  50m 3P    - Kneeling / Prone / Standing",        &seed3P },
-        { "C  50m Prone - insufficient samples",               &seedInsufficient },
+        { "C  50m Prone - INSUFFICIENT SAMPLE",                &seedInsufficient },
+        { "D  50m Prone - COMPACT BUT OFFSET (+ firing dir)",  &seedCompactOffset },
+        { "E  50m Prone - WIDER UNDER CONDITION",              &seedWider },
+        { "F  50m Prone - SIMILAR ACROSS CONDITIONS",          &seedSimilar },
+        { "G  50m Prone - RELATIVELY WIDE ACROSS ALL",         &seedWideAll },
+        { "H  50m Prone - FRAGMENTED DATA",                    &seedFragmented },
+        { "I  50m Prone - INDICATIVE, no firing direction",    &seedIndicative },
+        { "J  50m 3P    - POSITION DIFFERENCE (+ firing dir)", &seedPositionDifference },
     };
     for (const Case& c : cases) {
         const bool ok = c.fn();
