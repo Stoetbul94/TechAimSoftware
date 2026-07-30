@@ -26,15 +26,42 @@ Item {
     signal newSessionRequested()
     signal homeRequested()
 
+    // ── development-only instrumentation ─────────────────────────────────
+    // Gated on config.ini [App_Settings] developer_mode=1, which is OFF in
+    // production. It logs to stderr and NEVER renders anything: an operator
+    // must not see engineering timings on a training screen.
+    readonly property bool devTiming: (typeof APPSETTINGS !== "undefined")
+                                      && APPSETTINGS.getDeveloperMode()
+    property var _t0: 0
+    property var _pageT: 0
+    property var _seen: ({})
+    onPageChanged: {
+        // Recorded AFTER the mark so the first open reads as first.
+        Qt.callLater(function () { view._seen[view.page] = true })
+    }
+    onPositionIndexChanged: view._mark("position filter switch", Date.now())
+    function _mark(what, since) {
+        if (!view.devTiming) return
+        console.log("WINDMAP-PERF | " + what + " | "
+                    + (Date.now() - since).toFixed(0) + " ms")
+    }
+
     // ── the model, fetched once ──────────────────────────────────────────
     property var model: ({})
     property bool ready: false
     function refresh() {
+        var t = Date.now()
         view.ready = false
         view.model = ctl ? ctl.analysisModel() : ({})
         view.ready = (view.model && view.model.session !== undefined)
+        view._mark("model fetch (cached read)", t)
+        view._mark("completion -> analysis ready", view._t0)
     }
-    onVisibleChanged: if (visible) prepareTimer.restart()
+    onVisibleChanged: {
+        if (!visible) return
+        view._t0 = Date.now()
+        prepareTimer.restart()
+    }
     // A single deferred tick so the loading state can paint before the model is
     // fetched. The fetch itself is a cached read; this exists so the athlete
     // never sees an unexplained blank frame.
@@ -268,6 +295,11 @@ Item {
             active: view.ready
             sourceComponent: view.page === "summary" ? summaryPage
                            : view.page === "compare" ? comparePage : detailsPage
+            onSourceComponentChanged: view._pageT = Date.now()
+            onLoaded: view._mark("page open: " + view.page
+                                 + (view._seen[view.page] ? " (repeat)" : " (first)"),
+                                 view._pageT)
+            Component.onCompleted: view._pageT = Date.now()
         }
 
         // ── actions ──────────────────────────────────────────────────────
