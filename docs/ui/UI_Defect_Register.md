@@ -57,12 +57,12 @@ is not known.
 | UI-TRAIN-002 | Position Transition capture | Position Transition may inherit competition / Final presentation state | **P0 — workflow boundary** | Stage 5.1 audit of UI-WIND-001, 2026-07-29 | OPEN | — | — | Not yet reviewed on screen | Confirmed by source audit (§1e). Same four leaks as UI-TRAIN-001. |
 | UI-TRAIN-003 | Technical Blocks capture | Technical Blocks inherits the competition identity row | **P1 — workflow boundary** | Stage 5.1 audit of UI-WIND-001, 2026-07-29 | OPEN | — | — | Not yet reviewed on screen | Found by the same audit and **not in the original brief**. Narrower than 001/002 — the stepper, counter and chip are already gated on `isTrainingMatch` — but the identity row still shows `currentGameDisplay` / `currentmatchDisplay`, so "FINAL 35" can appear. |
 | UI-WIND-002 | Wind Map — completed session | Completed Wind Map session does not visibly present the Stage 6.1 analysis and feedback workflow during a normal manually-created 3P session | **P0 — feature unreachable** | Arnold's manual Stage 6.1 review, 2026-07-29, build `5404585` | **OPEN — HUMAN VISUAL EVIDENCE** | — | — | Arnold saw counted-shot information only; no plot, MPI comparison, shift, wind rose, speed bands, timeline, 3P tabs, findings or next-session feedback | Confirmed root cause in §1f. |
-| UI-WIND-003 | Wind Map analysis — all sections | Analysis sections initially appear blank or load slowly without visible progress feedback | P1 — usability | Arnold's manual Stage 6.1 review, 2026-07-29, screenshots | OPEN — HUMAN VISUAL EVIDENCE | — | — | Arnold's supplied screenshots | Measured root cause in §1g. |
-| UI-WIND-004 | Wind Map analysis — navigation | Two competing rows of pill navigation; too complex for an average athlete | P1 — usability | Arnold's manual Stage 6.1 review, 2026-07-29, screenshots | OPEN — HUMAN VISUAL EVIDENCE | — | — | Arnold's supplied screenshots | Five section pills plus a second same-looking position row. "Overview" and "Session Overview" could both read as active. |
-| UI-WIND-005 | Wind Map analysis — target plot | Plot lacks an intuitive target reference, complete legend, direction labels, scale and plain-language explanation | P1 — interpretability | Arnold's manual Stage 6.1 review, 2026-07-29, screenshots | OPEN — HUMAN VISUAL EVIDENCE | — | — | Arnold's supplied screenshots | Abstract dark rectangle with unexplained hollow and coloured dots; no rings, no HIGH/LOW/LEFT/RIGHT, no mm scale. |
-| UI-WIND-006 | Wind Map analysis — 3P findings | A session-level finding may display unchanged under Kneeling, Prone and Standing, making its scope unclear | **P0 — misleading** | Arnold's manual Stage 6.1 review, 2026-07-29, screenshots | OPEN — HUMAN VISUAL EVIDENCE | — | — | Arnold's supplied screenshots | The engine's `Finding` carried no scope, so the view could not tell a session-level comparison from a position-specific one. Raised to P0: an athlete could read a cross-position comparison as a statement about Kneeling alone. |
-| UI-WIND-007 | Wind Map analysis — labels | Technical labels and metrics presented without athlete-friendly definitions or interpretation | P1 — interpretability | Arnold's manual Stage 6.1 review, 2026-07-29, screenshots | OPEN — HUMAN VISUAL EVIDENCE | — | — | Arnold's supplied screenshots | MPI, mean radius, H/V spread, standard deviation and group-centre vectors shown raw. |
-| UI-WIND-008 | Wind Map analysis — actions | Export PDF appears enabled although branded PDF export is not implemented | P2 — honesty of affordance | Arnold's manual Stage 6.1 review, 2026-07-29, screenshots | OPEN — HUMAN VISUAL EVIDENCE | — | — | Arnold's supplied screenshots | Styled as a completed primary action; opens a placeholder message. |
+| UI-WIND-003 | Wind Map analysis — all sections | Analysis sections initially appear blank or load slowly without visible progress feedback | P1 — usability | Arnold's manual Stage 6.1 review, 2026-07-29, screenshots | **RESOLVED — VISUAL EVIDENCE; MEASURED ON-SCREEN TIMINGS NOT SUPPLIED** | `305f5b1` | `tst_windmap_perf.cpp` ×12 | **HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-30**, build `106b088`, **1536 × 960 logical** (§1h) — Summary, Compare Conditions and Shot Details all opened without a blank screen | Root cause in §1g: the C++ path costs under 0.5 ms; the fault was QML. The **blank-screen** half is closed on Arnold's review. The **timing** half is not: no `WINDMAP-PERF` figures were returned, so the 1-second Summary target and the cached-switch target remain **unverified**. The loading state itself was not separately exercised. |
+| UI-WIND-004 | Wind Map analysis — navigation | Two competing rows of pill navigation; too complex for an average athlete | P1 — usability | Arnold's manual Stage 6.1 review, 2026-07-29, screenshots | RESOLVED — AUTOMATED AND VISUAL EVIDENCE | `ba6745d` | `tst_windmap_qml.cpp` §13 | **HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-30**, build `106b088`, **1536 × 960 logical** (§1h) | Five section pills plus a second same-looking position row. "Overview" and "Session Overview" could both read as active. |
+| UI-WIND-005 | Wind Map analysis — target plot | Plot lacks an intuitive target reference, complete legend, direction labels, scale and plain-language explanation | P1 — interpretability | Arnold's manual Stage 6.1 review, 2026-07-29, screenshots | RESOLVED — AUTOMATED AND VISUAL EVIDENCE | `ba6745d` | `tst_windmap_qml.cpp` §13 | **HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-30**, build `106b088`, **1536 × 960 logical** (§1h) | Abstract dark rectangle with unexplained hollow and coloured dots; no rings, no HIGH/LOW/LEFT/RIGHT, no mm scale. |
+| UI-WIND-006 | Wind Map analysis — 3P findings | A session-level finding may display unchanged under Kneeling, Prone and Standing, making its scope unclear | **P0 — misleading** | Arnold's manual Stage 6.1 review, 2026-07-29, screenshots | **OPEN — HUMAN VISUAL EVIDENCE** (code fixed at `5902ec6`, awaiting 3P review) | — | `tst_windmap_analytics.cpp` §13 ×5 · `tst_windmap_qml.cpp` §13 | **NOT closed.** The 2026-07-30 review did not cover Kneeling, Prone or Standing, and this defect can only be settled by cycling the 3P position filter and confirming the session-level statement does not reappear as a position result | The engine's `Finding` carried no scope, so the view could not tell a session-level comparison from a position-specific one. Raised to P0: an athlete could read a cross-position comparison as a statement about Kneeling alone. |
+| UI-WIND-007 | Wind Map analysis — labels | Technical labels and metrics presented without athlete-friendly definitions or interpretation | P1 — interpretability | Arnold's manual Stage 6.1 review, 2026-07-29, screenshots | RESOLVED — AUTOMATED AND VISUAL EVIDENCE | `ba6745d` | `tst_windmap_qml.cpp` §13 | **HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-30**, build `106b088`, **1536 × 960 logical** (§1h) | MPI, mean radius, H/V spread, standard deviation and group-centre vectors shown raw. |
+| UI-WIND-008 | Wind Map analysis — actions | Export PDF appears enabled although branded PDF export is not implemented | P2 — honesty of affordance | Arnold's manual Stage 6.1 review, 2026-07-29, screenshots | RESOLVED — AUTOMATED AND VISUAL EVIDENCE | `ba6745d` | `tst_windmap_qml.cpp` §13 | **HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-30**, build `106b088`, **1536 × 960 logical** (§1h) | Styled as a completed primary action; opens a placeholder message. |
 
 ### 1d. UI-WIND-001 — visual evidence
 
@@ -148,6 +148,32 @@ taken. The candidate causes under investigation, from the Stage 6.1 source:
 **Rule for this phase: no cause is claimed without a measurement or a cited
 line of source.**
 
+### 1h. Stage 6.1.1 — visual evidence
+
+**HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-30**, running application,
+Demo mode, isolated documentation-capture profile.
+
+| | |
+|---|---|
+| Build reviewed | `106b088` |
+| Resolution reviewed | **1536 × 960 logical** |
+| Other resolutions | **NOT TESTED** — not opened |
+
+**Reviewed and approved:** Summary · Compare Conditions · Shot Details · the
+short insufficient-sample session · the target visual · the disabled
+*PDF — COMING NEXT* state.
+
+**NOT reviewed — not claimed anywhere:**
+
+- **Not every seeded session.** Only the short insufficient-sample session is
+  confirmed; the 44-shot Prone session and the 3P session are not.
+- **No 3P position was cycled** — Session Overview, Kneeling, Prone and
+  Standing are unconfirmed. **This is why UI-WIND-006 stays OPEN.**
+- **No on-screen timings were supplied.** The `WINDMAP-PERF` marks were
+  instrumented but no figures were returned, so first-paint, page-switch and
+  scroll performance remain **unverified**.
+- No other resolution was opened.
+
 ### 1e. UI-TRAIN-001/002/003 — four-programme audit
 
 Audited by reading every gate on `statusStrip` in `ShootingPage.qml` after the
@@ -204,11 +230,12 @@ Stage 5.1, which was scoped to Wind Map. Now registered as **UI-TRAIN-001**,
 
 | Status | Count | IDs |
 |---|---:|---|
-| CLOSED / RESOLVED — AUTOMATED AND VISUAL EVIDENCE | **8** | UI-HOME 001, 005, 006, 007, 008, 009, 010 · **UI-WIND-001** |
+| CLOSED / RESOLVED — AUTOMATED AND VISUAL EVIDENCE | **12** | UI-HOME 001, 005, 006, 007, 008, 009, 010 · **UI-WIND-001, 004, 005, 007, 008** |
 | RESOLVED — AUTOMATED EVIDENCE AND VISUAL LAYOUT APPROVAL; MANUAL INTERACTION CHECK NOT PERFORMED | **3** | 002, 003, 004 |
 | RESOLVED — AUTOMATED EVIDENCE, HUMAN VISUAL CHECK REQUIRED | 0 | — |
 | PARTIALLY RESOLVED | 0 | — |
-| OPEN | **10** | **UI-WIND-002** · **UI-WIND-003, 004, 005, 006, 007, 008** · UI-TRAIN-001, UI-TRAIN-002, UI-TRAIN-003 |
+| RESOLVED — VISUAL EVIDENCE; MEASURED TIMINGS NOT SUPPLIED | **1** | **UI-WIND-003** |
+| OPEN | **5** | **UI-WIND-002** · **UI-WIND-006** (P0, awaiting 3P review) · UI-TRAIN-001, UI-TRAIN-002, UI-TRAIN-003 |
 | BLOCKED | 0 | — |
 
 **Every defect has a fix and passing automated evidence, and the rendered
