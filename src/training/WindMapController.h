@@ -152,6 +152,13 @@ public:
     // limitations[]. See docs/training-lab-wind-map-analysis.md.
     Q_INVOKABLE QVariantMap analysisModel() const;
 
+    // Stage 6.1.1 / UI-WIND-003: the analysis is built ONCE per completed
+    // session and cached. Page and position switching in the view must not
+    // cost an engine run — a test asserts twenty fetches rebuild nothing.
+    // The cache is keyed on (sessionId, shot count, phase) so a new or
+    // changed session invalidates it rather than serving a stale analysis.
+    int analysisBuildCountForTesting() const { return m_analysisBuilds; }
+
     // property readers
     int phase() const { return static_cast<int>(m_phase); }
     QString phaseName() const { return ta::training::windMapPhaseName(m_phase); }
@@ -224,6 +231,12 @@ private:
     int     m_operatingMode = -1;
     QString m_lastError;
     QString m_lastStartError;
+
+    // Cached analysis (mutable: analysisModel() is const and memoises).
+    mutable QVariantMap m_analysisCache;
+    mutable QString     m_analysisKey;
+    mutable int         m_analysisBuilds = 0;
+    QString analysisCacheKey() const;
 
     // Cached copy of the STANDING condition. The reducer projection
     // (SessionState::wmWind*) is authoritative and is what this is rebuilt

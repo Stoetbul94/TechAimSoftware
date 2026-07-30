@@ -421,6 +421,8 @@ bool WindMapController::closeSessionCleanly()
     m_phase = WindMapPhase::Idle;
     m_lastExternalId = -1;
     m_wind = WindConditionSnapshot::noReading();
+    m_analysisCache.clear();
+    m_analysisKey.clear();
     emit phaseChanged();
     emit progressChanged();
     emit conditionChanged();
@@ -749,14 +751,37 @@ QVariantMap shiftToVariant(const ta::training::ShiftVector& v)
 
 } // namespace
 
+// The cache key. It must change whenever the analysis would change: a
+// different session, a different number of recorded shots, or a different
+// phase (completion adds the terminal state). Anything else in the session is
+// immutable once recorded, which is what makes memoising safe at all.
+QString WindMapController::analysisCacheKey() const
+{
+    if (!m_store || !m_store->active()) return QString();
+    const ta::rel::SessionState& s = st();
+    return QStringLiteral("%1|%2|%3|%4")
+        .arg(s.sessionId)
+        .arg(s.wmShots.size())
+        .arg(static_cast<int>(m_phase))
+        .arg(s.wmConditionChanges);
+}
+
 QVariantMap WindMapController::analysisModel() const
 {
     QVariantMap out;
     if (!m_store || !m_store->active()) return out;
 
+    // UI-WIND-003: return the cached projection when nothing that feeds it has
+    // changed. Switching page or position in the view must not re-run the
+    // engine — that was a measured cost on every tab click.
+    const QString key = analysisCacheKey();
+    if (!key.isEmpty() && key == m_analysisKey && !m_analysisCache.isEmpty())
+        return m_analysisCache;
+
     const ta::training::SessionAnalysis a =
         ta::training::WindMapAnalyticsEngine::analyse(st());
     if (!a.valid) return out;
+    ++m_analysisBuilds;
 
     const ta::rel::SessionState& s = st();
 
@@ -840,6 +865,19 @@ QVariantMap WindMapController::analysisModel() const
     for (const ta::training::Finding& f : a.findings) {
         QVariantMap fm;
         fm[QStringLiteral("category")] = ta::training::patternCategoryLabel(f.category);
+        // UI-WIND-006: the scope travels with the finding so the view can filter
+        // by position and label a session-level comparison as session-level.
+        fm[QStringLiteral("scope")] = ta::training::findingScopeLabel(f.scope);
+        fm[QStringLiteral("scopeIsSession")] = (f.scope == ta::training::FindingScope::Session);
+        fm[QStringLiteral("position")] = f.position;
+        fm[QStringLiteral("positionName")] = f.positionName;
+        fm[QStringLiteral("conditionLabel")] = f.conditionLabel;
+        fm[QStringLiteral("scopeLabel")] = (f.scope == ta::training::FindingScope::Session)
+            ? QStringLiteral("SESSION-LEVEL POSITION COMPARISON")
+            : (f.scope == ta::training::FindingScope::Condition
+               ? QStringLiteral("CONDITION: %1").arg(f.conditionLabel)
+               : (f.positionName.isEmpty() ? QStringLiteral("THIS SESSION")
+                                           : f.positionName.toUpper()));
         fm[QStringLiteral("text")] = f.text;
         fm[QStringLiteral("suggestion")] = f.suggestion;
         fm[QStringLiteral("n")] = f.n;
@@ -885,6 +923,9 @@ QVariantMap WindMapController::analysisModel() const
     out[QStringLiteral("shotRows")] = shotRows;
 
     out[QStringLiteral("limitations")] = a.limitations;
+
+    m_analysisKey = key;
+    m_analysisCache = out;
     return out;
 }
 

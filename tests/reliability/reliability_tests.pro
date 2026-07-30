@@ -48,6 +48,7 @@ SOURCES += \
     tst_windmap_controller.cpp \
     tst_windmap_analytics.cpp \
     tst_windmap_qml.cpp \
+    tst_windmap_perf.cpp \
     seed_windmap.cpp \
     tst_training_parity.cpp \
     tst_fixedpoint.cpp \
