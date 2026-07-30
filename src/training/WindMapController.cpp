@@ -2,6 +2,7 @@
 
 #include "mode/OperatingMode.h"
 #include "WindMapAnalytics.h"
+#include "WindMapVerdict.h"
 
 #include <QCoreApplication>
 #include <QDateTime>
@@ -859,6 +860,48 @@ QVariantMap WindMapController::analysisModel() const
         positions.append(pm);
     }
     out[QStringLiteral("positions")] = positions;
+
+    // Stage 6.1.2: the VERDICTS. QML and the PDF both read these; neither
+    // composes verdict text of its own.
+    {
+        const QVector<ta::training::Verdict> verdicts =
+            ta::training::WindMapVerdictEngine::evaluate(a);
+        QVariantList vl;
+        for (const ta::training::Verdict& v : verdicts) {
+            QVariantMap vm;
+            vm[QStringLiteral("verdictId")] = v.verdictId;
+            vm[QStringLiteral("category")] = ta::training::verdictCategoryLabel(v.category);
+            vm[QStringLiteral("scope")] = ta::training::verdictScopeLabel(v.scope);
+            vm[QStringLiteral("scopeIsSession")] = (v.scope == ta::training::VerdictScope::Session);
+            vm[QStringLiteral("position")] = v.position;
+            vm[QStringLiteral("positionName")] = v.positionName;
+            vm[QStringLiteral("referenceCondition")] = v.referenceCondition;
+            vm[QStringLiteral("comparedCondition")] = v.comparedCondition;
+            vm[QStringLiteral("sampleCountReference")] = v.sampleCountReference;
+            vm[QStringLiteral("sampleCountCompared")] = v.sampleCountCompared;
+            vm[QStringLiteral("evidence")] = ta::training::evidenceLevelLabel(v.evidence);
+            vm[QStringLiteral("evidenceExplanation")] =
+                ta::training::evidenceLevelExplanation(v.evidence);
+            vm[QStringLiteral("headline")] = v.headline;
+            vm[QStringLiteral("observedPattern")] = v.observedPattern;
+            vm[QStringLiteral("interpretation")] = v.interpretation;
+            vm[QStringLiteral("nextTrainingStep")] = v.nextTrainingStep;
+            vm[QStringLiteral("coachDecision")] = v.coachDecision;
+            vm[QStringLiteral("limitations")] = v.limitations;
+            vm[QStringLiteral("supportingMetricIds")] = v.supportingMetricIds;
+            vm[QStringLiteral("priority")] = v.priority;
+            // The scope badge the view shows, worded once here.
+            vm[QStringLiteral("scopeLabel")] =
+                (v.scope == ta::training::VerdictScope::Session)
+                    ? QStringLiteral("SESSION-LEVEL POSITION COMPARISON")
+                    : (v.scope == ta::training::VerdictScope::Condition
+                       ? QStringLiteral("CONDITION: %1").arg(v.comparedCondition)
+                       : (v.positionName.isEmpty() ? QStringLiteral("THIS SESSION")
+                                                   : v.positionName.toUpper()));
+            vl.append(vm);
+        }
+        out[QStringLiteral("verdicts")] = vl;
+    }
 
     // 9. WHAT THE DATA SUGGESTS — rendered, never re-worded by the view.
     QVariantList findings;

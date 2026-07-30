@@ -74,7 +74,8 @@ SOURCES += main.cpp \
     src/training/GroupPatternAnalyzer.cpp \
     src/training/PositionTransitionController.cpp \
     src/training/WindMapController.cpp \
-    src/training/WindMapAnalytics.cpp
+    src/training/WindMapAnalytics.cpp \
+    src/training/WindMapVerdict.cpp
 
 # Offline coach-analytics module (pure C++, independent from Qt/QML).
 HEADERS += \
@@ -137,7 +138,8 @@ HEADERS += \
     src/training/PositionTransitionController.h \
     src/training/WindMapTypes.h \
     src/training/WindMapController.h \
-    src/training/WindMapAnalytics.h
+    src/training/WindMapAnalytics.h \
+    src/training/WindMapVerdict.h
 INCLUDEPATH += src/training
 INCLUDEPATH += src/finals
 INCLUDEPATH += src/finals10m

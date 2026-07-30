@@ -19,8 +19,10 @@ SOURCES += $$PWD/../../src/mode/OperatingModeService.cpp
 # what proves it carries no QML/GUI dependency.
 SOURCES += $$PWD/../../src/training/WindMapController.cpp
 SOURCES += $$PWD/../../src/training/WindMapAnalytics.cpp
+SOURCES += $$PWD/../../src/training/WindMapVerdict.cpp
 HEADERS += $$PWD/../../src/training/WindMapController.h
 HEADERS += $$PWD/../../src/training/WindMapAnalytics.h
+HEADERS += $$PWD/../../src/training/WindMapVerdict.h
 HEADERS += $$PWD/../../src/qualification/QualificationController.h
 HEADERS += $$PWD/../../src/incident/EstIncidentController.h
 HEADERS += $$PWD/../../src/mode/OperatingMode.h
@@ -49,6 +51,7 @@ SOURCES += \
     tst_windmap_analytics.cpp \
     tst_windmap_qml.cpp \
     tst_windmap_perf.cpp \
+    tst_windmap_verdict.cpp \
     seed_windmap.cpp \
     tst_training_parity.cpp \
     tst_fixedpoint.cpp \

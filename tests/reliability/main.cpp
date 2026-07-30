@@ -58,6 +58,7 @@ int main(int argc, char** argv)
     run_windmap_qml_tests();
     run_windmap_analytics_tests();
     run_windmap_perf_tests();
+    run_windmap_verdict_tests();
     run_training_parity_tests();
     run_fixture_tests(writeFixtures);
 
