@@ -121,6 +121,7 @@ void run_windmap_qml_tests();
 void run_windmap_analytics_tests();
 void run_windmap_perf_tests();
 void run_windmap_verdict_tests();
+void run_windmap_dispersion_tests();
 void run_training_parity_tests();
 void run_fixture_tests(bool regenerate);
 

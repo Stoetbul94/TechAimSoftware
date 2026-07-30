@@ -98,24 +98,34 @@ void run_windmap_verdict_tests()
         check(!WindMapVerdictEngine::isMeaningfulOffset(5.00, 8.0),
               "1. 5 mm clears the floor but NOT the scale-aware bar — both must pass");
 
-        // Compact <= 1.25x reference diameter.
+        // EVID-WM-001: the ratios are unchanged, but both sides are now RADIAL
+        // RMS, never extreme spread.
+        // Compact <= 1.25x reference radial RMS.
         check(WindMapVerdictEngine::isCompact(25.0, 20.0),
-              "1. exactly 1.25x is still compact (<=)");
+              "1. exactly 1.25x radial RMS is still compact (<=)");
         check(!WindMapVerdictEngine::isCompact(25.01, 20.0),
               "1. just past 1.25x is not compact");
-        // Wider >= 1.50x reference diameter.
+        // Wider >= 1.50x reference radial RMS.
         check(WindMapVerdictEngine::isWider(30.0, 20.0),
-              "1. exactly 1.50x is wider (>=)");
+              "1. exactly 1.50x radial RMS is wider (>=)");
         check(!WindMapVerdictEngine::isWider(29.99, 20.0),
               "1. just under 1.50x is not wider");
         // The deliberate gap produces NEITHER claim.
         check(!WindMapVerdictEngine::isCompact(28.0, 20.0)
               && !WindMapVerdictEngine::isWider(28.0, 20.0),
               "1. 1.4x sits in the gap — neither compact nor wider, so no claim");
-        // A zero-width reference cannot anchor a ratio.
+        // A zero-dispersion reference cannot anchor a ratio.
         check(!WindMapVerdictEngine::isCompact(10.0, 0.0)
               && !WindMapVerdictEngine::isWider(10.0, 0.0),
-              "1. a zero-diameter reference yields no ratio claim");
+              "1. a zero radial-RMS reference yields no ratio claim");
+
+        // Elevated dispersion is ring-scaled, not a bare millimetre constant.
+        check(WindMapVerdictEngine::isElevatedDispersion(12.0, 8.0),
+              "1. exactly 1.5 ring spacings is elevated (>=)");
+        check(!WindMapVerdictEngine::isElevatedDispersion(11.99, 8.0),
+              "1. just under 1.5 ring spacings is not elevated");
+        check(!WindMapVerdictEngine::isElevatedDispersion(12.0, 0.0),
+              "1. an unknown ring spacing yields no elevated-dispersion claim");
     }
 
     // ── 2. VERDICT 1 — insufficient sample ──────────────────────────────
@@ -198,9 +208,19 @@ void run_windmap_verdict_tests()
         check(hasCategory(v, VerdictCategory::WiderUnderCondition),
               "5. wider-under-condition is detected at 1.6x");
         const Verdict* w = firstOf(v, VerdictCategory::WiderUnderCondition);
-        check(w && w->headline.contains(QLatin1String("32.0"))
-              && w->headline.contains(QLatin1String("20.0")),
-              "5. it states both group sizes", w ? w->headline : QString());
+        // EVID-WM-001: the headline now quotes the metric the verdict was
+        // CLASSIFIED on. For evenly spaced lines of n=10 the sample SD is
+        // step*sqrt(n(n+1)/12), so 20 mm wide -> 6.7 mm and 32 mm wide ->
+        // 10.8 mm. Both sides must still be stated; only the measure changed.
+        check(w && w->headline.contains(QLatin1String("10.8"))
+              && w->headline.contains(QLatin1String("6.7")),
+              "5. it states both groups' radial RMS", w ? w->headline : QString());
+        check(w && w->headline.contains(QLatin1String("radial RMS")),
+              "5. it names the measure being compared, so the athlete is not "
+              "left to assume it was group width", w ? w->headline : QString());
+        check(w && w->observedPattern.contains(QLatin1String("10 counted shots against 10")),
+              "5. both sample counts are stated alongside the comparison",
+              w ? w->observedPattern : QString());
         check(w && w->interpretation.contains(QLatin1String("cannot determine")),
               "5. it says the software cannot determine the reason");
     }
@@ -222,15 +242,22 @@ void run_windmap_verdict_tests()
     // ── 7. VERDICT 6 — wide across all conditions ───────────────────────
     {
         SessionState s = baseState(false);
-        addLineGroup(s, 1, 0, 10, 0.0, 0.0, 45.0, calm());              // >= 40
-        addLineGroup(s, 11, 0, 10, 0.0, 0.0, 48.0, measured(270, 2.0)); // >= 40
+        // EVID-WM-001: the trigger is radial RMS against 1.5 ring spacings
+        // (12.0 mm at 50 m), NOT the superseded 40 mm extreme-spread bar.
+        // For n=10 evenly spaced, radial RMS = width * 0.3364, so 45 mm wide
+        // gives 15.1 mm and 48 mm gives 16.1 mm — both elevated.
+        addLineGroup(s, 1, 0, 10, 0.0, 0.0, 45.0, calm());
+        addLineGroup(s, 11, 0, 10, 0.0, 0.0, 48.0, measured(270, 2.0));
         const QVector<Verdict> v = verdictsFor(s);
         check(hasCategory(v, VerdictCategory::WideAcrossConditions),
-              "7. wide-across-conditions is detected when every group exceeds 40 mm");
+              "7. elevated dispersion is detected when every group clears the bar");
         const Verdict* w = firstOf(v, VerdictCategory::WideAcrossConditions);
-        check(w && w->headline.contains(QLatin1String("relatively wide")),
-              "7. the wording is RELATIVE - the threshold behind it is provisional",
-              w ? w->headline : QString());
+        check(w && w->headline.contains(QLatin1String("Dispersion remained elevated")),
+              "7. the approved descriptive wording is used - the threshold behind "
+              "it is provisional", w ? w->headline : QString());
+        check(w && w->limitations.join(QStringLiteral(" "))
+                    .contains(QLatin1String("provisional"), Qt::CaseInsensitive),
+              "7. the athlete is told the rule is provisional and unreviewed");
         check(w && w->interpretation.contains(QLatin1String("No single recorded condition separates")),
               "7. it refuses to blame one condition");
         // It must never call the athlete's shooting poor.
@@ -244,16 +271,17 @@ void run_windmap_verdict_tests()
         check(w && w->nextTrainingStep.contains(QLatin1String("Group Pattern Coach")),
               "7. it refers to Group Pattern Coach rather than diagnosing a fault");
 
-        // Boundary: one group just under 40 mm means NOT all wide.
-        // 39.8 rather than 39.99: coordinates are stored as HUNDREDTHS of a
-        // millimetre, and a 39.99-wide line rounds its end shots to +/-20.00,
-        // giving a stored spread of exactly 40.00 — the test data could not
-        // express the value it was asserting on.
+        // Boundary: ONE group below the bar means the session is not elevated.
+        // A 35 mm wide line at n=10 has radial RMS 11.8 mm, under the 12.0 mm
+        // bar. The margin is deliberate — coordinates are stored as HUNDREDTHS
+        // of a millimetre, so test data pressed right up against a threshold
+        // cannot express the value it claims to assert on.
         SessionState s2 = baseState(false);
-        addLineGroup(s2, 1, 0, 10, 0.0, 0.0, 39.8, calm());
+        addLineGroup(s2, 1, 0, 10, 0.0, 0.0, 35.0, calm());
         addLineGroup(s2, 11, 0, 10, 0.0, 0.0, 48.0, measured(270, 2.0));
         check(!hasCategory(verdictsFor(s2), VerdictCategory::WideAcrossConditions),
-              "7. 39.8 mm keeps the session out of wide-across-conditions");
+              "7. one group under 1.5 ring spacings keeps the session out of "
+              "elevated dispersion");
     }
 
     // ── 8. VERDICT 7 — position difference is SESSION scope ─────────────

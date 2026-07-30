@@ -52,6 +52,7 @@ SOURCES += \
     tst_windmap_qml.cpp \
     tst_windmap_perf.cpp \
     tst_windmap_verdict.cpp \
+    tst_windmap_dispersion.cpp \
     seed_windmap.cpp \
     tst_training_parity.cpp \
     tst_fixedpoint.cpp \
