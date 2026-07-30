@@ -60,3 +60,7 @@ docs/manual/output/
 
 # Generated manual review packs (never committed)
 manual-preview/
+
+# Local Claude tooling: generic marketplace design/UI skill packs, not Tech Aim
+# source. .claude/launch.json IS tracked, so only this subdirectory is ignored.
+/.claude/skills/
