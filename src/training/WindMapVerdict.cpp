@@ -47,7 +47,9 @@ QString verdictCategoryLabel(VerdictCategory c)
     case VerdictCategory::CompactButOffset:           return QStringLiteral("Compact but offset");
     case VerdictCategory::WiderUnderCondition:        return QStringLiteral("Wider under a condition");
     case VerdictCategory::SimilarAcrossConditions:    return QStringLiteral("Similar across conditions");
-    case VerdictCategory::WideAcrossConditions:       return QStringLiteral("Wide across all conditions");
+    // Matches the approved headline. The badge is athlete-facing, so it may not
+    // say something the verdict beneath it deliberately avoids saying.
+    case VerdictCategory::WideAcrossConditions:       return QStringLiteral("Dispersion elevated across conditions");
     case VerdictCategory::PositionSpecificDifference: return QStringLiteral("Position difference");
     case VerdictCategory::NoValidComparison:          return QStringLiteral("No valid comparison");
     case VerdictCategory::RepeatedPattern:            return QStringLiteral("Repeated pattern");
@@ -373,7 +375,12 @@ QVector<Verdict> WindMapVerdictEngine::evaluate(const SessionAnalysis& a)
                                  .arg(where).arg(sv.n)
                                  .arg(sv.n == 1 ? QStringLiteral("shot") : QStringLiteral("shots"))
                                  .arg(sv.label);
-                v.observedPattern = QStringLiteral("%1 more %2 required for a group comparison.")
+                // All four numbers the athlete needs: what they have, what is
+                // needed, the shortfall, and that nothing is being compared yet.
+                v.observedPattern = QStringLiteral("Recorded %1 of the %2 counted shots a "
+                                                   "comparison needs — %3 more %4 required. "
+                                                   "No comparison has been made.")
+                                        .arg(sv.n).arg(kMinSamplesComparison)
                                         .arg(sv.shotsNeeded)
                                         .arg(sv.shotsNeeded == 1 ? QStringLiteral("shot is")
                                                                  : QStringLiteral("shots are"));
@@ -404,10 +411,11 @@ QVector<Verdict> WindMapVerdictEngine::evaluate(const SessionAnalysis& a)
                 v.comparedCondition = sv.label;
                 v.sampleCountCompared = sv.n;
                 v.evidence = EvidenceLevel::Comparative;
-                v.headline = QStringLiteral("%1%2 shots under %3 formed a compact group whose "
-                                            "centre was %4 of the reference group.")
+                v.headline = QStringLiteral("%1%2 shots under %3 stayed close together, but their "
+                                            "centre sat %4 of the %5 shots under %6.")
                                  .arg(where).arg(sv.n).arg(sv.label)
-                                 .arg(offsetWords(sv.dxMm, sv.dyMm));
+                                 .arg(offsetWords(sv.dxMm, sv.dyMm))
+                                 .arg(refGroup->n).arg(p.reference.label);
                 // Reports the metric it was CLASSIFIED on (radial RMS), with
                 // extreme spread alongside as a descriptive size the athlete
                 // can picture. The two are never interchangeable.
@@ -421,7 +429,9 @@ QVector<Verdict> WindMapVerdictEngine::evaluate(const SessionAnalysis& a)
                                         .arg(mm(g->groupDiameterMm));
                 v.interpretation = QStringLiteral("A group-centre difference was observed "
                                                   "alongside this recorded condition. This does "
-                                                  "not prove wind was the only reason.");
+                                                  "not prove wind was the only reason, and a "
+                                                  "repeated pattern has not yet been "
+                                                  "established — this is one session.");
                 v.nextTrainingStep = QStringLiteral("Repeat the same two conditions in another "
                                                     "session before changing sight or hold "
                                                     "strategy.");
@@ -442,16 +452,22 @@ QVector<Verdict> WindMapVerdictEngine::evaluate(const SessionAnalysis& a)
                 v.comparedCondition = sv.label;
                 v.sampleCountCompared = sv.n;
                 v.evidence = EvidenceLevel::Comparative;
-                v.headline = QStringLiteral("%1Shots under %2 were more widely dispersed than "
-                                            "under %3 (radial RMS %4 mm against %5 mm).")
+                // Plain language first. The athlete needs to know WHAT was seen
+                // and on HOW MANY shots; the estimator's name belongs with the
+                // measurements, not in the headline.
+                v.headline = QStringLiteral("%1Your shots were more spread out under %2 than "
+                                            "under %3 — %4 shots against %5.")
                                  .arg(where).arg(sv.label).arg(p.reference.label)
-                                 .arg(mm(g->radialRmsMm)).arg(mm(refGroup->radialRmsMm));
-                v.observedPattern = QStringLiteral("%1 counted shots against %2. Horizontal SD "
-                                                   "%3 mm against %4 mm; vertical SD %5 mm against "
-                                                   "%6 mm.")
-                                        .arg(sv.n).arg(refGroup->n)
+                                 .arg(sv.n).arg(refGroup->n);
+                v.observedPattern = QStringLiteral("Spread measure (radial RMS) %1 mm against "
+                                                   "%2 mm. Horizontal SD %3 mm against %4 mm; "
+                                                   "vertical SD %5 mm against %6 mm. Widest "
+                                                   "shot-to-shot spread %7 mm against %8 mm "
+                                                   "(descriptive only).")
+                                        .arg(mm(g->radialRmsMm)).arg(mm(refGroup->radialRmsMm))
                                         .arg(mm(g->horizontalSdMm)).arg(mm(refGroup->horizontalSdMm))
-                                        .arg(mm(g->verticalSdMm)).arg(mm(refGroup->verticalSdMm));
+                                        .arg(mm(g->verticalSdMm)).arg(mm(refGroup->verticalSdMm))
+                                        .arg(mm(g->groupDiameterMm)).arg(mm(refGroup->groupDiameterMm));
                 v.interpretation = QStringLiteral("Shot placement was less consistent while this "
                                                   "condition was recorded. The software cannot "
                                                   "determine whether the reason was changing "
@@ -514,11 +530,11 @@ QVector<Verdict> WindMapVerdictEngine::evaluate(const SessionAnalysis& a)
             v.evidence = EvidenceLevel::Indicative;
             v.sampleCountCompared = widest->countedShots;
             v.positionName = widest->positionName;
-            v.headline = QStringLiteral("%1 produced the most widely dispersed recorded group in "
-                                        "this session (radial RMS %2 mm).")
-                             .arg(widest->positionName).arg(mm(widestVal));
+            v.headline = QStringLiteral("%1 produced the most spread-out group recorded in this "
+                                        "session.").arg(widest->positionName);
             v.observedPattern = QStringLiteral("Compared across %1 positions recorded in this "
-                                               "session.").arg(a.positions.size());
+                                               "session. Spread measure (radial RMS) %2 mm.")
+                                    .arg(a.positions.size()).arg(mm(widestVal));
             v.interpretation = QStringLiteral("Each position has different stability demands and "
                                               "was recorded under different conditions. The "
                                               "difference cannot be attributed to wind alone.");

@@ -208,18 +208,26 @@ void run_windmap_verdict_tests()
         check(hasCategory(v, VerdictCategory::WiderUnderCondition),
               "5. wider-under-condition is detected at 1.6x");
         const Verdict* w = firstOf(v, VerdictCategory::WiderUnderCondition);
-        // EVID-WM-001: the headline now quotes the metric the verdict was
-        // CLASSIFIED on. For evenly spaced lines of n=10 the sample SD is
-        // step*sqrt(n(n+1)/12), so 20 mm wide -> 6.7 mm and 32 mm wide ->
-        // 10.8 mm. Both sides must still be stated; only the measure changed.
-        check(w && w->headline.contains(QLatin1String("10.8"))
-              && w->headline.contains(QLatin1String("6.7")),
-              "5. it states both groups' radial RMS", w ? w->headline : QString());
-        check(w && w->headline.contains(QLatin1String("radial RMS")),
-              "5. it names the measure being compared, so the athlete is not "
-              "left to assume it was group width", w ? w->headline : QString());
-        check(w && w->observedPattern.contains(QLatin1String("10 counted shots against 10")),
-              "5. both sample counts are stated alongside the comparison",
+        // Stage 6.1.4: the HEADLINE is plain language plus both sample counts;
+        // the estimator and its values live in the measurements line. An
+        // athlete must not need to know what radial RMS is to read the result.
+        check(w && w->headline.contains(QLatin1String("more spread out")),
+              "5. the headline says what happened in plain words",
+              w ? w->headline : QString());
+        check(w && w->headline.contains(QLatin1String("10 shots against 10")),
+              "5. the headline states BOTH sample counts",
+              w ? w->headline : QString());
+        check(w && !w->headline.contains(QLatin1String("radial RMS")),
+              "5. the headline does NOT lead with the estimator's name",
+              w ? w->headline : QString());
+        // For evenly spaced lines of n=10 the sample SD is step*sqrt(n(n+1)/12),
+        // so 20 mm wide -> 6.7 mm and 32 mm wide -> 10.8 mm.
+        check(w && w->observedPattern.contains(QLatin1String("10.8"))
+              && w->observedPattern.contains(QLatin1String("6.7")),
+              "5. the measurements line states both groups' spread measure",
+              w ? w->observedPattern : QString());
+        check(w && w->observedPattern.contains(QLatin1String("radial RMS")),
+              "5. the measurements line names the measure that was compared",
               w ? w->observedPattern : QString());
         check(w && w->interpretation.contains(QLatin1String("cannot determine")),
               "5. it says the software cannot determine the reason");

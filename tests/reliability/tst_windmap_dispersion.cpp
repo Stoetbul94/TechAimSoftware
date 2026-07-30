@@ -276,8 +276,12 @@ void run_windmap_dispersion_tests()
                       "8. the wider verdict cites radialRmsMm");
                 check(!x.supportingMetricIds.contains(QStringLiteral("groupDiameterMm")),
                       "8. the wider verdict does NOT cite extreme spread");
-                check(x.headline.contains(QStringLiteral("radial RMS")),
-                      "8. the athlete is told which measure was compared", x.headline);
+                check(!x.headline.contains(QStringLiteral("radial RMS")),
+                      "8. the headline does not lead with the estimator's name",
+                      x.headline);
+                check(x.observedPattern.contains(QStringLiteral("radial RMS")),
+                      "8. the measurements line names the measure that was compared",
+                      x.observedPattern);
             }
     }
 

@@ -34,6 +34,27 @@ struct Seeder {
     WindMapController wm;
     qint64 ext = 1000;
     void shoot(double x, double y, double score) { wm.registerShot(x, y, score, ++ext, 0.0, 0); }
+
+    // Stage 6.1.4 — what this seeded session will ACTUALLY produce when the
+    // reviewer completes it. Read from the same analysisModel() the screen
+    // consumes, so the review sheet cannot claim a verdict the app will not
+    // show. Nothing is fabricated: this is the model, not a prediction.
+    QString expectation() const
+    {
+        const QVariantMap m = wm.analysisModel();
+        if (m.isEmpty()) return QStringLiteral("(no analysis available yet)");
+        const QString ver = m.value(QStringLiteral("session")).toMap()
+                             .value(QStringLiteral("analyticsVersion")).toString();
+        const QVariantList vs = m.value(QStringLiteral("verdicts")).toList();
+        if (vs.isEmpty())
+            return QStringLiteral("%1 | NO VERDICT").arg(ver);
+        const QVariantMap v0 = vs.first().toMap();
+        return QStringLiteral("%1 | %2 | %3 | %4 verdict%5")
+            .arg(ver)
+            .arg(v0.value(QStringLiteral("category")).toString())
+            .arg(v0.value(QStringLiteral("scopeLabel")).toString())
+            .arg(vs.size()).arg(vs.size() == 1 ? QString() : QStringLiteral("s"));
+    }
 };
 
 void report(const char* name, bool ok, const WindMapController& wm)
@@ -47,7 +68,7 @@ void report(const char* name, bool ok, const WindMapController& wm)
 // A — 50m Prone, 44 counted shots across four conditions, with sighters and a
 // long condition note. Covers: the 40+ shot session, long condition labels,
 // condition filtering, the sighter toggle and a long timeline.
-bool seedProneLong()
+bool seedProneLong(QString* expect)
 {
     Seeder s;
     if (!s.wm.configureSession(QStringLiteral("PRONE50"), 40, true)) return false;
@@ -79,12 +100,14 @@ bool seedProneLong()
     for (int i = 0; i < 7; ++i)
         s.shoot(1.0 + (i % 3) * 1.4, -2.0 - (i % 3) * 0.8, 9.9);
 
-    return s.wm.endCapture();      // left in SessionReview, deliberately unclosed
+    const bool ok = s.wm.endCapture();
+    if (expect) *expect = s.expectation();
+    return ok;      // left in SessionReview, deliberately unclosed
 }
 
 // B — 50m 3P, all three positions with their own conditions and sighters.
 // Covers: Kneeling / Prone / Standing analyses and the Overview tab.
-bool seed3P()
+bool seed3P(QString* expect)
 {
     Seeder s;
     if (!s.wm.configureSession(QStringLiteral("3P50"), 30, true)) return false;
@@ -113,28 +136,32 @@ bool seed3P()
             s.shoot(plan[p].cx + 5.0 + (i % 4) * plan[p].spread * 0.5,
                     plan[p].cy + (i % 3) * plan[p].spread * 0.4, 9.7);
     }
-    return s.wm.endCapture();
+    const bool ok = s.wm.endCapture();
+    if (expect) *expect = s.expectation();
+    return ok;
 }
 
 // C — the INSUFFICIENT-SAMPLE state: every condition below a threshold, so
 // the analysis must withhold rather than report.
-bool seedInsufficient()
+bool seedInsufficient(QString* expect)
 {
     Seeder s;
     if (!s.wm.configureSession(QStringLiteral("PRONE50"), 20, false)) return false;
     if (!s.wm.startWindMap(QStringLiteral("Sam Short-Session"))) return false;
+    // EXACTLY TWO conditions, so this is the INSUFFICIENT-SAMPLE case and not
+    // the fragmented one: a well-sampled calm reference, and a second condition
+    // three shots short of the comparison minimum. Three or more conditions
+    // would trip "conditions changed too often" instead, which is case H.
     s.wm.beginCountedShots();
+    s.wm.setCalmCondition(QStringLiteral("flags down"));
+    for (int i = 0; i < 8; ++i)
+        s.shoot(0.2 + (i % 4) * 0.5, 0.3 - (i % 3) * 0.4, 10.4);
     s.wm.setMeasuredCondition(0, 1.5, QStringLiteral("light head wind"));
     s.shoot(1.0, 1.0, 10.3);
-    s.shoot(1.4, 0.6, 10.0);                    // n=2 -> MPI withheld
-    s.wm.setMeasuredCondition(180, 6.5, QStringLiteral("strong tail"));
-    s.shoot(-3.0, -1.0, 9.1);
-    s.wm.setCalmCondition();
-    s.shoot(0.2, 0.2, 10.6);
-    s.shoot(0.4, -0.1, 10.4);
-    s.shoot(-0.3, 0.5, 10.5);
-    s.shoot(0.1, 0.3, 10.7);                    // n=4 -> MPI only, no dispersion
-    return s.wm.endCapture();
+    s.shoot(1.4, 0.6, 10.0);                    // n=2 -> below the comparison bar
+    const bool ok = s.wm.endCapture();
+    if (expect) *expect = s.expectation();
+    return ok;
 }
 
 // ---- Stage 6.1.3 verdict review cases -------------------------------------
@@ -156,7 +183,7 @@ void line(Seeder& s, int n, double cx, double cy, double widthMm)
 // D - COMPACT BUT OFFSET, with a firing direction so the relative wind
 // description appears. Firing 0 (north); wind from 270 (west) reads as a
 // left-to-right crosswind.
-bool seedCompactOffset()
+bool seedCompactOffset(QString* expect)
 {
     Seeder s;
     if (!s.wm.configureSession(QStringLiteral("PRONE50"), 30, false)) return false;
@@ -167,11 +194,13 @@ bool seedCompactOffset()
     line(s, 10, 0.0, 0.0, 20.0);
     s.wm.setMeasuredCondition(270, 2.0, QStringLiteral("steady from the left"));
     line(s, 10, 8.0, -1.5, 20.0);
-    return s.wm.endCapture();
+    const bool ok = s.wm.endCapture();
+    if (expect) *expect = s.expectation();
+    return ok;
 }
 
 // E - WIDER UNDER A CONDITION.
-bool seedWider()
+bool seedWider(QString* expect)
 {
     Seeder s;
     if (!s.wm.configureSession(QStringLiteral("PRONE50"), 30, false)) return false;
@@ -182,11 +211,13 @@ bool seedWider()
     line(s, 10, 0.0, 0.0, 19.0);
     s.wm.setMeasuredCondition(45, 5.0, QStringLiteral("gusting, picking up"));
     line(s, 10, 0.0, 0.0, 34.0);
-    return s.wm.endCapture();
+    const bool ok = s.wm.endCapture();
+    if (expect) *expect = s.expectation();
+    return ok;
 }
 
 // F - SIMILAR ACROSS CONDITIONS.
-bool seedSimilar()
+bool seedSimilar(QString* expect)
 {
     Seeder s;
     if (!s.wm.configureSession(QStringLiteral("PRONE50"), 30, false)) return false;
@@ -196,11 +227,13 @@ bool seedSimilar()
     line(s, 10, 0.0, 0.0, 20.0);
     s.wm.setMeasuredCondition(270, 2.0);
     line(s, 10, 2.0, 0.0, 21.0);
-    return s.wm.endCapture();
+    const bool ok = s.wm.endCapture();
+    if (expect) *expect = s.expectation();
+    return ok;
 }
 
 // G - RELATIVELY WIDE ACROSS ALL CONDITIONS.
-bool seedWideAll()
+bool seedWideAll(QString* expect)
 {
     Seeder s;
     if (!s.wm.configureSession(QStringLiteral("PRONE50"), 30, false)) return false;
@@ -210,11 +243,13 @@ bool seedWideAll()
     line(s, 10, 0.0, 0.0, 45.0);
     s.wm.setMeasuredCondition(270, 2.0);
     line(s, 10, 0.0, 0.0, 48.0);
-    return s.wm.endCapture();
+    const bool ok = s.wm.endCapture();
+    if (expect) *expect = s.expectation();
+    return ok;
 }
 
 // H - FRAGMENTED DATA: many conditions, none deep enough to compare.
-bool seedFragmented()
+bool seedFragmented(QString* expect)
 {
     Seeder s;
     if (!s.wm.configureSession(QStringLiteral("PRONE50"), 30, false)) return false;
@@ -224,12 +259,14 @@ bool seedFragmented()
     s.wm.setMeasuredCondition(270, 2.0); s.shoot(3.0, 1.0, 9.8);  s.shoot(3.4, 1.4, 9.9);
     s.wm.setMeasuredCondition(45, 5.0);  s.shoot(-2.0, 2.0, 9.5); s.shoot(-2.4, 1.6, 9.4);
     s.wm.setMeasuredCondition(180, 1.0); s.shoot(0.5, -1.0, 9.9);
-    return s.wm.endCapture();
+    const bool ok = s.wm.endCapture();
+    if (expect) *expect = s.expectation();
+    return ok;
 }
 
 // I - ONE CONDITION ONLY: the INDICATIVE case. No firing direction recorded,
 // so the relative-wind fallback message is visible.
-bool seedIndicative()
+bool seedIndicative(QString* expect)
 {
     Seeder s;
     if (!s.wm.configureSession(QStringLiteral("PRONE50"), 30, false)) return false;
@@ -238,11 +275,13 @@ bool seedIndicative()
     s.wm.setMeasuredCondition(270, 2.0, QStringLiteral("steady all session"));
     s.wm.beginCountedShots();
     line(s, 9, 1.0, -1.0, 22.0);
-    return s.wm.endCapture();
+    const bool ok = s.wm.endCapture();
+    if (expect) *expect = s.expectation();
+    return ok;
 }
 
 // J - 3P POSITION-SPECIFIC DIFFERENCE, with a firing direction.
-bool seedPositionDifference()
+bool seedPositionDifference(QString* expect)
 {
     Seeder s;
     if (!s.wm.configureSession(QStringLiteral("3P50"), 30, false)) return false;
@@ -259,7 +298,9 @@ bool seedPositionDifference()
         s.wm.beginCountedShots();
         line(s, 8, 0.0, 0.0, plan[i].width);
     }
-    return s.wm.endCapture();
+    const bool ok = s.wm.endCapture();
+    if (expect) *expect = s.expectation();
+    return ok;
 }
 
 } // namespace
@@ -285,7 +326,7 @@ int seedWindMapSessions(const QString& root)
         Seeder probe;                       // only to satisfy report()'s signature
         (void)probe;
     }
-    struct Case { const char* name; bool (*fn)(); };
+    struct Case { const char* name; bool (*fn)(QString*); };
     const Case cases[] = {
         { "A  50m Prone - 44 counted, 4 conditions, sighters", &seedProneLong },
         { "B  50m 3P    - Kneeling / Prone / Standing",        &seed3P },
@@ -293,14 +334,18 @@ int seedWindMapSessions(const QString& root)
         { "D  50m Prone - COMPACT BUT OFFSET (+ firing dir)",  &seedCompactOffset },
         { "E  50m Prone - WIDER UNDER CONDITION",              &seedWider },
         { "F  50m Prone - SIMILAR ACROSS CONDITIONS",          &seedSimilar },
-        { "G  50m Prone - RELATIVELY WIDE ACROSS ALL",         &seedWideAll },
+        { "G  50m Prone - DISPERSION ELEVATED ACROSS ALL",     &seedWideAll },
         { "H  50m Prone - FRAGMENTED DATA",                    &seedFragmented },
-        { "I  50m Prone - INDICATIVE, no firing direction",    &seedIndicative },
+        { "I  50m Prone - INDICATIVE / no firing direction",   &seedIndicative },
         { "J  50m 3P    - POSITION DIFFERENCE (+ firing dir)", &seedPositionDifference },
     };
     for (const Case& c : cases) {
-        const bool ok = c.fn();
+        QString expect;
+        const bool ok = c.fn(&expect);
         std::printf("  %-46s %s\n", c.name, ok ? "OK" : "FAILED");
+        // The review sheet states what the app WILL show, read from the same
+        // analysisModel() the screen consumes — never a guess.
+        if (ok) std::printf("  %-46s -> %s\n", "", qPrintable(expect));
         std::fflush(stdout);
         if (!ok) ++failures;
     }
