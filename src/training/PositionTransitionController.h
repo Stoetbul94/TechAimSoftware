@@ -53,6 +53,13 @@ class PositionTransitionController : public QObject
     Q_PROPERTY(QString lastError READ lastError NOTIFY phaseChanged)
     Q_PROPERTY(QString lastStartError READ lastStartError NOTIFY startErrorChanged)
     Q_PROPERTY(bool hasNext READ hasNext NOTIFY progressChanged)
+    // EVID-PT-001: the cross-position caveat (PT-05) is composed ONCE, here.
+    // It used to be hand-copied into PositionTransitionReportView.qml, so the
+    // screen and the model could drift apart on the single most important
+    // sentence in this programme. Every surface now binds to this.
+    Q_PROPERTY(QString crossPositionCaveat READ crossPositionCaveat CONSTANT)
+    // PT-08 — the per-review disclaimer, likewise centrally owned.
+    Q_PROPERTY(QString reviewDisclaimer READ reviewDisclaimer CONSTANT)
 
 public:
     explicit PositionTransitionController(QObject* parent = nullptr);
@@ -126,6 +133,26 @@ public:
     Q_INVOKABLE QVariantList positionComparison() const;   // all completed records
     Q_INVOKABLE QVariantList repeatComparison() const;     // same position across repeats
     Q_INVOKABLE QStringList sessionObservations() const;
+
+    // ── centrally owned athlete-facing caveats (EVID-PT-001) ───────────────
+    // PT-05 — RESEARCH-SUPPORTED as a limitation. Ihalainen et al. (2016),
+    // Era et al. (1996) and Mononen et al. (2007) between them show that
+    // postural steadiness separates shooters of DIFFERENT levels but does not
+    // reliably explain one shooter's own good and bad shots. Comparing a
+    // position against itself is therefore the sound comparison, and this
+    // sentence must accompany every cross-position ranking.
+    static QString crossPositionCaveat()
+    {
+        return QStringLiteral("Positions have different stability demands — compare each "
+                              "position to itself across repeats, not against another "
+                              "position.");
+    }
+    // PT-08 — what impact and timing data can establish, and what it cannot.
+    static QString reviewDisclaimer()
+    {
+        return QStringLiteral("Measured setup and early-group data. It does not identify the "
+                              "technical cause.");
+    }
     Q_INVOKABLE QVariantMap sessionInsights() const;       // "What You Should Take"
     Q_INVOKABLE QVariantMap sessionRankings() const;       // fastest setup / tightest group / etc.
     Q_INVOKABLE int sessionDurationSec() const;
