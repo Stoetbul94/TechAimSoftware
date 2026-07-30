@@ -1844,6 +1844,12 @@ Item {
                     Text { text: getDisciplineName() + "  ·  " + username_loginPage
                                  + "  ·  " + TRAINING.estimatedTime
                            color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 11 }
+                    // TB-05: the wording comes from the controller, never from
+                    // here — the setup screen, the report and the manual must
+                    // describe the defaults identically.
+                    Text { text: TRAINING.configurationNote
+                           width: 520; wrapMode: Text.WordWrap
+                           color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 11 }
 
                     component Stepper: Row {
                         property string label: ""

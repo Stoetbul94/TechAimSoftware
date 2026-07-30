@@ -44,6 +44,9 @@ class TrainingProgramController : public QObject
     Q_PROPERTY(QString technicalFocus READ technicalFocus NOTIFY configChanged)
     Q_PROPERTY(QString positionName READ positionName NOTIFY progressChanged)
     Q_PROPERTY(QString estimatedTime READ estimatedTime NOTIFY configChanged)
+    // TB-05: how the block structure must be described to the athlete. Composed
+    // here so the setup screen, the report and the manual cannot drift apart.
+    Q_PROPERTY(QString configurationNote READ configurationNote CONSTANT)
     Q_PROPERTY(QString sessionId READ sessionId NOTIFY phaseChanged)
     Q_PROPERTY(QString sessionOperatingMode READ sessionOperatingMode NOTIFY phaseChanged)
     // Visibility projections — QML must bind to THESE, never raw scores.
@@ -134,6 +137,18 @@ public:
     QString technicalFocus() const { return m_cfg.technicalFocus; }
     QString positionName() const;
     QString estimatedTime() const { return m_cfg.estimatedTime; }
+
+    // TB-05 — REASONED PRODUCT RULE, COACH REVIEW REQUIRED.
+    // The block structure is a Tech Aim starting point, not an optimum. The
+    // verified evidence does not support calling any block structure best:
+    // Barreiros et al. (2007) found roughly 60% of applied contextual-
+    // interference studies fail to reproduce the laboratory benefit. So the
+    // athlete is told plainly that this is a default they may change.
+    QString configurationNote() const
+    {
+        return QStringLiteral("Tech Aim default — you or your coach may set a different "
+                              "number of blocks and shots per block.");
+    }
     QString sessionId() const;
     QString sessionOperatingMode() const;
     QString lastError() const { return m_lastError; }

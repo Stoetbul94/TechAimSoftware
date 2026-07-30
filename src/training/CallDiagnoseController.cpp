@@ -795,8 +795,15 @@ QVariantMap CallDiagnoseController::callInsights() const
         if (bandKey(st1.errorMm, ring) == QLatin1String("half") && st1.actualScore < 8.0 && st1.actualScore < awareLowScore) {
             awareLow = st1.shotNumber; awareLowScore = st1.actualScore;
         }
+    // CD-08: a MEASUREMENT, not a judgement of the athlete. The previous
+    // wording ("good awareness") graded the shooter from a single shot, which
+    // no source supports — Guadagnoli & Kohl (2001) supports error estimation
+    // as a practice activity, not as a way to rate anyone. An athlete-level
+    // awareness statement needs the documented aggregate minimum, so it lives
+    // in the session-level insights, never here.
     if (awareLow > 0)
-        addReview(awareLow, QStringLiteral("A low-scoring shot you still called accurately — good awareness."));
+        addReview(awareLow, QStringLiteral("Small call-to-impact difference on this shot, "
+                                           "with a low recorded score."));
     ins[QStringLiteral("reviewShots")] = review;
 
     // AWARENESS vs RESULT groups (neutral; central = score >= 9.0)
