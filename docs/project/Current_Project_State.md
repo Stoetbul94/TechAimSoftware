@@ -87,8 +87,32 @@ audit's proposed changes await review.
 
 **Headline position:** 3 research-supported claims, 28 reasoned product rules,
 **0 coach-approved rules — no coach has reviewed anything**, 2 claims downgraded
-to FUTURE VALIDATION REQUIRED, 4 wording changes required, 4 open defects
-(EVID-WM-001, EVID-PT-001, EVID-GEN-001, EVID-GEN-002).
+to FUTURE VALIDATION REQUIRED.
+
+### Evidence implementation — Phase 1 (2026-07-30)
+
+- **EVID-WM-001 CORRECTED.** Wind Map dispersion classification moved from
+  extreme spread to radial RMS; analytics stamped `windmap-analytics-v2`;
+  16-case unequal-sample matrix. Spec: `docs/training-lab-wind-map-dispersion.md`.
+- **EVID-PT-001 FIXED.** The cross-position caveat is composed once in C++ and
+  bound by the report view; no QML copy remains.
+- **Four wording corrections applied** — CD-08, PT-02, PT-06, TB-05.
+- **Coach review pack prepared** —
+  `docs/research/training-lab-coach-review-pack.md`. **No approval recorded.**
+- **Still open:** EVID-GEN-001 (no coach review) · EVID-GEN-002 (cross-surface
+  UI/PDF equality tests, which need the Wind Map PDF to exist).
+
+### DEFERRED EVIDENCE AUDIT — REQUIRED BEFORE VERSION 1.0
+
+**The Coach Report subsystem (`src/analytics/`, bridge `COACHREPORT`) has not
+been audited against the Training Lab evidence standard.** It presents a
+*Fatigue level*, a *Fatigue index* and a *Most fatigued position*, derived from
+shot data. Being coach-facing and frozen does **not** exempt it from evidence
+governance.
+
+Nothing in it was changed by the governance or implementation phases. It
+requires its own audit — claim inventory, classification, threshold origins,
+prohibited-claim list and wording review — **before version 1.0**.
 
 The reliability harness is `QT = core`. `WindMapController.cpp` compiles into
 it, which is the proof that the controller carries no QML/GUI dependency.
