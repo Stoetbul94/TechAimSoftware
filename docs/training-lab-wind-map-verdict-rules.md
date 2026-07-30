@@ -8,6 +8,27 @@ not a medical or scientific diagnosis, and not a statistical significance
 test. They exist to decide which plain-language verdict a session earns, and
 every one is deterministic and testable.
 
+## 0. Claim classification — read this first
+
+| Threshold | Classification |
+|---|---|
+| `kMinSamplesMpi` = 3 | REASONED PRODUCT RULE — COACH REVIEW REQUIRED |
+| `kMinSamplesDispersion` = 5 | REASONED PRODUCT RULE — COACH REVIEW REQUIRED |
+| `kMinSamplesComparison` = 5 per side | REASONED PRODUCT RULE — COACH REVIEW REQUIRED |
+| `kOffsetMinimumMm` = 3.0 | REASONED PRODUCT RULE — COACH REVIEW REQUIRED |
+| `kOffsetRelativeToMeanRadius` = 1.0 × | REASONED PRODUCT RULE — COACH REVIEW REQUIRED |
+| `kCompactRelativeToReference` = 1.25 × | REASONED PRODUCT RULE — COACH REVIEW REQUIRED |
+| `kWiderRelativeToReference` = 1.50 × | REASONED PRODUCT RULE — COACH REVIEW REQUIRED |
+| `kWideProvisionalMm` = 40.0 | **PROVISIONAL TECH AIM RULE — COACH REVIEW REQUIRED** (§3.6) |
+| `kFragmentedMinConditions` = 3 | REASONED PRODUCT RULE — COACH REVIEW REQUIRED |
+
+**NOT ONE of these is research-validated, and none is an ISSF rule.** The
+verified sources in `docs/research/wind-map-feedback-evidence.md` support the
+*cautions* this product applies; they validate no number in it.
+
+**No COACH-APPROVED PRODUCT RULE exists yet** — no coach review has taken
+place. Until one does, every threshold here is provisional.
+
 Evidence base: `docs/research/wind-map-feedback-evidence.md` — read its §0
 warning first.
 
@@ -109,9 +130,32 @@ that wind had no effect.
 
 ### 3.6 Are groups wide across all conditions?
 
-| Rule | Value | Why |
+**DECISION (Stage 6.1.3): Option A — retained internally, provisional, with
+relative athlete-facing wording.**
+
+| Rule | Value | Status |
 |---|---|---|
-| `kWideAbsoluteMm` | every valid group's `groupDiameterMm` ≥ **40.0 mm** | Chosen as a practical 50 m small-bore threshold at which the limiting factor is very unlikely to be the recorded condition. **This is the least well-founded constant here** — it is absolute rather than scale-aware because there is no within-session reference to scale against when *every* group is wide. Flagged for coach review. |
+| `kWideProvisionalMm` | every valid group's `groupDiameterMm` ≥ **40.0 mm** | **PROVISIONAL TECH AIM RULE — COACH REVIEW REQUIRED** |
+
+**Reasoning for the decision.** Verification found **no source supporting a
+millimetre figure for "wide" at 50 m**, and S1 records that the small-bore
+evidence base is thin (4 studies). Removing the category outright (Option B)
+would also remove a genuinely useful referral — when every group is wide, the
+most helpful thing the software can say is *"no condition explains this, look
+at technique with the right tool"*. So the rule is kept and its **claim** is
+weakened instead of its usefulness:
+
+- the constant is **named** `Provisional` so no reader mistakes it for settled;
+- the headline reads *"Groups remained relatively wide across the recorded
+  conditions"* — the wording the brief prefers;
+- the interpretation says *"No single recorded condition separates these
+  groups from one another"* rather than judging the shooting;
+- **the athlete's group is never called poor, bad or inadequate** — asserted
+  by test;
+- it refers to Group Pattern Coach rather than diagnosing a fault.
+
+If coach review rejects the figure, only the constant changes; the wording
+already makes no claim that depends on it.
 
 ### 3.7 Fragmented data
 

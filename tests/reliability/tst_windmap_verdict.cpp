@@ -228,8 +228,19 @@ void run_windmap_verdict_tests()
         check(hasCategory(v, VerdictCategory::WideAcrossConditions),
               "7. wide-across-conditions is detected when every group exceeds 40 mm");
         const Verdict* w = firstOf(v, VerdictCategory::WideAcrossConditions);
-        check(w && w->interpretation.contains(QLatin1String("No single condition explains")),
+        check(w && w->headline.contains(QLatin1String("relatively wide")),
+              "7. the wording is RELATIVE - the threshold behind it is provisional",
+              w ? w->headline : QString());
+        check(w && w->interpretation.contains(QLatin1String("No single recorded condition separates")),
               "7. it refuses to blame one condition");
+        // It must never call the athlete's shooting poor.
+        const char* judgemental[] = { "poor", "bad", "weak", "inadequate", "unacceptable" };
+        bool kind = true;
+        for (const char* j : judgemental)
+            if (w && (w->headline.contains(QLatin1String(j), Qt::CaseInsensitive)
+                      || w->interpretation.contains(QLatin1String(j), Qt::CaseInsensitive)))
+                kind = false;
+        check(kind, "7. it never describes the group as technically poor");
         check(w && w->nextTrainingStep.contains(QLatin1String("Group Pattern Coach")),
               "7. it refers to Group Pattern Coach rather than diagnosing a fault");
 

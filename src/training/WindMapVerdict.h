@@ -104,6 +104,14 @@ struct Verdict {
 // TECH AIM TRAINING-ANALYSIS RULES — not ISSF rules, not a statistical test,
 // not a medical or scientific diagnosis.
 //
+// CLASSIFICATION (Stage 6.1.3): every constant below is a
+//   REASONED PRODUCT RULE — COACH REVIEW REQUIRED.
+// NONE is research-validated. The verified sources
+// (docs/research/wind-map-feedback-evidence.md) support the CAUTIONS this
+// product applies — they validate no numeric threshold in it. In particular
+// Mononen et al. (2007) found the stability/accuracy relationship held only
+// BETWEEN athletes and not WITHIN one, which is the case Wind Map analyses.
+//
 // A displacement must clear BOTH bars, so it survives neither a very large
 // group (where the absolute bar alone would be trivial) nor a very tight one
 // (where the relative bar alone would be).
@@ -114,10 +122,18 @@ inline constexpr double kOffsetMinimumMm            = 3.00;
 // position. The gap between them deliberately yields no dispersion claim.
 inline constexpr double kCompactRelativeToReference = 1.25;
 inline constexpr double kWiderRelativeToReference   = 1.50;
-// The least well-founded constant here: absolute, because when EVERY group is
-// wide there is no within-session reference to scale against. Flagged for
-// coach review in the rules document.
-inline constexpr double kWideAbsoluteMm             = 40.00;
+// PROVISIONAL TECH AIM RULE — COACH REVIEW REQUIRED.
+//
+// The only ABSOLUTE constant in the set, and deliberately the most cautious in
+// how it is worded. It is absolute because when every group is wide there is
+// no within-session reference to scale against — but no verified source
+// supports a millimetre figure for "wide" at 50 m, so:
+//   · it is named `Provisional` so no reader mistakes it for a settled rule;
+//   · the athlete-facing wording says groups were "relatively wide across the
+//     recorded conditions" and NEVER that the shooting was poor;
+//   · it triggers a referral to Group Pattern Coach, not a judgement.
+// Decision and reasoning: docs/training-lab-wind-map-verdict-rules.md.
+inline constexpr double kWideProvisionalMm          = 40.00;
 inline constexpr int    kFragmentedMinConditions    = 3;
 
 class WindMapVerdictEngine

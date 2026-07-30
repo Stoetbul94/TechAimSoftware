@@ -274,19 +274,22 @@ QVector<Verdict> WindMapVerdictEngine::evaluate(const SessionAnalysis& a)
         if (describable.size() >= 2) {
             bool allWide = true;
             for (const GroupStats* g : describable)
-                if (g->groupDiameterMm < kWideAbsoluteMm) allWide = false;
+                if (g->groupDiameterMm < kWideProvisionalMm) allWide = false;
             if (allWide) {
                 Verdict v;
                 base(v, VerdictCategory::WideAcrossConditions, VerdictScope::Position, 5);
                 v.verdictId = QStringLiteral("pos%1.wideall").arg(p.position);
                 v.evidence = EvidenceLevel::Comparative;
                 v.sampleCountCompared = p.countedShots;
-                v.headline = QStringLiteral("%1Groups remained wide across all recorded "
-                                            "conditions.").arg(where);
+                // Deliberately RELATIVE, descriptive wording. The threshold
+                // behind it is provisional and unreviewed, so the verdict
+                // reports the measurement and never calls the shooting poor.
+                v.headline = QStringLiteral("%1Groups remained relatively wide across the "
+                                            "recorded conditions.").arg(where);
                 v.observedPattern = QStringLiteral("Every described group measured at least "
-                                                   "%1 mm across.").arg(mm(kWideAbsoluteMm));
-                v.interpretation = QStringLiteral("No single condition explains the wider "
-                                                  "grouping in this session.");
+                                                   "%1 mm across.").arg(mm(kWideProvisionalMm));
+                v.interpretation = QStringLiteral("No single recorded condition separates these "
+                                                  "groups from one another.");
                 v.nextTrainingStep = QStringLiteral("Review position stability, aiming and "
                                                     "triggering with Group Pattern Coach or an "
                                                     "aim-trace tool.");
