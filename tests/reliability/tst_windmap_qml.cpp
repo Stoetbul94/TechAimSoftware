@@ -70,10 +70,11 @@ void run_windmap_qml_tests()
     if (!(okPanel && okHud && okBar && okLogin && okShoot && okMain))
         return;
 
-    bool okAnalysis = false;
+    bool okAnalysis = false, okPlot = false;
     const QString analysis = stripComments(qmlSource("WindMapAnalysisView.qml", &okAnalysis));
-    check(okAnalysis, "0. the analysis view was read");
-    const QString windMapQml = panel + hud + bar + analysis;
+    const QString plot     = stripComments(qmlSource("WindMapTargetPlot.qml", &okPlot));
+    check(okAnalysis && okPlot, "0. the analysis view and target plot were read");
+    const QString windMapQml = panel + hud + bar + analysis + plot;
 
     // ── 1. no domain events are constructed in QML ──────────────────────
     {
@@ -333,9 +334,13 @@ void run_windmap_qml_tests()
         // Arithmetic that would mean a metric was recomputed in QML. Formatting
         // (toFixed, the plot's own pixel mapping) is fine; deriving a statistic
         // is not.
+        // COMPUTATION patterns only. The plain-language definitions the
+        // redesign added legitimately contain the word "average" ("Average
+        // distance of each shot from the group centre") — banning the word
+        // would fail on a definition while missing an actual calculation.
         const char* recompute[] = {
-            "Math.sqrt", "Math.pow", "/ count", "/ n)", "sum +=", "total +=",
-            "mean =", "average", "stdDev", "variance",
+            "Math.sqrt", "Math.pow", "sum +=", "total +=", "mean =", "stdDev =",
+            "variance =", "/ count", "/ n)",
         };
         bool clean = true; QString found;
         for (const char* r : recompute)
@@ -348,38 +353,30 @@ void run_windmap_qml_tests()
         check(analysis.contains(QStringLiteral("hasDispersion")) && analysis.contains(QStringLiteral("hasMpi")),
               "11. the view honours the engine's sample-threshold flags");
 
-        // All ten sections are present.
-        const char* sections[] = {
-            "1 · SESSION OVERVIEW", "2 · CONDITION-COLOURED TARGET PLOT",
-            "3 · CONDITION COMPARISON", "4 · OBSERVED GROUP-CENTRE SHIFT",
-            "5 · DIRECTION SECTORS", "6 · SPEED BANDS", "7 · TIMELINE",
-            "9 · WHAT THE DATA SUGGESTS", "LIMITATIONS",
-        };
+        // Stage 6.1.1: THREE primary pages, not five.
+        const char* pages[] = { "SUMMARY", "COMPARE CONDITIONS", "SHOT DETAILS" };
         bool all = true; QString missing;
-        for (const char* sec : sections)
-            if (!analysis.contains(QString::fromUtf8(sec))) { all = false; missing += QString::fromUtf8(sec) + QStringLiteral(" | "); }
-        check(all, "11. every analysis section is present", missing);
-
-        // Filters and the 3P tabs.
-        check(analysis.contains(QStringLiteral("conditionFilter")) && analysis.contains(QStringLiteral("showSighters"))
-              && analysis.contains(QStringLiteral("positionIndex")),
-              "11. condition, sighter and position filters exist");
-        check(analysis.contains(QStringLiteral("Overview")),
-              "11. the 3P tabs include an Overview");
-        check(analysis.contains(QStringLiteral("No data")),
-              "11. an empty direction sector reads 'No data', not a zeroed statistic");
-
-        // The three actions after completion.
-        check(analysis.contains(QStringLiteral("Export PDF"))
-              && analysis.contains(QStringLiteral("New Wind Map session"))
+        for (const char* sec : pages)
+            if (!analysis.contains(QLatin1String(sec))) { all = false; missing += QLatin1String(sec); }
+        check(all, "11. the three primary pages are present", missing);
+        // The five-tab set the redesign replaced must be gone.
+        check(!analysis.contains(QStringLiteral("Target Plot"))
+              && !analysis.contains(QStringLiteral("2 · CONDITION-COLOURED TARGET PLOT")),
+              "11. UI-WIND-004: the old five-pill navigation is gone");
+        check(analysis.contains(QStringLiteral("Session Overview"))
+              && analysis.contains(QStringLiteral("filters the page below")),
+              "11. the position control is labelled as a FILTER, not a second page row");
+        check(analysis.contains(QStringLiteral("New Wind Map session"))
               && analysis.contains(QStringLiteral("Home")),
-              "11. Export PDF, New session and Home are all offered");
+              "11. New session and Home are offered");
         check(shoot.contains(QStringLiteral("WINDMAP.phase === 6")),
               "11. the analysis replaces the capture summary once complete");
 
-        // Wording: descriptive, never an instruction.
-        check(analysis.contains(QStringLiteral("OBSERVED GROUP-CENTRE SHIFT")),
-              "11. the shift section is worded as an observation");
+        // Wording: descriptive, never an instruction. The Stage 6.1.1 redesign
+        // states this in plain language rather than as a section heading.
+        check(analysis.contains(QStringLiteral("It is a record, not an aiming instruction"))
+              || analysis.contains(QStringLiteral("observations, not instructions")),
+              "11. the plot is described as a record, not an instruction");
         const char* banned[] = { "correction", "hold off", "aim off", "sight adjustment",
                                  "sight click", "aim at", "hold left", "hold right" };
         bool wordsOk = true; QString bad;
@@ -435,21 +432,137 @@ void run_windmap_qml_tests()
               || analysis.contains(QStringLiteral("import QtQuick.Controls")),
               "12. UI-WIND-002: the analysis view imports QtQuick.Controls for ScrollBar");
 
-        // Section navigation must exist and be reachable without a hidden tab.
-        const char* navSections[] = { "Overview", "Target Plot", "Conditions",
-                                      "Timeline", "Findings" };
+        // Stage 6.1.1 replaced five section pills with THREE pages and one
+        // position filter (UI-WIND-004).
+        const char* navPages[] = { "SUMMARY", "COMPARE CONDITIONS", "SHOT DETAILS" };
         bool nav = true;
         QString missingNav;
-        for (const char* n : navSections)
+        for (const char* n : navPages)
             if (!analysis.contains(QLatin1String(n))) { nav = false; missingNav += QLatin1String(n); }
-        check(nav, "12. the five navigation sections are present", missingNav);
+        check(nav, "12. the three navigation pages are present", missingNav);
         check(analysis.contains(QStringLiteral("Session Overview")),
-              "12. 3P offers a Session Overview tab alongside the positions");
+              "12. 3P offers Session Overview inside the position filter");
         check(analysis.contains(QStringLiteral("sampleNote")),
               "12. an insufficient sample explains itself in words");
-        check(analysis.contains(QStringLiteral("Not enough shots yet for a group centre")),
-              "12. an unplottable position shows a clear placeholder, never a blank");
-        check(analysis.contains(QStringLiteral("WHAT THE DATA SUGGESTS — PREVIEW")),
-              "12. findings are previewed on the first screen");
+        check(analysis.contains(QStringLiteral("Not enough shots to report a centre")),
+              "12. a group below threshold says so instead of showing a number");
+    }
+
+    // ── 13. Stage 6.1.1: the UX redesign ────────────────────────────────
+    {
+        // UI-WIND-008: the PDF control must not be an enabled primary action.
+        check(analysis.contains(QStringLiteral("PDF — COMING NEXT")),
+              "13. UI-WIND-008: the PDF control says it is not implemented yet");
+        check(!analysis.contains(QStringLiteral("exportPdfRequested")),
+              "13. UI-WIND-008: there is no export signal to fire");
+        // Scoped to the Wind Map block only: Position Transition legitimately
+        // handles its OWN onExportPdfRequested, and that PDF is implemented.
+        {
+            const int wmAt = shoot.indexOf(QStringLiteral("WindMapAnalysisView {"));
+            check(wmAt > 0, "13. the Wind Map analysis view is instantiated");
+            if (wmAt > 0) {
+                const int close = shoot.indexOf(QStringLiteral("\n    }"), wmAt);
+                const QString block = shoot.mid(wmAt, (close > wmAt ? close - wmAt : 500));
+                check(!block.contains(QStringLiteral("onExportPdfRequested")),
+                      "13. UI-WIND-008: the Wind Map view handles no export signal");
+            }
+        }
+        // It must carry no MouseArea — a disabled control that still responds
+        // is the same lie in a different colour.
+        const int pdfAt = analysis.indexOf(QStringLiteral("PDF — COMING NEXT"));
+        check(pdfAt > 0, "13. the PDF control is addressable");
+        if (pdfAt > 0) {
+            const QString after = analysis.mid(pdfAt, 320);
+            check(!after.contains(QStringLiteral("MouseArea")),
+                  "13. the disabled PDF control is not clickable");
+        }
+
+        // UI-WIND-003: a loading state, and lazy pages.
+        check(analysis.contains(QStringLiteral("Preparing your Wind Map analysis")),
+              "13. UI-WIND-003: an explained loading state exists");
+        check(analysis.contains(QStringLiteral("Loader")),
+              "13. UI-WIND-003: pages are behind a Loader, not all built at once");
+        check(analysis.contains(QStringLiteral("ListView")),
+              "13. UI-WIND-003: shot details use a virtualised ListView");
+        check(analysis.contains(QStringLiteral("model: {"))
+              && analysis.indexOf(QStringLiteral("ListView")) < analysis.indexOf(QStringLiteral("delegate: Column")),
+              "13. the shot list is a ListView with a delegate, not a flat Repeater");
+
+        // UI-WIND-005: the target graphic.
+        check(plot.contains(QStringLiteral("HIGH")) && plot.contains(QStringLiteral("LOW"))
+              && plot.contains(QStringLiteral("LEFT")) && plot.contains(QStringLiteral("RIGHT")),
+              "13. UI-WIND-005: the plot labels its orientation");
+        check(plot.contains(QStringLiteral("mm")),
+              "13. UI-WIND-005: the plot carries a millimetre scale marker");
+        check(plot.contains(QStringLiteral("recomputeSpan")),
+              "13. UI-WIND-005: the plot span is computed on data change, not per binding");
+        check(analysis.contains(QStringLiteral("LEGEND"))
+              && analysis.contains(QStringLiteral("Hollow ring — sighter"))
+              && analysis.contains(QStringLiteral("Cross — that condition's group centre"))
+              && analysis.contains(QStringLiteral("White circle — reference centre"))
+              && analysis.contains(QStringLiteral("Faint circle — average distance")),
+              "13. UI-WIND-005: every marker style is defined in the legend");
+        check(!plot.contains(QStringLiteral("arrow")) && !plot.contains(QStringLiteral("Arrow")),
+              "13. UI-WIND-005: there is no aiming arrow");
+
+        // UI-WIND-007: plain language before technical values.
+        check(analysis.contains(QStringLiteral("WHAT HAPPENED"))
+              && analysis.contains(QStringLiteral("WHAT THIS MEANS"))
+              && analysis.contains(QStringLiteral("NEXT TRAINING STEP"))
+              && analysis.contains(QStringLiteral("EVIDENCE")),
+              "13. UI-WIND-007: the summary answers what/meaning/next/evidence");
+        check(analysis.contains(QStringLiteral("SHOW TECHNICAL MEASUREMENTS")),
+              "13. UI-WIND-007: technical values are behind an expander");
+        check(analysis.contains(QStringLiteral("Average centre of the recorded shot group"))
+              && analysis.contains(QStringLiteral("Average distance of each shot from the group centre"))
+              && analysis.contains(QStringLiteral("Distance between the two widest shots"))
+              && analysis.contains(QStringLiteral("Total left-to-right width"))
+              && analysis.contains(QStringLiteral("Total high-to-low height")),
+              "13. UI-WIND-007: every technical label has a plain definition");
+        check(analysis.contains(QStringLiteral("function acrossWords"))
+              && analysis.contains(QStringLiteral("function upWords")),
+              "13. UI-WIND-007: coordinates are translated to right/left and high/low");
+        // The words themselves, not a signed coordinate. Built from parts so
+        // the quoting stays readable.
+        const QString rightWord = QStringLiteral("qsTr(") + QLatin1Char('"')
+                                + QStringLiteral("right") + QLatin1Char('"') + QStringLiteral(")");
+        const QString leftWord  = QStringLiteral("qsTr(") + QLatin1Char('"')
+                                + QStringLiteral("left")  + QLatin1Char('"') + QStringLiteral(")");
+        check(analysis.contains(rightWord) && analysis.contains(leftWord),
+              "13. UI-WIND-007: the words right and left are used, not signed numbers");
+
+        // UI-WIND-006: scoped findings.
+        check(analysis.contains(QStringLiteral("scopeIsSession")),
+              "13. UI-WIND-006: the view reads each finding's scope");
+        check(analysis.contains(QStringLiteral("function findingsForScope")),
+              "13. UI-WIND-006: findings are filtered by the selected position");
+        check(analysis.contains(QStringLiteral("scopeLabel")),
+              "13. UI-WIND-006: the scope is displayed");
+
+        // Overview tiles reduced to four.
+        check(analysis.contains(QStringLiteral("SESSION DETAILS")),
+              "13. the secondary counts moved into an expandable details panel");
+        check(analysis.contains(QStringLiteral("COUNTED SHOTS"))
+              && analysis.contains(QStringLiteral("CONDITIONS USED"))
+              && analysis.contains(QStringLiteral("DATA QUALITY")),
+              "13. no more than four prominent evidence values");
+
+        // Still no metric computed in QML, and still no prescriptive wording.
+        const char* recompute[] = { "Math.sqrt", "Math.pow", "stdDev =", "variance" };
+        bool clean = true; QString found;
+        for (const char* r : recompute)
+            if (analysis.contains(QLatin1String(r)) || plot.contains(QLatin1String(r))) {
+                clean = false; found += QLatin1String(r);
+            }
+        check(clean, "13. the redesign still recalculates no metric", found);
+        const char* banned[] = { "correction", "hold off", "aim off", "sight adjustment",
+                                 "sight click", "aim at", "hold left", "hold right" };
+        bool wordsOk = true; QString bad;
+        for (const char* b : banned)
+            if (analysis.contains(QLatin1String(b), Qt::CaseInsensitive)
+                || plot.contains(QLatin1String(b), Qt::CaseInsensitive)) {
+                wordsOk = false; bad += QLatin1String(b);
+            }
+        check(wordsOk, "13. no prescriptive wording survived the redesign", bad);
     }
 }
