@@ -132,6 +132,30 @@ bool WindMapController::configureSession(const QString& disciplineId, int shotPl
     return true;
 }
 
+bool WindMapController::setFiringDirection(int degrees)
+{
+    // Optional metadata. Out-of-range input is REFUSED rather than clamped —
+    // a wrong firing direction would silently mislabel every relative
+    // description in the analysis.
+    if (degrees < 0) { clearFiringDirection(); return true; }
+    if (degrees > 359)
+        return fail(QStringLiteral("Enter the firing direction as 0 to 359 degrees, "
+                                   "or leave it unrecorded."), "bad-firing-direction");
+    m_firingDirectionDeg = degrees;
+    m_analysisCache.clear();
+    m_analysisKey.clear();
+    emit configChanged();
+    return true;
+}
+
+void WindMapController::clearFiringDirection()
+{
+    m_firingDirectionDeg = -1;
+    m_analysisCache.clear();
+    m_analysisKey.clear();
+    emit configChanged();
+}
+
 QString WindMapController::validateConfig() const
 {
     if (!isWindMapDiscipline(m_disciplineId))
@@ -717,6 +741,9 @@ QVariantMap groupToVariant(const ta::training::GroupStats& g)
     }
 
     m[QStringLiteral("hasDispersion")] = g.hasDispersion;
+    // Filled by the caller, which knows the session's firing direction.
+    m[QStringLiteral("hasRelativeWind")] = false;
+    m[QStringLiteral("relativeWind")] = QString();
     if (g.hasDispersion) {
         m[QStringLiteral("meanRadiusMm")] = g.meanRadiusMm;
         m[QStringLiteral("groupDiameterMm")] = g.groupDiameterMm;
@@ -760,11 +787,12 @@ QString WindMapController::analysisCacheKey() const
 {
     if (!m_store || !m_store->active()) return QString();
     const ta::rel::SessionState& s = st();
-    return QStringLiteral("%1|%2|%3|%4")
+    return QStringLiteral("%1|%2|%3|%4|%5")
         .arg(s.sessionId)
         .arg(s.wmShots.size())
         .arg(static_cast<int>(m_phase))
-        .arg(s.wmConditionChanges);
+        .arg(s.wmConditionChanges)
+        .arg(m_firingDirectionDeg);
 }
 
 QVariantMap WindMapController::analysisModel() const
@@ -802,6 +830,12 @@ QVariantMap WindMapController::analysisModel() const
     QStringList posNames;
     for (const ta::training::PositionAnalysis& p : a.positions) posNames << p.positionName;
     session[QStringLiteral("positionsRepresented")] = posNames;
+    // Stage 6.1.3: optional, and absent means absent.
+    session[QStringLiteral("hasFiringDirection")] = (m_firingDirectionDeg >= 0);
+    session[QStringLiteral("firingDirection")] = m_firingDirectionDeg;
+    session[QStringLiteral("relativeWindNote")] = (m_firingDirectionDeg >= 0)
+        ? QString()
+        : ta::training::relativeWindLabel(ta::training::RelativeWind::Unavailable);
     out[QStringLiteral("session")] = session;
 
     QVariantMap summary;
@@ -851,7 +885,17 @@ QVariantMap WindMapController::analysisModel() const
         QVariantList dirs, bands, exact, shifts;
         for (const ta::training::GroupStats& g : p.byDirection)      dirs.append(groupToVariant(g));
         for (const ta::training::GroupStats& g : p.bySpeedBand)      bands.append(groupToVariant(g));
-        for (const ta::training::GroupStats& g : p.byExactCondition) exact.append(groupToVariant(g));
+        for (const ta::training::GroupStats& g : p.byExactCondition) {
+            QVariantMap gm = groupToVariant(g);
+            if (g.key.hasReading && !g.key.calm) {
+                const ta::training::RelativeWind rel =
+                    ta::training::relativeWindFor(g.key.directionDegrees, m_firingDirectionDeg);
+                gm[QStringLiteral("hasRelativeWind")] =
+                    (rel != ta::training::RelativeWind::Unavailable);
+                gm[QStringLiteral("relativeWind")] = ta::training::relativeWindLabel(rel);
+            }
+            exact.append(gm);
+        }
         for (const ta::training::ShiftVector& v : p.shifts)          shifts.append(shiftToVariant(v));
         pm[QStringLiteral("byDirection")] = dirs;
         pm[QStringLiteral("bySpeedBand")] = bands;
@@ -960,6 +1004,14 @@ QVariantMap WindMapController::analysisModel() const
         rw[QStringLiteral("speedMetresPerSecond")] = e.wind.isMeasured()
             ? e.wind.speedMetresPerSecond() : 0.0;
         rw[QStringLiteral("note")] = e.wind.note;
+        // DERIVED, never stored: the recorded compass value above is
+        // untouched. Absent firing direction yields the unavailable label.
+        const ta::training::RelativeWind rel = e.wind.isMeasured()
+            ? ta::training::relativeWindFor(e.wind.directionDegrees, m_firingDirectionDeg)
+            : ta::training::RelativeWind::Unavailable;
+        rw[QStringLiteral("hasRelativeWind")] =
+            (rel != ta::training::RelativeWind::Unavailable);
+        rw[QStringLiteral("relativeWind")] = ta::training::relativeWindLabel(rel);
         shotRows.append(rw);
     }
     out[QStringLiteral("timeline")] = timeline;

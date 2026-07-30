@@ -59,6 +59,8 @@ class WindMapController : public QObject
     Q_PROPERTY(bool threePositions READ threePositions NOTIFY configChanged)
     Q_PROPERTY(int shotPlan READ shotPlan NOTIFY configChanged)
     Q_PROPERTY(bool sightersEnabled READ sightersEnabled NOTIFY configChanged)
+    Q_PROPERTY(int firingDirection READ firingDirection NOTIFY configChanged)
+    Q_PROPERTY(bool hasFiringDirection READ hasFiringDirection NOTIFY configChanged)
     Q_PROPERTY(QString positionSequence READ positionSequence NOTIFY configChanged)
 
     // live progress
@@ -98,6 +100,17 @@ public:
     // ── setup ───────────────────────────────────────────────────────────
     Q_INVOKABLE bool configureSession(const QString& disciplineId, int shotPlan,
                                       bool enableSighters);
+    // Stage 6.1.3 — RANGE FIRING DIRECTION, entirely OPTIONAL.
+    //
+    // The compass direction the athlete fires TOWARDS. Supplying it lets the
+    // analysis DERIVE an athlete-relative wind description (headwind,
+    // left-to-right crosswind, ...). It never replaces or mutates the recorded
+    // wind direction, and no session needs it: -1 means not recorded, and the
+    // analysis then says so rather than inferring one.
+    Q_INVOKABLE bool setFiringDirection(int degrees);      // -1 clears it
+    Q_INVOKABLE void clearFiringDirection();
+    int firingDirection() const { return m_firingDirectionDeg; }
+    bool hasFiringDirection() const { return m_firingDirectionDeg >= 0; }
     Q_INVOKABLE QString validateConfig() const;
     Q_INVOKABLE bool startWindMap(const QString& athlete);
 
@@ -228,6 +241,8 @@ private:
     int     m_shotPlan = 40;
     bool    m_sightersEnabled = true;
     qint64  m_lastExternalId = -1;
+    // -1 = NOT RECORDED. Optional in this and every future release.
+    int     m_firingDirectionDeg = -1;
     int     m_operatingMode = -1;
     QString m_lastError;
     QString m_lastStartError;
