@@ -177,8 +177,24 @@ enum class PatternCategory : qint8 {
 
 QString patternCategoryLabel(PatternCategory c);
 
+// UI-WIND-006: WHAT a finding is about. Without this the view cannot tell a
+// cross-position session comparison from a Kneeling-only result, and showed
+// the same session-level text unchanged under every position — an athlete
+// could read it as a statement about that position alone.
+enum class FindingScope : qint8 {
+    Session = 0,        // the whole session, e.g. a position-to-position comparison
+    Position,           // one position only (positionName says which)
+    Condition,          // one recorded condition only
+};
+
+QString findingScopeLabel(FindingScope s);
+
 struct Finding {
     PatternCategory category = PatternCategory::InsufficientSample;
+    FindingScope    scope = FindingScope::Session;
+    int             position = 0;        // 0 = n/a; 1 K, 2 P, 3 S when scope==Position
+    QString         positionName;        // empty unless scope==Position
+    QString         conditionLabel;      // empty unless scope==Condition
     QString text;               // the observation, neutrally worded
     QString suggestion;         // a next-session action, never a correction
     int     n = 0;

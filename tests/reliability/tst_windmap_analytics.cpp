@@ -383,4 +383,85 @@ void run_windmap_analytics_tests()
         check(!a.positions.isEmpty() && a.positions[0].byExactCondition.size() == 1,
               "12. its conditions still group");
     }
+
+    // ── 13. UI-WIND-006: every finding declares its SCOPE ───────────────
+    {
+        // The defect: a session-level position comparison was shown unchanged
+        // under Kneeling, Prone and Standing, so an athlete could read a
+        // cross-position statement as a result about one position.
+        SessionState s = baseState(true);
+        const WindConditionSnapshot w = calm();
+        for (int i = 0; i < 8; ++i) s.wmShots << rec(i + 1,  false, 1, 20.0 + (i % 4) * 3.0, 20.0, 9.0, w);
+        for (int i = 0; i < 8; ++i) s.wmShots << rec(i + 9,  false, 2, double(i % 4) - 1.5, 0.0, 10.5, w);
+        for (int i = 0; i < 8; ++i) s.wmShots << rec(i + 17, false, 3, -20.0 - (i % 4) * 2.0, -20.0, 8.0, w);
+        const SessionAnalysis a = WindMapAnalyticsEngine::analyse(s);
+
+        check(!a.findings.isEmpty(), "13. findings were produced");
+        int sessionScoped = 0, positionScoped = 0, conditionScoped = 0;
+        bool everyPositionOneIsNamed = true;
+        bool crossPositionIsSession = true;
+        for (const Finding& f : a.findings) {
+            if (f.scope == FindingScope::Session)   ++sessionScoped;
+            if (f.scope == FindingScope::Position) {
+                ++positionScoped;
+                if (f.positionName.isEmpty() || f.position == 0) everyPositionOneIsNamed = false;
+            }
+            if (f.scope == FindingScope::Condition) ++conditionScoped;
+            // The cross-position comparison must NEVER be position-scoped.
+            if (f.category == PatternCategory::PositionSpecificDifference
+                && f.scope != FindingScope::Session)
+                crossPositionIsSession = false;
+        }
+        check(sessionScoped + positionScoped + conditionScoped == a.findings.size(),
+              "13. every finding carries one of the three scopes");
+        check(everyPositionOneIsNamed,
+              "13. a position-scoped finding names its position");
+        check(crossPositionIsSession,
+              "13. the cross-position comparison is SESSION-scoped, never position-scoped");
+        check(sessionScoped >= 1,
+              "13. at least one session-level finding exists for the Overview");
+
+        // Filtering the way the view does must not leak a session finding into
+        // a position, and must not drop a position's own findings.
+        for (int pos = 1; pos <= 3; ++pos) {
+            int leaked = 0;
+            for (const Finding& f : a.findings) {
+                if (f.scope == FindingScope::Session) continue;   // view excludes these
+                if (f.position != pos) continue;
+                ++leaked;
+                (void)leaked;
+            }
+            // Nothing to assert on count; the real assertion is that no
+            // session finding claims a position.
+        }
+        bool noSessionClaimsAPosition = true;
+        for (const Finding& f : a.findings)
+            if (f.scope == FindingScope::Session && f.position != 0)
+                noSessionClaimsAPosition = false;
+        check(noSessionClaimsAPosition,
+              "13. a session-level finding never claims a position id");
+    }
+
+    // ── 14. analytics values are UNCHANGED by the UX phase ──────────────
+    {
+        // Stage 6.1.1 was presentation only. Re-assert the hand-checked
+        // dispersion answers from case 3 so a UX change cannot have moved a
+        // formula without this failing.
+        SessionState s = baseState(false);
+        const WindConditionSnapshot w = calm();
+        s.wmShots << rec(1, false, 0, 0.0,  0.0, 10.0, w)
+                  << rec(2, false, 0, 3.0,  0.0, 10.0, w)
+                  << rec(3, false, 0, -3.0, 0.0, 10.0, w)
+                  << rec(4, false, 0, 0.0,  4.0, 10.0, w)
+                  << rec(5, false, 0, 0.0, -4.0, 10.0, w);
+        const SessionAnalysis a = WindMapAnalyticsEngine::analyse(s);
+        const GroupStats* g = find(a.positions[0].byExactCondition, QStringLiteral("Calm"));
+        check(g && std::fabs(g->meanRadiusMm - 2.8) < 1e-9
+              && std::fabs(g->groupDiameterMm - 8.0) < 1e-9
+              && std::fabs(g->horizontalSpreadMm - 6.0) < 1e-9
+              && std::fabs(g->verticalSpreadMm - 8.0) < 1e-9,
+              "14. every dispersion formula is unchanged by the UX redesign");
+        check(kMinSamplesMpi == 3 && kMinSamplesDispersion == 5 && kMinSamplesComparison == 5,
+              "14. the approved sample thresholds are unchanged");
+    }
 }

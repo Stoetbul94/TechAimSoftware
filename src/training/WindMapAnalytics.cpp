@@ -48,6 +48,16 @@ QString patternCategoryLabel(PatternCategory c)
     return QString();
 }
 
+QString findingScopeLabel(FindingScope s)
+{
+    switch (s) {
+    case FindingScope::Session:   return QStringLiteral("Session");
+    case FindingScope::Position:  return QStringLiteral("Position");
+    case FindingScope::Condition: return QStringLiteral("Condition");
+    }
+    return QString();
+}
+
 // ── ConditionKey ───────────────────────────────────────────────────────────
 
 bool ConditionKey::operator==(const ConditionKey& o) const
@@ -325,6 +335,19 @@ QVector<Finding> WindMapAnalyticsEngine::deriveFindings(const SessionAnalysis& a
     for (const PositionAnalysis& p : a.positions) {
         const QString where = a.threePositions
             ? QStringLiteral("%1: ").arg(p.positionName) : QString();
+        // UI-WIND-006: every finding raised inside this loop is about THIS
+        // position. Tagging at the source is what lets the view scope them.
+        auto tagPosition = [&](Finding& f) {
+            f.scope = FindingScope::Position;
+            f.position = p.position;
+            f.positionName = p.positionName;
+        };
+        auto tagCondition = [&](Finding& f, const QString& label) {
+            f.scope = FindingScope::Condition;
+            f.position = p.position;
+            f.positionName = p.positionName;
+            f.conditionLabel = label;
+        };
 
         // Nothing to say at all.
         if (p.countedShots < kMinSamplesMpi) {
@@ -337,6 +360,7 @@ QVector<Finding> WindMapAnalyticsEngine::deriveFindings(const SessionAnalysis& a
                          .arg(where).arg(p.countedShots);
             f.suggestion = QStringLiteral("Record at least %1 more counted shots.")
                                .arg(f.shotsNeeded);
+            tagPosition(f);
             out.append(f);
             continue;
         }
@@ -367,6 +391,7 @@ QVector<Finding> WindMapAnalyticsEngine::deriveFindings(const SessionAnalysis& a
                                             "distinguish a condition effect.").arg(where);
                     f.suggestion = QStringLiteral("Record more shots in each condition, or wait "
                                                   "for a more repeatable flag state.");
+                    tagPosition(f);
                     out.append(f);
                 }
             }
@@ -384,6 +409,7 @@ QVector<Finding> WindMapAnalyticsEngine::deriveFindings(const SessionAnalysis& a
                                  .arg(where).arg(s.n).arg(s.label);
                     f.suggestion = QStringLiteral("Repeat this condition and record at least "
                                                   "%1 more shots.").arg(s.shotsNeeded);
+                    tagCondition(f, s.label);
                     out.append(f);
                 }
                 continue;
@@ -404,6 +430,7 @@ QVector<Finding> WindMapAnalyticsEngine::deriveFindings(const SessionAnalysis& a
                                   p.reference.label.toLower(), s.directionWords);
                 f.suggestion = QStringLiteral("Repeat this condition in a later session to "
                                               "confirm whether the shift is repeatable.");
+                tagCondition(f, s.label);
                 out.append(f);
             }
         }
@@ -428,6 +455,7 @@ QVector<Finding> WindMapAnalyticsEngine::deriveFindings(const SessionAnalysis& a
                                  .arg(refGroup->n);
                     f.suggestion = QStringLiteral("Practise condition selection and shot timing "
                                                   "in this condition.");
+                    tagCondition(f, c.label);
                     out.append(f);
                 }
             }
@@ -447,6 +475,7 @@ QVector<Finding> WindMapAnalyticsEngine::deriveFindings(const SessionAnalysis& a
                 f.suggestion = QStringLiteral("Review position stability and use Group Pattern "
                                               "Coach; the recorded conditions do not separate "
                                               "these groups.");
+                tagPosition(f);
                 out.append(f);
             }
         }
@@ -466,6 +495,9 @@ QVector<Finding> WindMapAnalyticsEngine::deriveFindings(const SessionAnalysis& a
         if (widest && widestVal > 0.0) {
             Finding f;
             f.category = PatternCategory::PositionSpecificDifference;
+            // Deliberately SESSION scope: this compares positions AGAINST EACH
+            // OTHER, so it must never be shown as a single position's result.
+            f.scope = FindingScope::Session;
             f.n = widest->countedShots;
             f.text = QStringLiteral("The widest recorded group was in %1 (%2 mm). "
                                     "Positions have different stability demands and are "
@@ -480,6 +512,7 @@ QVector<Finding> WindMapAnalyticsEngine::deriveFindings(const SessionAnalysis& a
     if (out.isEmpty()) {
         Finding f;
         f.category = PatternCategory::SimilarAcrossConditions;
+        f.scope = FindingScope::Session;
         f.n = a.countedShots;
         f.text = QStringLiteral("No condition-specific shift was established in this session.");
         f.suggestion = QStringLiteral("Record every condition you observe, and repeat a "
