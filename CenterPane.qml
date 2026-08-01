@@ -913,9 +913,17 @@ Item {
                         //                            opacity = 0.8
                         //                        }
 
-                        if (!disableMotorMovement && !autoMotorMovementMode)
-                            MODREADER.initiateMotorMovement()
-                        else if (autoMotorMovementMode) {// to verify if automode is on or not?
+                        // RC2: the motor command that used to live HERE has been
+                        // removed. This is a ListView delegate - the view creates
+                        // and destroys it on scrolling and on model reset, so a
+                        // hardware command attached to it fired late, fired twice
+                        // or never fired at all. That is why automatic paper feed
+                        // failed in the field while the manual button worked.
+                        //
+                        // Automatic feeding is now decided once, in C++, at the
+                        // physical shot-acceptance path (TachusWidget), by
+                        // PaperFeedCoordinator. QML must not command the motor.
+                        if (autoMotorMovementMode) {
                             if (globalModelOfData.count-1 === index && appMode && globalModelOfData.count == 1) // for last shot item only
                                 MODREADER.checkAutoFeedMode()
                         }

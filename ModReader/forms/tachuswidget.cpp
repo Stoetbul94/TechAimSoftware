@@ -9,6 +9,12 @@
 #include <QHostInfo>
 #include <QNetworkInterface>
 #include <QSerialPortInfo>
+#include <QSettings>
+
+// RC2: adapter identity + candidate filtering live in src/target so they are
+// testable without hardware. This file only ACTS on the decision.
+#include "target/TargetDeviceFingerprint.h"
+#include "target/SerialDeviceProvider.h"
 #include <QFile>
 #include <QFileInfo>
 #include <QTextStream>
@@ -141,33 +147,134 @@ bool TachusWidget::connectedModbus(QString portName)
         return true;
     }
 
-    // Auto-detect fallback: if the configured port would not even open, try
-    // every serial port on the machine and keep the first that opens. (A
-    // deeper probe via isHardwareConnected() is NOT safe here: the register
-    // read blocks indefinitely on an open port with no responding target.)
+    // RC2 auto-detect. The RC1 version opened every port in enumeration order
+    // and kept the first that OPENED - and a Bluetooth serial port opens with
+    // nothing behind it, so it could attach to COM5 and then block waiting for
+    // a Modbus reply. Selection now happens BEFORE any port is opened, on
+    // adapter identity, and Bluetooth/modem/virtual ports are never tried.
     if (portName.isEmpty()) {
-        const auto ports = QSerialPortInfo::availablePorts();
-        for (const QSerialPortInfo &info : ports) {
-            const QString candidate = info.portName();
-            if (candidate.isEmpty())
-                continue;
+        const ta::target::SelectionResult sel = autoSelectTargetDevice();
+        if (sel.outcome == ta::target::SelectionOutcome::AutoConnect) {
+            const QString candidate = sel.selected.portName;
             LogFile::instance().appendToLogFile(
-                QString("auto-detect: trying %1").arg(candidate), LogType::interfaceLevel);
+                QString("auto-connect attempted: %1").arg(sel.summary), LogType::interfaceLevel);
             m_mainWindow->changedConnect(true, candidate);
             if (m_mainWindow->isModBusConnected()) {
                 LogFile::instance().appendToLogFile(
-                    QString("auto-detect: connected on %1").arg(candidate), LogType::interfaceLevel);
+                    QString("auto-connect succeeded on %1").arg(candidate), LogType::interfaceLevel);
+                // Remember only AFTER a confirmed connection, never on a guess.
+                rememberTargetDevice(sel.selected);
                 m_lastManuallyConnectedPort = candidate;
                 clearShootCount();
                 intiateAutoMovementSetup();
                 return true;
             }
+            LogFile::instance().appendToLogFile(
+                QString("auto-connect failed on %1 - manual selection remains available")
+                    .arg(candidate), LogType::interfaceLevel);
+        } else if (sel.outcome == ta::target::SelectionOutcome::NeedsUserChoice) {
+            // Several plausible adapters and nothing remembered. Guessing here
+            // is exactly what RC1 did wrong.
+            LogFile::instance().appendToLogFile(
+                QString("manual selection required: %1").arg(sel.summary), LogType::interfaceLevel);
+            emit targetSelectionRequired();
+        } else {
+            LogFile::instance().appendToLogFile(
+                QString("target not detected: %1").arg(sel.summary), LogType::interfaceLevel);
         }
-        LogFile::instance().appendToLogFile(
-            QString("auto-detect: no openable serial port found"), LogType::interfaceLevel);
     }
 
     return false;
+}
+
+// ── RC2 target discovery ──────────────────────────────────────────────────
+
+ta::target::SelectionResult TachusWidget::autoSelectTargetDevice()
+{
+    // Guard against overlapping scans: a debounced timer and a manual Rescan
+    // can otherwise both be in here at once.
+    if (m_scanActive) {
+        LogFile::instance().appendToLogFile(
+            QString("serial scan already active - skipped"), LogType::interfaceLevel);
+        return ta::target::SelectionResult();
+    }
+    m_scanActive = true;
+
+    const ta::target::QtSerialDeviceProvider provider;
+    const QVector<ta::target::SerialDeviceInfo> devices = provider.availableDevices();
+    LogFile::instance().appendToLogFile(
+        QString("serial scan started: %1 port(s) discovered").arg(devices.size()),
+        LogType::interfaceLevel);
+
+    const ta::target::SelectionResult sel =
+        ta::target::TargetDeviceSelector::select(devices, rememberedTargetDevice());
+
+    for (const ta::target::CandidateDevice &c : sel.rejected)
+        LogFile::instance().appendToLogFile(QString("candidate %1").arg(c.reason),
+                                            LogType::interfaceLevel);
+    for (const ta::target::CandidateDevice &c : sel.candidates)
+        LogFile::instance().appendToLogFile(QString("candidate %1").arg(c.reason),
+                                            LogType::interfaceLevel);
+
+    m_scanActive = false;
+    return sel;
+}
+
+// Stored in the normal per-user QSettings, never in the packaged config.ini -
+// a fingerprint is machine-specific and must not travel in a release package.
+static const char* kTargetFpGroup = "TargetDevice";
+
+ta::target::TargetDeviceFingerprint TachusWidget::rememberedTargetDevice() const
+{
+    QSettings s;
+    s.beginGroup(QLatin1String(kTargetFpGroup));
+    QVariantMap m;
+    const QStringList keys = s.childKeys();
+    for (const QString &k : keys) m[k] = s.value(k);
+    s.endGroup();
+    if (m.isEmpty()) return ta::target::TargetDeviceFingerprint();
+    return ta::target::TargetDeviceFingerprint::fromMap(m);
+}
+
+void TachusWidget::rememberTargetDevice(const ta::target::SerialDeviceInfo &d)
+{
+    const ta::target::TargetDeviceFingerprint fp =
+        ta::target::TargetDeviceFingerprint::fromDevice(d);
+    if (!fp.valid) return;
+    QSettings s;
+    s.beginGroup(QLatin1String(kTargetFpGroup));
+    const QVariantMap m = fp.toMap();
+    for (auto it = m.constBegin(); it != m.constEnd(); ++it) s.setValue(it.key(), it.value());
+    s.endGroup();
+    s.sync();
+    LogFile::instance().appendToLogFile(
+        QString("remembered target %1 (%2) by %3")
+            .arg(d.portName, d.description, ta::target::fingerprintStrengthName(fp.strength)),
+        LogType::interfaceLevel);
+}
+
+void TachusWidget::forgetTargetDevice()
+{
+    QSettings s;
+    s.remove(QLatin1String(kTargetFpGroup));
+    s.sync();
+    LogFile::instance().appendToLogFile(QString("remembered target forgotten"),
+                                        LogType::interfaceLevel);
+}
+
+QVariantList TachusWidget::targetCandidates()
+{
+    QVariantList out;
+    const ta::target::SelectionResult sel = autoSelectTargetDevice();
+    for (const ta::target::CandidateDevice &c : sel.candidates) {
+        QVariantMap m;
+        m[QStringLiteral("portName")] = c.device.portName;
+        m[QStringLiteral("description")] = c.device.description;
+        m[QStringLiteral("manufacturer")] = c.device.manufacturer;
+        m[QStringLiteral("remembered")] = c.matchesRemembered;
+        out.append(m);
+    }
+    return out;
 }
 
 int TachusWidget::validateLicence(QString mail)
@@ -323,7 +430,24 @@ void TachusWidget::on_pushButton_2_clicked() // read old data
                     m_yCordList_gameMode.append(yReal);
                 }
                 LogFile::instance().appendToLogFile(QString("check x cor %1 and y cor %2 for shoot %3").arg(xReal).arg(yReal).arg(getShootCount() - to + i), LogType::interfaceLevel);
-                emit shootCountChanged(getShootCount() - to + i);
+                const int acceptedShotNo = getShootCount() - to + i;
+                emit shootCountChanged(acceptedShotNo);
+                // RC2 AUTOMATIC PAPER FEED. This is the PHYSICAL acceptance
+                // path: the shot has passed protocol validation and the
+                // duplicate guard above, its coordinates are stored, and the
+                // UI has been told. Demo/UI shots go through uxShoot() and
+                // never reach here, which is a second layer of protection on
+                // top of the coordinator's own Live-mode gate.
+                //
+                // The old delegate-based call in CenterPane.qml is gone: a
+                // ListView delegate is created and destroyed by the view, so a
+                // motor command attached to one fired late, twice or never.
+                LogFile::instance().appendToLogFile(
+                    QString("physical shot accepted: seq %1 (%2)")
+                        .arg(acceptedShotNo)
+                        .arg(isSighterMode ? "sighter" : "counted"),
+                    LogType::BackendLevel);
+                onPhysicalShotAccepted(acceptedShotNo, isSighterMode);
             }
 
             if (m_flushCount && m_currentShootsCount == FLUSH_SHOOT_COUNT) {
@@ -1106,8 +1230,50 @@ void TachusWidget::setScore(double value)
 
 void TachusWidget::initiateMotorMovement()
 {
-    if (m_motorThread && m_mainWindow->isModBusConnected())
+    // MANUAL feed. Routed through the coordinator so it is logged distinctly
+    // from automatic feeding and cannot overlap an automatic command.
+    bindFeedCoordinator();
+    m_feed.requestManualFeed(m_motor_movement_duration);
+}
+
+// Binds the injected motor command once. The command BLOCKS for the configured
+// duration, which is what makes the coordinator's queue serial.
+void TachusWidget::bindFeedCoordinator()
+{
+    if (m_feedBound) return;
+    m_feedBound = true;
+    m_feed.setMotorCommand([this](double seconds) -> bool {
+        if (!m_motorThread || !m_mainWindow || !m_mainWindow->isModBusConnected())
+            return false;
+        m_motorThread->setMotorMovementTime(seconds);   // per-command duration
         m_motorThread->start();
+        m_motorThread->wait();                          // serialise: no overlap
+        return true;
+    });
+    m_feed.setLogSink([](const QString &line) {
+        LogFile::instance().appendToLogFile(line, LogType::BackendLevel);
+    });
+}
+
+void TachusWidget::onPhysicalShotAccepted(qint64 shotIdentity, bool isSighter)
+{
+    bindFeedCoordinator();
+
+    ta::target::FeedContext ctx;
+    // NOTE the name: isAppDemoMode is really "is live" - see the comment at
+    // its use in the header. Reading it as "is demo" would invert the gate and
+    // drive the physical motor from demo clicks.
+    ctx.liveMode = isAppDemoMode;
+    ctx.targetConnected = m_mainWindow && m_mainWindow->isModBusConnected();
+    ctx.replaying = m_replayInProgress;       // set by the recovery path
+    ctx.matchDurationSeconds = m_motor_movement_duration;
+    ctx.sighterDurationSeconds = m_motor_movement_duration_sighter;
+    m_feed.setContext(ctx);
+
+    ta::target::FeedRequest req;
+    req.shotIdentity = shotIdentity;
+    req.kind = isSighter ? ta::target::ShotKind::Sighter : ta::target::ShotKind::Counted;
+    m_feed.onShotAccepted(req);
 }
 
 void TachusWidget::intiateAutoMovementSetup()

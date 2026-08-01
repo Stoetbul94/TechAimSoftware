@@ -997,7 +997,22 @@ Item {
                 "isCompetitionShot": true
             })
         }
+        // COACH-001 diagnostics ONLY. The report was unavailable after a
+        // valid 10-shot field session and the cause is not yet proven. No
+        // eligibility or analytics rule is changed here - this records what
+        // the feeder actually handed over, so the next occurrence is
+        // diagnosable from the log instead of guessed at.
+        var sighters = 0
+        for (var s = 0; s < list.length; ++s) if (list[s].isSighter) sighters++
+        MODREADER.appendToLogFile("COACH-001 feed: globalMatchModel=" + n
+            + " prepared=" + list.length
+            + " counted=" + (list.length - sighters)
+            + " sighters=" + sighters
+            + " timingOk=" + timingOk)
         COACHREPORT.analyzeShots(list)
+        // valid/message are direct properties on the bridge, not fields of report.
+        MODREADER.appendToLogFile("COACH-001 result: valid=" + COACHREPORT.valid
+            + " message=" + (COACHREPORT.message || "(none)"))
 
         // Transfer guarantee: every shot in the match record must be held by
         // the engine — count AND total must survive the bridge round-trip.

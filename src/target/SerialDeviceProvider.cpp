@@ -23,9 +23,12 @@ QVector<SerialDeviceInfo> QtSerialDeviceProvider::availableDevices() const
         if (d.hasVendorId)  d.vendorId  = p.vendorIdentifier();
         d.hasProductId   = p.hasProductIdentifier();
         if (d.hasProductId) d.productId = p.productIdentifier();
-        // Advisory: some Windows drivers always report false.
-        d.busyKnown = true;
-        d.busy = p.isBusy();
+        // Qt 6 removed QSerialPortInfo::isBusy(), and it was never reliable on
+        // Windows anyway - several drivers always reported false. Busy state is
+        // therefore left UNKNOWN rather than guessed; the selector treats it as
+        // advisory and never disqualifies a port on it.
+        d.busyKnown = false;
+        d.busy = false;
         out.append(d);
     }
     return out;

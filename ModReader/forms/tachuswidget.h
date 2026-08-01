@@ -4,6 +4,10 @@
 #include <QWidget>
 #include <QTimer>
 #include <QThread>
+
+#include "target/TargetDeviceFingerprint.h"
+#include "target/PaperFeedCoordinator.h"
+#include "target/SerialDeviceProvider.h"
 #include <QDebug>
 #include <QTcpServer>
 #include <QElapsedTimer>
@@ -314,6 +318,20 @@ public slots:
     double getScore(int index);
     void setScore(double value);
     void initiateMotorMovement();
+
+    // ── RC2 target discovery + paper feed ─────────────────────────────────
+    // Selection and fingerprinting live in src/target and are unit-tested
+    // without hardware; these only act on the decision.
+    ta::target::SelectionResult autoSelectTargetDevice();
+    ta::target::TargetDeviceFingerprint rememberedTargetDevice() const;
+    void rememberTargetDevice(const ta::target::SerialDeviceInfo &d);
+    Q_INVOKABLE void forgetTargetDevice();
+    Q_INVOKABLE QVariantList targetCandidates();
+    // Called once per ACCEPTED, durably recorded physical shot. This is the
+    // only automatic route to the motor; QML must not call the motor itself.
+    void onPhysicalShotAccepted(qint64 shotIdentity, bool isSighter);
+    void setReplayInProgress(bool replaying) { m_replayInProgress = replaying; }
+    void bindFeedCoordinator();
     void resetShootinCount() {
         m_currentShootsCount = 0;
         m_oldResetCount = 0;
@@ -398,6 +416,8 @@ signals:
     void matchDetails(int gametype, int matchmode, int sighterTime, int matchtime, int sigherTime,int matchpf);
     void matchDetailsSetaModification(int gametype, int matchmode);
     void startMatchFromServer();
+    // RC2: several plausible adapters - ask, never guess.
+    void targetSelectionRequired();
 
 private:
     Ui::TachusWidget *ui;
@@ -430,6 +450,15 @@ private:
     int m_currentShootsCount_sighter = 0;
     int m_oldResetCount_sighter = 0;
     MotorThread* m_motorThread = nullptr;
+    // RC2: one scan at a time, and one central feed authority.
+    bool m_scanActive = false;
+    // Set while a journal replay or historical load is feeding shots through
+    // the acceptance path. Those shots are genuinely accepted and durably
+    // recorded, so every other feed guard would pass - this is the one that
+    // stops paper feeding for a shot fired an hour ago.
+    bool m_replayInProgress = false;
+    ta::target::PaperFeedCoordinator m_feed;
+    bool m_feedBound = false;
     WorkerThread* m_flushCount = nullptr;
 
     QTcpServer* m_tcpServer = nullptr;
