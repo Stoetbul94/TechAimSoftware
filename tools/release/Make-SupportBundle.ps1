@@ -13,7 +13,12 @@
 param(
     [string]$SessionId = '',
     [string]$OutDir    = "$env:USERPROFILE\Desktop",
-    [int]$LogCount     = 5
+    [int]$LogCount     = 5,
+    # SUP-001. The Git commit is baked into the binary at build time and is not
+    # reliably readable from outside, so it comes from the field-kit release
+    # manifest rather than being scraped. Auto-discovered beside this script,
+    # one level up, or in a manifest/ documents/ docs/ folder.
+    [string]$ReleaseManifest = ''
 )
 $ErrorActionPreference = 'Stop'
 
@@ -29,19 +34,72 @@ $here    = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 Write-Host "== Tech Aim support bundle =="
 
+# ---- release manifest (SUP-001) ------------------------------------------
+$manifest = $null
+$manifestPath = ''
+$candidates = @()
+if ($ReleaseManifest) { $candidates += $ReleaseManifest }
+foreach ($dir in @($here, (Split-Path $here -Parent))) {
+    if (-not $dir) { continue }
+    $candidates += (Join-Path $dir '0.9.0-rc1-release-manifest.json')
+    $candidates += (Join-Path $dir 'release-manifest.json')
+    foreach ($sub in @('manifest', 'documents', 'docs')) {
+        $candidates += (Join-Path (Join-Path $dir $sub) '0.9.0-rc1-release-manifest.json')
+        $candidates += (Join-Path (Join-Path $dir $sub) 'release-manifest.json')
+    }
+}
+foreach ($c in $candidates) {
+    if ($c -and (Test-Path $c)) {
+        try { $manifest = Get-Content $c -Raw | ConvertFrom-Json; $manifestPath = $c; break }
+        catch { Write-Warning "Manifest at $c could not be parsed: $($_.Exception.Message)" }
+    }
+}
+if (-not $manifest) {
+    Write-Warning "No release manifest found. The bundle will report the Git commit as UNKNOWN rather than guess."
+}
+
 # ---- release + machine identity ------------------------------------------
 $exe = Join-Path $here 'TechAim.exe'
 $ver = if (Test-Path $exe) { (Get-Item $exe).VersionInfo.FileVersion } else { 'not found' }
+$exeSha = if (Test-Path $exe) { (Get-FileHash $exe -Algorithm SHA256).Hash } else { '' }
+
+# VERIFY, do not assert. If the running binary is not the one the manifest
+# describes, the bundle says so - that is exactly when it matters most.
+$mProduct   = if ($manifest) { $manifest.product }          else { 'Tech Aim Electronic Target Control' }
+$mVersion   = if ($manifest) { $manifest.version }          else { 'UNKNOWN - no manifest' }
+$mChannel   = if ($manifest) { $manifest.releaseChannel }   else { 'UNKNOWN - no manifest' }
+$mCommit    = if ($manifest) { $manifest.gitCommit }        else { 'UNKNOWN - no manifest' }
+$mLimit     = if ($manifest) { $manifest.limitation }       else { 'FIELD TEST - NOT FOR OFFICIAL COMPETITION RESULTS' }
+$mAnalytics = if ($manifest) { $manifest.analyticsVersion } else { 'UNKNOWN - no manifest' }
+$mExeSha    = if ($manifest) { $manifest.executableSha256 } else { '' }
+$shaVerdict =
+    if (-not $exeSha)      { 'NOT CHECKED - TechAim.exe not found beside this script' }
+    elseif (-not $mExeSha) { 'NOT CHECKED - no manifest hash to compare against' }
+    elseif ($exeSha -eq $mExeSha) { 'MATCH - the running binary is the one the manifest describes' }
+    else { 'MISMATCH - the binary beside this script is NOT the manifest build; the Git commit above may be wrong' }
+
+$modeLine = 'UNKNOWN'
+$cfgProbe = Join-Path $here 'config.ini'
+if (Test-Path $cfgProbe) {
+    $mm = (Get-Content $cfgProbe | Select-String -Pattern '^\s*app_mode\s*=\s*(.+)$')
+    if ($mm) { $modeLine = $mm.Matches[0].Groups[1].Value.Trim() }
+}
 $identity = @"
 Tech Aim support bundle
 Generated            : $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
-Product              : Tech Aim Electronic Target Control
-Version              : 0.9.0-RC1
-Channel              : Internal Field Test
-Limitation           : FIELD TEST - NOT FOR OFFICIAL COMPETITION RESULTS
+Product              : $mProduct
+Version              : $mVersion
+Release channel      : $mChannel
+Git commit           : $mCommit
+Analytics version    : $mAnalytics
+Limitation           : $mLimit
+Operating mode       : $modeLine
 Executable           : $exe
 Executable version   : $ver
-Executable SHA-256   : $(if (Test-Path $exe) { (Get-FileHash $exe -Algorithm SHA256).Hash } else { 'n/a' })
+Executable SHA-256   : $(if ($exeSha) { $exeSha } else { 'n/a' })
+Manifest SHA-256     : $(if ($mExeSha) { $mExeSha } else { '(none)' })
+Binary vs manifest   : $shaVerdict
+Manifest file        : $(if ($manifestPath) { $manifestPath } else { '(none found)' })
 Windows              : $([System.Environment]::OSVersion.VersionString)
 Windows product      : $((Get-CimInstance Win32_OperatingSystem).Caption)
 Architecture         : $env:PROCESSOR_ARCHITECTURE
@@ -49,9 +107,9 @@ Machine              : $env:COMPUTERNAME
 AppData root         : $appData
 Session id requested : $(if ($SessionId) { $SessionId } else { '(none - no session data collected)' })
 
-The Git commit, build date, Qt version, operating mode and analytics version
-are shown in the application under Settings > ABOUT / BUILD. Please copy them
-into the field-test checklist alongside this bundle.
+The Git commit above comes from the field-kit release manifest and is checked
+against the executable SHA-256 - see "Binary vs manifest". The build date and
+Qt version are shown in the application under Settings > ABOUT / BUILD.
 "@
 [System.IO.File]::WriteAllText((Join-Path $work 'release-identity.txt'), $identity)
 
@@ -117,6 +175,10 @@ if (Test-Path $crashSrc) {
 # ---- known limitations ---------------------------------------------------
 $lim = Join-Path $here 'docs\0.9.0-rc1-known-limitations.md'
 if (Test-Path $lim) { Copy-Item $lim (Join-Path $work 'known-limitations.md') }
+
+# ---- the manifest the identity was read from -----------------------------
+# Shipped so a reader can check the claim rather than take it on trust.
+if ($manifestPath) { Copy-Item $manifestPath (Join-Path $work 'release-manifest.json') }
 
 # ---- zip -----------------------------------------------------------------
 if (Test-Path $zip) { Remove-Item $zip -Force }

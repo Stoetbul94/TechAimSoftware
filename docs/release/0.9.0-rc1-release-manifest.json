@@ -1,0 +1,39 @@
+{
+  "_comment": [
+    "Tech Aim 0.9.0-RC1 field-kit release manifest.",
+    "The ACCEPTED identity of the packages under test, recorded once here so",
+    "the support-bundle tool can state the Git commit without scraping the",
+    "binary. Binary scraping is unreliable and was deliberately not attempted.",
+    "",
+    "This file is data, not a claim: Make-SupportBundle.ps1 VERIFIES the",
+    "executable SHA-256 against it and says plainly in the bundle whether the",
+    "running binary matched. A mismatch is reported, never hidden."
+  ],
+  "product": "Tech Aim Electronic Target Control",
+  "version": "0.9.0-RC1",
+  "releaseChannel": "Internal Field Test",
+  "gitCommit": "9cf6490",
+  "publisher": "JAC SHOOTING SOLUTIONS (PTY) LTD",
+  "executable": "TechAim.exe",
+  "executableSha256": "0A9EF958BEF317DD201489F736860EE7F8DB8F8A913B45A0B6265FE01747B96C",
+  "analyticsVersion": "windmap-analytics-v2",
+  "limitation": "FIELD TEST - NOT FOR OFFICIAL COMPETITION RESULTS",
+  "packages": [
+    {
+      "role": "under test",
+      "file": "TechAim-0.9.0-RC1-FieldTest-Windows-x64.zip",
+      "sha256": "1272F48D2233D3E1E96198D69548D319C68162A216137BB7C3C3D46B1A74145E",
+      "displays": "0.9.0-RC1 / Internal Field Test / commit 9cf6490"
+    },
+    {
+      "role": "rollback",
+      "file": "TechAim-Rollback-747b9a7-Windows-x64.zip",
+      "sha256": "3051552E78E5868271E1D8CD6DC1430193577FDF6AE4A36595FE3CCB6033C3CB",
+      "gitCommit": "747b9a7",
+      "displays": "0.9.0 / Pre-Beta Validation / commit 747b9a7"
+    }
+  ],
+  "knownOpenDefects": [
+    { "id": "UI-WIND-006", "severity": 3, "summary": "3P session-level verdict not visually confirmed against each position screen" }
+  ]
+}
