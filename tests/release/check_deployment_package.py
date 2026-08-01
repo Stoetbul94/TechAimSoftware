@@ -14,7 +14,7 @@ import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DEFAULT_PKG = os.path.join(ROOT, "dist", "TechAim-0.9.0-RC1-FieldTest-Windows-x64")
+DEFAULT_PKG = os.path.join(ROOT, "dist", "TechAim-0.9.0-RC2-FieldTest-Windows-x64")
 
 CHECKS = 0
 FAILURES = 0
@@ -145,7 +145,7 @@ check(len(runtime) >= 3, "the compiler runtime libraries are present",
 # ---- 5. field-test documents + operator tooling -------------------------
 check(os.path.isfile(os.path.join(pkg, "Make-SupportBundle.ps1")),
       "the support-bundle tool is packaged")
-for d in ("0.9.0-rc1-known-limitations.md", "0.9.0-rc1-field-test-checklist.md"):
+for d in ("0.9.0-rc2-known-limitations.md", "0.9.0-rc2-field-test-checklist.md"):
     check(os.path.isfile(os.path.join(pkg, "docs", d)), "field-test document packaged: %s" % d)
 
 # ---- 6. every top-level entry is accounted for --------------------------

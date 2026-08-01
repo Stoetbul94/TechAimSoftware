@@ -1,4 +1,4 @@
-# Tech Aim 0.9.0-RC1 — portable Windows field-test package builder.
+# Tech Aim portable Windows field-test package builder (RC1, RC2, rollback).
 #
 # Produces a folder that runs on a machine with NO Qt, NO repository and NO
 # MinGW/Visual Studio, then zips it and records the SHA-256.
@@ -33,7 +33,7 @@ $exe  = Join-Path $repo 'release\TechAim.exe'
 if (-not (Test-Path $exe)) { throw "Not built: $exe. Run qmake + mingw32-make -f Makefile.Release first." }
 if (-not (Test-Path (Join-Path $QtBin 'windeployqt.exe'))) { throw "windeployqt not found in $QtBin" }
 
-$version = '0.9.0-RC1'
+$version = '0.9.0-RC2'
 $name    = if ([string]::IsNullOrWhiteSpace($PackageName)) {
     "TechAim-$version-FieldTest-Windows-x64"
 } else { $PackageName }
@@ -74,9 +74,10 @@ motor_movement_time_sighter=1
 $docsOut = Join-Path $pkg 'docs'
 New-Item -ItemType Directory -Force $docsOut | Out-Null
 foreach ($d in @(
-    'docs\release\0.9.0-rc1-known-limitations.md',
+    'docs\release\0.9.0-rc2-known-limitations.md',
+    'docs\release\0.9.0-rc2-field-test-checklist.md',
+    'docs\release\0.9.0-rc2-smoke-test.md',
     'docs\release\0.9.0-rc1-field-test-plan.md',
-    'docs\release\0.9.0-rc1-field-test-checklist.md',
     'docs\release\0.9.0-rc1-rollback.md')) {
     $src = Join-Path $docRepo $d
     if (Test-Path $src) { Copy-Item $src (Join-Path $docsOut (Split-Path $d -Leaf)) }
