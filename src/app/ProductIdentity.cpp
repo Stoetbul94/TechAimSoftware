@@ -38,7 +38,7 @@ ProductIdentity makeTechAim()
     // the qmake/make/compiler quoting chain intact. The version does come from
     // the build (APP_VERSION_STR) because it has no spaces and must match the
     // packaged artefact name.
-    p.releaseChannel = QStringLiteral("Internal Field Test");
+    p.releaseChannel = QStringLiteral("Internal Field Test — Diagnostic");
 
     // Shown wherever a result could be mistaken for an official one. Short
     // enough to sit in a status strip without covering scores or controls.

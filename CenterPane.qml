@@ -27,12 +27,15 @@ Item {
     property int  autoZoomHold: 0       // ticks remaining before easing out
 
     function triggerAutoZoom(px, py) {
+        // RC2a stage 11-12: zoom requested / animation started.
+        MODREADER.traceShotStageFromQml("zoom-requested", newShootCount)
         if (!autoZoomOn)
             return
         autoZoomOriginX = px
         autoZoomOriginY = py
         autoZoomFactor = autoZoomTarget
         autoZoomHold = 4                // ~4 * 450ms hold, reset on each shot
+        MODREADER.traceShotStageFromQml("zoom-started", newShootCount)
     }
 
     Timer {
@@ -251,6 +254,11 @@ Item {
     Connections {
         target: MODREADER
         function onShootCountChanged(count) {
+            // RC2a stage 9: QML has received the notification. Differencing
+            // this against the C++ "emit-shootCountChanged" stamp gives the
+            // signal-delivery cost; differencing the render stamp below against
+            // this gives the draw cost. Together they size the observed delay.
+            MODREADER.traceShotStageFromQml("qml-notified", count)
             // Source tag: this handler fires for BOTH real hardware (Live) AND
             // demo clicks (which reach it via MODREADER.uxShoot -> shootCountChanged).
             // The two input paths are mutually exclusive by operating mode, so the
@@ -307,6 +315,7 @@ Item {
                 if (APPSETTINGS.getDeveloperMode()) console.log(" x pos ", itemPoint.x)
                 if (APPSETTINGS.getDeveloperMode()) console.log(" y Pos ", itemPoint.y)
 
+                MODREADER.traceShotStageFromQml("qml-scored", newShootCount)
                 calculateShootingSocre(xCor, yCor, itemPoint.x, itemPoint.y)
 
                 // TRAINING: the athlete-facing impact/zoom is a controller
@@ -325,6 +334,8 @@ Item {
                 } else if (!trainingHidesImpact) {
                     var temp = root.mapToValue(paneItem.itemPoint,polarSeries);
                     addIfinRange(temp)
+                    // RC2a stage 10: the marker has been added to the series.
+                    MODREADER.traceShotStageFromQml("qml-marker-added", newShootCount)
                 }
 
                 // SIUS-style: zoom in on where the shot just landed (not while a

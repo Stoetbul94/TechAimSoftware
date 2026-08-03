@@ -33,9 +33,9 @@ $exe  = Join-Path $repo 'release\TechAim.exe'
 if (-not (Test-Path $exe)) { throw "Not built: $exe. Run qmake + mingw32-make -f Makefile.Release first." }
 if (-not (Test-Path (Join-Path $QtBin 'windeployqt.exe'))) { throw "windeployqt not found in $QtBin" }
 
-$version = '0.9.0-RC2'
+$version = '0.9.0-RC2a'
 $name    = if ([string]::IsNullOrWhiteSpace($PackageName)) {
-    "TechAim-$version-FieldTest-Windows-x64"
+    "TechAim-$version-Diagnostic-Windows-x64"
 } else { $PackageName }
 if ([string]::IsNullOrWhiteSpace($OutRoot)) { $OutRoot = Join-Path $docRepo 'dist' }
 $pkg = Join-Path $OutRoot $name
@@ -74,6 +74,7 @@ motor_movement_time_sighter=1
 $docsOut = Join-Path $pkg 'docs'
 New-Item -ItemType Directory -Force $docsOut | Out-Null
 foreach ($d in @(
+    'docs\release\0.9.0-rc2a-diagnostic.md',
     'docs\release\0.9.0-rc2-known-limitations.md',
     'docs\release\0.9.0-rc2-field-test-checklist.md',
     'docs\release\0.9.0-rc2-smoke-test.md',
