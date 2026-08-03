@@ -427,6 +427,115 @@ void run_target_hardware_tests()
               "33. an absurd duration is clamped to the ceiling");
     }
 
+
+    // ══ SERIAL-AUTO-001 — THE STARTUP ORDER ════════════════════════════════
+    // The field failure was NOT in ranking, rejection or fingerprints: the
+    // selector never ran, because a speculative connect with the STORED port
+    // happened first and returned early. These cases pin the corrected
+    // contract - decide, then connect - using the same helper the application
+    // now calls (chooseStartupPort delegates to TargetDeviceSelector).
+
+    // 35. stored COM4 exists AND the CH340 is present -> selector still decides
+    {
+        const SelectionResult r = TargetDeviceSelector::select(fieldMachine(), noneRemembered());
+        check(r.outcome == SelectionOutcome::AutoConnect,
+              "35. a stored port does not stop the selector deciding");
+        check(r.selected.portName == QLatin1String("COM4"),
+              "35. and COM4 is chosen explicitly, not inherited from settings",
+              r.selected.portName);
+    }
+
+    // 36. stored port is COM5, which is BLUETOOTH -> must never be used
+    {
+        const SelectionResult r = TargetDeviceSelector::select(fieldMachine(), noneRemembered());
+        bool com5Offered = false;
+        for (const CandidateDevice& c : r.candidates)
+            if (c.device.portName == QLatin1String("COM5")) com5Offered = true;
+        check(!com5Offered, "36. a stored Bluetooth port is never a candidate");
+        check(r.selected.portName == QLatin1String("COM4"),
+              "36. COM4 is selected instead", r.selected.portName);
+        for (const CandidateDevice& c : r.rejected)
+            if (c.device.portName == QLatin1String("COM5"))
+                check(c.reject == RejectReason::BluetoothLink,
+                      "36. and COM5 is rejected as a Bluetooth link BEFORE opening");
+    }
+
+    // 37. STALE stored COM7 that no longer exists -> not attempted
+    {
+        const SelectionResult r = TargetDeviceSelector::select(fieldMachine(), noneRemembered());
+        bool com7Anywhere = false;
+        for (const CandidateDevice& c : r.candidates)
+            if (c.device.portName == QLatin1String("COM7")) com7Anywhere = true;
+        for (const CandidateDevice& c : r.rejected)
+            if (c.device.portName == QLatin1String("COM7")) com7Anywhere = true;
+        check(!com7Anywhere,
+              "37. a stale stored port absent from enumeration never appears at all");
+        check(r.selected.portName == QLatin1String("COM4"),
+              "37. the present CH340 is used instead", r.selected.portName);
+    }
+
+    // 38. remembered CH340 now on COM9, stored metadata still says COM4
+    {
+        TargetDeviceFingerprint fp = TargetDeviceFingerprint::fromDevice(ch340());
+        SerialDeviceInfo moved = ch340();
+        moved.portName = QStringLiteral("COM9");
+        const SelectionResult r = TargetDeviceSelector::select({ bt5(), moved, bt6() }, fp);
+        check(r.selected.portName == QLatin1String("COM9"),
+              "38. the remembered adapter is followed to its CURRENT port",
+              r.selected.portName);
+        check(fp.lastKnownPortName == QLatin1String("COM4"),
+              "38. the stored COM4 stays informational metadata only");
+    }
+
+    // 39. one candidate -> an EXPLICIT port name is available to pass on
+    {
+        const SelectionResult r = TargetDeviceSelector::select(fieldMachine(), noneRemembered());
+        check(!r.selected.portName.isEmpty(),
+              "39. the selector yields a concrete port for changedConnect - never an empty string");
+    }
+
+    // 40. several candidates -> ask, and offer NO port to connect with
+    {
+        const SerialDeviceInfo ftdi = dev("COM8", "USB Serial Port (FT232R)", "FTDI",
+                                          true, 0x0403, 0x6001);
+        const SelectionResult r = TargetDeviceSelector::select({ ch340(), ftdi }, noneRemembered());
+        check(r.outcome == SelectionOutcome::NeedsUserChoice,
+              "40. several plausible adapters require the operator");
+        check(r.selected.portName.isEmpty(),
+              "40. and NOTHING is offered for a speculative connection");
+    }
+
+    // 41. no candidates -> nothing to connect to, manual fallback only
+    {
+        const SelectionResult r = TargetDeviceSelector::select({ bt5(), bt6() }, noneRemembered());
+        check(r.outcome == SelectionOutcome::NoCandidates,
+              "41. Bluetooth-only yields no candidates");
+        check(r.selected.portName.isEmpty(),
+              "41. so the automatic path has no port and must not connect");
+    }
+
+    // 42. THE REGRESSION ITSELF: an empty port is never a connectable answer.
+    {
+        const SelectionResult none = TargetDeviceSelector::select({}, noneRemembered());
+        const SelectionResult bt = TargetDeviceSelector::select({ bt5(), bt6() }, noneRemembered());
+        const SerialDeviceInfo ftdi = dev("COM8", "USB Serial Port", "FTDI", true, 0x0403, 0x6001);
+        const SelectionResult many = TargetDeviceSelector::select({ ch340(), ftdi }, noneRemembered());
+        check(none.selected.portName.isEmpty() && bt.selected.portName.isEmpty()
+              && many.selected.portName.isEmpty(),
+              "42. every non-AutoConnect outcome yields an EMPTY port, so the caller "
+              "cannot accidentally perform the speculative connect that caused "
+              "SERIAL-AUTO-001");
+    }
+
+    // 43. Bluetooth ports are never opened during discovery - they are filtered
+    //     on metadata alone, which is why nothing can block on them.
+    {
+        const SelectionResult r = TargetDeviceSelector::select(fieldMachine(), noneRemembered());
+        check(r.rejected.size() == 2,
+              "43. both Bluetooth ports are rejected from enumeration metadata, "
+              "with no port ever opened");
+    }
+
     // 34. no motor command bound -> nothing happens, nothing crashes
     {
         PaperFeedCoordinator bare;

@@ -110,12 +110,30 @@ bool TachusWidget::connectedModbus(QString portName)
     // before anything else touches the name.
     portName = portName.trimmed();
 
-    if (portName.isEmpty() && m_lastManuallyConnectedPort != "") {
-        portName = m_lastManuallyConnectedPort;
-    }
-
     if (m_mainWindow == NULL)
         return false;
+
+    // SERIAL-AUTO-001. THE SELECTOR NOW RUNS FIRST.
+    //
+    // RC2 put the selector in the old last-resort fallback at the BOTTOM of
+    // this function. It never ran: the speculative changedConnect(true, "")
+    // below substitutes the stored ModReader port (mainwindow.cpp:688) and the
+    // isModBusConnected() check returned early, so on any machine that had ever
+    // stored a port the selector was dead code. The field log proves it - not
+    // one selector line appears in the whole session.
+    //
+    // An empty port name now means "decide, then connect", never "connect with
+    // whatever was stored and hope".
+    const bool automaticPath = portName.isEmpty();
+    if (automaticPath) {
+        const QString chosen = chooseStartupPort();
+        if (chosen.isEmpty()) {
+            // Nothing confident. Do NOT fall through to a speculative connect -
+            // that is exactly the bug. Manual selection and Rescan remain.
+            return false;
+        }
+        portName = chosen;
+    }
 
     // Already connected on the requested port (or no specific port asked):
     // keep the live connection instead of tearing it down and reopening.
@@ -142,49 +160,107 @@ bool TachusWidget::connectedModbus(QString portName)
     //}
 
     if (m_mainWindow->isModBusConnected()) {
+        LogFile::instance().appendToLogFile(
+            QString("auto-connect succeeded on %1").arg(portName), LogType::interfaceLevel);
+        emit targetStateChanged(QStringLiteral("TARGET CONNECTED"), portName);
+        // Remember only after CONFIRMED communication, and only the device the
+        // selector actually resolved - never a bare port name typed by hand.
+        if (m_hasPendingAutoDevice
+            && QString::compare(m_pendingAutoDevice.portName, portName, Qt::CaseInsensitive) == 0) {
+            rememberTargetDevice(m_pendingAutoDevice);
+            m_hasPendingAutoDevice = false;
+        }
         clearShootCount();
         intiateAutoMovementSetup();
         return true;
     }
 
-    // RC2 auto-detect. The RC1 version opened every port in enumeration order
-    // and kept the first that OPENED - and a Bluetooth serial port opens with
-    // nothing behind it, so it could attach to COM5 and then block waiting for
-    // a Modbus reply. Selection now happens BEFORE any port is opened, on
-    // adapter identity, and Bluetooth/modem/virtual ports are never tried.
-    if (portName.isEmpty()) {
-        const ta::target::SelectionResult sel = autoSelectTargetDevice();
-        if (sel.outcome == ta::target::SelectionOutcome::AutoConnect) {
-            const QString candidate = sel.selected.portName;
-            LogFile::instance().appendToLogFile(
-                QString("auto-connect attempted: %1").arg(sel.summary), LogType::interfaceLevel);
-            m_mainWindow->changedConnect(true, candidate);
-            if (m_mainWindow->isModBusConnected()) {
-                LogFile::instance().appendToLogFile(
-                    QString("auto-connect succeeded on %1").arg(candidate), LogType::interfaceLevel);
-                // Remember only AFTER a confirmed connection, never on a guess.
-                rememberTargetDevice(sel.selected);
-                m_lastManuallyConnectedPort = candidate;
-                clearShootCount();
-                intiateAutoMovementSetup();
-                return true;
-            }
-            LogFile::instance().appendToLogFile(
-                QString("auto-connect failed on %1 - manual selection remains available")
-                    .arg(candidate), LogType::interfaceLevel);
-        } else if (sel.outcome == ta::target::SelectionOutcome::NeedsUserChoice) {
-            // Several plausible adapters and nothing remembered. Guessing here
-            // is exactly what RC1 did wrong.
-            LogFile::instance().appendToLogFile(
-                QString("manual selection required: %1").arg(sel.summary), LogType::interfaceLevel);
-            emit targetSelectionRequired();
-        } else {
-            LogFile::instance().appendToLogFile(
-                QString("target not detected: %1").arg(sel.summary), LogType::interfaceLevel);
-        }
+    // Reached only when the connection attempt above failed. The port was
+    // chosen deliberately (selector or operator), so this is a real failure to
+    // report, not a reason to start guessing at other ports.
+    LogFile::instance().appendToLogFile(
+        QString("connection attempt failed on %1").arg(portName), LogType::interfaceLevel);
+    emit targetStateChanged(QStringLiteral("TARGET NOT CONNECTED"), portName);
+    return false;
+}
+
+// Decides which port the AUTOMATIC path should use. Returns an empty string
+// when nothing confident was found - the caller must then leave the operator
+// with manual selection rather than connecting to something arbitrary.
+QString TachusWidget::chooseStartupPort()
+{
+    emit targetStateChanged(QStringLiteral("SCANNING"), QString());
+    const ta::target::SelectionResult sel = autoSelectTargetDevice();
+
+    if (sel.outcome == ta::target::SelectionOutcome::AutoConnect) {
+        m_pendingAutoDevice = sel.selected;
+        m_hasPendingAutoDevice = true;
+        LogFile::instance().appendToLogFile(
+            QString("auto-connect attempted: %1").arg(sel.summary), LogType::interfaceLevel);
+        emit targetStateChanged(QStringLiteral("TARGET DETECTED"), sel.selected.portName);
+        return sel.selected.portName;
     }
 
-    return false;
+    m_hasPendingAutoDevice = false;
+
+    if (sel.outcome == ta::target::SelectionOutcome::NeedsUserChoice) {
+        LogFile::instance().appendToLogFile(
+            QString("manual selection required: %1").arg(sel.summary), LogType::interfaceLevel);
+        emit targetStateChanged(QStringLiteral("MANUAL SELECTION REQUIRED"), QString());
+        emit targetSelectionRequired();
+        return QString();
+    }
+
+    // No candidate. The LAST-RESORT stored port is allowed only when it still
+    // appears in the CURRENT enumeration - a stale COM7 that no longer exists
+    // must never be attempted, which is what produced the original symptom.
+    const QString stored = m_mainWindow ? m_mainWindow->storedSerialPortName().trimmed() : QString();
+    if (!stored.isEmpty()) {
+        for (const ta::target::CandidateDevice &c : sel.rejected) {
+            if (QString::compare(c.device.portName, stored, Qt::CaseInsensitive) == 0) {
+                LogFile::instance().appendToLogFile(
+                    QString("stored port %1 is present but was rejected (%2) - not used")
+                        .arg(stored, c.reason), LogType::interfaceLevel);
+                emit targetStateChanged(QStringLiteral("TARGET NOT DETECTED"), QString());
+                return QString();
+            }
+        }
+        const ta::target::QtSerialDeviceProvider provider;
+        for (const ta::target::SerialDeviceInfo &d : provider.availableDevices()) {
+            if (QString::compare(d.portName, stored, Qt::CaseInsensitive) == 0) {
+                LogFile::instance().appendToLogFile(
+                    QString("no target candidate; falling back to the stored port %1, "
+                            "which is still enumerated").arg(stored), LogType::interfaceLevel);
+                emit targetStateChanged(QStringLiteral("TARGET DETECTED"), stored);
+                return stored;
+            }
+        }
+        LogFile::instance().appendToLogFile(
+            QString("stored port %1 is NOT present in the current enumeration - not attempted")
+                .arg(stored), LogType::interfaceLevel);
+    }
+
+    LogFile::instance().appendToLogFile(
+        QString("target not detected: %1").arg(sel.summary), LogType::interfaceLevel);
+    emit targetStateChanged(QStringLiteral("TARGET NOT DETECTED"), QString());
+    return QString();
+}
+
+// ── RC2a shot-pipeline diagnostics ────────────────────────────────────────
+// Every stage of one physical shot is logged against the SAME correlation id
+// (session + sequence), so the field log can be differenced to attribute the
+// observed display delay to a stage instead of guessed at. The write is a
+// buffered append on the calling thread and does no formatting work beyond
+// one QString - it must never become the thing it is measuring.
+void TachusWidget::traceShotStage(const char* stage, qint64 seq, const QString& detail)
+{
+    LogFile::instance().appendToLogFile(
+        QString("SHOTTRACE %1/%2 %3%4")
+            .arg(m_traceSessionTag.isEmpty() ? QStringLiteral("nosession") : m_traceSessionTag)
+            .arg(seq)
+            .arg(QLatin1String(stage))
+            .arg(detail.isEmpty() ? QString() : QStringLiteral(" ") + detail),
+        LogType::BackendLevel);
 }
 
 // ── RC2 target discovery ──────────────────────────────────────────────────
@@ -431,7 +507,16 @@ void TachusWidget::on_pushButton_2_clicked() // read old data
                 }
                 LogFile::instance().appendToLogFile(QString("check x cor %1 and y cor %2 for shoot %3").arg(xReal).arg(yReal).arg(getShootCount() - to + i), LogType::interfaceLevel);
                 const int acceptedShotNo = getShootCount() - to + i;
+                // 5. coordinates and score decoded (they are in scope here).
+                traceShotStage("decoded", acceptedShotNo,
+                               QStringLiteral("x=%1 y=%2").arg(xReal).arg(yReal));
+                // 6. shootCountChanged emitted - the QML model update and the
+                //    marker render both hang off this signal, so the gap
+                //    between this line and the QML-side stamp IS the display
+                //    latency Arnold saw.
+                traceShotStage("emit-shootCountChanged", acceptedShotNo);
                 emit shootCountChanged(acceptedShotNo);
+                traceShotStage("emit-returned", acceptedShotNo);
                 // RC2 AUTOMATIC PAPER FEED. This is the PHYSICAL acceptance
                 // path: the shot has passed protocol validation and the
                 // duplicate guard above, its coordinates are stored, and the
@@ -447,7 +532,12 @@ void TachusWidget::on_pushButton_2_clicked() // read old data
                         .arg(acceptedShotNo)
                         .arg(isSighterMode ? "sighter" : "counted"),
                     LogType::BackendLevel);
+                // 14-16. feed request, motor start and motor completion are
+                //     logged inside PaperFeedCoordinator against the same
+                //     sequence number.
+                traceShotStage("feed-hook-enter", acceptedShotNo);
                 onPhysicalShotAccepted(acceptedShotNo, isSighterMode);
+                traceShotStage("feed-hook-exit", acceptedShotNo);
             }
 
             if (m_flushCount && m_currentShootsCount == FLUSH_SHOOT_COUNT) {

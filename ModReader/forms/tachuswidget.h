@@ -323,6 +323,9 @@ public slots:
     // Selection and fingerprinting live in src/target and are unit-tested
     // without hardware; these only act on the decision.
     ta::target::SelectionResult autoSelectTargetDevice();
+    // Decides the port for the AUTOMATIC path. Empty means "nothing
+    // confident" - the caller must NOT then connect speculatively.
+    QString chooseStartupPort();
     ta::target::TargetDeviceFingerprint rememberedTargetDevice() const;
     void rememberTargetDevice(const ta::target::SerialDeviceInfo &d);
     Q_INVOKABLE void forgetTargetDevice();
@@ -332,6 +335,11 @@ public slots:
     void onPhysicalShotAccepted(qint64 shotIdentity, bool isSighter);
     void setReplayInProgress(bool replaying) { m_replayInProgress = replaying; }
     void bindFeedCoordinator();
+    // RC2a: correlated per-shot stage trace. Cheap by construction.
+    void traceShotStage(const char* stage, qint64 seq, const QString& detail = QString());
+    Q_INVOKABLE void traceShotStageFromQml(QString stage, int seq)
+    { traceShotStage(stage.toLatin1().constData(), seq); }
+    Q_INVOKABLE void setTraceSessionTag(QString tag) { m_traceSessionTag = tag; }
     void resetShootinCount() {
         m_currentShootsCount = 0;
         m_oldResetCount = 0;
@@ -418,6 +426,9 @@ signals:
     void startMatchFromServer();
     // RC2: several plausible adapters - ask, never guess.
     void targetSelectionRequired();
+    // SCANNING / TARGET DETECTED / TARGET CONNECTED / TARGET NOT DETECTED /
+    // TARGET NOT CONNECTED / MANUAL SELECTION REQUIRED / TARGET DISCONNECTED.
+    void targetStateChanged(QString state, QString portName);
 
 private:
     Ui::TachusWidget *ui;
@@ -457,6 +468,11 @@ private:
     // recorded, so every other feed guard would pass - this is the one that
     // stops paper feeding for a shot fired an hour ago.
     bool m_replayInProgress = false;
+    // The device the SELECTOR resolved for the current attempt. Remembered
+    // only once communication is confirmed, so a failed guess is never stored.
+    ta::target::SerialDeviceInfo m_pendingAutoDevice;
+    bool m_hasPendingAutoDevice = false;
+    QString m_traceSessionTag;
     ta::target::PaperFeedCoordinator m_feed;
     bool m_feedBound = false;
     WorkerThread* m_flushCount = nullptr;

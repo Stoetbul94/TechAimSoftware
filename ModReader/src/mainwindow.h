@@ -82,6 +82,10 @@ private slots:
 public slots:
     bool isModBusConnected();
     void changedConnect(bool value, QString portName = QString());
+    // SERIAL-AUTO-001: read the stored serial port WITHOUT connecting, so the
+    // selector can treat it as a last-resort candidate instead of having
+    // ModbusCommSettings substitute it silently inside modbusConnect().
+    QString storedSerialPortName() const;
     void request();
     void changedStartAddress(int value);
     void setSBStartAddValue(int value, int type);

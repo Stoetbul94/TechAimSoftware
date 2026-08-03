@@ -372,6 +372,11 @@ void MainWindow::changedConnect(bool value, QString portName)
 
 }
 
+QString MainWindow::storedSerialPortName() const
+{
+    return m_modbusCommSettings ? m_modbusCommSettings->serialPortName() : QString();
+}
+
 void MainWindow::changedSlaveID(int value)
 {
 
