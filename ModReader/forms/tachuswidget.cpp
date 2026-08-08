@@ -1511,6 +1511,10 @@ void TachusWidget::changeSighterMode(bool flag)
         // reset live/game mode
         resetShootinCount();
         LogFile::instance().appendToLogFile("changeSighterMode: lists reset, leaving sighter mode", LogType::BackendLevel);
+        // PAPER-FEED-001. Shot numbering restarts at 1 here, so the feed
+        // coordinator must forget what it has already fed for - otherwise the
+        // first counted shot looks like the sighter and its feed is skipped.
+        m_feed.noteShotNumberingReset(QStringLiteral("leaving sighter mode"));
     }
 
     isSighterMode = flag;

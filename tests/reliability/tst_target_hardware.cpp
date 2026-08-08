@@ -272,6 +272,59 @@ void run_target_hardware_tests()
         check(rig.commands.size() == 2, "20. one accepted counted shot -> exactly one more");
     }
 
+    // ══ PAPER-FEED-001 — THE SIGHTER→MATCH NUMBERING RESET ═══════════════
+    // Found on physical test 2026-08-08, not by reasoning. The sighter fed
+    // correctly; the first counted shot logged "paper feed skipped: shot 1 -
+    // duplicate feed prevented" and the paper did not move. The application
+    // restarts shot numbering at 1 when it swaps sighter/match storage, so
+    // BOTH shots arrive as identity 1 and the duplicate guard rejected the
+    // second. Tests 19-20 missed it because they used ids 1 and 2 - they
+    // assumed the very property that turned out to be false.
+
+    // 20a. the EXACT field sequence: sighter 1, then counted 1.
+    {
+        Rig rig;
+        rig.co.onShotAccepted(shot(1, ShotKind::Sighter));
+        check(rig.commands.size() == 1, "20a. the sighter feeds");
+        rig.co.onShotAccepted(shot(1, ShotKind::Counted));
+        check(rig.commands.size() == 2,
+              "20a. the first COUNTED shot also feeds, though it is also identity 1",
+              QStringLiteral("commands=%1 - the athlete's first scoring shot must advance the paper")
+                  .arg(rig.commands.size()));
+    }
+
+    // 20b. a genuine duplicate is still suppressed - the guard still works.
+    {
+        Rig rig;
+        rig.co.onShotAccepted(shot(1, ShotKind::Counted));
+        rig.co.onShotAccepted(shot(1, ShotKind::Counted));
+        check(rig.commands.size() == 1,
+              "20b. the same shot delivered twice still feeds only once");
+    }
+
+    // 20c. and for sighters too.
+    {
+        Rig rig;
+        rig.co.onShotAccepted(shot(1, ShotKind::Sighter));
+        rig.co.onShotAccepted(shot(1, ShotKind::Sighter));
+        check(rig.commands.size() == 1,
+              "20c. a repeated sighter still feeds only once");
+    }
+
+    // 20d. an explicit numbering reset clears the remembered set, so a whole
+    //      series can restart at 1 without the first shot being swallowed.
+    {
+        Rig rig;
+        rig.co.onShotAccepted(shot(1, ShotKind::Counted));
+        rig.co.onShotAccepted(shot(2, ShotKind::Counted));
+        check(rig.commands.size() == 2, "20d. two counted shots feed twice");
+        rig.co.noteShotNumberingReset(QStringLiteral("test"));
+        rig.co.onShotAccepted(shot(1, ShotKind::Counted));
+        check(rig.commands.size() == 3,
+              "20d. after a numbering reset, shot 1 feeds again rather than being "
+              "mistaken for the earlier shot 1");
+    }
+
     // 21. THE SIGHTER-DURATION DEFECT. RC1 passed the match time for both.
     {
         Rig rig;

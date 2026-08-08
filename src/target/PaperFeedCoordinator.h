@@ -45,7 +45,10 @@ enum class ShotKind : int { Sighter = 0, Counted = 1 };
 // One accepted physical shot asking for one feed.
 struct FeedRequest {
     QString sessionId;      // scopes the duplicate set
-    qint64  shotIdentity = 0;   // external/sequence id, unique within the session
+    // Sequence id. NOT unique on its own: the application restarts numbering
+    // at 1 when it swaps sighter/match storage, so the duplicate key combines
+    // this with `kind` (PAPER-FEED-001).
+    qint64  shotIdentity = 0;
     ShotKind kind = ShotKind::Counted;
     double  durationSeconds = 0.0;
     qint64  monotonicMs = 0;
@@ -110,6 +113,12 @@ public:
     void beginSession(const QString& sessionId);
     void endSession();
 
+    // Tell the coordinator that shot numbering has restarted at 1 (the
+    // sighter/match storage swap does this). Without it, the first shot after
+    // the swap collides with the previous shot 1 and its feed is suppressed
+    // as a duplicate - PAPER-FEED-001, found on physical test 2026-08-08.
+    void noteShotNumberingReset(const QString& reason);
+
     // Test/diagnostic accessors.
     int  queuedCount() const { return m_queue.size(); }
     bool motorBusy() const { return m_motorBusy; }
@@ -123,7 +132,7 @@ public:
 
 private:
     void log(const QString& line) const;
-    bool rememberIdentity(const QString& sessionId, qint64 identity);
+    bool rememberIdentity(const QString& sessionId, qint64 identity, ShotKind kind);
 
     MotorCommand m_motor;
     LogSink m_log;

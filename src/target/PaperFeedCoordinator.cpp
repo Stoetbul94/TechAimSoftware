@@ -67,9 +67,35 @@ void PaperFeedCoordinator::endSession()
     m_queue.clear();
 }
 
-bool PaperFeedCoordinator::rememberIdentity(const QString& sessionId, qint64 identity)
+void PaperFeedCoordinator::noteShotNumberingReset(const QString& reason)
 {
-    const QString key = QStringLiteral("%1#%2").arg(sessionId).arg(identity);
+    // PAPER-FEED-001. The application restarts shot numbering at 1 whenever it
+    // swaps sighter/match storage, so a sequence number is NOT unique for the
+    // life of a session - the old "unique within the session" comment was
+    // simply wrong. When the caller tells us numbering restarted, the recent
+    // set must go with it, or the next shot 1 is mistaken for the previous one.
+    const int dropped = m_recentIdentities.size();
+    m_recentIdentities.clear();
+    m_recentOrder.clear();
+    log(QStringLiteral("paper feed: shot numbering reset (%1) - %2 remembered identities cleared")
+            .arg(reason).arg(dropped));
+}
+
+bool PaperFeedCoordinator::rememberIdentity(const QString& sessionId, qint64 identity,
+                                            ShotKind kind)
+{
+    // The KIND is part of the identity. Sighter 1 and counted 1 are different
+    // shots; keying on the sequence alone made the first counted shot after
+    // sighters look like a duplicate and suppressed its paper feed.
+    //
+    // Found on physical test 2026-08-08: the sighter fed correctly, then
+    // "paper feed skipped: shot 1 - duplicate feed prevented" and the athlete's
+    // first scoring shot landed on paper that had not advanced.
+    const QString key = QStringLiteral("%1#%2#%3")
+                            .arg(sessionId)
+                            .arg(kind == ShotKind::Sighter ? QStringLiteral("S")
+                                                           : QStringLiteral("C"))
+                            .arg(identity);
     if (m_recentIdentities.contains(key)) return false;   // already seen
     m_recentIdentities.insert(key);
     m_recentOrder.enqueue(key);
@@ -108,7 +134,7 @@ FeedDecision PaperFeedCoordinator::onShotAccepted(const FeedRequest& req)
     // Duplicate protection BEFORE duration, so a repeated protocol frame is
     // recorded as a prevented duplicate rather than as a zero-duration skip.
     const QString sid = req.sessionId.isEmpty() ? m_sessionId : req.sessionId;
-    if (!rememberIdentity(sid, req.shotIdentity)) {
+    if (!rememberIdentity(sid, req.shotIdentity, req.kind)) {
         ++m_duplicatesPrevented;
         d.skip = FeedSkipReason::DuplicateShot;
         log(QStringLiteral("paper feed skipped: shot %1 - duplicate feed prevented")
