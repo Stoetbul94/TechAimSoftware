@@ -395,6 +395,16 @@ public slots:
             }
         }
 
+        // PAPER-FEED-002. THE CENTRAL RESET.
+        // This function is the one authority that clears the shot count, so it
+        // is the one place the feed coordinator must be told. RC2c notified it
+        // from changeSighterMode only; the count also resets on Home ->
+        // Practice, discard-and-restart, new match and recovery, and each of
+        // those left the coordinator remembering identities that were about to
+        // be reissued from 1. Notifying here covers every path by construction,
+        // including ones added later.
+        m_feed.noteShotNumberingReset(QStringLiteral("shot count reset"));
+
         m_xCordList.clear();
         m_yCordList.clear();
         m_xCordList_gameMode.clear();
