@@ -33,7 +33,7 @@ $exe  = Join-Path $repo 'release\TechAim.exe'
 if (-not (Test-Path $exe)) { throw "Not built: $exe. Run qmake + mingw32-make -f Makefile.Release first." }
 if (-not (Test-Path (Join-Path $QtBin 'windeployqt.exe'))) { throw "windeployqt not found in $QtBin" }
 
-$version = '0.9.0-RC2c'
+$version = '0.9.0-RC2d'
 $name    = if ([string]::IsNullOrWhiteSpace($PackageName)) {
     "TechAim-$version-Diagnostic-Windows-x64"
 } else { $PackageName }

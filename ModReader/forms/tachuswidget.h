@@ -360,6 +360,41 @@ public slots:
                     LogType::BackendLevel);
             }
         }
+        // FALSE-SHOT-001. Do NOT assume the hardware counter is now zero.
+        //
+        // On 2026-08-08 the reset above reported success, yet 25 s later the
+        // target still answered "1" and the application decoded the PREVIOUS
+        // session's shot (x=2.5 y=2.9, identical to a shot fired 26 minutes
+        // earlier) as a brand-new one. It consumed sequence 1 and its paper
+        // feed, so the athlete's real first shot collided with it and its feed
+        // was suppressed as a duplicate.
+        //
+        // Trusting a write we cannot verify is what created a phantom shot, so
+        // read the counter back and ADOPT whatever it really is as the
+        // baseline. This cannot hide a real shot: a genuine shot always pushes
+        // the counter ABOVE the baseline, and detection is
+        // `newShotsCount > m_currentShootsCount`. It only makes pre-existing
+        // residue invisible, which is exactly what it is.
+        if (isAppDemoMode) {            // "is live" - the name is inverted
+            uint8_t probe[64];
+            uint16_t* probe16 = (uint16_t*) probe;
+            memset(probe, 0, sizeof(probe));
+            if (m_mainWindow->modbusReadRegistry(8192, 2, probe16) != -1) {
+                const int actual = probe16[1];
+                if (actual != 0) {
+                    LogFile::instance().appendToLogFile(
+                        QString("resetShootinCount: hw counter still reads %1 after reset - "
+                                "adopting it as the baseline so residue is not decoded as a shot")
+                            .arg(actual), LogType::BackendLevel);
+                }
+                m_currentShootsCount = actual;
+            } else {
+                LogFile::instance().appendToLogFile(
+                    QString("resetShootinCount: could not read back the hw counter; "
+                            "baseline stays 0"), LogType::BackendLevel);
+            }
+        }
+
         m_xCordList.clear();
         m_yCordList.clear();
         m_xCordList_gameMode.clear();
