@@ -124,7 +124,16 @@ bool TachusWidget::connectedModbus(QString portName)
     //
     // An empty port name now means "decide, then connect", never "connect with
     // whatever was stored and hope".
-    const bool automaticPath = portName.isEmpty();
+    // The selector answers "WHICH SERIAL PORT". In Modbus TCP mode there is no
+    // serial port to choose, and gating on it abandoned the connection before
+    // TCP was ever attempted whenever no serial device was present. Found while
+    // bringing up the target emulator; it also affects any TCP-connected target.
+    const bool automaticPath = portName.isEmpty() && !m_mainWindow->isModbusTcpMode();
+    if (m_mainWindow->isModbusTcpMode()) {
+        LogFile::instance().appendToLogFile(
+            QStringLiteral("modbus TCP mode - serial selector skipped"),
+            LogType::BackendLevel);
+    }
     if (automaticPath) {
         const QString chosen = chooseStartupPort();
         if (chosen.isEmpty()) {
