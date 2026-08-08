@@ -26,16 +26,37 @@ Item {
     property real autoZoomOriginY: shootingPanelRect.height/2
     property int  autoZoomHold: 0       // ticks remaining before easing out
 
-    function triggerAutoZoom(px, py) {
-        // RC2a stage 11-12: zoom requested / animation started.
-        MODREADER.traceShotStageFromQml("zoom-requested", newShootCount)
+    // QML-SHOT-001. Diagnostics are a bystander to shot processing and must
+    // never be able to abort it. Every stamp goes through here, and anything
+    // that goes wrong inside tracing is swallowed rather than propagated.
+    //
+    // This does NOT protect argument evaluation - a bad expression at the call
+    // site throws before we are entered - so callers pass only values that are
+    // certainly in scope: a function parameter, or MODREADER.getShootCount().
+    function traceStage(stage, shotSeq) {
+        try {
+            MODREADER.traceShotStageFromQml(stage, shotSeq)
+        } catch (e) {
+            // Deliberately silent. A missing diagnostic is a nuisance; a shot
+            // that never reaches saveMatch() is a Severity 1 defect.
+        }
+    }
+
+    // shotSeq is passed EXPLICITLY. RC2a read `newShootCount` here, which is a
+    // local var of two unrelated functions and is not in this scope, so the
+    // first statement threw a ReferenceError. That propagated into the caller
+    // and skipped backEndShootCount, updateSeriesScore and saveMatch - the
+    // shot displayed but was never committed, and the next poll would have
+    // re-processed it. That is QML-SHOT-001.
+    function triggerAutoZoom(px, py, shotSeq) {
+        traceStage("zoom-requested", shotSeq)
         if (!autoZoomOn)
             return
         autoZoomOriginX = px
         autoZoomOriginY = py
         autoZoomFactor = autoZoomTarget
         autoZoomHold = 4                // ~4 * 450ms hold, reset on each shot
-        MODREADER.traceShotStageFromQml("zoom-started", newShootCount)
+        traceStage("zoom-started", shotSeq)
     }
 
     Timer {
@@ -258,7 +279,7 @@ Item {
             // this against the C++ "emit-shootCountChanged" stamp gives the
             // signal-delivery cost; differencing the render stamp below against
             // this gives the draw cost. Together they size the observed delay.
-            MODREADER.traceShotStageFromQml("qml-notified", count)
+            paneItem.traceStage("qml-notified", count)
             // Source tag: this handler fires for BOTH real hardware (Live) AND
             // demo clicks (which reach it via MODREADER.uxShoot -> shootCountChanged).
             // The two input paths are mutually exclusive by operating mode, so the
@@ -315,7 +336,7 @@ Item {
                 if (APPSETTINGS.getDeveloperMode()) console.log(" x pos ", itemPoint.x)
                 if (APPSETTINGS.getDeveloperMode()) console.log(" y Pos ", itemPoint.y)
 
-                MODREADER.traceShotStageFromQml("qml-scored", newShootCount)
+                paneItem.traceStage("qml-scored", newShootCount)
                 calculateShootingSocre(xCor, yCor, itemPoint.x, itemPoint.y)
 
                 // TRAINING: the athlete-facing impact/zoom is a controller
@@ -335,13 +356,23 @@ Item {
                     var temp = root.mapToValue(paneItem.itemPoint,polarSeries);
                     addIfinRange(temp)
                     // RC2a stage 10: the marker has been added to the series.
-                    MODREADER.traceShotStageFromQml("qml-marker-added", newShootCount)
+                    paneItem.traceStage("qml-marker-added", newShootCount)
                 }
 
                 // SIUS-style: zoom in on where the shot just landed (not while a
                 // Training block hides impacts).
-                if (!trainingHidesImpact)
-                    paneItem.triggerAutoZoom(paneItem.itemPoint.x, paneItem.itemPoint.y)
+                // Auto-zoom is a DISPLAY concern. The operational statements
+                // below (backEndShootCount, series scores, saveMatch) must run
+                // even if it fails, so it cannot take them down again.
+                if (!trainingHidesImpact) {
+                    try {
+                        paneItem.triggerAutoZoom(paneItem.itemPoint.x,
+                                                 paneItem.itemPoint.y,
+                                                 newShootCount)
+                    } catch (e) {
+                        MODREADER.appendToLogFile("auto-zoom failed, shot processing continues: " + e)
+                    }
+                }
 
                 backEndShootCount = newShootCount
 

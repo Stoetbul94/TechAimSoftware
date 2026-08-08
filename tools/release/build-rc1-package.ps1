@@ -33,7 +33,7 @@ $exe  = Join-Path $repo 'release\TechAim.exe'
 if (-not (Test-Path $exe)) { throw "Not built: $exe. Run qmake + mingw32-make -f Makefile.Release first." }
 if (-not (Test-Path (Join-Path $QtBin 'windeployqt.exe'))) { throw "windeployqt not found in $QtBin" }
 
-$version = '0.9.0-RC2a'
+$version = '0.9.0-RC2b'
 $name    = if ([string]::IsNullOrWhiteSpace($PackageName)) {
     "TechAim-$version-Diagnostic-Windows-x64"
 } else { $PackageName }
@@ -89,7 +89,11 @@ foreach ($l in @('LICENSE', 'LICENSE.txt', 'docs\legal\THIRD-PARTY-NOTICES.md'))
 }
 
 # ---- 5. the support-bundle tool the operator runs -------------------------
-Copy-Item (Join-Path $docRepo 'tools\release\Make-SupportBundle.ps1') $pkg
+# v2, from tools\deployment. RC2a shipped the v1 script, which reads
+# %LOCALAPPDATA%\TechAim - one level ABOVE the real data root - and therefore
+# collected no logs, no sessions and no crash data. Confirmed on the shipped
+# RC2a package during the 2026-08-08 physical test (SUP-002 / SUP-003).
+Copy-Item (Join-Path $docRepo 'tools\deployment\Make-SupportBundle.ps1') $pkg
 
 # ---- 6. Qt runtime -------------------------------------------------------
 # windeployqt in this Qt 6.5.3 MinGW install fails with "Unable to find the

@@ -1,0 +1,5 @@
+release/
+Makefile*
+*.o
+*.moc
+moc_*
