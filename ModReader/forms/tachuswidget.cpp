@@ -479,11 +479,25 @@ void TachusWidget::on_pushButton_2_clicked() // read old data
 
     if (m_mainWindow && m_mainWindow->isModBusConnected())
     {
-        int from = m_currentShootsCount;
-        checkForNewShots();
-        int to = m_currentShootsCount;
+        // SYNC-001. This used to read:
+        //
+        //     int from = m_currentShootsCount;
+        //     checkForNewShots();
+        //     int to = m_currentShootsCount;
+        //     if (from < to && to-from != 10) { ...fetch from+1..to... }
+        //
+        // It inferred "new shots arrived" from the baseline having MOVED. Once
+        // synchronization could legitimately move the baseline, that inference
+        // replayed stale target slots as real shots - two phantom shots, two
+        // scores and two paper feeds on 2026-08-09 in 10 m Air Pistol.
+        //
+        // The poll now STATES what happened. Only NewShots may fetch
+        // coordinates; Synchronized, NoChange, Fault and ReadError may not.
+        const PollResult poll = checkForNewShots();
+        const int from = poll.firstNewShot - 1;
+        const int to   = poll.lastNewShot;
 
-        if (from < to && to-from != 10)
+        if (poll.kind == PollKind::NewShots && to - from != 10)
         {
             LogFile::instance().appendToLogFile(QString("Collecting data for shoots from %1 to %2").arg(from).arg(to), LogType::interfaceLevel);
             int baseNumber = 16376;
@@ -1700,8 +1714,9 @@ void TachusWidget::attemptTargetReconnect()
     emit targetStateChanged(QStringLiteral("TARGET CONNECTED"), port);
 }
 
-void TachusWidget::checkForNewShots(bool motorAutoMode)
+TachusWidget::PollResult TachusWidget::checkForNewShots(bool motorAutoMode)
 {
+    PollResult result;
 //    LogFile::instance().appendToLogFile("Checking for new shoots", LogType::BackendLevel);
     uint8_t dest[1024]; //setup memory for data
     uint16_t * dest16 = (uint16_t *) dest;
@@ -1764,7 +1779,8 @@ void TachusWidget::checkForNewShots(bool motorAutoMode)
         // genuinely removed device fails every time.
         if (++m_consecutiveReadFailures >= kReadFailuresBeforeLinkLost)
             onTargetLinkLost();
-        return;
+        result.kind = PollKind::ReadError;
+        return result;
     }
     m_consecutiveReadFailures = 0;
 
@@ -1776,7 +1792,8 @@ void TachusWidget::checkForNewShots(bool motorAutoMode)
         if (!isHardwareConnected()) {
             emit hardwareDisconnected();
             m_hardwareDisconnected = true;
-            return;
+            result.kind = PollKind::ReadError;
+            return result;
         }
     }
     const int delta = newShotsCount - m_currentShootsCount;
@@ -1802,23 +1819,33 @@ void TachusWidget::checkForNewShots(bool motorAutoMode)
         m_currentShootsCount = newShotsCount;
         m_acqState = AcquisitionState::Acquiring;
         emit targetStateChanged(QStringLiteral("TARGET CONNECTED"), m_activePortName);
-        return;
+        // SYNC-001: Synchronized, NOT NewShots. The caller must not fetch a
+        // single coordinate for a baseline that merely caught up with reality.
+        result.kind = PollKind::Synchronized;
+        result.newHardwareCounter = newShotsCount;
+        return result;
     }
 
     // ── ACQUISITION FAULT: latched, never silent, never self-clearing ────
-    if (m_acqState == AcquisitionState::Fault)
-        return;                         // already reported; do not spam
+    if (m_acqState == AcquisitionState::Fault) {
+        result.kind = PollKind::Fault;  // already reported; do not spam
+        return result;
+    }
 
     if (delta == 0)
-        return;                         // nothing new
+        return result;                  // NoChange - nothing new
 
     if (delta == 1) {
         LogFile::instance().appendToLogFile(QString("Current shoot count %1 while old shoot count was %2").arg(newShotsCount).arg(m_currentShootsCount), LogType::BackendLevel);
         LogFile::instance().appendToLogFile(
             QStringLiteral("ACQDIAG branch=ACCEPT raw=%1 baseline=%2 delta=1")
                 .arg(newShotsCount).arg(m_currentShootsCount), LogType::BackendLevel);
+        result.kind = PollKind::NewShots;
+        result.firstNewShot = m_currentShootsCount + 1;
+        result.lastNewShot  = newShotsCount;
+        result.newHardwareCounter = newShotsCount;
         m_currentShootsCount = newShotsCount;
-        return;
+        return result;
     }
 
     // Anything else is an anomaly. It MUST NOT be discarded in silence.
@@ -1847,6 +1874,8 @@ void TachusWidget::checkForNewShots(bool motorAutoMode)
         LogType::BackendLevel);
 
     emit targetStateChanged(QStringLiteral("ACQUISITION FAULT"), detail);
+    result.kind = PollKind::Fault;
+    return result;
 }
 
 int TachusWidget::getRealValue(int value)

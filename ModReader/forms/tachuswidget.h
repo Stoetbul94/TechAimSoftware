@@ -466,9 +466,29 @@ public slots:
     void appendTimeStamp(QString data);
     void appendShotDirection(int direction);
 
+private:
+    // SYNC-001. The caller used to infer "new shots" from the baseline having
+    // MOVED - it captured `from` before checkForNewShots() and `to` after, and
+    // fetched everything between. Once synchronization could legitimately move
+    // the baseline, that inference replayed stale slots as real shots: two
+    // phantom shots, two scores and two paper feeds on 2026-08-09.
+    //
+    // The poll now states WHAT happened instead of leaving the caller to guess
+    // from a side effect. Only NewShots may enter the coordinate-fetch loop.
+    enum class PollKind { NoChange, Synchronized, NewShots, Fault, ReadError };
+    struct PollResult {
+        PollKind kind = PollKind::NoChange;
+        int firstNewShot = 0;      // valid only when kind == NewShots
+        int lastNewShot  = 0;      // valid only when kind == NewShots
+        int newHardwareCounter = 0;
+    };
+
 private slots:
     void on_pushButton_3_clicked();
-    void checkForNewShots(bool motorAutoMode = true);
+
+    // Returns what the poll DECIDED. See PollResult - only NewShots authorises
+    // the caller to read coordinates.
+    PollResult checkForNewShots(bool motorAutoMode = true);
     int getRealValue(int value);
     void broadCastNewShoot(int count);
     void updateShootData(int count);
@@ -583,6 +603,7 @@ private:
     //   have the software quietly resume and hide a gap.
     enum class AcquisitionState { Synchronizing, Acquiring, Fault };
     AcquisitionState m_acqState = AcquisitionState::Synchronizing;
+
 
     // ── RC2g-DIAG: acquisition observability. Reporting only. ────────────
     qint64 m_diagPollSeq = 0;

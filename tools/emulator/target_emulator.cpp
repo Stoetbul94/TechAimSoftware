@@ -35,6 +35,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <string>
+#include <ctime>
 
 #ifdef _WIN32
 #  include <winsock2.h>
@@ -73,6 +74,13 @@ struct Emu {
     int  resetsSeen = 0;
     int  motorRuns  = 0;
     bool motorOn    = false;
+    // Deterministic trigger. The emulator is single-client and single-threaded,
+    // so a second Modbus connection cannot be used to advance the counter
+    // without disturbing the application's own session - it was tried and timed
+    // out. This fires once, N seconds after the first client connects.
+    int  fireAfterSec = 0;
+    bool fired        = false;
+    double fireX = 0.3, fireY = 6.4;
 };
 
 static void setShot(modbus_mapping_t* m, int index, double xMm, double yMm)
@@ -173,6 +181,7 @@ int main(int argc, char* argv[])
         if (a == "--scenario" && i + 1 < argc)      e.scenario = argv[++i][0];
         else if (a == "--port" && i + 1 < argc)     e.port = atoi(argv[++i]);
         else if (a == "--delay-ms" && i + 1 < argc) e.delayMs = atoi(argv[++i]);
+        else if (a == "--fire-after" && i + 1 < argc) e.fireAfterSec = atoi(argv[++i]);
         else if (a == "--help") {
             printf("target_emulator --scenario <A-N> [--port 1502] [--delay-ms 0]\n");
             return 0;
@@ -207,14 +216,42 @@ int main(int argc, char* argv[])
     printf("Type 'f' + Enter to fire a shot, 'q' + Enter to quit.\n\n");
     fflush(stdout);
 
-    modbus_tcp_accept(ctx, (int*) &server);
-
     uint8_t query[MODBUS_TCP_MAX_ADU_LENGTH];
+
+    // Accept clients REPEATEDLY. The first version exited when its one client
+    // disconnected, so closing and relaunching the application killed the
+    // emulator and every later connection attempt failed with no explanation.
+    // The application must be able to restart, and reconnect, against a target
+    // that is still there - which is the whole point of several scenarios.
+    int serverFd = server;
     for (;;) {
+      if (modbus_tcp_accept(ctx, &serverFd) == -1) {
+          fprintf(stderr, "[emu] accept failed: %s\n", modbus_strerror(errno));
+          break;
+      }
+      printf("[emu] client connected (counter=%d)\n", e.hwCount);
+      if (e.fireAfterSec > 0 && !e.fired)
+          printf("[emu] will fire ONE shot %d s from now\n", e.fireAfterSec);
+      fflush(stdout);
+      const time_t connectedAt = time(NULL);
+
+      for (;;) {
         const int rc = modbus_receive(ctx, query);
-        if (rc == -1) break;               // client gone
+        if (rc == -1) {
+            printf("[emu] client disconnected - still listening, counter stays %d\n",
+                   e.hwCount);
+            fflush(stdout);
+            break;                     // back to accept, do NOT exit
+        }
 
         if (e.delayMs > 0) SLEEP_MS(e.delayMs);
+
+        // Deterministic single shot, once the countdown expires.
+        if (e.fireAfterSec > 0 && !e.fired
+            && difftime(time(NULL), connectedAt) >= e.fireAfterSec) {
+            e.fired = true;
+            fireShot(e, map, e.fireX, e.fireY);
+        }
 
         // Inspect the request BEFORE replying so writes can be intercepted.
         // Function 6 = write single register.
@@ -247,9 +284,32 @@ int main(int argc, char* argv[])
         }
 
         modbus_reply(ctx, query, rc, map);
+
+        // modbus_reply() APPLIES write requests to the mapping itself, so
+        // inspecting the query above is not enough to suppress one. And
+        // register 8193 IS the counter cell - publishCount() writes the count
+        // to 8192+1 = 8193, which is exactly the register the application
+        // writes to "reset". The reset is therefore a direct write of the
+        // counter to zero, on the emulator and on the real target alike.
+        //
+        // Scenario B/R must hold a NON-ZERO counter across an acknowledged
+        // reset, so the value is restored AFTER the reply. The application
+        // still sees a successful write; the counter simply does not move.
+        if (!e.honourReset && rc >= 6 && query[7] == 0x06) {
+            const int addr = (query[8] << 8) | query[9];
+            if (addr == kRegReset || addr == kRegCount8192 + 1) {
+                publishCount(map, e.hwCount);
+                printf("[emu] RESET REQUEST RECEIVED (fc=6 addr=%d)\n"
+                       "[emu] RESET ACKNOWLEDGED\n"
+                       "[emu] RESET INTENTIONALLY IGNORED\n"
+                       "[emu] COUNTER REMAINS %d\n", addr, e.hwCount);
+                fflush(stdout);
+            }
+        }
+      }
     }
 
-    printf("\n[emu] client disconnected. resets seen=%d, motor runs=%d, final counter=%d\n",
+    printf("\n[emu] shutting down. resets seen=%d, motor runs=%d, final counter=%d\n",
            e.resetsSeen, e.motorRuns, e.hwCount);
     modbus_mapping_free(map);
     modbus_close(ctx);
