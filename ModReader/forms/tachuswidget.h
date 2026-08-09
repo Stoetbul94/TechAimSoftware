@@ -375,11 +375,28 @@ public slots:
         // the counter ABOVE the baseline, and detection is
         // `newShotsCount > m_currentShootsCount`. It only makes pre-existing
         // residue invisible, which is exactly what it is.
+        // RC2g-DIAG: this whole path was invisible. The reset only logged on
+        // FAILURE and the readback only logged a NON-ZERO result, so a
+        // successful reset produced no trace at all - which is why three root
+        // cause theories about it survived as long as they did.
+        LogFile::instance().appendToLogFile(
+            QStringLiteral("ACQDIAG resetShootinCount ENTER baselineBefore=%1 "
+                           "liveFlag=%2 modbusConnected=%3 onLoginPage=%4")
+                .arg(m_currentShootsCount)
+                .arg(isAppDemoMode ? 1 : 0)     // NOTE: this flag means "is LIVE"
+                .arg(m_mainWindow && m_mainWindow->isModBusConnected() ? 1 : 0)
+                .arg(m_onLoginPage ? 1 : 0), LogType::BackendLevel);
+
         if (isAppDemoMode) {            // "is live" - the name is inverted
             uint8_t probe[64];
             uint16_t* probe16 = (uint16_t*) probe;
             memset(probe, 0, sizeof(probe));
-            if (m_mainWindow->modbusReadRegistry(8192, 2, probe16) != -1) {
+            const int probeRc = m_mainWindow->modbusReadRegistry(8192, 2, probe16);
+            LogFile::instance().appendToLogFile(
+                QStringLiteral("ACQDIAG resetShootinCount READBACK rc=%1 hwCounter=%2")
+                    .arg(probeRc).arg(probeRc < 0 ? -1 : int(probe16[1])),
+                LogType::BackendLevel);
+            if (probeRc != -1) {
                 const int actual = probe16[1];
                 if (actual != 0) {
                     LogFile::instance().appendToLogFile(
@@ -549,6 +566,11 @@ private:
 
     void onTargetLinkLost();
     void attemptTargetReconnect();
+
+    // ── RC2g-DIAG: acquisition observability. Reporting only. ────────────
+    qint64 m_diagPollSeq = 0;
+    int    m_diagLastRawCounter = -999;   // impossible value forces a first log
+    int    m_diagLastBaseline = -999;
     bool m_onLoginPage = true;
     QString m_lastManuallyConnectedPort = "";
     int m_gamemode = 0;

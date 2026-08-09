@@ -14,7 +14,7 @@ import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DEFAULT_PKG = os.path.join(ROOT, "dist", "TechAim-0.9.0-RC2f-FieldTest-Windows-x64")
+DEFAULT_PKG = os.path.join(ROOT, "dist", "TechAim-0.9.0-RC2g-DIAG-FieldTest-Windows-x64")
 
 CHECKS = 0
 FAILURES = 0

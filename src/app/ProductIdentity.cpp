@@ -42,7 +42,7 @@ ProductIdentity makeTechAim()
     // evaluation, not a one-off diagnostic build, so the " - Diagnostic"
     // suffix carried by RC2a..RC2d is dropped. Diagnostics themselves remain -
     // they are gated on developer_mode, not on the channel string.
-    p.releaseChannel = QStringLiteral("Internal Field Test");
+    p.releaseChannel = QStringLiteral("Internal Diagnostic Field Test");
 
     // Shown wherever a result could be mistaken for an official one. Short
     // enough to sit in a status strip without covering scores or controls.

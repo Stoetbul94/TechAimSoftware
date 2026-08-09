@@ -1719,6 +1719,43 @@ void TachusWidget::checkForNewShots(bool motorAutoMode)
     // looking healthy. A shot lost without warning is worse than a shot
     // reported wrongly, because nobody knows when acquisition stopped.
     const int rc = m_mainWindow->modbusReadRegistry(8192, 2, dest16);
+
+    // ── RC2g-DIAG: make the acquisition decision observable ──────────────
+    // OBSERVABILITY ONLY - no branch below is altered. Three separate root
+    // cause theories were disproved by physical measurement because the log
+    // records only ACCEPTED shots; every rejection was invisible. This prints
+    // the raw counter, the baseline and the branch actually taken.
+    //
+    // Rate limited so the 100 ms poll is not materially slowed: every state
+    // change is logged immediately, and an unchanged idle poll only produces a
+    // heartbeat about once per second - enough to prove polling is alive when
+    // nothing is being accepted.
+    ++m_diagPollSeq;
+    {
+        const int rawCounter = (rc < 0) ? -1 : int(dest16[1]);
+        const bool changed   = (rawCounter != m_diagLastRawCounter)
+                            || (m_currentShootsCount != m_diagLastBaseline);
+        const bool heartbeat = (m_diagPollSeq % 10) == 0;      // ~1 s at 100 ms
+        if (changed || heartbeat) {
+            LogFile::instance().appendToLogFile(
+                QStringLiteral("ACQDIAG poll=%1 rc=%2 rawCounter=%3 baseline=%4 delta=%5 "
+                               "modbusConnected=%6 linkState=%7 onLoginPage=%8 liveFlag=%9 %10")
+                    .arg(m_diagPollSeq)
+                    .arg(rc)
+                    .arg(rawCounter)
+                    .arg(m_currentShootsCount)
+                    .arg(rc < 0 ? 0 : rawCounter - m_currentShootsCount)
+                    .arg(m_mainWindow && m_mainWindow->isModBusConnected() ? 1 : 0)
+                    .arg(int(m_linkState))
+                    .arg(m_onLoginPage ? 1 : 0)
+                    .arg(isAppDemoMode ? 1 : 0)   // NOTE: this flag means "is LIVE"
+                    .arg(changed ? QStringLiteral("[CHANGED]") : QStringLiteral("[heartbeat]")),
+                LogType::BackendLevel);
+        }
+        m_diagLastRawCounter = rawCounter;
+        m_diagLastBaseline   = m_currentShootsCount;
+    }
+
     if (rc < 0) {
         // Debounced: one glitched frame must not flap the link state, but a
         // genuinely removed device fails every time.
@@ -1739,10 +1776,31 @@ void TachusWidget::checkForNewShots(bool motorAutoMode)
             return;
         }
     }
+    // RC2g-DIAG: name the branch actually taken. Behaviour is UNCHANGED - the
+    // condition below is byte-for-byte the RC2f one; only the reporting of a
+    // non-accepting outcome is new. A rejection used to leave no trace at all.
     if (newShotsCount > m_currentShootsCount && newShotsCount - m_currentShootsCount < 2)
     {
         LogFile::instance().appendToLogFile(QString("Current shoot count %1 while old shoot count was %2").arg(newShotsCount).arg(m_currentShootsCount), LogType::BackendLevel);
+        LogFile::instance().appendToLogFile(
+            QStringLiteral("ACQDIAG branch=ACCEPT raw=%1 baseline=%2 delta=%3")
+                .arg(newShotsCount).arg(m_currentShootsCount)
+                .arg(newShotsCount - m_currentShootsCount), LogType::BackendLevel);
         m_currentShootsCount = newShotsCount;
+    }
+    else if (newShotsCount != m_currentShootsCount)
+    {
+        // Every way a non-equal counter can fail to produce a shot.
+        const char* why =
+            (newShotsCount < m_currentShootsCount)
+                ? "REJECT_COUNTER_WENT_BACKWARDS (target counter is BELOW the "
+                  "application baseline - reset, power cycle or baseline too high)"
+                : "REJECT_DELTA_TOO_LARGE (delta >= 2 - residue, or shots missed "
+                  "while not polling)";
+        LogFile::instance().appendToLogFile(
+            QStringLiteral("ACQDIAG branch=%1 raw=%2 baseline=%3 delta=%4")
+                .arg(QLatin1String(why)).arg(newShotsCount).arg(m_currentShootsCount)
+                .arg(newShotsCount - m_currentShootsCount), LogType::BackendLevel);
     }
 }
 
