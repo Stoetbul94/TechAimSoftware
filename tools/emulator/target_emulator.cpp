@@ -127,6 +127,21 @@ static void applyScenario(Emu& e, modbus_mapping_t* m)
         setShot(m, 1, 0.5, 0.5);
         break;
 
+    case 'R':   // RESTART-001: baseline 0 vs hardware 2, then 3.
+        // The condition hardware would not reproduce on demand. The
+        // application must SYNCHRONIZE to 2 and then accept the shot at 3 -
+        // never reject in silence, and never replay the two residue counts as
+        // shots. Slot 3 carries the coordinates of the shot RC2f actually lost.
+        e.hwCount = 2; e.honourReset = false;
+        setShot(m, 1, -4.2, -4.3);
+        setShot(m, 2, -4.9, -0.3);
+        setShot(m, 3, -5.4, -3.6);
+        break;
+
+    case 'X':   // counter goes BACKWARDS while acquiring
+        e.hwCount = 5; e.honourReset = false;
+        break;
+
     case 'I':   // slow firmware
         e.hwCount = 0; e.honourReset = true;
         if (e.delayMs == 0) e.delayMs = 200;

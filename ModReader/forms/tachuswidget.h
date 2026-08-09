@@ -422,6 +422,13 @@ public slots:
         // including ones added later.
         m_feed.noteShotNumberingReset(QStringLiteral("shot count reset"));
 
+        // The baseline has just been cleared, so it is no longer known to agree
+        // with the target. Re-enter SYNCHRONIZING and let the next poll adopt
+        // the real hardware value. This is the single place every numbering
+        // reset passes through - startup, Home -> Practice, sighter/match swap,
+        // new match and recovery - so no caller can forget it.
+        m_acqState = AcquisitionState::Synchronizing;
+
         m_xCordList.clear();
         m_yCordList.clear();
         m_xCordList_gameMode.clear();
@@ -566,6 +573,16 @@ private:
 
     void onTargetLinkLost();
     void attemptTargetReconnect();
+
+    // ── Acquisition state. READY is never claimed on a COM string alone ──
+    // Synchronizing: baseline not yet read FROM the target. No shot may be
+    //   accepted. Entered at startup, after reconnect and after a count reset.
+    // Acquiring:     baseline agreed with the target; delta==1 is a shot.
+    // Fault:         an anomaly that cannot be resolved safely. Latched, and
+    //   deliberately not self-clearing - the operator must be told rather than
+    //   have the software quietly resume and hide a gap.
+    enum class AcquisitionState { Synchronizing, Acquiring, Fault };
+    AcquisitionState m_acqState = AcquisitionState::Synchronizing;
 
     // ── RC2g-DIAG: acquisition observability. Reporting only. ────────────
     qint64 m_diagPollSeq = 0;

@@ -1679,6 +1679,9 @@ void TachusWidget::attemptTargetReconnect()
     m_currentShootsCount = actual;
     m_consecutiveReadFailures = 0;
     m_linkState = TargetLinkState::Connected;
+    // The link is back but the counter may have moved while we were blind.
+    // Re-synchronise before accepting anything rather than assuming continuity.
+    m_acqState = AcquisitionState::Synchronizing;
 
     LogFile::instance().appendToLogFile(
         QStringLiteral("target link RESTORED on %1 after %2 attempt(s); counter was %3, "
@@ -1776,32 +1779,74 @@ void TachusWidget::checkForNewShots(bool motorAutoMode)
             return;
         }
     }
-    // RC2g-DIAG: name the branch actually taken. Behaviour is UNCHANGED - the
-    // condition below is byte-for-byte the RC2f one; only the reporting of a
-    // non-accepting outcome is new. A rejection used to leave no trace at all.
-    if (newShotsCount > m_currentShootsCount && newShotsCount - m_currentShootsCount < 2)
-    {
+    const int delta = newShotsCount - m_currentShootsCount;
+
+    // ── SYNCHRONIZING: adopt the target's counter, emit nothing ──────────
+    // Startup, reconnect and post-recovery all arrive here before any shot may
+    // be accepted. Whatever the target reports becomes the baseline, so residue
+    // is neither replayed as shots nor able to create a permanent mismatch.
+    // This is the state RESTART-001 lacked: the application began acquiring
+    // against a baseline it had assumed rather than one it had read.
+    if (m_acqState == AcquisitionState::Synchronizing) {
+        if (delta != 0)
+            LogFile::instance().appendToLogFile(
+                QStringLiteral("ACQDIAG branch=SYNCHRONIZED baseline %1 -> %2 "
+                               "(adopted from target; %3 pre-existing count(s) ignored, "
+                               "NOT replayed as shots)")
+                    .arg(m_currentShootsCount).arg(newShotsCount).arg(delta),
+                LogType::BackendLevel);
+        else
+            LogFile::instance().appendToLogFile(
+                QStringLiteral("ACQDIAG branch=SYNCHRONIZED baseline=%1 (already in agreement)")
+                    .arg(newShotsCount), LogType::BackendLevel);
+        m_currentShootsCount = newShotsCount;
+        m_acqState = AcquisitionState::Acquiring;
+        emit targetStateChanged(QStringLiteral("TARGET CONNECTED"), m_activePortName);
+        return;
+    }
+
+    // ── ACQUISITION FAULT: latched, never silent, never self-clearing ────
+    if (m_acqState == AcquisitionState::Fault)
+        return;                         // already reported; do not spam
+
+    if (delta == 0)
+        return;                         // nothing new
+
+    if (delta == 1) {
         LogFile::instance().appendToLogFile(QString("Current shoot count %1 while old shoot count was %2").arg(newShotsCount).arg(m_currentShootsCount), LogType::BackendLevel);
         LogFile::instance().appendToLogFile(
-            QStringLiteral("ACQDIAG branch=ACCEPT raw=%1 baseline=%2 delta=%3")
-                .arg(newShotsCount).arg(m_currentShootsCount)
-                .arg(newShotsCount - m_currentShootsCount), LogType::BackendLevel);
+            QStringLiteral("ACQDIAG branch=ACCEPT raw=%1 baseline=%2 delta=1")
+                .arg(newShotsCount).arg(m_currentShootsCount), LogType::BackendLevel);
         m_currentShootsCount = newShotsCount;
+        return;
     }
-    else if (newShotsCount != m_currentShootsCount)
-    {
-        // Every way a non-equal counter can fail to produce a shot.
-        const char* why =
-            (newShotsCount < m_currentShootsCount)
-                ? "REJECT_COUNTER_WENT_BACKWARDS (target counter is BELOW the "
-                  "application baseline - reset, power cycle or baseline too high)"
-                : "REJECT_DELTA_TOO_LARGE (delta >= 2 - residue, or shots missed "
-                  "while not polling)";
-        LogFile::instance().appendToLogFile(
-            QStringLiteral("ACQDIAG branch=%1 raw=%2 baseline=%3 delta=%4")
-                .arg(QLatin1String(why)).arg(newShotsCount).arg(m_currentShootsCount)
-                .arg(newShotsCount - m_currentShootsCount), LogType::BackendLevel);
-    }
+
+    // Anything else is an anomaly. It MUST NOT be discarded in silence.
+    //
+    // RC2f lost a real physical shot because `delta < 2` rejected every poll
+    // and never updated the baseline, so the gap could never close. The
+    // operator fired into a target that recorded nothing, with no warning.
+    // Whatever triggers the mismatch, the software must never again pretend
+    // the lane is healthy while ignoring shots indefinitely.
+    //
+    // Recovering the missing shots is NOT attempted: the read-only probe on
+    // 2026-08-09 established that the target's coordinate slots are indexed by
+    // the counter and are overwritten once it is reset, so a gap cannot be
+    // reconstructed safely. Guessing would invent scores. Stopping visibly is
+    // the honest outcome.
+    m_acqState = AcquisitionState::Fault;
+    const QString detail = (delta < 0)
+        ? QStringLiteral("counter went BACKWARDS (target %1 is below baseline %2)")
+              .arg(newShotsCount).arg(m_currentShootsCount)
+        : QStringLiteral("counter JUMPED by %1 (target %2, baseline %3) - shots may "
+                         "have been missed").arg(delta).arg(newShotsCount).arg(m_currentShootsCount);
+
+    LogFile::instance().appendToLogFile(
+        QStringLiteral("ACQDIAG branch=ACQUISITION_FAULT %1 - acquisition STOPPED, "
+                       "operator warned, session preserved").arg(detail),
+        LogType::BackendLevel);
+
+    emit targetStateChanged(QStringLiteral("ACQUISITION FAULT"), detail);
 }
 
 int TachusWidget::getRealValue(int value)
