@@ -468,6 +468,15 @@ void TachusWidget::on_pushButton_2_clicked() // read old data
         }
     }
 
+    // RECONNECT-001. While the link is down, acquisition is suspended and
+    // reconnection is driven from here - the one shared poll every discipline
+    // uses. No shot is accepted and no feed is issued until the link is proven
+    // healthy again.
+    if (m_linkState != TargetLinkState::Connected) {
+        attemptTargetReconnect();
+        return;
+    }
+
     if (m_mainWindow && m_mainWindow->isModBusConnected())
     {
         int from = m_currentShootsCount;
@@ -1600,6 +1609,94 @@ void TachusWidget::on_pushButton_3_clicked()
     // no action
 }
 
+void TachusWidget::onTargetLinkLost()
+{
+    if (m_linkState != TargetLinkState::Connected)
+        return;                     // already handled - never spam the state
+
+    m_linkState = TargetLinkState::Reconnecting;
+    m_reconnectAttempts = 0;
+    m_lastReconnectAttemptMs = 0;   // let the first retry run immediately
+
+    LogFile::instance().appendToLogFile(
+        QStringLiteral("target link LOST after %1 consecutive failed reads - "
+                       "acquisition suspended, no shots or feeds will be accepted")
+            .arg(m_consecutiveReadFailures), LogType::BackendLevel);
+
+    // Release the dead handle. Windows creates a NEW device instance on replug,
+    // so the old one can never recover and must not be reused.
+    if (m_mainWindow)
+        m_mainWindow->changedConnect(false, QString());
+
+    emit targetStateChanged(QStringLiteral("TARGET DISCONNECTED"), m_activePortName);
+}
+
+void TachusWidget::attemptTargetReconnect()
+{
+    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+    if (m_lastReconnectAttemptMs != 0
+        && nowMs - m_lastReconnectAttemptMs < kReconnectIntervalMs)
+        return;                     // controlled retry - not a queue of attempts
+    m_lastReconnectAttemptMs = nowMs;
+    ++m_reconnectAttempts;
+
+    if (m_reconnectAttempts == 1)
+        emit targetStateChanged(QStringLiteral("RECONNECTING"), m_activePortName);
+
+    // Full rediscovery, not a blind reopen of the old name: the adapter may
+    // enumerate on a different COM number after replug. This is the same
+    // selector startup uses, so Bluetooth is still rejected and the remembered
+    // fingerprint is still preferred.
+    const QString port = chooseStartupPort();
+    if (port.isEmpty()) {
+        if (m_reconnectAttempts % 10 == 1)      // ~ every 20 s, not every 2 s
+            LogFile::instance().appendToLogFile(
+                QStringLiteral("reconnect attempt %1: no target candidate yet")
+                    .arg(m_reconnectAttempts), LogType::BackendLevel);
+        return;
+    }
+
+    if (!m_mainWindow)
+        return;
+    m_mainWindow->changedConnect(true, port);
+    if (!m_mainWindow->isModBusConnected())
+        return;
+
+    // Prove the link with a real read before trusting it. isModBusConnected()
+    // is a cached flag and was true all through the outage that caused this
+    // defect, so it cannot be the evidence.
+    uint8_t probe[64];
+    uint16_t* probe16 = (uint16_t*) probe;
+    memset(probe, 0, sizeof(probe));
+    if (m_mainWindow->modbusReadRegistry(8192, 2, probe16) < 0)
+        return;                     // not really back - stay reconnecting
+
+    // ADOPT the counter, exactly as FALSE-SHOT-001 requires. Anything the
+    // target counted while we were offline is residue from our point of view:
+    // it must not be replayed as new shots and must not drive the motor.
+    const int actual = probe16[1];
+    const int previous = m_currentShootsCount;
+    m_currentShootsCount = actual;
+    m_consecutiveReadFailures = 0;
+    m_linkState = TargetLinkState::Connected;
+
+    LogFile::instance().appendToLogFile(
+        QStringLiteral("target link RESTORED on %1 after %2 attempt(s); counter was %3, "
+                       "target reports %4 - adopted as baseline, not replayed")
+            .arg(port).arg(m_reconnectAttempts).arg(previous).arg(actual),
+        LogType::BackendLevel);
+
+    if (actual != previous)
+        LogFile::instance().appendToLogFile(
+            QStringLiteral("COMMUNICATION INTERRUPTION: the target counter moved from %1 "
+                           "to %2 while the application was offline. Those shots were NOT "
+                           "captured and are NOT recoverable by this session.")
+                .arg(previous).arg(actual), LogType::BackendLevel);
+
+    m_activePortName = port;
+    emit targetStateChanged(QStringLiteral("TARGET CONNECTED"), port);
+}
+
 void TachusWidget::checkForNewShots(bool motorAutoMode)
 {
 //    LogFile::instance().appendToLogFile("Checking for new shoots", LogType::BackendLevel);
@@ -1607,7 +1704,30 @@ void TachusWidget::checkForNewShots(bool motorAutoMode)
     uint16_t * dest16 = (uint16_t *) dest;
     memset(dest, 0, 1024);
 
-    m_mainWindow->modbusReadRegistry(8192, 2, dest16);
+    // RECONNECT-001. THE READ RESULT IS THE AUTHORITY.
+    //
+    // This return value used to be discarded. A failed read leaves dest16
+    // zeroed, so a dead link produced newShotsCount == 0 - indistinguishable
+    // from "no new shots". The only disconnect check below is additionally
+    // gated on m_hardwareCheckDisabled, which DEFAULTS TO TRUE, so it never
+    // ran. And m_connected in ModbusAdapter is a cached bool that survives USB
+    // removal, so isModBusConnected() kept answering true.
+    //
+    // Net effect on 2026-08-09: the cable was unplugged, the application
+    // noticed nothing, the operator's next shot was lost, and the log went
+    // silent for four and a half minutes with the shooting screen still
+    // looking healthy. A shot lost without warning is worse than a shot
+    // reported wrongly, because nobody knows when acquisition stopped.
+    const int rc = m_mainWindow->modbusReadRegistry(8192, 2, dest16);
+    if (rc < 0) {
+        // Debounced: one glitched frame must not flap the link state, but a
+        // genuinely removed device fails every time.
+        if (++m_consecutiveReadFailures >= kReadFailuresBeforeLinkLost)
+            onTargetLinkLost();
+        return;
+    }
+    m_consecutiveReadFailures = 0;
+
     int newShotsCount = dest16[1];
     //motorAutoMode = false;
     //LogFile::instance().appendToLogFile(QString("Current shoot count %1 while old shoot count was %2").arg(newShotsCount).arg(m_currentShootsCount), LogType::BackendLevel);

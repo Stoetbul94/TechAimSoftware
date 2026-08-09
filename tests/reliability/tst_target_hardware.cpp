@@ -281,6 +281,65 @@ void run_target_hardware_tests()
     // second. Tests 19-20 missed it because they used ids 1 and 2 - they
     // assumed the very property that turned out to be false.
 
+    // ══ RECONNECT-001 — THE FEED CONTRACT ACROSS A LINK OUTAGE ═══════════
+    // Found physically on 2026-08-09: the cable was unplugged, the application
+    // noticed nothing, and the next shot was lost silently. The detection and
+    // reconnect live in TachusWidget (not reachable from this QtCore harness),
+    // but the coordinator's half of the contract IS testable here: reconnect
+    // must never fabricate a feed, and the shot AFTER reconnect must feed.
+
+    // 19a. a disconnected target accepts nothing and feeds nothing.
+    {
+        Rig rig;
+        FeedContext c; c.liveMode = true; c.targetConnected = false;
+        c.replaying = false; c.matchDurationSeconds = 1.0; c.sighterDurationSeconds = 1.0;
+        rig.co.setContext(c);
+        rig.co.onShotAccepted(shot(1, ShotKind::Counted));
+        check(rig.commands.isEmpty(),
+              "19a. no feed while the target link is down",
+              QStringLiteral("commands=%1").arg(rig.commands.size()));
+    }
+
+    // 19b. reconnect alone must not feed. The counter may have moved while we
+    //      were offline; adopting it is NOT a shot event.
+    {
+        Rig rig;
+        FeedContext c; c.liveMode = true; c.targetConnected = false;
+        c.replaying = false; c.matchDurationSeconds = 1.0; c.sighterDurationSeconds = 1.0;
+        rig.co.setContext(c);
+        rig.co.onShotAccepted(shot(4, ShotKind::Counted));   // lost while offline
+        c.targetConnected = true;                            // link restored
+        rig.co.setContext(c);
+        check(rig.commands.isEmpty(),
+              "19b. restoring the link does not retroactively feed for a missed shot");
+    }
+
+    // 19c. the shot AFTER reconnect feeds exactly once, even though the
+    //      adopted baseline means its sequence jumps.
+    {
+        Rig rig;
+        rig.co.onShotAccepted(shot(1, ShotKind::Counted));
+        check(rig.commands.size() == 1, "19c. pre-outage shot feeds");
+        // outage: the coordinator is told numbering was re-established
+        rig.co.noteShotNumberingReset(QStringLiteral("reconnect baseline adopted"));
+        rig.co.onShotAccepted(shot(5, ShotKind::Counted));   // baseline jumped to 4, +1
+        check(rig.commands.size() == 2,
+              "19c. the first shot after reconnect feeds exactly once",
+              QStringLiteral("commands=%1").arg(rig.commands.size()));
+    }
+
+    // 19d. a repeated disconnect/reconnect cycle must not accumulate feeds.
+    {
+        Rig rig;
+        for (int cycle = 0; cycle < 5; ++cycle)
+            rig.co.noteShotNumberingReset(QStringLiteral("reconnect"));
+        check(rig.commands.isEmpty(),
+              "19d. five disconnect/reconnect cycles produce no feed at all");
+        rig.co.onShotAccepted(shot(1, ShotKind::Counted));
+        check(rig.commands.size() == 1,
+              "19d. and a real shot afterwards still feeds exactly once");
+    }
+
     // 20a. the EXACT field sequence: sighter 1, then counted 1.
     {
         Rig rig;

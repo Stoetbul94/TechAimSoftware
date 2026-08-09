@@ -531,6 +531,24 @@ private:
     bool m_isMasterConnected = false;
     bool m_hardwareDisconnected = false;
     bool m_hardwareCheckDisabled = true;
+
+    // ── RECONNECT-001: authoritative target link state ───────────────────
+    // Owned here because TachusWidget is the single acquisition path every
+    // discipline uses, so all Live workflows inherit this by construction.
+    enum class TargetLinkState { Connected, Disconnected, Reconnecting };
+    TargetLinkState m_linkState = TargetLinkState::Connected;
+    int     m_consecutiveReadFailures = 0;
+    int     m_reconnectAttempts = 0;
+    qint64  m_lastReconnectAttemptMs = 0;
+    QString m_activePortName;
+    // 3 failures at the 100 ms poll = ~300 ms before declaring the link lost:
+    // long enough to ride out a single glitched frame, short enough that an
+    // operator is told before firing again.
+    static const int kReadFailuresBeforeLinkLost = 3;
+    static const int kReconnectIntervalMs = 2000;
+
+    void onTargetLinkLost();
+    void attemptTargetReconnect();
     bool m_onLoginPage = true;
     QString m_lastManuallyConnectedPort = "";
     int m_gamemode = 0;
