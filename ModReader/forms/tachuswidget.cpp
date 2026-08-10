@@ -14,6 +14,7 @@
 // RC2: adapter identity + candidate filtering live in src/target so they are
 // testable without hardware. This file only ACTS on the decision.
 #include "target/TargetDeviceFingerprint.h"
+#include "target/AcquisitionDecision.h"
 #include "target/SerialDeviceProvider.h"
 #include <QFile>
 #include <QFileInfo>
@@ -1849,77 +1850,76 @@ TachusWidget::PollResult TachusWidget::checkForNewShots(bool motorAutoMode)
             return result;
         }
     }
-    const int delta = newShotsCount - m_currentShootsCount;
+    // ── THE DECISION ─────────────────────────────────────────────────────
+    // Delegated to ta::target::decidePoll so the harness exercises the SAME
+    // implementation this line calls, rather than a copy that can drift.
+    using ta::target::AcqState;
+    using ta::target::FaultCause;
+    const AcqState before =
+        (m_acqState == AcquisitionState::Synchronizing) ? AcqState::Synchronizing
+      : (m_acqState == AcquisitionState::Fault)         ? AcqState::Fault
+                                                        : AcqState::Acquiring;
+    const ta::target::PollDecision d =
+        ta::target::decidePoll(before, m_currentShootsCount, newShotsCount);
 
-    // ── SYNCHRONIZING: adopt the target's counter, emit nothing ──────────
-    // Startup, reconnect and post-recovery all arrive here before any shot may
-    // be accepted. Whatever the target reports becomes the baseline, so residue
-    // is neither replayed as shots nor able to create a permanent mismatch.
-    // This is the state RESTART-001 lacked: the application began acquiring
-    // against a baseline it had assumed rather than one it had read.
-    if (m_acqState == AcquisitionState::Synchronizing) {
-        if (delta != 0)
+    m_acqState = (d.nextState == AcqState::Synchronizing) ? AcquisitionState::Synchronizing
+               : (d.nextState == AcqState::Fault)         ? AcquisitionState::Fault
+                                                          : AcquisitionState::Acquiring;
+
+    switch (d.kind) {
+    case ta::target::PollKind::Synchronized:
+        if (d.delta != 0)
             LogFile::instance().appendToLogFile(
                 QStringLiteral("ACQDIAG branch=SYNCHRONIZED baseline %1 -> %2 "
                                "(adopted from target; %3 pre-existing count(s) ignored, "
                                "NOT replayed as shots)")
-                    .arg(m_currentShootsCount).arg(newShotsCount).arg(delta),
+                    .arg(m_currentShootsCount).arg(d.newBaseline).arg(d.delta),
                 LogType::BackendLevel);
         else
             LogFile::instance().appendToLogFile(
                 QStringLiteral("ACQDIAG branch=SYNCHRONIZED baseline=%1 (already in agreement)")
-                    .arg(newShotsCount), LogType::BackendLevel);
-        m_currentShootsCount = newShotsCount;
-        m_acqState = AcquisitionState::Acquiring;
+                    .arg(d.newBaseline), LogType::BackendLevel);
+        m_currentShootsCount = d.newBaseline;
         setTargetStatus(QStringLiteral("TARGET CONNECTED"), m_activePortName);
-        // SYNC-001: Synchronized, NOT NewShots. The caller must not fetch a
-        // single coordinate for a baseline that merely caught up with reality.
         result.kind = PollKind::Synchronized;
-        result.newHardwareCounter = newShotsCount;
+        result.newHardwareCounter = d.newBaseline;
         return result;
-    }
 
-    // ── ACQUISITION FAULT: latched, never silent, never self-clearing ────
-    if (m_acqState == AcquisitionState::Fault) {
-        result.kind = PollKind::Fault;  // already reported; do not spam
-        return result;
-    }
+    case ta::target::PollKind::NoChange:
+        return result;                  // NoChange
 
-    if (delta == 0)
-        return result;                  // NoChange - nothing new
-
-    if (delta == 1) {
+    case ta::target::PollKind::NewShots:
         LogFile::instance().appendToLogFile(QString("Current shoot count %1 while old shoot count was %2").arg(newShotsCount).arg(m_currentShootsCount), LogType::BackendLevel);
         LogFile::instance().appendToLogFile(
             QStringLiteral("ACQDIAG branch=ACCEPT raw=%1 baseline=%2 delta=1")
                 .arg(newShotsCount).arg(m_currentShootsCount), LogType::BackendLevel);
         result.kind = PollKind::NewShots;
-        result.firstNewShot = m_currentShootsCount + 1;
-        result.lastNewShot  = newShotsCount;
-        result.newHardwareCounter = newShotsCount;
-        m_currentShootsCount = newShotsCount;
+        result.firstNewShot = d.firstNewShot;
+        result.lastNewShot  = d.lastNewShot;
+        result.newHardwareCounter = d.newBaseline;
+        m_currentShootsCount = d.newBaseline;
+        return result;
+
+    case ta::target::PollKind::Fault:
+    default:
+        break;
+    }
+
+    // Already-latched fault: reported once, then silent. Not spam, not cleared.
+    if (d.cause == FaultCause::None) {
+        result.kind = PollKind::Fault;
         return result;
     }
 
-    // Anything else is an anomaly. It MUST NOT be discarded in silence.
-    //
-    // RC2f lost a real physical shot because `delta < 2` rejected every poll
-    // and never updated the baseline, so the gap could never close. The
-    // operator fired into a target that recorded nothing, with no warning.
-    // Whatever triggers the mismatch, the software must never again pretend
-    // the lane is healthy while ignoring shots indefinitely.
-    //
     // Recovering the missing shots is NOT attempted: the read-only probe on
     // 2026-08-09 established that the target's coordinate slots are indexed by
     // the counter and are overwritten once it is reset, so a gap cannot be
-    // reconstructed safely. Guessing would invent scores. Stopping visibly is
-    // the honest outcome.
-    m_acqState = AcquisitionState::Fault;
-    const QString detail = (delta < 0)
+    // reconstructed safely. Guessing would invent scores.
+    const QString detail = (d.cause == FaultCause::CounterWentBackwards)
         ? QStringLiteral("counter went BACKWARDS (target %1 is below baseline %2)")
               .arg(newShotsCount).arg(m_currentShootsCount)
         : QStringLiteral("counter JUMPED by %1 (target %2, baseline %3) - shots may "
-                         "have been missed").arg(delta).arg(newShotsCount).arg(m_currentShootsCount);
+                         "have been missed").arg(d.delta).arg(newShotsCount).arg(m_currentShootsCount);
 
     LogFile::instance().appendToLogFile(
         QStringLiteral("ACQDIAG branch=ACQUISITION_FAULT %1 - acquisition STOPPED, "

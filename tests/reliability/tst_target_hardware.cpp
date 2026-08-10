@@ -11,6 +11,7 @@
 // runs with no hardware, no Modbus and no QML.
 #include "target/TargetDeviceFingerprint.h"
 #include "target/PaperFeedCoordinator.h"
+#include "target/AcquisitionDecision.h"
 #include "test_support.h"
 
 #include <QVariantMap>
@@ -646,6 +647,138 @@ void run_target_hardware_tests()
         check(r.rejected.size() == 2,
               "43. both Bluetooth ports are rejected from enumeration metadata, "
               "with no port ever opened");
+    }
+
+    // ══ THE FOUR ACQUISITION GATES ═══════════════════════════════════════
+    // These call ta::target::decidePoll - the SAME function
+    // TachusWidget::checkForNewShots() delegates to. Not a copy, not a model of
+    // it. Each gate was first proven against the real application over Modbus
+    // TCP; automating them here makes them repeatable with no hardware and no
+    // operator clicking through a UI.
+    {
+        using namespace ta::target;
+
+        // ── GATE A: SYNCHRONIZATION. baseline 0, hardware 2 ───────────────
+        // RESTART-001's condition. Residue must be absorbed, never replayed.
+        {
+            const PollDecision d = decidePoll(AcqState::Synchronizing, 0, 2);
+            check(d.kind == PollKind::Synchronized,
+                  "A. baseline 0 vs hardware 2 SYNCHRONIZES");
+            check(d.newBaseline == 2, "A. baseline becomes 2");
+            check(d.nextState == AcqState::Acquiring, "A. then enters ACQUIRING");
+            // The kind IS the authorisation to fetch. Synchronized is not
+            // NewShots, so the caller reads no coordinates - which is exactly
+            // what SYNC-001 got wrong.
+            check(d.kind != PollKind::NewShots,
+                  "A. Synchronized is NOT NewShots - zero coordinate fetches, "
+                  "zero shots, zero markers, zero scores, zero feeds");
+            check(d.firstNewShot == 0 && d.lastNewShot == 0,
+                  "A. no shot range is offered to the caller");
+        }
+
+        // ── GATE B: NORMAL NEW SHOT. baseline 2, hardware 3 ───────────────
+        {
+            const PollDecision d = decidePoll(AcqState::Acquiring, 2, 3);
+            check(d.kind == PollKind::NewShots, "B. baseline 2 -> hardware 3 is a NEW SHOT");
+            check(d.firstNewShot == 3 && d.lastNewShot == 3,
+                  "B. slot 3 ONLY - not 1..3",
+                  QStringLiteral("got %1..%2").arg(d.firstNewShot).arg(d.lastNewShot));
+            check(d.newBaseline == 3, "B. baseline advances to 3");
+            check(d.nextState == AcqState::Acquiring, "B. stays ACQUIRING");
+        }
+
+        // ── GATE C: FORWARD ANOMALY. baseline 5, hardware 7 ──────────────
+        // RC2f met this and did NOTHING - no log, no state change, shots
+        // ignored indefinitely.
+        {
+            const PollDecision d = decidePoll(AcqState::Acquiring, 5, 7);
+            check(d.kind == PollKind::Fault, "C. baseline 5 -> hardware 7 is an ACQUISITION FAULT");
+            check(d.cause == FaultCause::CounterJumped, "C. cause is a counter jump");
+            check(d.nextState == AcqState::Fault, "C. state latches to Fault");
+            check(d.kind != PollKind::NewShots,
+                  "C. no coordinate fetch, no shot, no feed");
+            check(d.newBaseline == 5,
+                  "C. the baseline is NOT advanced - adopting the gap would hide "
+                  "that shots may have been missed");
+        }
+
+        // ── GATE D: BACKWARDS COUNTER. baseline 2, hardware 1 ────────────
+        // The likeliest to slip through: `hardware > baseline` is false, so a
+        // naive path falls into silent rejection - the RESTART-001 deadlock.
+        {
+            const PollDecision d = decidePoll(AcqState::Acquiring, 2, 1);
+            check(d.kind == PollKind::Fault, "D. baseline 2 -> hardware 1 is an ACQUISITION FAULT");
+            check(d.cause == FaultCause::CounterWentBackwards,
+                  "D. cause is a backwards counter");
+            check(d.nextState == AcqState::Fault, "D. state latches to Fault");
+            check(d.newBaseline == 2, "D. baseline unchanged, no shot, no feed");
+        }
+
+        // ── the fault is LATCHED ─────────────────────────────────────────
+        {
+            const PollDecision d = decidePoll(AcqState::Fault, 5, 6);
+            check(d.kind == PollKind::Fault,
+                  "E. a latched fault stays faulted even when the next poll "
+                  "looks perfectly normal");
+            check(d.nextState == AcqState::Fault, "E. and does not silently self-clear");
+            check(d.kind != PollKind::NewShots,
+                  "E. a shot is never accepted while faulted");
+        }
+
+        // ── repeated unchanged counter ───────────────────────────────────
+        {
+            for (int i = 0; i < 5; ++i) {
+                const PollDecision d = decidePoll(AcqState::Acquiring, 7, 7);
+                check(d.kind == PollKind::NoChange,
+                      "F. an unchanged counter is NoChange - no duplicate shot");
+            }
+        }
+
+        // ── authorized reset: numbering restarts, synchronization absorbs it ─
+        {
+            const PollDecision d = decidePoll(AcqState::Synchronizing, 7, 0);
+            check(d.kind == PollKind::Synchronized && d.newBaseline == 0,
+                  "G. an authorized reset to 0 synchronizes, it does not fault");
+            const PollDecision e = decidePoll(AcqState::Acquiring, 0, 1);
+            check(e.kind == PollKind::NewShots && e.firstNewShot == 1,
+                  "G. and the next shot is accepted normally");
+        }
+
+        // ── IGNORED reset: the target keeps its count ────────────────────
+        // The 2026-08-08 firmware behaviour: the write is acknowledged and the
+        // counter does not move.
+        {
+            const PollDecision d = decidePoll(AcqState::Synchronizing, 0, 2);
+            check(d.kind == PollKind::Synchronized && d.newBaseline == 2,
+                  "H. an ignored reset still synchronizes to the REAL counter");
+            const PollDecision e = decidePoll(AcqState::Acquiring, 2, 3);
+            check(e.kind == PollKind::NewShots && e.firstNewShot == 3,
+                  "H. and the following shot is accepted, not rejected");
+        }
+
+        // ── reconnect with an UNCHANGED counter -> no replay ─────────────
+        {
+            const PollDecision d = decidePoll(AcqState::Synchronizing, 3, 3);
+            check(d.kind == PollKind::Synchronized && d.newBaseline == 3,
+                  "I. reconnect with an unchanged counter replays nothing");
+            check(d.kind != PollKind::NewShots, "I. and emits no shot");
+        }
+
+        // ── reconnect then a legitimate increment ────────────────────────
+        {
+            decidePoll(AcqState::Synchronizing, 3, 3);
+            const PollDecision e = decidePoll(AcqState::Acquiring, 3, 4);
+            check(e.kind == PollKind::NewShots && e.firstNewShot == 4 && e.lastNewShot == 4,
+                  "J. the first shot after reconnect is accepted exactly once");
+        }
+
+        // ── reconnect where the counter MOVED while offline ──────────────
+        {
+            const PollDecision d = decidePoll(AcqState::Synchronizing, 3, 6);
+            check(d.kind == PollKind::Synchronized && d.newBaseline == 6,
+                  "K. a counter that moved during an outage is adopted, NOT "
+                  "replayed as three shots");
+        }
     }
 
     // 34. no motor command bound -> nothing happens, nothing crashes
