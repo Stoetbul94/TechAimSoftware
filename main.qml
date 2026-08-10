@@ -13,7 +13,13 @@ ApplicationWindow {
     title: PRODUCT.fullProductName
 
     property bool isOpenGLEnabled: true
-    property string userName: "Tachus"
+    // Legacy pre-rebrand default. It is a HARDCODED SEED, not saved user data -
+    // overwritten at login (main.qml:962) from the selected profile - but it is
+    // what the left pane shows until then, so "Tachus" was appearing on screen
+    // as if it were an athlete. Neutral placeholder instead; no user data is
+    // touched. (The QSettings organisation stays "Tachus": changing THAT would
+    // move every stored setting.)
+    property string userName: "Athlete"
     property string lane_number_text: "Lane1"
     property string eventName: shootingPage.currentGameDisplay1 + " " + shootingPage.currentGameDisplay2
     property string eventDate: "9/3/2017 4:34 PM"

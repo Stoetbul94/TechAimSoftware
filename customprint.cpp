@@ -1,5 +1,6 @@
 #include "customprint.h"
 #include "defines.h"
+#include "app/ProductIdentity.h"
 
 #include <QFileDialog>
 #include <QDir>
@@ -363,10 +364,13 @@ void CustomPrint::createSummryPdf()
     painter.drawLine(QLineF(10, totalHeight, iWidth-10, totalHeight));
     totalHeight += 40;
 
-    // for text -  Tachus Analytics
+    // Printed report heading. This drew the pre-rebrand "Tachus Analytics"
+    // onto customer-facing output; the product name comes from ProductIdentity
+    // so it can never drift from the build again.
     painter.setFont(QFont("Times", 16));
     QRectF rectf(10, totalHeight, iWidth, 4*heightOffsetFor8Font);
-    painter.drawText(rectf, Qt::AlignCenter,  "Tachus Analytics" );
+    painter.drawText(rectf, Qt::AlignCenter,
+                     ta::app::identity().displayName + QStringLiteral(" Analytics"));
     totalHeight += rectf.height()+40;
     painter.drawLine(QLineF(10, totalHeight, iWidth-10, totalHeight));
     totalHeight += 20;
