@@ -412,3 +412,53 @@ This needs its own scoped task and the ring geometry currently
 ⏳ awaiting official rule (see `docs/release/scoring-geometry-verification.md`)
 — drawing a 50 m face from an unconfirmed constant would put an unverified
 number on screen.
+
+### 1h. Integrated verification 2026-08-10 (real application, emulated target)
+
+Driven through the running build: Home → RIFLE → 50 m → PRONE → Training Lab →
+Call & Diagnose → Confirm setup → Start calling, with the target emulator
+supplying a connected target over Modbus TCP.
+
+**UI-TRAIN-001 — CLOSED.** The integrated Call & Diagnose screen shows the left
+pane reading **CALL & DIAGNOSE** in the neutral badge. No MATCH-60, no
+inherited competition state, no clipping. The discipline plate renders above
+it with the full name **50M RIFLE PRONE**. Verified in the same session that
+the competition path still shows **MATCH-60** in competition red for a genuine
+50 m Rifle Prone ISSF match, so the gate discriminates rather than merely
+suppresses.
+
+**UI-HDR-001 — CLOSED.** Header at 1389 px with the panel in **READY**:
+
+```
+TRAINING LAB Call & Diagnose │ Philemon │ 50m Rifle Prone
+        NOT AN OFFICIAL COMPETITION RESULT
+                    CALL & DIAGNOSE   ● READY  Emulated / network target
+```
+
+Four elements, no overlap, honesty line fully readable, mode chip and status
+panel each clear. Also confirmed on the COMPETITION header (counter row +
+SIGHTING chip clear of the READY panel). Emulated target — **not** physical
+USB verification.
+
+### UI-CD-001 — Call & Diagnose right panel contradicts the header (NEW)
+
+| Field | Value |
+|---|---|
+| Area | Call & Diagnose — SIGHTERS right panel |
+| Symptom | Panel reads `Target: Not connected` while the header reads `READY` and acquisition is live |
+| Severity | **P1 — contradictory target state** |
+| Source | Integrated verification, 2026-08-10 |
+| Status | **OPEN** |
+
+Two surfaces on one screen disagree about the target. The header binds to the
+shared `MODREADER` state; the C&D panel evidently reads a different or stale
+source. This is the same class of defect as LOGIN-LINK-001 — a second consumer
+that did not get the shared authority — and it must be traced to that source
+rather than patched at the label.
+
+### Discipline plate — position glyph cropped
+
+The plate's position-glyph row is not visible at left-pane scale: the 96 px
+card crops it. Cosmetic at Prone (one glyph), but it is the ONLY thing that
+distinguishes 3P from Prone, so 3P would lose its differentiator. Card height
+or art aspect needs adjusting. **OPEN.**
