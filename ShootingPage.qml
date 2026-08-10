@@ -729,6 +729,15 @@ Item {
         //
         // Empty = a genuine competition event, where the inherited
         // matchDisplay ("MATCH 60", "FINAL 35") IS the correct label.
+        // The owner knows the discipline precisely; the two display strings do
+        // not (Prone and 3 Positions produce identical text).
+        disciplineKeyOverride: {
+            if (loginPage.gameRange === 50)
+                return loginPage.gameSubMode === 1 ? "3P50" : "PRONE50"
+            return loginPage.gameMode === 0 ? "AP10" : "AR10"
+        }
+        disciplineNameOverride: loginPage.getDisciplineName().toUpperCase()
+
         programmeLabel: {
             if (isWindMapMatch)            return qsTr("WIND MAP")
             if (isPositionTransitionMatch) return qsTr("POSITION TRANSITION")

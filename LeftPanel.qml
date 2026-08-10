@@ -22,6 +22,26 @@ Item {
     property string programmeLabel: ""
     readonly property string effectiveProgramme:
         programmeLabel !== "" ? programmeLabel : matchText.text
+
+    // Which discipline plate to draw. Supplied by the owner where it is known
+    // precisely (Prone vs 3 Positions cannot be told apart from the two
+    // display strings, which are identical for both). Falls back to deriving
+    // what it can, so the card is never blank.
+    property string disciplineKeyOverride: ""
+    readonly property string disciplineKey: {
+        if (disciplineKeyOverride !== "") return disciplineKeyOverride
+        if (gameDisplayText2.text === "PISTOL") return "AP10"
+        return "AR10"
+    }
+    // The FULL discipline name. gameDisplay1 alone reads "10M AIR", which
+    // names no discipline at all - the discriminating half is in gameDisplay2.
+    property string disciplineNameOverride: ""
+    readonly property string disciplineName: {
+        if (disciplineNameOverride !== "") return disciplineNameOverride
+        const a = gameDisplayText1.text, b = gameDisplayText2.text
+        if (b === "" || a.indexOf(b) >= 0) return a
+        return a + " " + b
+    }
     property alias settingsX:navColumn.x
     property alias settingsY:settingsNavBtn.navY
     property alias settingsWidth:navColumn.width
@@ -117,29 +137,36 @@ Item {
         anchors.right: parent.right; anchors.rightMargin: parent.width * 0.06
         spacing: 10
 
-        // Discipline card (compact — no photo, per range feedback)
+        // Discipline card. Carries the discipline ARTWORK and the FULL
+        // discipline name.
+        //
+        // It used to render gameDisplayText1 alone, which holds only the first
+        // half of the name ("10M AIR"); the discriminating half ("RIFLE" /
+        // "PISTOL") lives in gameDisplayText2 and was used only to pick an
+        // icon. So the pane announced "10M AIR" and left the athlete to infer
+        // the rest from a silhouette.
         Rectangle {
-            width: parent.width; height: 64; radius: 10
+            width: parent.width; height: 96; radius: 10
             color: "#26272c"; border.color: "#e8003d"; border.width: 1
-            Row {
-                anchors.centerIn: parent
-                spacing: 12
-                VIcon {
-                    property bool isPistol: gameDisplayText2.text === "PISTOL"
-                    viewBoxW: isPistol ? 48 : 96
-                    viewBoxH: isPistol ? 32 : 28
-                    width: isPistol ? 48 : 66
-                    height: width * (viewBoxH / viewBoxW)
-                    pathData: isPistol ? pistolPath : riflePath
-                    color: "white"; filled: true; strokeWidth: 0
-                    anchors.verticalCenter: parent.verticalCenter
-                }
-                Text {
-                    text: gameDisplayText1.text
-                    color: "white"; font.bold: true
-                    font.family: theme.fontFamily; font.pixelSize: 20
-                    anchors.verticalCenter: parent.verticalCenter
-                }
+
+            DisciplineArt {
+                id: discArt
+                anchors.top: parent.top; anchors.topMargin: 6
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: Math.min(parent.width - 16, 132)
+                height: width * (64 / 120)
+                discipline: disciplineKey
+            }
+            Text {
+                anchors.top: discArt.bottom; anchors.topMargin: 2
+                anchors.left: parent.left; anchors.right: parent.right
+                anchors.leftMargin: 6; anchors.rightMargin: 6
+                text: disciplineName
+                color: "white"; font.bold: true
+                font.family: theme.fontFamily; font.pixelSize: 15
+                fontSizeMode: Text.HorizontalFit; minimumPixelSize: 9
+                horizontalAlignment: Text.AlignHCenter
+                elide: Text.ElideNone
             }
         }
 
