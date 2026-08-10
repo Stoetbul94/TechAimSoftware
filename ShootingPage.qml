@@ -227,7 +227,8 @@ Item {
         globalMatchModel.append(tpl);    globalMatchModel.clear()
         globalSlighterModel.append(tpl); globalSlighterModel.clear()
         globalModelOfData.append(tpl);   globalModelOfData.clear()
-        shootingPage.trainingTargetConnected = MODREADER.isMasterSystemConnected()
+        // (UI-CD-001: trainingTargetConnected is now a live binding to
+        // MODREADER.targetReady - no seeding, and nothing to go stale.)
     }
 
     // Rejected finals shots (never in the official models) — plan §8.
@@ -1637,14 +1638,30 @@ Item {
         trainingReportView.exportPdf(path)
     }
 
-    // Hardware connection state for the Sighters readiness panel (Demo ignores
-    // it). Tracked from MODREADER's master-connection signal.
-    property bool trainingTargetConnected: false
-    Connections {
-        target: MODREADER
-        function onMasterConnectionChanged(isConn) { shootingPage.trainingTargetConnected = isConn }
-    }
-    // (initial connection state is seeded in the root Component.onCompleted.)
+    // UI-CD-001. Target state for every Training Lab readiness panel.
+    //
+    // This was wrong in two independent ways, and the screen said so: on
+    // 2026-08-10 the Call & Diagnose panel read "Target: Not connected" while
+    // the header read READY and acquisition was live.
+    //
+    //   1. WRONG SOURCE. It tracked onMasterConnectionChanged /
+    //      isMasterSystemConnected() - the MASTER SYSTEM (lane server) link,
+    //      which is a different thing from the target. A target can be READY
+    //      with no master present, which is exactly the standalone-lane case.
+    //   2. WRONG MECHANISM. A plain property assigned once in
+    //      Component.onCompleted and then only on a master signal, so even the
+    //      value it did carry was a snapshot rather than live state.
+    //
+    // Now a live binding to the SAME authority the status panel and the
+    // acquisition engine use. Four right panels (Technical Blocks, Call &
+    // Diagnose, Position Transition, Wind Map) consume this one property, so
+    // they cannot disagree with the header or with each other. This is the
+    // third defect of the form "a second consumer never got the shared
+    // authority" - after RECONNECT-001's cached bool and LOGIN-LINK-001's
+    // page-gated poll - which is why it is fixed at the source rather than at
+    // the label.
+    readonly property bool trainingTargetConnected:
+        MODREADER ? MODREADER.targetReady : false
 
     // T1 closure: in-place Training recovery. Resume the journal through
     // TRAINING (owner selected by sessionKind, never by discipline alone),

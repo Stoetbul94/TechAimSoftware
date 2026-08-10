@@ -146,7 +146,13 @@ Item {
         // icon. So the pane announced "10M AIR" and left the athlete to infer
         // the rest from a silhouette.
         Rectangle {
-            width: parent.width; height: 96; radius: 10
+            // Height DERIVED from the art plus the label, not a fixed 96. The
+            // fixed height cropped the plate's position-glyph row: cosmetic at
+            // Prone, but those glyphs are the ONLY thing that distinguishes
+            // 3 Positions from Prone, so 3P lost its differentiator entirely.
+            width: parent.width
+            height: discArt.height + discLabel.implicitHeight + 18
+            radius: 10
             color: "#26272c"; border.color: "#e8003d"; border.width: 1
 
             DisciplineArt {
@@ -158,6 +164,7 @@ Item {
                 discipline: disciplineKey
             }
             Text {
+                id: discLabel
                 anchors.top: discArt.bottom; anchors.topMargin: 2
                 anchors.left: parent.left; anchors.right: parent.right
                 anchors.leftMargin: 6; anchors.rightMargin: 6
