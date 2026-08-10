@@ -171,7 +171,21 @@ bool TachusWidget::connectedModbus(QString portName)
     if (m_mainWindow->isModBusConnected()) {
         LogFile::instance().appendToLogFile(
             QString("auto-connect succeeded on %1").arg(portName), LogType::interfaceLevel);
-        emit targetStateChanged(QStringLiteral("TARGET CONNECTED"), portName);
+        // In TCP mode there is no serial device and the selector was skipped,
+        // so there is no enumerated description to report. Say what it really
+        // is rather than leaving the identity blank - and never borrow a serial
+        // adapter's name for a network target. LABELS ONLY: the connection flow
+        // below is identical, so an emulator run exercises the same path.
+        const bool tcp = m_mainWindow->isModbusTcpMode();
+        m_activePortName = tcp ? QStringLiteral("Modbus TCP") : portName;
+        // Transport is open; the acquisition baseline has NOT been read yet.
+        // The first poll publishes TARGET CONNECTED once it has synchronized.
+        setTargetStatus(QStringLiteral("SYNCHRONIZING"),
+                        m_activePortName,
+                        tcp ? QStringLiteral("Emulated / network target")
+                            : (m_hasPendingAutoDevice ? m_pendingAutoDevice.description
+                                                      : QString()),
+                        QStringLiteral("Checking shot counter before shooting."));
         // Remember only after CONFIRMED communication, and only the device the
         // selector actually resolved - never a bare port name typed by hand.
         if (m_hasPendingAutoDevice
@@ -189,7 +203,7 @@ bool TachusWidget::connectedModbus(QString portName)
     // report, not a reason to start guessing at other ports.
     LogFile::instance().appendToLogFile(
         QString("connection attempt failed on %1").arg(portName), LogType::interfaceLevel);
-    emit targetStateChanged(QStringLiteral("TARGET NOT CONNECTED"), portName);
+    setTargetStatus(QStringLiteral("TARGET NOT CONNECTED"));
     return false;
 }
 
@@ -198,7 +212,7 @@ bool TachusWidget::connectedModbus(QString portName)
 // with manual selection rather than connecting to something arbitrary.
 QString TachusWidget::chooseStartupPort()
 {
-    emit targetStateChanged(QStringLiteral("SCANNING"), QString());
+    setTargetStatus(QStringLiteral("SCANNING"));
     const ta::target::SelectionResult sel = autoSelectTargetDevice();
 
     if (sel.outcome == ta::target::SelectionOutcome::AutoConnect) {
@@ -206,7 +220,8 @@ QString TachusWidget::chooseStartupPort()
         m_hasPendingAutoDevice = true;
         LogFile::instance().appendToLogFile(
             QString("auto-connect attempted: %1").arg(sel.summary), LogType::interfaceLevel);
-        emit targetStateChanged(QStringLiteral("TARGET DETECTED"), sel.selected.portName);
+        setTargetStatus(QStringLiteral("TARGET DETECTED"), sel.selected.portName,
+                        sel.selected.description);
         return sel.selected.portName;
     }
 
@@ -215,7 +230,7 @@ QString TachusWidget::chooseStartupPort()
     if (sel.outcome == ta::target::SelectionOutcome::NeedsUserChoice) {
         LogFile::instance().appendToLogFile(
             QString("manual selection required: %1").arg(sel.summary), LogType::interfaceLevel);
-        emit targetStateChanged(QStringLiteral("MANUAL SELECTION REQUIRED"), QString());
+        setTargetStatus(QStringLiteral("MANUAL SELECTION REQUIRED"));
         emit targetSelectionRequired();
         return QString();
     }
@@ -230,7 +245,7 @@ QString TachusWidget::chooseStartupPort()
                 LogFile::instance().appendToLogFile(
                     QString("stored port %1 is present but was rejected (%2) - not used")
                         .arg(stored, c.reason), LogType::interfaceLevel);
-                emit targetStateChanged(QStringLiteral("TARGET NOT DETECTED"), QString());
+                setTargetStatus(QStringLiteral("TARGET NOT DETECTED"));
                 return QString();
             }
         }
@@ -240,7 +255,7 @@ QString TachusWidget::chooseStartupPort()
                 LogFile::instance().appendToLogFile(
                     QString("no target candidate; falling back to the stored port %1, "
                             "which is still enumerated").arg(stored), LogType::interfaceLevel);
-                emit targetStateChanged(QStringLiteral("TARGET DETECTED"), stored);
+                setTargetStatus(QStringLiteral("TARGET DETECTED"), stored);
                 return stored;
             }
         }
@@ -251,7 +266,7 @@ QString TachusWidget::chooseStartupPort()
 
     LogFile::instance().appendToLogFile(
         QString("target not detected: %1").arg(sel.summary), LogType::interfaceLevel);
-    emit targetStateChanged(QStringLiteral("TARGET NOT DETECTED"), QString());
+    setTargetStatus(QStringLiteral("TARGET NOT DETECTED"));
     return QString();
 }
 
@@ -1623,6 +1638,41 @@ void TachusWidget::on_pushButton_3_clicked()
     // no action
 }
 
+void TachusWidget::setTargetStatus(const QString& state, const QString& port,
+                                   const QString& device, const QString& detail)
+{
+    // While the link machine is actively recovering, the rediscovery scan must
+    // not overwrite the operator-facing state. The scan legitimately reports
+    // SCANNING / TARGET NOT DETECTED on every retry, but "NO TARGET" tells the
+    // operator they never had one - when in fact the cable was pulled and the
+    // software is trying to get it back. RECONNECTING is the true state and the
+    // more actionable message, so it wins until the link is genuinely restored.
+    if (m_linkState == TargetLinkState::Reconnecting
+        && (state == QLatin1String("SCANNING")
+         || state == QLatin1String("TARGET NOT DETECTED")
+         || state == QLatin1String("TARGET NOT CONNECTED"))) {
+        return;
+    }
+
+    m_targetState = state;
+    if (!port.isEmpty())   m_targetPort   = port;
+    if (!device.isEmpty()) m_targetDevice = device;
+    m_targetDetail = detail;
+
+    // A target that is not connected has no port or device to show. Leaving the
+    // last known values on screen is exactly how a stale COM number came to be
+    // displayed for a port that did not exist on the machine.
+    if (state == QLatin1String("TARGET NOT CONNECTED")
+        || state == QLatin1String("TARGET NOT DETECTED")
+        || state == QLatin1String("TARGET DISCONNECTED")) {
+        m_targetPort.clear();
+        m_targetDevice.clear();
+    }
+
+    emit targetStateChanged(state, m_targetPort);
+    emit targetStatusChanged();
+}
+
 void TachusWidget::onTargetLinkLost()
 {
     if (m_linkState != TargetLinkState::Connected)
@@ -1642,7 +1692,8 @@ void TachusWidget::onTargetLinkLost()
     if (m_mainWindow)
         m_mainWindow->changedConnect(false, QString());
 
-    emit targetStateChanged(QStringLiteral("TARGET DISCONNECTED"), m_activePortName);
+    setTargetStatus(QStringLiteral("TARGET DISCONNECTED"), QString(), QString(),
+                    QStringLiteral("Connection to the electronic target has been lost."));
 }
 
 void TachusWidget::attemptTargetReconnect()
@@ -1655,7 +1706,7 @@ void TachusWidget::attemptTargetReconnect()
     ++m_reconnectAttempts;
 
     if (m_reconnectAttempts == 1)
-        emit targetStateChanged(QStringLiteral("RECONNECTING"), m_activePortName);
+        setTargetStatus(QStringLiteral("RECONNECTING"));
 
     // Full rediscovery, not a blind reopen of the old name: the adapter may
     // enumerate on a different COM number after replug. This is the same
@@ -1711,7 +1762,9 @@ void TachusWidget::attemptTargetReconnect()
                 .arg(previous).arg(actual), LogType::BackendLevel);
 
     m_activePortName = port;
-    emit targetStateChanged(QStringLiteral("TARGET CONNECTED"), port);
+    setTargetStatus(QStringLiteral("SYNCHRONIZING"), port,
+                    m_hasPendingAutoDevice ? m_pendingAutoDevice.description : QString(),
+                    QStringLiteral("Target found. Checking shot counter before shooting."));
 }
 
 TachusWidget::PollResult TachusWidget::checkForNewShots(bool motorAutoMode)
@@ -1818,7 +1871,7 @@ TachusWidget::PollResult TachusWidget::checkForNewShots(bool motorAutoMode)
                     .arg(newShotsCount), LogType::BackendLevel);
         m_currentShootsCount = newShotsCount;
         m_acqState = AcquisitionState::Acquiring;
-        emit targetStateChanged(QStringLiteral("TARGET CONNECTED"), m_activePortName);
+        setTargetStatus(QStringLiteral("TARGET CONNECTED"), m_activePortName);
         // SYNC-001: Synchronized, NOT NewShots. The caller must not fetch a
         // single coordinate for a baseline that merely caught up with reality.
         result.kind = PollKind::Synchronized;
@@ -1873,7 +1926,7 @@ TachusWidget::PollResult TachusWidget::checkForNewShots(bool motorAutoMode)
                        "operator warned, session preserved").arg(detail),
         LogType::BackendLevel);
 
-    emit targetStateChanged(QStringLiteral("ACQUISITION FAULT"), detail);
+    setTargetStatus(QStringLiteral("ACQUISITION FAULT"), QString(), QString(), detail);
     result.kind = PollKind::Fault;
     return result;
 }

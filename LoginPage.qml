@@ -484,6 +484,19 @@ Item {
                 rootItem.visible = false
             } else {
                 MODREADER.appendToLogFile("Com-port connected but validation failed")
+                // This branch used to log and show NOTHING. Pressing Start
+                // Practice simply did nothing, with no reason given - observed
+                // during emulator bring-up on 2026-08-09. A control that
+                // silently refuses is indistinguishable from a frozen
+                // application. The reason comes from the SAME authoritative
+                // target state the status panel binds to, not a second guess.
+                dialogManager.showError(qsTr("Target Not Ready"),
+                    qsTr("A valid electronic target connection is required before "
+                       + "starting this Live session.\n\nTarget status: %1%2\n\n"
+                       + "Check the USB connection and try again.")
+                        .arg(MODREADER.targetState)
+                        .arg(MODREADER.targetPort !== ""
+                             ? qsTr(" (%1)").arg(MODREADER.targetPort) : ""))
             }
         }
         APPSETTINGS.saveMatch(true)
@@ -673,7 +686,11 @@ Item {
                 id: connLabel
                 anchors.top: athleteBox.bottom; anchors.topMargin: 16
                 anchors.left: parent.left; anchors.leftMargin: 22
-                text: "TARGET CONNECTION"
+                // Named as the fallback it is. The box below carries a saved
+                // value and showed "COM7" on a machine with no COM7 - reading
+                // like an active connection when the target was absent. The
+                // authoritative state is the panel underneath.
+                text: "TARGET CONNECTION — MANUAL PORT FALLBACK"
                 color: _txtMut; font.family: theme.fontFamily
                 font.pixelSize: 10; font.bold: true; font.letterSpacing: 2
                 visible: showComportConnector
@@ -745,6 +762,21 @@ Item {
                 }
             }
 
+            // ── AUTHORITATIVE TARGET STATUS ───────────────────────────────────
+            // The text box above is the MANUAL FALLBACK for typing a port. It is
+            // not the truth: it showed "COM7" on a machine where no COM7 exists,
+            // because it carries a remembered settings value. This panel binds
+            // to the live engine state and shows the device and port ACTUALLY
+            // connected, so an operator can tell at a glance what they are
+            // really talking to before they start shooting.
+            TargetStatusPanel {
+                id: loginTargetStatus
+                anchors.top: connRow.bottom; anchors.topMargin: 8
+                anchors.left: parent.left;   anchors.leftMargin: 22
+                anchors.right: parent.right; anchors.rightMargin: 22
+                visible: showComportConnector
+            }
+
             // ── OPERATING MODE (F11 fix) ──────────────────────────────────────
             // The operator-facing Live/Demo switch. Placed HERE (the idle
             // Start-session screen) because changing mode is only permitted when
@@ -753,7 +785,9 @@ Item {
             // falls back to appMode if OPMODE is unavailable.
             Text {
                 id: opModeSectionLabel
-                anchors.top: showComportConnector ? connRow.bottom : athleteBox.bottom
+                // Anchored below the status panel, not the manual-entry row, so
+                // the authoritative target state cannot be overlapped.
+                anchors.top: showComportConnector ? loginTargetStatus.bottom : athleteBox.bottom
                 anchors.topMargin: 16
                 anchors.left: parent.left; anchors.leftMargin: 22
                 text: "OPERATING MODE"

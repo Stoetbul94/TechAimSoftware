@@ -663,6 +663,36 @@ Item {
         }
     }
 
+    // Target connection state, on the screen the athlete is actually looking at.
+    //
+    // On 2026-08-09 the USB cable was unplugged mid-session and this screen
+    // carried on looking perfectly healthy while acquisition was dead - the
+    // next shot was lost with no warning at all. The shared engine knew; the
+    // operator did not. It sits above everything (z) so a fault cannot be
+    // covered by a panel or overlay.
+    TargetStatusPanel {
+        id: targetStatus
+        // Compact while healthy so it cannot cover LAST SHOT or the series
+        // table; it expands automatically the moment shooting is blocked.
+        compact: true
+        width: expanded ? Math.max(300, 0.26 * parent.width)
+                        : Math.max(300, 0.30 * parent.width)
+        // Sits in the header strip when compact, over the target face when
+        // expanded - a fault should be the most prominent thing on screen.
+        anchors.horizontalCenter: expanded ? parent.horizontalCenter : undefined
+        anchors.right: expanded ? undefined : parent.right
+        anchors.top: parent.top
+        anchors.topMargin: expanded ? 90 : 8
+        anchors.rightMargin: 200
+        z: 500
+        // ALWAYS visible. Hiding it when healthy was tempting for tidiness, but
+        // it means the athlete cannot confirm the target is genuinely READY -
+        // they can only infer it from the absence of a warning. Absence of a
+        // warning is exactly what was on screen while acquisition was dead on
+        // 2026-08-09. A positive READY is the thing worth showing.
+        visible: true
+    }
+
     LeftPanel {
         id: leftPanel
         width: 0.15*parent.width

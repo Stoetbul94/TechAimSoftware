@@ -166,6 +166,36 @@ class TachusWidget : public QWidget
 {
     Q_OBJECT
 
+    // ── AUTHORITATIVE TARGET STATUS, for the operator ────────────────────
+    // The single source the UI binds to. Every state the acquisition engine
+    // reaches is published here, so a discipline screen consumes target state
+    // rather than reimplementing it.
+    //
+    // targetDevice is the description of the device ACTUALLY enumerated and
+    // selected - it is not a hardcoded adapter name. Any USB-serial target is
+    // shown by whatever Windows reports for it.
+    //
+    // targetPort is the port CURRENTLY connected, never a remembered settings
+    // value. The connection area displayed a stale "COM7" that did not exist on
+    // the machine; that is the defect this property exists to prevent.
+    Q_PROPERTY(QString targetState  READ targetState  NOTIFY targetStatusChanged)
+    Q_PROPERTY(QString targetDevice READ targetDevice NOTIFY targetStatusChanged)
+    Q_PROPERTY(QString targetPort   READ targetPort   NOTIFY targetStatusChanged)
+    Q_PROPERTY(QString targetDetail READ targetDetail NOTIFY targetStatusChanged)
+    Q_PROPERTY(bool    targetReady  READ targetReady  NOTIFY targetStatusChanged)
+
+public:
+    QString targetState()  const { return m_targetState; }
+    QString targetDevice() const { return m_targetDevice; }
+    QString targetPort()   const { return m_targetPort; }
+    QString targetDetail() const { return m_targetDetail; }
+    // READY is a strong claim: identified target, open transport, valid Modbus
+    // AND a synchronized acquisition baseline. An open COM port is not enough.
+    bool    targetReady()  const {
+        return m_targetState == QLatin1String("TARGET CONNECTED")
+            && m_acqState == AcquisitionState::Acquiring;
+    }
+
 public:
     explicit TachusWidget(MainWindow* mainwindow, QWidget *parent = 0);
     ~TachusWidget();
@@ -518,6 +548,8 @@ signals:
     // SCANNING / TARGET DETECTED / TARGET CONNECTED / TARGET NOT DETECTED /
     // TARGET NOT CONNECTED / MANUAL SELECTION REQUIRED / TARGET DISCONNECTED.
     void targetStateChanged(QString state, QString portName);
+    // Single notification for the QML-bindable target status below.
+    void targetStatusChanged();
 
 private:
     Ui::TachusWidget *ui;
@@ -585,6 +617,20 @@ private:
     int     m_reconnectAttempts = 0;
     qint64  m_lastReconnectAttemptMs = 0;
     QString m_activePortName;
+    QString m_targetState = QStringLiteral("TARGET NOT CONNECTED");
+    QString m_targetDevice;
+    QString m_targetPort;
+    QString m_targetDetail;
+
+    // One funnel for every target state change. Keeps the legacy signal for
+    // existing consumers and drives the QML-bindable properties from the same
+    // call, so the two can never disagree. An empty device/port leaves the
+    // previous value untouched - transient states like SCANNING should not
+    // blank out an identity the operator is relying on.
+    void setTargetStatus(const QString& state,
+                         const QString& port = QString(),
+                         const QString& device = QString(),
+                         const QString& detail = QString());
     // 3 failures at the 100 ms poll = ~300 ms before declaring the link lost:
     // long enough to ride out a single glitched frame, short enough that an
     // operator is told before firing again.
