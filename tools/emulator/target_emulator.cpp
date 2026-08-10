@@ -80,6 +80,11 @@ struct Emu {
     // out. This fires once, N seconds after the first client connects.
     int  fireAfterSec = 0;
     bool fired        = false;
+    // How far the counter moves when the trigger fires. 1 = a normal shot.
+    // 2+ simulates shots missed while the application was not looking; a
+    // negative value simulates a counter that went backwards (reset, power
+    // cycle). Both must produce ACQUISITION FAULT, never a silent rejection.
+    int  fireDelta = 1;
     double fireX = 0.3, fireY = 6.4;
 };
 
@@ -165,11 +170,16 @@ static void applyScenario(Emu& e, modbus_mapping_t* m)
 // Advance the emulated target by one shot, as if a pellet landed.
 static void fireShot(Emu& e, modbus_mapping_t* m, double x, double y)
 {
-    ++e.hwCount;
-    setShot(m, e.hwCount, x, y);
+    e.hwCount += e.fireDelta;
+    if (e.hwCount < 0) e.hwCount = 0;
+    if (e.hwCount > 0) setShot(m, e.hwCount, x, y);
     publishCount(m, e.hwCount);
-    printf("[emu] shot fired -> hardware counter now %d (x=%.1f y=%.1f)\n",
-           e.hwCount, x, y);
+    if (e.fireDelta == 1)
+        printf("[emu] shot fired -> hardware counter now %d (x=%.1f y=%.1f)\n",
+               e.hwCount, x, y);
+    else
+        printf("[emu] ANOMALY INJECTED: counter moved by %+d -> now %d\n",
+               e.fireDelta, e.hwCount);
     fflush(stdout);
 }
 
@@ -182,6 +192,7 @@ int main(int argc, char* argv[])
         else if (a == "--port" && i + 1 < argc)     e.port = atoi(argv[++i]);
         else if (a == "--delay-ms" && i + 1 < argc) e.delayMs = atoi(argv[++i]);
         else if (a == "--fire-after" && i + 1 < argc) e.fireAfterSec = atoi(argv[++i]);
+        else if (a == "--fire-delta" && i + 1 < argc) e.fireDelta = atoi(argv[++i]);
         else if (a == "--help") {
             printf("target_emulator --scenario <A-N> [--port 1502] [--delay-ms 0]\n");
             return 0;
