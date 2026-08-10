@@ -38,10 +38,12 @@ ProductIdentity makeTechAim()
     // the qmake/make/compiler quoting chain intact. The version does come from
     // the build (APP_VERSION_STR) because it has no spaces and must match the
     // packaged artefact name.
-    // RC2e is the final internal qualification candidate before SETA
-    // evaluation, not a one-off diagnostic build, so the " - Diagnostic"
-    // suffix carried by RC2a..RC2d is dropped. Diagnostics themselves remain -
-    // they are gated on developer_mode, not on the channel string.
+    // The channel names the CANDIDATE, so it legitimately changes between
+    // builds - RC2a..RC2d carried " - Diagnostic", RC2e dropped it, RC2g-DIAG
+    // reinstated it as "Internal Diagnostic Field Test" because that build
+    // exists to observe the acquisition decision. What must NEVER change is
+    // the invariant the harness enforces: an internal field-test channel that
+    // makes no production, general-release or stable claim.
     p.releaseChannel = QStringLiteral("Internal Diagnostic Field Test");
 
     // Shown wherever a result could be mistaken for an official one. Short

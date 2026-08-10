@@ -1117,11 +1117,16 @@ static void runProductIdentityChecks()
           "identity: legal publisher");
     check(p.applicationId == QLatin1String("za.co.techaim.electronic-target-control"),
           "identity: reverse-DNS application id");
-    // 0.9.0-RC1: the channel is injected by the build (APP_RELEASE_CHANNEL).
-    // What matters is that it makes NO production claim and that a field-test
-    // build carries the notice, so a result can never look official.
-    check(p.releaseChannel == QLatin1String("Internal Field Test"),
-          "identity: release channel is the internal field test (no production claim)",
+    // The channel NAMES THE CANDIDATE, so pinning the exact string was wrong:
+    // it made every release candidate a test edit, and RC2g-DIAG duly changed
+    // the string without updating this line. Assert the invariant instead -
+    // an INTERNAL FIELD TEST channel - which is what actually protects a
+    // result from looking official. Still strict: any channel that drops
+    // "Internal" or "Field Test" fails here, and the production/general/stable
+    // check below fails independently.
+    check(p.releaseChannel.startsWith(QLatin1String("Internal"))
+          && p.releaseChannel.contains(QLatin1String("Field Test")),
+          "identity: release channel is an internal field test (no production claim)",
           p.releaseChannel);
     check(!p.fieldTestNotice.isEmpty()
           && p.fieldTestNotice.contains(QLatin1String("NOT FOR OFFICIAL")),
