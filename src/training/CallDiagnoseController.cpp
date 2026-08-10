@@ -848,6 +848,9 @@ QVariantMap CallDiagnoseController::reportModel() const
         ? QStringLiteral("Legacy") : s.operatingMode;
     r[QStringLiteral("focus")] = m_cfg.technicalFocus;
     r[QStringLiteral("threePositions")] = m_cfg.threePositions;
+    // CD-REPORT-002. The report must name the DISCIPLINE, not the position
+    // layout. Derived here from the configured discipline so QML only formats.
+    r[QStringLiteral("discipline")] = QString::fromUtf8(disciplineName(m_cfg.discipline));
     r[QStringLiteral("shotCount")] = m_cfg.shotCount;
     r[QStringLiteral("plannedShots")] = m_cfg.totalShots();
     int called = 0, sighters = st().trainingSighters.size();

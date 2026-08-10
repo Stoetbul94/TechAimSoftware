@@ -35,6 +35,11 @@ tests/training/Makefile*
 tests/training/release/
 tests/training/debug/
 tests/training/.qmake.stash
+# CD-REPORT evidence renderer - same qmake -o Makefile.rel pattern.
+tools/reporttest/Makefile*
+tools/reporttest/release/
+tools/reporttest/debug/
+tools/reporttest/.qmake.stash
 # finals test-harness run artifacts (journals, logs, audio fixtures)
 tests/finals/finals_session*.jsonl
 tests/finals/harness.log

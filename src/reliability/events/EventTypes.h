@@ -51,6 +51,28 @@ inline const char* disciplineId(Discipline d)
     return "NONE";
 }
 
+// Operator/athlete-facing name, as distinct from the wire id above. Reports
+// print THIS. CD-REPORT-002: the Call & Diagnose report header derived its
+// "Discipline" line from a threePositions bool and printed "Single position" -
+// a layout descriptor, not a discipline - so a 50 m Rifle Prone report never
+// said what had been shot (50 m field test, 2026-08-10). The name belongs
+// beside the id, mapped from the same enum, not re-inferred per report.
+inline const char* disciplineName(Discipline d)
+{
+    switch (d) {
+    case Discipline::None:              return "—";
+    case Discipline::AirPistol10m:      return "10 m Air Pistol";
+    case Discipline::AirRifle10m:       return "10 m Air Rifle";
+    case Discipline::Prone50m:          return "50 m Rifle Prone";
+    case Discipline::ThreePositions50m: return "50 m Rifle 3 Positions";
+    case Discipline::Finals3P:          return "50 m Rifle 3 Positions Final";
+    case Discipline::Training:          return "Training";
+    case Discipline::AirRifleFinal10m:  return "10 m Air Rifle Final";
+    case Discipline::AirPistolFinal10m: return "10 m Air Pistol Final";
+    }
+    return "—";
+}
+
 inline bool disciplineFromId(const QString& id, Discipline* out)
 {
     if (id == QLatin1String("NONE"))       { *out = Discipline::None; return true; }

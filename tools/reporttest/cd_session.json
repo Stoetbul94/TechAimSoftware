@@ -1,0 +1,98 @@
+{
+ "shots": [
+  {
+   "shotNumber": 1,
+   "actualScore": 10.1,
+   "errorXMm": 16.63,
+   "errorYMm": 2.91,
+   "errorMm": 16.88,
+   "positionName": "",
+   "note": ""
+  },
+  {
+   "shotNumber": 2,
+   "actualScore": 9.5,
+   "errorXMm": 11.59,
+   "errorYMm": -8.81,
+   "errorMm": 14.56,
+   "positionName": "",
+   "note": ""
+  },
+  {
+   "shotNumber": 3,
+   "actualScore": 9.8,
+   "errorXMm": 2.79,
+   "errorYMm": -9.59,
+   "errorMm": 9.99,
+   "positionName": "",
+   "note": ""
+  },
+  {
+   "shotNumber": 4,
+   "actualScore": 9.5,
+   "errorXMm": 5.9,
+   "errorYMm": -10.84,
+   "errorMm": 12.34,
+   "positionName": "",
+   "note": ""
+  },
+  {
+   "shotNumber": 5,
+   "actualScore": 9.7,
+   "errorXMm": 3.14,
+   "errorYMm": -10.1,
+   "errorMm": 10.58,
+   "positionName": "",
+   "note": ""
+  },
+  {
+   "shotNumber": 6,
+   "actualScore": 8.5,
+   "errorXMm": 4.79,
+   "errorYMm": -3.84,
+   "errorMm": 6.14,
+   "positionName": "",
+   "note": ""
+  },
+  {
+   "shotNumber": 7,
+   "actualScore": 10.7,
+   "errorXMm": 1.1,
+   "errorYMm": 0.81,
+   "errorMm": 1.37,
+   "positionName": "",
+   "note": ""
+  },
+  {
+   "shotNumber": 8,
+   "actualScore": 9.6,
+   "errorXMm": 5.13,
+   "errorYMm": -9.53,
+   "errorMm": 10.82,
+   "positionName": "",
+   "note": ""
+  },
+  {
+   "shotNumber": 9,
+   "actualScore": 10.6,
+   "errorXMm": 4.53,
+   "errorYMm": 0.41,
+   "errorMm": 4.55,
+   "positionName": "",
+   "note": ""
+  },
+  {
+   "shotNumber": 10,
+   "actualScore": 10.1,
+   "errorXMm": -9.96,
+   "errorYMm": -0.18,
+   "errorMm": 9.96,
+   "positionName": "",
+   "note": ""
+  }
+ ],
+ "athlete": "Philemon",
+ "discipline": "50 m Rifle Prone",
+ "threePositions": false,
+ "sessionId": "566e2e40"
+}

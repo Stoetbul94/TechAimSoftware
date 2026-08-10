@@ -97,7 +97,12 @@ Item {
                     Repeater {
                         model: [
                             { l: "Athlete",  v: view.model.athlete || "—" },
-                            { l: "Discipline", v: view.model.threePositions ? "50m Rifle 3P" : "Single position" },
+                            // CD-REPORT-002: name the discipline (from the
+                            // controller), then the layout only where it adds
+                            // something. "Single position" alone told the
+                            // reader nothing about what was shot.
+                            { l: "Discipline", v: (view.model.discipline || "—")
+                                                  + (view.model.threePositions ? " (K/P/S)" : "") },
                             { l: "Date",     v: (view.model.createdAtIso || "").substring(0, 10) },
                             { l: "Session",  v: (view.model.sessionId || "").substring(0, 8) }
                         ]
@@ -286,6 +291,7 @@ Item {
         id: shotPages
         model: Math.max(1, Math.ceil((view.shots ? view.shots.length : 0) / 6))
         ReportPage {
+            id: shotPage
             pageNo: 3 + index
             property var pageShots: view._shotPage(index)
             Column {
@@ -295,7 +301,15 @@ Item {
                 Grid {
                     columns: 3; columnSpacing: 16; rowSpacing: 14; width: parent.width
                     Repeater {
-                        model: parent.parent.pageShots
+                        // CD-REPORT-001. This was `parent.parent.pageShots`,
+                        // which walks Grid -> Column and stops there - NOT the
+                        // page that declares pageShots. The model resolved to
+                        // undefined, the Repeater built nothing, and the report
+                        // printed a heading and a legend over an empty page
+                        // while every per-shot target diagram silently vanished
+                        // (observed in the 50 m field test, 2026-08-10).
+                        // Address the page by id so no parent count can drift.
+                        model: shotPage.pageShots
                         Row { spacing: 10; property var s: modelData
                             MiniTarget { s: parent.s }
                             Column { spacing: 1; width: 120
