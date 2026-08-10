@@ -8,6 +8,7 @@
         <file>src/ui/components/TaStatusChip.qml</file>
         <file>src/ui/components/TaWarningBanner.qml</file>
         <file>VIcon.qml</file>
+        <file>DisciplineArt.qml</file>
         <file>main.qml</file>
         <file>Header.qml</file>
         <file>LeftPanel.qml</file>
