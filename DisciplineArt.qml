@@ -45,11 +45,32 @@ Item {
         "L45 10 L45 12.5 L44 12.5 L29 12.5 L29 14 L43 14 L43 17 L29 17 " +
         "L27 17 L27 20 L24 20 L24 17 L21 17 L20 20 L21 21 L20 23 L21 24 " +
         "L20 26 L19 29 L19 31 L6 31 L5 29 L7 17 L8 11 Z"
+    // ISSF MATCH RIFLE, muzzle right. Authoring grid 96x28.
+    //
+    // The previous silhouette read as a military weapon: straight slab comb,
+    // blocky receiver, a squared muzzle device. Those are exactly the cues a
+    // target rifle does NOT have, and on a sport-shooting product they were
+    // the wrong signal entirely.
+    //
+    // A match rifle is recognised by a different set of features, and this
+    // outline is built from them, left to right:
+    //   · deep hooked BUTTPLATE dropping below the stock line
+    //   · raised, stepped ADJUSTABLE CHEEK PIECE above the comb
+    //   · THUMBHOLE through the grip (the second subpath - an odd-even hole)
+    //   · tall REAR APERTURE SIGHT standing well back over the action
+    //   · slim, untapered BARREL with no handguard mass around it
+    //   · HAND STOP on the accessory rail under the forend
+    //   · FRONT SIGHT TUNNEL at the muzzle - a raised ring housing, NOT a
+    //     flash hider or suppressor profile
+    //
+    // Kept as a flat one-colour silhouette so it stays legible at the ~132 px
+    // tile width and matches the pistol plate's weight.
     readonly property string riflePath:
-        "M4 8 L11 8 L14 5 L23 5 L25 8 L31 8 L33 3 L37 3 L37 8 L46 9 L54 11 " +
-        "L88 11 L88 8 L94 8 L94 15 L88 15 L88 13 L54 13 L50 14 L48 14 L48 22 " +
-        "L45 22 L45 14 L41 14 L39 17 L37 17 L37 14 L34 14 L34 21 L28 21 L28 14 " +
-        "L11 14 L8 15 L9 16 L8 17 L8 20 L4 20 Z"
+        "M1 7 L4 7 L4 10 L9 10 L11 6 L25 6 L27 10 L38 10 L40 8 L43 8 L43 3 " +
+        "L49 3 L49 8 L53 8 L55 10 L84 10 L84 5 L91 5 L91 10 L95 10 L95 13 " +
+        "L70 13 L70 16 L66 16 L66 19 L60 19 L60 16 L44 16 L42 20 L40 20 " +
+        "L40 22 L34 22 L34 20 L32 20 L30 24 L24 25 L20 24 L5 23 L5 26 L1 26 Z " +
+        "M31 13 L37 13 L38 16 L36 19 L32 19 L30 16 Z"
 
     // Position glyphs — the real differentiator between the two 50 m events.
     // 24x16 grid: a simplified athlete seen from the side, muzzle right.
