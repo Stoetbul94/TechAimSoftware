@@ -81,6 +81,12 @@ Item {
     // suppressed for all of them, not only Technical Blocks.
     readonly property bool isTrainingModeAny: isTrainingMatch || isCallDiagnoseMatch
                                               || isPositionTransitionMatch || isWindMapMatch
+    // Header width reserved for the target-connection panel so it never draws
+    // over the header's own content. Zero while the panel is expanded, because
+    // it then sits over the target face instead of in the strip.
+    readonly property real headerStatusReserve:
+        (targetStatus && targetStatus.visible && !targetStatus.expanded)
+            ? targetStatus.width + 32 : 0
     // Hidden-mode display cache: polar display records buffered while the
     // visibility mode hides impacts; revealed (appended to the face) at block
     // review. Never rendered before reveal.
@@ -425,7 +431,10 @@ Item {
         // progress on TrainingTopBar.
         Row {
             visible: !isTrainingModeAny
-            anchors.right: parent.right; anchors.rightMargin: 16
+            anchors.right: parent.right
+            // Same reserved slot as the training bar: the competition counter
+            // must not sit under the connection panel either.
+            anchors.rightMargin: 16 + shootingPage.headerStatusReserve
             anchors.verticalCenter: parent.verticalCenter
             spacing: 12
             // F7: during a 10m Final the authoritative count/total live in the
@@ -485,6 +494,10 @@ Item {
             id: trainingTopBar
             visible: isTrainingModeAny
             anchors.fill: parent
+            // Keep the connection panel's slot clear. Only while it is COMPACT:
+            // when it expands it deliberately moves down over the target face,
+            // so reserving header width for it there would leave a gap.
+            rightReserve: shootingPage.headerStatusReserve
             athlete: window.userName
             demoMode: !appMode
 
@@ -676,14 +689,21 @@ Item {
         // table; it expands automatically the moment shooting is blocked.
         compact: true
         width: expanded ? Math.max(300, 0.26 * parent.width)
-                        : Math.max(300, 0.30 * parent.width)
-        // Sits in the header strip when compact, over the target face when
-        // expanded - a fault should be the most prominent thing on screen.
+                        : Math.min(Math.max(260, 0.24 * parent.width), 380)
+        // Sits in its OWN reserved slot at the right of the header strip when
+        // compact, and over the target face when expanded - a fault should be
+        // the most prominent thing on screen.
+        //
+        // It used to be anchored with a bare rightMargin of 200 and z 500, so
+        // it floated over whatever the header happened to contain and covered
+        // "NOT AN OFFICIAL COMPETITION RESULT". The header bars now reserve
+        // `headerStatusReserve` for it, so the two lay out beside each other
+        // instead of on top of each other, in every connection state.
         anchors.horizontalCenter: expanded ? parent.horizontalCenter : undefined
         anchors.right: expanded ? undefined : parent.right
         anchors.top: parent.top
         anchors.topMargin: expanded ? 90 : 8
-        anchors.rightMargin: 200
+        anchors.rightMargin: expanded ? 0 : 16
         z: 500
         // ALWAYS visible. Hiding it when healthy was tempting for tidiness, but
         // it means the athlete cannot confirm the target is genuinely READY -
@@ -701,6 +721,21 @@ Item {
         anchors.top: statusStrip.bottom
         name: window.userName
         z: 10
+
+        // UI-TRAIN-001. The left pane must state the ACTIVE programme, never
+        // the event state left behind by the last card the operator touched.
+        // Same derivation TrainingTopBar uses, so the two can never disagree:
+        // one programme, one name, both bars.
+        //
+        // Empty = a genuine competition event, where the inherited
+        // matchDisplay ("MATCH 60", "FINAL 35") IS the correct label.
+        programmeLabel: {
+            if (isWindMapMatch)            return qsTr("WIND MAP")
+            if (isPositionTransitionMatch) return qsTr("POSITION TRANSITION")
+            if (isCallDiagnoseMatch)       return qsTr("CALL & DIAGNOSE")
+            if (isTrainingMatch)           return qsTr("TECHNICAL BLOCKS")
+            return ""
+        }
 
         onHomeButtonClicked: {
             // T1.1/T1.4 root-cause fix: the legacy Home path used to leave a

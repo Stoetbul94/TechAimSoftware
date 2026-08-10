@@ -327,3 +327,88 @@ longer a gate on the design approval.
 | UI-HOME-008 | typography roles defined and used in the action bar | `tst_brandpackage.cpp` | Readability is a visual judgement — **human check** |
 | UI-HOME-009 | collapsed height matches other cards; 148px expansion gone | `tst_homepage_layout` | Proportion is a visual judgement — **human check** |
 | UI-HOME-010 | as UI-HOME-001 | `tst_homepage_layout` | Visual balance — **human check** |
+
+---
+
+## 1g. UI pass 2026-08-10 — left-pane programme label and header reserve
+
+### UI-TRAIN-001 — partially closed, code complete, awaiting on-screen review
+
+Stage 5.2 gated the competition `statusStrip` on `isTrainingModeAny`, and the
+register recorded the defect as OPEN pending review. Arnold's 2026-08-10
+session showed **the badge was still wrong**, because the left pane renders the
+SAME inherited state through a DIFFERENT alias:
+
+```qml
+property alias currentmatchDisplay: leftPanel.matchDisplay   // ShootingPage
+Rectangle { ... Text { text: matchText.text } }              // LeftPanel, ungated
+```
+
+`matchDisplay` holds whatever the last selected event card wrote ("MATCH 60",
+"FINAL 35"); entering a Training Lab programme never clears it. The statusStrip
+fix could not reach it. **The gate was applied to one of two consumers.**
+
+Fixed by giving the left pane an explicit `programmeLabel`, bound in
+`ShootingPage` from the SAME derivation `TrainingTopBar` uses, so the two bars
+can never disagree. Empty means a genuine competition event, where
+`matchDisplay` is correct. The badge also drops competition red for a neutral
+treatment under a Training Lab programme — a training block is not a match and
+should not borrow the match colour.
+
+| Evidence | Status |
+|---|---|
+| Component render, training vs competition side by side | `docs/ui/evidence-UI-TRAIN-001-programme-badge.png` |
+| Application builds and launches, no QML errors, no binding loops | verified 2026-08-10 |
+| Full integrated screen inside a live Call & Diagnose session | **NOT PERFORMED** |
+
+Status: **RESOLVED — AUTOMATED/COMPONENT EVIDENCE, HUMAN VISUAL CHECK
+REQUIRED.** Not closed. UI-TRAIN-002 and UI-TRAIN-003 inherit the same fix
+(the label is derived for all four programmes) but are likewise unreviewed.
+
+### UI-HDR-001 — connection panel covered the header honesty line (NEW)
+
+| Field | Value |
+|---|---|
+| Area | Shooting screen — header strip |
+| Symptom | With the target connected, the connection status covered "NOT AN OFFICIAL COMPETITION RESULT" |
+| Severity | **P1 — honesty text obscured** |
+| Source | Arnold, 2026-08-10 |
+
+`TargetStatusPanel` was anchored with a bare `rightMargin: 200` at `z: 500`, so
+it floated over whatever the header contained. Measured at the 1536 px test
+width: the panel spanned x ≈ 875…1336 while the centred honesty line spanned
+≈ 618…918 — overlapping ≈ 875…918, with the panel drawn on top. The
+right-hand progress row (`rightMargin: 16`) collided outright.
+
+Fixed by reserving a slot rather than nudging either element:
+`ShootingPage.headerStatusReserve` is consumed by `TrainingTopBar.rightReserve`
+and by the competition counter row, and the panel is capped at 380 px and
+anchored into that slot. Reserve falls to zero when the panel expands, because
+it then sits over the target face by design.
+
+| Evidence | Status |
+|---|---|
+| Header render at 1536 px with the slot occupied | `docs/ui/evidence-UI-HDR-001-header-reserve.png` |
+| All five connection states | **NOT INDIVIDUALLY RENDERED** |
+
+Status: **RESOLVED — COMPONENT EVIDENCE, HUMAN VISUAL CHECK REQUIRED.**
+
+### Items assessed and NOT changed
+
+**Left-pane icons (brief item 3).** Already one unified family — a single
+`navModel` of Feather-style 24×24 stroke paths rendered through one `VIcon`
+with consistent sizing (22/26 px), stroke, spacing and padding, visible in the
+evidence render. The legacy raster PNGs in the same file (`play.png`,
+`match_60_40_box.png`, `pistol_box*.png`, `sighter_selected.png`) are
+`opacity: 0` or `visible: false` invisible layout anchors, not drawn icons. No
+mismatched icon style was found. **No change made** — a rewrite would have
+churned a component that already meets the requirement.
+
+**Discipline imagery (brief item 2).** NOT DONE. Recorded honestly: photographic
+or AI-generated artwork cannot be produced here. The appropriate solution is
+vector target faces drawn to true ISSF ring geometry per discipline, which
+scales without blur or distortion and matches the existing vector language.
+This needs its own scoped task and the ring geometry currently
+⏳ awaiting official rule (see `docs/release/scoring-geometry-verification.md`)
+— drawing a 50 m face from an unconfirmed constant would put an unverified
+number on screen.

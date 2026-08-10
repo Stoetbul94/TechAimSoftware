@@ -36,6 +36,18 @@ Item {
     property bool   phaseActive: false    // true = the shooting phase (accent)
     property bool   demoMode: false
 
+    // Width reserved at the RIGHT edge for the target-connection panel, which
+    // floats above this bar at a higher z.
+    //
+    // Before this existed the panel simply drew over the strip: at 1536 px it
+    // spanned x 875..1336 while the centred honesty line spanned roughly
+    // 618..918, so "NOT AN OFFICIAL COMPETITION RESULT" was partly covered by
+    // the connection status, and the right-hand progress row collided with it
+    // outright. Two independently-correct layouts overlapping is still a
+    // defect - the fix is to give the panel a reserved area and lay the bar
+    // out in what remains, rather than to nudge either one.
+    property real rightReserve: 0
+
     readonly property color _bg:     "#15161a"
     readonly property color _line:   "#3a3b40"
     readonly property color _red:    "#C40046"
@@ -98,9 +110,12 @@ Item {
     }
 
     // ── the honesty line ────────────────────────────────────────────────
-    // Present on every Training capture screen at all times.
+    // Present on every Training capture screen at all times. Centred in the
+    // area NOT reserved for the connection panel, so it can never be covered.
     Text {
-        anchors.centerIn: parent
+        id: honestyLine
+        anchors.verticalCenter: parent.verticalCenter
+        x: (parent.width - bar.rightReserve - width) / 2
         text: qsTr("NOT AN OFFICIAL COMPETITION RESULT")
         color: bar._amber; font.family: theme.fontFamily
         font.pixelSize: 10; font.bold: true; font.letterSpacing: 1.5
@@ -108,7 +123,8 @@ Item {
 
     // ── the programme's own progress + mode ─────────────────────────────
     Row {
-        anchors.right: parent.right; anchors.rightMargin: 16
+        anchors.right: parent.right
+        anchors.rightMargin: 16 + bar.rightReserve
         anchors.verticalCenter: parent.verticalCenter
         spacing: 12
 

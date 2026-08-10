@@ -7,6 +7,21 @@ Item {
     property alias gameDisplay1: gameDisplayText1.text
     property alias gameDisplay2: gameDisplayText2.text
     property alias matchDisplay: matchText.text
+
+    // UI-TRAIN-001. The badge below used to render matchDisplay directly.
+    // matchDisplay holds INHERITED EVENT STATE - whatever the last selected
+    // event card wrote ("MATCH 60", "FINAL 35") - and entering a Training Lab
+    // programme never clears it, so Call & Diagnose presented a red MATCH 60
+    // badge beside an athlete who was not shooting a match.
+    //
+    // Stage 5.2 gated the competition statusStrip on isTrainingModeAny but did
+    // not reach here, because the left panel renders the SAME inherited state
+    // through a different alias. The owner passes the ACTIVE programme in.
+    // Empty means "no programme override" - i.e. a genuine competition event,
+    // where matchDisplay is the correct thing to show.
+    property string programmeLabel: ""
+    readonly property string effectiveProgramme:
+        programmeLabel !== "" ? programmeLabel : matchText.text
     property alias settingsX:navColumn.x
     property alias settingsY:settingsNavBtn.navY
     property alias settingsWidth:navColumn.width
@@ -128,14 +143,29 @@ Item {
             }
         }
 
-        // Match badge
+        // Programme badge. Competition red ONLY for a genuine competition
+        // event; a Training Lab programme is not a match and must not borrow
+        // the match colour any more than it may borrow the match wording.
         Rectangle {
-            width: parent.width; height: 46; radius: 8; color: "#e8003d"
+            width: parent.width; height: 46; radius: 8
+            color: programmeLabel !== "" ? "#1b2733" : "#e8003d"
+            border.color: programmeLabel !== "" ? "#3d5a75" : "transparent"
+            border.width: programmeLabel !== "" ? 1 : 0
             Text {
-                anchors.centerIn: parent
-                text: matchText.text
+                anchors.fill: parent
+                anchors.margins: 6
+                text: effectiveProgramme
                 color: "white"; font.bold: true
-                font.family: theme.fontFamily; font.pixelSize: 20
+                font.family: theme.fontFamily
+                // "CALL & DIAGNOSE" and "POSITION TRANSITION" are far longer
+                // than "MATCH 60". Shrink to fit rather than clip or elide -
+                // a truncated programme name is the same defect in a new form.
+                font.pixelSize: 20
+                fontSizeMode: Text.HorizontalFit
+                minimumPixelSize: 10
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+                elide: Text.ElideNone
             }
         }
 

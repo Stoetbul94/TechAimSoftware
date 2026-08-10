@@ -72,3 +72,9 @@ manual-preview/
 
 # Release packaging output (binaries, ZIPs, rollback slot) - built, not sourced.
 /dist/
+
+# uirender evidence tool build artifacts
+tools/uirender/Makefile*
+tools/uirender/release/
+tools/uirender/debug/
+tools/uirender/.qmake.stash
