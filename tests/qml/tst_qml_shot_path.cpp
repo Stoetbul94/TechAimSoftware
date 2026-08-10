@@ -278,6 +278,112 @@ int main(int argc, char* argv[])
     }
 
     delete obj;
+
+    // ── SCORING GEOMETRY ─────────────────────────────────────────────────
+    // calculateShootingSocre() is the most correctness-critical function in
+    // the codebase and had no coverage at all. These checks assert INTERNAL
+    // CONSISTENCY of the ring geometry - they do NOT assert that a constant
+    // matches the ISSF rulebook, because docs/issf-rules does not document
+    // target-face geometry for any discipline. That gap is recorded in
+    // docs/release/scoring-geometry-verification.md and needs the official
+    // rule, not a guess in a test.
+    {
+        printf("\n--- scoring geometry ---\n");
+        const QString fnScore =
+            extractFunction(source, QStringLiteral("calculateShootingSocre"));
+        check(!fnScore.isEmpty(),
+              "calculateShootingSocre() was found in the real CenterPane.qml");
+
+        // The text assertions below search the WHOLE file, not the extracted
+        // function. extractFunction() brace-matches without stripping
+        // comments, and this function contains commented-out closing braces
+        // ("//    }"), so the extract terminates early. Each string searched
+        // for below occurs exactly once in CenterPane.qml, so the file-wide
+        // search is unambiguous. (The extractor is fine for traceStage and
+        // triggerAutoZoom, which carry no such comments.)
+
+        // Each discipline's constants, read OUT of the real source so a silent
+        // edit to a ring size shows up here.
+        struct Geo { const char* name; const char* r2r; const char* r10; };
+        const Geo geo[] = {
+            { "10 m Air Pistol", "8",   "5.75" },
+            { "10 m Air Rifle",  "2.5", "0.25" },
+            { "50 m Pistol",     "25",  "25"   },
+            { "50 m Rifle",      "8",   "5.2"  },
+        };
+        for (const Geo& g : geo) {
+            const QString pat = QStringLiteral("var r2rDis = %1").arg(g.r2r);
+            const QString pr  = QStringLiteral("var radOf10Ring = %1").arg(g.r10);
+            check(source.contains(pat) && source.contains(pr),
+                  qUtf8Printable(QStringLiteral("%1: ring spacing %2 mm, 10-ring radius %3 mm unchanged").arg(g.name, g.r2r, g.r10)));
+        }
+
+        // The shared formula, stated once:
+        //     score = 9 + (spacing + r10 + rPellet - radius) / spacing
+        // Consequences that must hold for EVERY discipline, whatever the
+        // constants are. This is the part a rulebook cannot change.
+        auto scoreAt = [](double spacing, double r10, double rPellet, double r) {
+            return 9.0 + ((spacing + r10 + rPellet - r) / spacing);
+        };
+        struct Num { const char* name; double spacing, r10, rPellet; };
+        const Num nums[] = {
+            { "10 m Air Pistol", 8.0,  5.75, 2.25 },
+            { "10 m Air Rifle",  2.5,  0.25, 2.25 },
+            { "50 m Pistol",    25.0, 25.0,  2.8  },
+            { "50 m Rifle",      8.0,  5.2,  2.8  },
+        };
+        for (const Num& n : nums) {
+            // A pellet edge just touching the 10-ring scores exactly 10.0 -
+            // the ISSF "touching counts" convention, and the hinge the whole
+            // formula turns on.
+            const double atTen = scoreAt(n.spacing, n.r10, n.rPellet,
+                                         n.r10 + n.rPellet);
+            check(qAbs(atTen - 10.0) < 1e-9,
+                  qUtf8Printable(QStringLiteral("%1: a pellet touching the 10-ring scores "
+                                 "exactly 10.0").arg(n.name)),
+                  QString::number(atTen, 'f', 6));
+
+            // One ring further out is exactly one point lower. If this ever
+            // fails, ring width and score step have diverged.
+            const double atNine = scoreAt(n.spacing, n.r10, n.rPellet,
+                                          n.r10 + n.rPellet + n.spacing);
+            check(qAbs(atNine - 9.0) < 1e-9,
+                  qUtf8Printable(QStringLiteral(
+                      "%1: one ring further out is exactly 9.0").arg(n.name)),
+                  QString::number(atNine, 'f', 6));
+
+            // Strictly decreasing with radius - no plateau, no inversion.
+            bool monotonic = true;
+            double prev = 1e9;
+            for (double r = 0.0; r <= 60.0; r += 0.05) {
+                const double s = scoreAt(n.spacing, n.r10, n.rPellet, r);
+                if (s >= prev) { monotonic = false; break; }
+                prev = s;
+            }
+            check(monotonic,
+                  qUtf8Printable(QStringLiteral(
+                      "%1: score decreases strictly as the shot moves out - "
+                      "never rewards a worse shot").arg(n.name)));
+
+            // Dead centre exceeds the ISSF decimal maximum before clamping,
+            // for every discipline. The clamp is therefore load-bearing, not
+            // defensive decoration.
+            check(scoreAt(n.spacing, n.r10, n.rPellet, 0.0) >= 11.0,
+                  qUtf8Printable(QStringLiteral("%1: a centred shot computes >= 11.0 and "
+                                 "REQUIRES the clamp").arg(n.name)),
+                  QString::number(scoreAt(n.spacing, n.r10, n.rPellet, 0.0),
+                                  'f', 4));
+        }
+
+        // The clamp itself, in the real source. ISSF decimal maximum is 10.9.
+        check(source.contains(QStringLiteral("calculatedSccore = 10.9")),
+              "the ISSF decimal maximum 10.9 is enforced in the real function");
+        check(source.contains(QRegularExpression(
+                  QStringLiteral("calculatedSccore\\s*>=\\s*11"))),
+              "the clamp triggers at >= 11, which every discipline reaches at "
+              "dead centre");
+    }
+
     printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
     fflush(stdout);
     return g_failures ? 1 : 0;
