@@ -471,26 +471,48 @@ void TachusWidget::on_pushButton_2_clicked() // read old data
 {
 //    LogFile::instance().appendToLogFile(QString("isAppDemoMode %1").arg(isAppDemoMode), LogType::interfaceLevel);
 //    qDebug() << __FUNCTION__ << __LINE__ << isAppDemoMode;
-    if (!isAppDemoMode) // 0 for demo and 1 for live
-        return;
+    // LOGIN-LINK-001. What this tick may do is decided by ta::target -
+    // ONE implementation, exercised by both the application and the harness.
+    // The gating used to be a run of early returns here, where a wrong gate
+    // was untestable and stayed invisible until hardware exposed it.
+    //
+    // The liveness probe is deliberately NOT gated on m_hardwareCheckDisabled.
+    // That member is initialised to true and is never assigned anywhere in the
+    // codebase - a vestigial switch that permanently disables every hardware
+    // check it guards, which is why the first version of this probe silently
+    // did nothing. It is left alone at its other call sites (flipping it would
+    // start issuing motor setup writes that have never been physically
+    // verified - see docs/release/hardware-check-flag-audit.md); it simply
+    // must not be allowed to disable the one check that tells an operator the
+    // cable is out.
+    const ta::target::PollActionDecision act =
+        ta::target::decidePollAction(isAppDemoMode,        // "is LIVE"
+                                     m_linkState == TargetLinkState::Connected,
+                                     m_onLoginPage,
+                                     m_loginLivenessTick,
+                                     kLoginLivenessPolls);
+    m_loginLivenessTick = act.nextLivenessTick;
 
-    if (m_onLoginPage)
+    switch (act.action) {
+    case ta::target::PollAction::Idle:
         return;
-
+    case ta::target::PollAction::Reconnect:
+        // Reachable from the home page as well as the shooting screens. That
+        // ordering is the fix: it used to sit below the login-page return.
+        attemptTargetReconnect();
+        return;
+    case ta::target::PollAction::ProbeLiveness:
+        if (!isHardwareConnected())
+            onTargetLinkLost();
+        return;
+    case ta::target::PollAction::Acquire:
+        break;                      // fall through to acquisition below
+    }
 
     if (!m_hardwareCheckDisabled) {
         if (m_hardwareDisconnected && !isHardwareConnected()) {
             return;
         }
-    }
-
-    // RECONNECT-001. While the link is down, acquisition is suspended and
-    // reconnection is driven from here - the one shared poll every discipline
-    // uses. No shot is accepted and no feed is issued until the link is proven
-    // healthy again.
-    if (m_linkState != TargetLinkState::Connected) {
-        attemptTargetReconnect();
-        return;
     }
 
     if (m_mainWindow && m_mainWindow->isModBusConnected())

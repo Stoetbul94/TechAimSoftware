@@ -637,6 +637,14 @@ private:
     static const int kReadFailuresBeforeLinkLost = 3;
     static const int kReconnectIntervalMs = 2000;
 
+    // LOGIN-LINK-001. On the login/home page shot acquisition is suspended, so
+    // nothing was reading the target and an unplug went unnoticed indefinitely.
+    // A liveness probe runs there instead, every kLoginLivenessPolls ticks of
+    // the 100 ms poll (~1 s). Not every tick: the probe is a real Modbus read
+    // and the home screen has no shots to race with.
+    static const int kLoginLivenessPolls = 10;
+    int m_loginLivenessTick = 0;
+
     void onTargetLinkLost();
     void attemptTargetReconnect();
 

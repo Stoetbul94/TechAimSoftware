@@ -97,4 +97,78 @@ inline PollDecision decidePoll(AcqState state, int baseline, int hardwareCounter
     return d;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// WHAT SHOULD THIS POLL TICK DO AT ALL?
+//
+// Extracted for the same reason decidePoll() was: the gating lived as a run of
+// early returns inside a QWidget slot, so no test could reach it and a wrong
+// gate was invisible until hardware proved it.
+//
+// LOGIN-LINK-001 (2026-08-10). One early return owned TWO unrelated concerns:
+//
+//     if (m_onLoginPage) return;   // skipped acquisition AND link health
+//
+// Shot acquisition SHOULD be suspended on the home page. Link health should
+// not be - a cable pulled on the home screen is exactly as broken as one
+// pulled mid-series. In the field the target was unplugged on the home page,
+// the application kept reporting a healthy COM7, Windows re-enumerated the
+// adapter to COM8 on replug, and nothing noticed either event.
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum class PollAction {
+    Idle,           // nothing to do this tick
+    Reconnect,      // link is down - drive rediscovery (ANY page)
+    ProbeLiveness,  // home page - prove the target still answers
+    Acquire         // shooting page, link healthy - read the shot counter
+};
+
+struct PollActionDecision {
+    PollAction action = PollAction::Idle;
+    int nextLivenessTick = 0;
+};
+
+// `livenessTick` is the caller's current counter; `livenessPeriod` is how many
+// 100 ms ticks between home-page probes. A probe is a real Modbus read, so it
+// runs at ~1 Hz rather than every tick.
+inline PollActionDecision decidePollAction(bool isLive,
+                                           bool linkConnected,
+                                           bool onLoginPage,
+                                           int livenessTick,
+                                           int livenessPeriod)
+{
+    PollActionDecision d;
+    d.nextLivenessTick = livenessTick;
+
+    // Demo/simulation has no target to poll; shots come from the UI.
+    if (!isLive) {
+        d.action = PollAction::Idle;
+        return d;
+    }
+
+    // Link health FIRST, and deliberately before the page test: reconnection
+    // must be reachable from the home page. This ordering IS the fix.
+    if (!linkConnected) {
+        d.action = PollAction::Reconnect;
+        return d;
+    }
+
+    if (onLoginPage) {
+        const int t = livenessTick + 1;
+        if (t >= livenessPeriod) {
+            d.action = PollAction::ProbeLiveness;
+            d.nextLivenessTick = 0;
+        } else {
+            d.action = PollAction::Idle;
+            d.nextLivenessTick = t;
+        }
+        return d;
+    }
+
+    // Shooting screen: acquisition proper. The counter read is itself the
+    // liveness evidence here, so no separate probe is needed.
+    d.action = PollAction::Acquire;
+    d.nextLivenessTick = 0;
+    return d;
+}
+
 }} // namespace ta::target

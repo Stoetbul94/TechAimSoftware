@@ -779,6 +779,92 @@ void run_target_hardware_tests()
                   "K. a counter that moved during an outage is adopted, NOT "
                   "replayed as three shots");
         }
+
+        // ── LOGIN-LINK-001: what a poll tick is allowed to do ────────────
+        // The field defect: the target was unplugged while the operator sat on
+        // the home page, and the application kept asserting a healthy COM7.
+        // Windows then re-enumerated the adapter to COM8 on replug and nothing
+        // noticed that either. ONE early return owned both shot acquisition
+        // and link health; only acquisition should have been page-gated.
+        using ta::target::decidePollAction;
+        using ta::target::PollAction;
+        const int kPeriod = 10;
+        {
+            // L. THE DEFECT ITSELF. On the home page with the link already
+            // down, the tick must drive reconnection. Before the fix this
+            // returned before any link handling and the outage was permanent.
+            const auto d = decidePollAction(true, false, true, 0, kPeriod);
+            check(d.action == PollAction::Reconnect,
+                  "L. link down on the HOME page still drives reconnection - "
+                  "the home page is not a reason to stay disconnected");
+        }
+        {
+            // M. and the same on a shooting screen, unchanged by the fix.
+            const auto d = decidePollAction(true, false, false, 0, kPeriod);
+            check(d.action == PollAction::Reconnect,
+                  "M. link down on a SHOOTING screen still drives reconnection");
+        }
+        {
+            // N. shot acquisition MUST remain suspended on the home page. This
+            // is the half of the old early return that was always correct, and
+            // the fix must not have traded one defect for another.
+            bool everAcquired = false;
+            int tick = 0;
+            for (int i = 0; i < 100; ++i) {
+                const auto d = decidePollAction(true, true, true, tick, kPeriod);
+                tick = d.nextLivenessTick;
+                if (d.action == PollAction::Acquire) everAcquired = true;
+            }
+            check(!everAcquired,
+                  "N. the home page NEVER acquires a shot - 100 ticks, not one "
+                  "Acquire");
+        }
+        {
+            // O. a healthy home page still proves the target is there, at
+            // ~1 Hz. Silence is what let the outage go unnoticed.
+            int probes = 0, tick = 0;
+            for (int i = 0; i < 100; ++i) {
+                const auto d = decidePollAction(true, true, true, tick, kPeriod);
+                tick = d.nextLivenessTick;
+                if (d.action == PollAction::ProbeLiveness) ++probes;
+            }
+            check(probes == 10,
+                  "O. the home page probes liveness exactly once per period - "
+                  "10 probes in 100 ticks, not 0 and not 100",
+                  QString::number(probes));
+        }
+        {
+            // P. the shooting screen needs no separate probe: reading the shot
+            // counter is itself the liveness evidence. A second read per tick
+            // would only add bus traffic.
+            const auto d = decidePollAction(true, true, false, 0, kPeriod);
+            check(d.action == PollAction::Acquire,
+                  "P. a healthy shooting screen acquires");
+            check(d.nextLivenessTick == 0,
+                  "P. and leaves no half-counted probe period behind");
+        }
+        {
+            // Q. demo/simulation has no target to poll on ANY page. Probing a
+            // port with no target answering is what used to freeze the GUI.
+            for (int page = 0; page <= 1; ++page) {
+                for (int link = 0; link <= 1; ++link) {
+                    const auto d = decidePollAction(false, link == 1, page == 1,
+                                                    0, kPeriod);
+                    check(d.action == PollAction::Idle,
+                          "Q. demo mode never touches the target - no probe, no "
+                          "reconnect, no acquisition");
+                }
+            }
+        }
+        {
+            // R. link health is decided BEFORE the page. Ordering is the whole
+            // fix, so assert it directly rather than trusting the branch order.
+            const auto home = decidePollAction(true, false, true, 0, kPeriod);
+            const auto shoot = decidePollAction(true, false, false, 0, kPeriod);
+            check(home.action == shoot.action,
+                  "R. a down link produces the SAME action on both pages - "
+                  "link health is not a page-specific concern");
+        }
     }
 
     // 34. no motor command bound -> nothing happens, nothing crashes
