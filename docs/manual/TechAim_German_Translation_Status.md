@@ -66,6 +66,20 @@ of what a German-only reader still cannot get from the German documents.
 
 **`TechAim_Operator_Manual_DE.md`**
 
+> **New English content not yet in German (2026-08-10).**
+> `TechAim_Troubleshooting_EN.md` section 2 was rewritten for the Target
+> Connection status panel: the state table (`SEARCHING`, `TARGET FOUND`,
+> `SELECT TARGET PORT`, `SYNCHRONIZING`, `READY`, `RECONNECTING`,
+> `TARGET DISCONNECTED`, `TARGET ACQUISITION ERROR`), automatic reconnection,
+> Windows COM re-enumeration after replug, the manual port fallback field, and
+> the "Target Not Ready" message on Start Practice.
+>
+> The German troubleshooting document still describes the **previous**
+> indicator behaviour for that section. It is not wrong about anything else,
+> but it is now **behind the English master** and must be translated before any
+> German-language external release. It was deliberately not machine-translated:
+> these are operator-safety instructions.
+
 | Section | Current state | Pending |
 |---|---|---|
 | Parts 1–4 | fully translated | — |

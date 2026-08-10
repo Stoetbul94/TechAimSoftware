@@ -3,6 +3,9 @@
 Audited offline at commit `97c76df` on `feature/rc2e-latency-and-reset`,
 2026-08-10, with no physical target available.
 
+> **Updated 2026-08-10, after the 50 m physical session.** See
+> §7 for what the session actually established and what it did not.
+
 **Implementation coverage and physical validation are different claims and are
 never merged in this document.** A fix in a shared layer *applies* to every
 consumer; it is *validated* in a workflow only if that workflow was actually
@@ -178,3 +181,76 @@ Nothing below can be settled offline.
 | 50 m 3P position transitions | Never physically exercised |
 | Paper feed at 50 m | Hardware capability unknown |
 | 50 m scoring accuracy (`radOf10Ring`) | Needs calibration or rulebook |
+
+---
+
+## 7. 50 m physical session, 2026-08-10 — what it established
+
+Discipline: **50 m Rifle Prone**, Training Lab **Call & Diagnose**, 10 called
+shots, focus "Natural point of aim", Live target. Development binary at
+`34b0bef` (source-identical to the commit; **not** a packaged candidate).
+
+### Acquisition — reconciled exactly
+
+| | Count |
+|---|---|
+| Physical shots (target counter) | 15 |
+| `branch=ACCEPT` decisions | 15 |
+| Journalled (5 `TrainingSighterAccepted` + 10 `CallDiagnoseShotReceived`) | 15 |
+| Calls recorded | 10 |
+| Lost · duplicate · phantom · acquisition faults | **0 · 0 · 0 · 0** |
+
+Every poll was `delta=1`. All 10 counted shots carry distinct coordinates — no
+replay. The sighter→counted reset ran through the shared authority
+(`paper feed: shot numbering reset — 8 remembered identities cleared`) and
+re-synchronized to baseline 0 before accepting again. Session completed;
+`CleanShutdown`. RESTART-001's failure mode did not recur.
+
+**50 m Prone status: SHARED ENGINE VERIFIED · PHYSICAL SESSION EVIDENCE
+AVAILABLE · FULL PHYSICAL CONNECTION/RECONNECT VERIFICATION PENDING.**
+
+**50 m 3P status: SHARED ENGINE VERIFIED · PHYSICAL PENDING.** Not shot. No 3P
+physical claim is made.
+
+### Paper feed at 50 m — answered
+
+**PHYSICALLY OBSERVED WORKING FOR ACCEPTED SHOTS.** The operator confirmed the
+paper fed after every accepted shot. The audit's open question is closed as an
+observation. Range gating is unchanged and remains a product-design decision
+for later review, not a defect.
+
+### Defect found: LOGIN-LINK-001
+
+The cable was unplugged on the home screen after the session. The application
+did not notice — and when Windows re-enumerated the adapter from **COM7 to
+COM8** on replug, it did not notice that either. Zero link-loss events were
+logged, while the hardware check read dead (`data[0]=0, data[1]=0`).
+
+Cause: one early return in the shared poll owned two unrelated concerns —
+
+```cpp
+if (m_onLoginPage) return;   // skipped acquisition AND link health
+```
+
+`attemptTargetReconnect()` was already correct (full rediscovery, Bluetooth
+rejected, follows a port change); it was simply never reached from the home
+page.
+
+Fixed by extracting `ta::target::decidePollAction()`, which decides what a poll
+tick may do, and ordering link health **before** the page test. Shot
+acquisition remains suspended on the home page — asserted, not assumed.
+
+**LOGIN-LINK-001 status: OFFLINE FIX / EMULATOR VERIFIED · PHYSICAL PENDING.**
+
+### Scoring at 50 m
+
+Internally consistent across the session; no suspicious result was observed.
+`radOf10Ring = 5.2` for 50 m Rifle **remains unconfirmed** against the
+rulebook — an offline normative task before SETA release.
+
+### Still physical-only (no claim made)
+
+Actual USB device description in the UI · actual COM port display · live
+unplug detection on the final build · Windows COM reassignment after replug ·
+automatic reconnect on the final build · first shot after reconnect · first
+shot after restart/resume on the final build.
