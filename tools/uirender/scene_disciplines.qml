@@ -1,4 +1,5 @@
 import QtQuick 2.15
+import "../.."                  // repository root — DisciplineArt, VIcon, ...
 // The four discipline plates side by side, on the Tech Aim dark surface, at
 // the size the left pane actually draws them.
 Item {

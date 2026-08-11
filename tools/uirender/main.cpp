@@ -5,6 +5,10 @@
 // UI-TRAIN-001 (left-pane programme label) and the header/connection overlap.
 //
 // Usage: uirender <scene.qml> <out.png> <width> <height>
+//
+// Scenes live in this directory and pull the application's components in with
+// a relative directory import (`import "../.."`), so they render in place —
+// nothing has to be copied to the repository root first. See README.md.
 #include <QGuiApplication>
 #include <QQuickView>
 #include <QQuickItem>
@@ -14,10 +18,56 @@
 #include <QUrl>
 #include <QQmlContext>
 #include <QQmlEngine>
+#include <QDir>
+#include <QFile>
+#include <QFont>
+#include <QFontDatabase>
+#include <QStandardPaths>
 #include <cstdio>
+
+// The offscreen platform plugin carries no font database of its own — Qt no
+// longer ships fonts, so QFontDatabase::families() comes back EMPTY and every
+// glyph renders as an empty box. Register real font files by hand and return
+// the family to draw with, or an empty string if none could be found.
+static QString bootstrapFont()
+{
+    // Regular + bold, so font.bold in a scene resolves to a real face rather
+    // than a synthesised one. Brand face first, then a plain Latin fallback.
+    static const char* const kCandidates[] = {
+        "segoeui.ttf", "segoeuib.ttf",      // Segoe UI  — the Tech Aim face
+        "arial.ttf",   "arialbd.ttf",       // Arial     — Windows fallback
+        "DejaVuSans.ttf", "DejaVuSans-Bold.ttf"
+    };
+
+    QString family;
+    const QStringList dirs = QStandardPaths::standardLocations(QStandardPaths::FontsLocation);
+    for (const QString& dirPath : dirs) {
+        const QDir dir(dirPath);
+        for (const char* const candidate : kCandidates) {
+            const QString path = dir.filePath(QString::fromLatin1(candidate));
+            if (!QFile::exists(path)) continue;
+            const int id = QFontDatabase::addApplicationFont(path);
+            if (id < 0) continue;
+            const QStringList families = QFontDatabase::applicationFontFamilies(id);
+            if (family.isEmpty() && !families.isEmpty()) family = families.first();
+        }
+        if (!family.isEmpty()) break;
+    }
+    return family;
+}
 
 int main(int argc, char** argv)
 {
+    // This tool only ever writes a PNG, so it never needs a real display.
+    // Left to itself in a headless session the show()/grabWindow() pair below
+    // crashes, and QT_QUICK_BACKEND=software applies the desktop's DPI scaling
+    // so the saved image is not the requested size. Default to the offscreen
+    // platform, which does neither; an explicit setting still wins.
+    if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM"))
+        qputenv("QT_QPA_PLATFORM", "offscreen");
+    if (qEnvironmentVariableIsEmpty("QT_ENABLE_HIGHDPI_SCALING"))
+        qputenv("QT_ENABLE_HIGHDPI_SCALING", "0");
+
     QGuiApplication app(argc, argv);
     if (argc < 5) { std::printf("usage: uirender <scene.qml> <out.png> <w> <h>\n"); return 2; }
     const QString scene = QString::fromLocal8Bit(argv[1]);
@@ -34,7 +84,16 @@ int main(int argc, char** argv)
         Q_INVOKABLE int getMatch_meter() { return 50; }
     };
     Stub appSettings, modReader, login;
-    QObject themeObj; themeObj.setProperty("fontFamily", "Segoe UI");
+
+    // Text draws as empty boxes unless a real font file is registered first,
+    // and the family named here has to be one that actually resolved.
+    const QString family = bootstrapFont();
+    if (family.isEmpty())
+        std::printf("WARN  no usable font found — text will render as empty boxes\n");
+    else
+        QGuiApplication::setFont(QFont(family));
+
+    QObject themeObj; themeObj.setProperty("fontFamily", family);
 
     QQuickView view;
     view.rootContext()->setContextProperty("APPSETTINGS", &appSettings);
@@ -55,5 +114,13 @@ int main(int argc, char** argv)
     const QImage img = view.grabWindow();
     if (img.isNull() || !img.save(out)) { std::printf("FAIL  could not save %s\n", qPrintable(out)); return 1; }
     std::printf("saved %s (%dx%d)\n", qPrintable(out), img.width(), img.height());
+    // A scaled image is still saved, but it is not the evidence that was asked
+    // for — say so rather than let the caller assume the size was honoured.
+    if (img.width() != w || img.height() != h) {
+        std::printf("WARN  requested %dx%d — the platform applied scaling; unset "
+                    "QT_SCALE_FACTOR / QT_ENABLE_HIGHDPI_SCALING / QT_QPA_PLATFORM "
+                    "to get the exact size\n", w, h);
+        return 1;
+    }
     return 0;
 }
