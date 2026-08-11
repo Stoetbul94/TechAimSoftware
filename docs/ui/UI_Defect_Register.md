@@ -473,10 +473,10 @@ or art aspect needs adjusting. **OPEN.**
 | Symptom | Icons drawn smaller than their authoring grid lost geometry off the right and bottom edges and rendered soft |
 | Severity | P1 — shared component, silently wrong at production size in every screen that uses it |
 | Source | Production-size render during the UI-ART-001 review |
-| Status | **RESOLVED — AUTOMATED EVIDENCE, HUMAN VISUAL CHECK REQUIRED** |
-| Fixed commit | this change |
-| Automated evidence | `docs/ui/evidence-vicon-production-icons.png`; `tests/qml` 46 checks / 0 failures; passing Release build |
-| Visual evidence | **Not yet reviewed on screen** |
+| Status | **CLOSED — HUMAN VISUAL APPROVED** |
+| Fixed commit | `11fd19e` (clipping) + `c76d959` (compact stroke refinement) |
+| Automated evidence | `docs/ui/evidence-vicon-production-icons.png`, `docs/ui/evidence-vicon-stroke-snap.png`; `tests/qml` 46 checks / 0 failures; passing Release build |
+| Visual evidence | **HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-08-11**, on native 1:1 renders at the real 22/26 px production sizes |
 
 **Symptom, measured.** The rifle silhouette on the discipline plate is drawn at
 92 px from a 126-unit authoring grid. It rendered **66 px wide instead of 92,
@@ -506,3 +506,126 @@ production uses.
 **Scope.** This is a rendering defect in shared infrastructure and is
 deliberately kept separate from UI-ART-001, which concerns the rifle *drawing*.
 No path data was touched by this fix.
+
+**Follow-up — compact stroke width (`c76d959`).** With the clipping gone the
+22 px compact nav icons were still soft. Stroke widths are authored in grid
+units, so the viewBox-to-item scale resolved `1.9` to **1.74 device px** at
+22 px: every stroke edge was a partial pixel. The 26 px variant happened to
+land near 2.06 px and was already sharp, which is why only compact looked
+wrong. The device width is now snapped to a whole pixel (floor 1) and converted
+back to grid units — one uniform rule, no geometry moved, filled silhouettes
+(`strokeWidth: 0`) untouched. Measured full-white/ink, higher is crisper:
+
+| Icon | 22 px before | 22 px after | 26 px before | 26 px after |
+|---|---|---|---|---|
+| Stats | 0.18 | **0.48** | 0.51 | 0.51 |
+| Report | 0.35 | 0.34 | 0.34 | 0.34 |
+| Settings | 0.27 | **0.33** | 0.33 | 0.33 |
+| Home | 0.36 | **0.40** | 0.40 | 0.38 |
+
+The approved 26 px appearance is held: its device stroke moves 2.06 → 2.00 px,
+the ratios are unchanged and the largest single-pixel delta anywhere in the row
+is 27/255, on antialiased edges only.
+
+**A note on evidence, because it cost a review cycle.** The first evidence
+sheet for this defect was nearest-neighbour magnified. That is the right tool
+for detecting *clipping* and the wrong one for judging *sharpness* — magnified
+pixels always look blocky, and the sheet was read as "the icons are blurry"
+when they were not. Native 1:1 renders are the acceptance evidence for
+sharpness; any magnified view must be separately labelled as a diagnostic.
+
+## 1i. Discipline artwork — match-rifle silhouette (2026-08-11)
+
+### UI-ART-001 — The rifle silhouette reads as a military weapon
+
+| Field | Value |
+|---|---|
+| Area | `DisciplineArt.qml` — rifle silhouette on the discipline plate (left pane) |
+| Symptom | Angular, chunky outline with a short thick barrel; scans as a service weapon on a sport-shooting product |
+| Severity | P2 — brand/identity, not function |
+| Source | Arnold's review of the running build; two prior attempts rejected |
+| Status | **CLOSED — HUMAN VISUAL APPROVED** |
+| Fixed commit | this change (silhouette + production-size simplification) |
+| Automated evidence | `docs/ui/evidence-match-rifle-production.png`; IoU 0.816 against the reference at matched scale; `tests/qml` 46 checks / 0 failures; passing Release build |
+| Visual evidence | **HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-08-11**, on the 132 px production tile |
+
+**Root cause, in the terms the two failed attempts established.** The path was
+straight segments end to end, so every organic edge of a stock arrived as a
+facet. The cheek piece and buttplate were drawn inside the stock outline, so
+the two features that actually identify a match rifle were invisible. And the
+barrel was short and thick, which is the single strongest military cue.
+
+**Fix.** `riflePath` was deleted and rebuilt from zero against
+`docs/ui/issf-match-rifle-reference.png`, which UI-DEC-013 makes the visual
+authority. The reference was measured column by column and rescaled from
+1212×290 px to a 126×30 authoring grid, aspect preserved to 0.5%. Organic edges
+are cubics; the cheek piece and buttplate are separate subpaths with real air
+around them; the exposed barrel is 27.4% of overall length at 13.5:1.
+
+**Deliberate departures from the reference, so they are not read as errors.**
+
+| Departure | Reference | As drawn | Why |
+|---|---|---|---|
+| Rear sight rail | 0.2 units thick | 0.95 | 0.2 units is 0.15 px at the 92 px width the left pane draws; it would vanish and take the raised-sight read with it |
+| Forend vent slots | 0.6 units | 0.9 | same reason |
+| Forend nose | ends at x 93.6 | ends at x 91.5 | holds the exposed barrel above 27% of length, per the brief |
+| Free-float gap | closes into a 2-unit bridge at the forend nose | left open | a 1.5 px bridge is not a feature at tile size, it is a rendering artefact |
+| Receiver/barrel junction | stepped shoulder with a bolt boss | single chamfer | below the resolution of the tile |
+
+**Fill-rule constraint, recorded because it is easy to break.** `VIcon` uses
+Qt's default odd-even fill. The separate pieces must never *overlap* the main
+outline or they cancel to holes; the visible gaps the design calls for are what
+guarantees this. The cheek-piece posts stop 0.25 units short of the rail for
+exactly that reason. The three genuine holes — trigger guard and two forend
+vents — are nested subpaths.
+
+**Production-size simplification, and why it was needed.** The traced
+silhouette measured well (IoU 0.816) and looked right at 2×, but the acceptance
+gate is the **132 px production tile**, and there several members fell below one
+device pixel and could only render as grey. At the 92 px rifle width the scale
+is 0.73, so:
+
+| Feature | Authored | Device px at 92 px | Action |
+|---|---|---|---|
+| Forend ventilation slots | 0.9 units | **0.66** | **removed** — never resolvable, contributed only a grey band down the forend |
+| Rear sight rail | 0.9 units | **0.66** | thickened to 1.4 units (1.02 px) |
+| Barrel, plain section | 1.6 units | 1.17 | thickened to 1.95 units (1.42 px), **upward only** so the free-float gap below is not narrowed |
+
+Everything else is untouched. **Every critical ISSF cue is retained**: the
+separate adjustable buttplate and its lower hook, the raised cheek piece with
+visible air between it and the comb, the anatomical competition stock, the deep
+near-vertical grip, the raised rear diopter, the front sight tunnel, and a
+still-slender barrel at 17:1 over the exposed length. The forend is now one
+clean competition profile rather than a vent-textured band — less detail, but a
+stronger ISSF shape, which is the right trade at tile size.
+
+Rejected during the pass: thickening the barrel further to 2.25 units. It added
+ink without adding solid pixels (solid/ink 0.42 → 0.40) and was backed out.
+Measured in the rifle band at 92 px, solid/ink went **0.40 → 0.42**.
+
+**Closure.** The reference image `docs/ui/issf-match-rifle-reference.png` was
+the visual authority throughout (UI-DEC-013); the **132 px production render
+was the acceptance gate**, not the 2× view and not the similarity score; and
+the silhouette was approved on that render. Numerical similarity was treated as
+diagnostic evidence only — a mask can score well and still read wrong at UI
+size, so it was never allowed to stand in for the human decision.
+
+**Reproducing the evidence.** From the repository root, with the Qt `bin` on
+`PATH`:
+
+```
+tools/uirender/release/uirender.exe tools/uirender/scene_disciplines.qml <out>.png 620 300
+```
+
+The scene renders where it lives — nothing is copied to the repository root —
+and no environment variables are needed. Build instructions, the per-scene
+canonical sizes and the rule for writing new scenes are in
+`tools/uirender/README.md`.
+
+Three harness limitations recorded in earlier revisions of this entry — the
+scene needing to be copied to the repository root, `QT_QPA_PLATFORM=offscreen`
+having to be set by hand to avoid a segfault, and text rendering as empty boxes
+— were fixed in the renderer itself and no longer apply. **This changes nothing
+about the evidence status below:** the renderer still draws the same QML
+through the same Qt Quick scene graph without being the application, so its
+output remains automated evidence and not human visual approval.

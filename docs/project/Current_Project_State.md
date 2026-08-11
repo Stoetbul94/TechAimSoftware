@@ -145,6 +145,30 @@ The only screenshot in the repository is
 `manual-preview/ui-audit/raw/01-home.png`, captured at baseline `a74d3fd` —
 the **pre-Version-B** page. UI-0 evidence only; not Version B evidence.
 
+**Discipline artwork — approved (2026-08-11).** The match-rifle silhouette in
+`DisciplineArt.qml` was rebuilt from `docs/ui/issf-match-rifle-reference.png`
+(UI-DEC-013, defect UI-ART-001), then given a production-size simplification
+pass: sub-pixel forend ventilation slots removed, rear sight rail and barrel
+thickened to resolve at the 92 px the left pane actually draws, every ISSF cue
+retained. **HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-08-11**, on the 132 px
+production tile; UI-ART-001 is `CLOSED — HUMAN VISUAL APPROVED`, evidence
+`docs/ui/evidence-match-rifle-production.png`.
+
+The review also surfaced a shared-renderer defect, **UI-ICON-001**: `VIcon`
+rasterised into a layer before its scale transform, so every icon drawn below
+its authoring viewBox lost geometry — the rifle rendered 66 px wide instead of
+92, without its barrel or front sight. Fixed in `11fd19e`, with a follow-up in
+`c76d959` snapping stroke widths to whole device pixels so the 22 px compact
+nav icons resolve sharply. Both approved on native 1:1 renders; UI-ICON-001 is
+`CLOSED — HUMAN VISUAL APPROVED`.
+
+**UI-DEC-014** records the gate that came out of this: discipline artwork is
+accepted on a render at production size, no feature may sit below one device
+pixel there, silhouette beats internal detail, and similarity metrics are
+diagnostic only — never approval. The homepage is unaffected, so
+`Homepage_Acceptance_Checklist.md` and `Homepage_As_Built.md` are deliberately
+untouched — the discipline plate is not on that screen.
+
 ## 7. Manual status
 
 Operator manuals, Quick Start and Troubleshooting exist (EN + DE beta) and pass
