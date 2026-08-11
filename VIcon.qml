@@ -17,8 +17,12 @@ Item {
 
     Shape {
         anchors.fill: parent
-        layer.enabled: true
-        layer.samples: 4
+        // NO layer here. A layer rasterises this Shape in its own unscaled
+        // coordinates and clips it to the item's pixel bounds BEFORE the Scale
+        // below is applied, so any icon drawn smaller than its authoring grid
+        // lost everything past viewBox * (width/viewBoxW) - the rifle at the
+        // 92 px the left pane draws lost its whole barrel and front sight.
+        // Rendering the geometry unlayered draws it at final resolution.
         transform: Scale {
             xScale: root.width > 0 ? root.width / root.viewBoxW : 1
             yScale: root.height > 0 ? root.height / root.viewBoxH : 1

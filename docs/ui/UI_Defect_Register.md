@@ -462,3 +462,47 @@ The plate's position-glyph row is not visible at left-pane scale: the 96 px
 card crops it. Cosmetic at Prone (one glyph), but it is the ONLY thing that
 distinguishes 3P from Prone, so 3P would lose its differentiator. Card height
 or art aspect needs adjusting. **OPEN.**
+
+## 1h. Shared vector icons — VIcon (2026-08-11)
+
+### UI-ICON-001 — VIcon geometry clipped when rendered below authoring viewBox size
+
+| Field | Value |
+|---|---|
+| Area | `VIcon.qml` — shared vector icon component, every consumer |
+| Symptom | Icons drawn smaller than their authoring grid lost geometry off the right and bottom edges and rendered soft |
+| Severity | P1 — shared component, silently wrong at production size in every screen that uses it |
+| Source | Production-size render during the UI-ART-001 review |
+| Status | **RESOLVED — AUTOMATED EVIDENCE, HUMAN VISUAL CHECK REQUIRED** |
+| Fixed commit | this change |
+| Automated evidence | `docs/ui/evidence-vicon-production-icons.png`; `tests/qml` 46 checks / 0 failures; passing Release build |
+| Visual evidence | **Not yet reviewed on screen** |
+
+**Symptom, measured.** The rifle silhouette on the discipline plate is drawn at
+92 px from a 126-unit authoring grid. It rendered **66 px wide instead of 92,
+and 16 px tall instead of 21** — the whole exposed barrel and the front sight
+tunnel were missing. Every other shared icon was affected in the same way: the
+Group/MPI rings and the Home roof had flattened right edges, and the Settings
+gear teeth were soft.
+
+**Root cause.** `VIcon` wrapped its `Shape` in `layer.enabled: true` while
+applying the authoring-grid-to-item `Scale` as an item transform. A layer
+rasterises the item's contents in its own *unscaled* coordinates and clips them
+to the item's pixel bounds, and only then is the transform applied to the
+resulting texture. Any icon drawn below its authoring-grid size therefore lost
+`1 - width/viewBoxW` of itself before it was ever scaled. For the rifle that is
+92/126 = 0.73, which is exactly the 66/91 measured. Drawn *above* grid size the
+same mechanism magnified a grid-resolution texture, which is why large blow-ups
+pixelated.
+
+**Fix.** The layer is removed, so the geometry rasterises at final resolution.
+No change to the scale maths, the stroke-width convention or any path data.
+
+**Why it was not caught earlier.** The UI-ART-001 evidence was rendered with
+the art at 180 px, where the rifle is 126 px — exactly the viewBox, scale 1.0,
+and the defect cannot appear. It only manifests below grid size, which is what
+production uses.
+
+**Scope.** This is a rendering defect in shared infrastructure and is
+deliberately kept separate from UI-ART-001, which concerns the rifle *drawing*.
+No path data was touched by this fix.
