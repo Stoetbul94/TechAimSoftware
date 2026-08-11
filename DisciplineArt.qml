@@ -39,12 +39,72 @@ Item {
     readonly property bool is50m:    discipline === "PRONE50" || discipline === "3P50"
     readonly property bool is3P:     discipline === "3P50"
 
-    // Shared equipment silhouettes (same authoring grids as LeftPanel).
+    // ISSF 10 m AIR PISTOL, muzzle right. Authoring grid 100x36.
+    //
+    // Traced from docs/ui/issf-match-pistol-reference.png, which is the visual
+    // authority. The reference silhouette measures 632x226 px - a 2.80 ratio -
+    // and every landmark below is a real coordinate off it, rescaled to a
+    // 100x36 grid. The previous drawing was a 48x32 invention and is deleted.
+    //
+    // What makes a match pistol read as a match pistol, measured off the
+    // reference rather than assumed:
+    //
+    //  1. TWO-BAR UPPER. The top rib carrying the sights and the air cylinder
+    //     beneath it are SEPARATE, with a slot of daylight between them for
+    //     the whole length. A service pistol has one deep slide. This is the
+    //     single strongest cue and it is why the cylinder is its own subpath.
+    //  2. ANATOMICAL GRIP filling the whole rear. On the reference the grip
+    //     spans the full height of the drawing while the barrel assembly is
+    //     only a quarter of it: bands 0-20% run from v 0 to v 35, bands 30-90%
+    //     from v 4 to v 14. A combat grip is a straight magazine well; this
+    //     one has a deep thumb scoop behind, finger scallops in front, and a
+    //     separate PALM SHELF standing off the bottom.
+    //  3. A BIG ROUND TRIGGER GUARD, drawn as an odd-even hole.
+    //  4. Sights that stand PROUD: a rear block with its windage drum at the
+    //     very back, a front blade at the very front, both above the rib line.
+    //
+    // At the 75 px the plate draws it, one grid unit is 0.75 device px, so
+    // nothing here is thinner than 1.8 units (UI-DEC-014). The rib/cylinder
+    // slot is 1.8 units - it is the cue that must survive, so it is sized to.
     readonly property string pistolPath:
-        "M8 11 L8 9 L12 9 L12 11 L20 11 L20 10 L42 10 L42 8 L44 8 L44 10 " +
-        "L45 10 L45 12.5 L44 12.5 L29 12.5 L29 14 L43 14 L43 17 L29 17 " +
-        "L27 17 L27 20 L24 20 L24 17 L21 17 L20 20 L21 21 L20 23 L21 24 " +
-        "L20 26 L19 29 L19 31 L6 31 L5 29 L7 17 L8 11 Z"
+        // rear sight with its windage drum, then the frame top forward
+        "M8.6 6.2 L8.6 4.0 L11.0 4.0 L11.0 2.6 " +
+        "C11.0 1.2 12.4 0.8 13.4 0.8 C14.4 0.8 15.2 1.4 15.2 2.6 " +
+        "L15.2 4.0 L25.5 4.0 " +
+        // the shallow notch in the frame top, as on the reference
+        "C26.6 4.0 26.8 5.4 27.8 5.4 C28.8 5.4 29.0 4.0 30.2 4.0 " +
+        // sight rib out to the front blade, then the muzzle end
+        "L93.6 4.0 L93.6 1.0 L96.4 0.6 L96.4 4.0 L100 4.0 L100 6.6 " +
+        // back along the underside of the rib to the frame
+        "L40.5 6.6 L40.5 11.0 " +
+        // outside of the trigger guard, then onto the grip front
+        "C40.5 16.8 37.4 21.6 33.0 21.6 " +
+        "C27.4 21.6 23.8 17.6 23.6 13.0 L22.4 13.2 " +
+        // finger scallops - the front of an anatomical grip is never straight
+        "C21.8 15.2 21.0 16.0 20.4 17.2 " +
+        "C19.8 18.4 20.4 19.2 19.8 20.4 " +
+        "C19.2 21.6 18.0 22.2 17.4 23.4 " +
+        "C16.8 24.6 17.0 25.8 16.0 26.8 " +
+        // grip base, then the deep thumb scoop up the back to the frame
+        "L3.4 27.4 C2.0 27.5 1.2 27.0 1.4 25.6 " +
+        "C1.8 21.6 3.2 18.2 5.2 15.0 " +
+        "C6.6 12.6 8.0 10.0 8.6 6.2 Z " +
+        // ── trigger guard: an odd-even hole ────────────────────────────────
+        "M31.5 13.0 C34.2 13.0 35.6 14.4 35.6 16.2 " +
+        "C35.6 18.0 34.0 19.0 31.5 19.0 " +
+        "C29.0 19.0 27.4 18.0 27.4 16.2 C27.4 14.4 28.8 13.0 31.5 13.0 Z " +
+        // ── air cylinder: a SEPARATE subpath under the rib, so the slot of
+        // daylight between them cannot close. Rounded cap at the muzzle end,
+        // and it stops short of the front sight exactly as the reference does.
+        "M42.0 8.4 L88.0 8.4 C90.4 8.5 91.4 9.6 91.4 11.3 " +
+        "C91.4 13.0 90.4 14.1 88.0 14.2 L42.0 14.2 " +
+        "C41.2 14.15 40.9 13.6 40.9 12.8 L40.9 9.8 " +
+        "C40.9 9.0 41.2 8.45 42.0 8.4 Z " +
+        // ── palm shelf: separate, standing off the base of the grip ────────
+        "M16.2 29.0 C16.8 29.6 16.8 30.6 15.8 31.2 L6.0 34.4 " +
+        "C4.4 34.8 3.0 34.4 2.7 33.2 C2.5 32.0 3.2 31.0 4.6 30.5 " +
+        "L13.6 28.8 C14.8 28.5 15.6 28.5 16.2 29.0 Z"
+
     // ISSF MATCH RIFLE, muzzle right. Authoring grid 126x30.
     //
     // Traced from docs/ui/issf-match-rifle-reference.png, which is the visual
@@ -215,12 +275,12 @@ Item {
     // carries a real barrel, so the drawing needs the extra length. The butt
     // overlapping the ring motif is deliberate and matches the reference.
     VIcon {
-        x: (art.isPistol ? 52 : 34) * art.sx
-        y: (art.isPistol ? 12 : 15) * art.sy
-        width:  (art.isPistol ? 46 : 84) * art.sx
-        height: width * ((art.isPistol ? 32 : 30) / (art.isPistol ? 48 : 126))
-        viewBoxW: art.isPistol ? 48 : 126
-        viewBoxH: art.isPistol ? 32 : 30
+        x: (art.isPistol ? 50 : 34) * art.sx
+        y: (art.isPistol ? 19 : 15) * art.sy
+        width:  (art.isPistol ? 68 : 84) * art.sx
+        height: width * ((art.isPistol ? 36 : 30) / (art.isPistol ? 100 : 126))
+        viewBoxW: art.isPistol ? 100 : 126
+        viewBoxH: art.isPistol ? 36 : 30
         pathData: art.isPistol ? art.pistolPath : art.riflePath
         color: art.ink
         filled: true

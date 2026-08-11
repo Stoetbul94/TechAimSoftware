@@ -534,6 +534,57 @@ pixels always look blocky, and the sheet was read as "the icons are blurry"
 when they were not. Native 1:1 renders are the acceptance evidence for
 sharpness; any magnified view must be separately labelled as a diagnostic.
 
+## 1j. Discipline artwork — air-pistol silhouette (2026-08-11)
+
+### UI-ART-002 — The 10 m Air Pistol plate reads as a generic handgun
+
+| Field | Value |
+|---|---|
+| Area | `DisciplineArt.qml` — pistol silhouette on the discipline plate (left pane) |
+| Symptom | The plate drew a generic pistol pictogram: a deep single-block upper and a plain grip, indistinguishable from a service handgun on a sport-shooting product |
+| Severity | P2 — brand/identity, not function |
+| Source | Arnold's review of the rendered plate; first redesign attempt also rejected |
+| Status | **CLOSED — HUMAN VISUAL APPROVED** |
+| Fixed commit | this change |
+| Automated evidence | `docs/ui/evidence-match-pistol-production.png`; `tests/qml` 46 checks / 0 failures; passing Release build |
+| Visual evidence | **HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-08-11**, on the 132 px production tile |
+
+**Reference.** `docs/ui/issf-match-pistol-reference.png` is the visual
+authority. It was measured, not recalled: the silhouette is 632x226 px, a
+**2.80 ratio**, and a column scan gives the landmarks the drawing is built
+from — the grip occupies the rear quarter and spans the FULL height while the
+barrel assembly is only a quarter of it, the rear sight and its windage drum
+stand proud above the frame top, the trigger guard is round, and the upper is
+**two separate bars** with a slot of daylight running their whole length.
+
+**Fix.** The old 48x32 path was an invention and was deleted outright, not
+tweaked. The silhouette is authored from zero on a **100x36 grid** taken from
+the reference, and the plate box changed with it (x 48 → 50, width 46 → 68,
+viewBox 48x32 → 100x36) so the pistol is a primary identification object and
+sits clear of the ring motif.
+
+**Cues kept, because they are what separate a match pistol from a service
+pistol.** The anatomical competition grip — finger scallops in front, deep
+thumb scoop behind, and a **separate palm shelf** standing off the base; the
+long **two-part precision upper**, sight rib above and air cylinder below with
+the slot between them drawn as separate subpaths so it cannot close; the round
+trigger guard as an odd-even hole; and target sights standing proud at both
+ends.
+
+**Cues deliberately excluded.** No slide, no magazine well, no accessory rail,
+no beavertail, no combat grip — nothing that would let the plate pass as a
+tactical handgun icon.
+
+**Production-size simplification.** At the 75 px the plate draws it one grid
+unit is 0.75 device px, so nothing is thinner than 1.8 units (UI-DEC-014). The
+rib/cylinder slot is sized *to* that floor at 1.8 units because it is the cue
+that must survive; the trigger blade inside the guard was dropped, since at a
+5 px hole it could only have been a grey sliver.
+
+**Acceptance.** The **132 px production tile was the gate**, not the 2x view.
+One iteration was rejected on the way: the first redesign overlapped the ring
+motif and left the palm shelf floating.
+
 ## 1i. Discipline artwork — match-rifle silhouette (2026-08-11)
 
 ### UI-ART-001 — The rifle silhouette reads as a military weapon
