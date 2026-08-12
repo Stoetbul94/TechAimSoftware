@@ -282,21 +282,30 @@ Item {
         // height evenly (Option 3). At short window heights the shared height
         // shrinks uniformly with a sensible floor; icons/text scale down before
         // the buttons become un-tappable.
+        // One icon family, authored on the same 24x24 grid with the same
+        // optical box (roughly 4..20) and the same stroke, so no glyph
+        // dominates another in the column. Detail that cannot survive the
+        // 22 px compact size is deliberately absent - the old gear carried
+        // sixteen 1.65-unit arcs that resolved to grey mush, and the target
+        // rings had a centre too small to draw. See UI-DEC-014.
         readonly property var navModel: [
             { key: "stats",    label: qsTr("Stats"),
-              path: "M18 20V10 M12 20V4 M6 20v-6" },
+              path: "M4 20h16 M7.5 20V12.5 M12 20V6 M16.5 20V9.5" },
             { key: "report",   label: qsTr("Report"),
-              path: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M16 13H8 M16 17H8 M10 9H8" },
+              path: "M6 3.5h8l4 4V20.5H6z M14 3.5v4h4 M9 13h6 M9 16.5h6" },
             { key: "coach",    label: qsTr("Coach report"),
-              path: "M12 15a7 7 0 1 0 0-14 7 7 0 0 0 0 14z M8.21 13.89L7 23l5-3 5 3-1.21-9.12" },
+              path: "M12 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11z M8.6 13.6L7.2 20.8l4.8-2.5 4.8 2.5-1.4-7.2" },
             { key: "mpi",      label: qsTr("Group / MPI"),
-              path: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12z M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" },
+              path: "M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17z M12 7.4a4.6 4.6 0 1 0 0 9.2 4.6 4.6 0 0 0 0-9.2z M12 10.8a1.2 1.2 0 1 0 0 2.4 1.2 1.2 0 0 0 0-2.4z" },
             { key: "incident", label: qsTr("Range incident"),
-              path: "M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z M12 9v4 M12 17h.01" },
+              path: "M12 4L21 19.5H3z M12 10v4 M12 17h.01" },
             { key: "settings", label: qsTr("Settings"),
+              // The gear is KEPT as drawn: simplifying it to spokes turned it
+              // into a sunburst that no longer read as Settings at all. With
+              // the VIcon fixes it resolves cleanly at both 22 and 26 px.
               path: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" },
             { key: "home",     label: qsTr("Home"),
-              path: "M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10" }
+              path: "M4 10.5L12 4l8 6.5V20.5H4z M9.5 20.5V14h5v6.5" }
         ]
         readonly property int navCount: navModel.length
         // Each button grows to share the available height evenly (floored so it

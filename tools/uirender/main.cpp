@@ -23,6 +23,8 @@
 #include <QFont>
 #include <QFontDatabase>
 #include <QStandardPaths>
+#include <QVariantMap>
+#include <utility>
 #include <cstdio>
 
 // The offscreen platform plugin carries no font database of its own — Qt no
@@ -82,8 +84,15 @@ int main(int argc, char** argv)
         Q_INVOKABLE bool getShowGroupAndMPI() { return true; }
         Q_INVOKABLE double bullet_diameter() { return 4.5; }
         Q_INVOKABLE int getMatch_meter() { return 50; }
+        // SettingsPage reads these three directly.
+        Q_INVOKABLE double getMotor_movement_time() { return 1.0; }
+        Q_INVOKABLE double getMotor_movement_time_sighter() { return 1.0; }
+        Q_INVOKABLE bool getAppMode() { return false; }   // false = Demo
+        Q_INVOKABLE void saveMotorTimes(double, double) {}
+        Q_INVOKABLE void selectLanguage(const QString&) {}
+        Q_INVOKABLE void selectMode(int) {}
     };
-    Stub appSettings, modReader, login;
+    Stub appSettings, modReader, login, language, opMode;
 
     // Text draws as empty boxes unless a real font file is registered first,
     // and the family named here has to be one that actually resolved.
@@ -95,11 +104,46 @@ int main(int argc, char** argv)
 
     QObject themeObj; themeObj.setProperty("fontFamily", family);
 
+    // Enough of PRODUCT / BUILDINFO / LANGUAGE / OPMODE for SettingsPage to
+    // lay itself out. Values are placeholders - this renders LAYOUT, not build
+    // identity, and nothing here is evidence about the real binary.
+    QObject product, buildInfo;
+    product.setProperty("fullProductName", "Tech Aim Electronic Target Control");
+    product.setProperty("displayName", "Tech Aim");
+    product.setProperty("version", "0.9.0");
+    product.setProperty("releaseChannel", "RC2");
+    product.setProperty("legalPublisher", "SETA Electronic Targets");
+    product.setProperty("qtVersion", "6.5.3");
+    product.setProperty("architecture", "x86_64");
+    product.setProperty("windowsVersion", "Windows 11 Home Single Language 10.0.26200");
+    product.setProperty("analyticsVersion", "13");
+    product.setProperty("isFieldTest", false);
+    product.setProperty("fieldTestNotice", "");
+    buildInfo.setProperty("config", "Release");
+    buildInfo.setProperty("commit", "0000000");
+    buildInfo.setProperty("built", "2026-08-11");
+
+    QVariantList langs;
+    for (auto pair : { std::make_pair("en", "English"), std::make_pair("de", "Deutsch (beta)") }) {
+        QVariantMap m; m["code"] = pair.first; m["label"] = pair.second; langs << m;
+    }
+    language.setProperty("availableLanguages", langs);
+    language.setProperty("languageCode", "en");
+    language.setProperty("isBetaTranslation", true);
+    language.setProperty("restartRequired", false);
+    opMode.setProperty("live", false);
+    opMode.setProperty("restartRequired", false);
+
     QQuickView view;
     view.rootContext()->setContextProperty("APPSETTINGS", &appSettings);
     view.rootContext()->setContextProperty("MODREADER", &modReader);
     view.rootContext()->setContextProperty("loginPage", &login);
     view.rootContext()->setContextProperty("theme", &themeObj);
+    view.rootContext()->setContextProperty("PRODUCT", &product);
+    view.rootContext()->setContextProperty("BUILDINFO", &buildInfo);
+    view.rootContext()->setContextProperty("LANGUAGE", &language);
+    view.rootContext()->setContextProperty("OPMODE", &opMode);
+    view.rootContext()->setContextProperty("gameRange", 10);
     view.setSource(QUrl::fromLocalFile(scene));
     if (view.status() != QQuickView::Ready) {
         for (const QQmlError& e : view.errors())

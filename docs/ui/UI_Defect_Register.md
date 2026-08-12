@@ -524,6 +524,48 @@ visually identical and only surrounding translated text may differ. The
 authoritative-state regression, not the screenshot, is the primary protection
 against recurrence.
 
+## 1g3. Settings drawer and navigation icons (2026-08-11)
+
+### UI-SET-001 — The Settings panel could not contain its own content
+
+| Field | Value |
+|---|---|
+| Area | `SettingsPage.qml` — shared Settings drawer (every discipline and workflow) |
+| Symptom | Text escaped its box, sections overlapped, the colour selector floated free, and everything below Operating Mode was unreachable |
+| Severity | P1 — settings unreachable in the shipped UI |
+| Source | Arnold, on the running build |
+| Status | **RESOLVED — AUTOMATED EVIDENCE, INTEGRATED VISUAL CHECK PENDING** |
+| Fixed commit | this change |
+| Automated evidence | `tests/qml` 64/0; renderer output at production placement, scrolled to the end, and in a short window; passing Release build |
+| Visual evidence | Approved from renderer output; the running application remains Arnold's check |
+
+**Root cause.** The panel was a **158x61 raster popup**: a background PNG with
+every control positioned by fraction-of-a-PNG arithmetic, and the later
+sections (motor feed, operating mode, language, about) anchored in a chain
+*below* it. Nothing bounded that chain, so the panel's own height stayed 61 px
+while its content ran off the bottom of the application — which is exactly why
+nothing under Operating Mode could be reached. The panel width came from an
+image's `sourceSize`, so descriptions had no width to wrap into.
+
+**Fix.** A real constrained drawer: 320 px preferred width clamped to
+`parent.width - x - 16`, height clamped to `parent.height - y - 16`, and one
+scrolling region holding every section. Per **UI-DEC-007** the scroller is a
+`Flickable` with `contentHeight` bound explicitly — a `ScrollView` measures
+implicit height, which is unreliable with wrapped text and a `Repeater`. Every
+section is a bounded card, every description has `wrapMode` and a real width,
+and the colour selector is now a **TARGET DISPLAY section inside the panel**
+with drawn swatches carrying the same two flags. Operating Mode's two options
+share one delegate so the radio, heading and wrapped description cannot drift.
+
+**A second defect found while fixing it.** The motor-feed fields read
+`modelData` inside a nested `Component.onCompleted`, which **fails silently**
+in QML, so both fields rendered blank. They are written out explicitly now.
+
+**Navigation icons.** The same pass regularised the seven nav glyphs onto one
+24x24 optical box. The gear was deliberately **left as drawn**: simplifying it
+to spokes turned it into a sunburst that no longer read as Settings. It
+resolves cleanly given UI-ICON-001 and its stroke follow-up.
+
 ## 1h. Shared vector icons — VIcon (2026-08-11)
 
 ### UI-ICON-001 — VIcon geometry clipped when rendered below authoring viewBox size
