@@ -37,6 +37,9 @@
 #include <QRegularExpression>
 #include <QStringList>
 #include <QDebug>
+#include <QDir>
+#include <QTranslator>
+#include <QScopedPointer>
 #include <cstdio>
 
 static int  g_checks = 0;
@@ -82,6 +85,14 @@ public:
 
 // Pulls a named function's full text out of the real QML file by brace
 // matching, so the test always runs the SHIPPED implementation.
+static QString readAll(const QString& path)
+{
+    QFile f(path);
+    if (!f.open(QIODevice::ReadOnly | QIODevice::Text))
+        return QString();
+    return QString::fromUtf8(f.readAll());
+}
+
 static QString extractFunction(const QString& source, const QString& name)
 {
     const int start = source.indexOf(QRegularExpression(
@@ -382,6 +393,112 @@ int main(int argc, char* argv[])
                   QStringLiteral("calculatedSccore\\s*>=\\s*11"))),
               "the clamp triggers at >= 11, which every discipline reaches at "
               "dead centre");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // LANGUAGE INVARIANCE — QML-LANG-001
+    //
+    // Selecting Deutsch (Beta) made 10 m Air Pistol render and SCORE as a
+    // rifle. CenterPane derived `gameMode` by comparing a stored display
+    // string against qsTr("PISTOL"). The stored string is captured once out
+    // of a ListModel and never retranslates; the qsTr() binding does. In
+    // German ("PISTOLE") the two diverged, gameMode fell to false, and
+    // calculateShootingSocre() took the rifle branch - wrong ring geometry,
+    // wrong bullet radius, wrong SCORE.
+    //
+    // These checks assert the invariant at the AUTHORITATIVE level, not on
+    // pixels: shooting logic derives from the stable discipline enum, and no
+    // QML anywhere keys logic off translated text.
+    // ─────────────────────────────────────────────────────────────────────
+    {
+        const QString centre   = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/CenterPane.qml"));
+        const QString leftPane = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/LeftPanel.qml"));
+        check(!centre.isEmpty() && !leftPane.isEmpty(),
+              "QML-LANG-001: CenterPane.qml and LeftPanel.qml can be read");
+
+        // Plain string extraction on purpose: a regex literal here is one
+        // stray escape away from matching nothing and passing vacuously.
+        const int declAt = centre.indexOf(QStringLiteral("property bool gameMode"));
+        check(declAt >= 0, "QML-LANG-001: CenterPane declares a gameMode property");
+        QString gameModeExpr;
+        if (declAt >= 0) {
+            const int colon = centre.indexOf(QLatin1Char(':'), declAt);
+            const int eol   = centre.indexOf(QChar(10), declAt);
+            if (colon > 0 && eol > colon)
+                gameModeExpr = centre.mid(colon + 1, eol - colon - 1).trimmed();
+        }
+        check(!gameModeExpr.isEmpty(),
+              "QML-LANG-001: the gameMode expression was extracted", gameModeExpr);
+
+        check(!gameModeExpr.contains(QStringLiteral("qsTr")),
+              "QML-LANG-001: gameMode is NOT derived from a translated string",
+              gameModeExpr);
+        check(gameModeExpr.contains(QStringLiteral("loginPage.gameMode")),
+              "QML-LANG-001: gameMode is derived from the stable discipline enum",
+              gameModeExpr);
+        check(!gameModeExpr.contains(QStringLiteral("currentGameDisplay")),
+              "QML-LANG-001: gameMode does not read a display string",
+              gameModeExpr);
+
+        check(!leftPane.contains(QStringLiteral("gameDisplayText2.text ===")),
+              "QML-LANG-001: the discipline key is not decided by displayed text");
+
+        QDir root(QStringLiteral(TECHAIM_SOURCE_DIR));
+        const QStringList qmlFiles =
+            root.entryList(QStringList() << QStringLiteral("*.qml"), QDir::Files);
+        QStringList offenders;
+        for (const QString& fname : qmlFiles) {
+            const QString body = readAll(root.filePath(fname));
+            if (body.contains(QStringLiteral("=== qsTr("))
+                || body.contains(QStringLiteral("== qsTr("))
+                || body.contains(QStringLiteral("!= qsTr(")))
+                offenders << fname;
+        }
+        check(offenders.isEmpty(),
+              "QML-LANG-001: no QML compares against a translated string",
+              offenders.join(QStringLiteral(", ")));
+
+        QTranslator de;
+        const QString qm = QStringLiteral(TECHAIM_SOURCE_DIR "/translations/german.qm");
+        const bool loaded = de.load(qm);
+        check(loaded, "QML-LANG-001: the German catalogue loads", qm);
+        if (loaded) {
+            const QString translated = de.translate("CenterPane", "PISTOL");
+            check(!translated.isEmpty() && translated != QStringLiteral("PISTOL"),
+                  "QML-LANG-001: German translates PISTOL differently - any logic "
+                  "comparing it would flip discipline",
+                  translated);
+        }
+
+        for (int mode = 0; mode <= 1; ++mode) {
+            bool results[2] = { false, false };
+            for (int pass = 0; pass < 2; ++pass) {
+                if (pass == 1 && loaded) QCoreApplication::installTranslator(&de);
+                QQmlEngine langEngine;
+                langEngine.retranslate();
+                const QString qmlSrc = QStringLiteral(
+                    "import QtQuick 2.15\n"
+                    "QtObject {\n"
+                    "    property QtObject loginPage: QtObject { property int gameMode: %1 }\n"
+                    "    property bool gameMode: %2\n"
+                    "}\n").arg(mode).arg(gameModeExpr);
+                QQmlComponent comp(&langEngine);
+                comp.setData(qmlSrc.toUtf8(), QUrl());
+                QScopedPointer<QObject> obj(comp.create());
+                check(!obj.isNull(),
+                      "QML-LANG-001: the real gameMode expression evaluates",
+                      comp.errorString());
+                if (!obj.isNull())
+                    results[pass] = obj->property("gameMode").toBool();
+                if (pass == 1 && loaded) QCoreApplication::removeTranslator(&de);
+            }
+            check(results[0] == results[1],
+                  mode == 0 ? "QML-LANG-001: pistol stays pistol in German"
+                            : "QML-LANG-001: rifle stays rifle in German");
+            check(results[0] == (mode == 0),
+                  mode == 0 ? "QML-LANG-001: gameMode is TRUE for the pistol enum"
+                            : "QML-LANG-001: gameMode is FALSE for the rifle enum");
+        }
     }
 
     printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);

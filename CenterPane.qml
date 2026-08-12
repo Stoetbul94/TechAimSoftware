@@ -70,7 +70,15 @@ Item {
     }
 
     property bool lightBackGroundMode: true
-    property bool gameMode: shootingPage.currentGameDisplay2 === qsTr("PISTOL") ? true : false // true for pistol
+    // TRUE for pistol. Derived from the stable discipline enum, NEVER from
+    // displayed text. This compared a stored display string against
+    // qsTr("PISTOL"): the string is captured once out of a ListModel and does
+    // not retranslate, while the qsTr() binding does, so selecting German
+    // ("PISTOLE") made the two diverge and every Air Pistol match silently
+    // fell through to RIFLE geometry - wrong rings, wrong scale, wrong bullet
+    // radius, wrong SCORE. loginPage.gameMode is the authority: 0 = pistol,
+    // 1 = rifle. Language must never participate in this mapping.
+    property bool gameMode: loginPage.gameMode === 0
     property int shootinRectWidth: shootingMianRect.width
     property int shootinRectHeight: shootingMianRect.height
 

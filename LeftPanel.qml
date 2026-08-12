@@ -30,7 +30,10 @@ Item {
     property string disciplineKeyOverride: ""
     readonly property string disciplineKey: {
         if (disciplineKeyOverride !== "") return disciplineKeyOverride
-        if (gameDisplayText2.text === "PISTOL") return "AP10"
+        // The stable discipline enum, never the displayed text: that text is
+        // translated, so this returned the rifle plate for an Air Pistol
+        // session in German. 0 = pistol, 1 = rifle.
+        if (loginPage.gameMode === 0) return "AP10"
         return "AR10"
     }
     // The FULL discipline name. gameDisplay1 alone reads "10M AIR", which

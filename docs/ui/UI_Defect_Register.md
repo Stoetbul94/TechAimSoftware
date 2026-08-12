@@ -463,6 +463,67 @@ card crops it. Cosmetic at Prone (one glyph), but it is the ONLY thing that
 distinguishes 3P from Prone, so 3P would lose its differentiator. Card height
 or art aspect needs adjusting. **OPEN.**
 
+## 1g2. Language invariance (2026-08-11)
+
+### QML-LANG-001 — Switching language could change the target and the score
+
+| Field | Value |
+|---|---|
+| Area | `CenterPane.qml`, `LeftPanel.qml` — discipline selection |
+| Symptom | Selecting Deutsch (Beta) on a 10 m Air Pistol MATCH-60 session rendered a different target face |
+| Severity | **SEVERITY 1 — RELEASE BLOCKING** |
+| Source | Arnold, on the running build |
+| Status | **FIXED — AUTOMATED EVIDENCE, INTEGRATED VISUAL CHECK PENDING** |
+| Fixed commit | this change |
+| Automated evidence | `tests/qml` QML-LANG-001, 18 checks; full regression below |
+| Visual evidence | **Pending** — the same session in English and Deutsch (Beta) |
+
+**This is not a translation defect.** The authoritative Pistol/Rifle selector
+was derived from displayed text, so a language change could move a session
+into the wrong discipline branch. The observed consequence is that 10 m Air
+Pistol silently entered the **rifle target and scoring branch**, affecting
+target-face geometry, the black aiming area, ring presentation, the mm/pixel
+mapping, the projectile radius and `calculateShootingSocre()` itself.
+
+**Root cause.** `CenterPane.qml` read:
+
+```
+property bool gameMode: shootingPage.currentGameDisplay2 === qsTr("PISTOL") ? true : false
+```
+
+`currentGameDisplay2` is captured once out of a `ListModel` (`main.qml`,
+`gameDisplay2: qsTr("PISTOL")`) and stored as data — ListModel values do not
+retranslate. The `qsTr("PISTOL")` on the right **is** a live binding and does.
+German translates PISTOL to **PISTOLE**, so after the switch the two sides
+diverged, `gameMode` fell to `false`, and the pistol session was drawn and
+scored as a rifle. `LeftPanel.qml` had the same class of bug against a
+hardcoded English literal (`gameDisplayText2.text === "PISTOL"`), which flipped
+the plate artwork.
+
+**Fix.** Both now derive from the stable discipline state: `loginPage.gameMode`
+(0 = pistol, 1 = rifle). The other two selectors were already stable and are
+untouched — `APPSETTINGS.get10or50mRange()` for 10 m/50 m and
+`loginPage.gameSubMode` for Prone/3P. No translated text, no visible label, no
+`gameDisplay1`/`gameDisplay2`, no English literal participates in the decision.
+
+**Regression — QML-LANG-001, 18 checks.** Asserted against the *real* files:
+the gameMode expression contains no `qsTr` and no display string and does use
+the enum; the discipline key is not decided by displayed text; a file-wide scan
+of every root QML finds no comparison against `qsTr(`; the German catalogue
+loads and genuinely returns a different word (so the test is meaningful); and a
+behavioural pass evaluates the real extracted expression with a German
+translator installed, requiring pistol-stays-pistol and rifle-stays-rifle.
+
+**Negative control, recorded so the test cannot be assumed vacuous.** Restoring
+the defective expression and re-running produced **5 failures**; the fixed
+expression produces **0**.
+
+**Still pending.** The integrated visual check is Arnold's: the same 10 m Air
+Pistol session in English and in Deutsch (Beta), where the target face must be
+visually identical and only surrounding translated text may differ. The
+authoritative-state regression, not the screenshot, is the primary protection
+against recurrence.
+
 ## 1h. Shared vector icons — VIcon (2026-08-11)
 
 ### UI-ICON-001 — VIcon geometry clipped when rendered below authoring viewBox size

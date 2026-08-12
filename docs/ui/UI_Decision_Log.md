@@ -453,3 +453,40 @@ UI-DEC-013 is **amended in part**, as set out above.
 
 **Supersedes.** Nothing outright; amends UI-DEC-013 points 3 and its forend
 description.
+
+---
+
+## UI-DEC-015 — Translations are presentation-only and never participate in product decisions
+
+| | |
+|---|---|
+| **Date** | 2026-08-11 |
+| **Status** | ACCEPTED |
+| **Commit** | this change |
+| **Approved by** | **ARNOLD BAILIE, 2026-08-11** |
+
+**Decision.** A translation may change presentation strings and nothing else.
+Translated text must never participate in a decision about **discipline,
+target, scoring, acquisition, match or session state**. Every such decision
+reads a stable authoritative value — an enum, an id, or a numeric setting.
+
+Concretely, and binding on future languages: no comparison against `qsTr(...)`
+or `tr(...)`; no branching on a visible label, a `gameDisplay*` string or an
+English literal such as `"PISTOL"`; no index derived from a translated model.
+The discipline selectors are `loginPage.gameMode` (0 = pistol, 1 = rifle),
+`APPSETTINGS.get10or50mRange()` (10 or 50) and `loginPage.gameSubMode`
+(Prone / 3 Positions).
+
+**Reasoning.** QML-LANG-001 was a Severity 1, release-blocking defect: because
+the Pistol/Rifle selector compared stored display text against a live
+`qsTr()` value, selecting German moved a 10 m Air Pistol session into the rifle
+target and scoring branch. A defect that changes a score is not a translation
+bug, and the language layer is exactly the wrong place to discover that. The
+rule is written down so adding a language can never again be a scoring change,
+and `tests/qml` enforces it file-wide rather than at the one site that failed.
+
+**Affected areas.** `CenterPane.qml`, `LeftPanel.qml`, `tests/qml`.
+
+**Affected decisions.** UI-DEC-001 through UI-DEC-014 are all **preserved**.
+
+**Supersedes.** Nothing.
