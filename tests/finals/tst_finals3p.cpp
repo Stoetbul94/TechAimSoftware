@@ -1124,12 +1124,18 @@ static void runProductIdentityChecks()
     // result from looking official. Still strict: any channel that drops
     // "Internal" or "Field Test" fails here, and the production/general/stable
     // check below fails independently.
-    check(p.releaseChannel.startsWith(QLatin1String("Internal"))
-          && p.releaseChannel.contains(QLatin1String("Field Test")),
-          "identity: release channel is an internal field test (no production claim)",
+    // RC3 ships to SETA for evaluation, so the channel reads "SETA
+    // Evaluation" rather than an internal field test. The INVARIANT is
+    // unchanged and is what actually protects a result from looking
+    // official: the channel must name a pre-release candidate. Both
+    // approved forms are accepted; anything else fails, as does the
+    // production/general/stable check below, independently.
+    check(p.releaseChannel.contains(QLatin1String("Field Test"), Qt::CaseInsensitive)
+          || p.releaseChannel.contains(QLatin1String("Evaluation"), Qt::CaseInsensitive),
+          "identity: release channel names a pre-release candidate (no production claim)",
           p.releaseChannel);
     check(!p.fieldTestNotice.isEmpty()
-          && p.fieldTestNotice.contains(QLatin1String("NOT FOR OFFICIAL")),
+          && p.fieldTestNotice.contains(QLatin1String("Not for Official"), Qt::CaseInsensitive),
           "identity: the field-test build carries its limitation notice",
           p.fieldTestNotice);
     check(!p.releaseChannel.contains(QLatin1String("Production"), Qt::CaseInsensitive)

@@ -113,9 +113,6 @@
         <file>images/settings/pellet_color_red_no_highlight.png</file>
         <file>images/centerPanel/pistol_blue.png</file>
         <file>images/centerPanel/rifle_blue.png</file>
-        <file>images/loginPage/bg_tachus.png</file>
-        <file>images/rightPanel/total_score_block_tachus.png</file>
-        <file>images/logo/tachus.png</file>
         <file>images/logo/seta.png</file>
         <file>images/logo/techaim_white.png</file>
         <file>images/logo/techaim_color.png</file>
@@ -124,14 +121,11 @@
         <file>images/centerPanel/50_meter_blue.png</file>
         <file>images/centerPanel/black_50_Rifle.png</file>
         <file>images/centerPanel/blue_50_Rifle.png</file>
-        <file>images/logo/tachus_logo.png</file>
         <file>images/loginPage/End User Agreement SETA-1.png</file>
         <file>images/loginPage/End User Agreement SETA-2.png</file>
-        <file>images/loginPage/End User Agreement Tachus-1.png</file>
         <file>images/settings/pellet_color_yellow_highlight.png</file>
         <file>images/settings/pellet_color_yellow_no_highlight.png</file>
         <file>images/header/maximize.jpeg</file>
-        <file>images/rightPanel/total_score_block_tachus_new.png</file>
         <file>images/loginPage/green.png</file>
         <file>images/loginPage/red.png</file>
         <file>images/centerPanel/10mtr_green.png</file>

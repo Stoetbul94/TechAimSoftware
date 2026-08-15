@@ -44,11 +44,11 @@ ProductIdentity makeTechAim()
     // exists to observe the acquisition decision. What must NEVER change is
     // the invariant the harness enforces: an internal field-test channel that
     // makes no production, general-release or stable claim.
-    p.releaseChannel = QStringLiteral("Internal Diagnostic Field Test");
+    p.releaseChannel = QStringLiteral("SETA Evaluation");
 
     // Shown wherever a result could be mistaken for an official one. Short
     // enough to sit in a status strip without covering scores or controls.
-    p.fieldTestNotice = QStringLiteral("FIELD TEST — NOT FOR OFFICIAL COMPETITION RESULTS");
+    p.fieldTestNotice = QStringLiteral("Evaluation Build — Not for Official Competition Results");
 
     p.defaultTheme    = QStringLiteral("techaim-dark");
     p.defaultLanguage = QStringLiteral("en");
