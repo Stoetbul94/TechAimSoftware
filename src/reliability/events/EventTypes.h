@@ -51,6 +51,28 @@ inline const char* disciplineId(Discipline d)
     return "NONE";
 }
 
+// Operator/athlete-facing name, as distinct from the wire id above. Reports
+// print THIS. CD-REPORT-002: the Call & Diagnose report header derived its
+// "Discipline" line from a threePositions bool and printed "Single position" -
+// a layout descriptor, not a discipline - so a 50 m Rifle Prone report never
+// said what had been shot (50 m field test, 2026-08-10). The name belongs
+// beside the id, mapped from the same enum, not re-inferred per report.
+inline const char* disciplineName(Discipline d)
+{
+    switch (d) {
+    case Discipline::None:              return "—";
+    case Discipline::AirPistol10m:      return "10 m Air Pistol";
+    case Discipline::AirRifle10m:       return "10 m Air Rifle";
+    case Discipline::Prone50m:          return "50 m Rifle Prone";
+    case Discipline::ThreePositions50m: return "50 m Rifle 3 Positions";
+    case Discipline::Finals3P:          return "50 m Rifle 3 Positions Final";
+    case Discipline::Training:          return "Training";
+    case Discipline::AirRifleFinal10m:  return "10 m Air Rifle Final";
+    case Discipline::AirPistolFinal10m: return "10 m Air Pistol Final";
+    }
+    return "—";
+}
+
 inline bool disciplineFromId(const QString& id, Discipline* out)
 {
     if (id == QLatin1String("NONE"))       { *out = Discipline::None; return true; }
@@ -1358,6 +1380,30 @@ struct WindMapPositionChanged {
             return evdetail::invalid(QStringLiteral("WindMapPositionChanged: unknown position"));
         if (fromPosition == toPosition)
             return evdetail::invalid(QStringLiteral("WindMapPositionChanged: no change"));
+        return ReliabilityResult::success();
+    }
+};
+
+// STAGE 5. The workflow phase, made DURABLE.
+//
+// Without this, a resumed session cannot distinguish "in sighters" from "in
+// counted shots" when no counted shot has been fired yet — and the next shot
+// would be journalled with the wrong classification. Deriving the phase from
+// the recorded shots is ambiguous precisely in that case, so it is recorded.
+//
+// Values are ta::training::WindMapPhase. Idle (0) is a controller-only value
+// and is never journalled: a transition is always between real phases.
+struct WindMapPhaseChanged {
+    static constexpr const char* kType = "WindMapPhaseChanged";
+    static constexpr qint32 kVersion = 1;
+    qint8 fromPhase = 0;           // 0 = Idle, i.e. the session's first phase
+    qint8 toPhase = 0;
+    ReliabilityResult validate() const
+    {
+        if (fromPhase < 0 || fromPhase > 6 || toPhase < 1 || toPhase > 6)
+            return evdetail::invalid(QStringLiteral("WindMapPhaseChanged: unknown phase"));
+        if (fromPhase == toPhase)
+            return evdetail::invalid(QStringLiteral("WindMapPhaseChanged: no change"));
         return ReliabilityResult::success();
     }
 };

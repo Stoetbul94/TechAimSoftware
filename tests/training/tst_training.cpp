@@ -2131,7 +2131,8 @@ static void testPt3PSeparation()
     check(k.value("avgShotTime").toDouble() > 0.0, "pt: average shot time measured");
     // ptRunPosition fires every counted shot 3 s apart -> constant cadence
     check(qAbs(k.value("avgShotTime").toDouble() - 3.0) < 0.05, "pt: cadence is the 3 s shot-to-shot interval");
-    check(k.value("rhythm").toString() == QLatin1String("Steady"), "pt: constant cadence -> Steady rhythm");
+    check(k.value("rhythm").toString() == QLatin1String("Low rhythm variability"),
+          "pt: constant cadence -> low rhythm variability");
     // ranked session indicators (setup: K 10s < P 15s < S 20s)
     const QVariantMap rk = c.sessionRankings();
     check(rk.value("fastestSetup").toMap().value("name").toString() == QLatin1String("Kneeling"),
@@ -2147,19 +2148,21 @@ static void testPtRhythm()
 {
     std::printf("--- T4 position transition: rhythm classifier ---\n");
     {
-        // constant splits (every verification shot 3s apart) -> Steady
+        // constant splits (every verification shot 3s apart) -> lowest band
         PositionTransitionController c; MemFile f; ManualClock clk;
         prepPt(c, f, clk, 1);
         c.setSequencePreset(3); c.setVerificationShots(5);   // single Kneeling
         c.startPositionTransition(QStringLiteral("A"));
         ptRunPosition(c, clk, 5, 0, 8000, 3000, 0.3, 0.3);   // first split also 3s
         const QVariantMap rv = c.currentReview();
-        check(rv.value("rhythm").toString() == QLatin1String("Steady"), "pt-rhythm: constant splits -> Steady");
+        check(rv.value("rhythm").toString() == QLatin1String("Low rhythm variability"),
+              "pt-rhythm: constant splits -> Low rhythm variability");
         check(qAbs(rv.value("rhythmCv").toDouble()) < 0.05, "pt-rhythm: constant splits -> ~0 cv");
         c.resetPositionTransition();
     }
     {
-        // wildly varying splits -> Inconsistent
+        // wildly varying splits -> highest band. PT-02: the label describes the
+        // MEASUREMENT, never the athlete - "Inconsistent" was removed for that reason.
         PositionTransitionController c; MemFile f; ManualClock clk;
         prepPt(c, f, clk, 1);
         c.setSequencePreset(3); c.setVerificationShots(5);
@@ -2168,7 +2171,12 @@ static void testPtRhythm()
         const int gaps[5] = { 1000, 12000, 1500, 14000, 1200 };
         for (int i = 0; i < 5; ++i) { clk.advance(gaps[i]); c.registerShot(0.3, 0.3, 10.0, ++g_ptExt, 0, 1); }
         const QVariantMap rv = c.currentReview();
-        check(rv.value("rhythm").toString() == QLatin1String("Inconsistent"), "pt-rhythm: erratic splits -> Inconsistent");
+        check(rv.value("rhythm").toString() == QLatin1String("High rhythm variability"),
+              "pt-rhythm: erratic splits -> High rhythm variability");
+        check(rv.value("rhythmBasis").toString().contains(QLatin1String("CV "))
+              && rv.value("rhythmBasis").toString().contains(QLatin1String("intervals")),
+              "pt-rhythm: the label never travels without its CV and sample size",
+              rv.value("rhythmBasis").toString());
         c.resetPositionTransition();
     }
 }

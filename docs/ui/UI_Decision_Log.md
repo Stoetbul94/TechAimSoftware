@@ -337,3 +337,156 @@ assumed.
 through UI-DEC-011 are all **preserved**; none is superseded by this entry.
 
 **Supersedes.** Nothing.
+
+---
+
+## UI-DEC-013 — The reference image is the visual authority for the match-rifle silhouette
+
+| | |
+|---|---|
+| **Date** | 2026-08-11 |
+| **Status** | ACCEPTED — **amended in part by UI-DEC-014** (barrel thickness and the ventilation slots) |
+| **Commit** | this change |
+| **Approved by** | **ARNOLD BAILIE, 2026-08-11**, on the 132 px production tile |
+
+**Decision.** `docs/ui/issf-match-rifle-reference.png` is the visual authority
+for the rifle silhouette in `DisciplineArt.qml`. The silhouette is traced from
+that image by measurement, not drawn from description, and three properties of
+it are binding on any future revision:
+
+1. **Cubic segments for every organic edge.** The butt underside, grip,
+   buttplate hook and forend taper are curves. Only machined parts — receiver,
+   barrel, sights — are straight lines, because on the real rifle they are.
+   An all-straight-segment silhouette is what made the previous two attempts
+   read as angular and chunky, and it is not an acceptable starting point.
+2. **The cheek piece and buttplate are separate subpaths with visible gaps.**
+   Absorbed into the stock outline they stop identifying the rifle at all.
+   The cheek piece floats above the comb on two posts; the buttplate stands
+   off the butt on two prongs and hooks below the stock line.
+3. **A slender barrel.** Exposed barrel (forend nose → muzzle) measured on the
+   rendered path is **34.5 of 126 grid units — 27.4% of overall length** — at
+   **1.39 units across the plain section and 2.55 at the muzzle sleeve**, i.e.
+   **13.5:1 measured on the thickest point** and 24.8:1 on the plain section.
+   A short, thick barrel is the strongest military cue there is.
+
+**Reasoning.** Two previous silhouettes were rejected for reading as a service
+weapon on a sport-shooting product. Both failed for reasons that are describable
+and therefore checkable, so they are written down as constraints rather than
+left to taste. Naming a single reference image also stops the silhouette from
+drifting one revision at a time.
+
+**Measured fidelity.** Intersection-over-union against the reference silhouette
+at matched scale is **0.819**. The residual is deliberate and is listed in
+UI-ART-001: the sight rail and the forend vents are thickened for legibility at
+the ~92 px width the left pane actually draws, and the forend nose is 1.6 units
+short of the reference to hold the barrel proportion above 27%.
+
+**Brief tolerance, recorded honestly.** The brief asked for ~29% at ~12:1.
+The delivered silhouette is 27.4% at 13.5:1 — marginally shorter and
+marginally slimmer than asked, and within 1.6 grid units (about 1.2 px at tile
+size) of the reference's own proportion. The reference was treated as the
+authority where the two disagreed, because the brief named it as such.
+
+**Affected areas.** `DisciplineArt.qml` only. The plate composition — ring
+motif, position glyphs, palette, tile — is unchanged apart from the rifle's
+placement box, which was re-proportioned from 96×28 to 126×30 to match the
+reference's 4.2:1 aspect.
+
+**Affected decisions.** UI-DEC-001 through UI-DEC-012 are all **preserved**.
+UI-DEC-003 (the authoritative palette) is honoured: the artwork introduces no
+colour and continues to take `accent` / `ink` / `muted` from its caller.
+
+**Supersedes.** Nothing.
+
+---
+
+## UI-DEC-014 — The production tile, not the reference or the score, is the acceptance gate for discipline artwork
+
+| | |
+|---|---|
+| **Date** | 2026-08-11 |
+| **Status** | ACCEPTED |
+| **Commit** | this change |
+| **Approved by** | **ARNOLD BAILIE, 2026-08-11** |
+
+**Decision.** Discipline artwork is accepted or rejected on a render at the
+size the application actually draws it — for the left pane that is a **132 px
+plate, a 92 px rifle**. Three rules follow, and they bind future revisions:
+
+1. **No feature below one device pixel at production size.** At 92 px the
+   authoring grid scales by 0.73, so anything under ~1.4 grid units cannot
+   resolve and renders as grey. Such a feature is either thickened until it
+   resolves or removed. It is never left in on the grounds that it is in the
+   reference: the reference is a 1212 px illustration and can afford detail the
+   tile cannot.
+2. **Silhouette before internal detail.** Where the two compete at tile size,
+   the outer shape and the identifying sub-shapes — buttplate, cheek piece,
+   grip, diopter, front tunnel, barrel — win. Internal texture is the first
+   thing to go.
+3. **Similarity metrics are diagnostic, never approval.** IoU against a
+   reference mask is useful for catching drift and proving a trace is faithful.
+   It cannot see mush. A silhouette can score 0.82 and still read wrong at
+   92 px, which is exactly what happened here. Only a human decision on a
+   production-size render closes an artwork defect.
+
+**Amends UI-DEC-013.** Point 3 of UI-DEC-013 fixed the barrel at 1.39 units on
+the plain section (13.5:1 at the thickest point) and the header comment
+described a *ventilated* forend. Both were measured off the reference and both
+failed at tile size. The barrel is now **1.95 units, 17:1 over the exposed
+length**, and the two ventilation slots are **removed**. UI-DEC-013's binding
+intent — cubic organic edges, cheek piece and buttplate as separate subpaths
+with real air, and a barrel that is unmistakably slender — is **preserved in
+full**; only the two numbers that could not survive production rendering are
+amended. UI-DEC-013 stays in the log with its status updated.
+
+**Reasoning.** Two silhouettes were rejected for looking military, a third
+measured well and still read soft, and the cause turned out to be partly a
+shared-renderer defect (UI-ICON-001) and partly detail below the resolution of
+the tile. Writing the gate down stops the next revision from being judged on a
+2× view or a similarity number again.
+
+**Affected areas.** `DisciplineArt.qml`. The plate composition — ring motif,
+position glyphs, palette, tile geometry — is unchanged.
+
+**Affected decisions.** UI-DEC-001 through UI-DEC-012 are **preserved**.
+UI-DEC-013 is **amended in part**, as set out above.
+
+**Supersedes.** Nothing outright; amends UI-DEC-013 points 3 and its forend
+description.
+
+---
+
+## UI-DEC-015 — Translations are presentation-only and never participate in product decisions
+
+| | |
+|---|---|
+| **Date** | 2026-08-11 |
+| **Status** | ACCEPTED |
+| **Commit** | this change |
+| **Approved by** | **ARNOLD BAILIE, 2026-08-11** |
+
+**Decision.** A translation may change presentation strings and nothing else.
+Translated text must never participate in a decision about **discipline,
+target, scoring, acquisition, match or session state**. Every such decision
+reads a stable authoritative value — an enum, an id, or a numeric setting.
+
+Concretely, and binding on future languages: no comparison against `qsTr(...)`
+or `tr(...)`; no branching on a visible label, a `gameDisplay*` string or an
+English literal such as `"PISTOL"`; no index derived from a translated model.
+The discipline selectors are `loginPage.gameMode` (0 = pistol, 1 = rifle),
+`APPSETTINGS.get10or50mRange()` (10 or 50) and `loginPage.gameSubMode`
+(Prone / 3 Positions).
+
+**Reasoning.** QML-LANG-001 was a Severity 1, release-blocking defect: because
+the Pistol/Rifle selector compared stored display text against a live
+`qsTr()` value, selecting German moved a 10 m Air Pistol session into the rifle
+target and scoring branch. A defect that changes a score is not a translation
+bug, and the language layer is exactly the wrong place to discover that. The
+rule is written down so adding a language can never again be a scoring change,
+and `tests/qml` enforces it file-wide rather than at the one site that failed.
+
+**Affected areas.** `CenterPane.qml`, `LeftPanel.qml`, `tests/qml`.
+
+**Affected decisions.** UI-DEC-001 through UI-DEC-014 are all **preserved**.
+
+**Supersedes.** Nothing.

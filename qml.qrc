@@ -8,11 +8,13 @@
         <file>src/ui/components/TaStatusChip.qml</file>
         <file>src/ui/components/TaWarningBanner.qml</file>
         <file>VIcon.qml</file>
+        <file>DisciplineArt.qml</file>
         <file>main.qml</file>
         <file>Header.qml</file>
         <file>LeftPanel.qml</file>
         <file>RightPanel.qml</file>
         <file>CenterPane.qml</file>
+        <file>TargetStatusPanel.qml</file>
         <file>SummaryReportView.qml</file>
         <file>MetricCard.qml</file>
         <file>ReportHeader.qml</file>
@@ -50,6 +52,11 @@
         <file>CallDiagnoseReportView.qml</file>
         <file>PositionTransitionRightPanel.qml</file>
         <file>PositionTransitionHud.qml</file>
+        <file>TrainingTopBar.qml</file>
+        <file>WindMapRightPanel.qml</file>
+        <file>WindMapHud.qml</file>
+        <file>WindMapAnalysisView.qml</file>
+        <file>WindMapTargetPlot.qml</file>
         <file>PositionTransitionReportView.qml</file>
         <file>PdfBrandingMetrics.js</file>
         <file>Finals10mCommandPanel.qml</file>

@@ -9,6 +9,13 @@
 #include <QHostInfo>
 #include <QNetworkInterface>
 #include <QSerialPortInfo>
+#include <QSettings>
+
+// RC2: adapter identity + candidate filtering live in src/target so they are
+// testable without hardware. This file only ACTS on the decision.
+#include "target/TargetDeviceFingerprint.h"
+#include "target/AcquisitionDecision.h"
+#include "target/SerialDeviceProvider.h"
 #include <QFile>
 #include <QFileInfo>
 #include <QTextStream>
@@ -104,12 +111,39 @@ bool TachusWidget::connectedModbus(QString portName)
     // before anything else touches the name.
     portName = portName.trimmed();
 
-    if (portName.isEmpty() && m_lastManuallyConnectedPort != "") {
-        portName = m_lastManuallyConnectedPort;
-    }
-
     if (m_mainWindow == NULL)
         return false;
+
+    // SERIAL-AUTO-001. THE SELECTOR NOW RUNS FIRST.
+    //
+    // RC2 put the selector in the old last-resort fallback at the BOTTOM of
+    // this function. It never ran: the speculative changedConnect(true, "")
+    // below substitutes the stored ModReader port (mainwindow.cpp:688) and the
+    // isModBusConnected() check returned early, so on any machine that had ever
+    // stored a port the selector was dead code. The field log proves it - not
+    // one selector line appears in the whole session.
+    //
+    // An empty port name now means "decide, then connect", never "connect with
+    // whatever was stored and hope".
+    // The selector answers "WHICH SERIAL PORT". In Modbus TCP mode there is no
+    // serial port to choose, and gating on it abandoned the connection before
+    // TCP was ever attempted whenever no serial device was present. Found while
+    // bringing up the target emulator; it also affects any TCP-connected target.
+    const bool automaticPath = portName.isEmpty() && !m_mainWindow->isModbusTcpMode();
+    if (m_mainWindow->isModbusTcpMode()) {
+        LogFile::instance().appendToLogFile(
+            QStringLiteral("modbus TCP mode - serial selector skipped"),
+            LogType::BackendLevel);
+    }
+    if (automaticPath) {
+        const QString chosen = chooseStartupPort();
+        if (chosen.isEmpty()) {
+            // Nothing confident. Do NOT fall through to a speculative connect -
+            // that is exactly the bug. Manual selection and Rescan remain.
+            return false;
+        }
+        portName = chosen;
+    }
 
     // Already connected on the requested port (or no specific port asked):
     // keep the live connection instead of tearing it down and reopening.
@@ -136,38 +170,212 @@ bool TachusWidget::connectedModbus(QString portName)
     //}
 
     if (m_mainWindow->isModBusConnected()) {
+        LogFile::instance().appendToLogFile(
+            QString("auto-connect succeeded on %1").arg(portName), LogType::interfaceLevel);
+        // In TCP mode there is no serial device and the selector was skipped,
+        // so there is no enumerated description to report. Say what it really
+        // is rather than leaving the identity blank - and never borrow a serial
+        // adapter's name for a network target. LABELS ONLY: the connection flow
+        // below is identical, so an emulator run exercises the same path.
+        const bool tcp = m_mainWindow->isModbusTcpMode();
+        m_activePortName = tcp ? QStringLiteral("Modbus TCP") : portName;
+        // Transport is open; the acquisition baseline has NOT been read yet.
+        // The first poll publishes TARGET CONNECTED once it has synchronized.
+        setTargetStatus(QStringLiteral("SYNCHRONIZING"),
+                        m_activePortName,
+                        tcp ? QStringLiteral("Emulated / network target")
+                            : (m_hasPendingAutoDevice ? m_pendingAutoDevice.description
+                                                      : QString()),
+                        QStringLiteral("Checking shot counter before shooting."));
+        // Remember only after CONFIRMED communication, and only the device the
+        // selector actually resolved - never a bare port name typed by hand.
+        if (m_hasPendingAutoDevice
+            && QString::compare(m_pendingAutoDevice.portName, portName, Qt::CaseInsensitive) == 0) {
+            rememberTargetDevice(m_pendingAutoDevice);
+            m_hasPendingAutoDevice = false;
+        }
         clearShootCount();
         intiateAutoMovementSetup();
         return true;
     }
 
-    // Auto-detect fallback: if the configured port would not even open, try
-    // every serial port on the machine and keep the first that opens. (A
-    // deeper probe via isHardwareConnected() is NOT safe here: the register
-    // read blocks indefinitely on an open port with no responding target.)
-    if (portName.isEmpty()) {
-        const auto ports = QSerialPortInfo::availablePorts();
-        for (const QSerialPortInfo &info : ports) {
-            const QString candidate = info.portName();
-            if (candidate.isEmpty())
-                continue;
-            LogFile::instance().appendToLogFile(
-                QString("auto-detect: trying %1").arg(candidate), LogType::interfaceLevel);
-            m_mainWindow->changedConnect(true, candidate);
-            if (m_mainWindow->isModBusConnected()) {
+    // Reached only when the connection attempt above failed. The port was
+    // chosen deliberately (selector or operator), so this is a real failure to
+    // report, not a reason to start guessing at other ports.
+    LogFile::instance().appendToLogFile(
+        QString("connection attempt failed on %1").arg(portName), LogType::interfaceLevel);
+    setTargetStatus(QStringLiteral("TARGET NOT CONNECTED"));
+    return false;
+}
+
+// Decides which port the AUTOMATIC path should use. Returns an empty string
+// when nothing confident was found - the caller must then leave the operator
+// with manual selection rather than connecting to something arbitrary.
+QString TachusWidget::chooseStartupPort()
+{
+    setTargetStatus(QStringLiteral("SCANNING"));
+    const ta::target::SelectionResult sel = autoSelectTargetDevice();
+
+    if (sel.outcome == ta::target::SelectionOutcome::AutoConnect) {
+        m_pendingAutoDevice = sel.selected;
+        m_hasPendingAutoDevice = true;
+        LogFile::instance().appendToLogFile(
+            QString("auto-connect attempted: %1").arg(sel.summary), LogType::interfaceLevel);
+        setTargetStatus(QStringLiteral("TARGET DETECTED"), sel.selected.portName,
+                        sel.selected.description);
+        return sel.selected.portName;
+    }
+
+    m_hasPendingAutoDevice = false;
+
+    if (sel.outcome == ta::target::SelectionOutcome::NeedsUserChoice) {
+        LogFile::instance().appendToLogFile(
+            QString("manual selection required: %1").arg(sel.summary), LogType::interfaceLevel);
+        setTargetStatus(QStringLiteral("MANUAL SELECTION REQUIRED"));
+        emit targetSelectionRequired();
+        return QString();
+    }
+
+    // No candidate. The LAST-RESORT stored port is allowed only when it still
+    // appears in the CURRENT enumeration - a stale COM7 that no longer exists
+    // must never be attempted, which is what produced the original symptom.
+    const QString stored = m_mainWindow ? m_mainWindow->storedSerialPortName().trimmed() : QString();
+    if (!stored.isEmpty()) {
+        for (const ta::target::CandidateDevice &c : sel.rejected) {
+            if (QString::compare(c.device.portName, stored, Qt::CaseInsensitive) == 0) {
                 LogFile::instance().appendToLogFile(
-                    QString("auto-detect: connected on %1").arg(candidate), LogType::interfaceLevel);
-                m_lastManuallyConnectedPort = candidate;
-                clearShootCount();
-                intiateAutoMovementSetup();
-                return true;
+                    QString("stored port %1 is present but was rejected (%2) - not used")
+                        .arg(stored, c.reason), LogType::interfaceLevel);
+                setTargetStatus(QStringLiteral("TARGET NOT DETECTED"));
+                return QString();
+            }
+        }
+        const ta::target::QtSerialDeviceProvider provider;
+        for (const ta::target::SerialDeviceInfo &d : provider.availableDevices()) {
+            if (QString::compare(d.portName, stored, Qt::CaseInsensitive) == 0) {
+                LogFile::instance().appendToLogFile(
+                    QString("no target candidate; falling back to the stored port %1, "
+                            "which is still enumerated").arg(stored), LogType::interfaceLevel);
+                setTargetStatus(QStringLiteral("TARGET DETECTED"), stored);
+                return stored;
             }
         }
         LogFile::instance().appendToLogFile(
-            QString("auto-detect: no openable serial port found"), LogType::interfaceLevel);
+            QString("stored port %1 is NOT present in the current enumeration - not attempted")
+                .arg(stored), LogType::interfaceLevel);
     }
 
-    return false;
+    LogFile::instance().appendToLogFile(
+        QString("target not detected: %1").arg(sel.summary), LogType::interfaceLevel);
+    setTargetStatus(QStringLiteral("TARGET NOT DETECTED"));
+    return QString();
+}
+
+// ── RC2a shot-pipeline diagnostics ────────────────────────────────────────
+// Every stage of one physical shot is logged against the SAME correlation id
+// (session + sequence), so the field log can be differenced to attribute the
+// observed display delay to a stage instead of guessed at. The write is a
+// buffered append on the calling thread and does no formatting work beyond
+// one QString - it must never become the thing it is measuring.
+void TachusWidget::traceShotStage(const char* stage, qint64 seq, const QString& detail)
+{
+    LogFile::instance().appendToLogFile(
+        QString("SHOTTRACE %1/%2 %3%4")
+            .arg(m_traceSessionTag.isEmpty() ? QStringLiteral("nosession") : m_traceSessionTag)
+            .arg(seq)
+            .arg(QLatin1String(stage))
+            .arg(detail.isEmpty() ? QString() : QStringLiteral(" ") + detail),
+        LogType::BackendLevel);
+}
+
+// ── RC2 target discovery ──────────────────────────────────────────────────
+
+ta::target::SelectionResult TachusWidget::autoSelectTargetDevice()
+{
+    // Guard against overlapping scans: a debounced timer and a manual Rescan
+    // can otherwise both be in here at once.
+    if (m_scanActive) {
+        LogFile::instance().appendToLogFile(
+            QString("serial scan already active - skipped"), LogType::interfaceLevel);
+        return ta::target::SelectionResult();
+    }
+    m_scanActive = true;
+
+    const ta::target::QtSerialDeviceProvider provider;
+    const QVector<ta::target::SerialDeviceInfo> devices = provider.availableDevices();
+    LogFile::instance().appendToLogFile(
+        QString("serial scan started: %1 port(s) discovered").arg(devices.size()),
+        LogType::interfaceLevel);
+
+    const ta::target::SelectionResult sel =
+        ta::target::TargetDeviceSelector::select(devices, rememberedTargetDevice());
+
+    for (const ta::target::CandidateDevice &c : sel.rejected)
+        LogFile::instance().appendToLogFile(QString("candidate %1").arg(c.reason),
+                                            LogType::interfaceLevel);
+    for (const ta::target::CandidateDevice &c : sel.candidates)
+        LogFile::instance().appendToLogFile(QString("candidate %1").arg(c.reason),
+                                            LogType::interfaceLevel);
+
+    m_scanActive = false;
+    return sel;
+}
+
+// Stored in the normal per-user QSettings, never in the packaged config.ini -
+// a fingerprint is machine-specific and must not travel in a release package.
+static const char* kTargetFpGroup = "TargetDevice";
+
+ta::target::TargetDeviceFingerprint TachusWidget::rememberedTargetDevice() const
+{
+    QSettings s;
+    s.beginGroup(QLatin1String(kTargetFpGroup));
+    QVariantMap m;
+    const QStringList keys = s.childKeys();
+    for (const QString &k : keys) m[k] = s.value(k);
+    s.endGroup();
+    if (m.isEmpty()) return ta::target::TargetDeviceFingerprint();
+    return ta::target::TargetDeviceFingerprint::fromMap(m);
+}
+
+void TachusWidget::rememberTargetDevice(const ta::target::SerialDeviceInfo &d)
+{
+    const ta::target::TargetDeviceFingerprint fp =
+        ta::target::TargetDeviceFingerprint::fromDevice(d);
+    if (!fp.valid) return;
+    QSettings s;
+    s.beginGroup(QLatin1String(kTargetFpGroup));
+    const QVariantMap m = fp.toMap();
+    for (auto it = m.constBegin(); it != m.constEnd(); ++it) s.setValue(it.key(), it.value());
+    s.endGroup();
+    s.sync();
+    LogFile::instance().appendToLogFile(
+        QString("remembered target %1 (%2) by %3")
+            .arg(d.portName, d.description, ta::target::fingerprintStrengthName(fp.strength)),
+        LogType::interfaceLevel);
+}
+
+void TachusWidget::forgetTargetDevice()
+{
+    QSettings s;
+    s.remove(QLatin1String(kTargetFpGroup));
+    s.sync();
+    LogFile::instance().appendToLogFile(QString("remembered target forgotten"),
+                                        LogType::interfaceLevel);
+}
+
+QVariantList TachusWidget::targetCandidates()
+{
+    QVariantList out;
+    const ta::target::SelectionResult sel = autoSelectTargetDevice();
+    for (const ta::target::CandidateDevice &c : sel.candidates) {
+        QVariantMap m;
+        m[QStringLiteral("portName")] = c.device.portName;
+        m[QStringLiteral("description")] = c.device.description;
+        m[QStringLiteral("manufacturer")] = c.device.manufacturer;
+        m[QStringLiteral("remembered")] = c.matchesRemembered;
+        out.append(m);
+    }
+    return out;
 }
 
 int TachusWidget::validateLicence(QString mail)
@@ -263,12 +471,43 @@ void TachusWidget::on_pushButton_2_clicked() // read old data
 {
 //    LogFile::instance().appendToLogFile(QString("isAppDemoMode %1").arg(isAppDemoMode), LogType::interfaceLevel);
 //    qDebug() << __FUNCTION__ << __LINE__ << isAppDemoMode;
-    if (!isAppDemoMode) // 0 for demo and 1 for live
-        return;
+    // LOGIN-LINK-001. What this tick may do is decided by ta::target -
+    // ONE implementation, exercised by both the application and the harness.
+    // The gating used to be a run of early returns here, where a wrong gate
+    // was untestable and stayed invisible until hardware exposed it.
+    //
+    // The liveness probe is deliberately NOT gated on m_hardwareCheckDisabled.
+    // That member is initialised to true and is never assigned anywhere in the
+    // codebase - a vestigial switch that permanently disables every hardware
+    // check it guards, which is why the first version of this probe silently
+    // did nothing. It is left alone at its other call sites (flipping it would
+    // start issuing motor setup writes that have never been physically
+    // verified - see docs/release/hardware-check-flag-audit.md); it simply
+    // must not be allowed to disable the one check that tells an operator the
+    // cable is out.
+    const ta::target::PollActionDecision act =
+        ta::target::decidePollAction(isAppDemoMode,        // "is LIVE"
+                                     m_linkState == TargetLinkState::Connected,
+                                     m_onLoginPage,
+                                     m_loginLivenessTick,
+                                     kLoginLivenessPolls);
+    m_loginLivenessTick = act.nextLivenessTick;
 
-    if (m_onLoginPage)
+    switch (act.action) {
+    case ta::target::PollAction::Idle:
         return;
-
+    case ta::target::PollAction::Reconnect:
+        // Reachable from the home page as well as the shooting screens. That
+        // ordering is the fix: it used to sit below the login-page return.
+        attemptTargetReconnect();
+        return;
+    case ta::target::PollAction::ProbeLiveness:
+        if (!isHardwareConnected())
+            onTargetLinkLost();
+        return;
+    case ta::target::PollAction::Acquire:
+        break;                      // fall through to acquisition below
+    }
 
     if (!m_hardwareCheckDisabled) {
         if (m_hardwareDisconnected && !isHardwareConnected()) {
@@ -278,11 +517,25 @@ void TachusWidget::on_pushButton_2_clicked() // read old data
 
     if (m_mainWindow && m_mainWindow->isModBusConnected())
     {
-        int from = m_currentShootsCount;
-        checkForNewShots();
-        int to = m_currentShootsCount;
+        // SYNC-001. This used to read:
+        //
+        //     int from = m_currentShootsCount;
+        //     checkForNewShots();
+        //     int to = m_currentShootsCount;
+        //     if (from < to && to-from != 10) { ...fetch from+1..to... }
+        //
+        // It inferred "new shots arrived" from the baseline having MOVED. Once
+        // synchronization could legitimately move the baseline, that inference
+        // replayed stale target slots as real shots - two phantom shots, two
+        // scores and two paper feeds on 2026-08-09 in 10 m Air Pistol.
+        //
+        // The poll now STATES what happened. Only NewShots may fetch
+        // coordinates; Synchronized, NoChange, Fault and ReadError may not.
+        const PollResult poll = checkForNewShots();
+        const int from = poll.firstNewShot - 1;
+        const int to   = poll.lastNewShot;
 
-        if (from < to && to-from != 10)
+        if (poll.kind == PollKind::NewShots && to - from != 10)
         {
             LogFile::instance().appendToLogFile(QString("Collecting data for shoots from %1 to %2").arg(from).arg(to), LogType::interfaceLevel);
             int baseNumber = 16376;
@@ -323,7 +576,38 @@ void TachusWidget::on_pushButton_2_clicked() // read old data
                     m_yCordList_gameMode.append(yReal);
                 }
                 LogFile::instance().appendToLogFile(QString("check x cor %1 and y cor %2 for shoot %3").arg(xReal).arg(yReal).arg(getShootCount() - to + i), LogType::interfaceLevel);
-                emit shootCountChanged(getShootCount() - to + i);
+                const int acceptedShotNo = getShootCount() - to + i;
+                // 5. coordinates and score decoded (they are in scope here).
+                traceShotStage("decoded", acceptedShotNo,
+                               QStringLiteral("x=%1 y=%2").arg(xReal).arg(yReal));
+                // 6. shootCountChanged emitted - the QML model update and the
+                //    marker render both hang off this signal, so the gap
+                //    between this line and the QML-side stamp IS the display
+                //    latency Arnold saw.
+                traceShotStage("emit-shootCountChanged", acceptedShotNo);
+                emit shootCountChanged(acceptedShotNo);
+                traceShotStage("emit-returned", acceptedShotNo);
+                // RC2 AUTOMATIC PAPER FEED. This is the PHYSICAL acceptance
+                // path: the shot has passed protocol validation and the
+                // duplicate guard above, its coordinates are stored, and the
+                // UI has been told. Demo/UI shots go through uxShoot() and
+                // never reach here, which is a second layer of protection on
+                // top of the coordinator's own Live-mode gate.
+                //
+                // The old delegate-based call in CenterPane.qml is gone: a
+                // ListView delegate is created and destroyed by the view, so a
+                // motor command attached to one fired late, twice or never.
+                LogFile::instance().appendToLogFile(
+                    QString("physical shot accepted: seq %1 (%2)")
+                        .arg(acceptedShotNo)
+                        .arg(isSighterMode ? "sighter" : "counted"),
+                    LogType::BackendLevel);
+                // 14-16. feed request, motor start and motor completion are
+                //     logged inside PaperFeedCoordinator against the same
+                //     sequence number.
+                traceShotStage("feed-hook-enter", acceptedShotNo);
+                onPhysicalShotAccepted(acceptedShotNo, isSighterMode);
+                traceShotStage("feed-hook-exit", acceptedShotNo);
             }
 
             if (m_flushCount && m_currentShootsCount == FLUSH_SHOOT_COUNT) {
@@ -1106,8 +1390,50 @@ void TachusWidget::setScore(double value)
 
 void TachusWidget::initiateMotorMovement()
 {
-    if (m_motorThread && m_mainWindow->isModBusConnected())
+    // MANUAL feed. Routed through the coordinator so it is logged distinctly
+    // from automatic feeding and cannot overlap an automatic command.
+    bindFeedCoordinator();
+    m_feed.requestManualFeed(m_motor_movement_duration);
+}
+
+// Binds the injected motor command once. The command BLOCKS for the configured
+// duration, which is what makes the coordinator's queue serial.
+void TachusWidget::bindFeedCoordinator()
+{
+    if (m_feedBound) return;
+    m_feedBound = true;
+    m_feed.setMotorCommand([this](double seconds) -> bool {
+        if (!m_motorThread || !m_mainWindow || !m_mainWindow->isModBusConnected())
+            return false;
+        m_motorThread->setMotorMovementTime(seconds);   // per-command duration
         m_motorThread->start();
+        m_motorThread->wait();                          // serialise: no overlap
+        return true;
+    });
+    m_feed.setLogSink([](const QString &line) {
+        LogFile::instance().appendToLogFile(line, LogType::BackendLevel);
+    });
+}
+
+void TachusWidget::onPhysicalShotAccepted(qint64 shotIdentity, bool isSighter)
+{
+    bindFeedCoordinator();
+
+    ta::target::FeedContext ctx;
+    // NOTE the name: isAppDemoMode is really "is live" - see the comment at
+    // its use in the header. Reading it as "is demo" would invert the gate and
+    // drive the physical motor from demo clicks.
+    ctx.liveMode = isAppDemoMode;
+    ctx.targetConnected = m_mainWindow && m_mainWindow->isModBusConnected();
+    ctx.replaying = m_replayInProgress;       // set by the recovery path
+    ctx.matchDurationSeconds = m_motor_movement_duration;
+    ctx.sighterDurationSeconds = m_motor_movement_duration_sighter;
+    m_feed.setContext(ctx);
+
+    ta::target::FeedRequest req;
+    req.shotIdentity = shotIdentity;
+    req.kind = isSighter ? ta::target::ShotKind::Sighter : ta::target::ShotKind::Counted;
+    m_feed.onShotAccepted(req);
 }
 
 void TachusWidget::intiateAutoMovementSetup()
@@ -1255,6 +1581,9 @@ void TachusWidget::changeSighterMode(bool flag)
         // reset live/game mode
         resetShootinCount();
         LogFile::instance().appendToLogFile("changeSighterMode: lists reset, leaving sighter mode", LogType::BackendLevel);
+        // PAPER-FEED-002: the notification moved INTO resetShootinCount(),
+        // called just above, so every numbering reset is covered rather than
+        // this one path. Deliberately not duplicated here.
     }
 
     isSighterMode = flag;
@@ -1332,14 +1661,205 @@ void TachusWidget::on_pushButton_3_clicked()
     // no action
 }
 
-void TachusWidget::checkForNewShots(bool motorAutoMode)
+void TachusWidget::setTargetStatus(const QString& state, const QString& port,
+                                   const QString& device, const QString& detail)
 {
+    // While the link machine is actively recovering, the rediscovery scan must
+    // not overwrite the operator-facing state. The scan legitimately reports
+    // SCANNING / TARGET NOT DETECTED on every retry, but "NO TARGET" tells the
+    // operator they never had one - when in fact the cable was pulled and the
+    // software is trying to get it back. RECONNECTING is the true state and the
+    // more actionable message, so it wins until the link is genuinely restored.
+    if (m_linkState == TargetLinkState::Reconnecting
+        && (state == QLatin1String("SCANNING")
+         || state == QLatin1String("TARGET NOT DETECTED")
+         || state == QLatin1String("TARGET NOT CONNECTED"))) {
+        return;
+    }
+
+    m_targetState = state;
+    if (!port.isEmpty())   m_targetPort   = port;
+    if (!device.isEmpty()) m_targetDevice = device;
+    m_targetDetail = detail;
+
+    // A target that is not connected has no port or device to show. Leaving the
+    // last known values on screen is exactly how a stale COM number came to be
+    // displayed for a port that did not exist on the machine.
+    if (state == QLatin1String("TARGET NOT CONNECTED")
+        || state == QLatin1String("TARGET NOT DETECTED")
+        || state == QLatin1String("TARGET DISCONNECTED")) {
+        m_targetPort.clear();
+        m_targetDevice.clear();
+    }
+
+    emit targetStateChanged(state, m_targetPort);
+    emit targetStatusChanged();
+}
+
+void TachusWidget::onTargetLinkLost()
+{
+    if (m_linkState != TargetLinkState::Connected)
+        return;                     // already handled - never spam the state
+
+    m_linkState = TargetLinkState::Reconnecting;
+    m_reconnectAttempts = 0;
+    m_lastReconnectAttemptMs = 0;   // let the first retry run immediately
+
+    LogFile::instance().appendToLogFile(
+        QStringLiteral("target link LOST after %1 consecutive failed reads - "
+                       "acquisition suspended, no shots or feeds will be accepted")
+            .arg(m_consecutiveReadFailures), LogType::BackendLevel);
+
+    // Release the dead handle. Windows creates a NEW device instance on replug,
+    // so the old one can never recover and must not be reused.
+    if (m_mainWindow)
+        m_mainWindow->changedConnect(false, QString());
+
+    setTargetStatus(QStringLiteral("TARGET DISCONNECTED"), QString(), QString(),
+                    QStringLiteral("Connection to the electronic target has been lost."));
+}
+
+void TachusWidget::attemptTargetReconnect()
+{
+    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+    if (m_lastReconnectAttemptMs != 0
+        && nowMs - m_lastReconnectAttemptMs < kReconnectIntervalMs)
+        return;                     // controlled retry - not a queue of attempts
+    m_lastReconnectAttemptMs = nowMs;
+    ++m_reconnectAttempts;
+
+    if (m_reconnectAttempts == 1)
+        setTargetStatus(QStringLiteral("RECONNECTING"));
+
+    // Full rediscovery, not a blind reopen of the old name: the adapter may
+    // enumerate on a different COM number after replug. This is the same
+    // selector startup uses, so Bluetooth is still rejected and the remembered
+    // fingerprint is still preferred.
+    const QString port = chooseStartupPort();
+    if (port.isEmpty()) {
+        if (m_reconnectAttempts % 10 == 1)      // ~ every 20 s, not every 2 s
+            LogFile::instance().appendToLogFile(
+                QStringLiteral("reconnect attempt %1: no target candidate yet")
+                    .arg(m_reconnectAttempts), LogType::BackendLevel);
+        return;
+    }
+
+    if (!m_mainWindow)
+        return;
+    m_mainWindow->changedConnect(true, port);
+    if (!m_mainWindow->isModBusConnected())
+        return;
+
+    // Prove the link with a real read before trusting it. isModBusConnected()
+    // is a cached flag and was true all through the outage that caused this
+    // defect, so it cannot be the evidence.
+    uint8_t probe[64];
+    uint16_t* probe16 = (uint16_t*) probe;
+    memset(probe, 0, sizeof(probe));
+    if (m_mainWindow->modbusReadRegistry(8192, 2, probe16) < 0)
+        return;                     // not really back - stay reconnecting
+
+    // ADOPT the counter, exactly as FALSE-SHOT-001 requires. Anything the
+    // target counted while we were offline is residue from our point of view:
+    // it must not be replayed as new shots and must not drive the motor.
+    const int actual = probe16[1];
+    const int previous = m_currentShootsCount;
+    m_currentShootsCount = actual;
+    m_consecutiveReadFailures = 0;
+    m_linkState = TargetLinkState::Connected;
+    // The link is back but the counter may have moved while we were blind.
+    // Re-synchronise before accepting anything rather than assuming continuity.
+    m_acqState = AcquisitionState::Synchronizing;
+
+    LogFile::instance().appendToLogFile(
+        QStringLiteral("target link RESTORED on %1 after %2 attempt(s); counter was %3, "
+                       "target reports %4 - adopted as baseline, not replayed")
+            .arg(port).arg(m_reconnectAttempts).arg(previous).arg(actual),
+        LogType::BackendLevel);
+
+    if (actual != previous)
+        LogFile::instance().appendToLogFile(
+            QStringLiteral("COMMUNICATION INTERRUPTION: the target counter moved from %1 "
+                           "to %2 while the application was offline. Those shots were NOT "
+                           "captured and are NOT recoverable by this session.")
+                .arg(previous).arg(actual), LogType::BackendLevel);
+
+    m_activePortName = port;
+    setTargetStatus(QStringLiteral("SYNCHRONIZING"), port,
+                    m_hasPendingAutoDevice ? m_pendingAutoDevice.description : QString(),
+                    QStringLiteral("Target found. Checking shot counter before shooting."));
+}
+
+TachusWidget::PollResult TachusWidget::checkForNewShots(bool motorAutoMode)
+{
+    PollResult result;
 //    LogFile::instance().appendToLogFile("Checking for new shoots", LogType::BackendLevel);
     uint8_t dest[1024]; //setup memory for data
     uint16_t * dest16 = (uint16_t *) dest;
     memset(dest, 0, 1024);
 
-    m_mainWindow->modbusReadRegistry(8192, 2, dest16);
+    // RECONNECT-001. THE READ RESULT IS THE AUTHORITY.
+    //
+    // This return value used to be discarded. A failed read leaves dest16
+    // zeroed, so a dead link produced newShotsCount == 0 - indistinguishable
+    // from "no new shots". The only disconnect check below is additionally
+    // gated on m_hardwareCheckDisabled, which DEFAULTS TO TRUE, so it never
+    // ran. And m_connected in ModbusAdapter is a cached bool that survives USB
+    // removal, so isModBusConnected() kept answering true.
+    //
+    // Net effect on 2026-08-09: the cable was unplugged, the application
+    // noticed nothing, the operator's next shot was lost, and the log went
+    // silent for four and a half minutes with the shooting screen still
+    // looking healthy. A shot lost without warning is worse than a shot
+    // reported wrongly, because nobody knows when acquisition stopped.
+    const int rc = m_mainWindow->modbusReadRegistry(8192, 2, dest16);
+
+    // ── RC2g-DIAG: make the acquisition decision observable ──────────────
+    // OBSERVABILITY ONLY - no branch below is altered. Three separate root
+    // cause theories were disproved by physical measurement because the log
+    // records only ACCEPTED shots; every rejection was invisible. This prints
+    // the raw counter, the baseline and the branch actually taken.
+    //
+    // Rate limited so the 100 ms poll is not materially slowed: every state
+    // change is logged immediately, and an unchanged idle poll only produces a
+    // heartbeat about once per second - enough to prove polling is alive when
+    // nothing is being accepted.
+    ++m_diagPollSeq;
+    {
+        const int rawCounter = (rc < 0) ? -1 : int(dest16[1]);
+        const bool changed   = (rawCounter != m_diagLastRawCounter)
+                            || (m_currentShootsCount != m_diagLastBaseline);
+        const bool heartbeat = (m_diagPollSeq % 10) == 0;      // ~1 s at 100 ms
+        if (changed || heartbeat) {
+            LogFile::instance().appendToLogFile(
+                QStringLiteral("ACQDIAG poll=%1 rc=%2 rawCounter=%3 baseline=%4 delta=%5 "
+                               "modbusConnected=%6 linkState=%7 onLoginPage=%8 liveFlag=%9 %10")
+                    .arg(m_diagPollSeq)
+                    .arg(rc)
+                    .arg(rawCounter)
+                    .arg(m_currentShootsCount)
+                    .arg(rc < 0 ? 0 : rawCounter - m_currentShootsCount)
+                    .arg(m_mainWindow && m_mainWindow->isModBusConnected() ? 1 : 0)
+                    .arg(int(m_linkState))
+                    .arg(m_onLoginPage ? 1 : 0)
+                    .arg(isAppDemoMode ? 1 : 0)   // NOTE: this flag means "is LIVE"
+                    .arg(changed ? QStringLiteral("[CHANGED]") : QStringLiteral("[heartbeat]")),
+                LogType::BackendLevel);
+        }
+        m_diagLastRawCounter = rawCounter;
+        m_diagLastBaseline   = m_currentShootsCount;
+    }
+
+    if (rc < 0) {
+        // Debounced: one glitched frame must not flap the link state, but a
+        // genuinely removed device fails every time.
+        if (++m_consecutiveReadFailures >= kReadFailuresBeforeLinkLost)
+            onTargetLinkLost();
+        result.kind = PollKind::ReadError;
+        return result;
+    }
+    m_consecutiveReadFailures = 0;
+
     int newShotsCount = dest16[1];
     //motorAutoMode = false;
     //LogFile::instance().appendToLogFile(QString("Current shoot count %1 while old shoot count was %2").arg(newShotsCount).arg(m_currentShootsCount), LogType::BackendLevel);
@@ -1348,14 +1868,89 @@ void TachusWidget::checkForNewShots(bool motorAutoMode)
         if (!isHardwareConnected()) {
             emit hardwareDisconnected();
             m_hardwareDisconnected = true;
-            return;
+            result.kind = PollKind::ReadError;
+            return result;
         }
     }
-    if (newShotsCount > m_currentShootsCount && newShotsCount - m_currentShootsCount < 2)
-    {
+    // ── THE DECISION ─────────────────────────────────────────────────────
+    // Delegated to ta::target::decidePoll so the harness exercises the SAME
+    // implementation this line calls, rather than a copy that can drift.
+    using ta::target::AcqState;
+    using ta::target::FaultCause;
+    const AcqState before =
+        (m_acqState == AcquisitionState::Synchronizing) ? AcqState::Synchronizing
+      : (m_acqState == AcquisitionState::Fault)         ? AcqState::Fault
+                                                        : AcqState::Acquiring;
+    const ta::target::PollDecision d =
+        ta::target::decidePoll(before, m_currentShootsCount, newShotsCount);
+
+    m_acqState = (d.nextState == AcqState::Synchronizing) ? AcquisitionState::Synchronizing
+               : (d.nextState == AcqState::Fault)         ? AcquisitionState::Fault
+                                                          : AcquisitionState::Acquiring;
+
+    switch (d.kind) {
+    case ta::target::PollKind::Synchronized:
+        if (d.delta != 0)
+            LogFile::instance().appendToLogFile(
+                QStringLiteral("ACQDIAG branch=SYNCHRONIZED baseline %1 -> %2 "
+                               "(adopted from target; %3 pre-existing count(s) ignored, "
+                               "NOT replayed as shots)")
+                    .arg(m_currentShootsCount).arg(d.newBaseline).arg(d.delta),
+                LogType::BackendLevel);
+        else
+            LogFile::instance().appendToLogFile(
+                QStringLiteral("ACQDIAG branch=SYNCHRONIZED baseline=%1 (already in agreement)")
+                    .arg(d.newBaseline), LogType::BackendLevel);
+        m_currentShootsCount = d.newBaseline;
+        setTargetStatus(QStringLiteral("TARGET CONNECTED"), m_activePortName);
+        result.kind = PollKind::Synchronized;
+        result.newHardwareCounter = d.newBaseline;
+        return result;
+
+    case ta::target::PollKind::NoChange:
+        return result;                  // NoChange
+
+    case ta::target::PollKind::NewShots:
         LogFile::instance().appendToLogFile(QString("Current shoot count %1 while old shoot count was %2").arg(newShotsCount).arg(m_currentShootsCount), LogType::BackendLevel);
-        m_currentShootsCount = newShotsCount;
+        LogFile::instance().appendToLogFile(
+            QStringLiteral("ACQDIAG branch=ACCEPT raw=%1 baseline=%2 delta=1")
+                .arg(newShotsCount).arg(m_currentShootsCount), LogType::BackendLevel);
+        result.kind = PollKind::NewShots;
+        result.firstNewShot = d.firstNewShot;
+        result.lastNewShot  = d.lastNewShot;
+        result.newHardwareCounter = d.newBaseline;
+        m_currentShootsCount = d.newBaseline;
+        return result;
+
+    case ta::target::PollKind::Fault:
+    default:
+        break;
     }
+
+    // Already-latched fault: reported once, then silent. Not spam, not cleared.
+    if (d.cause == FaultCause::None) {
+        result.kind = PollKind::Fault;
+        return result;
+    }
+
+    // Recovering the missing shots is NOT attempted: the read-only probe on
+    // 2026-08-09 established that the target's coordinate slots are indexed by
+    // the counter and are overwritten once it is reset, so a gap cannot be
+    // reconstructed safely. Guessing would invent scores.
+    const QString detail = (d.cause == FaultCause::CounterWentBackwards)
+        ? QStringLiteral("counter went BACKWARDS (target %1 is below baseline %2)")
+              .arg(newShotsCount).arg(m_currentShootsCount)
+        : QStringLiteral("counter JUMPED by %1 (target %2, baseline %3) - shots may "
+                         "have been missed").arg(d.delta).arg(newShotsCount).arg(m_currentShootsCount);
+
+    LogFile::instance().appendToLogFile(
+        QStringLiteral("ACQDIAG branch=ACQUISITION_FAULT %1 - acquisition STOPPED, "
+                       "operator warned, session preserved").arg(detail),
+        LogType::BackendLevel);
+
+    setTargetStatus(QStringLiteral("ACQUISITION FAULT"), QString(), QString(), detail);
+    result.kind = PollKind::Fault;
+    return result;
 }
 
 int TachusWidget::getRealValue(int value)

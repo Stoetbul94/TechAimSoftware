@@ -155,22 +155,108 @@ it.
 **[PHYSICAL TARGET DEPENDENT]** — this whole section needs confirmation
 against a real target.
 
-### 2.1 Target offline / indicator turns red
+### 2.0 The Target Connection panel — what each state means
 
-**LIKELY CAUSES** — power, cable, wrong COM port, port taken by another
-program, converter fault.
+Tech Aim shows one **Target Connection** panel, on the Start session screen and
+again on the shooting screen. It is the authoritative statement of the target
+link. It reads the live connection — it never shows a remembered value.
+
+Below the state it shows the **device description reported by Windows and the
+port actually in use**, for example `USB Serial Port · COM7`. The description
+is whatever Windows calls your adapter; different adapters report different
+names, and the port number can change (see 2.1.1).
+
+| State | Meaning | Can you shoot? |
+|---|---|---|
+| `SEARCHING FOR TARGET…` | Scanning the serial ports. | No |
+| `TARGET FOUND` | A target was identified; connecting. | No |
+| `SELECT TARGET PORT` | More than one device could be the target. Choose the port. | No |
+| `SYNCHRONIZING…` | Connected; reading the target's shot counter before trusting it. | Not yet |
+| `READY` | Identified, connected, and synchronized. | **Yes** |
+| `RECONNECTING…` | The link dropped. Rediscovery is running automatically. | **No** |
+| `TARGET DISCONNECTED` | The link is gone. Reconnect the USB cable. | **No** |
+| `TARGET ACQUISITION ERROR` | The target and the software disagree about the shot count. | **NO — STOP SHOOTING** |
+
+**`SYNCHRONIZING` is normal.** It appears at every connection and after each
+reconnection, and it is deliberate: the software reads the target's own counter
+rather than assuming it. On the Start session screen it is also the expected
+resting state — the shot counter is only read once a session is running.
+
+**Bluetooth ports are never chosen automatically.** Windows lists
+`Standard Serial over Bluetooth link (COMx)` ports on most laptops; Tech Aim
+rejects them before opening them, so they cannot be mistaken for a target.
+
+### 2.1 `TARGET DISCONNECTED` or `RECONNECTING…`
+
+**LIKELY CAUSES** — cable unseated, target powered down, converter fault, port
+taken by another program.
 
 **CHECK FIRST** — is the target powered, and is the cable seated?
 
 **CORRECTIVE STEPS**
-1. Confirm the configured COM port matches the adapter in Windows Device
-   Manager.
-2. Close any other program holding the port.
-3. Reconnect; if it does not recover, power-cycle the target, then restart the
-   application.
+1. Reconnect the USB cable. Rediscovery runs by itself — you do **not** need to
+   select a port by hand, and you do not need to restart the application.
+2. Watch the panel: `RECONNECTING…` → `SYNCHRONIZING…` → `READY`.
+3. Close any other program holding the port.
+4. If it does not recover, power-cycle the target, then restart Tech Aim.
 
-**ESCALATE WHEN** — the port is correct and free but the target never
-connects.
+**WHILE THE LINK IS DOWN** no shot is accepted and no paper feed is issued.
+A shot fired during an outage is not recorded — wait for `READY`.
+
+**ESCALATE WHEN** — the adapter is present in Windows Device Manager and free,
+but the panel never reaches `READY`.
+
+#### 2.1.1 The COM port number changed after reconnecting
+
+**WHAT IT MEANS** — normal Windows behaviour. Unplugging and replugging a USB
+adapter can make Windows assign it a different port number (for example COM7
+becomes COM8). Tech Aim rediscovers the target by its device identity, so it
+follows the change automatically and displays the new port.
+
+**WHAT TO DO** — nothing. Confirm the panel shows the new port and `READY`.
+
+**DO NOT** type the old port into the manual fallback field to "correct" it.
+
+### 2.1.2 `TARGET ACQUISITION ERROR`
+
+**STOP SHOOTING.**
+
+**WHAT IT MEANS** — the target's shot counter moved by an amount the software
+cannot account for (it jumped, or it went backwards). Rather than guess, Tech
+Aim stops accepting shots and tells you. Shots may have been missed.
+
+**WHY IT DOES NOT CLEAR ITSELF** — deliberately. A later normal-looking reading
+does not prove the missing shots were recorded, so the warning stays until the
+session is dealt with.
+
+**CORRECTIVE STEPS**
+1. Stop shooting and tell the range officer.
+2. Record the time and the last shot you are certain was recorded.
+3. Check the target connection, then restart the session.
+4. Keep the diagnostic log — it identifies the exact shot where the counts
+   diverged.
+
+### 2.1.3 The manual port fallback field
+
+The field labelled **TARGET CONNECTION — MANUAL PORT FALLBACK** on the Start
+session screen is **not** the target status. It is a manual override for the
+rare case where automatic discovery cannot decide.
+
+It may still show a previously used port. That is not a fault and does not mean
+the target is connected on that port. **The Target Connection panel is the
+authority** — always read the state and port from the panel.
+
+### 2.1.4 "Target Not Ready" when pressing Start Practice
+
+**WHAT IT MEANS** — a Live session needs a working target, and there is not one
+yet. The message includes the current target state and port, which is the same
+state shown in the Target Connection panel.
+
+**CORRECTIVE STEPS** — resolve the state named in the message using the table
+in 2.0, wait for `READY`, then press Start Practice again.
+
+**In Demo / Simulation mode** no target is required and this message does not
+appear.
 
 ### 2.2 No shot received
 

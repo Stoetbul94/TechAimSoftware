@@ -213,9 +213,11 @@ void run_homepage_layout_tests()
 
     // ── UI-HOME-007: consistent selection indicator ─────────────────────────
     {
-        // The card body runs to ~3.4k chars (badge, titles, preset repeater),
-        // and the indicator is declared after it.
-        const QString op = blockAfter(src, QStringLiteral("id: openPracticeCard"), 4200);
+        // The card body runs to ~3.5k chars (badge, titles, preset repeater),
+        // and the indicator is declared after it. The window is sized to the
+        // card, not to a fixed budget — adding a Training Lab programme adds a
+        // reset to each selection handler inside it, which is why it grew.
+        const QString op = blockAfter(src, QStringLiteral("id: openPracticeCard"), 4600);
         check(!op.isEmpty(), "UI-HOME-007: the Open Practice card is addressable");
         check(op.contains(QStringLiteral("width: 18; height: 18; radius: 9")),
               "UI-HOME-007: Open Practice uses the same radio indicator as every EventCard");

@@ -116,6 +116,13 @@ void run_brand_package_tests();
 void run_homepage_layout_tests();
 void run_windmap_tests();
 void run_windmap_recovery_tests();
+void run_windmap_controller_tests();
+void run_windmap_qml_tests();
+void run_windmap_analytics_tests();
+void run_windmap_perf_tests();
+void run_windmap_verdict_tests();
+void run_windmap_dispersion_tests();
+void run_target_hardware_tests();
 void run_training_parity_tests();
 void run_fixture_tests(bool regenerate);
 

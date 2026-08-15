@@ -338,7 +338,12 @@ using DisciplineState =
 // and restores to "no programme", which is what it meant. The version moves
 // because a v4 snapshot genuinely exists (the regenerated golden fixture) and
 // does NOT contain them; a reader must be able to tell the two apart.
-inline constexpr qint32 kSessionStateVersion = 5;
+// v6 (Stage 5): adds `windMap.phase` — the durable Wind Map workflow phase.
+// Backward compatible: a v1-v5 snapshot has no `phase` key and restores to 0
+// (Idle), which is correct for every snapshot that predates the Wind Map
+// capture workflow. The version moves for the same reason v5 did — a v5
+// snapshot genuinely exists and does not carry the key.
+inline constexpr qint32 kSessionStateVersion = 6;
 
 struct SessionState {
     // identity & configuration
@@ -415,6 +420,12 @@ struct SessionState {
     bool    wmThreePositions = false;
     qint8   wmCurrentPosition = 0;
     QString wmPositionSequence;
+    // Stage 5: the DURABLE workflow phase (ta::training::WindMapPhase).
+    // 0 = Idle, i.e. no Wind Map session. It is projected rather than derived
+    // because "sighters" and "counted shots" are indistinguishable from the
+    // recorded shots alone before the first counted shot is fired — and a
+    // wrong guess there misclassifies the next shot.
+    qint8   wmPhase = 0;
     // standing condition (the value the NEXT accepted shot will snapshot)
     bool    wmWindValid = false;
     bool    wmWindCalm = false;

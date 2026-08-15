@@ -82,6 +82,16 @@ private slots:
 public slots:
     bool isModBusConnected();
     void changedConnect(bool value, QString portName = QString());
+    // SERIAL-AUTO-001: read the stored serial port WITHOUT connecting, so the
+    // selector can treat it as a last-resort candidate instead of having
+    // ModbusCommSettings substitute it silently inside modbusConnect().
+    QString storedSerialPortName() const;
+
+    // True when the configured transport is Modbus TCP rather than serial RTU.
+    // The serial selector must not gate the TCP path: with no serial device
+    // present it returns no candidate and the connection is abandoned before
+    // TCP is ever attempted. Found while bringing up the target emulator.
+    bool isModbusTcpMode() const;
     void request();
     void changedStartAddress(int value);
     void setSBStartAddValue(int value, int type);

@@ -16,7 +16,7 @@ ProductIdentity makeTechAim()
     p.displayName        = QStringLiteral("Tech Aim");
     p.fullProductName    = QStringLiteral("Tech Aim Electronic Target Control");
     p.releaseDescription = QStringLiteral("Tech Aim Electronic Target Control\n"
-                                          "Windows Pre-Beta Validation Build");
+                                          "Windows Internal Field Test Build");
 
     p.executableBaseName = QStringLiteral("TechAim");
     p.applicationId      = QStringLiteral("za.co.techaim.electronic-target-control");
@@ -33,7 +33,22 @@ ProductIdentity makeTechAim()
         "0.9.0"
 #endif
     );
-    p.releaseChannel = QStringLiteral("Pre-Beta Validation");
+    // The channel lives HERE, with the rest of the product identity, not in a
+    // build define: it contains spaces, and a spaced -D value does not survive
+    // the qmake/make/compiler quoting chain intact. The version does come from
+    // the build (APP_VERSION_STR) because it has no spaces and must match the
+    // packaged artefact name.
+    // The channel names the CANDIDATE, so it legitimately changes between
+    // builds - RC2a..RC2d carried " - Diagnostic", RC2e dropped it, RC2g-DIAG
+    // reinstated it as "Internal Diagnostic Field Test" because that build
+    // exists to observe the acquisition decision. What must NEVER change is
+    // the invariant the harness enforces: an internal field-test channel that
+    // makes no production, general-release or stable claim.
+    p.releaseChannel = QStringLiteral("Internal Diagnostic Field Test");
+
+    // Shown wherever a result could be mistaken for an official one. Short
+    // enough to sit in a status strip without covering scores or controls.
+    p.fieldTestNotice = QStringLiteral("FIELD TEST — NOT FOR OFFICIAL COMPETITION RESULTS");
 
     p.defaultTheme    = QStringLiteral("techaim-dark");
     p.defaultLanguage = QStringLiteral("en");

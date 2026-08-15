@@ -13,7 +13,13 @@ ApplicationWindow {
     title: PRODUCT.fullProductName
 
     property bool isOpenGLEnabled: true
-    property string userName: "Tachus"
+    // Legacy pre-rebrand default. It is a HARDCODED SEED, not saved user data -
+    // overwritten at login (main.qml:962) from the selected profile - but it is
+    // what the left pane shows until then, so "Tachus" was appearing on screen
+    // as if it were an athlete. Neutral placeholder instead; no user data is
+    // touched. (The QSettings organisation stays "Tachus": changing THAT would
+    // move every stored setting.)
+    property string userName: "Athlete"
     property string lane_number_text: "Lane1"
     property string eventName: shootingPage.currentGameDisplay1 + " " + shootingPage.currentGameDisplay2
     property string eventDate: "9/3/2017 4:34 PM"
@@ -495,6 +501,32 @@ ApplicationWindow {
             {
                 window.close()
                 Qt.quit()
+            } else if (shootingPage.isWindMapMatch) {
+                // R2: Wind Map is a Training programme, not a competition.
+                if (WINDMAP.phase === 6) {
+                    if (WINDMAP.closeSessionCleanly()) { window.close(); Qt.quit() }
+                    else dialogManager.showError(qsTr("Wind Map could not be closed safely"),
+                        qsTr("Your session is preserved and can be recovered. Please try again."))
+                } else {
+                    dialogManager.show({
+                        "type": "question", "title": qsTr("Close Wind Map?"),
+                        "message": qsTr("Save and close this session, or keep it so you can resume it next time?"),
+                        "buttons": [
+                            { "label": qsTr("Cancel"),            "result": "cancel", "accent": false },
+                            { "label": qsTr("Keep for Recovery"), "result": "keep",   "accent": false },
+                            { "label": qsTr("Save and Close"),    "result": "save",   "accent": true }
+                        ],
+                        "defaultResult": "save", "cancelResult": "cancel",
+                        "onResult": function (r) {
+                            if (r === "keep") { window.close(); Qt.quit() }
+                            else if (r === "save") {
+                                if (WINDMAP.closeSessionCleanly()) { window.close(); Qt.quit() }
+                                else dialogManager.showError(qsTr("Wind Map could not be closed safely"),
+                                    qsTr("Your session is preserved and can be recovered. Please try again."))
+                            }
+                        }
+                    })
+                }
             } else if (shootingPage.isPositionTransitionMatch) {
                 // T4: Position Transition is a Training programme, not a competition.
                 if (POSTRANS.phase === 5) {
@@ -666,6 +698,14 @@ ApplicationWindow {
                     qsTr("The Call & Diagnose session could not be resumed. "
                          + "Its journal has been left intact."))
             return okc
+        }
+        if (disciplineId === "WINDMAP") {
+            var okw = shootingPage.restoreWindMapSession(sessionId)
+            if (!okw)
+                dialogManager.showError(qsTr("Wind Map Recovery Failed"),
+                    qsTr("The Wind Map session could not be resumed. "
+                         + "Its journal has been left intact."))
+            return okw
         }
         if (disciplineId === "POSTRANS") {
             var okp = shootingPage.restorePositionTransitionSession(sessionId)

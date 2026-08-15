@@ -167,7 +167,7 @@ Item {
                         if (k.slowestSetup)    out.push("⏳ Slowest setup: " + k.slowestSetup.name + " (" + view.ms(k.slowestSetup.value) + ")")
                         if (k.tightestGroup)   out.push("◎ Tightest group: " + k.tightestGroup.name + " (" + Number(k.tightestGroup.value).toFixed(1) + " mm)")
                         if (k.bestAverage)     out.push("★ Best average: " + k.bestAverage.name + " (" + Number(k.bestAverage.value).toFixed(1) + ")")
-                        if (k.steadiestRhythm) out.push("♪ Steadiest rhythm: " + k.steadiestRhythm.name)
+                        if (k.steadiestRhythm) out.push("♪ Lowest rhythm variability: " + k.steadiestRhythm.name)
                         return out
                     }
                     Rectangle { width: hlTxt.implicitWidth + 16; height: 24; radius: 5; color: "#F4F5F7"; border.color: view.line; border.width: 1
@@ -194,11 +194,17 @@ Item {
             Repeater { model: (view.model.comparison || [])
                 Row { spacing: 8; property var r: modelData
                     Text { width: 140; color: view.ink; font.pixelSize: 10; font.bold: true; text: r.positionName + " R" + r.repeat }
-                    Text { width: 130; color: view.ink; font.pixelSize: 10
+                    Text { width: 190; color: view.ink; font.pixelSize: 10
                            text: (r.rhythm && r.rhythm.length>0) ? r.rhythm : "—" }
-                    Text { color: view.sub; font.pixelSize: 10; text: "avg shot " + view.secs(r.avgShotTime) } } }
+                    // PT-02: the label never appears without the measurement
+                    // and the sample size it was derived from.
+                    Text { color: view.sub; font.pixelSize: 10
+                           text: "avg shot " + view.secs(r.avgShotTime)
+                                 + ((r.rhythmBasis && r.rhythmBasis.length > 0)
+                                    ? "  ·  " + r.rhythmBasis : "") } } }
             Item { height: 8; width: 1 }
-            Text { text: "Positions have different stability demands — compare each position to itself across repeats, not against another position."
+            // EVID-PT-001: bound to the central model, never re-typed here.
+            Text { text: POSTRANS.crossPositionCaveat
                    width: 700; wrapMode: Text.WordWrap; color: view.sub; font.pixelSize: 10; font.italic: true }
         }
     }

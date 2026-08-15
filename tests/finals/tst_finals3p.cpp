@@ -1117,8 +1117,25 @@ static void runProductIdentityChecks()
           "identity: legal publisher");
     check(p.applicationId == QLatin1String("za.co.techaim.electronic-target-control"),
           "identity: reverse-DNS application id");
-    check(p.releaseChannel == QLatin1String("Pre-Beta Validation"),
-          "identity: release channel is pre-beta (no production claim)");
+    // The channel NAMES THE CANDIDATE, so pinning the exact string was wrong:
+    // it made every release candidate a test edit, and RC2g-DIAG duly changed
+    // the string without updating this line. Assert the invariant instead -
+    // an INTERNAL FIELD TEST channel - which is what actually protects a
+    // result from looking official. Still strict: any channel that drops
+    // "Internal" or "Field Test" fails here, and the production/general/stable
+    // check below fails independently.
+    check(p.releaseChannel.startsWith(QLatin1String("Internal"))
+          && p.releaseChannel.contains(QLatin1String("Field Test")),
+          "identity: release channel is an internal field test (no production claim)",
+          p.releaseChannel);
+    check(!p.fieldTestNotice.isEmpty()
+          && p.fieldTestNotice.contains(QLatin1String("NOT FOR OFFICIAL")),
+          "identity: the field-test build carries its limitation notice",
+          p.fieldTestNotice);
+    check(!p.releaseChannel.contains(QLatin1String("Production"), Qt::CaseInsensitive)
+          && !p.releaseChannel.contains(QLatin1String("General"), Qt::CaseInsensitive)
+          && !p.releaseChannel.contains(QLatin1String("Stable"), Qt::CaseInsensitive),
+          "identity: the channel makes no general-release claim");
     check(p.defaultTheme == QLatin1String("techaim-dark")
           && p.defaultLanguage == QLatin1String("en"),
           "identity: default theme + language");

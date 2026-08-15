@@ -372,6 +372,19 @@ void MainWindow::changedConnect(bool value, QString portName)
 
 }
 
+QString MainWindow::storedSerialPortName() const
+{
+    return m_modbusCommSettings ? m_modbusCommSettings->serialPortName() : QString();
+}
+
+bool MainWindow::isModbusTcpMode() const
+{
+    // modbusConnect() branches on the combo box, which is initialised from
+    // ModBusMode in the settings, so read the same source rather than a second
+    // one. 0 = RTU, non-zero = TCP.
+    return ui && ui->cmbModbusMode && ui->cmbModbusMode->currentIndex() != EUtils::RTU;
+}
+
 void MainWindow::changedSlaveID(int value)
 {
 

@@ -1033,6 +1033,7 @@ ReduceResult SessionReducer::apply(const SessionState& current,
             next.wmPositionSequence = e.positionSequence;
             // 3P starts at the first position of the sequence; Prone has none.
             next.wmCurrentPosition = e.is3P ? qint8(1) : qint8(0);
+            next.wmPhase = 1;                 // WindMapPhase::Setup
             next.wmNextShotId = 1;
             next.wmConditionChanges = 0;
             next.wmShots.clear();
@@ -1068,6 +1069,10 @@ ReduceResult SessionReducer::apply(const SessionState& current,
                         .arg(int(e.position)), seq);
                 return;
             }
+            // The sighter/counted classification is decided by the CONTROLLER
+            // from its durable phase and travels with the event. The reducer
+            // records what was classified rather than re-deciding it — the same
+            // division the other three Training Lab programmes use.
             next.wmShots.push_back(makeWindMapRecord(e, e.shot, e.shotId, e.position, true));
             next.wmNextShotId = e.shotId + 1;
         },
@@ -1099,10 +1104,39 @@ ReduceResult SessionReducer::apply(const SessionState& current,
             }
             next.wmCurrentPosition = e.toPosition;
         },
+        [&](const WindMapPhaseChanged& e) {
+            if (!next.wmActive) { failure = illegal("WindMapPhaseChanged"); return; }
+            // The reducer does NOT re-encode the transition table — the
+            // controller owns transition legality (ta::training::
+            // windMapTransitionAllowed). What it does enforce is CONSISTENCY,
+            // which is what a corrupted or reordered journal would break:
+            //   · the event's fromPhase must match the folded phase, so a
+            //     replayed-out-of-order transition is refused, not applied;
+            //   · Completed is terminal;
+            //   · PositionReview exists only in a 3P session.
+            if (e.fromPhase != next.wmPhase) {
+                failure = rejected(current, ReliabilityError::InvalidStateTransition,
+                    QStringLiteral("WindMapPhaseChanged: fromPhase %1 does not match phase %2")
+                        .arg(int(e.fromPhase)).arg(int(next.wmPhase)), seq);
+                return;
+            }
+            if (next.wmPhase == 6) {
+                failure = rejected(current, ReliabilityError::InvalidStateTransition,
+                    QStringLiteral("WindMapPhaseChanged: the session is already completed"), seq);
+                return;
+            }
+            if (e.toPhase == 4 && !next.wmThreePositions) {
+                failure = rejected(current, ReliabilityError::InvalidStateTransition,
+                    QStringLiteral("WindMapPhaseChanged: position review is 3P only"), seq);
+                return;
+            }
+            next.wmPhase = e.toPhase;
+        },
         [&](const WindMapSessionCompleted& e) {
             if (!next.wmActive) { failure = illegal("WindMapSessionCompleted"); return; }
             (void)e;   // counts are derived from wmShots, never taken on trust
             next.wmCompleted = true;
+            next.wmPhase = 6;                 // WindMapPhase::Completed
             next.lifecycle = Lifecycle::Complete;
         }
     }, envelope.payload);

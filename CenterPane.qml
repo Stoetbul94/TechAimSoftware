@@ -26,13 +26,37 @@ Item {
     property real autoZoomOriginY: shootingPanelRect.height/2
     property int  autoZoomHold: 0       // ticks remaining before easing out
 
-    function triggerAutoZoom(px, py) {
+    // QML-SHOT-001. Diagnostics are a bystander to shot processing and must
+    // never be able to abort it. Every stamp goes through here, and anything
+    // that goes wrong inside tracing is swallowed rather than propagated.
+    //
+    // This does NOT protect argument evaluation - a bad expression at the call
+    // site throws before we are entered - so callers pass only values that are
+    // certainly in scope: a function parameter, or MODREADER.getShootCount().
+    function traceStage(stage, shotSeq) {
+        try {
+            MODREADER.traceShotStageFromQml(stage, shotSeq)
+        } catch (e) {
+            // Deliberately silent. A missing diagnostic is a nuisance; a shot
+            // that never reaches saveMatch() is a Severity 1 defect.
+        }
+    }
+
+    // shotSeq is passed EXPLICITLY. RC2a read `newShootCount` here, which is a
+    // local var of two unrelated functions and is not in this scope, so the
+    // first statement threw a ReferenceError. That propagated into the caller
+    // and skipped backEndShootCount, updateSeriesScore and saveMatch - the
+    // shot displayed but was never committed, and the next poll would have
+    // re-processed it. That is QML-SHOT-001.
+    function triggerAutoZoom(px, py, shotSeq) {
+        traceStage("zoom-requested", shotSeq)
         if (!autoZoomOn)
             return
         autoZoomOriginX = px
         autoZoomOriginY = py
         autoZoomFactor = autoZoomTarget
         autoZoomHold = 4                // ~4 * 450ms hold, reset on each shot
+        traceStage("zoom-started", shotSeq)
     }
 
     Timer {
@@ -46,7 +70,15 @@ Item {
     }
 
     property bool lightBackGroundMode: true
-    property bool gameMode: shootingPage.currentGameDisplay2 === qsTr("PISTOL") ? true : false // true for pistol
+    // TRUE for pistol. Derived from the stable discipline enum, NEVER from
+    // displayed text. This compared a stored display string against
+    // qsTr("PISTOL"): the string is captured once out of a ListModel and does
+    // not retranslate, while the qsTr() binding does, so selecting German
+    // ("PISTOLE") made the two diverge and every Air Pistol match silently
+    // fell through to RIFLE geometry - wrong rings, wrong scale, wrong bullet
+    // radius, wrong SCORE. loginPage.gameMode is the authority: 0 = pistol,
+    // 1 = rifle. Language must never participate in this mapping.
+    property bool gameMode: loginPage.gameMode === 0
     property int shootinRectWidth: shootingMianRect.width
     property int shootinRectHeight: shootingMianRect.height
 
@@ -251,6 +283,11 @@ Item {
     Connections {
         target: MODREADER
         function onShootCountChanged(count) {
+            // RC2a stage 9: QML has received the notification. Differencing
+            // this against the C++ "emit-shootCountChanged" stamp gives the
+            // signal-delivery cost; differencing the render stamp below against
+            // this gives the draw cost. Together they size the observed delay.
+            paneItem.traceStage("qml-notified", count)
             // Source tag: this handler fires for BOTH real hardware (Live) AND
             // demo clicks (which reach it via MODREADER.uxShoot -> shootCountChanged).
             // The two input paths are mutually exclusive by operating mode, so the
@@ -307,6 +344,7 @@ Item {
                 if (APPSETTINGS.getDeveloperMode()) console.log(" x pos ", itemPoint.x)
                 if (APPSETTINGS.getDeveloperMode()) console.log(" y Pos ", itemPoint.y)
 
+                paneItem.traceStage("qml-scored", newShootCount)
                 calculateShootingSocre(xCor, yCor, itemPoint.x, itemPoint.y)
 
                 // TRAINING: the athlete-facing impact/zoom is a controller
@@ -325,12 +363,24 @@ Item {
                 } else if (!trainingHidesImpact) {
                     var temp = root.mapToValue(paneItem.itemPoint,polarSeries);
                     addIfinRange(temp)
+                    // RC2a stage 10: the marker has been added to the series.
+                    paneItem.traceStage("qml-marker-added", newShootCount)
                 }
 
                 // SIUS-style: zoom in on where the shot just landed (not while a
                 // Training block hides impacts).
-                if (!trainingHidesImpact)
-                    paneItem.triggerAutoZoom(paneItem.itemPoint.x, paneItem.itemPoint.y)
+                // Auto-zoom is a DISPLAY concern. The operational statements
+                // below (backEndShootCount, series scores, saveMatch) must run
+                // even if it fails, so it cannot take them down again.
+                if (!trainingHidesImpact) {
+                    try {
+                        paneItem.triggerAutoZoom(paneItem.itemPoint.x,
+                                                 paneItem.itemPoint.y,
+                                                 newShootCount)
+                    } catch (e) {
+                        MODREADER.appendToLogFile("auto-zoom failed, shot processing continues: " + e)
+                    }
+                }
 
                 backEndShootCount = newShootCount
 
@@ -851,8 +901,8 @@ Item {
                 //50 Meter Pistol Ratio=500/5.6=89.29
                 //50 Meter Rifle Ratio=154.4/5.6=27.57
 
-                property double gameRatio: gameRange == 10 ? (gameMode ? 155.5/APPSETTINGS.bullet_diameter() : 45.5/APPSETTINGS.bullet_diameter())
-                                                           : (gameMode ? 500/APPSETTINGS.bullet_diameter() : 154.4/APPSETTINGS.bullet_diameter())
+                property double gameRatio: gameRange == 10 ? (gameMode ? 155.5/APPSETTINGS.projectileDiameterMm(gameRange) : 45.5/APPSETTINGS.projectileDiameterMm(gameRange))
+                                                           : (gameMode ? 500/APPSETTINGS.projectileDiameterMm(gameRange) : 154.4/APPSETTINGS.projectileDiameterMm(gameRange))
 
 //                width: gameRange == 10 ? (gameMode ? shootingcanvas.height/34.55 : shootingcanvas.height/10.11 )
 //                                       : (gameMode ? shootingcanvas.height/89.29 /*size 500 pallet 5.6*/
@@ -913,9 +963,17 @@ Item {
                         //                            opacity = 0.8
                         //                        }
 
-                        if (!disableMotorMovement && !autoMotorMovementMode)
-                            MODREADER.initiateMotorMovement()
-                        else if (autoMotorMovementMode) {// to verify if automode is on or not?
+                        // RC2: the motor command that used to live HERE has been
+                        // removed. This is a ListView delegate - the view creates
+                        // and destroys it on scrolling and on model reset, so a
+                        // hardware command attached to it fired late, fired twice
+                        // or never fired at all. That is why automatic paper feed
+                        // failed in the field while the manual button worked.
+                        //
+                        // Automatic feeding is now decided once, in C++, at the
+                        // physical shot-acceptance path (TachusWidget), by
+                        // PaperFeedCoordinator. QML must not command the motor.
+                        if (autoMotorMovementMode) {
                             if (globalModelOfData.count-1 === index && appMode && globalModelOfData.count == 1) // for last shot item only
                                 MODREADER.checkAutoFeedMode()
                         }
@@ -1044,8 +1102,8 @@ Item {
                 //50 Meter Pistol Ratio=500/5.6=89.29
                 //50 Meter Rifle Ratio=154.4/5.6=27.57
 
-                var gameRatio = gameRange == 10 ? (gameMode ? 155.5/APPSETTINGS.bullet_diameter() : 45.5/APPSETTINGS.bullet_diameter())
-                                                : (gameMode ? 500/APPSETTINGS.bullet_diameter() : 154.4/APPSETTINGS.bullet_diameter())
+                var gameRatio = gameRange == 10 ? (gameMode ? 155.5/APPSETTINGS.projectileDiameterMm(gameRange) : 45.5/APPSETTINGS.projectileDiameterMm(gameRange))
+                                                : (gameMode ? 500/APPSETTINGS.projectileDiameterMm(gameRange) : 154.4/APPSETTINGS.projectileDiameterMm(gameRange))
 
 //                width: gameRange == 10 ? (gameMode ? shootingcanvas.height/34.55 : shootingcanvas.height/10.11 )
 //                                       : (gameMode ? shootingcanvas.height/89.29 /*size 500 pallet 5.6*/
@@ -1097,7 +1155,7 @@ Item {
                         }
                     }
                 }
-                group_distance = globalModelOfData.count > 1 ? g + APPSETTINGS.bullet_diameter() : 0
+                group_distance = globalModelOfData.count > 1 ? g + APPSETTINGS.projectileDiameterMm(gameRange) : 0
                 if (APPSETTINGS.getDeveloperMode()) console.log("group refreshPosition group_distance ", group_distance)
 
                 var pistalWidthHeight = gameRange == 10 ? 155.5 : 500
@@ -1194,8 +1252,8 @@ Item {
 //                width = gameRange == 10 ? (centerPanel.gameMode ? shootingcanvas.height/34.55 : shootingcanvas.height/10.11 )
 //                                        : (centerPanel.gameMode ? shootingcanvas.height/89.29 /*size 500 pallet 5.6*/
 //                                                                : shootingcanvas.height/27.57 /*size 154.4 pallet 5.6*/)
-                var gameRatio = gameRange == 10 ? (gameMode ? 155.5/APPSETTINGS.bullet_diameter() : 45.5/APPSETTINGS.bullet_diameter())
-                                                : (gameMode ? 500/APPSETTINGS.bullet_diameter() : 154.4/APPSETTINGS.bullet_diameter())
+                var gameRatio = gameRange == 10 ? (gameMode ? 155.5/APPSETTINGS.projectileDiameterMm(gameRange) : 45.5/APPSETTINGS.projectileDiameterMm(gameRange))
+                                                : (gameMode ? 500/APPSETTINGS.projectileDiameterMm(gameRange) : 154.4/APPSETTINGS.projectileDiameterMm(gameRange))
 
                 width = shootingcanvas.height/gameRatio
                 height = width
@@ -1928,7 +1986,7 @@ Item {
 
                         var r2rDis = 8
                         var radOf10Ring = 5.75
-                        var radOfPallet = APPSETTINGS.bullet_diameter()/2
+                        var radOfPallet = APPSETTINGS.projectileDiameterMm(gameRange)/2
                         var totalR = r2rDis+radOf10Ring+radOfPallet
 
 
@@ -1955,7 +2013,7 @@ Item {
 
                         var r2rDis = 2.5
                         var radOf10Ring = 0.25
-                        var radOfPallet = APPSETTINGS.bullet_diameter()/2
+                        var radOfPallet = APPSETTINGS.projectileDiameterMm(gameRange)/2
 
                         var ratio = MODREADER.getGame_distance()*1.0/MODREADER.getGame_range();
                         /*5=2.5 (distance between rings)+ 0.25 (Inner 10 radius)+2.25 (Radius of Bullet)*/
@@ -1983,7 +2041,7 @@ Item {
 
                         var r2rDis = 25
                         var radOf10Ring = 25
-                        var radOfPallet = APPSETTINGS.bullet_diameter()/2
+                        var radOfPallet = APPSETTINGS.projectileDiameterMm(gameRange)/2
                         var totalR = r2rDis+radOf10Ring+radOfPallet
 
                         var logData2 = "radius of pallet "+ radOfPallet + "sqrt(x2+y2)"+mapedRadius
@@ -2009,7 +2067,7 @@ Item {
 
                         var r2rDis = 8
                         var radOf10Ring = 5.2
-                        var radOfPallet = APPSETTINGS.bullet_diameter()/2
+                        var radOfPallet = APPSETTINGS.projectileDiameterMm(gameRange)/2
                         var totalR = r2rDis+radOf10Ring+radOfPallet
 
                         var ratio = MODREADER.getGame_distance()*1.0/MODREADER.getGame_range();

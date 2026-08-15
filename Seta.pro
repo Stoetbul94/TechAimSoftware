@@ -35,7 +35,10 @@ for(legacy, LEGACY_EXES) {
 # git once at build-configuration time; the app never shells out to git and
 # the customer machine needs no Git / repo / Qt Creator. Build date/time comes
 # from the compiler (__DATE__/__TIME__ in main.cpp).
-APP_VERSION_STR = 0.9.0
+# 0.9.0-RC2 — INTERNAL FIELD TEST. This is a release candidate for controlled
+# live-range testing, not the public 1.0. The channel travels with the version
+# so a binary can never be mistaken for a general release.
+APP_VERSION_STR = 0.9.0-RC2g-DIAG
 GIT_SHA = $$system(git -C \"$$PWD\" rev-parse --short HEAD)
 isEmpty(GIT_SHA): GIT_SHA = unknown
 DEFINES += APP_VERSION_STR=\\\"$$APP_VERSION_STR\\\"
@@ -72,7 +75,13 @@ SOURCES += main.cpp \
     src/training/CallDiagnoseController.cpp \
     src/training/CallDiagnoseAnalytics.cpp \
     src/training/GroupPatternAnalyzer.cpp \
-    src/training/PositionTransitionController.cpp
+    src/training/PositionTransitionController.cpp \
+    src/training/WindMapController.cpp \
+    src/training/WindMapAnalytics.cpp \
+    src/training/WindMapVerdict.cpp \
+    src/target/SerialDeviceProvider.cpp \
+    src/target/TargetDeviceFingerprint.cpp \
+    src/target/PaperFeedCoordinator.cpp
 
 # Offline coach-analytics module (pure C++, independent from Qt/QML).
 HEADERS += \
@@ -132,7 +141,16 @@ HEADERS += \
     src/training/TargetGeometry.h \
     src/training/GroupPatternAnalyzer.h \
     src/training/PositionTransitionTypes.h \
-    src/training/PositionTransitionController.h
+    src/training/PositionTransitionController.h \
+    src/training/WindMapTypes.h \
+    src/training/WindMapController.h \
+    src/training/WindMapAnalytics.h \
+    src/training/WindMapVerdict.h
+
+# RC2 target hardware: adapter identity, candidate filtering and the single
+# automatic paper-feed authority. Pure logic, unit-tested without hardware.
+HEADERS +=     src/target/SerialDeviceProvider.h     src/target/TargetDeviceFingerprint.h     src/target/PaperFeedCoordinator.h
+INCLUDEPATH += src
 INCLUDEPATH += src/training
 INCLUDEPATH += src/finals
 INCLUDEPATH += src/finals10m

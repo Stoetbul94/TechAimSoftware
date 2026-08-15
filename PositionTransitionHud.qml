@@ -241,7 +241,7 @@ Item {
                                 if (k.slowestSetup) out.push({ i: "⏳", l: "Slowest setup", n: k.slowestSetup.name, v: hud.ms(k.slowestSetup.value), c: "#E8A13C" })
                                 if (k.tightestGroup) out.push({ i: "◎", l: "Tightest group", n: k.tightestGroup.name, v: Number(k.tightestGroup.value).toFixed(1) + " mm", c: _green })
                                 if (k.bestAverage) out.push({ i: "★", l: "Best average", n: k.bestAverage.name, v: Number(k.bestAverage.value).toFixed(1), c: _green })
-                                if (k.steadiestRhythm) out.push({ i: "♪", l: "Steadiest rhythm", n: k.steadiestRhythm.name, v: "", c: _green })
+                                if (k.steadiestRhythm) out.push({ i: "♪", l: "Lowest rhythm variability", n: k.steadiestRhythm.name, v: "", c: _green })
                                 return out
                             }
                             delegate: Rectangle {

@@ -23,6 +23,23 @@ tests/reliability/release/
 tests/reliability/debug/
 tests/finals/Makefile*
 tests/finals/.qmake.stash
+# The other harnesses are built the same way (qmake -o Makefile.rel), so their
+# generated makefiles and build trees are artifacts too.
+tests/reliability/Makefile*
+tests/reliability/.qmake.stash
+tests/finals10m/Makefile*
+tests/finals10m/release/
+tests/finals10m/debug/
+tests/finals10m/.qmake.stash
+tests/training/Makefile*
+tests/training/release/
+tests/training/debug/
+tests/training/.qmake.stash
+# CD-REPORT evidence renderer - same qmake -o Makefile.rel pattern.
+tools/reporttest/Makefile*
+tools/reporttest/release/
+tools/reporttest/debug/
+tools/reporttest/.qmake.stash
 # finals test-harness run artifacts (journals, logs, audio fixtures)
 tests/finals/finals_session*.jsonl
 tests/finals/harness.log
@@ -48,3 +65,16 @@ docs/manual/output/
 
 # Generated manual review packs (never committed)
 manual-preview/
+
+# Local Claude tooling: generic marketplace design/UI skill packs, not Tech Aim
+# source. .claude/launch.json IS tracked, so only this subdirectory is ignored.
+/.claude/skills/
+
+# Release packaging output (binaries, ZIPs, rollback slot) - built, not sourced.
+/dist/
+
+# uirender evidence tool build artifacts
+tools/uirender/Makefile*
+tools/uirender/release/
+tools/uirender/debug/
+tools/uirender/.qmake.stash

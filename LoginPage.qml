@@ -16,11 +16,17 @@ Item {
     property bool trainingConfirmed: false
     property bool cdConfirmed: false        // T2: Call & Diagnose setup accepted
     property bool ptConfirmed: false        // T4: Position Transition setup accepted
+    property bool wmConfirmed: false        // R2: Wind Map setup accepted (50m only)
     function trainingDisciplineId() {
         if (gameMode === 0) return "AP10"
         if (gameRange === 10) return "AR10"
         return gameSubMode === 0 ? "PRONE50" : "3P50"
     }
+    // Wind Map is 50m Rifle only. This deliberately returns the CURRENT
+    // selection rather than forcing a supported one — WINDMAP then refuses
+    // it with a reason. Never coerce an unsupported discipline into a
+    // supported one just to make the programme reachable.
+    function windMapDisciplineId() { return trainingDisciplineId() }
     property bool connectToMaster: false
     property alias username_loginPage: name_text_field.text
     property int gameMode: 0 // 0 -> pistol, 1 -> rifle
@@ -350,6 +356,7 @@ Item {
 
     // "POSTRANS" | "CALLDIAG" | "TRAINING" | "FINAL" | "OFFICIAL" | "PRACTICE"
     function selectedProgrammeKind() {
+        if (wmConfirmed)       return "WINDMAP"
         if (ptConfirmed)       return "POSTRANS"
         if (cdConfirmed)       return "CALLDIAG"
         if (trainingConfirmed) return "TRAINING"
@@ -361,6 +368,7 @@ Item {
     // The name shown in Selected Profile AND in the action-bar recap.
     function selectedProgrammeName() {
         var k = selectedProgrammeKind()
+        if (k === "WINDMAP")  return qsTr("Wind Map")
         if (k === "POSTRANS") return qsTr("Position Transition")
         if (k === "CALLDIAG") return qsTr("Call & Diagnose")
         if (k === "TRAINING") return qsTr("Technical Blocks")
@@ -373,7 +381,7 @@ Item {
     // The section heading above the summary.
     function selectedProgrammeLabel() {
         var k = selectedProgrammeKind()
-        if (k === "POSTRANS" || k === "CALLDIAG" || k === "TRAINING")
+        if (k === "WINDMAP" || k === "POSTRANS" || k === "CALLDIAG" || k === "TRAINING")
             return qsTr("SELECTED PROGRAMME")
         if (k === "FINAL")    return qsTr("SELECTED FINAL")
         if (k === "PRACTICE") return qsTr("SELECTED PRACTICE")
@@ -384,6 +392,7 @@ Item {
     // disagree with the summary.
     function startButtonText() {
         var k = selectedProgrammeKind()
+        if (k === "WINDMAP")  return qsTr("Start wind map  →")
         if (k === "POSTRANS") return qsTr("Start transitions  →")
         if (k === "CALLDIAG") return qsTr("Start calling  →")
         if (k === "TRAINING") return qsTr("Start training  →")
@@ -475,6 +484,19 @@ Item {
                 rootItem.visible = false
             } else {
                 MODREADER.appendToLogFile("Com-port connected but validation failed")
+                // This branch used to log and show NOTHING. Pressing Start
+                // Practice simply did nothing, with no reason given - observed
+                // during emulator bring-up on 2026-08-09. A control that
+                // silently refuses is indistinguishable from a frozen
+                // application. The reason comes from the SAME authoritative
+                // target state the status panel binds to, not a second guess.
+                dialogManager.showError(qsTr("Target Not Ready"),
+                    qsTr("A valid electronic target connection is required before "
+                       + "starting this Live session.\n\nTarget status: %1%2\n\n"
+                       + "Check the USB connection and try again.")
+                        .arg(MODREADER.targetState)
+                        .arg(MODREADER.targetPort !== ""
+                             ? qsTr(" (%1)").arg(MODREADER.targetPort) : ""))
             }
         }
         APPSETTINGS.saveMatch(true)
@@ -664,7 +686,11 @@ Item {
                 id: connLabel
                 anchors.top: athleteBox.bottom; anchors.topMargin: 16
                 anchors.left: parent.left; anchors.leftMargin: 22
-                text: "TARGET CONNECTION"
+                // Named as the fallback it is. The box below carries a saved
+                // value and showed "COM7" on a machine with no COM7 - reading
+                // like an active connection when the target was absent. The
+                // authoritative state is the panel underneath.
+                text: "TARGET CONNECTION — MANUAL PORT FALLBACK"
                 color: _txtMut; font.family: theme.fontFamily
                 font.pixelSize: 10; font.bold: true; font.letterSpacing: 2
                 visible: showComportConnector
@@ -736,6 +762,21 @@ Item {
                 }
             }
 
+            // ── AUTHORITATIVE TARGET STATUS ───────────────────────────────────
+            // The text box above is the MANUAL FALLBACK for typing a port. It is
+            // not the truth: it showed "COM7" on a machine where no COM7 exists,
+            // because it carries a remembered settings value. This panel binds
+            // to the live engine state and shows the device and port ACTUALLY
+            // connected, so an operator can tell at a glance what they are
+            // really talking to before they start shooting.
+            TargetStatusPanel {
+                id: loginTargetStatus
+                anchors.top: connRow.bottom; anchors.topMargin: 8
+                anchors.left: parent.left;   anchors.leftMargin: 22
+                anchors.right: parent.right; anchors.rightMargin: 22
+                visible: showComportConnector
+            }
+
             // ── OPERATING MODE (F11 fix) ──────────────────────────────────────
             // The operator-facing Live/Demo switch. Placed HERE (the idle
             // Start-session screen) because changing mode is only permitted when
@@ -744,7 +785,9 @@ Item {
             // falls back to appMode if OPMODE is unavailable.
             Text {
                 id: opModeSectionLabel
-                anchors.top: showComportConnector ? connRow.bottom : athleteBox.bottom
+                // Anchored below the status panel, not the manual-entry row, so
+                // the authoritative target state cannot be overlapped.
+                anchors.top: showComportConnector ? loginTargetStatus.bottom : athleteBox.bottom
                 anchors.topMargin: 16
                 anchors.left: parent.left; anchors.leftMargin: 22
                 text: "OPERATING MODE"
@@ -1016,7 +1059,14 @@ Item {
                 width: parent.width
                 columns: 3; rowSpacing: 12; columnSpacing: 10
                 Repeater {
-                    model: ptConfirmed ? [
+                    model: wmConfirmed ? [
+                        { lbl: "DISCIPLINE", val: WINDMAP.threePositions ? "50m 3 Pos" : "50m Prone" },
+                        { lbl: "SHOT PLAN",  val: "" + WINDMAP.shotPlan + " shots" },
+                        { lbl: "SIGHTERS",   val: WINDMAP.sightersEnabled ? "Yes" : "No" },
+                        { lbl: "WIND",       val: "Manual entry" },
+                        { lbl: "POSITIONS",  val: WINDMAP.threePositions ? "K · P · S separate" : "Single" },
+                        { lbl: "MODE",       val: appMode ? "Live" : "Demo" }
+                    ] : ptConfirmed ? [
                         { lbl: "SEQUENCE",  val: POSTRANS.sequenceString() },
                         { lbl: "VERIFY",    val: "" + POSTRANS.verificationShots + " / pos" },
                         { lbl: "REPEATS",   val: "" + POSTRANS.totalRepeats },
@@ -1124,7 +1174,7 @@ Item {
                     }
                     MouseArea {
                         id: pistolMouse; anchors.fill: parent; hoverEnabled: true
-                        onClicked: { trainingConfirmed = false; cdConfirmed = false; ptConfirmed = false; papermode = 0; gameMode = 0; rangeSelected(10); gameEvent = 0 }
+                        onClicked: { trainingConfirmed = false; cdConfirmed = false; ptConfirmed = false; wmConfirmed = false; papermode = 0; gameMode = 0; rangeSelected(10); gameEvent = 0 }
                     }
                 }
 
@@ -1151,7 +1201,7 @@ Item {
                     }
                     MouseArea {
                         id: rifleMouse; anchors.fill: parent; hoverEnabled: true
-                        onClicked: { trainingConfirmed = false; cdConfirmed = false; ptConfirmed = false; papermode = 0; gameMode = 1; gameEvent = 0 }
+                        onClicked: { trainingConfirmed = false; cdConfirmed = false; ptConfirmed = false; wmConfirmed = false; papermode = 0; gameMode = 1; gameEvent = 0 }
                     }
                 }
             }
@@ -1183,7 +1233,7 @@ Item {
                         }
                         MouseArea {
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: { trainingConfirmed = false; cdConfirmed = false; ptConfirmed = false; rangeSelected(10); gameSubMode = 0; gameEvent = 0 }
+                            onClicked: { trainingConfirmed = false; cdConfirmed = false; ptConfirmed = false; wmConfirmed = false; rangeSelected(10); gameSubMode = 0; gameEvent = 0 }
                         }
                     }
                     Rectangle {
@@ -1199,7 +1249,7 @@ Item {
                         }
                         MouseArea {
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: { trainingConfirmed = false; cdConfirmed = false; ptConfirmed = false; rangeSelected(50); gameSubMode = 0; gameEvent = 4 }
+                            onClicked: { trainingConfirmed = false; cdConfirmed = false; ptConfirmed = false; wmConfirmed = false; rangeSelected(50); gameSubMode = 0; gameEvent = 4 }
                         }
                     }
                 }
@@ -1220,7 +1270,7 @@ Item {
                         }
                         MouseArea {
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: { trainingConfirmed = false; cdConfirmed = false; ptConfirmed = false; gameSubMode = 0; gameEvent = 4 }
+                            onClicked: { trainingConfirmed = false; cdConfirmed = false; ptConfirmed = false; wmConfirmed = false; gameSubMode = 0; gameEvent = 4 }
                         }
                     }
                     Rectangle {
@@ -1235,7 +1285,7 @@ Item {
                         }
                         MouseArea {
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                            onClicked: { trainingConfirmed = false; cdConfirmed = false; ptConfirmed = false; gameSubMode = 1; gameEvent = 4 }
+                            onClicked: { trainingConfirmed = false; cdConfirmed = false; ptConfirmed = false; wmConfirmed = false; gameSubMode = 1; gameEvent = 4 }
                         }
                     }
                 }
@@ -1362,7 +1412,7 @@ Item {
                             anchors.fill: parent; hoverEnabled: true
                             onEntered: { if (gameEvent !== eventIndex) parent.color = _borderSub }
                             onExited:  { parent.color = gameEvent === eventIndex ? _redDark : _surfaceAlt }
-                            onClicked: { trainingConfirmed = false; cdConfirmed = false; ptConfirmed = false; gameEvent = eventIndex }
+                            onClicked: { trainingConfirmed = false; cdConfirmed = false; ptConfirmed = false; wmConfirmed = false; gameEvent = eventIndex }
                         }
                     }
 
@@ -1507,7 +1557,7 @@ Item {
                                                text: modelData.t
                                                color: gameEvent === modelData.e ? "white" : _txtSec
                                                font.family: "Consolas"; font.pixelSize: 12; font.bold: true }
-                                        MouseArea { anchors.fill: parent; onClicked: { trainingConfirmed = false; cdConfirmed = false; ptConfirmed = false; gameEvent = modelData.e } }
+                                        MouseArea { anchors.fill: parent; onClicked: { trainingConfirmed = false; cdConfirmed = false; ptConfirmed = false; wmConfirmed = false; gameEvent = modelData.e } }
                                     }
                                 }
                             }
@@ -1531,7 +1581,7 @@ Item {
                         MouseArea {
                             anchors.fill: parent
                             enabled: !openPracticeCard.selected
-                            onClicked: { trainingConfirmed = false; cdConfirmed = false; ptConfirmed = false; gameEvent = 1 }
+                            onClicked: { trainingConfirmed = false; cdConfirmed = false; ptConfirmed = false; wmConfirmed = false; gameEvent = 1 }
                         }
                     }
                     Item { width: 1; height: 8 }
@@ -1715,8 +1765,48 @@ Item {
                             onClicked: { POSTRANS.configureDefaults(); practiceView = 5 }
                         }
                     }
-                    FutureCard { title: "WIND MAP"; status: "PLANNED"
-                                 visible: gameMode === 1 && gameRange === 50 }
+                    // AVAILABLE — Wind Map (Release 2). 50m Rifle Prone and 50m
+                    // Rifle 3 Positions ONLY; the card is not shown anywhere
+                    // else and the controller refuses anything else anyway.
+                    Rectangle {
+                        visible: gameMode === 1 && gameRange === 50
+                        width: parent.width; height: 96; radius: 8
+                        color: _surfaceAlt; border.color: _red; border.width: 1
+                        Column {
+                            anchors.left: parent.left; anchors.leftMargin: 14
+                            anchors.right: parent.right; anchors.rightMargin: 14
+                            anchors.verticalCenter: parent.verticalCenter; spacing: 3
+                            Row {
+                                spacing: 8
+                                Text { text: gameSubMode === 1 ? "WIND MAP · BY POSITION" : "WIND MAP"
+                                       color: _txt; font.family: theme.fontFamily; font.pixelSize: 14; font.bold: true }
+                                Rectangle {
+                                    width: 74; height: 18; radius: 9; color: _okBg; border.color: _green; border.width: 1
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    Text { anchors.centerIn: parent; text: "AVAILABLE"; color: _green
+                                           font.pixelSize: theme.type.label.size; font.bold: true } }
+                            }
+                            Text { text: "Record the wind you observe while you shoot.\nEach shot keeps the condition that was standing when it was fired, for review afterwards."
+                                   color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 10 }
+                            Text { text: gameSubMode === 1
+                                         ? "Manual entry · Kneeling, Prone and Standing kept separate"
+                                         : "Manual entry · Direction in degrees, speed in m/s, or Calm"
+                                   color: _txtSec; font.family: "Consolas"; font.pixelSize: 10 }
+                        }
+                        MouseArea {
+                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                // The controller is the single authority on
+                                // where Wind Map may run — QML asks, it decides.
+                                if (!WINDMAP.configureSession(windMapDisciplineId(), 40, true)) {
+                                    dialogManager.showError(qsTr("Wind Map is not available here"),
+                                        WINDMAP.unsupportedDisciplineMessage(windMapDisciplineId()))
+                                    return
+                                }
+                                practiceView = 6
+                            }
+                        }
+                    }
 
                     Text { text: "INCLUDED INSIGHTS"; color: _txtMut
                            font.family: theme.fontFamily; font.pixelSize: theme.type.label.size; font.bold: true
@@ -1787,6 +1877,12 @@ Item {
                     }
                     Text { text: getDisciplineName() + "  ·  " + username_loginPage
                                  + "  ·  " + TRAINING.estimatedTime
+                           color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 11 }
+                    // TB-05: the wording comes from the controller, never from
+                    // here — the setup screen, the report and the manual must
+                    // describe the defaults identically.
+                    Text { text: TRAINING.configurationNote
+                           width: 520; wrapMode: Text.WordWrap
                            color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 11 }
 
                     component Stepper: Row {
@@ -2168,6 +2264,114 @@ Item {
                                     if (err !== "") { ptSetupError.text = err; return }
                                     ptSetupError.text = ""
                                     ptConfirmed = true; trainingConfirmed = false; cdConfirmed = false
+                                    wmConfirmed = false
+                                    practiceView = 0
+                                } }
+                        }
+                    }
+                }
+            }
+
+            // ── WIND MAP SETUP (practiceView 6) ──────────────────────────────
+            // Release 2. Configuration only: how many shots are planned and
+            // whether sighters are fired first. The wind itself is recorded
+            // DURING the session, never guessed at here.
+            Flickable {
+                id: wmSetupFlick
+                visible: practiceView === 6
+                anchors.top: subDisciplineRow.bottom; anchors.topMargin: 12
+                anchors.left: parent.left;   anchors.leftMargin: 22
+                anchors.right: parent.right; anchors.rightMargin: 22
+                anchors.bottom: parent.bottom; anchors.bottomMargin: 18
+                clip: true; contentWidth: width; contentHeight: wmSetupCol.implicitHeight
+                boundsBehavior: Flickable.StopAtBounds
+                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+
+                Column {
+                    id: wmSetupCol
+                    width: wmSetupFlick.width; spacing: 10; bottomPadding: 12
+
+                    Text { text: "← Back to Training Lab"; color: _txtSec
+                           font.family: theme.fontFamily; font.pixelSize: 12; bottomPadding: 4
+                        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                                    onClicked: practiceView = 1 } }
+                    Text { text: "WIND MAP"; color: _txt
+                           font.family: theme.fontFamily; font.pixelSize: 18; font.bold: true }
+                    Text { text: WINDMAP.threePositions ? "50 m Rifle 3 Positions · Kneeling, Prone and Standing kept separate"
+                                                        : "50 m Rifle Prone"
+                           color: _red; font.family: theme.fontFamily; font.pixelSize: 13; font.bold: true }
+                    Text { width: parent.width; wrapMode: Text.WordWrap
+                           text: "You record the wind you observe. Every shot keeps the condition that was standing when it was fired, so the two can be reviewed together afterwards. Nothing here is scored or corrected."
+                           color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 11 }
+
+                    Text { text: "Planned shots"; color: _txtSec
+                           font.family: theme.fontFamily; font.pixelSize: 12; topPadding: 6 }
+                    Row { spacing: 6
+                        Repeater {
+                            model: [ 20, 30, 40, 60 ]
+                            delegate: Rectangle {
+                                width: 64; height: 44; radius: 22
+                                color: wmSetupCol.plan === modelData ? _red : _input
+                                border.color: wmSetupCol.plan === modelData ? _red : _borderSub
+                                Text { anchors.centerIn: parent; text: modelData
+                                       color: wmSetupCol.plan === modelData ? "white" : _txtSec
+                                       font.family: "Consolas"; font.pixelSize: 13; font.bold: true }
+                                MouseArea { anchors.fill: parent; onClicked: wmSetupCol.plan = modelData }
+                            }
+                        }
+                    }
+                    // Descriptive only — the plan drives the progress readout and
+                    // never caps, rejects or auto-completes a shot.
+                    property int plan: 40
+                    property bool sighters: true
+
+                    Text { text: "Sighters"; color: _txtSec
+                           font.family: theme.fontFamily; font.pixelSize: 12; topPadding: 6 }
+                    Row { spacing: 6
+                        Repeater {
+                            model: [ { l: "Fire sighters first", v: true },
+                                     { l: "Straight to counted shots", v: false } ]
+                            delegate: Rectangle {
+                                width: wmSgT.implicitWidth + 30; height: 44; radius: 22
+                                color: wmSetupCol.sighters === modelData.v ? _red : _input
+                                border.color: wmSetupCol.sighters === modelData.v ? _red : _borderSub
+                                Text { id: wmSgT; anchors.centerIn: parent; text: modelData.l
+                                       color: wmSetupCol.sighters === modelData.v ? "white" : _txtSec
+                                       font.family: theme.fontFamily; font.pixelSize: 11 }
+                                MouseArea { anchors.fill: parent; onClicked: wmSetupCol.sighters = modelData.v }
+                            }
+                        }
+                    }
+                    Text { width: parent.width; wrapMode: Text.WordWrap
+                           text: "Sighters are recorded with their conditions but are never counted in the session statistics."
+                           color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 10 }
+
+                    Text { id: wmSetupError; visible: text !== ""; text: ""; width: parent.width
+                           wrapMode: Text.WordWrap; color: theme.tokens.errorText
+                           font.family: theme.fontFamily; font.pixelSize: 11 }
+                    Row { spacing: 10; topPadding: 6
+                        Rectangle { width: 110; height: 52; radius: 8; color: "transparent"
+                            border.color: _borderStr; border.width: 1
+                            Text { anchors.centerIn: parent; text: "Back"; color: _txtSec
+                                   font.family: theme.fontFamily; font.pixelSize: 12 }
+                            MouseArea { anchors.fill: parent; onClicked: practiceView = 1 } }
+                        Rectangle { width: 180; height: 52; radius: 8; color: _red
+                            Text { anchors.centerIn: parent; text: "Confirm setup"; color: "white"
+                                   font.family: theme.fontFamily; font.pixelSize: 13; font.bold: true }
+                            MouseArea { anchors.fill: parent
+                                onClicked: {
+                                    // The controller validates — QML only reports.
+                                    if (!WINDMAP.configureSession(windMapDisciplineId(),
+                                                                  wmSetupCol.plan,
+                                                                  wmSetupCol.sighters)) {
+                                        wmSetupError.text = WINDMAP.lastError
+                                        return
+                                    }
+                                    var err = WINDMAP.validateConfig()
+                                    if (err !== "") { wmSetupError.text = err; return }
+                                    wmSetupError.text = ""
+                                    wmConfirmed = true
+                                    trainingConfirmed = false; cdConfirmed = false; ptConfirmed = false
                                     practiceView = 0
                                 } }
                         }
@@ -2276,6 +2480,21 @@ Item {
                         onEntered: startSessionRect._startHov = true
                         onExited:  startSessionRect._startHov = false
                         onClicked: {
+                            // TRAINING LAB (R2): Wind Map — new Training session
+                            // (kind=Training, wind_map; 50m Prone and 50m 3P only).
+                            // Opens in Setup so a condition can be recorded before
+                            // the first shot. NEVER a qualification/Final session.
+                            if (wmConfirmed) {
+                                if (!WINDMAP.startWindMap(username_loginPage)) {
+                                    dialogManager.showError(qsTr("Cannot start Wind Map"),
+                                        WINDMAP.lastStartError !== "" ? WINDMAP.lastStartError
+                                            : qsTr("The session could not be started."))
+                                    return
+                                }
+                                shootingPage.enterWindMapMode()
+                                rootItem.visible = false
+                                return
+                            }
                             // TRAINING LAB (T4): Position Transition — new Training
                             // session (kind=Training, position_transition; 3P only).
                             if (ptConfirmed) {

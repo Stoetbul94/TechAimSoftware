@@ -4,6 +4,10 @@
 #include <QWidget>
 #include <QTimer>
 #include <QThread>
+
+#include "target/TargetDeviceFingerprint.h"
+#include "target/PaperFeedCoordinator.h"
+#include "target/SerialDeviceProvider.h"
 #include <QDebug>
 #include <QTcpServer>
 #include <QElapsedTimer>
@@ -162,6 +166,36 @@ class TachusWidget : public QWidget
 {
     Q_OBJECT
 
+    // ── AUTHORITATIVE TARGET STATUS, for the operator ────────────────────
+    // The single source the UI binds to. Every state the acquisition engine
+    // reaches is published here, so a discipline screen consumes target state
+    // rather than reimplementing it.
+    //
+    // targetDevice is the description of the device ACTUALLY enumerated and
+    // selected - it is not a hardcoded adapter name. Any USB-serial target is
+    // shown by whatever Windows reports for it.
+    //
+    // targetPort is the port CURRENTLY connected, never a remembered settings
+    // value. The connection area displayed a stale "COM7" that did not exist on
+    // the machine; that is the defect this property exists to prevent.
+    Q_PROPERTY(QString targetState  READ targetState  NOTIFY targetStatusChanged)
+    Q_PROPERTY(QString targetDevice READ targetDevice NOTIFY targetStatusChanged)
+    Q_PROPERTY(QString targetPort   READ targetPort   NOTIFY targetStatusChanged)
+    Q_PROPERTY(QString targetDetail READ targetDetail NOTIFY targetStatusChanged)
+    Q_PROPERTY(bool    targetReady  READ targetReady  NOTIFY targetStatusChanged)
+
+public:
+    QString targetState()  const { return m_targetState; }
+    QString targetDevice() const { return m_targetDevice; }
+    QString targetPort()   const { return m_targetPort; }
+    QString targetDetail() const { return m_targetDetail; }
+    // READY is a strong claim: identified target, open transport, valid Modbus
+    // AND a synchronized acquisition baseline. An open COM port is not enough.
+    bool    targetReady()  const {
+        return m_targetState == QLatin1String("TARGET CONNECTED")
+            && m_acqState == AcquisitionState::Acquiring;
+    }
+
 public:
     explicit TachusWidget(MainWindow* mainwindow, QWidget *parent = 0);
     ~TachusWidget();
@@ -314,6 +348,28 @@ public slots:
     double getScore(int index);
     void setScore(double value);
     void initiateMotorMovement();
+
+    // ── RC2 target discovery + paper feed ─────────────────────────────────
+    // Selection and fingerprinting live in src/target and are unit-tested
+    // without hardware; these only act on the decision.
+    ta::target::SelectionResult autoSelectTargetDevice();
+    // Decides the port for the AUTOMATIC path. Empty means "nothing
+    // confident" - the caller must NOT then connect speculatively.
+    QString chooseStartupPort();
+    ta::target::TargetDeviceFingerprint rememberedTargetDevice() const;
+    void rememberTargetDevice(const ta::target::SerialDeviceInfo &d);
+    Q_INVOKABLE void forgetTargetDevice();
+    Q_INVOKABLE QVariantList targetCandidates();
+    // Called once per ACCEPTED, durably recorded physical shot. This is the
+    // only automatic route to the motor; QML must not call the motor itself.
+    void onPhysicalShotAccepted(qint64 shotIdentity, bool isSighter);
+    void setReplayInProgress(bool replaying) { m_replayInProgress = replaying; }
+    void bindFeedCoordinator();
+    // RC2a: correlated per-shot stage trace. Cheap by construction.
+    void traceShotStage(const char* stage, qint64 seq, const QString& detail = QString());
+    Q_INVOKABLE void traceShotStageFromQml(QString stage, int seq)
+    { traceShotStage(stage.toLatin1().constData(), seq); }
+    Q_INVOKABLE void setTraceSessionTag(QString tag) { m_traceSessionTag = tag; }
     void resetShootinCount() {
         m_currentShootsCount = 0;
         m_oldResetCount = 0;
@@ -334,6 +390,75 @@ public slots:
                     LogType::BackendLevel);
             }
         }
+        // FALSE-SHOT-001. Do NOT assume the hardware counter is now zero.
+        //
+        // On 2026-08-08 the reset above reported success, yet 25 s later the
+        // target still answered "1" and the application decoded the PREVIOUS
+        // session's shot (x=2.5 y=2.9, identical to a shot fired 26 minutes
+        // earlier) as a brand-new one. It consumed sequence 1 and its paper
+        // feed, so the athlete's real first shot collided with it and its feed
+        // was suppressed as a duplicate.
+        //
+        // Trusting a write we cannot verify is what created a phantom shot, so
+        // read the counter back and ADOPT whatever it really is as the
+        // baseline. This cannot hide a real shot: a genuine shot always pushes
+        // the counter ABOVE the baseline, and detection is
+        // `newShotsCount > m_currentShootsCount`. It only makes pre-existing
+        // residue invisible, which is exactly what it is.
+        // RC2g-DIAG: this whole path was invisible. The reset only logged on
+        // FAILURE and the readback only logged a NON-ZERO result, so a
+        // successful reset produced no trace at all - which is why three root
+        // cause theories about it survived as long as they did.
+        LogFile::instance().appendToLogFile(
+            QStringLiteral("ACQDIAG resetShootinCount ENTER baselineBefore=%1 "
+                           "liveFlag=%2 modbusConnected=%3 onLoginPage=%4")
+                .arg(m_currentShootsCount)
+                .arg(isAppDemoMode ? 1 : 0)     // NOTE: this flag means "is LIVE"
+                .arg(m_mainWindow && m_mainWindow->isModBusConnected() ? 1 : 0)
+                .arg(m_onLoginPage ? 1 : 0), LogType::BackendLevel);
+
+        if (isAppDemoMode) {            // "is live" - the name is inverted
+            uint8_t probe[64];
+            uint16_t* probe16 = (uint16_t*) probe;
+            memset(probe, 0, sizeof(probe));
+            const int probeRc = m_mainWindow->modbusReadRegistry(8192, 2, probe16);
+            LogFile::instance().appendToLogFile(
+                QStringLiteral("ACQDIAG resetShootinCount READBACK rc=%1 hwCounter=%2")
+                    .arg(probeRc).arg(probeRc < 0 ? -1 : int(probe16[1])),
+                LogType::BackendLevel);
+            if (probeRc != -1) {
+                const int actual = probe16[1];
+                if (actual != 0) {
+                    LogFile::instance().appendToLogFile(
+                        QString("resetShootinCount: hw counter still reads %1 after reset - "
+                                "adopting it as the baseline so residue is not decoded as a shot")
+                            .arg(actual), LogType::BackendLevel);
+                }
+                m_currentShootsCount = actual;
+            } else {
+                LogFile::instance().appendToLogFile(
+                    QString("resetShootinCount: could not read back the hw counter; "
+                            "baseline stays 0"), LogType::BackendLevel);
+            }
+        }
+
+        // PAPER-FEED-002. THE CENTRAL RESET.
+        // This function is the one authority that clears the shot count, so it
+        // is the one place the feed coordinator must be told. RC2c notified it
+        // from changeSighterMode only; the count also resets on Home ->
+        // Practice, discard-and-restart, new match and recovery, and each of
+        // those left the coordinator remembering identities that were about to
+        // be reissued from 1. Notifying here covers every path by construction,
+        // including ones added later.
+        m_feed.noteShotNumberingReset(QStringLiteral("shot count reset"));
+
+        // The baseline has just been cleared, so it is no longer known to agree
+        // with the target. Re-enter SYNCHRONIZING and let the next poll adopt
+        // the real hardware value. This is the single place every numbering
+        // reset passes through - startup, Home -> Practice, sighter/match swap,
+        // new match and recovery - so no caller can forget it.
+        m_acqState = AcquisitionState::Synchronizing;
+
         m_xCordList.clear();
         m_yCordList.clear();
         m_xCordList_gameMode.clear();
@@ -371,9 +496,29 @@ public slots:
     void appendTimeStamp(QString data);
     void appendShotDirection(int direction);
 
+private:
+    // SYNC-001. The caller used to infer "new shots" from the baseline having
+    // MOVED - it captured `from` before checkForNewShots() and `to` after, and
+    // fetched everything between. Once synchronization could legitimately move
+    // the baseline, that inference replayed stale slots as real shots: two
+    // phantom shots, two scores and two paper feeds on 2026-08-09.
+    //
+    // The poll now states WHAT happened instead of leaving the caller to guess
+    // from a side effect. Only NewShots may enter the coordinate-fetch loop.
+    enum class PollKind { NoChange, Synchronized, NewShots, Fault, ReadError };
+    struct PollResult {
+        PollKind kind = PollKind::NoChange;
+        int firstNewShot = 0;      // valid only when kind == NewShots
+        int lastNewShot  = 0;      // valid only when kind == NewShots
+        int newHardwareCounter = 0;
+    };
+
 private slots:
     void on_pushButton_3_clicked();
-    void checkForNewShots(bool motorAutoMode = true);
+
+    // Returns what the poll DECIDED. See PollResult - only NewShots authorises
+    // the caller to read coordinates.
+    PollResult checkForNewShots(bool motorAutoMode = true);
     int getRealValue(int value);
     void broadCastNewShoot(int count);
     void updateShootData(int count);
@@ -398,6 +543,13 @@ signals:
     void matchDetails(int gametype, int matchmode, int sighterTime, int matchtime, int sigherTime,int matchpf);
     void matchDetailsSetaModification(int gametype, int matchmode);
     void startMatchFromServer();
+    // RC2: several plausible adapters - ask, never guess.
+    void targetSelectionRequired();
+    // SCANNING / TARGET DETECTED / TARGET CONNECTED / TARGET NOT DETECTED /
+    // TARGET NOT CONNECTED / MANUAL SELECTION REQUIRED / TARGET DISCONNECTED.
+    void targetStateChanged(QString state, QString portName);
+    // Single notification for the QML-bindable target status below.
+    void targetStatusChanged();
 
 private:
     Ui::TachusWidget *ui;
@@ -430,6 +582,20 @@ private:
     int m_currentShootsCount_sighter = 0;
     int m_oldResetCount_sighter = 0;
     MotorThread* m_motorThread = nullptr;
+    // RC2: one scan at a time, and one central feed authority.
+    bool m_scanActive = false;
+    // Set while a journal replay or historical load is feeding shots through
+    // the acceptance path. Those shots are genuinely accepted and durably
+    // recorded, so every other feed guard would pass - this is the one that
+    // stops paper feeding for a shot fired an hour ago.
+    bool m_replayInProgress = false;
+    // The device the SELECTOR resolved for the current attempt. Remembered
+    // only once communication is confirmed, so a failed guess is never stored.
+    ta::target::SerialDeviceInfo m_pendingAutoDevice;
+    bool m_hasPendingAutoDevice = false;
+    QString m_traceSessionTag;
+    ta::target::PaperFeedCoordinator m_feed;
+    bool m_feedBound = false;
     WorkerThread* m_flushCount = nullptr;
 
     QTcpServer* m_tcpServer = nullptr;
@@ -441,6 +607,62 @@ private:
     bool m_isMasterConnected = false;
     bool m_hardwareDisconnected = false;
     bool m_hardwareCheckDisabled = true;
+
+    // ── RECONNECT-001: authoritative target link state ───────────────────
+    // Owned here because TachusWidget is the single acquisition path every
+    // discipline uses, so all Live workflows inherit this by construction.
+    enum class TargetLinkState { Connected, Disconnected, Reconnecting };
+    TargetLinkState m_linkState = TargetLinkState::Connected;
+    int     m_consecutiveReadFailures = 0;
+    int     m_reconnectAttempts = 0;
+    qint64  m_lastReconnectAttemptMs = 0;
+    QString m_activePortName;
+    QString m_targetState = QStringLiteral("TARGET NOT CONNECTED");
+    QString m_targetDevice;
+    QString m_targetPort;
+    QString m_targetDetail;
+
+    // One funnel for every target state change. Keeps the legacy signal for
+    // existing consumers and drives the QML-bindable properties from the same
+    // call, so the two can never disagree. An empty device/port leaves the
+    // previous value untouched - transient states like SCANNING should not
+    // blank out an identity the operator is relying on.
+    void setTargetStatus(const QString& state,
+                         const QString& port = QString(),
+                         const QString& device = QString(),
+                         const QString& detail = QString());
+    // 3 failures at the 100 ms poll = ~300 ms before declaring the link lost:
+    // long enough to ride out a single glitched frame, short enough that an
+    // operator is told before firing again.
+    static const int kReadFailuresBeforeLinkLost = 3;
+    static const int kReconnectIntervalMs = 2000;
+
+    // LOGIN-LINK-001. On the login/home page shot acquisition is suspended, so
+    // nothing was reading the target and an unplug went unnoticed indefinitely.
+    // A liveness probe runs there instead, every kLoginLivenessPolls ticks of
+    // the 100 ms poll (~1 s). Not every tick: the probe is a real Modbus read
+    // and the home screen has no shots to race with.
+    static const int kLoginLivenessPolls = 10;
+    int m_loginLivenessTick = 0;
+
+    void onTargetLinkLost();
+    void attemptTargetReconnect();
+
+    // ── Acquisition state. READY is never claimed on a COM string alone ──
+    // Synchronizing: baseline not yet read FROM the target. No shot may be
+    //   accepted. Entered at startup, after reconnect and after a count reset.
+    // Acquiring:     baseline agreed with the target; delta==1 is a shot.
+    // Fault:         an anomaly that cannot be resolved safely. Latched, and
+    //   deliberately not self-clearing - the operator must be told rather than
+    //   have the software quietly resume and hide a gap.
+    enum class AcquisitionState { Synchronizing, Acquiring, Fault };
+    AcquisitionState m_acqState = AcquisitionState::Synchronizing;
+
+
+    // ── RC2g-DIAG: acquisition observability. Reporting only. ────────────
+    qint64 m_diagPollSeq = 0;
+    int    m_diagLastRawCounter = -999;   // impossible value forces a first log
+    int    m_diagLastBaseline = -999;
     bool m_onLoginPage = true;
     QString m_lastManuallyConnectedPort = "";
     int m_gamemode = 0;

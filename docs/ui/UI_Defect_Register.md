@@ -1,6 +1,8 @@
 # Tech Aim — UI Defect Register
 
-Homepage defects raised from Arnold's review of the running Version B build.
+Defects raised from Arnold's reviews of the running build. §1 covers the
+Version B homepage (`UI-HOME-*`); §1a covers the Training Lab Wind Map
+programme (`UI-WIND-*`).
 
 **Closure rule.** A defect is `RESOLVED — AUTOMATED AND VISUAL EVIDENCE` only
 when it has a fixed commit, passing build/tests, a real application screenshot,
@@ -44,15 +46,196 @@ is not known.
 | UI-HOME-009 | Homepage — Open Practice | Expanded card too tall, contributing to clipping | P1 | Arnold's review | RESOLVED — AUTOMATED AND VISUAL EVIDENCE | `d4674d0` | `UI-HOME-009` ×2 | HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29 (§3) | Collapsed height now matches every other event card exactly (78). Selecting it adds only the preset row plus one gap (56) instead of growing to 148. |
 | UI-HOME-010 | Homepage — action bar | Bar unbalanced, controls overlapped | P0 | Arnold's review | RESOLVED — AUTOMATED AND VISUAL EVIDENCE | `41c09a3` | as UI-HOME-001 | HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29 (§3) | Same root cause and fix as UI-HOME-001. Left region = readiness/validation; right = Load saved session (210) + Start (268). Start is the strongest action and right-aligned. |
 
+
+## 1a. Wind Map register (Training Lab Release 2)
+
+| Defect ID | Screen | Description | Severity | Original evidence | Status | Fixed commit | Automated evidence | Visual evidence | Notes |
+|---|---|---|---|---|---|---|---|---|---|
+| UI-WIND-001 | Wind Map capture — 50 m **3P** | Wind Map 3P capture screen renders Final 35 / Ceremony / timing state | **P0 — workflow boundary** | Arnold's manual Stage 5 review of the running build, 2026-07-29 | **CLOSED — AUTOMATED AND VISUAL EVIDENCE** | `8a1fe26` | `tst_windmap_qml.cpp` §9 ×10, §10 ×4 | **HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29**, build `5404585`, **50 m 3P capture workflow**, at **1536 × 960 logical** (§1d) | Root cause in §1b. Approval covers the **3P capture workflow only** — see §1d for exactly what was and was not exercised. |
+
+| UI-TRAIN-001 | Call & Diagnose capture | Call & Diagnose may inherit competition / Final presentation state | **P0 — workflow boundary** | Stage 5.1 audit of UI-WIND-001, 2026-07-29 | OPEN | — | — | Not yet reviewed on screen | Confirmed by source audit (§1e). Leaks the identity row, the phase stepper, the official shot counter AND the phase chip. |
+| UI-TRAIN-002 | Position Transition capture | Position Transition may inherit competition / Final presentation state | **P0 — workflow boundary** | Stage 5.1 audit of UI-WIND-001, 2026-07-29 | OPEN | — | — | Not yet reviewed on screen | Confirmed by source audit (§1e). Same four leaks as UI-TRAIN-001. |
+| UI-TRAIN-003 | Technical Blocks capture | Technical Blocks inherits the competition identity row | **P1 — workflow boundary** | Stage 5.1 audit of UI-WIND-001, 2026-07-29 | OPEN | — | — | Not yet reviewed on screen | Found by the same audit and **not in the original brief**. Narrower than 001/002 — the stepper, counter and chip are already gated on `isTrainingMatch` — but the identity row still shows `currentGameDisplay` / `currentmatchDisplay`, so "FINAL 35" can appear. |
+| UI-WIND-002 | Wind Map — completed session | Completed Wind Map session does not visibly present the Stage 6.1 analysis and feedback workflow during a normal manually-created 3P session | **P0 — feature unreachable** | Arnold's manual Stage 6.1 review, 2026-07-29, build `5404585` | **OPEN — HUMAN VISUAL EVIDENCE** | — | — | Arnold saw counted-shot information only; no plot, MPI comparison, shift, wind rose, speed bands, timeline, 3P tabs, findings or next-session feedback | Confirmed root cause in §1f. |
+| UI-WIND-003 | Wind Map analysis — all sections | Analysis sections initially appear blank or load slowly without visible progress feedback | P1 — usability | Arnold's manual Stage 6.1 review, 2026-07-29, screenshots | **RESOLVED — VISUAL EVIDENCE; MEASURED ON-SCREEN TIMINGS NOT SUPPLIED** | `305f5b1` | `tst_windmap_perf.cpp` ×12 | **HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-30**, build `106b088`, **1536 × 960 logical** (§1h) — Summary, Compare Conditions and Shot Details all opened without a blank screen | Root cause in §1g: the C++ path costs under 0.5 ms; the fault was QML. The **blank-screen** half is closed on Arnold's review. The **timing** half is not: no `WINDMAP-PERF` figures were returned, so the 1-second Summary target and the cached-switch target remain **unverified**. The loading state itself was not separately exercised. |
+| UI-WIND-004 | Wind Map analysis — navigation | Two competing rows of pill navigation; too complex for an average athlete | P1 — usability | Arnold's manual Stage 6.1 review, 2026-07-29, screenshots | RESOLVED — AUTOMATED AND VISUAL EVIDENCE | `ba6745d` | `tst_windmap_qml.cpp` §13 | **HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-30**, build `106b088`, **1536 × 960 logical** (§1h) | Five section pills plus a second same-looking position row. "Overview" and "Session Overview" could both read as active. |
+| UI-WIND-005 | Wind Map analysis — target plot | Plot lacks an intuitive target reference, complete legend, direction labels, scale and plain-language explanation | P1 — interpretability | Arnold's manual Stage 6.1 review, 2026-07-29, screenshots | RESOLVED — AUTOMATED AND VISUAL EVIDENCE | `ba6745d` | `tst_windmap_qml.cpp` §13 | **HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-30**, build `106b088`, **1536 × 960 logical** (§1h) | Abstract dark rectangle with unexplained hollow and coloured dots; no rings, no HIGH/LOW/LEFT/RIGHT, no mm scale. |
+| UI-WIND-006 | Wind Map analysis — 3P findings | A session-level finding may display unchanged under Kneeling, Prone and Standing, making its scope unclear | **P0 — misleading** | Arnold's manual Stage 6.1 review, 2026-07-29, screenshots | **OPEN — HUMAN VISUAL EVIDENCE** (code fixed at `5902ec6`, awaiting 3P review) | — | `tst_windmap_analytics.cpp` §13 ×5 · `tst_windmap_qml.cpp` §13 | **NOT closed.** The 2026-07-30 review did not cover Kneeling, Prone or Standing, and this defect can only be settled by cycling the 3P position filter and confirming the session-level statement does not reappear as a position result | The engine's `Finding` carried no scope, so the view could not tell a session-level comparison from a position-specific one. Raised to P0: an athlete could read a cross-position comparison as a statement about Kneeling alone. |
+| UI-WIND-007 | Wind Map analysis — labels | Technical labels and metrics presented without athlete-friendly definitions or interpretation | P1 — interpretability | Arnold's manual Stage 6.1 review, 2026-07-29, screenshots | RESOLVED — AUTOMATED AND VISUAL EVIDENCE | `ba6745d` | `tst_windmap_qml.cpp` §13 | **HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-30**, build `106b088`, **1536 × 960 logical** (§1h) | MPI, mean radius, H/V spread, standard deviation and group-centre vectors shown raw. |
+| UI-WIND-008 | Wind Map analysis — actions | Export PDF appears enabled although branded PDF export is not implemented | P2 — honesty of affordance | Arnold's manual Stage 6.1 review, 2026-07-29, screenshots | RESOLVED — AUTOMATED AND VISUAL EVIDENCE | `ba6745d` | `tst_windmap_qml.cpp` §13 | **HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-30**, build `106b088`, **1536 × 960 logical** (§1h) | Styled as a completed primary action; opens a placeholder message. |
+
+### 1d. UI-WIND-001 — visual evidence
+
+**HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-29**, in the running
+application, Demo mode, isolated documentation-capture profile.
+
+| | |
+|---|---|
+| Build reviewed | `5404585` |
+| Resolution reviewed | **1536 × 960 logical** (primary display, after DPI scaling) |
+| Other resolutions | **NOT TESTED** — not opened |
+
+**Exercised and approved — 50 m Rifle 3 Positions only:** Training Lab →
+Wind Map setup → planned 40-shot configuration → *Fire sighters first* →
+confirm setup → start Wind Map → start sighters → record sighters → record
+counted shots → position workflow.
+
+**The corrected Training presentation is approved:** no FINAL 35, no
+Ceremony, no Final timer, no Final stage controls, no official Final shot
+counter.
+
+**NOT tested — do not claim otherwise:**
+
+- **50 m Prone** was not opened.
+- **The full 40-shot layout was not fired**; the shot count reached was well
+  below 40, so the long-session layout remains unverified.
+- Long condition labels, condition filtering, the sighter toggle and the
+  timeline were not reached, because the analysis screen never appeared
+  (**UI-WIND-002**).
+
+### 1f. UI-WIND-002 — confirmed root cause
+
+**`WindMapAnalysisView.qml` uses `ScrollBar` but imports only `QtQuick`.**
+`ScrollBar` lives in `QtQuick.Controls`, so the type never resolves and the
+component cannot be created. Confirmed with `qmllint` against the reviewed
+build:
+
+```
+WindMapAnalysisView.qml:118:33: ScrollBar was not found. Did you add all
+                                import paths? [import]
+WindMapAnalysisView.qml:118:13: unknown attached property scope ScrollBar
+WindMapAnalysisView.qml:118:13: Type ScrollBar is used but it is not resolved
+```
+
+Scope check — the fault is in **one file, one line**. `WindMapHud.qml`,
+`WindMapRightPanel.qml` and `TrainingTopBar.qml` each report **zero**
+unresolved types.
+
+**Why it was not caught.** Three separate gaps, all mine:
+
+1. The Stage 6.1 guards were **static string checks** over the QML source.
+   A file that never loads still contains all the right strings, so every
+   check passed while the screen could not exist.
+2. The launch check greps stderr for known error phrasings. It reported
+   "no new QML errors" — but the analysis view is only instantiated when a
+   Wind Map session reaches phase 6, which a **startup** launch never does.
+   The check was real; it simply could not reach this code path.
+3. `qmllint` was never run over the new files, though it finds this in
+   milliseconds.
+
+**What the athlete saw instead.** With the analysis view absent, the only
+overlay left at completion is the capture HUD's own basic review — counts and
+the raw shot table — which is exactly what was reported.
+
+**Not a sample-size issue.** The analysis must open and explain itself at any
+n, showing available metrics, withheld metrics, the current sample and how
+many more shots each withheld statistic needs.
+
+### 1g. UI-WIND-003 — measured, not guessed
+
+Measurements are recorded in `docs/training-lab-wind-map-analysis.md` §4 once
+taken. The candidate causes under investigation, from the Stage 6.1 source:
+
+| Candidate | Status |
+|---|---|
+| `analysisModel()` re-runs the engine on every call | **to measure** — it calls `WindMapAnalyticsEngine::analyse()` unconditionally |
+| Every section instantiated at once | **confirmed by inspection** — sections are gated with `visible:`, which still creates every delegate |
+| Large `Repeater`s | **confirmed by inspection** — timeline, plot shots, appendix rows are all `Repeater`, one delegate per shot |
+| Plot `span` recomputed per binding | **confirmed by inspection** — `plotBox.span` loops every row and each shot's `x`/`y` binding depends on it |
+| Nested full-height Flickables | to check |
+| Canvas repaint loops | not applicable — the plot uses Items, not Canvas |
+
+**Rule for this phase: no cause is claimed without a measurement or a cited
+line of source.**
+
+### 1h. Stage 6.1.1 — visual evidence
+
+**HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-07-30**, running application,
+Demo mode, isolated documentation-capture profile.
+
+| | |
+|---|---|
+| Build reviewed | `106b088` |
+| Resolution reviewed | **1536 × 960 logical** |
+| Other resolutions | **NOT TESTED** — not opened |
+
+**Reviewed and approved:** Summary · Compare Conditions · Shot Details · the
+short insufficient-sample session · the target visual · the disabled
+*PDF — COMING NEXT* state.
+
+**NOT reviewed — not claimed anywhere:**
+
+- **Not every seeded session.** Only the short insufficient-sample session is
+  confirmed; the 44-shot Prone session and the 3P session are not.
+- **No 3P position was cycled** — Session Overview, Kneeling, Prone and
+  Standing are unconfirmed. **This is why UI-WIND-006 stays OPEN.**
+- **No on-screen timings were supplied.** The `WINDMAP-PERF` marks were
+  instrumented but no figures were returned, so first-paint, page-switch and
+  scroll performance remain **unverified**.
+- No other resolution was opened.
+
+### 1e. UI-TRAIN-001/002/003 — four-programme audit
+
+Audited by reading every gate on `statusStrip` in `ShootingPage.qml` after the
+Stage 5.1 fix. `statusStrip` is the COMPETITION top bar; a row with no gate for
+a programme renders that programme's screen with inherited competition state.
+
+| Row | Gate before Stage 5.2 | Technical Blocks | Call & Diagnose | Position Transition | Wind Map |
+|---|---|:--:|:--:|:--:|:--:|
+| Identity (`currentGameDisplay` + `currentmatchDisplay` + athlete) | `!isWindMapMatch` | **LEAKS** | **LEAKS** | **LEAKS** | fixed 5.1 |
+| Phase stepper (SIGHTING/MATCH · SIGHT/KNEEL/PRONE/STAND) | `!isFinals10mMatch && !isTrainingMatch && !isWindMapMatch` | gated | **LEAKS** | **LEAKS** | fixed 5.1 |
+| Official shot counter (`globalMatchModel.count` / `matchShootCount`) | `!isFinals10mMatch && !isTrainingMatch` | gated | **LEAKS** | **LEAKS** | fixed 5.1 |
+| Phase chip | `!isFinalsMatch && !isFinals10mMatch && !isTrainingMatch` | gated | **LEAKS** | **LEAKS** | fixed 5.1 |
+
+The identity row is the one that carries **"FINAL 35"**: `currentGameDisplay1/2`
+and `currentmatchDisplay` hold whatever the last selected event card set, and
+selecting the 3P Final card leaves them there. **All four programmes were
+exposed to it**; three still are.
+
+**Root cause is structural, not per-programme.** Each gate was written by
+adding one more `!isXMatch` term as each programme landed. The correct
+boundary is a single one: *is any Training Lab programme active?* — which
+already exists as `isTrainingModeAny`.
+
+### 1b. UI-WIND-001 — confirmed root cause
+
+`ShootingPage.qml`'s `statusStrip` is the **competition** top bar. It carries
+**no visibility gate of its own**, and its three inner rows gate only on
+`isFinals10mMatch`, `isFinalsMatch` and `isTrainingMatch` (Technical Blocks).
+Wind Map is in none of those gates, so during a Wind Map session the strip
+renders competition state:
+
+| Element | Why it appears |
+|---|---|
+| **FINAL 35** | `currentGameDisplay1/2` and `currentmatchDisplay` still hold whatever the last selected **event card** set. Selecting the 3P Final card (`gameEvent === 6`) runs `main.qml::updateGameType()` → `setFinalsGameType()`, which writes `"FINAL 35"` and `matchShootCount = 35`. Entering Training Lab never clears it. |
+| **0 / 35 counter** | `globalMatchModel.count + " / " + matchShootCount` — gated only on `!isFinals10mMatch && !isTrainingMatch`. |
+| **SIGHTING / MATCH**, **SIGHT / KNEEL / PRONE / STAND** | the phase stepper `Row` — same gate. |
+| **Phase chip** | gated on `!isFinalsMatch && !isFinals10mMatch && !isTrainingMatch`. |
+
+The defect is therefore **inherited presentation state**, not a stray Finals
+controller: `FinalsHud`, `Finals10mHud`, `Finals10mRightPanel` and the finals
+command overlays are all correctly gated on `isFinalsMatch` /
+`isFinals10mMatch`, which `enterWindMapMode()` clears. `Finals3PController`
+is never started, no finals event is journalled, and the Wind Map session
+remains `sessionKind=Training` / `programId=wind_map` throughout. **The
+defect is presentational — no Wind Map data was recorded as a Final.**
+
+### 1c. The same hole exists in the sibling programmes
+
+Found while diagnosing UI-WIND-001 and deliberately left out of scope for
+Stage 5.1, which was scoped to Wind Map. Now registered as **UI-TRAIN-001**,
+**UI-TRAIN-002** and **UI-TRAIN-003** and audited in full in §1e.
+
 ## 2. Summary
 
 | Status | Count | IDs |
 |---|---:|---|
-| RESOLVED — AUTOMATED AND VISUAL EVIDENCE | **7** | 001, 005, 006, 007, 008, 009, 010 |
+| CLOSED / RESOLVED — AUTOMATED AND VISUAL EVIDENCE | **12** | UI-HOME 001, 005, 006, 007, 008, 009, 010 · **UI-WIND-001, 004, 005, 007, 008** |
 | RESOLVED — AUTOMATED EVIDENCE AND VISUAL LAYOUT APPROVAL; MANUAL INTERACTION CHECK NOT PERFORMED | **3** | 002, 003, 004 |
 | RESOLVED — AUTOMATED EVIDENCE, HUMAN VISUAL CHECK REQUIRED | 0 | — |
 | PARTIALLY RESOLVED | 0 | — |
-| OPEN | 0 | — |
+| RESOLVED — VISUAL EVIDENCE; MEASURED TIMINGS NOT SUPPLIED | **1** | **UI-WIND-003** |
+| OPEN | **5** | **UI-WIND-002** · **UI-WIND-006** (P0, awaiting 3P review) · UI-TRAIN-001, UI-TRAIN-002, UI-TRAIN-003 |
 | BLOCKED | 0 | — |
 
 **Every defect has a fix and passing automated evidence, and the rendered
@@ -144,3 +327,459 @@ longer a gate on the design approval.
 | UI-HOME-008 | typography roles defined and used in the action bar | `tst_brandpackage.cpp` | Readability is a visual judgement — **human check** |
 | UI-HOME-009 | collapsed height matches other cards; 148px expansion gone | `tst_homepage_layout` | Proportion is a visual judgement — **human check** |
 | UI-HOME-010 | as UI-HOME-001 | `tst_homepage_layout` | Visual balance — **human check** |
+
+---
+
+## 1g. UI pass 2026-08-10 — left-pane programme label and header reserve
+
+### UI-TRAIN-001 — partially closed, code complete, awaiting on-screen review
+
+Stage 5.2 gated the competition `statusStrip` on `isTrainingModeAny`, and the
+register recorded the defect as OPEN pending review. Arnold's 2026-08-10
+session showed **the badge was still wrong**, because the left pane renders the
+SAME inherited state through a DIFFERENT alias:
+
+```qml
+property alias currentmatchDisplay: leftPanel.matchDisplay   // ShootingPage
+Rectangle { ... Text { text: matchText.text } }              // LeftPanel, ungated
+```
+
+`matchDisplay` holds whatever the last selected event card wrote ("MATCH 60",
+"FINAL 35"); entering a Training Lab programme never clears it. The statusStrip
+fix could not reach it. **The gate was applied to one of two consumers.**
+
+Fixed by giving the left pane an explicit `programmeLabel`, bound in
+`ShootingPage` from the SAME derivation `TrainingTopBar` uses, so the two bars
+can never disagree. Empty means a genuine competition event, where
+`matchDisplay` is correct. The badge also drops competition red for a neutral
+treatment under a Training Lab programme — a training block is not a match and
+should not borrow the match colour.
+
+| Evidence | Status |
+|---|---|
+| Component render, training vs competition side by side | `docs/ui/evidence-UI-TRAIN-001-programme-badge.png` |
+| Application builds and launches, no QML errors, no binding loops | verified 2026-08-10 |
+| Full integrated screen inside a live Call & Diagnose session | **NOT PERFORMED** |
+
+Status: **RESOLVED — AUTOMATED/COMPONENT EVIDENCE, HUMAN VISUAL CHECK
+REQUIRED.** Not closed. UI-TRAIN-002 and UI-TRAIN-003 inherit the same fix
+(the label is derived for all four programmes) but are likewise unreviewed.
+
+### UI-HDR-001 — connection panel covered the header honesty line (NEW)
+
+| Field | Value |
+|---|---|
+| Area | Shooting screen — header strip |
+| Symptom | With the target connected, the connection status covered "NOT AN OFFICIAL COMPETITION RESULT" |
+| Severity | **P1 — honesty text obscured** |
+| Source | Arnold, 2026-08-10 |
+
+`TargetStatusPanel` was anchored with a bare `rightMargin: 200` at `z: 500`, so
+it floated over whatever the header contained. Measured at the 1536 px test
+width: the panel spanned x ≈ 875…1336 while the centred honesty line spanned
+≈ 618…918 — overlapping ≈ 875…918, with the panel drawn on top. The
+right-hand progress row (`rightMargin: 16`) collided outright.
+
+Fixed by reserving a slot rather than nudging either element:
+`ShootingPage.headerStatusReserve` is consumed by `TrainingTopBar.rightReserve`
+and by the competition counter row, and the panel is capped at 380 px and
+anchored into that slot. Reserve falls to zero when the panel expands, because
+it then sits over the target face by design.
+
+| Evidence | Status |
+|---|---|
+| Header render at 1536 px with the slot occupied | `docs/ui/evidence-UI-HDR-001-header-reserve.png` |
+| All five connection states | **NOT INDIVIDUALLY RENDERED** |
+
+Status: **RESOLVED — COMPONENT EVIDENCE, HUMAN VISUAL CHECK REQUIRED.**
+
+### Items assessed and NOT changed
+
+**Left-pane icons (brief item 3).** Already one unified family — a single
+`navModel` of Feather-style 24×24 stroke paths rendered through one `VIcon`
+with consistent sizing (22/26 px), stroke, spacing and padding, visible in the
+evidence render. The legacy raster PNGs in the same file (`play.png`,
+`match_60_40_box.png`, `pistol_box*.png`, `sighter_selected.png`) are
+`opacity: 0` or `visible: false` invisible layout anchors, not drawn icons. No
+mismatched icon style was found. **No change made** — a rewrite would have
+churned a component that already meets the requirement.
+
+**Discipline imagery (brief item 2).** NOT DONE. Recorded honestly: photographic
+or AI-generated artwork cannot be produced here. The appropriate solution is
+vector target faces drawn to true ISSF ring geometry per discipline, which
+scales without blur or distortion and matches the existing vector language.
+This needs its own scoped task and the ring geometry currently
+⏳ awaiting official rule (see `docs/release/scoring-geometry-verification.md`)
+— drawing a 50 m face from an unconfirmed constant would put an unverified
+number on screen.
+
+### 1h. Integrated verification 2026-08-10 (real application, emulated target)
+
+Driven through the running build: Home → RIFLE → 50 m → PRONE → Training Lab →
+Call & Diagnose → Confirm setup → Start calling, with the target emulator
+supplying a connected target over Modbus TCP.
+
+**UI-TRAIN-001 — CLOSED.** The integrated Call & Diagnose screen shows the left
+pane reading **CALL & DIAGNOSE** in the neutral badge. No MATCH-60, no
+inherited competition state, no clipping. The discipline plate renders above
+it with the full name **50M RIFLE PRONE**. Verified in the same session that
+the competition path still shows **MATCH-60** in competition red for a genuine
+50 m Rifle Prone ISSF match, so the gate discriminates rather than merely
+suppresses.
+
+**UI-HDR-001 — CLOSED.** Header at 1389 px with the panel in **READY**:
+
+```
+TRAINING LAB Call & Diagnose │ Philemon │ 50m Rifle Prone
+        NOT AN OFFICIAL COMPETITION RESULT
+                    CALL & DIAGNOSE   ● READY  Emulated / network target
+```
+
+Four elements, no overlap, honesty line fully readable, mode chip and status
+panel each clear. Also confirmed on the COMPETITION header (counter row +
+SIGHTING chip clear of the READY panel). Emulated target — **not** physical
+USB verification.
+
+### UI-CD-001 — Call & Diagnose right panel contradicts the header (NEW)
+
+| Field | Value |
+|---|---|
+| Area | Call & Diagnose — SIGHTERS right panel |
+| Symptom | Panel reads `Target: Not connected` while the header reads `READY` and acquisition is live |
+| Severity | **P1 — contradictory target state** |
+| Source | Integrated verification, 2026-08-10 |
+| Status | **OPEN** |
+
+Two surfaces on one screen disagree about the target. The header binds to the
+shared `MODREADER` state; the C&D panel evidently reads a different or stale
+source. This is the same class of defect as LOGIN-LINK-001 — a second consumer
+that did not get the shared authority — and it must be traced to that source
+rather than patched at the label.
+
+### Discipline plate — position glyph cropped
+
+The plate's position-glyph row is not visible at left-pane scale: the 96 px
+card crops it. Cosmetic at Prone (one glyph), but it is the ONLY thing that
+distinguishes 3P from Prone, so 3P would lose its differentiator. Card height
+or art aspect needs adjusting. **OPEN.**
+
+## 1g2. Language invariance (2026-08-11)
+
+### QML-LANG-001 — Switching language could change the target and the score
+
+| Field | Value |
+|---|---|
+| Area | `CenterPane.qml`, `LeftPanel.qml` — discipline selection |
+| Symptom | Selecting Deutsch (Beta) on a 10 m Air Pistol MATCH-60 session rendered a different target face |
+| Severity | **SEVERITY 1 — RELEASE BLOCKING** |
+| Source | Arnold, on the running build |
+| Status | **FIXED — AUTOMATED EVIDENCE, INTEGRATED VISUAL CHECK PENDING** |
+| Fixed commit | this change |
+| Automated evidence | `tests/qml` QML-LANG-001, 18 checks; full regression below |
+| Visual evidence | **Pending** — the same session in English and Deutsch (Beta) |
+
+**This is not a translation defect.** The authoritative Pistol/Rifle selector
+was derived from displayed text, so a language change could move a session
+into the wrong discipline branch. The observed consequence is that 10 m Air
+Pistol silently entered the **rifle target and scoring branch**, affecting
+target-face geometry, the black aiming area, ring presentation, the mm/pixel
+mapping, the projectile radius and `calculateShootingSocre()` itself.
+
+**Root cause.** `CenterPane.qml` read:
+
+```
+property bool gameMode: shootingPage.currentGameDisplay2 === qsTr("PISTOL") ? true : false
+```
+
+`currentGameDisplay2` is captured once out of a `ListModel` (`main.qml`,
+`gameDisplay2: qsTr("PISTOL")`) and stored as data — ListModel values do not
+retranslate. The `qsTr("PISTOL")` on the right **is** a live binding and does.
+German translates PISTOL to **PISTOLE**, so after the switch the two sides
+diverged, `gameMode` fell to `false`, and the pistol session was drawn and
+scored as a rifle. `LeftPanel.qml` had the same class of bug against a
+hardcoded English literal (`gameDisplayText2.text === "PISTOL"`), which flipped
+the plate artwork.
+
+**Fix.** Both now derive from the stable discipline state: `loginPage.gameMode`
+(0 = pistol, 1 = rifle). The other two selectors were already stable and are
+untouched — `APPSETTINGS.get10or50mRange()` for 10 m/50 m and
+`loginPage.gameSubMode` for Prone/3P. No translated text, no visible label, no
+`gameDisplay1`/`gameDisplay2`, no English literal participates in the decision.
+
+**Regression — QML-LANG-001, 18 checks.** Asserted against the *real* files:
+the gameMode expression contains no `qsTr` and no display string and does use
+the enum; the discipline key is not decided by displayed text; a file-wide scan
+of every root QML finds no comparison against `qsTr(`; the German catalogue
+loads and genuinely returns a different word (so the test is meaningful); and a
+behavioural pass evaluates the real extracted expression with a German
+translator installed, requiring pistol-stays-pistol and rifle-stays-rifle.
+
+**Negative control, recorded so the test cannot be assumed vacuous.** Restoring
+the defective expression and re-running produced **5 failures**; the fixed
+expression produces **0**.
+
+**Still pending.** The integrated visual check is Arnold's: the same 10 m Air
+Pistol session in English and in Deutsch (Beta), where the target face must be
+visually identical and only surrounding translated text may differ. The
+authoritative-state regression, not the screenshot, is the primary protection
+against recurrence.
+
+## 1g3. Settings drawer and navigation icons (2026-08-11)
+
+### UI-SET-001 — The Settings panel could not contain its own content
+
+| Field | Value |
+|---|---|
+| Area | `SettingsPage.qml` — shared Settings drawer (every discipline and workflow) |
+| Symptom | Text escaped its box, sections overlapped, the colour selector floated free, and everything below Operating Mode was unreachable |
+| Severity | P1 — settings unreachable in the shipped UI |
+| Source | Arnold, on the running build |
+| Status | **RESOLVED — AUTOMATED EVIDENCE, INTEGRATED VISUAL CHECK PENDING** |
+| Fixed commit | this change |
+| Automated evidence | `tests/qml` 64/0; renderer output at production placement, scrolled to the end, and in a short window; passing Release build |
+| Visual evidence | Approved from renderer output; the running application remains Arnold's check |
+
+**Root cause.** The panel was a **158x61 raster popup**: a background PNG with
+every control positioned by fraction-of-a-PNG arithmetic, and the later
+sections (motor feed, operating mode, language, about) anchored in a chain
+*below* it. Nothing bounded that chain, so the panel's own height stayed 61 px
+while its content ran off the bottom of the application — which is exactly why
+nothing under Operating Mode could be reached. The panel width came from an
+image's `sourceSize`, so descriptions had no width to wrap into.
+
+**Fix.** A real constrained drawer: 320 px preferred width clamped to
+`parent.width - x - 16`, height clamped to `parent.height - y - 16`, and one
+scrolling region holding every section. Per **UI-DEC-007** the scroller is a
+`Flickable` with `contentHeight` bound explicitly — a `ScrollView` measures
+implicit height, which is unreliable with wrapped text and a `Repeater`. Every
+section is a bounded card, every description has `wrapMode` and a real width,
+and the colour selector is now a **TARGET DISPLAY section inside the panel**
+with drawn swatches carrying the same two flags. Operating Mode's two options
+share one delegate so the radio, heading and wrapped description cannot drift.
+
+**A second defect found while fixing it.** The motor-feed fields read
+`modelData` inside a nested `Component.onCompleted`, which **fails silently**
+in QML, so both fields rendered blank. They are written out explicitly now.
+
+**Navigation icons.** The same pass regularised the seven nav glyphs onto one
+24x24 optical box. The gear was deliberately **left as drawn**: simplifying it
+to spokes turned it into a sunburst that no longer read as Settings. It
+resolves cleanly given UI-ICON-001 and its stroke follow-up.
+
+## 1h. Shared vector icons — VIcon (2026-08-11)
+
+### UI-ICON-001 — VIcon geometry clipped when rendered below authoring viewBox size
+
+| Field | Value |
+|---|---|
+| Area | `VIcon.qml` — shared vector icon component, every consumer |
+| Symptom | Icons drawn smaller than their authoring grid lost geometry off the right and bottom edges and rendered soft |
+| Severity | P1 — shared component, silently wrong at production size in every screen that uses it |
+| Source | Production-size render during the UI-ART-001 review |
+| Status | **CLOSED — HUMAN VISUAL APPROVED** |
+| Fixed commit | `11fd19e` (clipping) + `c76d959` (compact stroke refinement) |
+| Automated evidence | `docs/ui/evidence-vicon-production-icons.png`, `docs/ui/evidence-vicon-stroke-snap.png`; `tests/qml` 46 checks / 0 failures; passing Release build |
+| Visual evidence | **HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-08-11**, on native 1:1 renders at the real 22/26 px production sizes |
+
+**Symptom, measured.** The rifle silhouette on the discipline plate is drawn at
+92 px from a 126-unit authoring grid. It rendered **66 px wide instead of 92,
+and 16 px tall instead of 21** — the whole exposed barrel and the front sight
+tunnel were missing. Every other shared icon was affected in the same way: the
+Group/MPI rings and the Home roof had flattened right edges, and the Settings
+gear teeth were soft.
+
+**Root cause.** `VIcon` wrapped its `Shape` in `layer.enabled: true` while
+applying the authoring-grid-to-item `Scale` as an item transform. A layer
+rasterises the item's contents in its own *unscaled* coordinates and clips them
+to the item's pixel bounds, and only then is the transform applied to the
+resulting texture. Any icon drawn below its authoring-grid size therefore lost
+`1 - width/viewBoxW` of itself before it was ever scaled. For the rifle that is
+92/126 = 0.73, which is exactly the 66/91 measured. Drawn *above* grid size the
+same mechanism magnified a grid-resolution texture, which is why large blow-ups
+pixelated.
+
+**Fix.** The layer is removed, so the geometry rasterises at final resolution.
+No change to the scale maths, the stroke-width convention or any path data.
+
+**Why it was not caught earlier.** The UI-ART-001 evidence was rendered with
+the art at 180 px, where the rifle is 126 px — exactly the viewBox, scale 1.0,
+and the defect cannot appear. It only manifests below grid size, which is what
+production uses.
+
+**Scope.** This is a rendering defect in shared infrastructure and is
+deliberately kept separate from UI-ART-001, which concerns the rifle *drawing*.
+No path data was touched by this fix.
+
+**Follow-up — compact stroke width (`c76d959`).** With the clipping gone the
+22 px compact nav icons were still soft. Stroke widths are authored in grid
+units, so the viewBox-to-item scale resolved `1.9` to **1.74 device px** at
+22 px: every stroke edge was a partial pixel. The 26 px variant happened to
+land near 2.06 px and was already sharp, which is why only compact looked
+wrong. The device width is now snapped to a whole pixel (floor 1) and converted
+back to grid units — one uniform rule, no geometry moved, filled silhouettes
+(`strokeWidth: 0`) untouched. Measured full-white/ink, higher is crisper:
+
+| Icon | 22 px before | 22 px after | 26 px before | 26 px after |
+|---|---|---|---|---|
+| Stats | 0.18 | **0.48** | 0.51 | 0.51 |
+| Report | 0.35 | 0.34 | 0.34 | 0.34 |
+| Settings | 0.27 | **0.33** | 0.33 | 0.33 |
+| Home | 0.36 | **0.40** | 0.40 | 0.38 |
+
+The approved 26 px appearance is held: its device stroke moves 2.06 → 2.00 px,
+the ratios are unchanged and the largest single-pixel delta anywhere in the row
+is 27/255, on antialiased edges only.
+
+**A note on evidence, because it cost a review cycle.** The first evidence
+sheet for this defect was nearest-neighbour magnified. That is the right tool
+for detecting *clipping* and the wrong one for judging *sharpness* — magnified
+pixels always look blocky, and the sheet was read as "the icons are blurry"
+when they were not. Native 1:1 renders are the acceptance evidence for
+sharpness; any magnified view must be separately labelled as a diagnostic.
+
+## 1j. Discipline artwork — air-pistol silhouette (2026-08-11)
+
+### UI-ART-002 — The 10 m Air Pistol plate reads as a generic handgun
+
+| Field | Value |
+|---|---|
+| Area | `DisciplineArt.qml` — pistol silhouette on the discipline plate (left pane) |
+| Symptom | The plate drew a generic pistol pictogram: a deep single-block upper and a plain grip, indistinguishable from a service handgun on a sport-shooting product |
+| Severity | P2 — brand/identity, not function |
+| Source | Arnold's review of the rendered plate; first redesign attempt also rejected |
+| Status | **CLOSED — HUMAN VISUAL APPROVED** |
+| Fixed commit | this change |
+| Automated evidence | `docs/ui/evidence-match-pistol-production.png`; `tests/qml` 46 checks / 0 failures; passing Release build |
+| Visual evidence | **HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-08-11**, on the 132 px production tile |
+
+**Reference.** `docs/ui/issf-match-pistol-reference.png` is the visual
+authority. It was measured, not recalled: the silhouette is 632x226 px, a
+**2.80 ratio**, and a column scan gives the landmarks the drawing is built
+from — the grip occupies the rear quarter and spans the FULL height while the
+barrel assembly is only a quarter of it, the rear sight and its windage drum
+stand proud above the frame top, the trigger guard is round, and the upper is
+**two separate bars** with a slot of daylight running their whole length.
+
+**Fix.** The old 48x32 path was an invention and was deleted outright, not
+tweaked. The silhouette is authored from zero on a **100x36 grid** taken from
+the reference, and the plate box changed with it (x 48 → 50, width 46 → 68,
+viewBox 48x32 → 100x36) so the pistol is a primary identification object and
+sits clear of the ring motif.
+
+**Cues kept, because they are what separate a match pistol from a service
+pistol.** The anatomical competition grip — finger scallops in front, deep
+thumb scoop behind, and a **separate palm shelf** standing off the base; the
+long **two-part precision upper**, sight rib above and air cylinder below with
+the slot between them drawn as separate subpaths so it cannot close; the round
+trigger guard as an odd-even hole; and target sights standing proud at both
+ends.
+
+**Cues deliberately excluded.** No slide, no magazine well, no accessory rail,
+no beavertail, no combat grip — nothing that would let the plate pass as a
+tactical handgun icon.
+
+**Production-size simplification.** At the 75 px the plate draws it one grid
+unit is 0.75 device px, so nothing is thinner than 1.8 units (UI-DEC-014). The
+rib/cylinder slot is sized *to* that floor at 1.8 units because it is the cue
+that must survive; the trigger blade inside the guard was dropped, since at a
+5 px hole it could only have been a grey sliver.
+
+**Acceptance.** The **132 px production tile was the gate**, not the 2x view.
+One iteration was rejected on the way: the first redesign overlapped the ring
+motif and left the palm shelf floating.
+
+## 1i. Discipline artwork — match-rifle silhouette (2026-08-11)
+
+### UI-ART-001 — The rifle silhouette reads as a military weapon
+
+| Field | Value |
+|---|---|
+| Area | `DisciplineArt.qml` — rifle silhouette on the discipline plate (left pane) |
+| Symptom | Angular, chunky outline with a short thick barrel; scans as a service weapon on a sport-shooting product |
+| Severity | P2 — brand/identity, not function |
+| Source | Arnold's review of the running build; two prior attempts rejected |
+| Status | **CLOSED — HUMAN VISUAL APPROVED** |
+| Fixed commit | this change (silhouette + production-size simplification) |
+| Automated evidence | `docs/ui/evidence-match-rifle-production.png`; IoU 0.816 against the reference at matched scale; `tests/qml` 46 checks / 0 failures; passing Release build |
+| Visual evidence | **HUMAN VISUAL APPROVAL — ARNOLD BAILIE, 2026-08-11**, on the 132 px production tile |
+
+**Root cause, in the terms the two failed attempts established.** The path was
+straight segments end to end, so every organic edge of a stock arrived as a
+facet. The cheek piece and buttplate were drawn inside the stock outline, so
+the two features that actually identify a match rifle were invisible. And the
+barrel was short and thick, which is the single strongest military cue.
+
+**Fix.** `riflePath` was deleted and rebuilt from zero against
+`docs/ui/issf-match-rifle-reference.png`, which UI-DEC-013 makes the visual
+authority. The reference was measured column by column and rescaled from
+1212×290 px to a 126×30 authoring grid, aspect preserved to 0.5%. Organic edges
+are cubics; the cheek piece and buttplate are separate subpaths with real air
+around them; the exposed barrel is 27.4% of overall length at 13.5:1.
+
+**Deliberate departures from the reference, so they are not read as errors.**
+
+| Departure | Reference | As drawn | Why |
+|---|---|---|---|
+| Rear sight rail | 0.2 units thick | 0.95 | 0.2 units is 0.15 px at the 92 px width the left pane draws; it would vanish and take the raised-sight read with it |
+| Forend vent slots | 0.6 units | 0.9 | same reason |
+| Forend nose | ends at x 93.6 | ends at x 91.5 | holds the exposed barrel above 27% of length, per the brief |
+| Free-float gap | closes into a 2-unit bridge at the forend nose | left open | a 1.5 px bridge is not a feature at tile size, it is a rendering artefact |
+| Receiver/barrel junction | stepped shoulder with a bolt boss | single chamfer | below the resolution of the tile |
+
+**Fill-rule constraint, recorded because it is easy to break.** `VIcon` uses
+Qt's default odd-even fill. The separate pieces must never *overlap* the main
+outline or they cancel to holes; the visible gaps the design calls for are what
+guarantees this. The cheek-piece posts stop 0.25 units short of the rail for
+exactly that reason. The three genuine holes — trigger guard and two forend
+vents — are nested subpaths.
+
+**Production-size simplification, and why it was needed.** The traced
+silhouette measured well (IoU 0.816) and looked right at 2×, but the acceptance
+gate is the **132 px production tile**, and there several members fell below one
+device pixel and could only render as grey. At the 92 px rifle width the scale
+is 0.73, so:
+
+| Feature | Authored | Device px at 92 px | Action |
+|---|---|---|---|
+| Forend ventilation slots | 0.9 units | **0.66** | **removed** — never resolvable, contributed only a grey band down the forend |
+| Rear sight rail | 0.9 units | **0.66** | thickened to 1.4 units (1.02 px) |
+| Barrel, plain section | 1.6 units | 1.17 | thickened to 1.95 units (1.42 px), **upward only** so the free-float gap below is not narrowed |
+
+Everything else is untouched. **Every critical ISSF cue is retained**: the
+separate adjustable buttplate and its lower hook, the raised cheek piece with
+visible air between it and the comb, the anatomical competition stock, the deep
+near-vertical grip, the raised rear diopter, the front sight tunnel, and a
+still-slender barrel at 17:1 over the exposed length. The forend is now one
+clean competition profile rather than a vent-textured band — less detail, but a
+stronger ISSF shape, which is the right trade at tile size.
+
+Rejected during the pass: thickening the barrel further to 2.25 units. It added
+ink without adding solid pixels (solid/ink 0.42 → 0.40) and was backed out.
+Measured in the rifle band at 92 px, solid/ink went **0.40 → 0.42**.
+
+**Closure.** The reference image `docs/ui/issf-match-rifle-reference.png` was
+the visual authority throughout (UI-DEC-013); the **132 px production render
+was the acceptance gate**, not the 2× view and not the similarity score; and
+the silhouette was approved on that render. Numerical similarity was treated as
+diagnostic evidence only — a mask can score well and still read wrong at UI
+size, so it was never allowed to stand in for the human decision.
+
+**Reproducing the evidence.** From the repository root, with the Qt `bin` on
+`PATH`:
+
+```
+tools/uirender/release/uirender.exe tools/uirender/scene_disciplines.qml <out>.png 620 300
+```
+
+The scene renders where it lives — nothing is copied to the repository root —
+and no environment variables are needed. Build instructions, the per-scene
+canonical sizes and the rule for writing new scenes are in
+`tools/uirender/README.md`.
+
+Three harness limitations recorded in earlier revisions of this entry — the
+scene needing to be copied to the repository root, `QT_QPA_PLATFORM=offscreen`
+having to be set by hand to avoid a segfault, and text rendering as empty boxes
+— were fixed in the renderer itself and no longer apply. **This changes nothing
+about the evidence status below:** the renderer still draws the same QML
+through the same Qt Quick scene graph without being the application, so its
+output remains automated evidence and not human visual approval.

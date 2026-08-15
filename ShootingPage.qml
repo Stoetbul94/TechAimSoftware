@@ -73,11 +73,20 @@ Item {
     // Position Transition (T4): POSTRANS owns all state; 50m 3P only.
     property bool isPositionTransitionMatch: false
     property int posTransShotSeq: 0
+    // Wind Map (R2): WINDMAP owns all state; 50m Prone and 50m 3P only.
+    property bool isWindMapMatch: false
+    property int windMapShotSeq: 0
     // ANY Training Lab programme is active — competition overlays (the match
     // countdown clock, sighter-time indicator, last-shot bubble) must be fully
     // suppressed for all of them, not only Technical Blocks.
     readonly property bool isTrainingModeAny: isTrainingMatch || isCallDiagnoseMatch
-                                              || isPositionTransitionMatch
+                                              || isPositionTransitionMatch || isWindMapMatch
+    // Header width reserved for the target-connection panel so it never draws
+    // over the header's own content. Zero while the panel is expanded, because
+    // it then sits over the target face instead of in the strip.
+    readonly property real headerStatusReserve:
+        (targetStatus && targetStatus.visible && !targetStatus.expanded)
+            ? targetStatus.width + 32 : 0
     // Hidden-mode display cache: polar display records buffered while the
     // visibility mode hides impacts; revealed (appended to the face) at block
     // review. Never rendered before reveal.
@@ -218,7 +227,8 @@ Item {
         globalMatchModel.append(tpl);    globalMatchModel.clear()
         globalSlighterModel.append(tpl); globalSlighterModel.clear()
         globalModelOfData.append(tpl);   globalModelOfData.clear()
-        shootingPage.trainingTargetConnected = MODREADER.isMasterSystemConnected()
+        // (UI-CD-001: trainingTargetConnected is now a live binding to
+        // MODREADER.targetReady - no seeding, and nothing to go stale.)
     }
 
     // Rejected finals shots (never in the official models) — plan §8.
@@ -344,7 +354,14 @@ Item {
         color: "#15161a"
         z: 40
 
+        // UI-WIND-001 / UI-TRAIN-001..003: the competition identity row must
+        // not render during ANY Training Lab session. currentGameDisplay* and
+        // currentmatchDisplay still hold whatever the last selected EVENT CARD
+        // set - the 3P Final card leaves "FINAL 35" - and a Training Lab
+        // programme may never present as a Final. TrainingTopBar occupies this
+        // band instead.
         Row {
+            visible: !isTrainingModeAny
             anchors.left: parent.left; anchors.leftMargin: 16
             anchors.verticalCenter: parent.verticalCenter
             spacing: 12
@@ -375,7 +392,10 @@ Item {
         Row {
             anchors.centerIn: parent
             spacing: 6
-            visible: !isFinals10mMatch && !isTrainingMatch
+            // UI-TRAIN-001..003: every Training programme owns its own phase
+            // model. The competition stepper would read a Final/qualification
+            // phase none of them has.
+            visible: !isFinals10mMatch && !isTrainingModeAny
             Repeater {
                 model: is3PMatch ? [qsTr("SIGHT"), qsTr("KNEEL"), qsTr("PRONE"), qsTr("STAND")]
                                  : [qsTr("SIGHTING"), qsTr("MATCH")]
@@ -406,8 +426,16 @@ Item {
             }
         }
 
+        // UI-TRAIN-001..003: the OFFICIAL shot counter (globalMatchModel.count
+        // / matchShootCount) is the "0 / 35" from the defect report. No
+        // Training programme populates either model; each shows its own
+        // progress on TrainingTopBar.
         Row {
-            anchors.right: parent.right; anchors.rightMargin: 16
+            visible: !isTrainingModeAny
+            anchors.right: parent.right
+            // Same reserved slot as the training bar: the competition counter
+            // must not sit under the connection panel either.
+            anchors.rightMargin: 16 + shootingPage.headerStatusReserve
             anchors.verticalCenter: parent.verticalCenter
             spacing: 12
             // F7: during a 10m Final the authoritative count/total live in the
@@ -415,14 +443,14 @@ Item {
             // count would read 0 here (10m shots never populate it) and contradict
             // FINALS10M — so hide the legacy top counter for the Final.
             Text {
-                visible: !isFinals10mMatch && !isTrainingMatch
+                visible: !isFinals10mMatch && !isTrainingModeAny
                 text: globalMatchModel.count + " / " + (matchShootCount > 0 ? matchShootCount : "—")
                 color: "white"; font.family: theme.fontFamily
                 font.pixelSize: 14; font.bold: true
                 anchors.verticalCenter: parent.verticalCenter
             }
             Text {
-                visible: !isFinals10mMatch && !isTrainingMatch
+                visible: !isFinals10mMatch && !isTrainingModeAny
                 text: qsTr("SHOTS")
                 color: "#9a9ba0"; font.family: theme.fontFamily
                 font.pixelSize: 9; font.letterSpacing: 1.5
@@ -433,7 +461,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 // 3P FINAL: the HUD strip owns phase display; the qualification
                 // phase chip (SIGHTING/MATCH from sligterMode) would conflict.
-                visible: !isFinalsMatch && !isFinals10mMatch && !isTrainingMatch
+                visible: !isFinalsMatch && !isFinals10mMatch && !isTrainingModeAny
                 color: matchFinished ? "#1d7a2f" : (sligterMode ? "#8a6d00" : "#e8003d")
                 Text {
                     id: phaseChipText
@@ -455,6 +483,73 @@ Item {
                     color: "#e8003d"; font.family: theme.fontFamily
                     font.pixelSize: 10; font.bold: true; font.letterSpacing: 1
                 }
+            }
+        }
+
+        // ── UI-WIND-001 / UI-TRAIN-001..003: the shared TRAINING bar ────
+        // ONE bar for all four Training Lab programmes, in the same band, so
+        // every anchor chaining from statusStrip.bottom is unchanged. It reads
+        // no competition state at all - each programme passes in its own
+        // identity, phase and progress from its own controller.
+        TrainingTopBar {
+            id: trainingTopBar
+            visible: isTrainingModeAny
+            anchors.fill: parent
+            // Keep the connection panel's slot clear. Only while it is COMPACT:
+            // when it expands it deliberately moves down over the target face,
+            // so reserving header width for it there would leave a gap.
+            rightReserve: shootingPage.headerStatusReserve
+            athlete: window.userName
+            demoMode: !appMode
+
+            programmeName: {
+                if (isWindMapMatch)            return qsTr("Wind Map")
+                if (isPositionTransitionMatch) return qsTr("Position Transition")
+                if (isCallDiagnoseMatch)       return qsTr("Call & Diagnose")
+                if (isTrainingMatch)           return qsTr("Technical Blocks")
+                return ""
+            }
+            discipline: loginPage.getDisciplineName()
+            positionName: {
+                if (isWindMapMatch)            return WINDMAP.threePositions ? WINDMAP.positionName : ""
+                if (isPositionTransitionMatch) return POSTRANS.positionName
+                return ""
+            }
+            phaseLabel: {
+                if (isWindMapMatch) {
+                    if (WINDMAP.phase === 2) return qsTr("SIGHTERS")
+                    if (WINDMAP.phase === 3) return qsTr("COUNTED SHOTS")
+                    return WINDMAP.phaseName.toUpperCase()
+                }
+                if (isPositionTransitionMatch) {
+                    if (POSTRANS.phase === 1) return qsTr("POSITION SETUP")
+                    if (POSTRANS.phase === 2) return qsTr("SIGHTERS")
+                    if (POSTRANS.phase === 3) return qsTr("VERIFICATION")
+                    if (POSTRANS.phase === 4) return qsTr("POSITION REVIEW")
+                    if (POSTRANS.phase === 5) return qsTr("COMPLETE")
+                    return ""
+                }
+                if (isCallDiagnoseMatch) return qsTr("CALL & DIAGNOSE")
+                if (isTrainingMatch)     return qsTr("TECHNICAL BLOCK")
+                return ""
+            }
+            phaseActive: {
+                if (isWindMapMatch)            return WINDMAP.phase === 3
+                if (isPositionTransitionMatch) return POSTRANS.phase === 3
+                return true
+            }
+            progressValue: {
+                if (isWindMapMatch)
+                    return WINDMAP.phase === 2 ? ("" + WINDMAP.sighterCount)
+                                               : (WINDMAP.countedShots + " / " + WINDMAP.shotPlan)
+                if (isPositionTransitionMatch)
+                    return POSTRANS.shotsCompleted + " / " + POSTRANS.verificationShots
+                return ""
+            }
+            progressLabel: {
+                if (isWindMapMatch && WINDMAP.phase === 2) return qsTr("SIGHTERS")
+                if (isWindMapMatch || isPositionTransitionMatch) return qsTr("SHOTS")
+                return ""
             }
         }
     }
@@ -484,8 +579,10 @@ Item {
         // paper) is Training-inappropriate — hidden during a Technical Blocks
         // session, and its height collapses so the target reclaims the space.
         // Training's own actions live in TrainingRightPanel / the review view.
-        height: (isTrainingMatch || isCallDiagnoseMatch || isPositionTransitionMatch) ? 0 : 62
+        height: (isTrainingMatch || isCallDiagnoseMatch || isPositionTransitionMatch
+                 || isWindMapMatch) ? 0 : 62
         visible: !isTrainingMatch && !isCallDiagnoseMatch && !isPositionTransitionMatch
+                 && !isWindMapMatch
         color: "#15161a"
         z: 40
 
@@ -580,6 +677,43 @@ Item {
         }
     }
 
+    // Target connection state, on the screen the athlete is actually looking at.
+    //
+    // On 2026-08-09 the USB cable was unplugged mid-session and this screen
+    // carried on looking perfectly healthy while acquisition was dead - the
+    // next shot was lost with no warning at all. The shared engine knew; the
+    // operator did not. It sits above everything (z) so a fault cannot be
+    // covered by a panel or overlay.
+    TargetStatusPanel {
+        id: targetStatus
+        // Compact while healthy so it cannot cover LAST SHOT or the series
+        // table; it expands automatically the moment shooting is blocked.
+        compact: true
+        width: expanded ? Math.max(300, 0.26 * parent.width)
+                        : Math.min(Math.max(260, 0.24 * parent.width), 380)
+        // Sits in its OWN reserved slot at the right of the header strip when
+        // compact, and over the target face when expanded - a fault should be
+        // the most prominent thing on screen.
+        //
+        // It used to be anchored with a bare rightMargin of 200 and z 500, so
+        // it floated over whatever the header happened to contain and covered
+        // "NOT AN OFFICIAL COMPETITION RESULT". The header bars now reserve
+        // `headerStatusReserve` for it, so the two lay out beside each other
+        // instead of on top of each other, in every connection state.
+        anchors.horizontalCenter: expanded ? parent.horizontalCenter : undefined
+        anchors.right: expanded ? undefined : parent.right
+        anchors.top: parent.top
+        anchors.topMargin: expanded ? 90 : 8
+        anchors.rightMargin: expanded ? 0 : 16
+        z: 500
+        // ALWAYS visible. Hiding it when healthy was tempting for tidiness, but
+        // it means the athlete cannot confirm the target is genuinely READY -
+        // they can only infer it from the absence of a warning. Absence of a
+        // warning is exactly what was on screen while acquisition was dead on
+        // 2026-08-09. A positive READY is the thing worth showing.
+        visible: true
+    }
+
     LeftPanel {
         id: leftPanel
         width: 0.15*parent.width
@@ -588,6 +722,30 @@ Item {
         anchors.top: statusStrip.bottom
         name: window.userName
         z: 10
+
+        // UI-TRAIN-001. The left pane must state the ACTIVE programme, never
+        // the event state left behind by the last card the operator touched.
+        // Same derivation TrainingTopBar uses, so the two can never disagree:
+        // one programme, one name, both bars.
+        //
+        // Empty = a genuine competition event, where the inherited
+        // matchDisplay ("MATCH 60", "FINAL 35") IS the correct label.
+        // The owner knows the discipline precisely; the two display strings do
+        // not (Prone and 3 Positions produce identical text).
+        disciplineKeyOverride: {
+            if (loginPage.gameRange === 50)
+                return loginPage.gameSubMode === 1 ? "3P50" : "PRONE50"
+            return loginPage.gameMode === 0 ? "AP10" : "AR10"
+        }
+        disciplineNameOverride: loginPage.getDisciplineName().toUpperCase()
+
+        programmeLabel: {
+            if (isWindMapMatch)            return qsTr("WIND MAP")
+            if (isPositionTransitionMatch) return qsTr("POSITION TRANSITION")
+            if (isCallDiagnoseMatch)       return qsTr("CALL & DIAGNOSE")
+            if (isTrainingMatch)           return qsTr("TECHNICAL BLOCKS")
+            return ""
+        }
 
         onHomeButtonClicked: {
             // T1.1/T1.4 root-cause fix: the legacy Home path used to leave a
@@ -608,6 +766,11 @@ Item {
             }
             if (isPositionTransitionMatch) {
                 if (!exitPositionTransitionToHome())
+                    return
+                return
+            }
+            if (isWindMapMatch) {
+                if (!exitWindMapToHome())
                     return
                 return
             }
@@ -634,7 +797,8 @@ Item {
         // Final-specific Finals10mRightPanel occupies the same slot. Its width
         // is preserved (visible:false keeps the layout) so the target keeps its
         // size. Qualification/3P use this panel unchanged.
-        visible: !isFinals10mMatch && !isTrainingMatch && !isCallDiagnoseMatch && !isPositionTransitionMatch
+        visible: !isFinals10mMatch && !isTrainingMatch && !isCallDiagnoseMatch
+                 && !isPositionTransitionMatch && !isWindMapMatch
         onSwitchToSighter:
         {
             if(sighterEnable)
@@ -730,6 +894,19 @@ Item {
             // POSITION TRANSITION (T4): shots route to POSTRANS (setup shots
             // ignored, sighters shown, verification counted). Sighters draw on
             // the live target; counted shots reveal at the position review.
+            // WIND MAP (R2): shots route to WINDMAP. The controller classifies
+            // them from its DURABLE phase (sighter vs counted) and attaches an
+            // immutable copy of the standing wind condition to each one.
+            if (isWindMapMatch) {
+                // Held for the accepted-shot router below: the marker is drawn
+                // only AFTER the shot is journalled, never before.
+                shootingPage.windMapLastX = centerPanel.lastShotXmm
+                shootingPage.windMapLastY = centerPanel.lastShotYmm
+                WINDMAP.registerShot(centerPanel.lastShotXmm, centerPanel.lastShotYmm,
+                                     currentCalculatedScore, ++shootingPage.windMapShotSeq,
+                                     xPosition, centerPanel.lastShotSource)
+                return
+            }
             if (isPositionTransitionMatch) {
                 POSTRANS.registerShot(centerPanel.lastShotXmm, centerPanel.lastShotYmm,
                                       currentCalculatedScore, ++shootingPage.posTransShotSeq,
@@ -895,7 +1072,22 @@ Item {
                 "isCompetitionShot": true
             })
         }
+        // COACH-001 diagnostics ONLY. The report was unavailable after a
+        // valid 10-shot field session and the cause is not yet proven. No
+        // eligibility or analytics rule is changed here - this records what
+        // the feeder actually handed over, so the next occurrence is
+        // diagnosable from the log instead of guessed at.
+        var sighters = 0
+        for (var s = 0; s < list.length; ++s) if (list[s].isSighter) sighters++
+        MODREADER.appendToLogFile("COACH-001 feed: globalMatchModel=" + n
+            + " prepared=" + list.length
+            + " counted=" + (list.length - sighters)
+            + " sighters=" + sighters
+            + " timingOk=" + timingOk)
         COACHREPORT.analyzeShots(list)
+        // valid/message are direct properties on the bridge, not fields of report.
+        MODREADER.appendToLogFile("COACH-001 result: valid=" + COACHREPORT.valid
+            + " message=" + (COACHREPORT.message || "(none)"))
 
         // Transfer guarantee: every shot in the match record must be held by
         // the engine — count AND total must survive the bridge round-trip.
@@ -1321,6 +1513,104 @@ Item {
         var path = (dir && dir.length ? dir + "/" : "") + "TechAim_PositionTransition_" + athlete + "_" + date + "_" + sid + ".pdf"
         posTransReportView.exportPdf(path)
     }
+    // ── WIND MAP (Release 2) ─────────────────────────────────────────────
+    WindMapRightPanel {
+        id: windMapRightPanel
+        visible: isWindMapMatch
+        width: rightPanel.width; height: rightPanel.height
+        anchors.right: parent.right; anchors.top: statusStrip.bottom
+        z: 11
+        ctl: WINDMAP
+        connected: shootingPage.trainingTargetConnected
+    }
+    WindMapHud {
+        id: windMapHud
+        // Stage 6.1: once the session is COMPLETE the full analysis takes over,
+        // so the capture HUD's own summary never competes with it.
+        visible: isWindMapMatch && WINDMAP.phase !== 6
+        anchors.fill: parent
+        z: 60
+        ctl: WINDMAP
+        onHomeRequested: shootingPage.homeFromWindMap()
+        onNewSessionRequested: shootingPage.newWindMapSession()
+    }
+    // Stage 6.1.1: the completed-session analysis. It reads
+    // WINDMAP.analysisModel() — a cached projection of WindMapAnalyticsEngine —
+    // and formats it. No metric is recalculated here.
+    //
+    // UI-WIND-008: there is deliberately NO export signal to handle. The PDF is
+    // Stage 6.2, so the view shows a disabled "PDF — COMING NEXT" control rather
+    // than a primary-styled button that opens a placeholder message.
+    WindMapAnalysisView {
+        id: windMapAnalysis
+        visible: isWindMapMatch && WINDMAP.phase === 6
+        anchors.fill: parent
+        z: 61
+        ctl: WINDMAP
+        onHomeRequested: shootingPage.homeFromWindMap()
+        onNewSessionRequested: shootingPage.newWindMapSession()
+    }
+    // Sighters are drawn on the live target so the athlete can see them;
+    // counted shots are drawn too — Wind Map hides nothing, it only records
+    // what was standing at the time.
+    Connections {
+        target: WINDMAP
+        enabled: isWindMapMatch
+        function onShotAccepted(sighter, shotId, position) {
+            shootingPage.trainingAppendSighterMarker(shootingPage.windMapLastX,
+                                                     shootingPage.windMapLastY)
+        }
+    }
+    property real windMapLastX: 0
+    property real windMapLastY: 0
+
+    function enterWindMapMode() {
+        isWindMapMatch = true
+        isTrainingMatch = false; isCallDiagnoseMatch = false; isPositionTransitionMatch = false
+        isFinalsMatch = false; isFinals10mMatch = false; is3PMatch = false
+        windMapShotSeq = 0
+        globalMatchModel.clear(); globalSlighterModel.clear(); globalModelOfData.clear()
+        centerPanel.backEndShootCount = 0
+        sligterMode = true
+        matchFinished = false
+        rightPanel.resetRightPanelModels()
+    }
+    function exitWindMapToHome() {
+        if (!WINDMAP.closeSessionCleanly()) {
+            dialogManager.showError(qsTr("Wind Map could not be closed safely"),
+                (WINDMAP.lastError && WINDMAP.lastError.length > 0 ? WINDMAP.lastError + "\n\n" : "")
+                + qsTr("Your session is preserved and can be recovered. Please try again."))
+            return false
+        }
+        isWindMapMatch = false
+        loginPage.wmConfirmed = false
+        resetDataModels()
+        loginPage.visible = true
+        return true
+    }
+    function homeFromWindMap() { exitWindMapToHome() }
+    function newWindMapSession() {
+        if (!WINDMAP.closeSessionCleanly()) {
+            dialogManager.showError(qsTr("Wind Map could not be closed safely"),
+                qsTr("Your session is preserved and can be recovered. Please try again."))
+            return
+        }
+        isWindMapMatch = false
+        resetDataModels()
+        loginPage.visible = true
+        loginPage.practiceView = 1
+    }
+    function restoreWindMapSession(sessionId) {
+        if (!WINDMAP.resumeFromRecovery(sessionId))
+            return false
+        enterWindMapMode()
+        // Keep the duplicate guard past every recovered external id so a
+        // retransmitted shot cannot be accepted twice after the resume.
+        windMapShotSeq = Math.max(windMapShotSeq, WINDMAP.recoveredMaxExternalId())
+        loginPage.visible = false
+        return true
+    }
+
     function restorePositionTransitionSession(sessionId) {
         if (!POSTRANS.resumeFromRecovery(sessionId))
             return false
@@ -1348,14 +1638,30 @@ Item {
         trainingReportView.exportPdf(path)
     }
 
-    // Hardware connection state for the Sighters readiness panel (Demo ignores
-    // it). Tracked from MODREADER's master-connection signal.
-    property bool trainingTargetConnected: false
-    Connections {
-        target: MODREADER
-        function onMasterConnectionChanged(isConn) { shootingPage.trainingTargetConnected = isConn }
-    }
-    // (initial connection state is seeded in the root Component.onCompleted.)
+    // UI-CD-001. Target state for every Training Lab readiness panel.
+    //
+    // This was wrong in two independent ways, and the screen said so: on
+    // 2026-08-10 the Call & Diagnose panel read "Target: Not connected" while
+    // the header read READY and acquisition was live.
+    //
+    //   1. WRONG SOURCE. It tracked onMasterConnectionChanged /
+    //      isMasterSystemConnected() - the MASTER SYSTEM (lane server) link,
+    //      which is a different thing from the target. A target can be READY
+    //      with no master present, which is exactly the standalone-lane case.
+    //   2. WRONG MECHANISM. A plain property assigned once in
+    //      Component.onCompleted and then only on a master signal, so even the
+    //      value it did carry was a snapshot rather than live state.
+    //
+    // Now a live binding to the SAME authority the status panel and the
+    // acquisition engine use. Four right panels (Technical Blocks, Call &
+    // Diagnose, Position Transition, Wind Map) consume this one property, so
+    // they cannot disagree with the header or with each other. This is the
+    // third defect of the form "a second consumer never got the shared
+    // authority" - after RECONNECT-001's cached bool and LOGIN-LINK-001's
+    // page-gated poll - which is why it is fixed at the source rather than at
+    // the label.
+    readonly property bool trainingTargetConnected:
+        MODREADER ? MODREADER.targetReady : false
 
     // T1 closure: in-place Training recovery. Resume the journal through
     // TRAINING (owner selected by sessionKind, never by discipline alone),

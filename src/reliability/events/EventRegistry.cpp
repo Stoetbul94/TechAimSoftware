@@ -201,6 +201,12 @@ const EventMeta kRows[] = {
                                 ReducerClass::Mutating),
     row<WindMapSessionCompleted>(DurabilityClass::Sync, BroadcastClass::Broadcast,
                                  ReducerClass::Mutating),
+    // Stage 5. Sync because the phase decides how the NEXT shot is classified:
+    // if it were lost, a resumed session could record a counted shot as a
+    // sighter (or the reverse), which is a silent data error rather than a
+    // recoverable one.
+    row<WindMapPhaseChanged>(DurabilityClass::Sync, BroadcastClass::Broadcast,
+                             ReducerClass::Mutating),
 };
 
 struct RegistryIndex {

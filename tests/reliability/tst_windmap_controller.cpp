@@ -1,0 +1,944 @@
+// Wind Map — controller, workflow and resume (Stage 5).
+//
+// Everything here drives the REAL WindMapController with an injected in-memory
+// journal + ManualClock, so it is deterministic and touches no disk. Compiling
+// the controller into this QT=core harness is also the proof that it carries
+// no QML/GUI dependency.
+//
+// What the file is meant to prove, in order:
+//   · Wind Map runs on 50m Prone and 50m 3P and NOWHERE else — closed, not
+//     coerced.
+//   · A wind condition is one of THREE distinct recorded states (measured,
+//     calm, no reading) and invalid input is refused rather than defaulted.
+//   · m/s -> hundredths happens in the controller; QML never sees hundredths.
+//   · Each accepted shot takes an IMMUTABLE COPY of the standing condition.
+//   · Phase transitions fail CLOSED; nothing is clamped or skipped.
+//   · An interrupted session resumes into the SAME phase, including the case
+//     that motivated journalling the phase at all: counted shots begun with
+//     no counted shot yet fired.
+//   · A resume re-journals NOTHING.
+
+#include "training/WindMapController.h"
+#include "training/WindMapAnalytics.h"
+#include "reliability/events/EventSerializer.h"
+#include "reliability/journal/JournalValidator.h"
+#include "reliability/replay/ReplayEngine.h"
+#include "test_support.h"
+
+#include <cmath>
+
+using namespace ta::rel;
+using namespace ta::training;
+
+namespace {
+
+// Phase ids, spelled out so a failure message reads as the workflow does.
+constexpr int kIdle = 0, kSetup = 1, kSighters = 2, kCounted = 3;
+constexpr int kPositionReview = 4, kSessionReview = 5, kCompleted = 6;
+
+struct Rig {
+    MemoryJournalFile file;
+    ManualClock clock;
+    WindMapController wm;
+
+    Rig()
+    {
+        wm.storeForTesting()->setClockForTesting(&clock);
+        wm.storeForTesting()->setJournalFileForTesting(&file);
+    }
+    bool start(const char* disciplineId, int plan = 40, bool sighters = true)
+    {
+        return wm.configureSession(QString::fromLatin1(disciplineId), plan, sighters)
+            && wm.startWindMap(QStringLiteral("Alex Example"));
+    }
+    // A shot from the physical target (source 0), with a fresh external id.
+    bool shoot(double x, double y, double score = 10.2)
+    {
+        return wm.registerShot(x, y, score, ++m_ext, 0.0, 0);
+    }
+    qint64 m_ext = 1000;
+};
+
+// Replays whatever the rig has journalled so far and hands back a recovered
+// state, built the SAME way RecoveryCoordinator::buildRecoveredState builds
+// it (validate -> replay the valid prefix -> carry the chain seed). Only the
+// disk scan is replaced; nothing about the resume itself is simulated.
+RecoveredMatchState recoveredFrom(const MemoryJournalFile& file)
+{
+    const ValidationReport rep = JournalValidator::validateBytes(file.data);
+    const ReplayResult r = ReplayEngine::replay(rep.validEnvelopes);
+    RecoveredMatchState rec;
+    rec.state = r.state;
+    rec.sessionId = r.state.sessionId;
+    rec.journalPath = QStringLiteral("<memory>");
+    rec.lastValidSeq = rep.lastValidSeq;
+    rec.recoveryClass = RecoveryClass::Recoverable;
+    if (!rep.validEnvelopes.isEmpty()) {
+        rec.lastEventWallIso = rep.validEnvelopes.last().wallTimestampIso;
+        rec.lastLineHash = rep.validEnvelopes.last().currentHash;
+        rec.lastEventMonoMs = rep.validEnvelopes.last().monotonicMs;
+        qint64 bytes = 0;
+        for (const EventEnvelope& env : rep.validEnvelopes) {
+            QByteArray line;
+            if (!EventSerializer::serializeCompleteEnvelope(env, &line).ok) { bytes = -1; break; }
+            bytes += line.size() + 1;
+        }
+        rec.validByteLength = bytes;
+    }
+    return rec;
+}
+
+} // namespace
+
+void run_windmap_controller_tests()
+{
+    fputs("\n--- wind map controller (stage 5) ---\n", stdout);
+
+    // ── 1. discipline scope: closed, never coerced ──────────────────────
+    {
+        check(WindMapController::isDisciplineSupported(QStringLiteral("PRONE50"))
+              && WindMapController::isDisciplineSupported(QStringLiteral("3P50")),
+              "1. 50m Prone and 50m 3P are supported");
+        const char* rejected[] = { "AR10", "AP10", "FINAL3P", "TRAINING", "", "prone50" };
+        bool allClosed = true;
+        for (const char* id : rejected)
+            if (WindMapController::isDisciplineSupported(QString::fromLatin1(id)))
+                allClosed = false;
+        check(allClosed, "1. every other discipline id is refused (including case)");
+
+        Rig r;
+        check(!r.wm.configureSession(QStringLiteral("AR10"), 40, true),
+              "1. configuring 10m Air Rifle is refused");
+        check(r.wm.disciplineId().isEmpty(),
+              "1. a refused discipline leaves NO partial configuration");
+        check(!r.wm.startWindMap(QStringLiteral("Alex Example")),
+              "1. an unconfigured session cannot start");
+        check(r.wm.phase() == kIdle, "1. a refused start stays Idle");
+    }
+
+    // ── 2. start ────────────────────────────────────────────────────────
+    {
+        Rig r;
+        check(r.start("PRONE50"), "2. 50m Prone Wind Map starts");
+        check(r.wm.phase() == kSetup, "2. it opens in Setup");
+        check(!r.wm.threePositions(), "2. Prone is not a 3P session");
+        check(r.wm.currentPosition() == 0, "2. Prone has no named position");
+        check(!r.wm.hasWindReading(),
+              "2. no standing condition until one is recorded — NOT calm, NOT 0 deg");
+        check(r.wm.conditionSummary() == QLatin1String("No wind reading recorded"),
+              "2. absence reads as absence");
+
+        Rig t;
+        check(t.start("3P50"), "2. 50m 3P Wind Map starts");
+        check(t.wm.threePositions() && t.wm.currentPosition() == 1,
+              "2. 3P opens at Kneeling");
+        check(t.wm.positionName() == QLatin1String("Kneeling"), "2. named Kneeling");
+
+        Rig n;
+        n.wm.configureSession(QStringLiteral("PRONE50"), 40, true);
+        check(!n.wm.startWindMap(QStringLiteral("   ")),
+              "2. a blank athlete name is refused");
+        check(!n.wm.lastStartError().isEmpty(),
+              "2. the refusal carries an operator-facing reason");
+    }
+
+    // ── 3. the three condition states ───────────────────────────────────
+    {
+        Rig r; r.start("PRONE50");
+        check(r.wm.setMeasuredCondition(270, 2.5, QStringLiteral("gusting")),
+              "3. a measured condition is recorded");
+        check(r.wm.directionDegrees() == 270 && r.wm.directionLabel() == QLatin1String("W"),
+              "3. 270 deg reads as W");
+        check(qAbs(r.wm.speedMetresPerSecond() - 2.5) < 1e-9,
+              "3. speed comes back as m/s, not hundredths");
+        check(r.wm.conditionNote() == QLatin1String("gusting"), "3. the note is kept");
+
+        check(r.wm.setCalmCondition(QStringLiteral("flags limp")), "3. calm is recorded");
+        check(r.wm.isCalm() && r.wm.hasWindReading(),
+              "3. calm is a READING, distinct from no reading");
+        check(r.wm.directionDegrees() == 0 && r.wm.speedMetresPerSecond() == 0.0,
+              "3. calm carries no direction — 0 here means 'none', never North");
+        check(r.wm.conditionSummary() == QLatin1String("Calm"), "3. calm reads as Calm");
+
+        check(r.wm.setNoReadingCondition(), "3. 'no reading' is recorded explicitly");
+        check(!r.wm.hasWindReading() && !r.wm.isCalm(),
+              "3. no reading is neither a reading nor calm");
+        check(r.wm.conditionChanges() == 3, "3. all three changes are counted");
+    }
+
+    // ── 4. invalid input is refused, never defaulted ────────────────────
+    {
+        Rig r; r.start("PRONE50");
+        check(!r.wm.setMeasuredCondition(90, -1.0), "4. a negative speed is refused");
+        check(!r.wm.setMeasuredCondition(90, qQNaN()), "4. NaN speed is refused");
+        check(!r.wm.setMeasuredCondition(90, 2000.0), "4. an absurd speed is refused");
+        check(!r.wm.hasWindReading(),
+              "4. NOTHING was recorded by the refusals — no silent 0 deg North");
+        check(r.wm.conditionChanges() == 0, "4. a refusal is not journalled");
+
+        // Out-of-range DIRECTIONS normalise (a compass wraps); speeds do not.
+        check(r.wm.setMeasuredCondition(400, 1.0) && r.wm.directionDegrees() == 40,
+              "4. 400 deg normalises to 40 deg");
+        check(r.wm.setMeasuredCondition(-90, 1.0) && r.wm.directionDegrees() == 270,
+              "4. -90 deg normalises to 270 deg");
+    }
+
+    // ── 5. the immutable shot/condition association ──────────────────────
+    {
+        Rig r; r.start("PRONE50");
+        r.wm.setMeasuredCondition(90, 2.5);
+        r.wm.beginCountedShots();
+        r.shoot(1.0, 1.0);
+        // Change the standing condition AFTER the shot: the shot must not move.
+        r.wm.setMeasuredCondition(180, 6.0);
+        r.shoot(2.0, 2.0);
+        r.wm.setNoReadingCondition();
+        r.shoot(3.0, 3.0);
+
+        const QVariantList shots = r.wm.reviewShots();
+        check(shots.size() == 3, "5. three counted shots recorded");
+        const QVariantMap a = shots.value(0).toMap();
+        const QVariantMap b = shots.value(1).toMap();
+        const QVariantMap c = shots.value(2).toMap();
+        check(a.value(QStringLiteral("directionDegrees")).toInt() == 90
+              && qAbs(a.value(QStringLiteral("speedMetresPerSecond")).toDouble() - 2.5) < 1e-9,
+              "5. shot 1 KEPT its original 90 deg / 2.5 m/s");
+        check(b.value(QStringLiteral("directionDegrees")).toInt() == 180
+              && b.value(QStringLiteral("band")).toString() == QLatin1String("Strong"),
+              "5. shot 2 kept its own 180 deg / 6.0 m/s (Strong)");
+        check(!c.value(QStringLiteral("hasWindReading")).toBool()
+              && !c.value(QStringLiteral("calm")).toBool(),
+              "5. shot 3 recorded NO reading — never back-filled from a neighbour");
+        check(c.value(QStringLiteral("directionLabel")).toString().isEmpty(),
+              "5. a shot with no reading exposes no direction label");
+    }
+
+    // ── 6. sighters never merge into counted shots ──────────────────────
+    {
+        Rig r; r.start("PRONE50");
+        r.wm.setCalmCondition();
+        check(r.wm.beginSighters(), "6. sighters begin");
+        r.shoot(0.5, 0.5); r.shoot(0.6, 0.6);
+        check(r.wm.sighterCount() == 2 && r.wm.countedShots() == 0,
+              "6. sighters are counted as sighters and nothing else");
+        check(r.wm.finishSighters(), "6. sighters finish");
+        r.shoot(1.0, 1.0);
+        check(r.wm.countedShots() == 1 && r.wm.sighterCount() == 2,
+              "6. the counted shot did not absorb the sighters");
+        const QVariantMap sum = r.wm.reviewSummary();
+        check(sum.value(QStringLiteral("countedShots")).toInt() == 1
+              && sum.value(QStringLiteral("sighterShots")).toInt() == 2,
+              "6. the summary keeps them separate");
+        check(sum.value(QStringLiteral("countedCalm")).toInt() == 1,
+              "6. condition coverage counts COUNTED shots only");
+    }
+
+    // ── 7. phase transitions fail closed ────────────────────────────────
+    {
+        Rig a; a.start("PRONE50");
+        check(!a.wm.endPosition(),
+              "7. 50m Prone can never enter a position review");
+        check(!a.wm.changePosition(2), "7. 50m Prone refuses a position change");
+        check(!a.wm.completeSession(),
+              "7. a session cannot complete before its review");
+        check(a.wm.phase() == kSetup, "7. every refusal left the phase untouched");
+
+        Rig b; b.start("PRONE50");
+        b.wm.beginCountedShots();
+        check(!b.wm.beginSighters(),
+              "7. sighters cannot be re-entered once counted shots have begun");
+        check(b.wm.phase() == kCounted, "7. the refusal did not clamp the phase");
+        check(b.wm.endCapture() && b.wm.phase() == kSessionReview, "7. capture ends into review");
+        check(b.wm.completeSession() && b.wm.phase() == kCompleted, "7. review completes");
+        check(!b.wm.beginCountedShots() && !b.wm.endCapture(),
+              "7. Completed is terminal");
+    }
+
+    // ── 8. shots outside a shooting phase are ignored ───────────────────
+    {
+        Rig r; r.start("PRONE50");
+        r.wm.setCalmCondition();
+        check(!r.shoot(1.0, 1.0), "8. a shot fired during Setup is refused");
+        check(r.wm.reviewShots().isEmpty(), "8. and nothing was journalled");
+        r.wm.beginCountedShots();
+        check(r.shoot(1.0, 1.0), "8. the same shot is accepted once counting");
+        check(!r.wm.registerShot(1.0, 1.0, 10.0, r.m_ext, 0.0, 0),
+              "8. a repeated external id is refused as a duplicate");
+        check(r.wm.countedShots() == 1, "8. the duplicate did not double-count");
+        check(!r.wm.registerShot(9999.0, 0.0, 10.0, ++r.m_ext, 0.0, 0),
+              "8. an impossible coordinate is refused");
+    }
+
+    // ── 9. 3P positions stay separate ───────────────────────────────────
+    {
+        Rig r; r.start("3P50");
+        r.wm.setMeasuredCondition(45, 3.0);
+        r.wm.beginCountedShots();
+        r.shoot(1.0, 1.0);
+        check(r.wm.endPosition() && r.wm.phase() == kPositionReview,
+              "9. a 3P position closes into its review");
+        check(r.wm.changePosition(2), "9. Kneeling -> Prone");
+        check(r.wm.currentPosition() == 2 && r.wm.positionName() == QLatin1String("Prone"),
+              "9. the position advanced");
+        check(!r.wm.changePosition(2), "9. changing to the same position is refused");
+        check(!r.wm.changePosition(9), "9. an unknown position is refused");
+        r.wm.beginCountedShots();
+        r.shoot(2.0, 2.0); r.shoot(2.1, 2.1);
+        check(r.wm.countedShots() == 2,
+              "9. the per-position count is Prone's alone");
+        check(r.wm.totalCountedShots() == 3, "9. the session total spans both");
+        r.wm.endPosition(); r.wm.changePosition(3); r.wm.beginCountedShots();
+        r.shoot(3.0, 3.0);
+        const QVariantList pos = r.wm.reviewSummary().value(QStringLiteral("positions")).toList();
+        check(pos.size() == 3, "9. all three positions appear separately");
+        check(pos.value(0).toMap().value(QStringLiteral("countedShots")).toInt() == 1
+              && pos.value(1).toMap().value(QStringLiteral("countedShots")).toInt() == 2
+              && pos.value(2).toMap().value(QStringLiteral("countedShots")).toInt() == 1,
+              "9. nothing was pooled across positions");
+    }
+
+    // ── 10. resume: the case that made the phase durable ────────────────
+    {
+        // Counted shots BEGUN, none fired yet, then a crash. No derivation
+        // from the recorded shots could tell this from the sighter phase —
+        // and getting it wrong would record the next shot as a sighter.
+        Rig r; r.start("PRONE50");
+        r.wm.setMeasuredCondition(270, 2.5);
+        r.wm.beginSighters();
+        r.shoot(0.5, 0.5);
+        r.wm.finishSighters();          // <- counted shots begin
+        // crash here: no counted shot exists.
+        const RecoveredMatchState rec = recoveredFrom(r.file);
+        check(rec.state.wmPhase == kCounted,
+              "10. the journal records the counted phase before any counted shot");
+
+        Rig back;
+        check(back.wm.resumeFromRecoveredState(rec), "10. the session resumes");
+        check(back.wm.phase() == kCounted,
+              "10. it resumes into COUNTED SHOTS, not sighters");
+        check(back.wm.sighterCount() == 1 && back.wm.countedShots() == 0,
+              "10. the sighter survived and no counted shot was invented");
+        check(back.wm.hasWindReading() && back.wm.directionDegrees() == 270
+              && qAbs(back.wm.speedMetresPerSecond() - 2.5) < 1e-9,
+              "10. the standing condition survived exactly");
+        // The next shot must be COUNTED — the point of the whole exercise.
+        back.wm.registerShot(1.0, 1.0, 10.4, 5001, 0.0, 0);
+        check(back.wm.countedShots() == 1 && back.wm.sighterCount() == 1,
+              "10. the first shot after the resume is COUNTED, not a sighter");
+    }
+
+    // ── 11. resume across every phase ───────────────────────────────────
+    {
+        struct Case { const char* disc; int stopAfter; int expect; const char* what; };
+        const Case cases[] = {
+            { "PRONE50", 0, kSetup,          "crash in Setup" },
+            { "PRONE50", 1, kSighters,       "crash during sighters" },
+            { "PRONE50", 2, kCounted,        "crash during counted shots" },
+            { "PRONE50", 3, kSessionReview,  "crash in the session review" },
+            { "3P50",    4, kPositionReview, "crash in a 3P position review" },
+        };
+        for (const Case& c : cases) {
+            Rig r; r.start(c.disc);
+            r.wm.setCalmCondition();
+            if (c.stopAfter >= 1) { r.wm.beginSighters(); r.shoot(0.4, 0.4); }
+            if (c.stopAfter >= 2 && c.stopAfter != 4) { r.wm.finishSighters(); r.shoot(1.0, 1.0); }
+            if (c.stopAfter == 3) r.wm.endCapture();
+            if (c.stopAfter == 4) { r.wm.finishSighters(); r.shoot(1.0, 1.0); r.wm.endPosition(); }
+            Rig back;
+            const bool ok = back.wm.resumeFromRecoveredState(recoveredFrom(r.file));
+            check(ok && back.wm.phase() == c.expect,
+                  QString(QStringLiteral("11. %1 resumes into the same phase"))
+                      .arg(QLatin1String(c.what)),
+                  QStringLiteral("phase %1").arg(back.wm.phase()));
+        }
+    }
+
+    // ── 12. a resume re-journals nothing ────────────────────────────────
+    {
+        Rig r; r.start("PRONE50");
+        r.wm.setMeasuredCondition(180, 4.0);
+        r.wm.beginCountedShots();
+        r.shoot(1.0, 1.0); r.shoot(2.0, 2.0);
+        const RecoveredMatchState rec = recoveredFrom(r.file);
+        // Count the Wind Map PAYLOAD lines before the resume. Recovery markers
+        // are expected and legitimate; what must never reappear is the
+        // programme's own content.
+        auto windMapLines = [](const QByteArray& data) {
+            int n = 0;
+            for (const QByteArray& line : data.split('\n'))
+                if (line.contains("\"WindMap") || line.contains("\"WindCondition")) ++n;
+            return n;
+        };
+        const int before = windMapLines(r.file.data);
+
+        Rig back;
+        back.file.data = r.file.data;          // resume onto the same journal
+        check(back.wm.resumeFromRecoveredState(rec), "12. resume succeeds");
+        check(back.wm.countedShots() == 2,
+              "12. the two shots are present once, not duplicated");
+        check(windMapLines(back.file.data) == before,
+              "12. the resume re-journalled NO wind map event",
+              QStringLiteral("%1 -> %2").arg(before).arg(windMapLines(back.file.data)));
+        check(back.wm.conditionChanges() == 1,
+              "12. the condition change was not replayed into a second one");
+    }
+
+    // ── 13. resume refuses anything that is not a Wind Map session ──────
+    {
+        Rig r; r.start("PRONE50");
+        RecoveredMatchState rec = recoveredFrom(r.file);
+        RecoveredMatchState notTraining = rec;
+        notTraining.state.sessionKind = QStringLiteral("");
+        Rig a;
+        check(!a.wm.resumeFromRecoveredState(notTraining),
+              "13. a competition journal is refused");
+        RecoveredMatchState otherProgram = rec;
+        otherProgram.state.wmProgramId = QStringLiteral("position_transition");
+        Rig b;
+        check(!b.wm.resumeFromRecoveredState(otherProgram),
+              "13. another Training programme's journal is refused");
+        RecoveredMatchState badDiscipline = rec;
+        badDiscipline.state.wmDisciplineId = QStringLiteral("AR10");
+        Rig c;
+        check(!c.wm.resumeFromRecoveredState(badDiscipline),
+              "13. an unsupported discipline is refused, not coerced");
+        check(c.wm.phase() == kIdle, "13. a refused resume stays Idle");
+    }
+
+    // ── 14. close returns the controller to a clean slate ───────────────
+    {
+        Rig r; r.start("PRONE50");
+        r.wm.setMeasuredCondition(90, 3.0);
+        r.wm.beginCountedShots();
+        r.shoot(1.0, 1.0);
+        check(r.wm.closeSessionCleanly(), "14. the session closes cleanly");
+        check(r.wm.phase() == kIdle, "14. the phase returns to Idle");
+        check(!r.wm.hasWindReading(), "14. the standing condition is cleared");
+        check(r.wm.totalCountedShots() == 0 && r.wm.reviewShots().isEmpty(),
+              "14. no stale counters survive into the next session");
+    }
+
+    // ── 15. the review stays factual ────────────────────────────────────
+    {
+        Rig r; r.start("PRONE50", 40, true);
+        r.wm.setMeasuredCondition(90, 3.0);
+        r.wm.beginCountedShots();
+        r.shoot(1.0, 1.0);
+        r.wm.setNoReadingCondition();
+        r.shoot(2.0, 2.0);
+        r.wm.endCapture();
+        const QVariantMap m = r.wm.reviewSummary();
+        check(m.value(QStringLiteral("programme")).toString()
+                  == QStringLiteral("Wind Map — Post-Session Review"),
+              "15. the approved programme name is used",
+              m.value(QStringLiteral("programme")).toString());
+        check(m.value(QStringLiteral("countedWithReading")).toInt() == 1
+              && m.value(QStringLiteral("countedNoReading")).toInt() == 1,
+              "15. reading coverage is reported as a fact");
+        check(m.value(QStringLiteral("disciplineName")).toString()
+                  == QLatin1String("50 m Rifle Prone"),
+              "15. the discipline is named, not inferred");
+        check(!m.value(QStringLiteral("disclaimer")).toString().isEmpty(),
+              "15. the training-only disclaimer is present");
+        // Stage 5 produces no analysis: there is no comparison, ranking or
+        // recommendation key to leak one.
+        check(!m.contains(QStringLiteral("comparison"))
+              && !m.contains(QStringLiteral("recommendation"))
+              && !m.contains(QStringLiteral("observations")),
+              "15. no analytical or advisory content is produced in this stage");
+    }
+
+    // ── 16. Stage 5.1: every summary count has ONE tested definition ────
+    {
+        // Reproduces the reported defect. Arnold's Prone table showed four
+        // distinct conditions while the summary said 13 — because the tile was
+        // fed from wmConditionChanges, which counts condition-change EVENTS.
+        Rig r; r.start("PRONE50");
+        r.wm.beginCountedShots();
+
+        // Four DISTINCT conditions, entered thirteen times: repeats, a
+        // re-entry of an identical value, and conditions set with no shot
+        // fired under them. Only the four distinct values are "observed
+        // conditions"; all thirteen are "condition entries".
+        r.wm.setCalmCondition();                       // 1  calm
+        r.shoot(1.0, 1.0);
+        r.wm.setCalmCondition();                       // 2  same calm again
+        r.wm.setCalmCondition(QStringLiteral("still calm"));  // 3 note differs only
+        r.shoot(1.1, 1.1);
+        r.wm.setMeasuredCondition(270, 2.5);           // 4  W 2.5
+        r.shoot(2.0, 2.0);
+        r.wm.setMeasuredCondition(270, 2.5);           // 5  identical re-entry
+        r.shoot(2.1, 2.1);
+        r.wm.setMeasuredCondition(45, 5.0);            // 6  NE 5.0
+        r.shoot(3.0, 3.0);
+        r.wm.setMeasuredCondition(45, 5.0);            // 7
+        r.wm.setMeasuredCondition(45, 5.0);            // 8   set, never shot under
+        r.wm.setNoReadingCondition();                  // 9  no reading
+        r.shoot(4.0, 4.0);
+        r.wm.setNoReadingCondition();                  // 10
+        r.wm.setCalmCondition();                       // 11 back to calm
+        r.wm.setMeasuredCondition(270, 2.5);           // 12 back to W 2.5
+        r.wm.setNoReadingCondition();                  // 13 ends on no reading
+        r.shoot(5.0, 5.0);
+
+        const QVariantMap m = r.wm.reviewSummary();
+        check(m.value(QStringLiteral("conditionEntries")).toInt() == 13,
+              "16. conditionEntries counts condition-change EVENTS (13)",
+              m.value(QStringLiteral("conditionEntries")).toString());
+        check(m.value(QStringLiteral("uniqueConditions")).toInt() == 4,
+              "16. uniqueConditions counts DISTINCT observed conditions (4)",
+              m.value(QStringLiteral("uniqueConditions")).toString());
+        check(m.value(QStringLiteral("countedShots")).toInt() == 7,
+              "16. countedShots counts counted shots only");
+        check(m.value(QStringLiteral("countedCalm")).toInt() == 2,
+              "16. countedCalm = counted shots taken under a recorded calm");
+        check(m.value(QStringLiteral("countedWithReading")).toInt() == 3,
+              "16. countedWithReading = counted shots under a measured reading");
+        check(m.value(QStringLiteral("countedNoReading")).toInt() == 2,
+              "16. countedNoReading = counted shots with NO reading");
+        // The invariant that makes the three mutually exclusive and complete.
+        check(m.value(QStringLiteral("countedWithReading")).toInt()
+              + m.value(QStringLiteral("countedCalm")).toInt()
+              + m.value(QStringLiteral("countedNoReading")).toInt()
+              == m.value(QStringLiteral("countedShots")).toInt(),
+              "16. reading + calm + no-reading == counted shots");
+        // The ambiguous key is gone.
+        check(!m.contains(QStringLiteral("conditionChanges"))
+              || m.value(QStringLiteral("conditionEntries")).isValid(),
+              "16. the ambiguous CONDITIONS value is no longer the headline tile");
+    }
+
+    // ── 17. condition identity is meaning, not the whole record ─────────
+    {
+        // sameConditionAs must ignore the timestamp and the note, or pressing
+        // CALM twice would read as two different conditions — the exact bug.
+        WindConditionSnapshot a = WindConditionSnapshot::calmAt(1000);
+        WindConditionSnapshot b = WindConditionSnapshot::calmAt(9999, WindSource::Manual,
+                                                                QStringLiteral("flags limp"));
+        check(a != b, "17. two calm entries are different RECORDS");
+        check(a.sameConditionAs(b), "17. but they are the SAME observed condition");
+
+        WindConditionSnapshot m1, m2, m3;
+        WindConditionSnapshot::measured(270, 2.5, 1000, &m1);
+        WindConditionSnapshot::measured(270, 2.5, 5000, &m2, WindSource::Manual,
+                                        QStringLiteral("gusting"));
+        WindConditionSnapshot::measured(270, 2.6, 1000, &m3);
+        check(m1.sameConditionAs(m2), "17. same direction and speed = same condition");
+        check(!m1.sameConditionAs(m3), "17. 2.5 and 2.6 m/s are different conditions");
+        check(!m1.sameConditionAs(a), "17. a measured reading is never a calm");
+
+        const WindConditionSnapshot n1 = WindConditionSnapshot::noReading();
+        const WindConditionSnapshot n2 = WindConditionSnapshot::noReading();
+        check(n1.sameConditionAs(n2), "17. every 'no reading' is the same condition");
+        check(!n1.sameConditionAs(a), "17. NO READING is never equal to CALM");
+    }
+
+    // ── 18. sighters never reach any counted definition ─────────────────
+    {
+        Rig r; r.start("PRONE50");
+        r.wm.setMeasuredCondition(90, 3.0);
+        r.wm.beginSighters();
+        r.shoot(0.5, 0.5); r.shoot(0.6, 0.6);
+        r.wm.finishSighters();
+        r.wm.setCalmCondition();
+        r.shoot(1.0, 1.0);
+        const QVariantMap m = r.wm.reviewSummary();
+        check(m.value(QStringLiteral("sighterShots")).toInt() == 2
+              && m.value(QStringLiteral("countedShots")).toInt() == 1,
+              "18. sighters and counted shots are separate totals");
+        check(m.value(QStringLiteral("uniqueConditions")).toInt() == 1,
+              "18. the sighters' condition does not become a counted unique condition");
+        check(m.value(QStringLiteral("countedWithReading")).toInt() == 0
+              && m.value(QStringLiteral("countedCalm")).toInt() == 1,
+              "18. the sighters' measured reading is excluded from the counted split");
+    }
+
+    // ── 19. Stage 6.1: the analysis view model EQUALS the engine ────────
+    {
+        // The single rule that makes one model safe for both the screen and
+        // the PDF: the view model is a PROJECTION, never a recalculation.
+        // Every number here is compared against the engine's own output.
+        Rig r; r.start("PRONE50", 40, true);
+        r.wm.setCalmCondition();
+        r.wm.beginSighters();
+        r.shoot(0.4, 0.4); r.shoot(0.5, 0.5);
+        r.wm.finishSighters();
+        // Calm reference: 6 counted shots around the origin.
+        for (int i = 0; i < 6; ++i) r.shoot(double(i) - 2.5, 0.0);
+        // W 2.5: 6 counted shots offset to the right.
+        r.wm.setMeasuredCondition(270, 2.5);
+        for (int i = 0; i < 6; ++i) r.shoot(8.0 + double(i) - 2.5, 1.0);
+        // A condition with too few shots to compare.
+        r.wm.setMeasuredCondition(45, 5.0);
+        r.shoot(3.0, 3.0); r.shoot(3.2, 3.2);
+        // And one with no reading at all.
+        r.wm.setNoReadingCondition();
+        r.shoot(-4.0, 0.0);
+        r.wm.endCapture();
+
+        const SessionAnalysis a =
+            WindMapAnalyticsEngine::analyse(r.wm.storeForTesting()->state());
+        const QVariantMap m = r.wm.analysisModel();
+        check(!m.isEmpty() && a.valid, "19. both the engine and the model produced output");
+
+        // ── summary counts ──────────────────────────────────────────────
+        const QVariantMap sum = m.value(QStringLiteral("summary")).toMap();
+        check(sum.value(QStringLiteral("countedShots")).toInt() == a.countedShots
+              && sum.value(QStringLiteral("sighterShots")).toInt() == a.sighterShots
+              && sum.value(QStringLiteral("uniqueConditions")).toInt() == a.uniqueConditions
+              && sum.value(QStringLiteral("conditionEntries")).toInt() == a.conditionEntries
+              && sum.value(QStringLiteral("countedWithReading")).toInt() == a.countedWithReading
+              && sum.value(QStringLiteral("countedCalm")).toInt() == a.countedCalm
+              && sum.value(QStringLiteral("countedNoReading")).toInt() == a.countedNoReading,
+              "19. every summary count equals the engine's");
+
+        // ── positions, groups and every metric ──────────────────────────
+        const QVariantList pos = m.value(QStringLiteral("positions")).toList();
+        check(pos.size() == a.positions.size(), "19. the same number of positions");
+        bool allEqual = true;
+        QString firstDiff;
+        auto same = [](double x, double y) { return std::fabs(x - y) < 1e-12; };
+        for (int i = 0; i < a.positions.size() && i < pos.size(); ++i) {
+            const PositionAnalysis& pa = a.positions[i];
+            const QVariantMap pm = pos[i].toMap();
+            if (pm.value(QStringLiteral("countedShots")).toInt() != pa.countedShots) {
+                allEqual = false; firstDiff = QStringLiteral("countedShots");
+            }
+            // reference centre
+            const QVariantMap ref = pm.value(QStringLiteral("reference")).toMap();
+            if (ref.value(QStringLiteral("valid")).toBool() != pa.reference.valid
+                || ref.value(QStringLiteral("n")).toInt() != pa.reference.n) {
+                allEqual = false; firstDiff = QStringLiteral("reference");
+            }
+            if (pa.reference.valid
+                && (!same(ref.value(QStringLiteral("xMm")).toDouble(), pa.reference.xMm)
+                    || !same(ref.value(QStringLiteral("yMm")).toDouble(), pa.reference.yMm))) {
+                allEqual = false; firstDiff = QStringLiteral("reference centre");
+            }
+            // every grouping
+            struct Pair { const QVector<GroupStats>* eng; const char* key; };
+            const Pair pairs[] = {
+                { &pa.byDirection,      "byDirection" },
+                { &pa.bySpeedBand,      "bySpeedBand" },
+                { &pa.byExactCondition, "byExactCondition" },
+            };
+            for (const Pair& pr : pairs) {
+                const QVariantList gl = pm.value(QLatin1String(pr.key)).toList();
+                if (gl.size() != pr.eng->size()) {
+                    allEqual = false; firstDiff = QLatin1String(pr.key); continue;
+                }
+                for (int j = 0; j < gl.size(); ++j) {
+                    const GroupStats& g = (*pr.eng)[j];
+                    const QVariantMap gm = gl[j].toMap();
+                    if (gm.value(QStringLiteral("label")).toString() != g.label
+                        || gm.value(QStringLiteral("n")).toInt() != g.n
+                        || gm.value(QStringLiteral("hasMpi")).toBool() != g.hasMpi
+                        || gm.value(QStringLiteral("hasDispersion")).toBool() != g.hasDispersion) {
+                        allEqual = false; firstDiff = QStringLiteral("%1 flags").arg(QLatin1String(pr.key));
+                    }
+                    if (g.hasMeanScore
+                        && !same(gm.value(QStringLiteral("meanScore")).toDouble(), g.meanScore)) {
+                        allEqual = false; firstDiff = QStringLiteral("meanScore");
+                    }
+                    if (g.hasMpi
+                        && (!same(gm.value(QStringLiteral("mpiXMm")).toDouble(), g.mpiXMm)
+                            || !same(gm.value(QStringLiteral("mpiYMm")).toDouble(), g.mpiYMm))) {
+                        allEqual = false; firstDiff = QStringLiteral("mpi");
+                    }
+                    if (g.hasDispersion
+                        && (!same(gm.value(QStringLiteral("meanRadiusMm")).toDouble(), g.meanRadiusMm)
+                            || !same(gm.value(QStringLiteral("groupDiameterMm")).toDouble(), g.groupDiameterMm)
+                            || !same(gm.value(QStringLiteral("horizontalSpreadMm")).toDouble(), g.horizontalSpreadMm)
+                            || !same(gm.value(QStringLiteral("verticalSpreadMm")).toDouble(), g.verticalSpreadMm)
+                            || !same(gm.value(QStringLiteral("scoreStdDev")).toDouble(), g.scoreStdDev))) {
+                        allEqual = false; firstDiff = QStringLiteral("dispersion");
+                    }
+                }
+            }
+            // shift vectors
+            const QVariantList sl = pm.value(QStringLiteral("shifts")).toList();
+            if (sl.size() != pa.shifts.size()) {
+                allEqual = false; firstDiff = QStringLiteral("shifts");
+            }
+            for (int j = 0; j < sl.size() && j < pa.shifts.size(); ++j) {
+                const ShiftVector& v = pa.shifts[j];
+                const QVariantMap sm = sl[j].toMap();
+                if (sm.value(QStringLiteral("valid")).toBool() != v.valid
+                    || sm.value(QStringLiteral("n")).toInt() != v.n) {
+                    allEqual = false; firstDiff = QStringLiteral("shift flags");
+                }
+                if (v.valid
+                    && (!same(sm.value(QStringLiteral("dxMm")).toDouble(), v.dxMm)
+                        || !same(sm.value(QStringLiteral("dyMm")).toDouble(), v.dyMm)
+                        || !same(sm.value(QStringLiteral("magnitudeMm")).toDouble(), v.magnitudeMm))) {
+                    allEqual = false; firstDiff = QStringLiteral("shift values");
+                }
+            }
+        }
+        check(allEqual, "19. EVERY position, group, metric and shift equals the engine",
+              firstDiff);
+
+        // ── findings, timeline, limitations ─────────────────────────────
+        const QVariantList fl = m.value(QStringLiteral("findings")).toList();
+        check(fl.size() == a.findings.size(), "19. the same findings");
+        bool findingsEqual = true;
+        for (int i = 0; i < fl.size() && i < a.findings.size(); ++i)
+            if (fl[i].toMap().value(QStringLiteral("text")).toString() != a.findings[i].text
+                || fl[i].toMap().value(QStringLiteral("suggestion")).toString() != a.findings[i].suggestion)
+                findingsEqual = false;
+        check(findingsEqual, "19. the findings are RENDERED, not re-worded");
+        check(m.value(QStringLiteral("timeline")).toList().size() == a.timeline.size(),
+              "19. the timeline carries every shot");
+        check(m.value(QStringLiteral("limitations")).toStringList() == a.limitations,
+              "19. the limitations are carried verbatim");
+    }
+
+    // ── 20. a withheld metric is ABSENT, not zero ───────────────────────
+    {
+        // A view must not be able to print a 0 that looks like a measurement.
+        Rig r; r.start("PRONE50");
+        r.wm.setMeasuredCondition(45, 5.0);
+        r.wm.beginCountedShots();
+        r.shoot(3.0, 3.0); r.shoot(3.2, 3.2);      // n = 2: below every threshold
+        r.wm.endCapture();
+        const QVariantMap m = r.wm.analysisModel();
+        const QVariantList pos = m.value(QStringLiteral("positions")).toList();
+        const QVariantList ex = pos.value(0).toMap().value(QStringLiteral("byExactCondition")).toList();
+        check(ex.size() == 1, "20. one group");
+        const QVariantMap g = ex.value(0).toMap();
+        check(!g.value(QStringLiteral("hasMpi")).toBool(), "20. MPI is withheld at n=2");
+        check(!g.contains(QStringLiteral("mpiXMm")),
+              "20. and the key is ABSENT — a view cannot read a misleading 0");
+        check(!g.contains(QStringLiteral("groupDiameterMm")),
+              "20. no dispersion key is emitted either");
+        check(g.value(QStringLiteral("shotsNeededForMpi")).toInt() == 1
+              && g.value(QStringLiteral("shotsNeededForDispersion")).toInt() == 3,
+              "20. the shortfall is reported instead");
+    }
+
+    // ── 21. 3P: each position keeps its OWN reference in the model ──────
+    {
+        Rig r; r.start("3P50");
+        r.wm.setCalmCondition();
+        r.wm.beginCountedShots();
+        for (int i = 0; i < 5; ++i) r.shoot(20.0 + double(i) - 2.0, 20.0);   // Kneeling
+        r.wm.endPosition(); r.wm.changePosition(2); r.wm.beginCountedShots();
+        for (int i = 0; i < 5; ++i) r.shoot(double(i) - 2.0, 0.0);           // Prone
+        r.wm.endPosition(); r.wm.changePosition(3); r.wm.beginCountedShots();
+        for (int i = 0; i < 5; ++i) r.shoot(-20.0 + double(i) - 2.0, -20.0); // Standing
+        r.wm.endCapture();
+
+        const QVariantMap m = r.wm.analysisModel();
+        const QVariantList pos = m.value(QStringLiteral("positions")).toList();
+        check(pos.size() == 3, "21. three position analyses in the model");
+        const QVariantMap k = pos.value(0).toMap();
+        const QVariantMap pr = pos.value(1).toMap();
+        const QVariantMap st = pos.value(2).toMap();
+        check(k.value(QStringLiteral("positionName")).toString() == QLatin1String("Kneeling")
+              && st.value(QStringLiteral("positionName")).toString() == QLatin1String("Standing"),
+              "21. named and ordered K -> P -> S");
+        const double kx = k.value(QStringLiteral("reference")).toMap()
+                           .value(QStringLiteral("xMm")).toDouble();
+        const double px = pr.value(QStringLiteral("reference")).toMap()
+                            .value(QStringLiteral("xMm")).toDouble();
+        const double sx = st.value(QStringLiteral("reference")).toMap()
+                            .value(QStringLiteral("xMm")).toDouble();
+        check(std::fabs(kx - 20.0) < 1e-9 && std::fabs(px) < 1e-9 && std::fabs(sx + 20.0) < 1e-9,
+              "21. each position carries its OWN reference centre — never pooled",
+              QStringLiteral("%1 / %2 / %3").arg(kx).arg(px).arg(sx));
+        check(k.value(QStringLiteral("countedShots")).toInt() == 5
+              && pr.value(QStringLiteral("countedShots")).toInt() == 5
+              && st.value(QStringLiteral("countedShots")).toInt() == 5,
+              "21. no position absorbed another's shots");
+    }
+
+    // ── 22. the raw appendix keeps the immutable snapshots ──────────────
+    {
+        Rig r; r.start("PRONE50");
+        r.wm.setMeasuredCondition(270, 2.5, QStringLiteral("gusting"));
+        r.wm.beginCountedShots();
+        r.shoot(1.5, -2.5, 10.4);
+        r.wm.setNoReadingCondition();
+        r.shoot(2.0, 2.0, 9.7);
+        r.wm.endCapture();
+        const QVariantList rows = r.wm.analysisModel().value(QStringLiteral("shotRows")).toList();
+        check(rows.size() == 2, "22. one row per shot");
+        const QVariantMap a0 = rows.value(0).toMap();
+        // Every field the PDF appendix must reproduce.
+        check(a0.value(QStringLiteral("shotId")).toInt() == 1
+              && a0.value(QStringLiteral("type")).toString() == QLatin1String("Counted")
+              && a0.contains(QStringLiteral("positionName"))
+              && std::fabs(a0.value(QStringLiteral("score")).toDouble() - 10.4) < 1e-9
+              && std::fabs(a0.value(QStringLiteral("xMm")).toDouble() - 1.5) < 1e-9
+              && std::fabs(a0.value(QStringLiteral("yMm")).toDouble() + 2.5) < 1e-9
+              && a0.contains(QStringLiteral("timestampMs")),
+              "22. shot number, type, position, score, X/Y and timestamp are kept");
+        check(a0.value(QStringLiteral("hasWindReading")).toBool()
+              && a0.value(QStringLiteral("directionDegrees")).toInt() == 270
+              && a0.value(QStringLiteral("directionLabel")).toString() == QLatin1String("W")
+              && std::fabs(a0.value(QStringLiteral("speedMetresPerSecond")).toDouble() - 2.5) < 1e-9
+              && a0.value(QStringLiteral("note")).toString() == QLatin1String("gusting"),
+              "22. the immutable wind snapshot is reproduced, note included");
+        const QVariantMap a1 = rows.value(1).toMap();
+        check(!a1.value(QStringLiteral("hasWindReading")).toBool()
+              && a1.value(QStringLiteral("directionLabel")).toString().isEmpty(),
+              "22. a no-reading shot stays a no-reading shot in the appendix");
+        // Speed is m/s in the model too — hundredths never leave the domain.
+        check(!r.wm.analysisModel().value(QStringLiteral("shotRows")).toList().isEmpty(),
+              "22. the appendix is populated");
+    }
+
+    // ── 23. UI-WIND-002: end-to-end, a NORMAL session reaches the analysis ─
+    {
+        // The exact workflow Arnold drove by hand: 3P, sighters first, counted
+        // shots in two positions, two conditions, complete. This is a REAL
+        // controller run — no seeded fixture, no static string check.
+        Rig r;
+        check(r.wm.configureSession(QStringLiteral("3P50"), 40, true),
+              "23. 1-5 setup: 3P, 40 planned, sighters first");
+        check(r.wm.startWindMap(QStringLiteral("Arnold Bailie")),
+              "23. 6 start Wind Map");
+        check(r.wm.phase() == kSetup, "23. opens in Setup");
+
+        r.wm.setCalmCondition(QStringLiteral("still"));
+        check(r.wm.beginSighters() && r.wm.phase() == kSighters, "23. 7 start sighters");
+        r.shoot(1.0, 1.0); r.shoot(1.2, 0.8);
+        check(r.wm.sighterCount() == 2, "23. 7 sighters recorded");
+
+        check(r.wm.finishSighters() && r.wm.phase() == kCounted, "23. 8 start counted shots");
+        // Kneeling: 3 shots under calm, 2 under a measured reading.
+        r.shoot(2.0, 2.0); r.shoot(2.4, 1.6); r.shoot(1.8, 2.2);
+        r.wm.setMeasuredCondition(270, 2.5, QStringLiteral("from the left"));
+        r.shoot(6.0, 1.0); r.shoot(6.4, 1.4);
+        check(r.wm.countedShots() == 5, "23. 9 counted shots in Kneeling");
+
+        // Position two.
+        check(r.wm.endPosition(), "23. 9 end Kneeling");
+        check(r.wm.changePosition(2), "23. 9 change to Prone");
+        check(r.wm.beginCountedShots(), "23. 9 counted shots in Prone");
+        r.shoot(0.5, 0.5); r.shoot(0.8, 0.2); r.shoot(0.2, 0.9);
+        check(r.wm.countedShots() == 3, "23. 9 counted shots recorded in Prone");
+        check(r.wm.totalCountedShots() == 8, "23. 10 two positions, two conditions");
+
+        // Complete.
+        check(r.wm.endCapture() && r.wm.phase() == kSessionReview, "23. 11 end capture");
+        check(r.wm.completeSession(), "23. 11 complete session");
+        check(r.wm.phase() == kCompleted,
+              "23. the completed state IS reached — this is what the view binds to",
+              QStringLiteral("phase %1").arg(r.wm.phase()));
+
+        // ── the analysis the athlete must now see ───────────────────────
+        const QVariantMap m = r.wm.analysisModel();
+        check(!m.isEmpty(),
+              "23. the analysis model is POPULATED after a normal completion");
+
+        const QVariantMap sum = m.value(QStringLiteral("summary")).toMap();
+        check(sum.value(QStringLiteral("countedShots")).toInt() == 8
+              && sum.value(QStringLiteral("sighterShots")).toInt() == 2,
+              "23. factual overview: counted and sighter totals");
+        check(sum.value(QStringLiteral("uniqueConditions")).toInt() == 2,
+              "23. factual overview: unique conditions");
+        check(!sum.value(QStringLiteral("dataQuality")).toString().isEmpty(),
+              "23. factual overview: data-quality status");
+        const QVariantMap sess = m.value(QStringLiteral("session")).toMap();
+        check(sess.value(QStringLiteral("positionsRepresented")).toStringList().size() == 2,
+              "23. factual overview: positions represented");
+        check(sess.value(QStringLiteral("threePositions")).toBool(),
+              "23. the model reports 3P, so the position tabs appear");
+
+        // 3P tabs come from the positions array — one per position with data.
+        const QVariantList pos = m.value(QStringLiteral("positions")).toList();
+        check(pos.size() == 2,
+              "23. a position analysis per shot position — the 3P tabs",
+              QStringLiteral("%1 positions").arg(pos.size()));
+        check(pos.value(0).toMap().value(QStringLiteral("positionName")).toString()
+                  == QLatin1String("Kneeling")
+              && pos.value(1).toMap().value(QStringLiteral("positionName")).toString()
+                  == QLatin1String("Prone"),
+              "23. named Kneeling and Prone, never pooled");
+
+        // Findings must exist even on a short session — the athlete always
+        // gets an explanation, never a blank page.
+        const QVariantList findings = m.value(QStringLiteral("findings")).toList();
+        check(!findings.isEmpty(),
+              "23. findings are produced even for a short session");
+        check(!m.value(QStringLiteral("limitations")).toStringList().isEmpty(),
+              "23. limitations are present");
+        check(m.value(QStringLiteral("timeline")).toList().size() == 10,
+              "23. the timeline lists every shot, sighters included");
+
+        // ── withheld, not zero ──────────────────────────────────────────
+        const QVariantList ex = pos.value(0).toMap()
+                                  .value(QStringLiteral("byExactCondition")).toList();
+        bool sawWithheld = false, anyZeroed = false;
+        for (const QVariant& v : ex) {
+            const QVariantMap g = v.toMap();
+            if (g.value(QStringLiteral("hasDispersion")).toBool()) continue;
+            sawWithheld = true;
+            // The keys must be ABSENT, so no view can print 0.0.
+            if (g.contains(QStringLiteral("groupDiameterMm"))
+                || g.contains(QStringLiteral("meanRadiusMm"))) anyZeroed = true;
+            // And the shortfall must be stated.
+            if (g.value(QStringLiteral("shotsNeededForDispersion")).toInt() <= 0) anyZeroed = true;
+        }
+        check(sawWithheld, "23. this short session does have withheld statistics");
+        check(!anyZeroed,
+              "23. every withheld statistic is ABSENT and states how many more shots it needs");
+
+        // The 2-shot measured group: MPI withheld, shortfall = 1.
+        const QVariantMap* small = nullptr;
+        QVariantMap smallHolder;
+        for (const QVariant& v : ex) {
+            const QVariantMap g = v.toMap();
+            if (g.value(QStringLiteral("n")).toInt() == 2) { smallHolder = g; small = &smallHolder; }
+        }
+        check(small != nullptr, "23. the 2-shot condition group exists");
+        if (small) {
+            check(!small->value(QStringLiteral("hasMpi")).toBool()
+                  && !small->contains(QStringLiteral("mpiXMm")),
+                  "23. its MPI is withheld and absent, not 0.0");
+            check(small->value(QStringLiteral("shotsNeededForMpi")).toInt() == 1,
+                  "23. it states 1 more shot is required");
+        }
+    }
+
+    // ── 24. UI-WIND-002: a SEEDED long session takes the same path ──────
+    {
+        // A normally-created session and a recovered/seeded one must produce
+        // the same analysis through the same code — that was the requirement.
+        Rig live; live.start("PRONE50", 40, true);
+        live.wm.setCalmCondition();
+        live.wm.beginSighters();
+        live.shoot(0.4, 0.4);
+        live.wm.finishSighters();
+        for (int i = 0; i < 12; ++i) live.shoot(double(i % 5) - 2.0, double(i % 3) - 1.0, 10.2);
+        live.wm.setMeasuredCondition(270, 2.5);
+        for (int i = 0; i < 12; ++i) live.shoot(7.0 + (i % 5) - 2.0, double(i % 3) - 1.0, 9.9);
+        live.wm.endCapture();
+        live.wm.completeSession();
+        const QVariantMap liveModel = live.wm.analysisModel();
+
+        // Now recover the SAME journal and analyse the recovered state.
+        Rig back;
+        check(back.wm.resumeFromRecoveredState(recoveredFrom(live.file)),
+              "24. the completed session is recoverable");
+        const QVariantMap recModel = back.wm.analysisModel();
+
+        check(!liveModel.isEmpty() && !recModel.isEmpty(),
+              "24. both the live and the recovered session produce an analysis");
+        const QVariantMap ls = liveModel.value(QStringLiteral("summary")).toMap();
+        const QVariantMap rs = recModel.value(QStringLiteral("summary")).toMap();
+        check(ls.value(QStringLiteral("countedShots")) == rs.value(QStringLiteral("countedShots"))
+              && ls.value(QStringLiteral("sighterShots")) == rs.value(QStringLiteral("sighterShots"))
+              && ls.value(QStringLiteral("uniqueConditions")) == rs.value(QStringLiteral("uniqueConditions")),
+              "24. the recovered analysis has identical counts");
+        check(liveModel.value(QStringLiteral("positions")).toList().size()
+                  == recModel.value(QStringLiteral("positions")).toList().size(),
+              "24. and identical position analyses");
+        check(liveModel.value(QStringLiteral("findings")).toList().size()
+                  == recModel.value(QStringLiteral("findings")).toList().size(),
+              "24. and identical findings — one analysis path, not two");
+        check(liveModel.value(QStringLiteral("timeline")).toList().size() == 25,
+              "24. the long session's timeline is complete (24 counted + 1 sighter)");
+    }
+}

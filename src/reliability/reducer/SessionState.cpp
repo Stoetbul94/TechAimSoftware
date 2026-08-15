@@ -40,6 +40,7 @@ bool SessionState::operator==(const SessionState& o) const
         && wmThreePositions == o.wmThreePositions
         && wmCurrentPosition == o.wmCurrentPosition
         && wmPositionSequence == o.wmPositionSequence
+        && wmPhase == o.wmPhase                    // state v6
         && wmConditionChanges == o.wmConditionChanges
         && wmNextShotId == o.wmNextShotId
         && wmWindValid == o.wmWindValid && wmWindCalm == o.wmWindCalm
@@ -407,6 +408,10 @@ QByteArray serializeSessionState(const SessionState& s)
     w.field("threePositions", s.wmThreePositions);
     w.field("currentPosition", static_cast<qint64>(s.wmCurrentPosition));
     w.field("positionSequence", s.wmPositionSequence);
+    // v6: the durable workflow phase. Appended after positionSequence, so the
+    // preceding field order (and therefore every earlier key's bytes) is
+    // unchanged; only the new key is added.
+    w.field("phase", static_cast<qint64>(s.wmPhase));
     w.field("conditionChanges", static_cast<qint64>(s.wmConditionChanges));
     w.field("nextShotId", static_cast<qint64>(s.wmNextShotId));
     // The STANDING condition. windValid=false is a real recorded state
@@ -1036,7 +1041,10 @@ ReliabilityResult deserializeSessionState(const QByteArray& json, SessionState* 
             s.wmThreePositions = wr.optBoolDef("threePositions", false);
             s.wmCurrentPosition = static_cast<qint8>(wr.optIntDef("currentPosition", 0, 0, 3));
             s.wmPositionSequence = wr.optStringDef("positionSequence");
-            s.wmConditionChanges = static_cast<qint32>(wr.optIntDef("conditionChanges", 0, 0, INT32_MAX));
+            // v6. Absent in a v4/v5 snapshot -> 0 (Idle), which is right: those
+            // snapshots predate the capture workflow entirely.
+            s.wmPhase = static_cast<qint8>(wr.optIntDef("phase", 0, 0, 6));
+            s.wmConditionChanges =static_cast<qint32>(wr.optIntDef("conditionChanges", 0, 0, INT32_MAX));
             s.wmNextShotId = static_cast<qint32>(wr.optIntDef("nextShotId", 1, 0, INT32_MAX));
             s.wmWindValid = wr.optBoolDef("windValid", false);
             s.wmWindCalm = wr.optBoolDef("windCalm", false);

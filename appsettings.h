@@ -155,6 +155,20 @@ public:
 
     Q_INVOKABLE double bullet_diameter() const;
 
+    // SCORING-CAL-001. The AUTHORITATIVE projectile diameter in mm for the
+    // discipline currently being shot, selected by RANGE - 10 m disciplines
+    // fire 4.5 mm (.177), 50 m fires 5.6 mm (.22 LR), per ISSF Rule Book 2026
+    // sections 7.4 and 8.4. bullet_diameter() is one process-wide config value
+    // that defaults to 5.6 and is never written per discipline, so scoring a
+    // 10 m match through it used a 5.6 mm projectile and over-scored every
+    // shot. Callers that score, scale the shot marker, or size a group must
+    // use THIS, not bullet_diameter().
+    Q_INVOKABLE double projectileDiameterMm(int rangeMeters) const;
+    // True when config.ini explicitly pins bullet_size. Kept so a deliberate
+    // non-ISSF calibre can still be configured; absent (the shipped case) the
+    // discipline decides.
+    Q_INVOKABLE bool projectileDiameterOverridden() const;
+
 private slots:
     void readServerSettings(const QString &path);
     void readControlFile(const QString &path);
@@ -234,6 +248,7 @@ private:
     double m_match_meter = 10;
     bool m_isPalletTRansparent = false;
     double m_bullet_diameter = 5.6;
+    bool   m_bulletSizeOverridden = false;
 };
 
 #endif // APPSETTINGS_H

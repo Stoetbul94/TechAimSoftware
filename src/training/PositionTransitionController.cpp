@@ -504,17 +504,24 @@ QVariantList PositionTransitionController::checklistItems() const
     return out;
 }
 
-// Classify shot-to-shot cadence from the coefficient of variation of the
-// inter-shot times. Empty (no verdict) unless timing landed on every shot and
+// Describe shot-to-shot cadence from the coefficient of variation of the
+// inter-shot times. Empty (no label) unless timing landed on every shot and
 // there are at least three shots to define a cadence.
+//
+// PT-02: these describe the MEASUREMENT, not the athlete. "Inconsistent" was
+// removed because it reads as a criticism of the shooter rather than a
+// property of one set of intervals, and no verified source establishes that a
+// low cadence CV is desirable in 3P. The bands remain a REASONED PRODUCT RULE
+// awaiting coach review; the CV and the interval count are published alongside
+// so the reader can see how thin the sample is.
 static QString ptRhythmLabel(const BlockMetrics& bm)
 {
     if (!bm.hasTiming || bm.shotCount < 3 || bm.averageShotTime <= 0.0)
         return QString();
     const double cv = bm.shotTimeStdDev / bm.averageShotTime;
-    if (cv < 0.20) return QStringLiteral("Steady");
-    if (cv < 0.40) return QStringLiteral("Variable");
-    return QStringLiteral("Inconsistent");
+    if (cv < 0.20) return QStringLiteral("Low rhythm variability");
+    if (cv < 0.40) return QStringLiteral("Moderate rhythm variability");
+    return QStringLiteral("High rhythm variability");
 }
 
 QVariantMap PositionTransitionController::positionReview(int position, int repeat) const
@@ -549,6 +556,15 @@ QVariantMap PositionTransitionController::positionReview(int position, int repea
     m[QStringLiteral("rhythmCv")] =
         (bm.hasTiming && bm.averageShotTime > 0.0) ? bm.shotTimeStdDev / bm.averageShotTime : 0.0;
     m[QStringLiteral("rhythm")] = ptRhythmLabel(bm);
+    // PT-02: the label never travels without the measurement behind it. The
+    // interval count is shots-1, because n shots define n-1 intervals.
+    m[QStringLiteral("rhythmIntervals")] = bm.hasTiming ? qMax(0, bm.shotCount - 1) : 0;
+    m[QStringLiteral("rhythmBasis")] = ptRhythmLabel(bm).isEmpty()
+        ? QString()
+        : QStringLiteral("CV %1 over %2 shot intervals")
+              .arg((bm.averageShotTime > 0.0) ? bm.shotTimeStdDev / bm.averageShotTime : 0.0,
+                   0, 'f', 2)
+              .arg(qMax(0, bm.shotCount - 1));
     // first-shot metrics
     if (!r->verifShots.isEmpty()) {
         const ShotCore& fs = r->verifShots.first();
@@ -585,8 +601,7 @@ QVariantMap PositionTransitionController::positionReview(int position, int repea
     m[QStringLiteral("checklistChecked")] = checked;
     m[QStringLiteral("checklistSkipped")] = skipped;
     m[QStringLiteral("note")] = r->note;
-    m[QStringLiteral("disclaimer")] =
-        QStringLiteral("Measured setup and early-group data. It does not identify the technical cause.");
+    m[QStringLiteral("disclaimer")] = reviewDisclaimer();   // EVID-PT-001: one source
     return m;
 }
 
@@ -660,8 +675,14 @@ QStringList PositionTransitionController::sessionObservations() const
     }
     if (!longestPos.isEmpty())
         out << QStringLiteral("%1 took the longest to set up (%2 s).").arg(longestPos).arg(longestMs / 1000);
+    // PT-01: "fastest" invites the reading that faster is better. It is a
+    // duration, reported as one. No source establishes an optimal settling time
+    // for any ISSF position, so neither direction is called good.
     if (!fastestPos.isEmpty() && fastestMs != INT_MAX)
-        out << QStringLiteral("%1 had the fastest first shot after Position Ready (%2 s).").arg(fastestPos).arg(fastestMs / 1000);
+        out << QStringLiteral("%1 had the shortest ready-to-first-counted-shot time (%2 s). "
+                              "A shorter time is not automatically better, and a longer one is "
+                              "not automatically worse.")
+                  .arg(fastestPos).arg(fastestMs / 1000);
     if (!mostSighterPos.isEmpty() && mostSighters > 0)
         out << QStringLiteral("%1 required the most sighters (%2).").arg(mostSighterPos).arg(mostSighters);
     // widest verification group (measured extreme spread)
@@ -675,11 +696,23 @@ QStringList PositionTransitionController::sessionObservations() const
     if (!widestPos.isEmpty() && widestDia > 0.0)
         out << QStringLiteral("%1 had the widest verification group (%2 mm).")
                   .arg(widestPos).arg(QString::number(widestDia, 'f', 1));
-    // Fast onto the target but the widest group in the SAME position — both
-    // facts measured; the reading stays hedged (this does not identify a cause).
+    // PT-06: two measured facts that happened to land on the same position, in
+    // ONE session. The previous wording proposed "not fully settled" as the
+    // explanation. The verified evidence points the other way — Ihalainen et
+    // al. (2016) found postural balance explained under 1% of score variance
+    // directly, and Era et al. (1996) found that for trained shooters a
+    // posture-stabilisation miss was seldom the reason for a poor result — and
+    // this programme measures precisely the within-athlete case where that
+    // evidence is weakest. So: report both facts, state that the data cannot
+    // link them, and propose a controlled test instead of a cause.
     if (!widestPos.isEmpty() && widestPos == fastestPos && fastestMs != INT_MAX)
-        out << QStringLiteral("%1 reached the first shot quickest yet spread the widest — worth checking whether the position was fully settled before firing.")
-                  .arg(widestPos);
+        out << QStringLiteral("%1 had both the shortest ready-to-first-counted-shot time (%2 s) "
+                              "and the widest verification group in this session. These are two "
+                              "separate measurements and this data cannot show whether they are "
+                              "related. Next training step: repeat %1 with a deliberately longer "
+                              "interval before the first counted shot and compare the group with "
+                              "today's.")
+                  .arg(widestPos).arg(fastestMs / 1000);
     // shot rhythm — procedural, so comparable across positions
     QString steadyPos, jumpyPos; double steadyCv = 1e18, jumpyCv = -1.0;
     for (const QVariant& v : comp) {
@@ -692,7 +725,7 @@ QStringList PositionTransitionController::sessionObservations() const
     }
     if (!steadyPos.isEmpty() && !jumpyPos.isEmpty() && steadyPos != jumpyPos)
         out << QStringLiteral("Shot rhythm was steadiest in %1 and most variable in %2.").arg(steadyPos, jumpyPos);
-    out << QStringLiteral("Positions have different stability demands — compare each position to itself across repeats, not against another position.");
+    out << crossPositionCaveat();   // EVID-PT-001: one source, never re-typed
     return out;
 }
 
