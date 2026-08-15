@@ -545,6 +545,96 @@ int main(int argc, char* argv[])
         }
     }
 
+    // ─────────────────────────────────────────────────────────────────────
+    // SCORING-CAL-001 — the projectile diameter must come from the DISCIPLINE
+    //
+    // The boundary triples above hardcode the correct per-discipline radii, so
+    // they passed while the shipped build scored every 10 m shot with a 5.6 mm
+    // projectile: radOfPallet read APPSETTINGS.bullet_diameter(), one
+    // process-wide config value defaulting to 5.6 that is never written per
+    // discipline, and the deployed config.ini does not define the key at all.
+    // These checks bind the PRODUCTION SELECTION PATH, not a copy of it.
+    // ─────────────────────────────────────────────────────────────────────
+    {
+        const QString centre  = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/CenterPane.qml"));
+        const QString appSet  = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/appsettings.cpp"));
+        check(!centre.isEmpty() && !appSet.isEmpty(),
+              "SCORING-CAL-001: CenterPane.qml and appsettings.cpp can be read");
+
+        // The stale process-wide accessor must not appear in the scoring pane
+        // at all - not in scoring, not in the marker scale, not in group size.
+        check(!centre.contains(QStringLiteral("APPSETTINGS.bullet_diameter()")),
+              "SCORING-CAL-001: CenterPane no longer reads the process-wide "
+              "bullet_diameter()");
+        check(centre.contains(QStringLiteral("APPSETTINGS.projectileDiameterMm(gameRange)")),
+              "SCORING-CAL-001: CenterPane selects the projectile by range");
+
+        // Every scoring branch derives its pellet radius from that selector.
+        int radAt = 0, radCount = 0, radFromSelector = 0;
+        while ((radAt = centre.indexOf(QStringLiteral("var radOfPallet"), radAt)) >= 0) {
+            ++radCount;
+            const int eol = centre.indexOf(QChar(10), radAt);
+            const QString line = centre.mid(radAt, eol - radAt);
+            if (line.contains(QStringLiteral("projectileDiameterMm"))) ++radFromSelector;
+            radAt = eol;
+        }
+        check(radCount > 0 && radCount == radFromSelector,
+              "SCORING-CAL-001: every radOfPallet comes from the range selector",
+              QStringLiteral("%1 of %2").arg(radFromSelector).arg(radCount));
+
+        // The authority itself, in the real C++: 10 m -> 4.5, otherwise 5.6.
+        check(appSet.contains(QStringLiteral("projectileDiameterMm")),
+              "SCORING-CAL-001: AppSettings exposes projectileDiameterMm()");
+        check(appSet.contains(QStringLiteral("rangeMeters == 10 ? 4.5 : 5.6")),
+              "SCORING-CAL-001: 10 m resolves to 4.5 mm and 50 m to 5.6 mm");
+        // A deliberately configured calibre is still honoured.
+        check(appSet.contains(QStringLiteral("m_bulletSizeOverridden")),
+              "SCORING-CAL-001: an explicit config bullet_size still overrides");
+
+        // Language cannot reach this decision: the selector takes gameRange,
+        // an int, and gameRange is never derived from a translated string.
+        check(!centre.contains(QStringLiteral("projectileDiameterMm(qsTr")),
+              "SCORING-CAL-001: the projectile selector is not language-derived");
+
+        // Boundary behaviour with the PRODUCTION mapping, plus the negative
+        // control: the old 5.6 mm at 10 m must NOT satisfy the 10.0 hinge.
+        auto scoreAt = [](double spacing, double r10, double rPellet, double r) {
+            return 9.0 + ((spacing + r10 + rPellet - r) / spacing);
+        };
+        auto pellet = [](int rangeMeters) { return rangeMeters == 10 ? 4.5 : 5.6; };
+        struct Disc { const char* name; int range; double spacing, r10; };
+        const Disc discs[] = {
+            { "10 m Air Rifle",  10, 2.5, 0.25 },
+            { "10 m Air Pistol", 10, 8.0, 5.75 },
+            { "50 m Rifle",      50, 8.0, 5.20 },
+        };
+        for (const Disc& d : discs) {
+            const double rP = pellet(d.range) / 2.0;
+            for (int ring = 10; ring >= 9; --ring) {
+                const double at = d.r10 + rP + (10 - ring) * d.spacing;
+                check(qAbs(scoreAt(d.spacing, d.r10, rP, at) - ring) < 1e-9,
+                      qUtf8Printable(QStringLiteral("SCORING-CAL-001: %1 %2-ring hinge with the "
+                                     "production projectile").arg(d.name).arg(ring)),
+                      QString::number(rP, 'f', 3));
+                check(scoreAt(d.spacing, d.r10, rP, at - 0.01) > ring,
+                      qUtf8Printable(QStringLiteral("SCORING-CAL-001: %1 just inside %2")
+                                     .arg(d.name).arg(ring)));
+                check(scoreAt(d.spacing, d.r10, rP, at + 0.01) < ring,
+                      qUtf8Printable(QStringLiteral("SCORING-CAL-001: %1 just outside %2")
+                                     .arg(d.name).arg(ring)));
+            }
+            if (d.range == 10) {
+                // Negative control: the shipped 5.6 mm default at 10 m puts the
+                // 10.0 hinge in the wrong place. This is the defect, asserted.
+                const double wrong = scoreAt(d.spacing, d.r10, 2.8, d.r10 + rP);
+                check(wrong > 10.0 + 1e-9,
+                      qUtf8Printable(QStringLiteral("SCORING-CAL-001: %1 would OVER-score with "
+                                     "the old 5.6 mm default").arg(d.name)),
+                      QString::number(wrong, 'f', 6));
+            }
+        }
+    }
+
     printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
     fflush(stdout);
     return g_failures ? 1 : 0;

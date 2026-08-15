@@ -901,8 +901,8 @@ Item {
                 //50 Meter Pistol Ratio=500/5.6=89.29
                 //50 Meter Rifle Ratio=154.4/5.6=27.57
 
-                property double gameRatio: gameRange == 10 ? (gameMode ? 155.5/APPSETTINGS.bullet_diameter() : 45.5/APPSETTINGS.bullet_diameter())
-                                                           : (gameMode ? 500/APPSETTINGS.bullet_diameter() : 154.4/APPSETTINGS.bullet_diameter())
+                property double gameRatio: gameRange == 10 ? (gameMode ? 155.5/APPSETTINGS.projectileDiameterMm(gameRange) : 45.5/APPSETTINGS.projectileDiameterMm(gameRange))
+                                                           : (gameMode ? 500/APPSETTINGS.projectileDiameterMm(gameRange) : 154.4/APPSETTINGS.projectileDiameterMm(gameRange))
 
 //                width: gameRange == 10 ? (gameMode ? shootingcanvas.height/34.55 : shootingcanvas.height/10.11 )
 //                                       : (gameMode ? shootingcanvas.height/89.29 /*size 500 pallet 5.6*/
@@ -1102,8 +1102,8 @@ Item {
                 //50 Meter Pistol Ratio=500/5.6=89.29
                 //50 Meter Rifle Ratio=154.4/5.6=27.57
 
-                var gameRatio = gameRange == 10 ? (gameMode ? 155.5/APPSETTINGS.bullet_diameter() : 45.5/APPSETTINGS.bullet_diameter())
-                                                : (gameMode ? 500/APPSETTINGS.bullet_diameter() : 154.4/APPSETTINGS.bullet_diameter())
+                var gameRatio = gameRange == 10 ? (gameMode ? 155.5/APPSETTINGS.projectileDiameterMm(gameRange) : 45.5/APPSETTINGS.projectileDiameterMm(gameRange))
+                                                : (gameMode ? 500/APPSETTINGS.projectileDiameterMm(gameRange) : 154.4/APPSETTINGS.projectileDiameterMm(gameRange))
 
 //                width: gameRange == 10 ? (gameMode ? shootingcanvas.height/34.55 : shootingcanvas.height/10.11 )
 //                                       : (gameMode ? shootingcanvas.height/89.29 /*size 500 pallet 5.6*/
@@ -1155,7 +1155,7 @@ Item {
                         }
                     }
                 }
-                group_distance = globalModelOfData.count > 1 ? g + APPSETTINGS.bullet_diameter() : 0
+                group_distance = globalModelOfData.count > 1 ? g + APPSETTINGS.projectileDiameterMm(gameRange) : 0
                 if (APPSETTINGS.getDeveloperMode()) console.log("group refreshPosition group_distance ", group_distance)
 
                 var pistalWidthHeight = gameRange == 10 ? 155.5 : 500
@@ -1252,8 +1252,8 @@ Item {
 //                width = gameRange == 10 ? (centerPanel.gameMode ? shootingcanvas.height/34.55 : shootingcanvas.height/10.11 )
 //                                        : (centerPanel.gameMode ? shootingcanvas.height/89.29 /*size 500 pallet 5.6*/
 //                                                                : shootingcanvas.height/27.57 /*size 154.4 pallet 5.6*/)
-                var gameRatio = gameRange == 10 ? (gameMode ? 155.5/APPSETTINGS.bullet_diameter() : 45.5/APPSETTINGS.bullet_diameter())
-                                                : (gameMode ? 500/APPSETTINGS.bullet_diameter() : 154.4/APPSETTINGS.bullet_diameter())
+                var gameRatio = gameRange == 10 ? (gameMode ? 155.5/APPSETTINGS.projectileDiameterMm(gameRange) : 45.5/APPSETTINGS.projectileDiameterMm(gameRange))
+                                                : (gameMode ? 500/APPSETTINGS.projectileDiameterMm(gameRange) : 154.4/APPSETTINGS.projectileDiameterMm(gameRange))
 
                 width = shootingcanvas.height/gameRatio
                 height = width
@@ -1986,7 +1986,7 @@ Item {
 
                         var r2rDis = 8
                         var radOf10Ring = 5.75
-                        var radOfPallet = APPSETTINGS.bullet_diameter()/2
+                        var radOfPallet = APPSETTINGS.projectileDiameterMm(gameRange)/2
                         var totalR = r2rDis+radOf10Ring+radOfPallet
 
 
@@ -2013,7 +2013,7 @@ Item {
 
                         var r2rDis = 2.5
                         var radOf10Ring = 0.25
-                        var radOfPallet = APPSETTINGS.bullet_diameter()/2
+                        var radOfPallet = APPSETTINGS.projectileDiameterMm(gameRange)/2
 
                         var ratio = MODREADER.getGame_distance()*1.0/MODREADER.getGame_range();
                         /*5=2.5 (distance between rings)+ 0.25 (Inner 10 radius)+2.25 (Radius of Bullet)*/
@@ -2041,7 +2041,7 @@ Item {
 
                         var r2rDis = 25
                         var radOf10Ring = 25
-                        var radOfPallet = APPSETTINGS.bullet_diameter()/2
+                        var radOfPallet = APPSETTINGS.projectileDiameterMm(gameRange)/2
                         var totalR = r2rDis+radOf10Ring+radOfPallet
 
                         var logData2 = "radius of pallet "+ radOfPallet + "sqrt(x2+y2)"+mapedRadius
@@ -2067,7 +2067,7 @@ Item {
 
                         var r2rDis = 8
                         var radOf10Ring = 5.2
-                        var radOfPallet = APPSETTINGS.bullet_diameter()/2
+                        var radOfPallet = APPSETTINGS.projectileDiameterMm(gameRange)/2
                         var totalR = r2rDis+radOf10Ring+radOfPallet
 
                         var ratio = MODREADER.getGame_distance()*1.0/MODREADER.getGame_range();

@@ -115,7 +115,7 @@ the calibres; they do not, in the extract available here, state the EST edge
 rule in the form the formula uses. Classified narrowly as **EST EDGE-
 INTERPRETATION CONFIRMATION PENDING**. The geometry itself is not pending.
 
-### ⚠ OPEN DEFECT — projectile diameter is not bound to the discipline
+### ✅ FIXED (SCORING-CAL-001) — projectile diameter is now discipline-bound
 
 `radOfPallet` is `APPSETTINGS.bullet_diameter()/2`, and `bullet_diameter()`
 returns a single process-wide value read once at startup from
@@ -134,9 +134,19 @@ default was chosen and why the defect is invisible at 50 m. The scoring
 harness hardcodes the correct per-discipline radii, so it passes while the
 shipped configuration does not — the tests and the deployment disagree.
 
-**Not fixed here.** Changing scoring is not a documentation task; recorded for
-explicit decision. The fix is to bind the projectile diameter to the discipline
-rather than to one config key.
+**Fixed.** `AppSettings::projectileDiameterMm(rangeMeters)` is now the
+authority — 10 m returns 4.5, 50 m returns 5.6 (ISSF Rule Book 2026 §7.4,
+§8.4). Every `radOfPallet`, the shot-marker scale and the group-size
+calculation in `CenterPane.qml` take it; the process-wide
+`bullet_diameter()` no longer appears there. An explicitly configured
+`bullet_size` still wins, so a deliberate non-ISSF calibre remains
+configurable — it is simply no longer the silent default.
+
+**Historical sessions are rescored, not migrated.** A saved `.tch` stores
+`x_data`, `y_data`, `time` and `time_stamp` — **no score**. A reopened or
+resumed qualification session is therefore rescored from coordinates, so a
+10 m session saved before this fix will read LOWER (correctly) when reopened
+after it. No migration was invented; the behaviour is recorded here.
 
 ## Status
 
@@ -148,7 +158,7 @@ rather than to one config key.
 | Monotonic, correct ring hinges, clamp load-bearing | **VERIFIED (automated)** |
 | Constants unchanged since this baseline | **GUARDED (automated)** |
 | EST edge-touch interpretation | ⏳ **INTERPRETATION PENDING** |
-| Projectile diameter bound to discipline | ❌ **OPEN DEFECT** (see above) |
+| Projectile diameter bound to discipline | **CONFIRMED** — SCORING-CAL-001, ISSF §7.4 / §8.4 |
 
 ## Note on the test harness
 

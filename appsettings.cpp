@@ -42,6 +42,9 @@ AppSettings::AppSettings(QString fileName)
     m_laneNumber = m_settings->value("lane_number", 2).toInt();
     qDebug() << m_settings->value("game_distance").toInt() << "*******" << "game_distance";
     m_is15Shoot = false;
+    // SCORING-CAL-001: remember whether this was PINNED by configuration. If
+    // it was not, projectileDiameterMm() decides from the discipline instead.
+    m_bulletSizeOverridden = m_settings->contains("bullet_size");
     m_bullet_diameter = m_settings->value("bullet_size", 5.6).toDouble();
     qDebug() << " m_bullet_diameter " << m_bullet_diameter;
     // Developer/testing controls gate (finals HUD dev drawer etc.).
@@ -852,6 +855,23 @@ void AppSettings::serverDirectoryChanged(const QString &path)
 void AppSettings::readControlCSVFile(const QString &path)
 {
 
+}
+
+double AppSettings::projectileDiameterMm(int rangeMeters) const
+{
+    // An explicitly configured calibre still wins - that path exists for
+    // deliberate non-ISSF use and is not removed here.
+    if (m_bulletSizeOverridden)
+        return m_bullet_diameter;
+    // ISSF Rule Book 2026: 7.4 rifle ammunition, 8.4 pistol ammunition.
+    // 10 m Air Rifle and 10 m Air Pistol are both 4.5 mm (.177); 50 m Rifle
+    // is 5.6 mm (.22 Long Rifle). Range alone therefore decides.
+    return rangeMeters == 10 ? 4.5 : 5.6;
+}
+
+bool AppSettings::projectileDiameterOverridden() const
+{
+    return m_bulletSizeOverridden;
 }
 
 double AppSettings::bullet_diameter() const
