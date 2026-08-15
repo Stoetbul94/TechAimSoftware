@@ -95,7 +95,7 @@ consistent: it is half the official 10.4 mm 10-ring diameter.
 **50 m Rifle 3 Positions shares the 50 m Rifle target**, so it is covered by the
 same row and needs no separate constant.
 
-### The edge-touch interpretation, stated explicitly
+### The edge-touch interpretation — investigated against ISSF material
 
 Every discipline uses one formula:
 
@@ -106,14 +106,57 @@ score = 9 + ( (r10 + spacing + rPellet) - d ) / spacing
 where `d` is the shot centre's radial distance in mm. Setting `score = 10`
 gives `d = r10 + rPellet`: a shot whose **projectile edge just touches the
 10-ring line scores exactly 10.0**. The same algebra one ring out gives exactly
-9.0. So the implementation encodes the convention that a projectile touching
-the higher ring is awarded the higher ring.
+9.0.
 
-That convention is **assumed, not proven** from the material to hand. The
-rulebook sections above fix the ring dimensions, the decimal scoring areas and
-the calibres; they do not, in the extract available here, state the EST edge
-rule in the form the formula uses. Classified narrowly as **EST EDGE-
-INTERPRETATION CONFIRMATION PENDING**. The geometry itself is not pending.
+**A — what ISSF defines for physical shot-hole/ring contact.** *ISSF Annex —
+Rules for Paper Target Scoring*, **Rule 5.2.1** (Edition 2022, First Print
+01/2023 — the annex is published separately from the main rule book and carries
+its own edition):
+
+> "All shot holes are scored according to the highest value of any target
+> scoring zone or ring that is hit or touched by that bullet hole. If any part
+> of a higher value scoring ring is touched by a bullet hole, the shot must be
+> scored the higher value of the two scoring zones. This is determined by
+> whether the bullet hole or a plug gauge inserted in the hole touches any part
+> of the outside edge of the scoring ring."
+
+For a round hole of the projectile's calibre, "the hole touches the ring" is
+geometrically `d <= ringRadius + projectileRadius` — which is the formula
+above. So the implementation is a faithful mathematical translation of the
+PAPER adjudication principle.
+
+**B — what ISSF requires for Electronic Scoring Targets.** *ISSF Rule Book
+2026, Edition 2025, Second Print 07/2026, effective 1 July 2026*:
+
+> **6.3.2.2** "The accuracy requirement for EST is to score shots to an
+> accuracy of at least one-half of one decimal scoring ring. The tolerances
+> given for scoring ring sizes on paper targets are not applicable to EST."
+>
+> **6.3.2.4** "Scores recorded by EST must be determined according to scoring
+> ring dimensions for competition targets (Rule 6.3.4)."
+
+6.3.2.4 binds EST scores to the **ring dimensions** of 6.3.4 — the dimensions
+this document confirms above. 6.3.2.2 sets an accuracy requirement and
+explicitly withdraws paper *tolerances* from EST.
+
+**C — is `d <= ringRadius + projectileRadius` explicitly or necessarily implied
+for EST? NO.** The rule book fixes the ring dimensions and an accuracy
+requirement; it does not state an EST edge algorithm, and 6.3.2.2 is an
+explicit caution against importing paper specifics wholesale. The paper rule
+5.2.1 governs the adjudication of a physical hole, not the arithmetic an EST
+must perform.
+
+**Outcome: NOT EXPLICITLY SPECIFIED.** The implementation is preserved
+unchanged. Recorded narrowly as **EST EDGE-INTERPRETATION — EXTERNAL
+VALIDATION / SETA CONFIRMATION**. This is not a finding against the
+implementation and it does not reopen the geometry: the ring dimensions, the
+calibres and the decimal maximum are all confirmed.
+
+One sub-millimetre nuance, recorded rather than acted on: 5.2.1 keys on the
+**outside edge of the scoring ring**, and a printed ring has line thickness
+(0.1–0.2 mm), whereas this implementation uses the nominal ring radius. Under
+6.3.2.4 an EST works from ring *dimensions*, so nominal is the defensible
+reading; it is listed here so a future reviewer does not have to rediscover it.
 
 ### ✅ FIXED (SCORING-CAL-001) — projectile diameter is now discipline-bound
 
@@ -157,7 +200,7 @@ after it. No migration was invented; the behaviour is recorded here.
 | Formula internally consistent across all four disciplines | **VERIFIED (automated)** |
 | Monotonic, correct ring hinges, clamp load-bearing | **VERIFIED (automated)** |
 | Constants unchanged since this baseline | **GUARDED (automated)** |
-| EST edge-touch interpretation | ⏳ **INTERPRETATION PENDING** |
+| EST edge-touch interpretation | ⏳ **EXTERNAL VALIDATION / SETA CONFIRMATION** — ISSF fixes ring dimensions (6.3.2.4) and accuracy (6.3.2.2) but does not state an EST edge algorithm; the formula matches paper Rule 5.2.1 |
 | Projectile diameter bound to discipline | **CONFIRMED** — SCORING-CAL-001, ISSF §7.4 / §8.4 |
 
 ## Note on the test harness
