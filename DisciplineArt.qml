@@ -105,6 +105,74 @@ Item {
         "C4.4 34.8 3.0 34.4 2.7 33.2 C2.5 32.0 3.2 31.0 4.6 30.5 " +
         "L13.6 28.8 C14.8 28.5 15.6 28.5 16.2 29.0 Z"
 
+    // ISSF 10 m AIR RIFLE, muzzle right. Authoring grid 126x30.
+    //
+    // Same family as the approved 50 m match rifle - identical butt, hooked
+    // buttplate, floating cheek piece, anatomical stock, deep grip, receiver
+    // and rear diopter - because an air rifle and a smallbore match rifle
+    // genuinely share that architecture, and the plate set has to read as one
+    // product. It is NOT the same drawing: the front half is rebuilt around
+    // the one feature that identifies an air rifle at any size, the
+    // COMPRESSED-AIR CYLINDER slung under the barrel with a rounded end cap.
+    //
+    // Forward of the cylinder the barrel runs on alone to the front sight
+    // tunnel, so the silhouette still carries a slender exposed barrel; behind
+    // it the barrel-plus-cylinder mass is 6.35 units deep. That contrast is
+    // what makes it read as an air rifle rather than a smallbore rifle, and it
+    // survives at the 92 px the left pane draws (UI-DEC-014).
+    readonly property string airRiflePath:
+        "M9.2 16.6 C9.2 15.9 9.9 15.5 10.8 15.5 L16.2 15.5 " +
+        "L16.2 12.75 L18 12.75 L18 15.5 L19.3 15.5 L19.3 12.75 " +
+        "L21.1 12.75 L21.1 15.5 L22.6 15.5 " +
+        "C25.8 14.4 29.8 11.4 35.5 9.9 L35.5 7.2 " +
+        "L34.4 7.2 L34.4 5.8 L37 5.8 L37 5.35 L35.4 5.35 L35.4 4.5 " +
+        "L33.3 4.5 L33.3 5.05 L31.4 5.05 L31.4 2.7 L33.3 2.7 L33.3 3.4 " +
+        "L35.4 3.4 L35.4 1.8 L35.9 1.8 L35.9 0.2 L37.5 0.2 L37.5 1.8 " +
+        "L42.6 1.8 L42.6 5.35 L40 5.35 L40 5.8 L43.5 5.8 L43.5 7.2 " +
+        "L49.5 7.2 L51 7.55 L112.5 7.55 L112.5 7.3 L121.6 7.3 " +
+        "L121.6 5.5 L120 5.5 L120 3.9 C120 3.2 120.7 3.2 121.4 3.2 " +
+        "L124.2 3.2 C124.9 3.2 125.6 3.2 125.6 3.9 L125.6 5.5 L124.6 5.5 " +
+        "L124.6 7.3 L126 7.3 L126 9.95 L112.5 9.95 L112.5 9.5 L52 9.5 " +
+        // free-float fold, then a SHORT forend - the stock stops at 80 so the
+        // barrel and the air cylinder stay visible ahead of it
+        "C51.4 9.6 51.2 10 51.6 10.35 C54 10.5 56 10.85 58.5 10.88 " +
+        "L74 10.88 C75.5 10.86 76.4 10.4 77 10.1 " +
+        "L79.4 10.15 C79.9 10.2 80 10.6 80 11.2 L80 12.9 " +
+        "C80 13.35 79.6 13.55 78.9 13.6 C78 13.65 77.4 13.62 76.9 13.58 " +
+        "C76.2 13.65 75.7 14 74.9 14.35 C70 14.8 64 15.4 58 16.05 " +
+        "L48 16.1 " +
+        "C46.4 16.1 45.4 17 44.2 18.2 L40.6 18.45 L36.9 18.75 " +
+        "C36.3 20.5 35.8 23 35.6 25.4 C35.7 26.3 34.9 26.55 33.9 26.55 " +
+        "L31.6 26.5 C29.6 26.4 27.9 25.2 27.15 22.9 " +
+        "C26.9 22.1 27 21.1 27.6 20.55 C28.8 19.9 30.4 19 31.35 17.4 " +
+        "C31.6 16.9 31.5 16.4 31.15 16.05 C30.8 15.4 30.2 14.85 29.4 14.82 " +
+        "C28.6 14.85 27.9 15.05 27.2 15.4 " +
+        "C25.6 16.15 23.6 18 22.3 20.5 " +
+        "C19.8 20.85 14.2 23.9 10.2 23.6 " +
+        "C9.6 23.5 9.25 23.15 9.25 22.5 L9.25 21.9 " +
+        "L6.5 21.9 L6.5 20.5 L9.25 20.35 L9.25 19.1 " +
+        "L6.5 18.95 L6.5 17.55 L9.25 17.4 Z " +
+        "M10.35 11.05 C10.4 10.6 10.9 10.2 11.6 9.85 " +
+        "C12.5 9.3 13.6 8.6 14.6 8.2 C15.1 8.05 15.6 8.05 16.2 8.05 " +
+        "L22.6 8.1 C24.2 8.2 25.6 8.5 26.6 8.85 " +
+        "C27.9 9 28.9 9.15 29.7 9.28 C28.8 9.9 27.7 10.6 26.4 11.25 " +
+        "L22.85 11.3 L22 12.45 L14.2 12.45 L13.45 11.35 L11.1 11.35 " +
+        "C10.65 11.35 10.35 11.25 10.35 11.05 Z " +
+        "M5.7 14.4 L5.7 26.9 C5.6 28.3 4.6 29.4 3.05 29.8 " +
+        "C2.1 29.98 1.05 29.95 0.2 29.65 C0.6 29 1.25 28.45 1.95 28.05 " +
+        "C2.45 27.75 2.75 27.3 2.8 26.5 L2.8 16 " +
+        "C2.75 15.7 2.55 15.55 2.2 15.5 L1.9 13.4 L3.35 13.85 Z " +
+        "M37.4 15.6 C37.4 15.05 37.8 14.85 38.4 14.85 L42.3 14.85 " +
+        "C42.9 14.85 43.25 15.15 43.25 15.75 L43.25 17.35 " +
+        "C43.25 17.85 42.9 18.05 42.3 18.05 L38.4 18.05 " +
+        "C37.8 18.05 37.4 17.75 37.4 17.15 Z " +
+        // ── compressed-air cylinder: a SEPARATE subpath slung under the
+        // barrel with real air above it. Drawn into the outline it only
+        // thickens the forend into a slab and stops reading as a cylinder -
+        // the same trap the cheek piece and buttplate avoid.
+        "M85.4 10.9 L106 10.9 C108.4 11 109.6 11.9 109.6 13.4 " +
+        "C109.6 14.9 108.4 15.8 106 15.9 L85.4 15.9 " +
+        "C83.4 15.8 82.4 14.9 82.4 13.4 C82.4 11.9 83.4 11 85.4 10.9 Z"
     // ISSF MATCH RIFLE, muzzle right. Authoring grid 126x30.
     //
     // Traced from docs/ui/issf-match-rifle-reference.png, which is the visual
@@ -281,7 +349,11 @@ Item {
         height: width * ((art.isPistol ? 36 : 30) / (art.isPistol ? 100 : 126))
         viewBoxW: art.isPistol ? 100 : 126
         viewBoxH: art.isPistol ? 36 : 30
-        pathData: art.isPistol ? art.pistolPath : art.riflePath
+        // 10 m Air Rifle gets its own silhouette: same family as the 50 m match
+        // rifle, rebuilt around the air cylinder. The two 50 m events share the
+        // approved match-rifle drawing and are told apart by the position row.
+        pathData: art.isPistol ? art.pistolPath
+                               : (art.is50m ? art.riflePath : art.airRiflePath)
         color: art.ink
         filled: true
         strokeWidth: 0
