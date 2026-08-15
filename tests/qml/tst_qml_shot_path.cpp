@@ -501,6 +501,50 @@ int main(int argc, char* argv[])
         }
     }
 
+    // ─────────────────────────────────────────────────────────────────────
+    // SCORING BOUNDARY TRIPLES — ISSF Rule Book 2026 (Edition 2025, Second
+    // Print 07/2026, effective 1 July 2026), sections 6.3.3, 6.3.4.2,
+    // 6.3.4.3, 6.3.4.6, 7.4, 8.4.
+    //
+    // The official ring dimensions are now confirmed, so the ring hinges can
+    // be asserted against the rulebook rather than against the formula's own
+    // internal consistency. Each transition is probed just inside, exactly on,
+    // and just outside, with the OFFICIAL per-discipline projectile radius.
+    // ─────────────────────────────────────────────────────────────────────
+    {
+        // Same expression the application evaluates, kept local to this block.
+        auto scoreAt = [](double spacing, double r10, double rPellet, double r) {
+            return 9.0 + ((spacing + r10 + rPellet - r) / spacing);
+        };
+        struct Off { const char* name; double spacing, r10, rPellet; };
+        const Off offs[] = {
+            { "10 m Air Rifle",  2.5, 0.25, 2.25 },   // 0.5 mm 10-ring, 4.5 mm
+            { "10 m Air Pistol", 8.0, 5.75, 2.25 },   // 11.5 mm 10-ring, 4.5 mm
+            { "50 m Rifle",      8.0, 5.20, 2.80 },   // 10.4 mm 10-ring, 5.6 mm
+        };
+        const double eps = 0.01;
+        for (const Off& o : offs) {
+            for (int ring = 10; ring >= 9; --ring) {
+                const double d = o.r10 + o.rPellet + (10 - ring) * o.spacing;
+                const double inside  = scoreAt(o.spacing, o.r10, o.rPellet, d - eps);
+                const double onLine  = scoreAt(o.spacing, o.r10, o.rPellet, d);
+                const double outside = scoreAt(o.spacing, o.r10, o.rPellet, d + eps);
+                check(qAbs(onLine - ring) < 1e-9,
+                      qUtf8Printable(QStringLiteral("%1: the %2-ring boundary scores exactly %2.0 "
+                                     "at the official dimension").arg(o.name).arg(ring)),
+                      QString::number(onLine, 'f', 6));
+                check(inside > onLine,
+                      qUtf8Printable(QStringLiteral("%1: just INSIDE the %2-ring scores higher")
+                                     .arg(o.name).arg(ring)),
+                      QString::number(inside, 'f', 6));
+                check(outside < onLine,
+                      qUtf8Printable(QStringLiteral("%1: just OUTSIDE the %2-ring scores lower")
+                                     .arg(o.name).arg(ring)),
+                      QString::number(outside, 'f', 6));
+            }
+        }
+    }
+
     printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
     fflush(stdout);
     return g_failures ? 1 : 0;

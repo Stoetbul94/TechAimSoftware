@@ -64,28 +64,91 @@ action is to **request the missing official rule**, not to encode a value from
 memory and call it verified. Writing `5.2` into a test because it looks right
 would manufacture the confirmation the open item is asking for.
 
-### ⏳ Requested: official target-face geometry
+### ✅ Official authority obtained (2026-08-15)
 
-Needed in `docs/issf-rules/`, per discipline, from the ISSF rulebook:
+**AUTHORITY: ISSF Rule Book 2026, Edition 2025, Second Print 07/2026,
+effective 1 July 2026.** Rule sections: **6.3.2** Electronic Scoring Target
+Requirements · **6.3.3** ISSF Target Standards · **6.3.4.2** 50 m Rifle Target ·
+**6.3.4.3** 10 m Air Rifle Target · **6.3.4.6** 10 m Air Pistol Target · **7.4**
+rifle ammunition · **8.4** pistol ammunition.
 
-- 10-ring diameter and ring-to-ring spacing for the 10 m air rifle, 10 m air
-  pistol, 50 m rifle and 50 m pistol target faces
-- the projectile diameters assumed for scoring
-- whether the "touching counts" convention as implemented is the required one
+The constants were audited against those values rather than copied into them.
+Ring spacing is derived: consecutive official ring DIAMETERS differ by a fixed
+step, so the radius step the formula uses is half that.
 
-Once supplied, the rules docs, these tests and the implementation are updated
-**together**, and `radOf10Ring = 5.2` can move from *internally consistent* to
-*confirmed*.
+| Discipline | Official | Source constant (`CenterPane.qml`) | Value | Result |
+|---|---|---|---|---|
+| 10 m Air Rifle | 10-ring ⌀ 0.5 mm → r 0.25 | `radOf10Ring` | 0.25 | **PASS** |
+| 10 m Air Rifle | ⌀ step 5.0 mm → radius step 2.5 | `r2rDis` | 2.5 | **PASS** |
+| 10 m Air Rifle | outer ring ⌀ 45.5 | `gameRatio` numerator | 45.5 | **PASS** |
+| 10 m Air Pistol | 10-ring ⌀ 11.5 mm → r 5.75 | `radOf10Ring` | 5.75 | **PASS** |
+| 10 m Air Pistol | ⌀ step 16.0 mm → radius step 8.0 | `r2rDis` | 8 | **PASS** |
+| 10 m Air Pistol | outer ring ⌀ 155.5 | `gameRatio` numerator | 155.5 | **PASS** |
+| 50 m Rifle (Prone and 3P) | 10-ring ⌀ 10.4 mm → r 5.2 | `radOf10Ring` | 5.2 | **PASS** |
+| 50 m Rifle | ⌀ step 16.0 mm → radius step 8.0 | `r2rDis` | 8 | **PASS** |
+| 50 m Rifle | outer ring ⌀ 154.4 | `gameRatio` numerator | 154.4 | **PASS** |
+| All | decimal maximum 10.9 | `calculatedSccore >= 11 → 10.9` | 10.9 | **PASS** |
+
+`radOf10Ring = 5.2` for 50 m is therefore **CONFIRMED**, not merely internally
+consistent: it is half the official 10.4 mm 10-ring diameter.
+
+**50 m Rifle 3 Positions shares the 50 m Rifle target**, so it is covered by the
+same row and needs no separate constant.
+
+### The edge-touch interpretation, stated explicitly
+
+Every discipline uses one formula:
+
+```
+score = 9 + ( (r10 + spacing + rPellet) - d ) / spacing
+```
+
+where `d` is the shot centre's radial distance in mm. Setting `score = 10`
+gives `d = r10 + rPellet`: a shot whose **projectile edge just touches the
+10-ring line scores exactly 10.0**. The same algebra one ring out gives exactly
+9.0. So the implementation encodes the convention that a projectile touching
+the higher ring is awarded the higher ring.
+
+That convention is **assumed, not proven** from the material to hand. The
+rulebook sections above fix the ring dimensions, the decimal scoring areas and
+the calibres; they do not, in the extract available here, state the EST edge
+rule in the form the formula uses. Classified narrowly as **EST EDGE-
+INTERPRETATION CONFIRMATION PENDING**. The geometry itself is not pending.
+
+### ⚠ OPEN DEFECT — projectile diameter is not bound to the discipline
+
+`radOfPallet` is `APPSETTINGS.bullet_diameter()/2`, and `bullet_diameter()`
+returns a single process-wide value read once at startup from
+`config.ini [App_Settings] bullet_size`, defaulting to **5.6**. It is never
+written per discipline. The **deployed `release/config.ini` does not contain
+the key at all**, so a 10 m session scores with a 5.6 mm projectile instead of
+the official 4.5 mm:
+
+| Discipline | Official rPellet | As deployed | 10.0 boundary official | As deployed | Error |
+|---|---|---|---|---|---|
+| 10 m Air Rifle | 2.25 | 2.8 | d = 2.50 mm | d = 3.05 mm | **+0.22 score/shot** |
+| 10 m Air Pistol | 2.25 | 2.8 | d = 8.00 mm | d = 8.55 mm | **+0.069 score/shot** |
+
+50 m Rifle is unaffected: 5.6 mm is the correct calibre there, which is why the
+default was chosen and why the defect is invisible at 50 m. The scoring
+harness hardcodes the correct per-discipline radii, so it passes while the
+shipped configuration does not — the tests and the deployment disagree.
+
+**Not fixed here.** Changing scoring is not a documentation task; recorded for
+explicit decision. The fix is to bind the projectile diameter to the discipline
+rather than to one config key.
 
 ## Status
 
 | Claim | Status |
 |---|---|
+| Ring geometry matches the ISSF rulebook | **CONFIRMED** — ISSF Rule Book 2026, sections above |
+| 50 m `radOf10Ring = 5.2` | **CONFIRMED** — half of the official 10.4 mm |
 | Formula internally consistent across all four disciplines | **VERIFIED (automated)** |
 | Monotonic, correct ring hinges, clamp load-bearing | **VERIFIED (automated)** |
 | Constants unchanged since this baseline | **GUARDED (automated)** |
-| Constants match the ISSF rulebook | ⏳ **AWAITING OFFICIAL RULE** |
-| 50 m scoring behaviour in the field | Internally consistent across the 2026-08-10 session; no suspicious result observed |
+| EST edge-touch interpretation | ⏳ **INTERPRETATION PENDING** |
+| Projectile diameter bound to discipline | ❌ **OPEN DEFECT** (see above) |
 
 ## Note on the test harness
 
