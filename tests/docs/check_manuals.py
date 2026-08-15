@@ -388,10 +388,29 @@ def main():
           "EULA audit records the blocker")
     icon = io.open(os.path.join(MAN, "_shared/windows-icon-specification.md"),
                    encoding="utf-8").read()
-    check("NO APPROVED ICON EXISTS" in icon, "icon status recorded accurately")
+    # The icon was APPROVED for RC3a (Arnold Bailie, 2026-08-15), built from
+    # the existing brand mark rather than invented. The guard therefore flips
+    # from "no icon until approved" to "the approved icon is actually wired
+    # up" - the invariant that matters is that TechAim.exe never ships with
+    # Windows' generic icon again, and that the .ico is multi-resolution.
+    check("STATUS: APPROVED" in icon, "icon status recorded accurately")
     rc = io.open(os.path.join(ROOT, "TechAim.rc"), encoding="utf-8").read()
-    check("ICON" not in rc.upper().replace("ICONS", ""),
-          "TechAim.rc has NOT been given an icon before one is approved")
+    check("ICON" in rc.upper(), "TechAim.rc embeds the approved application icon")
+    check("images/logo/techaim.ico" in rc,
+          "TechAim.rc points at the approved multi-resolution icon")
+    ico = os.path.join(ROOT, "images", "logo", "techaim.ico")
+    check(os.path.isfile(ico), "the approved .ico exists")
+    if os.path.isfile(ico):
+        # ICONDIR: reserved(2) type(2) count(2); require every Windows size.
+        with open(ico, "rb") as fh:
+            head = fh.read(6)
+            count = head[4] | (head[5] << 8)
+            widths = set()
+            for _ in range(count):
+                e = fh.read(16)
+                widths.add(e[0] if e[0] else 256)
+        check(widths >= {16, 24, 32, 48, 64, 128, 256},
+              "the .ico carries every Windows size (16-256): " + repr(sorted(widths)))
 
     # --- provenance is stamped at BUILD TIME, not committed --------------
     # Tracked Markdown must carry PLACEHOLDERS. Committing a concrete hash to

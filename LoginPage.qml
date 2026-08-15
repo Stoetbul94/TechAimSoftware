@@ -185,7 +185,8 @@ Item {
     // functions and Connections handlers to compile and run correctly.
 
     Rectangle { id: bgRect; width: parent.width; height: parent.height; color: "transparent"; visible: false }
-    Image { id: bg; source: "qrc:/images/loginPage/login_page_29Oct.png"   // legacy Tachus background removed from the resource manifest; anchors.fill: parent; visible: false }
+    // The legacy Tachus background was removed from the resource manifest.
+    Image { id: bg; source: "qrc:/images/loginPage/login_page_29Oct.png"; anchors.fill: parent; visible: false }
     Image { id: bgRectImg; source: "qrc:/images/loginPage/bgRectImg.png"; anchors.fill: parent; visible: false }
     Image { id: red;   source: "qrc:/images/loginPage/red.png";   width: 1; height: 1; visible: false }
     Image { id: green; source: "qrc:/images/loginPage/green.png"; anchors.top: red.bottom; width: 1; height: 1; visible: false }

@@ -16,8 +16,11 @@
 #ifndef OutDir
   #define OutDir "..\..\dist\rc3"
 #endif
+#ifndef IconFile
+  #define IconFile "..\..\images\logo\techaim.ico"
+#endif
 #ifndef AppVer
-  #define AppVer "0.9.0-RC3"
+  #define AppVer "0.9.0-RC3a"
 #endif
 
 [Setup]
@@ -25,7 +28,7 @@ AppId={{9F3C7A21-4D8E-4B62-9E5A-2C6D1B0F7A34}
 AppName=Tech Aim
 AppVersion={#AppVer}
 AppVerName=Tech Aim {#AppVer} — SETA Evaluation
-VersionInfoVersion=0.9.0.3
+VersionInfoVersion=0.9.0.4
 VersionInfoProductName=Tech Aim
 VersionInfoDescription=Tech Aim Electronic Target Control — SETA Evaluation
 AppPublisher=JAC SHOOTING SOLUTIONS (PTY) LTD
@@ -34,10 +37,13 @@ DefaultDirName={autopf}\Tech Aim
 DefaultGroupName=Tech Aim
 DisableProgramGroupPage=yes
 OutputDir={#OutDir}
-OutputBaseFilename=TechAim-0.9.0-RC3-SETA-Evaluation-Setup
+OutputBaseFilename=TechAim-0.9.0-RC3a-SETA-Evaluation-Setup
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
+; The installer's own icon, and the icon Add/Remove Programs shows.
+SetupIconFile={#IconFile}
+UninstallDisplayIcon={app}\TechAim.exe
 ArchitecturesInstallIn64BitMode=x64compatible
 ArchitecturesAllowed=x64compatible
 PrivilegesRequired=admin
@@ -57,10 +63,10 @@ Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription
 Source: "{#StageDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\Tech Aim {#AppVer} (SETA Evaluation)"; Filename: "{app}\TechAim.exe"; WorkingDir: "{app}"
+Name: "{group}\Tech Aim {#AppVer} (SETA Evaluation)"; Filename: "{app}\TechAim.exe"; WorkingDir: "{app}"; IconFilename: "{app}\TechAim.exe"; IconIndex: 0
 Name: "{group}\Operator manuals"; Filename: "{app}\docs\manuals"
 Name: "{group}\Uninstall Tech Aim"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\Tech Aim {#AppVer}"; Filename: "{app}\TechAim.exe"; WorkingDir: "{app}"; Tasks: desktopicon
+Name: "{autodesktop}\Tech Aim {#AppVer}"; Filename: "{app}\TechAim.exe"; WorkingDir: "{app}"; IconFilename: "{app}\TechAim.exe"; IconIndex: 0; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\TechAim.exe"; Description: "Launch Tech Aim"; WorkingDir: "{app}"; Flags: nowait postinstall skipifsilent

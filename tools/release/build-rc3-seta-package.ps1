@@ -22,8 +22,8 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repo    = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-$version = '0.9.0-RC3'
-$name    = 'TechAim-0.9.0-RC3-SETA-Evaluation'
+$version = '0.9.0-RC3a'
+$name    = 'TechAim-0.9.0-RC3a-SETA-Evaluation'
 $outRoot = Join-Path $repo 'dist\rc3'
 $stage   = Join-Path $outRoot 'staging'
 
@@ -43,7 +43,7 @@ Ok "clean at $commit (local == remote)"
 
 # ---- 2. required configuration -------------------------------------------
 $proVer = (Select-String -Path (Join-Path $repo 'Seta.pro') -Pattern 'APP_VERSION_STR\s*=\s*(\S+)').Matches[0].Groups[1].Value
-if ($proVer -notlike '0.9.0-RC3*') { Fail "Seta.pro APP_VERSION_STR is '$proVer', expected 0.9.0-RC3*" }
+if ($proVer -notlike '0.9.0-RC3a*') { Fail "Seta.pro APP_VERSION_STR is '$proVer', expected 0.9.0-RC3a*" }
 Ok "APP_VERSION_STR = $proVer"
 
 # ---- 3. Release build ------------------------------------------------------

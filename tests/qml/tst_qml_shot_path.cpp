@@ -635,6 +635,51 @@ int main(int argc, char* argv[])
         }
     }
 
+    // ─────────────────────────────────────────────────────────────────────
+    // QML-PARSE-001 — every application QML file must PARSE
+    //
+    // RC3 shipped an installer whose application exited immediately with -1:
+    // engine.load("qrc:/main.qml") produced no root objects because
+    // LoginPage.qml had a syntax error - a "//" comment inserted mid-line
+    // swallowed the rest of a single-line Image{...} block, including its
+    // closing brace. Nothing caught it: rcc embeds QML as bytes without
+    // parsing it, the compiler never sees it, and no suite loaded the file.
+    //
+    // This parses every root .qml through the QML engine and fails on
+    // PARSE-level errors only. Type and context errors ("X is not a type",
+    // "MODREADER is not defined") are expected here - these files are not
+    // being instantiated with the application's context - so they are
+    // deliberately ignored. A missing brace is not.
+    // ─────────────────────────────────────────────────────────────────────
+    {
+        QDir root(QStringLiteral(TECHAIM_SOURCE_DIR));
+        const QStringList files = root.entryList(QStringList() << QStringLiteral("*.qml"),
+                                                 QDir::Files, QDir::Name);
+        check(files.size() > 20, "QML-PARSE-001: application QML files found",
+              QString::number(files.size()));
+
+        QQmlEngine parseEngine;
+        QStringList broken;
+        for (const QString& f : files) {
+            QQmlComponent c(&parseEngine, QUrl::fromLocalFile(root.filePath(f)));
+            for (const QQmlError& e : c.errors()) {
+                const QString d = e.description();
+                // Parser diagnostics, not resolution diagnostics.
+                if (d.contains(QStringLiteral("Expected token"))
+                    || d.contains(QStringLiteral("Expected a qualified name id"))
+                    || d.contains(QStringLiteral("Unexpected token"))
+                    || d.contains(QStringLiteral("Syntax error"))
+                    || d.contains(QStringLiteral("Unterminated"))
+                    || d.contains(QStringLiteral("Imported file"))) {
+                    broken << QStringLiteral("%1:%2 %3").arg(f).arg(e.line()).arg(d);
+                }
+            }
+        }
+        check(broken.isEmpty(),
+              "QML-PARSE-001: every application QML file parses",
+              broken.join(QStringLiteral(" | ")));
+    }
+
     printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
     fflush(stdout);
     return g_failures ? 1 : 0;

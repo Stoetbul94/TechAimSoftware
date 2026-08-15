@@ -11,6 +11,14 @@
 
 #include <windows.h>
 
+// The Windows application icon. The LOWEST-numbered icon resource is what
+// Explorer, the taskbar and shortcuts use, so this must stay first. Built from
+// the approved Tech Aim target emblem in images/logo/techaim_color.png, with
+// the 7 sizes Windows actually asks for (16..256).
+IDI_TECHAIM ICON "images/logo/techaim.ico"
+
+#define IDI_TECHAIM 101
+
 VS_VERSION_INFO VERSIONINFO
     FILEVERSION    0,9,0,0
     PRODUCTVERSION 0,9,0,0
