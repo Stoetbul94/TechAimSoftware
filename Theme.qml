@@ -41,8 +41,8 @@ QtObject {
     readonly property color brandLight:   "#fbf9fa"   // off-white - light backgrounds
 
     // --- Logo assets (pick the variant matching the background you're placing it on) ---
-    readonly property string logoWhite: "qrc:/images/logo/techaim_white.png"  // for dark backgrounds
-    readonly property string logoColor: "qrc:/images/logo/techaim_color.png" // for light/neutral backgrounds
+    readonly property string logoWhite: PRODUCT.brandLogoOnDarkPath // for dark backgrounds
+    readonly property string logoColor: PRODUCT.brandLogoPath // the product brand mark; identity owns it
     readonly property string logoBlack: "qrc:/images/logo/techaim_black.png" // for light backgrounds, monochrome contexts (e.g. print/PDF)
 
     // --- Dark UI neutral scale (chrome: backgrounds, surfaces, borders) ---

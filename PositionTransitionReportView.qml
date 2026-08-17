@@ -71,7 +71,7 @@ Item {
                     Rectangle { width: 6; height: 74; radius: 3; color: view.red; anchors.verticalCenter: parent.verticalCenter }
                     Column {
                         anchors.verticalCenter: parent.verticalCenter; spacing: 4
-                        Image { source: "qrc:/images/logo/techaim_color.png"; height: 60
+                        Image { source: PRODUCT.brandLogoPath; height: 60
                             width: sourceSize.height > 0 ? height * sourceSize.width / sourceSize.height : 0
                             fillMode: Image.PreserveAspectFit; smooth: true; mipmap: true }
                         Row { spacing: 8
@@ -106,7 +106,7 @@ Item {
             anchors.margins: 40; height: 30
             Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: view.line }
             Row { anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; spacing: 8
-                Image { source: "qrc:/images/logo/techaim_color.png"; height: 16
+                Image { source: PRODUCT.brandLogoPath; height: 16
                     width: sourceSize.height > 0 ? height * sourceSize.width / sourceSize.height : 0
                     fillMode: Image.PreserveAspectFit; smooth: true; mipmap: true; anchors.verticalCenter: parent.verticalCenter }
                 Text { text: "Tech Aim Electronic Target Control  ·  WE AIM TO PLEASE"

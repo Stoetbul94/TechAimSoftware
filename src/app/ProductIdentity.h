@@ -27,6 +27,12 @@
 namespace ta {
 namespace app {
 
+// BuildFlavour is the COLOUR-SYSTEM / asset-package edition, not the brand
+// name. BRAND_SETA (the product/seta build) is a narrower thing: it changes
+// the product name, the brand mark and the user-data namespace while keeping
+// the approved Tech Aim colour system, because no SETA palette exists and
+// inventing one would be a brand act. SetaOem stays reserved and unbuildable
+// until a complete SETA asset package is supplied - see BrandPackage.
 enum class BuildFlavour {
     TechAim = 0,   // the current and only buildable edition
     SetaOem = 1,   // RESERVED. Documented, validated, never produced yet:
@@ -47,8 +53,22 @@ struct ProductIdentity {
     // executableBaseName produces TechAim.exe; also used for file prefixes.
     QString executableBaseName;
     QString applicationId;          // reverse-DNS, for future packaging
-    QString organisationName;       // QSettings + AppLocalDataLocation root
+    QString organisationName;       // VENDOR. QSettings + AppLocalDataLocation root
     QString organisationDomain;
+    // PRODUCT, within the vendor. Qt resolves AppLocalDataLocation as
+    // <LOCALAPPDATA>/<organisationName>/<applicationName> and the default
+    // QSettings scope as HKCU\Software\<organisationName>\<applicationName>,
+    // so this leaf is what separates one product line's MUTABLE USER DATA -
+    // sessions, recovery journals, reports, logs, target fingerprints - from
+    // another's. Two products of the same vendor share the vendor folder and
+    // nothing inside it. Defaults to organisationName, which is what Tech Aim
+    // has always used, so the existing data root does not move.
+    QString applicationStorageName;
+    // Legacy per-brand QSettings organisation ("Tachus"/"Seta") used by the
+    // pre-rebrand EULA + last-folder keys. Empty keeps the legacy behaviour
+    // exactly; a non-empty value moves ONLY those keys into this product's
+    // own scope. Never used for session, score or recovery data.
+    QString brandSettingsScope;
 
     // ── legal ────────────────────────────────────────────────────────────
     QString legalPublisher;
@@ -57,10 +77,17 @@ struct ProductIdentity {
     // ── release ──────────────────────────────────────────────────────────
     QString version;                // 0.9.0-RC1
     QString releaseChannel;         // "Internal Field Test"
+    // The shipped BRAND SKIN: "TECH_AIM" or "SETA". Deliberately NOT the same
+    // thing as BuildFlavour::SetaOem below — see the note on that enum.
+    QString brandKey;
     // Shown where a result could be mistaken for an official one. Empty in a
     // future general release; non-empty means this build is a field-test
     // candidate and must say so.
     QString brandLogoPath;          // qrc path to the product's brand mark
+    // The mark to use on a DARK surface (the application header). A separate
+    // field because "which file" is a brand fact, not a screen decision - a
+    // screen must never pick a logo by asking which product this is.
+    QString brandLogoOnDarkPath;
     QString fieldTestNotice;        // "FIELD TEST — NOT FOR OFFICIAL COMPETITION RESULTS"
 
     // ── defaults (NOT user identity — see the language/brand note above) ──

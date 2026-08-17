@@ -73,3 +73,6 @@ SOURCES += \
     tst_recovery.cpp \
     tst_operatingmode.cpp \
     tst_fixtures.cpp
+
+# product/seta: measure the SETA build, not the Tech Aim one.
+DEFINES += BRAND_SETA

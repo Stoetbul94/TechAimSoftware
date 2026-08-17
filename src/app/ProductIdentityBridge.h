@@ -41,6 +41,9 @@ class ProductIdentityBridge : public QObject
     Q_PROPERTY(QString flavour READ flavour CONSTANT)
     // 0.9.0-RC1 field-test identity, all compile-time.
     Q_PROPERTY(QString brandLogoPath READ brandLogoPath CONSTANT)
+    Q_PROPERTY(QString brandLogoOnDarkPath READ brandLogoOnDarkPath CONSTANT)
+    Q_PROPERTY(QString brandKey READ brandKey CONSTANT)
+    Q_PROPERTY(QString applicationStorageName READ applicationStorageName CONSTANT)
     Q_PROPERTY(QString fieldTestNotice READ fieldTestNotice CONSTANT)
     Q_PROPERTY(bool isFieldTest READ isFieldTest CONSTANT)
     Q_PROPERTY(QString gitCommit READ gitCommit CONSTANT)
@@ -71,6 +74,10 @@ public:
     // result, without a repository, Git or Qt on the machine. All of it is
     // baked in at compile time.
     QString brandLogoPath() const      { return ta::app::identity().brandLogoPath; }
+    QString brandLogoOnDarkPath() const { return ta::app::identity().brandLogoOnDarkPath; }
+    QString brandKey() const           { return ta::app::identity().brandKey; }
+    QString applicationStorageName() const
+                                       { return ta::app::identity().applicationStorageName; }
     QString fieldTestNotice() const    { return ta::app::identity().fieldTestNotice; }
     bool    isFieldTest() const        { return !ta::app::identity().fieldTestNotice.isEmpty(); }
     QString gitCommit() const          { return QStringLiteral(APP_GIT_SHA); }

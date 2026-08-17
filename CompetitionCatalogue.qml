@@ -602,12 +602,33 @@ QtObject {
         return out
     }
 
+    // PAPER MODE IS PART OF THE QUESTION. The catalogue holds both the standard
+    // and the 15-shot-paper variant of every preset, because the running
+    // application shows exactly one of them - ShootingPage picks the model from
+    // APPSETTINGS.getIs15Shoot(). A hierarchy that ignored this would offer
+    // "MATCH-20" twice with no way to tell the two apart, and half of what it
+    // offered could not be run. Passing `fifteen` filters to the variant the
+    // installation is actually configured for; omitting it means "every entry",
+    // which is what the catalogue-integrity checks want.
+    //
+    // A real consequence, not a bug: in 15-shot paper mode there is NO 60-shot
+    // entry, so no ISSF course exists and the ISSF rule set correctly
+    // disappears. That installation genuinely cannot run an official course.
+    function entriesIn(fifteen) {
+        var all = allEntries()
+        if (fifteen === undefined || fifteen === null) return all
+        var out = []
+        for (var i = 0; i < all.length; ++i)
+            if (all[i].fifteenShotVariant === fifteen) out.push(all[i])
+        return out
+    }
+
     // Distinct rule sets present in the catalogue, in a stable order.
     // "techaim" is not a federation - it is the practice-preset set - so it is
     // labelled as such rather than pretending to carry rule authority.
-    function ruleSets() {
+    function ruleSets(fifteen) {
         var seen = {}, out = []
-        var all = allEntries()
+        var all = entriesIn(fifteen)
         for (var i = 0; i < all.length; ++i) {
             var r = all[i].rulesetId
             if (seen[r]) continue
@@ -627,9 +648,9 @@ QtObject {
     // Distinct disciplines within a rule set. Keyed by disciplineId, which is
     // stable; the label is derived from the target standard, not translated
     // text, so a German UI cannot change which discipline this is.
-    function disciplines(rulesetId) {
+    function disciplines(rulesetId, fifteen) {
         var seen = {}, out = []
-        var all = allEntries()
+        var all = entriesIn(fifteen)
         for (var i = 0; i < all.length; ++i) {
             var e = all[i]
             if (e.rulesetId !== rulesetId) continue
@@ -646,15 +667,50 @@ QtObject {
 
     // Programmes within a rule set + discipline. Step 3 of the selector is
     // shown only when this returns more than one.
-    function programmes(rulesetId, disciplineId) {
+    function programmes(rulesetId, disciplineId, fifteen) {
         var out = []
-        var all = allEntries()
+        var all = entriesIn(fifteen)
         for (var i = 0; i < all.length; ++i) {
             var e = all[i]
             if (e.rulesetId === rulesetId && e.disciplineId === disciplineId)
                 out.push(e)
         }
         return out
+    }
+
+    // ── programmeId -> the EXISTING runtime configuration ────────────────
+    // This is the whole integration contract. The hierarchy changes NAVIGATION
+    // only; this function is the single place a choice becomes machine state,
+    // and it introduces no new match rules. The event index it returns is the
+    // same index the legacy weapon/distance/event controls already set, which
+    // is what makes old and new paths provably identical - and it is why there
+    // is no second set of match-configuration rules to drift out of step.
+    //
+    // gameEvent indices are the LoginPage ones: 0..4 the shot-count events in
+    // catalogue order, 5 unlimited. 6 (3P Final) and 7 (10 m Final) are NOT
+    // produced here - the finals are a separate domain with no catalogue entry,
+    // and inventing one would put a programme in the hierarchy that the
+    // qualification engine cannot run.
+    function eventIndexFor(p) {
+        if (p.unlimited) return 5
+        var s = p.shotCount
+        if (p.fifteenShotVariant)
+            return s === 10 ? 0 : s === 15 ? 1 : s === 20 ? 2 : s === 30 ? 3 : 4
+        return s === 10 ? 0 : s === 20 ? 1 : s === 30 ? 2 : s === 40 ? 3 : 4
+    }
+
+    function runtimeConfig(programmeId) {
+        var p = profile(programmeId)
+        if (p === null) return null
+        return { "programmeId":      p.programmeId,
+                 "gameRange":        p.distanceM,
+                 "gameMode":         p.isPistol ? 0 : 1,
+                 "gameEvent":        eventIndexFor(p),
+                 "fifteen":          p.fifteenShotVariant,
+                 "shotCount":        p.shotCount,
+                 "targetStandardId": p.targetStandardId,
+                 "programmeType":    p.programmeType,
+                 "matchDisplayKey":  p.matchDisplayKey }
     }
 
     function count() {

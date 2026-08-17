@@ -37,7 +37,7 @@ Item {
                     spacing: 8
                     // Brand logo (replaces the text wordmark; see ReportHeader).
                     Image {
-                        source: "qrc:/images/logo/techaim_color.png"
+                        source: PRODUCT.brandLogoPath
                         height: 40
                         width: sourceSize.height > 0 ? height * sourceSize.width / sourceSize.height : 0
                         fillMode: Image.PreserveAspectFit

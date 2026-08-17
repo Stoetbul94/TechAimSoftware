@@ -125,7 +125,7 @@ Item {
                     }
                 }
                 Image {
-                    source: "qrc:/images/logo/techaim_color.png"
+                    source: PRODUCT.brandLogoPath
                     anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
                     height: 52; fillMode: Image.PreserveAspectFit
                 }

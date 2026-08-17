@@ -26,6 +26,9 @@ public:
     // invalid-value fallback logging). Empty when the key was absent.
     QString getRawAppModeToken() const { return m_rawAppModeToken; }
     Q_INVOKABLE QString getBrandName();
+    // Registry organisation for the two pre-rebrand keys (EULA, last folder).
+    // Not invokable: it is an internal storage-scope detail, not a UI value.
+    QString brandSettingsOrganisation();
     Q_INVOKABLE void saveMatch(bool createNew = false);
     Q_INVOKABLE void autoSaveMatch();
     Q_INVOKABLE void autoSaveMatchScore(int index, double xCor, double yCor);

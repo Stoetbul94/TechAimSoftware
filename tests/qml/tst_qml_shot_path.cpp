@@ -887,7 +887,8 @@ int main(int argc, char* argv[])
 
         if (!sel.isNull()) {
             QVariant v;
-            QMetaObject::invokeMethod(sel.data(), "ruleSets", Q_RETURN_ARG(QVariant, v));
+            QMetaObject::invokeMethod(sel.data(), "ruleSets", Q_RETURN_ARG(QVariant, v),
+                                      Q_ARG(QVariant, QVariant()));   // unfiltered
             const QVariantList sets = v.toList();
             check(sets.size() == 2,
                   "SETA-SEL-001: two rule sets today - ISSF and the practice presets",
@@ -912,12 +913,13 @@ int main(int argc, char* argv[])
                 const QString rid = rs.toMap().value(QStringLiteral("rulesetId")).toString();
                 QVariant dv;
                 QMetaObject::invokeMethod(sel.data(), "disciplines", Q_RETURN_ARG(QVariant, dv),
-                                          Q_ARG(QVariant, rid));
+                                          Q_ARG(QVariant, rid), Q_ARG(QVariant, QVariant()));
                 for (const QVariant& d : dv.toList()) {
                     const QString did = d.toMap().value(QStringLiteral("disciplineId")).toString();
                     QVariant pv;
                     QMetaObject::invokeMethod(sel.data(), "programmes", Q_RETURN_ARG(QVariant, pv),
-                                              Q_ARG(QVariant, rid), Q_ARG(QVariant, did));
+                                              Q_ARG(QVariant, rid), Q_ARG(QVariant, did),
+                                              Q_ARG(QVariant, QVariant()));
                     for (const QVariant& p : pv.toList()) {
                         ++reachable;
                         reachableIds.insert(p.toMap().value(QStringLiteral("programmeId")).toString());
@@ -934,14 +936,16 @@ int main(int argc, char* argv[])
             // ISSF exposes exactly the four official 60-shot courses.
             QVariant dv;
             QMetaObject::invokeMethod(sel.data(), "disciplines", Q_RETURN_ARG(QVariant, dv),
-                                      Q_ARG(QVariant, QStringLiteral("issf")));
+                                      Q_ARG(QVariant, QStringLiteral("issf")),
+                                      Q_ARG(QVariant, QVariant()));
             check(dv.toList().size() == 4,
                   "SETA-SEL-001: ISSF offers four disciplines",
                   QString::number(dv.toList().size()));
             QVariant pv;
             QMetaObject::invokeMethod(sel.data(), "programmes", Q_RETURN_ARG(QVariant, pv),
                                       Q_ARG(QVariant, QStringLiteral("issf")),
-                                      Q_ARG(QVariant, QStringLiteral("AR10")));
+                                      Q_ARG(QVariant, QStringLiteral("AR10")),
+                                      Q_ARG(QVariant, QVariant()));
             check(pv.toList().size() == 1,
                   "SETA-SEL-001: ISSF 10 m Air Rifle has one programme, so step 3 is skipped",
                   QString::number(pv.toList().size()));
@@ -954,7 +958,8 @@ int main(int argc, char* argv[])
             // lost, they moved one level down.
             QMetaObject::invokeMethod(sel.data(), "programmes", Q_RETURN_ARG(QVariant, pv),
                                       Q_ARG(QVariant, QStringLiteral("techaim")),
-                                      Q_ARG(QVariant, QStringLiteral("AR10")));
+                                      Q_ARG(QVariant, QStringLiteral("AR10")),
+                                      Q_ARG(QVariant, QVariant()));
             check(pv.toList().size() >= 5,
                   "SETA-SEL-001: the Tech Aim presets are still reachable",
                   QString::number(pv.toList().size()));
@@ -976,7 +981,8 @@ int main(int argc, char* argv[])
                     QVariant pv3;
                     QMetaObject::invokeMethod(cat3.data(), "programmes", Q_RETURN_ARG(QVariant, pv3),
                                               Q_ARG(QVariant, QStringLiteral("techaim")),
-                                              Q_ARG(QVariant, QStringLiteral("AR10")));
+                                              Q_ARG(QVariant, QStringLiteral("AR10")),
+                                              Q_ARG(QVariant, QVariant()));
                     if (!pv3.toList().isEmpty())
                         idDeSel = pv3.toList().first().toMap()
                                       .value(QStringLiteral("programmeId")).toString();
@@ -1020,11 +1026,161 @@ int main(int argc, char* argv[])
             const QString t = ln.trimmed();
             if (!t.startsWith(QStringLiteral("//"))) setaBody += ln + QChar(10);
         }
-        check(!setaBody.contains(QStringLiteral("applicationId"))
-              && !setaBody.contains(QStringLiteral("organisationName"))
+        // SUPERSEDES the earlier "presentation only" rule. That rule was right
+        // for a name-and-logo skin and WRONG for a product line: with the
+        // storage identity shared, an installed SETA build and an installed
+        // Tech Aim build read and write the same athletes, unfinished sessions,
+        // recovery journals, reports, logs and remembered target fingerprints.
+        // The flavour now also owns the user-data namespace. What it still must
+        // NOT touch is the vendor root and the binary/lock identity.
+        check(setaBody.contains(QStringLiteral("applicationStorageName")),
+              "SETA-SEL-001: the SETA build takes its OWN user-data namespace");
+        check(!setaBody.contains(QStringLiteral("organisationName"))
               && !setaBody.contains(QStringLiteral("executableBaseName")),
-              "SETA-SEL-001: the flavour overrides presentation only - storage and "
-              "application identity stay shared");
+              "SETA-SEL-001: the vendor root and the single-instance lock stay shared");
+        check(!setaBody.contains(QStringLiteral("legalPublisher")),
+              "SETA-SEL-001: branding never re-attributes the legal publisher");
+        // No silent migration: a fresh SETA install starts clean.
+        check(!idSrc.contains(QStringLiteral("copyLegacyData"))
+              && !idSrc.contains(QStringLiteral("migrateFromTechAim")),
+              "SETA-SEL-001: no automatic copy of Tech Aim data into SETA");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // SETA-INT-001 — the hierarchy is INTEGRATED, and changes navigation only.
+    //
+    // The claim under test is behavioural equivalence: for every catalogue
+    // programme, choosing it through RULE SET -> DISCIPLINE -> PROGRAMME must
+    // land on the SAME runtime configuration the legacy weapon/distance/event
+    // controls produced - and, decisively, must make ShootingPage read the SAME
+    // ListModel row, because that row is what sets the shot count and the
+    // displayed programme. A navigation change that moved a single row would
+    // change what gets shot.
+    // ─────────────────────────────────────────────────────────────────────
+    {
+        QQmlEngine intEngine;
+        QQmlComponent intComp(&intEngine,
+                              QUrl::fromLocalFile(QStringLiteral(TECHAIM_SOURCE_DIR "/CompetitionCatalogue.qml")));
+        QScopedPointer<QObject> cat(intComp.create());
+        check(!cat.isNull(), "SETA-INT-001: catalogue loads", intComp.errorString());
+
+        if (!cat.isNull()) {
+            // The LEGACY mapping, written out as the reference implementation:
+            // main.qml::updateGameType() turns (gameMode, gameEvent) into the
+            // ListModel index ShootingPage::setCurrentGameType() then reads.
+            //   rifle : events 0..4 -> rows 1..5, anything else -> row 0
+            //   pistol: events 0..4 -> rows 7..11, anything else -> row 6
+            const auto legacyRow = [](int gameMode, int gameEvent) {
+                const int base = (gameMode == 0) ? 6 : 0;
+                return (gameEvent >= 0 && gameEvent <= 4) ? base + 1 + gameEvent : base;
+            };
+
+            int compared = 0, mismatched = 0;
+            QString firstMismatch;
+            for (int variant = 0; variant < 2; ++variant) {
+                const bool fifteen = (variant == 1);
+                for (int range = 10; range <= 50; range += 40) {
+                    const QString key = QStringLiteral("game%1RangeEventModel%2")
+                                            .arg(range).arg(fifteen ? QStringLiteral("_15")
+                                                                    : QString());
+                    QVariant ev;
+                    QMetaObject::invokeMethod(cat.data(), "entriesFor",
+                                              Q_RETURN_ARG(QVariant, ev),
+                                              Q_ARG(QVariant, key));
+                    const QVariantList rows = ev.toList();
+                    for (int row = 0; row < rows.size(); ++row) {
+                        const QVariantMap e = rows.at(row).toMap();
+                        const QString pid = e.value(QStringLiteral("programmeId")).toString();
+
+                        QVariant cv;
+                        QMetaObject::invokeMethod(cat.data(), "runtimeConfig",
+                                                  Q_RETURN_ARG(QVariant, cv),
+                                                  Q_ARG(QVariant, pid));
+                        const QVariantMap cfg = cv.toMap();
+                        ++compared;
+
+                        const int gm = cfg.value(QStringLiteral("gameMode")).toInt();
+                        const int ge = cfg.value(QStringLiteral("gameEvent")).toInt();
+                        const bool ok =
+                            cfg.value(QStringLiteral("gameRange")).toInt() == range
+                            && gm == (e.value(QStringLiteral("isPistol")).toBool() ? 0 : 1)
+                            && cfg.value(QStringLiteral("fifteen")).toBool() == fifteen
+                            && cfg.value(QStringLiteral("shotCount")).toInt()
+                                   == e.value(QStringLiteral("shotCount")).toInt()
+                            && cfg.value(QStringLiteral("targetStandardId")).toString()
+                                   == e.value(QStringLiteral("targetStandardId")).toString()
+                            // THE decisive one: the legacy index arithmetic on
+                            // the new path lands on this very row.
+                            && legacyRow(gm, ge) == row;
+                        if (!ok) {
+                            ++mismatched;
+                            if (firstMismatch.isEmpty())
+                                firstMismatch = pid + QStringLiteral(" -> range=")
+                                    + cfg.value(QStringLiteral("gameRange")).toString()
+                                    + QStringLiteral(" mode=") + QString::number(gm)
+                                    + QStringLiteral(" event=") + QString::number(ge)
+                                    + QStringLiteral(" row=") + QString::number(legacyRow(gm, ge))
+                                    + QStringLiteral(" expected row=") + QString::number(row);
+                        }
+                    }
+                }
+            }
+            check(compared == 48, "SETA-INT-001: all 48 programmes were compared",
+                  QString::number(compared));
+            check(mismatched == 0,
+                  "SETA-INT-001: every programme resolves to the SAME runtime "
+                  "configuration and the SAME ShootingPage row as the legacy path",
+                  firstMismatch);
+
+            // Paper mode partitions the catalogue: the hierarchy offers the
+            // variant this installation can actually run, and never both.
+            int standard = 0, fifteenCount = 0;
+            for (int variant = 0; variant < 2; ++variant) {
+                QVariant v;
+                QMetaObject::invokeMethod(cat.data(), "entriesIn", Q_RETURN_ARG(QVariant, v),
+                                          Q_ARG(QVariant, variant == 1));
+                (variant == 1 ? fifteenCount : standard) = v.toList().size();
+            }
+            check(standard == 24 && fifteenCount == 24 && standard + fifteenCount == 48,
+                  "SETA-INT-001: the two paper modes partition the catalogue exactly",
+                  QString::number(standard) + QStringLiteral("/")
+                      + QString::number(fifteenCount));
+
+            // 15-shot paper has no 60-shot entry, so no ISSF course exists and
+            // the ISSF rule set correctly disappears rather than offering a
+            // course the installation cannot run.
+            QVariant rs;
+            QMetaObject::invokeMethod(cat.data(), "ruleSets", Q_RETURN_ARG(QVariant, rs),
+                                      Q_ARG(QVariant, true));
+            bool issfIn15 = false;
+            for (const QVariant& r : rs.toList())
+                if (r.toMap().value(QStringLiteral("rulesetId")).toString()
+                        == QStringLiteral("issf")) issfIn15 = true;
+            check(!issfIn15,
+                  "SETA-INT-001: 15-shot paper offers no ISSF course, because none exists");
+
+            QMetaObject::invokeMethod(cat.data(), "ruleSets", Q_RETURN_ARG(QVariant, rs),
+                                      Q_ARG(QVariant, false));
+            check(rs.toList().size() == 2,
+                  "SETA-INT-001: standard paper offers ISSF and the practice presets",
+                  QString::number(rs.toList().size()));
+        }
+
+        // The page keeps the legacy controls as the rollback path, and shows
+        // exactly one selector at a time.
+        const QString page = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/LoginPage.qml"));
+        check(page.contains(QStringLiteral("SetaCompetitionSelector")),
+              "SETA-INT-001: the selector is wired into LoginPage");
+        check(page.contains(QStringLiteral("property bool setaSelection")),
+              "SETA-INT-001: the SETA path is a single switch, not a scattered edit");
+        check(page.contains(QStringLiteral("visible: !setaSelection"))
+              && page.contains(QStringLiteral("id: weaponRow")),
+              "SETA-INT-001: the legacy controls are PRESERVED and hidden, not deleted");
+        check(page.contains(QStringLiteral("runtimeConfig")),
+              "SETA-INT-001: the commit path resolves through the catalogue, so there "
+              "is no second set of match-configuration rules");
+        check(!page.contains(QStringLiteral("applySetaProgramme(\"")),
+              "SETA-INT-001: nothing applies a hardcoded programme id");
     }
 
     printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);

@@ -146,7 +146,11 @@ int main(int argc, char *argv[])
     // where they are — the rename must not move anyone's session data.
     const ta::app::ProductIdentity& product = ta::app::identity();
     QCoreApplication::setOrganizationName(product.organisationName);
-    QCoreApplication::setApplicationName(product.organisationName);
+    // <LOCALAPPDATA>/<organisation>/<application>. applicationStorageName is
+    // the PRODUCT leaf and defaults to the organisation, so Tech Aim's root is
+    // unchanged; a SETA build sets it and therefore never shares athletes,
+    // sessions, recovery journals, reports or logs with a Tech Aim install.
+    QCoreApplication::setApplicationName(product.applicationStorageName);
     QCoreApplication::setOrganizationDomain(product.organisationDomain);
     QGuiApplication::setApplicationDisplayName(product.fullProductName);
 
@@ -170,7 +174,13 @@ int main(int argc, char *argv[])
                       << APP_BUILD_CONFIG << "build · commit" << APP_GIT_SHA
                       << "· built" << kBuildTimestamp
                       << "·" << product.releaseChannel
-                      << "· flavour" << ta::app::flavourName(ta::app::currentFlavour());
+                      // brand = the shipped product skin (TECH_AIM / SETA);
+                      // flavour = the colour/asset package edition. They are
+                      // different questions, so the log answers both.
+                      << "· brand" << product.brandKey
+                      << "· flavour" << ta::app::flavourName(ta::app::currentFlavour())
+                      << "· data" << QStandardPaths::writableLocation(
+                             QStandardPaths::AppLocalDataLocation);
 
     ///////////////////////////////////////////////////////////
     /// single instance app

@@ -32,3 +32,6 @@ HEADERS += \
     ../../src/finals/FinalsReportData.h \
     ../../src/finals/FinalsReportBuilder.h \
     ../../src/finals/FinalsAudioService.h
+
+# product/seta: measure the SETA build, not the Tech Aim one.
+DEFINES += BRAND_SETA

@@ -45,6 +45,19 @@ DEFINES += APP_VERSION_STR=\\\"$$APP_VERSION_STR\\\"
 DEFINES += APP_GIT_SHA=\\\"$$GIT_SHA\\\"
 CONFIG(release, debug|release): DEFINES += APP_BUILD_CONFIG=\\\"Release\\\"
 else: DEFINES += APP_BUILD_CONFIG=\\\"Debug\\\"
+
+# ── SETA PRODUCT LINE ────────────────────────────────────────────────────────
+# This branch (product/seta) IS the SETA product, so the flavour is enabled
+# here rather than passed on a command line: a build of this tree must not be
+# able to come out unbranded. It selects the SETA name, the existing approved
+# seta.png mark and - importantly - a SEPARATE user-data namespace, so a SETA
+# install never reads or writes a Tech Aim install's athletes, sessions,
+# recovery journals, reports, logs or target fingerprints. The legal publisher
+# is NOT changed by it. See src/app/ProductIdentity.cpp.
+#
+# The test harnesses define this too (tests/*/*.pro): a gate that measures the
+# Tech Aim identity would not be measuring the build this branch ships.
+DEFINES += BRAND_SETA
 #QMAKE_TARGET_PRODUCT = "TACHUS CPU"
 
 SOURCES += main.cpp \

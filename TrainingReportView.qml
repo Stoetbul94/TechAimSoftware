@@ -101,7 +101,7 @@ Item {
                         // Approved light-background Tech Aim wordmark, enlarged
                         // (T3.1). Aspect preserved; mipmap keeps the PDF grab crisp.
                         Image {
-                            source: "qrc:/images/logo/techaim_color.png"
+                            source: PRODUCT.brandLogoPath
                             height: 60
                             width: sourceSize.height > 0 ? height * sourceSize.width / sourceSize.height : 0
                             fillMode: Image.PreserveAspectFit; smooth: true; mipmap: true
@@ -144,7 +144,7 @@ Item {
             Row {
                 anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; spacing: 8
                 Image {
-                    source: "qrc:/images/logo/techaim_color.png"; height: 12
+                    source: PRODUCT.brandLogoPath; height: 12
                     width: sourceSize.height > 0 ? height * sourceSize.width / sourceSize.height : 0
                     fillMode: Image.PreserveAspectFit; smooth: true; mipmap: true
                     anchors.verticalCenter: parent.verticalCenter

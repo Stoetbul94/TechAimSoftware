@@ -1107,16 +1107,33 @@ static void runProductIdentityChecks()
     std::printf("--- P0 product identity ---\n");
     const ta::app::ProductIdentity& p = ta::app::identity();
 
+#ifdef BRAND_SETA
+    // ── SETA product line (product/seta) ────────────────────────────────
+    // The literals below are the ONLY thing this branch changes. Every
+    // invariant further down still runs unmodified.
+    check(p.displayName == QLatin1String("SETA"),
+          "identity: display brand is 'SETA'");
+    check(p.fullProductName == QLatin1String("SETA Electronic Target Control"),
+          "identity: full product name");
+    check(p.applicationId == QLatin1String("za.co.techaim.seta.electronic-target-control"),
+          "identity: SETA carries its own reverse-DNS application id");
+#else
     check(p.displayName == QLatin1String("Tech Aim"),
           "identity: display brand is 'Tech Aim' (spaced prose form)");
     check(p.fullProductName == QLatin1String("Tech Aim Electronic Target Control"),
           "identity: full product name");
-    check(p.executableBaseName == QLatin1String("TechAim"),
-          "identity: executable base name is unspaced 'TechAim'");
-    check(p.legalPublisher == QLatin1String("JAC SHOOTING SOLUTIONS (PTY) LTD"),
-          "identity: legal publisher");
     check(p.applicationId == QLatin1String("za.co.techaim.electronic-target-control"),
           "identity: reverse-DNS application id");
+#endif
+    // Shared in BOTH products, deliberately: the executable base name also
+    // names the single-instance lock, and one machine drives one target, so a
+    // SETA build and a Tech Aim build must still refuse to run together.
+    check(p.executableBaseName == QLatin1String("TechAim"),
+          "identity: executable base name is unspaced 'TechAim' (shared lock)");
+    // BRAND/PRODUCT NAME and LEGAL PUBLISHER are different facts. Re-branding
+    // the product must never silently re-attribute who publishes the software.
+    check(p.legalPublisher == QLatin1String("JAC SHOOTING SOLUTIONS (PTY) LTD"),
+          "identity: legal publisher unchanged by branding");
     // The channel NAMES THE CANDIDATE, so pinning the exact string was wrong:
     // it made every release candidate a test edit, and RC2g-DIAG duly changed
     // the string without updating this line. Assert the invariant instead -
@@ -1146,28 +1163,56 @@ static void runProductIdentityChecks()
           && p.defaultLanguage == QLatin1String("en"),
           "identity: default theme + language");
 
-    // The AppData/QSettings identity must stay "TechAim": changing it would
-    // move every existing journal, snapshot and recovery candidate.
+    // The VENDOR root must stay "TechAim": changing it would move every
+    // existing journal, snapshot and recovery candidate.
     check(p.organisationName == QLatin1String("TechAim"),
           "identity: organisation name unchanged (session data must not move)");
 
-    // Report attribution replaces the old hardcoded "Seta 4.0".
-    check(p.softwareVersionLabel().startsWith(QLatin1String("Tech Aim ")),
-          "identity: report software label is Tech Aim, not Seta");
-    check(!p.softwareVersionLabel().contains(QLatin1String("Seta")),
-          "identity: report software label carries no legacy product name");
+    // ── mutable user data must not be shared between products ────────────
+    // Qt resolves AppLocalDataLocation as <organisation>/<application> and the
+    // default QSettings scope the same way, so this leaf IS the separation.
+    check(!p.applicationStorageName.isEmpty(),
+          "identity: a storage namespace is always defined");
+#ifdef BRAND_SETA
+    check(p.applicationStorageName == QLatin1String("TechAimSETA"),
+          "identity: SETA has its OWN user-data namespace",
+          p.applicationStorageName);
+    check(p.applicationStorageName != p.organisationName,
+          "identity: SETA does not write where Tech Aim writes - no shared "
+          "athletes, sessions, recovery state, reports, logs or fingerprints");
+    check(p.brandSettingsScope == QLatin1String("TechAimSETA"),
+          "identity: the legacy EULA/last-folder keys are product-scoped too");
+    check(p.brandKey == QLatin1String("SETA"), "identity: brand key");
+#else
+    check(p.applicationStorageName == p.organisationName,
+          "identity: Tech Aim's data root is exactly where it has always been");
+    check(p.brandSettingsScope.isEmpty(),
+          "identity: Tech Aim keeps the historical brand settings scope");
+    check(p.brandKey == QLatin1String("TECH_AIM"), "identity: brand key");
+#endif
 
-    // No user-facing product string may name a legacy product.
+    // Report attribution replaces the old hardcoded "Seta 4.0".
+    check(p.softwareVersionLabel().startsWith(p.displayName + QLatin1Char(' ')),
+          "identity: the report software label is the product, not 'Seta 4.0'",
+          p.softwareVersionLabel());
+
+    // No user-facing product string may name a LEGACY product. "Seta" is the
+    // legacy Tachus-era product name; it is dropped from this list on the SETA
+    // product line only because SETA is the deliberate, current brand there -
+    // and the brand is asserted exactly, above, so this is not a hole.
     const QStringList facing = { p.displayName, p.fullProductName,
                                  p.releaseDescription, p.executableBaseName,
                                  p.legalPublisher, p.reportAuthor, p.reportCreator };
     bool clean = true;
-    for (const QString& s : facing)
-        if (s.contains(QLatin1String("Seta"), Qt::CaseInsensitive)
-            || s.contains(QLatin1String("Seeds"), Qt::CaseInsensitive)
+    for (const QString& s : facing) {
+#ifndef BRAND_SETA
+        if (s.contains(QLatin1String("Seta"), Qt::CaseInsensitive)) clean = false;
+#endif
+        if (s.contains(QLatin1String("Seeds"), Qt::CaseInsensitive)
             || s.contains(QLatin1String("Tachus"), Qt::CaseInsensitive))
             clean = false;
-    check(clean, "identity: no user-facing Seta/Seeds/Tachus product identity");
+    }
+    check(clean, "identity: no user-facing legacy product identity");
 
     // Legacy names are still RECOGNISED (migration + single-instance) but are
     // never presented as the product.
@@ -1280,8 +1325,18 @@ static void runWindowTitleChecks()
 {
     std::printf("--- J.1A window title identity ---\n");
     const ta::app::ProductIdentity& p = ta::app::identity();
-    check(p.fullProductName == QLatin1String("Tech Aim Electronic Target Control"),
-          "title: ProductIdentity full name is the Tech Aim product name");
+    // The invariant is that the window title comes from IDENTITY - not that it
+    // spells any particular brand, which is now product-line dependent. The
+    // exact name is asserted once, in runProductIdentityChecks().
+    check(p.fullProductName == QLatin1String(
+#ifdef BRAND_SETA
+              "SETA Electronic Target Control"
+#else
+              "Tech Aim Electronic Target Control"
+#endif
+          ),
+          "title: ProductIdentity full name is this build's product name",
+          p.fullProductName);
 
     QString mainQml = readRepoFile(QStringLiteral("main.qml"));
     check(!mainQml.isEmpty(), "title: main.qml readable");

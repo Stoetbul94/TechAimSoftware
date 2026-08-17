@@ -42,6 +42,84 @@ Item {
 
     property color licColor: theme.brandPrimary
 
+    // ── SETA hierarchical selection (product/seta) ───────────────────────────
+    // setaSelection === true replaces the weapon / distance / event controls
+    // with RULE SET → DISCIPLINE → PROGRAMME. The legacy controls are NOT
+    // deleted: they are gated on !setaSelection and remain the rollback and
+    // reference path until this has been through an integrated approval, after
+    // which a separate cleanup can remove them. Only ONE of the two is ever
+    // on screen — two live selectors would be worse than either alone.
+    //
+    // What the hierarchy does NOT own: the 3 Positions sub-discipline and the
+    // two Finals are separate domains with no catalogue entry, so they stay on
+    // their existing controls. Inventing catalogue entries for them would put
+    // programmes in the hierarchy that the qualification engine cannot run.
+    property bool setaSelection: PRODUCT.brandKey === "SETA"
+    // Resolved once here, in top-level scope: an unqualified lookup of a
+    // main.qml id from inside a nested handler resolves silently to undefined.
+    property var setaCatalogue: competitionCatalogue
+    property string setaProgrammeId: ""
+    property bool setaBrowsing: false
+
+    // The ONE place a hierarchy choice becomes machine state. Everything it
+    // sets already existed; the catalogue supplies the mapping so there is no
+    // second set of match-configuration rules. Nothing here runs while the
+    // operator is browsing — back and forth through the levels cannot touch
+    // the live configuration, because only a commit reaches this function.
+    function applySetaProgramme(programmeId) {
+        var cfg = setaCatalogue ? setaCatalogue.runtimeConfig(programmeId) : null
+        if (cfg === null) return
+        trainingConfirmed = false; cdConfirmed = false
+        ptConfirmed = false;       wmConfirmed = false
+        papermode = 0
+        if (gameRange !== cfg.gameRange) rangeSelected(cfg.gameRange)
+        gameMode    = cfg.gameMode
+        gameSubMode = 0
+        gameEvent   = cfg.gameEvent
+        // gameMode/gameEvent normally drive updateGameType(); calling it
+        // explicitly covers the case where only the RANGE changed, in which
+        // case neither property emits and ShootingPage would keep the previous
+        // range's shot count.
+        if (typeof rootItem.updateGameType === "function") rootItem.updateGameType()
+        setaProgrammeId = programmeId
+        setaBrowsing = false
+    }
+
+    // The summary reads the LIVE configuration, not the last committed id, so
+    // it can never disagree with what would actually be shot — including after
+    // the 3 Positions or Finals controls change the event underneath it. There
+    // is no separate "displayed programme" state to fall out of step.
+    function setaProgrammeLabel() {
+        if (gameEvent === 6 || gameEvent === 7) return qsTr("ISSF FINAL")
+        var id = setaResolveCurrentProgrammeId()
+        var p = (setaCatalogue && id !== "") ? setaCatalogue.profile(id) : null
+        if (p === null) return qsTr("No programme selected")
+        var label = qsTr(p.gameDisplay1Key) + " " + qsTr(p.gameDisplay2Key)
+                    + "  ·  " + qsTr(p.matchDisplayKey)
+        // 3 Positions is a position variant of the same 60-shot course, not a
+        // different programme; say so rather than hiding it.
+        if (gameMode === 1 && gameRange === 50 && gameSubMode === 1)
+            label += "  ·  " + qsTr("3 POSITIONS")
+        return label
+    }
+    function setaProgrammeIsOfficial() {
+        if (gameEvent === 6 || gameEvent === 7) return true
+        var id = setaResolveCurrentProgrammeId()
+        var p = (setaCatalogue && id !== "") ? setaCatalogue.profile(id) : null
+        return p !== null && p.programmeType === "OFFICIAL"
+    }
+    // Identity of the CURRENT configuration, recomputed from stable numbers
+    // only — never from a display string, which may have been translated.
+    // Returns "" for the two finals events: they are a separate domain with no
+    // catalogue entry, and mapping them onto one would be a lie.
+    function setaResolveCurrentProgrammeId() {
+        if (!setaCatalogue || gameEvent === 6 || gameEvent === 7) return ""
+        var fifteen = APPSETTINGS.getIs15Shoot()
+        var counts  = fifteen ? [10, 15, 20, 30, 40] : [10, 20, 30, 40, 60]
+        var shots   = (gameEvent >= 0 && gameEvent <= 4) ? counts[gameEvent] : -1
+        return setaCatalogue.legacyProgrammeId(gameRange, gameMode === 0, shots, fifteen)
+    }
+
     // ── Design-system bindings (UI-1) ─────────────────────────────────────────
     // This page owned a private 13-colour palette — a local copy of values that
     // belong to the product, which is exactly why three competing brand reds
@@ -1144,13 +1222,92 @@ Item {
                 color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 11
             }
 
-            // Weapon selector (PISTOL | RIFLE)
-            Row {
-                id: weaponRow
-                anchors.top: rightSubtitle.bottom; anchors.topMargin: 14
+            // ── SETA: RULE SET → DISCIPLINE → PROGRAMME ──────────────────────
+            // Collapses to zero height on the legacy path, so the layout below
+            // is untouched when setaSelection is false.
+            Item {
+                id: setaBlock
+                anchors.top: rightSubtitle.bottom
+                anchors.topMargin: setaSelection ? 14 : 0
                 anchors.left: parent.left;   anchors.leftMargin: 22
                 anchors.right: parent.right; anchors.rightMargin: 22
-                height: 58; spacing: 8
+                height: (!setaSelection || practiceView !== 0) ? 0
+                        : (setaBrowsing ? Math.max(280, rightPanel.height - 210) : 68)
+                visible: height > 0
+                clip: true
+
+                // Committed state: what is selected, and one way to change it.
+                Rectangle {
+                    anchors.fill: parent
+                    visible: !setaBrowsing
+                    radius: 8
+                    color: _surfaceAlt
+                    border.color: setaProgrammeIsOfficial() ? _red : _borderSub
+                    border.width: setaProgrammeIsOfficial() ? 2 : 1
+                    Column {
+                        anchors.left: parent.left; anchors.leftMargin: 14
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: 3
+                        Text {
+                            text: setaProgrammeLabel()
+                            color: _txt; font.family: theme.fontFamily
+                            font.pixelSize: 13; font.bold: true
+                        }
+                        Text {
+                            // Rule authority is stated, never implied.
+                            text: setaProgrammeIsOfficial()
+                                  ? qsTr("Official ISSF course")
+                                  : qsTr("Practice - no rule authority")
+                            color: setaProgrammeIsOfficial() ? _green : _txtMut
+                            font.family: theme.fontFamily; font.pixelSize: 10
+                        }
+                    }
+                    Rectangle {
+                        id: setaChangeBtn
+                        anchors.right: parent.right; anchors.rightMargin: 12
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 92; height: 32; radius: 6
+                        color: setaChangeMouse.pressed ? _redPressed : _input
+                        border.color: _borderSub; border.width: 1
+                        Text {
+                            anchors.centerIn: parent; text: qsTr("CHANGE")
+                            color: _txtSec; font.family: theme.fontFamily
+                            font.pixelSize: 11; font.bold: true; font.letterSpacing: 1
+                        }
+                        MouseArea {
+                            id: setaChangeMouse
+                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                            onClicked: { setaSelector.reset(); setaBrowsing = true }
+                        }
+                    }
+                }
+
+                // Browsing state. Nothing here writes to the shooting
+                // configuration; only programmeCommitted does.
+                SetaCompetitionSelector {
+                    id: setaSelector
+                    anchors.fill: parent
+                    visible: setaBrowsing
+                    catalogue: setaCatalogue
+                    fifteenShotMode: APPSETTINGS.getIs15Shoot()
+                    bg: _surface; card: _surfaceAlt; cardSel: _input
+                    accent: _red;  line: _borderSub
+                    textPrimary: _txt; textSecondary: _txtSec
+                    textMuted: _txtMut; textOfficial: _green
+                    onProgrammeCommitted: function (programmeId) {
+                        applySetaProgramme(programmeId)
+                    }
+                }
+            }
+
+            // Weapon selector (PISTOL | RIFLE) — LEGACY PATH, kept for rollback
+            Row {
+                id: weaponRow
+                visible: !setaSelection
+                anchors.top: setaBlock.bottom; anchors.topMargin: setaSelection ? 0 : 14
+                anchors.left: parent.left;   anchors.leftMargin: 22
+                anchors.right: parent.right; anchors.rightMargin: 22
+                height: setaSelection ? 0 : 58; spacing: 8
 
                 Rectangle {
                     width: (parent.width - 8) / 2; height: 58; radius: 8
@@ -1213,14 +1370,20 @@ Item {
             Column {
                 id: subDisciplineRow
                 anchors.top: weaponRow.bottom
-                anchors.topMargin: gameMode === 1 ? 8 : 0
+                anchors.topMargin: (setaSelection ? (gameMode === 1 && gameRange === 50)
+                                                  : (gameMode === 1)) ? 8 : 0
                 anchors.left: parent.left;   anchors.leftMargin: 22
                 anchors.right: parent.right; anchors.rightMargin: 22
-                height: gameMode === 1 ? (gameRange === 50 ? 96 : 44) : 0
+                // On the SETA path the hierarchy owns weapon + distance, so only
+                // the position row (50 m Rifle) survives here: 3 Positions is a
+                // position variant, not a catalogue programme.
+                height: setaSelection ? ((gameMode === 1 && gameRange === 50) ? 44 : 0)
+                                      : (gameMode === 1 ? (gameRange === 50 ? 96 : 44) : 0)
                 spacing: 8; clip: true
 
-                // Distance row: 10m | 50m
+                // Distance row: 10m | 50m — LEGACY PATH
                 Row {
+                    visible: !setaSelection
                     width: parent.width; height: 44; spacing: 8
                     Rectangle {
                         width: (parent.width - 8) / 2; height: 44; radius: 6
@@ -1305,7 +1468,7 @@ Item {
             // a Flickable natively.
             Flickable {
                 id: eventScroll
-                visible: practiceView === 0
+                visible: practiceView === 0 && !(setaSelection && setaBrowsing)
                 anchors.top: subDisciplineRow.bottom; anchors.topMargin: 12
                 anchors.left: parent.left;   anchors.leftMargin: 22
                 anchors.right: parent.right; anchors.rightMargin: 22
@@ -1418,14 +1581,18 @@ Item {
                     }
 
                     // ── OFFICIAL ISSF MATCH ────────────────────────────────────
+                    // LEGACY PATH: on the SETA path the 60-shot course is a
+                    // catalogue programme reached through the hierarchy, so
+                    // offering it here as well would be a second selector.
                     Text {
                         text: "OFFICIAL ISSF MATCH"
+                        visible: !setaSelection
                         color: _txtMut; font.family: theme.fontFamily
                         font.pixelSize: theme.type.label.size; font.bold: true; font.letterSpacing: theme.type.label.spacing
                         topPadding: 4; bottomPadding: 8
                     }
                     // Official: 60 shots — Pistol, 10m Rifle, 50m Prone, 50m 3 Pos (20+20+20)
-                    EventCard { eventIndex: 4 }
+                    EventCard { eventIndex: 4; visible: !setaSelection }
 
                     Text {
                         text: "FINALS"
@@ -1493,14 +1660,18 @@ Item {
                     }
                     Text {
                         text: "PRACTICE"
+                        visible: !setaSelection
                         color: _txtMut; font.family: theme.fontFamily
                         font.pixelSize: theme.type.label.size; font.bold: true; font.letterSpacing: theme.type.label.spacing
                         topPadding: 16; bottomPadding: 8
                     }
                     // OPEN PRACTICE — one card; presets select the existing
                     // practice events (identical behaviour to the old rows).
+                    // LEGACY PATH: on the SETA path these same events are the
+                    // practice-preset programmes in the hierarchy.
                     Rectangle {
                         id: openPracticeCard
+                        visible: !setaSelection
                         readonly property bool selected: gameEvent >= 0 && gameEvent <= 3 && !trainingConfirmed
                         width: eventColumn.width
                         // UI-HOME-009: the collapsed card now matches every other
@@ -1585,7 +1756,7 @@ Item {
                             onClicked: { trainingConfirmed = false; cdConfirmed = false; ptConfirmed = false; wmConfirmed = false; gameEvent = 1 }
                         }
                     }
-                    Item { width: 1; height: 8 }
+                    Item { width: 1; height: 8; visible: !setaSelection }
                     // T1.1: the separate FREE PRACTICE section is gone — one
                     // practice concept only. Unlimited practice (gameEvent 5)
                     // lives inside the Open Practice card as the "No limit"

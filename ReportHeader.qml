@@ -53,7 +53,7 @@ Item {
             // Brand logo (T3.1: enlarged). Color variant — report pages are
             // always white. mipmap keeps the PDF grab (3-4x) crisp.
             Image {
-                source: "qrc:/images/logo/techaim_color.png"
+                source: PRODUCT.brandLogoPath
                 height: 56
                 width: sourceSize.height > 0 ? height * sourceSize.width / sourceSize.height : 0
                 fillMode: Image.PreserveAspectFit

@@ -96,10 +96,19 @@ void run_brand_package_tests()
     // ── identity is unchanged by the design system ──────────────────────────
     {
         const BrandPackage& b = brand();
+#ifdef BRAND_SETA
+        check(b.productName == QLatin1String("SETA Electronic Target Control"),
+              "brand: product name is SETA Electronic Target Control");
+        check(b.shortProductName == QLatin1String("SETA"),
+              "brand: short product name is SETA");
+#else
         check(b.productName == QLatin1String("Tech Aim Electronic Target Control"),
               "brand: product name is Tech Aim Electronic Target Control");
         check(b.shortProductName == QLatin1String("Tech Aim"),
               "brand: short product name is Tech Aim");
+#endif
+        // The publisher is a LEGAL fact and is not part of the skin, so it is
+        // asserted identically on both product lines.
         check(b.publisher == QLatin1String("JAC SHOOTING SOLUTIONS (PTY) LTD"),
               "brand: publisher is JAC SHOOTING SOLUTIONS (PTY) LTD");
         check(b.productName == identity().fullProductName,
@@ -121,13 +130,35 @@ void run_brand_package_tests()
         check(iconReported,
               "brand: the absent Windows icon is reported as missing, not invented");
         check(!b.isComplete(),
-              "brand: Tech Aim is honestly incomplete while the icon is absent");
+              "brand: the package is honestly incomplete while an asset is absent");
 
+#ifdef BRAND_SETA
+        // SETA supplied ONE mark (seta.png). The white-on-dark and single-ink
+        // variants do not exist, and the package must SAY SO rather than fall
+        // back to the Tech Aim logo - which would put another company's mark on
+        // a SETA header and a SETA report.
+        bool whiteReported = false, monoReported = false;
+        for (const QString& m : missing) {
+            if (m.startsWith(QStringLiteral("logoWhite")))      whiteReported = true;
+            if (m.startsWith(QStringLiteral("logoMonochrome"))) monoReported  = true;
+        }
+        check(whiteReported && monoReported,
+              "brand: the SETA logo variants that were never supplied are reported");
+        check(b.logoColour == identity().brandLogoPath
+              && b.reportLogo == identity().brandLogoPath,
+              "brand: the SETA marks come from identity, not a per-screen literal");
+        check(!b.logoColour.contains(QLatin1String("techaim")),
+              "brand: no Tech Aim logo asset is used by the SETA package");
+        check(missing.size() == 3,
+              QString(QStringLiteral("brand: icon + two logo variants are the outstanding SETA assets (missing: %1)"))
+                  .arg(missing.join(QStringLiteral(", "))));
+#else
         // The icon must be the ONLY outstanding item. Anything else appearing
         // here means an asset was quietly dropped from the package.
         check(missing.size() == 1,
               QString(QStringLiteral("brand: the icon is the ONLY outstanding Tech Aim asset (missing: %1)"))
                   .arg(missing.join(QStringLiteral(", "))));
+#endif
     }
 
     // ── the OEM seam exists, is empty, and does not fall back ───────────────
@@ -164,7 +195,11 @@ void run_brand_package_tests()
               "boundary: the two packages are genuinely different objects");
         // Identity of the RUNNING build is fixed by the flavour, not by which
         // package was inspected — reading the OEM package must not mutate it.
+#ifdef BRAND_SETA
+        check(identity().fullProductName == QLatin1String("SETA Electronic Target Control"),
+#else
         check(identity().fullProductName == QLatin1String("Tech Aim Electronic Target Control"),
+#endif
               "boundary: inspecting the OEM package does not change the running identity");
         check(brand().accentPrimary == QLatin1String("#A80038"),
               "boundary: inspecting the OEM package does not change the running accent");

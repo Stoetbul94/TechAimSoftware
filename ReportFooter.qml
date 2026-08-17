@@ -15,7 +15,7 @@ Item {
         anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter; spacing: 6
         // Small brand logo (replaces the text mark; same asset as the header).
         Image {
-            source: "qrc:/images/logo/techaim_color.png"
+            source: PRODUCT.brandLogoPath
             height: 13
             width: sourceSize.height > 0 ? height * sourceSize.width / sourceSize.height : 0
             fillMode: Image.PreserveAspectFit

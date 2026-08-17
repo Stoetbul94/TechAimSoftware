@@ -23,17 +23,30 @@ BrandPackage makeTechAim()
     BrandPackage b;
     b.flavourKey       = QStringLiteral("TECH_AIM");
 
-    b.productName      = QStringLiteral("Tech Aim Electronic Target Control");
-    b.shortProductName = QStringLiteral("Tech Aim");
-    b.publisher        = QStringLiteral("JAC SHOOTING SOLUTIONS (PTY) LTD");
+    // The NAME comes from the one identity source, so the package can never
+    // disagree with the product it brands. On a SETA build these become the
+    // SETA names; the colour system below stays Tech Aim's approved one,
+    // because no SETA palette has been supplied and inventing one is a brand
+    // act, not an engineering one.
+    b.productName      = identity().fullProductName;
+    b.shortProductName = identity().displayName;
+    b.publisher        = identity().legalPublisher;
 
-    b.logoColour       = QStringLiteral("qrc:/images/logo/techaim_color.png");
-    b.logoWhite        = QStringLiteral("qrc:/images/logo/techaim_white.png");
+    b.logoColour       = identity().brandLogoPath;
+    b.logoWhite        = identity().brandLogoOnDarkPath;
     // No dedicated monochrome mark exists. techaim_black.png is the
     // single-ink variant actually shipped and is what the report/PDF path
     // already uses, so it is declared honestly rather than left empty.
     b.logoMonochrome   = QStringLiteral("qrc:/images/logo/techaim_black.png");
-    b.reportLogo       = QStringLiteral("qrc:/images/logo/techaim_color.png");
+    b.reportLogo       = identity().brandLogoPath;
+#ifdef BRAND_SETA
+    // SETA supplied ONE mark (seta.png). A white-on-dark and a single-ink
+    // variant do not exist, so they are reported as missing rather than
+    // silently falling back to the Tech Aim logo, which would put the wrong
+    // company's mark on a SETA report.
+    b.logoWhite        = QString();
+    b.logoMonochrome   = QString();
+#endif
     // BRAND APPROVAL REQUIRED: no .ico exists and TechAim.rc declares no ICON
     // resource, so the executable carries the default Qt/MinGW icon. Deriving
     // one from the raster logo is a brand act and is deliberately NOT done
@@ -47,8 +60,8 @@ BrandPackage makeTechAim()
     b.logoIntrinsicColour = QStringLiteral("#BF1919");   // logo tagline only
 
     b.resourceNamespace = QStringLiteral("qrc:/images/logo");
-    b.pdfAttribution    = QStringLiteral("Tech Aim Electronic Target Control");
-    b.manualBrandName   = QStringLiteral("Tech Aim");
+    b.pdfAttribution    = identity().fullProductName;
+    b.manualBrandName   = identity().displayName;
     b.defaultLanguage   = QString();   // the operator's choice wins
     return b;
 }

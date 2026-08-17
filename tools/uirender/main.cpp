@@ -21,6 +21,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFont>
+#include <QTranslator>
 #include <QFontDatabase>
 #include <QStandardPaths>
 #include <QVariantMap>
@@ -71,11 +72,34 @@ int main(int argc, char** argv)
         qputenv("QT_ENABLE_HIGHDPI_SCALING", "0");
 
     QGuiApplication app(argc, argv);
-    if (argc < 5) { std::printf("usage: uirender <scene.qml> <out.png> <w> <h>\n"); return 2; }
+    if (argc < 5) {
+        std::printf("usage: uirender <scene.qml> <out.png> <w> <h> [lang]\n"
+                    "  lang: a translations/<lang>.qm basename, e.g. german\n");
+        return 2;
+    }
     const QString scene = QString::fromLocal8Bit(argv[1]);
     const QString out   = QString::fromLocal8Bit(argv[2]);
     const int w = QString::fromLocal8Bit(argv[3]).toInt();
     const int h = QString::fromLocal8Bit(argv[4]).toInt();
+
+    // Optional translation, so a layout can be shown in the language it has to
+    // survive - German expands, and a screen that only ever rendered in English
+    // has not been shown to fit. Installed BEFORE the engine loads the scene:
+    // a ListModel captures qsTr() once at build time and never retranslates.
+    QTranslator translator;
+    if (argc >= 6) {
+        const QString lang = QString::fromLocal8Bit(argv[5]);
+        const QString qm = QCoreApplication::applicationDirPath()
+                           + QStringLiteral("/../../../translations/") + lang
+                           + QStringLiteral(".qm");
+        if (!translator.load(qm)) {
+            std::printf("WARN: could not load %s - rendering in English\n",
+                        qm.toLocal8Bit().constData());
+        } else {
+            QCoreApplication::installTranslator(&translator);
+            std::printf("language: %s\n", lang.toLocal8Bit().constData());
+        }
+    }
 
     // Minimal stand-ins for the ambient context properties the real
     // application injects. Uppercase names cannot be QML ids, so they have to
@@ -112,7 +136,12 @@ int main(int argc, char** argv)
     product.setProperty("displayName", "Tech Aim");
     product.setProperty("version", "0.9.0");
     product.setProperty("releaseChannel", "RC2");
-    product.setProperty("legalPublisher", "SETA Electronic Targets");
+    product.setProperty("legalPublisher", "JAC SHOOTING SOLUTIONS (PTY) LTD");
+    // Theme.qml and the report components read the brand mark from identity,
+    // so the stub has to supply it or they render an empty image.
+    product.setProperty("brandLogoPath", "qrc:/images/logo/techaim_color.png");
+    product.setProperty("brandLogoOnDarkPath", "qrc:/images/logo/techaim_white.png");
+    product.setProperty("brandKey", "TECH_AIM");
     product.setProperty("qtVersion", "6.5.3");
     product.setProperty("architecture", "x86_64");
     product.setProperty("windowsVersion", "Windows 11 Home Single Language 10.0.26200");

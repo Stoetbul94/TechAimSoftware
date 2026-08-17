@@ -1,5 +1,6 @@
 #include "appsettings.h"
 #include "defines.h"
+#include "app/ProductIdentity.h"
 
 #include <QDebug>
 #include <QFile>
@@ -196,6 +197,24 @@ QString AppSettings::getBrandName()
     return m_brandName;
 }
 
+// The organisation scope for the two PRE-REBRAND registry keys below (EULA
+// acceptance and the last-used file-dialog folder). These predate
+// ProductIdentity and are the only user state NOT under the
+// AppLocalDataLocation root, so they need the same product separation: without
+// it a SETA install and a Tech Aim install would share them.
+//
+// Tech Aim keeps the historical "Tachus"/"Seta" scope exactly - moving it would
+// silently re-prompt for the EULA - so the override is empty there and set only
+// by a product build. No session, score, athlete or recovery data lives here.
+QString AppSettings::brandSettingsOrganisation()
+{
+    const QString productScope = ta::app::identity().brandSettingsScope;
+    if (!productScope.isEmpty())
+        return productScope;
+    return getBrandName() == "tachus" ? QStringLiteral("Tachus")
+                                      : QStringLiteral("Seta");
+}
+
 void AppSettings::saveMatch(bool createNew)
 {
     if (m_matchSavedFile == NULL || createNew) {
@@ -296,52 +315,26 @@ void AppSettings::autoSaveMatchScore(int index, double xCor, double yCor)
 
 bool AppSettings::isEulaAccepted()
 {
-    if (getBrandName() == "tachus")
-    {
-        QSettings regSettings("Tachus", "shootingApp");
-        bool isEulaAccepted = regSettings.value("isEulaAccepted").toBool();
-        return isEulaAccepted;
-    } else {
-        QSettings regSettings("Seta", "shootingApp");
-        bool isEulaAccepted = regSettings.value("isEulaAccepted").toBool();
-        return isEulaAccepted;
-    }
+    QSettings regSettings(brandSettingsOrganisation(), "shootingApp");
+    return regSettings.value("isEulaAccepted").toBool();
 }
 
 void AppSettings::eulaAccepted()
 {
-    if (getBrandName() == "tachus")
-    {
-        QSettings regSettings("Tachus", "shootingApp");
-        regSettings.setValue("isEulaAccepted", true);
-    } else {
-        QSettings regSettings("Seta", "shootingApp");
-        regSettings.setValue("isEulaAccepted", true);
-    }
+    QSettings regSettings(brandSettingsOrganisation(), "shootingApp");
+    regSettings.setValue("isEulaAccepted", true);
 }
 
 QString AppSettings::getLoadFileLocation()
 {
-    if (getBrandName() == "tachus")
-    {
-        QSettings regSettings("Tachus", "shootingApp");
-        return regSettings.value("loadFilePath").toString();
-    } else {
-        QSettings regSettings("Seta", "shootingApp");
-        return regSettings.value("loadFilePath").toString();
-    }
+    QSettings regSettings(brandSettingsOrganisation(), "shootingApp");
+    return regSettings.value("loadFilePath").toString();
 }
 
 void AppSettings::setLoadFileLocation(QString path)
 {
-    if (getBrandName() == "tachus")
-    {
-        QSettings regSettings("Tachus", "shootingApp");
-        regSettings.setValue("loadFilePath", path);
-    } else {
-        QSettings regSettings("Seta", "shootingApp");
-        regSettings.setValue("loadFilePath", path);
-    }
+    QSettings regSettings(brandSettingsOrganisation(), "shootingApp");
+    regSettings.setValue("loadFilePath", path);
 }
 
 void AppSettings::setUsername(QString name)

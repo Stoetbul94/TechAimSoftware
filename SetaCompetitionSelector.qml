@@ -3,9 +3,10 @@ import QtQuick 2.15
 // ─────────────────────────────────────────────────────────────────────────────
 // SETA hierarchical competition selector — RULE SET → DISCIPLINE → PROGRAMME.
 //
-// SETA-ONLY. This lives on product/seta and replaces nothing yet: the existing
-// LoginPage card grid still drives production selection. Swapping it in is a
-// separate, approved migration step with its own integrated check.
+// SETA-ONLY. This lives on product/seta and IS the SETA production selection
+// path: LoginPage shows it in place of the weapon/distance/event controls,
+// which are kept intact behind setaSelection as the rollback reference until
+// this has been through an integrated approval.
 //
 // Why it exists: one card per programme does not survive federation
 // programmes. Four ISSF courses plus Tech Aim presets already make 48 entries;
@@ -27,6 +28,11 @@ Item {
 
     property var catalogue: null
 
+    // The installation's paper mode (APPSETTINGS.getIs15Shoot()). Every level
+    // is filtered by it, so the hierarchy only ever offers programmes this
+    // installation can actually run - and never shows the same preset twice.
+    property bool fifteenShotMode: false
+
     // Committed ONLY when the final programme is chosen. Nothing upstream sees
     // a half-made choice, so changing level cannot partially mutate a session.
     property string selectedProgrammeId: ""
@@ -37,11 +43,18 @@ Item {
     property string pendingDiscipline: ""
     property int    step: 0                 // 0 rule set · 1 discipline · 2 programme
 
-    readonly property color bg:      "#15161a"
-    readonly property color card:    "#26272c"
-    readonly property color cardSel: "#2f3037"
-    readonly property color accent:  "#e8003d"
-    readonly property color line:    "#3a3b40"
+    // Overridable so the host page hands in the design tokens rather than this
+    // component owning a private palette - the mistake UI-1 unpicked. The
+    // literals are only the standalone-render defaults.
+    property color bg:      "#15161a"
+    property color card:    "#26272c"
+    property color cardSel: "#2f3037"
+    property color accent:  "#e8003d"
+    property color line:    "#3a3b40"
+    property color textPrimary:   "#f2f3f5"
+    property color textSecondary: "#c9ced6"
+    property color textMuted:     "#9a9ba0"
+    property color textOfficial:  "#8fe0a8"
 
     implicitWidth: 720
     implicitHeight: 460
@@ -56,13 +69,13 @@ Item {
     }
     function chooseRuleSet(id) {
         pendingRuleSet = id
-        var d = catalogue ? catalogue.disciplines(id) : []
+        var d = catalogue ? catalogue.disciplines(id, fifteenShotMode) : []
         step = 1
         if (d.length === 1) chooseDiscipline(d[0].disciplineId)
     }
     function chooseDiscipline(id) {
         pendingDiscipline = id
-        var p = catalogue ? catalogue.programmes(pendingRuleSet, id) : []
+        var p = catalogue ? catalogue.programmes(pendingRuleSet, id, fifteenShotMode) : []
         // Step 3 only earns its place when there is a real choice to make.
         if (p.length === 1) commit(p[0].programmeId)
         else step = 2
@@ -91,7 +104,7 @@ Item {
                 visible: selector.step > 0
                 Text {
                     anchors.centerIn: parent
-                    text: qsTr("< Back"); color: "#c9ced6"
+                    text: qsTr("< Back"); color: selector.textSecondary
                     font.pixelSize: 12; font.bold: true
                 }
                 MouseArea { id: backMouse; anchors.fill: parent; onClicked: selector.back() }
@@ -100,7 +113,7 @@ Item {
                 anchors.left: selector.step > 0 ? backBtn.right : parent.left
                 anchors.leftMargin: selector.step > 0 ? 14 : 0
                 anchors.verticalCenter: parent.verticalCenter
-                color: "#8a8b90"; font.pixelSize: 12
+                color: selector.textMuted; font.pixelSize: 12
                 text: {
                     var t = qsTr("Rule set")
                     if (selector.step > 0) t += "  ›  " + qsTr("Discipline")
@@ -114,7 +127,7 @@ Item {
             text: selector.step === 0 ? qsTr("SELECT RULE SET")
                 : selector.step === 1 ? qsTr("SELECT DISCIPLINE")
                                       : qsTr("SELECT PROGRAMME")
-            color: "#f2f3f5"
+            color: selector.textPrimary
             font.pixelSize: 15; font.bold: true; font.letterSpacing: 1.2
         }
 
@@ -123,7 +136,7 @@ Item {
             width: parent.width; spacing: 12
             visible: selector.step === 0
             Repeater {
-                model: selector.catalogue ? selector.catalogue.ruleSets() : []
+                model: selector.catalogue ? selector.catalogue.ruleSets(selector.fifteenShotMode) : []
                 Rectangle {
                     width: 216; height: 84; radius: 8
                     color: rsMouse.pressed ? selector.cardSel : selector.card
@@ -134,14 +147,14 @@ Item {
                         spacing: 5
                         Text {
                             text: qsTr(modelData.labelKey)
-                            color: "white"; font.pixelSize: 16; font.bold: true
+                            color: selector.textPrimary; font.pixelSize: 16; font.bold: true
                         }
                         Text {
                             // Official authority is stated, never implied.
                             text: modelData.federation !== ""
                                   ? qsTr("Official competition rules")
                                   : qsTr("Practice - no rule authority")
-                            color: modelData.federation !== "" ? "#8fe0a8" : "#9a9ba0"
+                            color: modelData.federation !== "" ? selector.textOfficial : selector.textMuted
                             font.pixelSize: 10
                         }
                     }
@@ -159,7 +172,8 @@ Item {
             visible: selector.step === 1
             Repeater {
                 model: (selector.catalogue && selector.pendingRuleSet !== "")
-                       ? selector.catalogue.disciplines(selector.pendingRuleSet) : []
+                       ? selector.catalogue.disciplines(selector.pendingRuleSet,
+                                                        selector.fifteenShotMode) : []
                 Rectangle {
                     width: 216; height: 84; radius: 8
                     color: dMouse.pressed ? selector.cardSel : selector.card
@@ -170,11 +184,11 @@ Item {
                         spacing: 5
                         Text {
                             text: qsTr(modelData.labelKey)
-                            color: "white"; font.pixelSize: 15; font.bold: true
+                            color: selector.textPrimary; font.pixelSize: 15; font.bold: true
                         }
                         Text {
                             text: modelData.distanceM + " m"
-                            color: "#9a9ba0"; font.pixelSize: 11
+                            color: selector.textMuted; font.pixelSize: 11
                         }
                     }
                     MouseArea {
@@ -192,7 +206,8 @@ Item {
             Repeater {
                 model: (selector.catalogue && selector.pendingDiscipline !== "")
                        ? selector.catalogue.programmes(selector.pendingRuleSet,
-                                                       selector.pendingDiscipline) : []
+                                                       selector.pendingDiscipline,
+                                                       selector.fifteenShotMode) : []
                 Rectangle {
                     width: 168; height: 66; radius: 7
                     color: pMouse.pressed ? selector.cardSel : selector.card
@@ -205,13 +220,13 @@ Item {
                         spacing: 3
                         Text {
                             text: qsTr(modelData.matchDisplayKey)
-                            color: "white"; font.pixelSize: 14; font.bold: true
+                            color: selector.textPrimary; font.pixelSize: 14; font.bold: true
                         }
                         Text {
                             text: modelData.programmeType === "OFFICIAL"
                                   ? qsTr("Official course") : qsTr("Preset")
                             color: modelData.programmeType === "OFFICIAL"
-                                   ? "#8fe0a8" : "#9a9ba0"
+                                   ? selector.textOfficial : selector.textMuted
                             font.pixelSize: 10
                         }
                     }

@@ -18,3 +18,6 @@ TARGET    = qml_tests
 DEFINES += TECHAIM_SOURCE_DIR=\\\"$$PWD/../..\\\"
 
 SOURCES += tst_qml_shot_path.cpp
+
+# product/seta: measure the SETA build, not the Tech Aim one.
+DEFINES += BRAND_SETA

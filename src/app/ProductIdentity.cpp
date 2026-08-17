@@ -22,6 +22,11 @@ ProductIdentity makeTechAim()
     p.applicationId      = QStringLiteral("za.co.techaim.electronic-target-control");
     p.organisationName   = QStringLiteral("TechAim");
     p.organisationDomain = QStringLiteral("techaim.co.za");
+    // Defaults to the organisation, which is exactly what M0 wrote, so the
+    // existing Tech Aim data root does not move.
+    p.applicationStorageName = p.organisationName;
+    p.brandSettingsScope     = QString();
+    p.brandKey               = QStringLiteral("TECH_AIM");
 
     p.legalPublisher = QStringLiteral("JAC SHOOTING SOLUTIONS (PTY) LTD");
     p.copyrightLine  = QStringLiteral("Copyright (C) JAC SHOOTING SOLUTIONS (PTY) LTD");
@@ -52,25 +57,54 @@ ProductIdentity makeTechAim()
 
     // Brand mark, as a qrc path so QML asks identity for it rather than
     // hardcoding a logo per screen.
-    p.brandLogoPath = QStringLiteral("qrc:/images/logo/techaim_color.png");
+    p.brandLogoPath       = QStringLiteral("qrc:/images/logo/techaim_color.png");
+    p.brandLogoOnDarkPath = QStringLiteral("qrc:/images/logo/techaim_white.png");
 
 #ifdef BRAND_SETA
-    // ── SETA / OEM presentation layer ────────────────────────────────────
-    // PRESENTATION ONLY. Everything engineering-identifying stays shared:
-    // executableBaseName, applicationId, organisationName/Domain, the storage
-    // paths derived from them, scoring, acquisition and the report engine are
-    // deliberately NOT overridden. A SETA build is the same application
-    // wearing a different name, not a fork.
+    // ── SETA product line ────────────────────────────────────────────────
+    // PRESENTATION + USER-DATA NAMESPACE. The engine is untouched: scoring,
+    // acquisition, Modbus, SessionStore, recovery, the paper feed and the
+    // report engine are shared, and the session/journal FILE FORMATS stay
+    // compatible. A SETA build is the same application under a different
+    // name, keeping its own data - not a fork.
     //
     // seta.png is an existing approved asset - it already brands the printed
     // report - so no logo was invented here.
+    p.brandKey         = QStringLiteral("SETA");
     p.displayName      = QStringLiteral("SETA");
     p.fullProductName  = QStringLiteral("SETA Electronic Target Control");
     p.brandLogoPath    = QStringLiteral("qrc:/images/logo/seta.png");
+    // SETA supplied ONE mark. There is no white-on-dark variant, so the header
+    // uses the same file rather than the Tech Aim white logo - showing another
+    // company's mark in a SETA build would be worse than an imperfect one.
+    // BrandPackage reports logoWhite as a MISSING ASSET so this stays visible
+    // as an outstanding request, not a silent substitution.
+    p.brandLogoOnDarkPath = p.brandLogoPath;
     p.reportAuthor     = p.fullProductName;
     p.reportCreator    = p.fullProductName;
-    // legalPublisher is NOT changed here: the publishing entity is a legal
-    // fact, not a skin, and SETA's has not been supplied.
+
+    // SEPARATE MUTABLE USER DATA. Without this a SETA install and a Tech Aim
+    // install on one machine would read and write the SAME athletes, unfinished
+    // sessions, recovery journals, reports, logs and remembered target
+    // fingerprints, because Qt derives all of them from
+    // <organisationName>/<applicationName>. The VENDOR folder stays shared -
+    // the vendor really is the same - and everything mutable inside it does not.
+    // There is deliberately NO automatic copy of Tech Aim data into SETA: a
+    // fresh SETA install starts clean, and importing an existing store would be
+    // a separate, deliberate feature.
+    p.applicationId          = QStringLiteral("za.co.techaim.seta.electronic-target-control");
+    p.applicationStorageName = QStringLiteral("TechAimSETA");
+    p.brandSettingsScope     = QStringLiteral("TechAimSETA");
+
+    // NOT overridden, on purpose:
+    //   organisationName / organisationDomain - the vendor, unchanged.
+    //   executableBaseName - names the binary AND the single-instance lock.
+    //     Sharing the lock is deliberate: one machine drives one target, so a
+    //     SETA build and a Tech Aim build must still refuse to run together.
+    //   legalPublisher - the publishing entity is a legal fact, not a skin.
+    //     BRAND/PRODUCT NAME and LEGAL PUBLISHER are separate fields for this
+    //     reason; SETA's publisher has not been supplied, so JAC SHOOTING
+    //     SOLUTIONS (PTY) LTD remains correct and stays.
 #endif
 
     p.defaultTheme    = QStringLiteral("techaim-dark");
