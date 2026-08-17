@@ -751,12 +751,13 @@ int main(int argc, char* argv[])
             QStringList badIds;
             for (const QString& id : ids) {
                 if (id != id.toLower() || id.contains(QLatin1Char(' '))
-                    || !id.startsWith(QStringLiteral("issf.")))
+                    || !(id.startsWith(QStringLiteral("issf."))
+                         || id.startsWith(QStringLiteral("techaim."))))
                     badIds << id;
             }
             check(badIds.isEmpty(),
-                  "CATALOGUE-001: ids are lowercase, unspaced and ISSF-scoped - machine identity, "
-                  "safe in a session file or an RMS message", badIds.join(QStringLiteral(", ")));
+                  "CATALOGUE-001: ids are lowercase, unspaced and authority-scoped (issf.* or "
+                  "techaim.*) - machine identity, safe in a session file or an RMS message", badIds.join(QStringLiteral(", ")));
 
             // Legacy sessions carry no programmeId; identity is recovered from
             // stable numeric state, never from a stored display string.
@@ -764,9 +765,56 @@ int main(int argc, char* argv[])
             QMetaObject::invokeMethod(cat.data(), "legacyProgrammeId", Q_RETURN_ARG(QVariant, legacy),
                                       Q_ARG(QVariant, 50), Q_ARG(QVariant, false),
                                       Q_ARG(QVariant, 60), Q_ARG(QVariant, false));
-            check(legacy.toString() == QStringLiteral("issf.50m.rifle.match60"),
+            check(legacy.toString() == QStringLiteral("issf.50m.rifle.qualification60"),
                   "CATALOGUE-001: a legacy session maps to a programmeId from numeric state alone",
                   legacy.toString());
+
+
+            // ── CATALOGUE-002: authority semantics ───────────────────────
+            // A preset that shoots on an ISSF target is NOT an ISSF event.
+            // Only the 60-shot courses have rule authority; FREE/10/15/20/
+            // 30/40 are Tech Aim presets and must not claim otherwise.
+            int official = 0, presets = 0, wrongAuthority = 0, missingStandard = 0;
+            for (const Expect& e : expected) {
+                QVariant v;
+                QMetaObject::invokeMethod(cat.data(), "entriesFor", Q_RETURN_ARG(QVariant, v),
+                                          Q_ARG(QVariant, QString::fromLatin1(e.model)));
+                for (const QVariant& row : v.toList()) {
+                    const QVariantMap r = row.toMap();
+                    const QString id   = r.value(QStringLiteral("programmeId")).toString();
+                    const QString rs   = r.value(QStringLiteral("rulesetId")).toString();
+                    const QString fed  = r.value(QStringLiteral("federation")).toString();
+                    const QString type = r.value(QStringLiteral("programmeType")).toString();
+                    const QString std  = r.value(QStringLiteral("targetStandardId")).toString();
+                    const int shots    = r.value(QStringLiteral("shotCount")).toInt();
+
+                    if (!std.startsWith(QStringLiteral("issf."))) ++missingStandard;
+
+                    if (shots == 60) {
+                        ++official;
+                        if (rs != QStringLiteral("issf") || fed != QStringLiteral("ISSF")
+                            || type != QStringLiteral("OFFICIAL")
+                            || !id.startsWith(QStringLiteral("issf.")))
+                            ++wrongAuthority;
+                    } else {
+                        ++presets;
+                        if (rs != QStringLiteral("techaim") || !fed.isEmpty()
+                            || type != QStringLiteral("PRESET")
+                            || !id.startsWith(QStringLiteral("techaim.")))
+                            ++wrongAuthority;
+                    }
+                }
+            }
+            check(official == 4, "CATALOGUE-002: exactly 4 official ISSF 60-shot courses",
+                  QString::number(official));
+            check(presets == 44, "CATALOGUE-002: the other 44 entries are Tech Aim presets",
+                  QString::number(presets));
+            check(wrongAuthority == 0,
+                  "CATALOGUE-002: no preset claims ISSF authority and no official course "
+                  "understates it", QString::number(wrongAuthority));
+            check(missingStandard == 0,
+                  "CATALOGUE-002: official courses AND presets select the same ISSF target "
+                  "standard", QString::number(missingStandard));
 
             // Language independence, proved by running under a translator.
             QVariant idEn;
