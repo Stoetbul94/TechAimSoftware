@@ -38,6 +38,7 @@
 #include <QStringList>
 #include <QDebug>
 #include <QDir>
+#include <QSet>
 #include <QTranslator>
 #include <QScopedPointer>
 #include <cstdio>
@@ -678,6 +679,147 @@ int main(int argc, char* argv[])
         check(broken.isEmpty(),
               "QML-PARSE-001: every application QML file parses",
               broken.join(QStringLiteral(" | ")));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // CATALOGUE-001 — the competition catalogue seam must change NOTHING
+    //
+    // Programme definitions moved out of 48 hardcoded ListElements in
+    // main.qml into CompetitionCatalogue.qml. main.qml now builds the same
+    // four ListModels from it, in the same order, because ShootingPage
+    // resolves the user's choice by INDEX.
+    //
+    // The table below is the inventory as it stood BEFORE the migration.
+    // These checks are the before/after proof: same models, same order, same
+    // shot counts, same rifle/pistol split.
+    // ─────────────────────────────────────────────────────────────────────
+    {
+        struct Expect { const char* model; int n; const char* counts; const char* pistol; };
+        const Expect expected[] = {
+            { "game10RangeEventModel",    12, "-1,10,20,30,40,60,-1,10,20,30,40,60", "000000111111" },
+            { "game10RangeEventModel_15", 12, "-1,10,15,20,30,40,-1,10,15,20,30,40", "000000111111" },
+            { "game50RangeEventModel",    12, "-1,10,20,30,40,60,-1,10,20,30,40,60", "000000111111" },
+            { "game50RangeEventModel_15", 12, "-1,10,15,20,30,40,-1,10,15,20,30,40", "000000111111" },
+        };
+
+        QQmlEngine catEngine;
+        QQmlComponent comp(&catEngine,
+                           QUrl::fromLocalFile(QStringLiteral(TECHAIM_SOURCE_DIR "/CompetitionCatalogue.qml")));
+        QScopedPointer<QObject> cat(comp.create());
+        check(!cat.isNull(), "CATALOGUE-001: CompetitionCatalogue.qml loads", comp.errorString());
+
+        if (!cat.isNull()) {
+            QVariant total;
+            QMetaObject::invokeMethod(cat.data(), "count", Q_RETURN_ARG(QVariant, total));
+            check(total.toInt() == 48, "CATALOGUE-001: 48 programmes, as before the migration",
+                  QString::number(total.toInt()));
+
+            QSet<QString> ids;
+            for (const Expect& e : expected) {
+                QVariant v;
+                QMetaObject::invokeMethod(cat.data(), "entriesFor", Q_RETURN_ARG(QVariant, v),
+                                          Q_ARG(QVariant, QString::fromLatin1(e.model)));
+                const QVariantList rows = v.toList();
+                check(rows.size() == e.n,
+                      qUtf8Printable(QStringLiteral("CATALOGUE-001: %1 has %2 entries")
+                                     .arg(e.model).arg(e.n)),
+                      QString::number(rows.size()));
+
+                const QStringList wantCounts = QString::fromLatin1(e.counts).split(QLatin1Char(','));
+                const QString wantPistol = QString::fromLatin1(e.pistol);
+                bool okCounts = rows.size() == wantCounts.size();
+                bool okPistol = rows.size() == wantPistol.size();
+                for (int i = 0; i < rows.size(); ++i) {
+                    const QVariantMap r = rows.at(i).toMap();
+                    if (i < wantCounts.size()
+                        && r.value(QStringLiteral("shotCount")).toInt() != wantCounts.at(i).toInt())
+                        okCounts = false;
+                    if (i < wantPistol.size()
+                        && r.value(QStringLiteral("isPistol")).toBool()
+                           != (wantPistol.at(i) == QLatin1Char('1')))
+                        okPistol = false;
+                    ids.insert(r.value(QStringLiteral("programmeId")).toString());
+                }
+                check(okCounts, qUtf8Printable(QStringLiteral(
+                          "CATALOGUE-001: %1 shot counts and ORDER unchanged").arg(e.model)));
+                check(okPistol, qUtf8Printable(QStringLiteral(
+                          "CATALOGUE-001: %1 rifle/pistol split unchanged").arg(e.model)));
+            }
+
+            check(ids.size() == 48, "CATALOGUE-001: every programmeId is unique",
+                  QString::number(ids.size()));
+            QStringList badIds;
+            for (const QString& id : ids) {
+                if (id != id.toLower() || id.contains(QLatin1Char(' '))
+                    || !id.startsWith(QStringLiteral("issf.")))
+                    badIds << id;
+            }
+            check(badIds.isEmpty(),
+                  "CATALOGUE-001: ids are lowercase, unspaced and ISSF-scoped - machine identity, "
+                  "safe in a session file or an RMS message", badIds.join(QStringLiteral(", ")));
+
+            // Legacy sessions carry no programmeId; identity is recovered from
+            // stable numeric state, never from a stored display string.
+            QVariant legacy;
+            QMetaObject::invokeMethod(cat.data(), "legacyProgrammeId", Q_RETURN_ARG(QVariant, legacy),
+                                      Q_ARG(QVariant, 50), Q_ARG(QVariant, false),
+                                      Q_ARG(QVariant, 60), Q_ARG(QVariant, false));
+            check(legacy.toString() == QStringLiteral("issf.50m.rifle.match60"),
+                  "CATALOGUE-001: a legacy session maps to a programmeId from numeric state alone",
+                  legacy.toString());
+
+            // Language independence, proved by running under a translator.
+            QVariant idEn;
+            QMetaObject::invokeMethod(cat.data(), "programmeIdAt", Q_RETURN_ARG(QVariant, idEn),
+                                      Q_ARG(QVariant, QStringLiteral("game10RangeEventModel")),
+                                      Q_ARG(QVariant, 11));
+            QTranslator de2;
+            const bool loaded2 = de2.load(QStringLiteral(TECHAIM_SOURCE_DIR "/translations/german.qm"));
+            if (loaded2) QCoreApplication::installTranslator(&de2);
+            QString idDe;
+            {
+                QQmlEngine deEngine;
+                deEngine.retranslate();
+                QQmlComponent c2(&deEngine, QUrl::fromLocalFile(
+                                     QStringLiteral(TECHAIM_SOURCE_DIR "/CompetitionCatalogue.qml")));
+                QScopedPointer<QObject> cat2(c2.create());
+                if (!cat2.isNull()) {
+                    QVariant v2;
+                    QMetaObject::invokeMethod(cat2.data(), "programmeIdAt", Q_RETURN_ARG(QVariant, v2),
+                                              Q_ARG(QVariant, QStringLiteral("game10RangeEventModel")),
+                                              Q_ARG(QVariant, 11));
+                    idDe = v2.toString();
+                }
+            }
+            if (loaded2) QCoreApplication::removeTranslator(&de2);
+            check(!idEn.toString().isEmpty() && idEn.toString() == idDe,
+                  "CATALOGUE-001: programmeId is identical in English and German",
+                  idEn.toString() + QStringLiteral(" / ") + idDe);
+        }
+
+        const QString catSrc = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/CompetitionCatalogue.qml"));
+        // Only ISSF programmes that already existed. Checked on the DATA -
+        // scanning the raw file also matches this file's own explanatory
+        // prose, which is exactly the kind of false signal a gate must not
+        // carry. Every id is already asserted to start "issf." above; this
+        // adds the federation field itself.
+        check(!catSrc.contains(QStringLiteral("\"rulesetId\": \"DSB\""))
+              && !catSrc.contains(QStringLiteral("\"federation\": \"DSB\"")),
+              "CATALOGUE-001: no unverified federation programme has been added");
+        // The catalogue SELECTS behaviour - it must never carry scoring.
+        check(!catSrc.contains(QStringLiteral("radOf10Ring"))
+              && !catSrc.contains(QStringLiteral("r2rDis"))
+              && !catSrc.contains(QStringLiteral("calculatedSccore")),
+              "CATALOGUE-001: the catalogue carries no ring geometry or scoring formula");
+        // QML-LANG-001 again: identity must not be derived from display text.
+        check(!catSrc.contains(QStringLiteral("=== qsTr(")) && !catSrc.contains(QStringLiteral("== qsTr(")),
+              "CATALOGUE-001: no logic in the catalogue compares a translated string");
+        // main.qml must no longer own the programme definitions.
+        const QString mainSrc = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/main.qml"));
+        check(mainSrc.contains(QStringLiteral("competitionCatalogue.fill")),
+              "CATALOGUE-001: main.qml builds its models from the catalogue");
+        check(!mainSrc.contains(QStringLiteral("10M AIR RIFLE 60")),
+              "CATALOGUE-001: the hardcoded programme literals are gone from main.qml");
     }
 
     printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
