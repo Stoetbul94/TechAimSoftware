@@ -60,6 +60,7 @@ struct ProductIdentity {
     // Shown where a result could be mistaken for an official one. Empty in a
     // future general release; non-empty means this build is a field-test
     // candidate and must say so.
+    QString brandLogoPath;          // qrc path to the product's brand mark
     QString fieldTestNotice;        // "FIELD TEST — NOT FOR OFFICIAL COMPETITION RESULTS"
 
     // ── defaults (NOT user identity — see the language/brand note above) ──

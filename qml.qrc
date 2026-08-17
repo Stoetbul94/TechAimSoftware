@@ -11,6 +11,7 @@
         <file>DisciplineArt.qml</file>
         <file>main.qml</file>
         <file>CompetitionCatalogue.qml</file>
+        <file>SetaCompetitionSelector.qml</file>
         <file>Header.qml</file>
         <file>LeftPanel.qml</file>
         <file>RightPanel.qml</file>

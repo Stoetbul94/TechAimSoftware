@@ -50,6 +50,29 @@ ProductIdentity makeTechAim()
     // enough to sit in a status strip without covering scores or controls.
     p.fieldTestNotice = QStringLiteral("Evaluation Build — Not for Official Competition Results");
 
+    // Brand mark, as a qrc path so QML asks identity for it rather than
+    // hardcoding a logo per screen.
+    p.brandLogoPath = QStringLiteral("qrc:/images/logo/techaim_color.png");
+
+#ifdef BRAND_SETA
+    // ── SETA / OEM presentation layer ────────────────────────────────────
+    // PRESENTATION ONLY. Everything engineering-identifying stays shared:
+    // executableBaseName, applicationId, organisationName/Domain, the storage
+    // paths derived from them, scoring, acquisition and the report engine are
+    // deliberately NOT overridden. A SETA build is the same application
+    // wearing a different name, not a fork.
+    //
+    // seta.png is an existing approved asset - it already brands the printed
+    // report - so no logo was invented here.
+    p.displayName      = QStringLiteral("SETA");
+    p.fullProductName  = QStringLiteral("SETA Electronic Target Control");
+    p.brandLogoPath    = QStringLiteral("qrc:/images/logo/seta.png");
+    p.reportAuthor     = p.fullProductName;
+    p.reportCreator    = p.fullProductName;
+    // legalPublisher is NOT changed here: the publishing entity is a legal
+    // fact, not a skin, and SETA's has not been supplied.
+#endif
+
     p.defaultTheme    = QStringLiteral("techaim-dark");
     p.defaultLanguage = QStringLiteral("en");
 

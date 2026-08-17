@@ -870,6 +870,163 @@ int main(int argc, char* argv[])
               "CATALOGUE-001: the hardcoded programme literals are gone from main.qml");
     }
 
+    // ─────────────────────────────────────────────────────────────────────
+    // SETA-SEL-001 — hierarchical selector and SETA identity (product/seta)
+    //
+    // The selector must be a VIEW of the catalogue, never a second list of
+    // programmes. If it could offer something the engine does not know, or
+    // lose something the engine does, it would be a divergent source of
+    // truth - which is the defect the catalogue seam exists to prevent.
+    // ─────────────────────────────────────────────────────────────────────
+    {
+        QQmlEngine selEngine;
+        QQmlComponent selComp(&selEngine,
+                              QUrl::fromLocalFile(QStringLiteral(TECHAIM_SOURCE_DIR "/CompetitionCatalogue.qml")));
+        QScopedPointer<QObject> sel(selComp.create());
+        check(!sel.isNull(), "SETA-SEL-001: catalogue loads for the selector", selComp.errorString());
+
+        if (!sel.isNull()) {
+            QVariant v;
+            QMetaObject::invokeMethod(sel.data(), "ruleSets", Q_RETURN_ARG(QVariant, v));
+            const QVariantList sets = v.toList();
+            check(sets.size() == 2,
+                  "SETA-SEL-001: two rule sets today - ISSF and the practice presets",
+                  QString::number(sets.size()));
+            check(!sets.isEmpty() && sets.first().toMap()
+                      .value(QStringLiteral("rulesetId")).toString() == QStringLiteral("issf"),
+                  "SETA-SEL-001: ISSF is listed first");
+
+            // No DSB rule set may appear until a confirmed profile exists.
+            bool sawDsb = false;
+            for (const QVariant& r : sets)
+                if (r.toMap().value(QStringLiteral("rulesetId")).toString() == QStringLiteral("dsb"))
+                    sawDsb = true;
+            check(!sawDsb,
+                  "SETA-SEL-001: DSB is NOT offered - no confirmed profile exists yet");
+
+            // Every catalogue entry must be reachable through the hierarchy,
+            // and the hierarchy must invent nothing.
+            int reachable = 0;
+            QSet<QString> reachableIds;
+            for (const QVariant& rs : sets) {
+                const QString rid = rs.toMap().value(QStringLiteral("rulesetId")).toString();
+                QVariant dv;
+                QMetaObject::invokeMethod(sel.data(), "disciplines", Q_RETURN_ARG(QVariant, dv),
+                                          Q_ARG(QVariant, rid));
+                for (const QVariant& d : dv.toList()) {
+                    const QString did = d.toMap().value(QStringLiteral("disciplineId")).toString();
+                    QVariant pv;
+                    QMetaObject::invokeMethod(sel.data(), "programmes", Q_RETURN_ARG(QVariant, pv),
+                                              Q_ARG(QVariant, rid), Q_ARG(QVariant, did));
+                    for (const QVariant& p : pv.toList()) {
+                        ++reachable;
+                        reachableIds.insert(p.toMap().value(QStringLiteral("programmeId")).toString());
+                    }
+                }
+            }
+            check(reachable == 48,
+                  "SETA-SEL-001: all 48 catalogue entries are reachable - no programme lost",
+                  QString::number(reachable));
+            check(reachableIds.size() == 48,
+                  "SETA-SEL-001: the hierarchy invents no programme",
+                  QString::number(reachableIds.size()));
+
+            // ISSF exposes exactly the four official 60-shot courses.
+            QVariant dv;
+            QMetaObject::invokeMethod(sel.data(), "disciplines", Q_RETURN_ARG(QVariant, dv),
+                                      Q_ARG(QVariant, QStringLiteral("issf")));
+            check(dv.toList().size() == 4,
+                  "SETA-SEL-001: ISSF offers four disciplines",
+                  QString::number(dv.toList().size()));
+            QVariant pv;
+            QMetaObject::invokeMethod(sel.data(), "programmes", Q_RETURN_ARG(QVariant, pv),
+                                      Q_ARG(QVariant, QStringLiteral("issf")),
+                                      Q_ARG(QVariant, QStringLiteral("AR10")));
+            check(pv.toList().size() == 1,
+                  "SETA-SEL-001: ISSF 10 m Air Rifle has one programme, so step 3 is skipped",
+                  QString::number(pv.toList().size()));
+            check(!pv.toList().isEmpty() && pv.toList().first().toMap()
+                      .value(QStringLiteral("programmeId")).toString()
+                          == QStringLiteral("issf.10m.air-rifle.qualification60"),
+                  "SETA-SEL-001: it resolves to the official programmeId");
+
+            // Presets remain selectable - the old shot-count choices are not
+            // lost, they moved one level down.
+            QMetaObject::invokeMethod(sel.data(), "programmes", Q_RETURN_ARG(QVariant, pv),
+                                      Q_ARG(QVariant, QStringLiteral("techaim")),
+                                      Q_ARG(QVariant, QStringLiteral("AR10")));
+            check(pv.toList().size() >= 5,
+                  "SETA-SEL-001: the Tech Aim presets are still reachable",
+                  QString::number(pv.toList().size()));
+
+            // Language independence of the hierarchy itself.
+            QTranslator deSel;
+            const bool okDe = deSel.load(QStringLiteral(TECHAIM_SOURCE_DIR "/translations/german.qm"));
+            QString idEnSel = pv.toList().isEmpty() ? QString()
+                              : pv.toList().first().toMap()
+                                    .value(QStringLiteral("programmeId")).toString();
+            if (okDe) QCoreApplication::installTranslator(&deSel);
+            QString idDeSel;
+            {
+                QQmlEngine deEng; deEng.retranslate();
+                QQmlComponent c3(&deEng, QUrl::fromLocalFile(
+                                     QStringLiteral(TECHAIM_SOURCE_DIR "/CompetitionCatalogue.qml")));
+                QScopedPointer<QObject> cat3(c3.create());
+                if (!cat3.isNull()) {
+                    QVariant pv3;
+                    QMetaObject::invokeMethod(cat3.data(), "programmes", Q_RETURN_ARG(QVariant, pv3),
+                                              Q_ARG(QVariant, QStringLiteral("techaim")),
+                                              Q_ARG(QVariant, QStringLiteral("AR10")));
+                    if (!pv3.toList().isEmpty())
+                        idDeSel = pv3.toList().first().toMap()
+                                      .value(QStringLiteral("programmeId")).toString();
+                }
+            }
+            if (okDe) QCoreApplication::removeTranslator(&deSel);
+            check(!idEnSel.isEmpty() && idEnSel == idDeSel,
+                  "SETA-SEL-001: the hierarchy resolves the same programmeId in German",
+                  idEnSel + QStringLiteral(" / ") + idDeSel);
+        }
+
+        // The selector component itself: a view, with no logic on display text.
+        const QString selSrc = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/SetaCompetitionSelector.qml"));
+        check(!selSrc.isEmpty(), "SETA-SEL-001: SetaCompetitionSelector.qml exists");
+        check(!selSrc.contains(QStringLiteral("=== qsTr(")) && !selSrc.contains(QStringLiteral("== qsTr(")),
+              "SETA-SEL-001: the selector never compares a translated string");
+        check(selSrc.contains(QStringLiteral("catalogue.ruleSets"))
+              && selSrc.contains(QStringLiteral("catalogue.disciplines"))
+              && selSrc.contains(QStringLiteral("catalogue.programmes")),
+              "SETA-SEL-001: every level is driven by the catalogue");
+        check(selSrc.contains(QStringLiteral("programmeCommitted")),
+              "SETA-SEL-001: selection is committed as a programmeId, once, at the end");
+        check(!selSrc.contains(QStringLiteral("radOf10Ring"))
+              && !selSrc.contains(QStringLiteral("calculatedSccore")),
+              "SETA-SEL-001: the selector carries no scoring");
+
+        // SETA identity: presentation only, behind a build flavour.
+        const QString idSrc = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/src/app/ProductIdentity.cpp"));
+        check(idSrc.contains(QStringLiteral("#ifdef BRAND_SETA")),
+              "SETA-SEL-001: SETA identity is a build flavour, not a fork");
+        check(idSrc.contains(QStringLiteral("qrc:/images/logo/seta.png")),
+              "SETA-SEL-001: it uses the existing approved SETA asset");
+        const int setaBlock = idSrc.indexOf(QStringLiteral("#ifdef BRAND_SETA"));
+        const int setaEnd   = idSrc.indexOf(QStringLiteral("#endif"), setaBlock);
+        // Strip comment lines first: the block explains WHICH fields it
+        // deliberately leaves alone, and a gate that matches its own prose
+        // is not a gate. Assert on the code.
+        QString setaBody;
+        for (const QString& ln : idSrc.mid(setaBlock, setaEnd - setaBlock)
+                                     .split(QChar(10))) {
+            const QString t = ln.trimmed();
+            if (!t.startsWith(QStringLiteral("//"))) setaBody += ln + QChar(10);
+        }
+        check(!setaBody.contains(QStringLiteral("applicationId"))
+              && !setaBody.contains(QStringLiteral("organisationName"))
+              && !setaBody.contains(QStringLiteral("executableBaseName")),
+              "SETA-SEL-001: the flavour overrides presentation only - storage and "
+              "application identity stay shared");
+    }
+
     printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
     fflush(stdout);
     return g_failures ? 1 : 0;

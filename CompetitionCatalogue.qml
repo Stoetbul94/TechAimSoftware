@@ -586,6 +586,77 @@ QtObject {
                            "matchDisplay": qsTr(e[i].matchDisplayKey) })
     }
 
+    // ── hierarchy queries (SETA selector) ────────────────────────────────
+    // Rule set -> discipline -> programme. Everything below is derived from
+    // the SAME entries the ListModels use, so the hierarchy can never offer a
+    // programme the engine does not know, and no programme can go missing.
+    //
+    // rulesetId is COMPETITION AUTHORITY, not target standard: a DSB rule set
+    // still shoots issf.10m.air-rifle geometry. The two must not be collapsed.
+
+    function allEntries() {
+        var out = []
+        for (var k in models)
+            for (var i = 0; i < models[k].length; ++i)
+                out.push(models[k][i])
+        return out
+    }
+
+    // Distinct rule sets present in the catalogue, in a stable order.
+    // "techaim" is not a federation - it is the practice-preset set - so it is
+    // labelled as such rather than pretending to carry rule authority.
+    function ruleSets() {
+        var seen = {}, out = []
+        var all = allEntries()
+        for (var i = 0; i < all.length; ++i) {
+            var r = all[i].rulesetId
+            if (seen[r]) continue
+            seen[r] = true
+            out.push({ "rulesetId": r,
+                       "federation": all[i].federation,
+                       "official": all[i].programmeType === "OFFICIAL",
+                       "labelKey": r === "issf" ? "ISSF"
+                                 : r === "dsb"  ? "DSB / German"
+                                                : "Practice presets" })
+        }
+        out.sort(function(a, b) { return a.rulesetId === "issf" ? -1
+                                       : b.rulesetId === "issf" ?  1 : 0 })
+        return out
+    }
+
+    // Distinct disciplines within a rule set. Keyed by disciplineId, which is
+    // stable; the label is derived from the target standard, not translated
+    // text, so a German UI cannot change which discipline this is.
+    function disciplines(rulesetId) {
+        var seen = {}, out = []
+        var all = allEntries()
+        for (var i = 0; i < all.length; ++i) {
+            var e = all[i]
+            if (e.rulesetId !== rulesetId) continue
+            if (seen[e.disciplineId]) continue
+            seen[e.disciplineId] = true
+            out.push({ "disciplineId": e.disciplineId,
+                       "distanceM": e.distanceM,
+                       "targetStandardId": e.targetStandardId,
+                       "labelKey": e.gameDisplay1Key + " " + e.gameDisplay2Key })
+        }
+        out.sort(function(a, b) { return a.distanceM - b.distanceM })
+        return out
+    }
+
+    // Programmes within a rule set + discipline. Step 3 of the selector is
+    // shown only when this returns more than one.
+    function programmes(rulesetId, disciplineId) {
+        var out = []
+        var all = allEntries()
+        for (var i = 0; i < all.length; ++i) {
+            var e = all[i]
+            if (e.rulesetId === rulesetId && e.disciplineId === disciplineId)
+                out.push(e)
+        }
+        return out
+    }
+
     function count() {
         var n = 0
         for (var k in models) n += models[k].length
