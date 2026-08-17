@@ -296,3 +296,45 @@ scoring, Modbus or reports.
    read-only monitor — no commands until the event path is proven.
 6. RMS commands with acknowledgement and idempotency.
 7. Revisit modularisation only if the three products demand it.
+
+---
+
+## Appendix A — foundation promotion (2026-08-15)
+
+The competition catalogue foundation was promoted into both product lines.
+Ancestry was verified first: `git merge-base --is-ancestor 2bec656 8d1d243`
+returns true, so the two commits cannot arrive separately.
+
+| Line | Branch | HEAD after promotion |
+|---|---|---|
+| Tech Aim foundation | `feature/rc2e-latency-and-reset` | `8d1d243` |
+| SETA | `product/seta` | `4eb5aa2` |
+| RMS | `feature/rms` | `5a4ffbf` |
+
+Promoted range `b2a7560..8d1d243` — three commits: `9a8da80` (architecture,
+worktrees, RC3a anchor), `2bec656` (catalogue seam), `8d1d243` (authority
+correction). Merged `--no-ff` so each promotion is a recorded act rather than a
+silent fast-forward.
+
+**`2bec656` and `8d1d243` must never be separated.** The first labels all 48
+entries ISSF; the second corrects that to 4 official courses and 44 Tech Aim
+presets. RMS in particular will transmit `programmeId` on the wire, so the
+uncorrected ids would put false ISSF authority claims into messages.
+
+Verified in **both** product worktrees: `CompetitionCatalogue.qml` present ·
+`targetStandardId` semantics present · 4 official / 44 preset preserved ·
+**zero** `issf.*.match*` ids remaining · QML suite **139 checks / 0 failures** ·
+working trees clean.
+
+No SETA-specific change is in RMS and no RMS-specific change is in SETA. No DSB
+programme, no UI redesign, no networking.
+
+### Approved next lanes
+
+**SETA next** — ProductIdentity/branding, the hierarchical Rule Set →
+Discipline → Programme selector, and verified DSB programme profiles. DSB
+profiles remain blocked on rule authority; they enter as catalogue entries with
+`rulesetId=dsb`, never as new QML literals.
+
+**RMS next** — read-only Range Monitor architecture and the Target Node
+accepted-shot/status protocol. The node keeps the only scoring authority.
