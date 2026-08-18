@@ -4253,6 +4253,41 @@ int main(int argc, char* argv[])
     }
 
 
+    // ─────────────────────────────────────────────────────────────────────
+    // DSB-REPORT-001 — a report names the rules the result was shot under.
+    //
+    // The 3P report printed "ISSF 3x20 Qualification" and "ISSF 2026" on every
+    // result, DSB ones included. Both lines now derive from the SESSION's
+    // adopted authority, which is also why a DSB 2026 result opened under a
+    // later edition still reports 2026: it reads what the match recorded, not
+    // what the catalogue currently says.
+    // ─────────────────────────────────────────────────────────────────────
+    {
+        const QString rep = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/Report3P.qml"));
+        check(rep.contains(QStringLiteral("window.sessionCompetition"))
+              && rep.contains(QStringLiteral("readonly property string competitionLine")),
+              "DSB-REPORT-001: the report identity comes from the session's "
+              "adopted authority");
+        check(!rep.contains(QStringLiteral(
+                  "text: qsTr(\"50m Rifle 3 Positions · ISSF 3x20 Qualification\")")),
+              "DSB-REPORT-001: the hardcoded ISSF subtitle is gone from the "
+              "header - it was a false claim on a DSB result");
+        check(rep.contains(QStringLiteral("competitionCatalogue")) == false,
+              "DSB-REPORT-001: and the report never consults the CATALOGUE, so "
+              "a future ruleset cannot relabel an old result");
+        // Position identity survives into the report.
+        check(rep.contains(QStringLiteral("posNames: [qsTr(\"KNEELING\"), qsTr(\"PRONE\"), qsTr(\"STANDING\")]")),
+              "DSB-REPORT-001: the three position groups keep their own names, "
+              "translated for the sheet and machine-independent underneath");
+        check(rep.contains(QStringLiteral("auth.ruleNumber"))
+              && rep.contains(QStringLiteral("auth.programmeVariant"))
+              && rep.contains(QStringLiteral("auth.competitionContext"))
+              && rep.contains(QStringLiteral("auth.scoringMode"))
+              && rep.contains(QStringLiteral("auth.targetStandardId")),
+              "DSB-REPORT-001: rule, variant, context, scoring mode and target "
+              "standard all reach the sheet");
+    }
+
     printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
     fflush(stdout);
     return g_failures ? 1 : 0;
