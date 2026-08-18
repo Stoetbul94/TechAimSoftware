@@ -45,6 +45,7 @@ int main(int argc, char** argv)
     run_reducer_tests();
     run_incident_tests();
     run_qualification_tests();
+    run_rule_authority_tests();
     run_snapshot_tests();
     run_store_tests();
     run_recovery_tests();

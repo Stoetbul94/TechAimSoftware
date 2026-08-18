@@ -49,6 +49,10 @@ struct RecoveryCandidate {
                                   // session is offered ONLY as a Training resume
     QString trainingProgramId;    // T1: e.g. "technical_blocks"
     qint16  trainingBlock = 0;    // T1: current block at the crash (0 = none)
+    // The competition definition the session ADOPTED (absent = legacy). Kept
+    // whole so the dialog and the resume path read the SESSION's rules, never
+    // the currently selected programme.
+    RuleAuthority ruleAuthority;
     QString startedAtIso;         // SessionStarted.createdAtIso
     QString lastEventWallIso;     // tw of the last valid line
     QString lastModifiedIso;      // file mtime

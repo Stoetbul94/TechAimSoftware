@@ -112,6 +112,7 @@ RecoveryCandidate RecoveryCoordinator::classifyFile(const QString& path)
                             : (!s.cdProgramId.isEmpty() ? s.cdProgramId
                             : (!s.ptProgramId.isEmpty() ? s.ptProgramId : s.wmProgramId));
         c.trainingBlock = s.trainingCurrentBlock;
+        c.ruleAuthority = s.ruleAuthority;   // adopted rules (absent = legacy)
         c.disciplineLabel = disciplineLabel(s.discipline, s.matchType);
         c.startedAtIso = s.createdAtIso;
         c.currentStageId = s.currentStageId;
@@ -216,6 +217,25 @@ QVariantList RecoveryCoordinator::scanForQml()
         m[QStringLiteral("sessionKind")] = c.sessionKind;       // T1: "Training" or ""
         m[QStringLiteral("trainingProgramId")] = c.trainingProgramId;
         m[QStringLiteral("trainingBlock")] = c.trainingBlock;
+        // Rule authority of the RECOVERED session. The dialog shows it and the
+        // resume path adopts it; "ruleset" is empty for a legacy session, which
+        // QML must present as LEGACY rather than as an unknown ruleset.
+        m[QStringLiteral("ruleProgrammeId")] = c.ruleAuthority.programmeId;
+        m[QStringLiteral("ruleset")] = c.ruleAuthority.rulesetId;
+        m[QStringLiteral("rulesetVersion")] = c.ruleAuthority.rulesetVersion;
+        m[QStringLiteral("ruleNumber")] = c.ruleAuthority.ruleNumber;
+        m[QStringLiteral("programmeVariant")] = c.ruleAuthority.programmeVariant;
+        m[QStringLiteral("competitionContext")] = c.ruleAuthority.competitionContext;
+        m[QStringLiteral("scoringMode")] = c.ruleAuthority.scoringMode;
+        m[QStringLiteral("timingModel")] = c.ruleAuthority.timingModel;
+        m[QStringLiteral("targetStandardId")] = c.ruleAuthority.targetStandardId;
+        m[QStringLiteral("rulePreparationMs")] =
+            static_cast<qlonglong>(c.ruleAuthority.preparationMs);
+        m[QStringLiteral("ruleMatchMs")] =
+            static_cast<qlonglong>(c.ruleAuthority.matchMs);
+        m[QStringLiteral("rulePositionSequence")] = c.ruleAuthority.positionSequence;
+        m[QStringLiteral("rulePositionDurationsMs")] =
+            c.ruleAuthority.positionDurationsMs;
         m[QStringLiteral("startedAtIso")] = c.startedAtIso;
         m[QStringLiteral("lastEventWallIso")] = c.lastEventWallIso;
         m[QStringLiteral("lastModifiedIso")] = c.lastModifiedIso;

@@ -42,6 +42,7 @@ struct SessionHeader {
     DisciplineConfig config;
     QString operatingMode;      // F10: "Live"/"Demo" (empty = unspecified)
     QString sessionKind;        // T1: "Training" (empty = competition)
+    RuleAuthority ruleAuthority; // adopted competition definition (absent = legacy)
 };
 
 struct SubmitResult {

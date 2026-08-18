@@ -652,6 +652,15 @@ Item {
                              ? qsTr(" (%1)").arg(MODREADER.targetPort) : ""))
             }
         }
+        // The SAVED FILE records which competition produced it - the same
+        // adopted definition the journal gets. A programme with no rule
+        // authority records nothing, and the file loads as legacy.
+        APPSETTINGS.setSessionRuleAuthority(
+            window.activeProgrammeId !== ""
+                ? setaCatalogue.ruleAuthorityFor(window.activeProgrammeId,
+                                                 window.profilePrepSeconds * 1000,
+                                                 window.profileMatchSeconds * 1000)
+                : ({}))
         APPSETTINGS.saveMatch(true)
     }
 
@@ -2875,6 +2884,15 @@ Item {
                                     MODREADER.appendToLogFile("Validation was successful"); rootItem.visible = false
                                 } else { MODREADER.appendToLogFile("Com-port connected but validation failed") }
                             }
+                            // The SAVED FILE records which competition produced it - the same
+                            // adopted definition the journal gets. A programme with no rule
+                            // authority records nothing, and the file loads as legacy.
+                            APPSETTINGS.setSessionRuleAuthority(
+                                window.activeProgrammeId !== ""
+                                    ? setaCatalogue.ruleAuthorityFor(window.activeProgrammeId,
+                                                                     window.profilePrepSeconds * 1000,
+                                                                     window.profileMatchSeconds * 1000)
+                                    : ({}))
                             APPSETTINGS.saveMatch(true)
                             APPSETTINGS.updateUserHistoryData(name_text_field.text)
                             MODREADER.saveNameAndPort(name_text_field.text, port_name_text_field.text, netowrk_path_text.text)

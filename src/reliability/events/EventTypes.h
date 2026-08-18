@@ -135,6 +135,79 @@ enum class ReducerClass : quint8 { Mutating, Marker, Reserved };
 
 // ── shared payload cores ──────────────────────────────────────────────
 
+// The ADOPTED rule authority of a session: which competition definition
+// actually governed it, snapshotted at the moment the session was created.
+//
+// This is a SNAPSHOT, not a reference. A recovered session reads its rules
+// from here and never re-resolves them from the catalogue, because the
+// catalogue moves: a DSB 2027 edition may reuse rule number 1.10 with
+// different timing, and a 2026 session must not silently acquire it. The
+// programmeId is kept so the catalogue can still be consulted for DISPLAY,
+// never for authority.
+//
+// Absent (isPresent() == false) means LEGACY: a session recorded before this
+// existed, or one that never had a competition profile. Legacy is an explicit
+// state - never a reason to reject a session, and never a licence to invent an
+// identity for it.
+struct RuleAuthority {
+    QString programmeId;          // "dsb.10m.air-rifle.lg60" (catalogue key)
+    QString rulesetId;            // "dsb" | "issf"
+    QString rulesetVersion;       // "2026-01-01" (machine-safe edition stamp)
+    QString ruleNumber;           // "1.10"
+    QString programmeVariant;     // "60" | "3x20"
+    QString competitionContext;   // "DM_2026"
+    QString scoringMode;          // "DECIMAL" | "INTEGER"
+    QString timingModel;          // "SINGLE_MATCH_CLOCK"
+                                  // | "INDEPENDENT_POSITION_CLOCKS"
+    QString targetStandardId;     // "issf.10m.air-rifle"
+    QString disciplineId;         // "AR10" (engine discipline, not the label)
+    qint32  distanceM = 0;
+    // The timing this session ACTUALLY adopted, in ms. Not a catalogue lookup:
+    // what the clocks were anchored to.
+    qint64  preparationMs = 0;
+    qint64  matchMs = 0;
+    // Independent-position-clock courses (DSB 1.20). Comma-separated so the
+    // schema already carries them without a writer change - the same shape
+    // ptSequence/wmPositionSequence use. Empty for single-clock courses.
+    QString positionSequence;     // "KNEELING,PRONE,STANDING"
+    QString positionDurationsMs;  // "2100000,1800000,2400000"
+    qint32  authorityVersion = 1; // bumped when THIS record's shape changes
+
+    bool isPresent() const { return !programmeId.isEmpty(); }
+
+    bool operator==(const RuleAuthority& o) const
+    {
+        return programmeId == o.programmeId && rulesetId == o.rulesetId
+            && rulesetVersion == o.rulesetVersion && ruleNumber == o.ruleNumber
+            && programmeVariant == o.programmeVariant
+            && competitionContext == o.competitionContext
+            && scoringMode == o.scoringMode && timingModel == o.timingModel
+            && targetStandardId == o.targetStandardId
+            && disciplineId == o.disciplineId && distanceM == o.distanceM
+            && preparationMs == o.preparationMs && matchMs == o.matchMs
+            && positionSequence == o.positionSequence
+            && positionDurationsMs == o.positionDurationsMs
+            && authorityVersion == o.authorityVersion;
+    }
+    bool operator!=(const RuleAuthority& o) const { return !(*this == o); }
+
+    // The compact identity line for the support log. Machine values only -
+    // never a translated display string, which would be useless the moment a
+    // report arrives from a German range.
+    QString auditLine() const
+    {
+        if (!isPresent())
+            return QStringLiteral("ruleset=LEGACY");
+        return QStringLiteral("ruleset=%1 version=%2 rule=%3 variant=%4 "
+                              "context=%5 timing=%6 prepMs=%7 matchMs=%8 "
+                              "scoring=%9 target=%10 programme=%11")
+            .arg(rulesetId.toUpper(), rulesetVersion, ruleNumber,
+                 programmeVariant, competitionContext, timingModel)
+            .arg(preparationMs).arg(matchMs)
+            .arg(scoringMode, targetStandardId, programmeId);
+    }
+};
+
 // Typed per-discipline configuration (M1 shape; finals-specific stage
 // timings arrive with the M2 controller migration as a version bump).
 struct DisciplineConfig {
@@ -235,6 +308,10 @@ struct SessionStarted {
     // qualification/Final result nor as an unfinished competition recovery
     // candidate. Optional + written only when set → pre-T1 journals unchanged.
     QString sessionKind;
+    // The competition definition this session ADOPTED. Optional and written
+    // only when present, so every pre-existing journal re-serialises
+    // byte-identically and keeps its hash chain.
+    RuleAuthority ruleAuthority;
 
     ReliabilityResult validate() const
     {

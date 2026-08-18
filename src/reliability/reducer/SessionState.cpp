@@ -54,6 +54,9 @@ bool SessionState::operator==(const SessionState& o) const
         // these are snapshot-serialised, so comparing them here is what makes
         // ReplayEngine::snapshotsAgreeWithFold a real check on them.
         && sessionKind == o.sessionKind
+        // Rule authority is snapshot-serialised, so comparing it here is what
+        // makes snapshotsAgreeWithFold a real check on it too.
+        && ruleAuthority == o.ruleAuthority
         && trainingActive == o.trainingActive
         && trainingCompleted == o.trainingCompleted
         && trainingProgramId == o.trainingProgramId
@@ -256,6 +259,28 @@ QByteArray serializeSessionState(const SessionState& s)
     // session reads as a competition session, which is worse than losing the
     // projection: RecoveryCoordinator classifies on this field.
     w.field("sessionKind", s.sessionKind);
+    // Adopted rule authority (state v7). Written only when present, so a
+    // legacy session snapshot keeps exactly the bytes it always had.
+    if (s.ruleAuthority.isPresent()) {
+        w.beginObjectField("ruleAuthority");
+        w.field("authorityVersion", static_cast<qint64>(s.ruleAuthority.authorityVersion));
+        w.field("programmeId", s.ruleAuthority.programmeId);
+        w.field("rulesetId", s.ruleAuthority.rulesetId);
+        w.field("rulesetVersion", s.ruleAuthority.rulesetVersion);
+        w.field("ruleNumber", s.ruleAuthority.ruleNumber);
+        w.field("programmeVariant", s.ruleAuthority.programmeVariant);
+        w.field("competitionContext", s.ruleAuthority.competitionContext);
+        w.field("scoringMode", s.ruleAuthority.scoringMode);
+        w.field("timingModel", s.ruleAuthority.timingModel);
+        w.field("targetStandardId", s.ruleAuthority.targetStandardId);
+        w.field("disciplineId", s.ruleAuthority.disciplineId);
+        w.field("distanceM", static_cast<qint64>(s.ruleAuthority.distanceM));
+        w.field("preparationMs", s.ruleAuthority.preparationMs);
+        w.field("matchMs", s.ruleAuthority.matchMs);
+        w.field("positionSequence", s.ruleAuthority.positionSequence);
+        w.field("positionDurationsMs", s.ruleAuthority.positionDurationsMs);
+        w.endObject();
+    }
 
     w.beginObjectField("training");
     w.field("active", s.trainingActive);
@@ -867,6 +892,33 @@ ReliabilityResult deserializeSessionState(const QByteArray& json, SessionState* 
     // Every key optional: a v1-v4 snapshot simply has none of them and
     // restores to "no programme", which is what those snapshots meant.
     s.sessionKind = r.optStringDef("sessionKind");
+    {
+        // Absent in every state v1-v6 snapshot, and in any session that never
+        // had a competition profile. Absent restores as LEGACY - explicitly,
+        // not as a guess.
+        const QJsonValue av = r.o.value(QLatin1String("ruleAuthority"));
+        if (av.isObject()) {
+            StateReader ar{av.toObject()};
+            RuleAuthority a;
+            a.authorityVersion = static_cast<qint32>(ar.optIntDef("authorityVersion", 1, 1, INT32_MAX));
+            a.programmeId = ar.optStringDef("programmeId");
+            a.rulesetId = ar.optStringDef("rulesetId");
+            a.rulesetVersion = ar.optStringDef("rulesetVersion");
+            a.ruleNumber = ar.optStringDef("ruleNumber");
+            a.programmeVariant = ar.optStringDef("programmeVariant");
+            a.competitionContext = ar.optStringDef("competitionContext");
+            a.scoringMode = ar.optStringDef("scoringMode");
+            a.timingModel = ar.optStringDef("timingModel");
+            a.targetStandardId = ar.optStringDef("targetStandardId");
+            a.disciplineId = ar.optStringDef("disciplineId");
+            a.distanceM = static_cast<qint32>(ar.optIntDef("distanceM", 0, 0, INT32_MAX));
+            a.preparationMs = ar.optIntDef("preparationMs", 0, 0, INT64_MAX);
+            a.matchMs = ar.optIntDef("matchMs", 0, 0, INT64_MAX);
+            a.positionSequence = ar.optStringDef("positionSequence");
+            a.positionDurationsMs = ar.optStringDef("positionDurationsMs");
+            s.ruleAuthority = a;
+        }
+    }
     {
         const QJsonValue tv = r.o.value(QLatin1String("training"));
         if (tv.isObject()) {

@@ -30,6 +30,72 @@ QualificationController::QualificationController(QObject* parent)
 
 QualificationController::~QualificationController() = default;
 
+// ── adopted rule authority ─────────────────────────────────
+
+namespace {
+// Machine values only. A display label would be worse than nothing here: it
+// is translated, so the same competition journalled on a German range and on
+// an English one would claim two different identities.
+ta::rel::RuleAuthority authorityFromMap(const QVariantMap& m)
+{
+    ta::rel::RuleAuthority a;
+    const auto str = [&m](const char* k) {
+        return m.value(QLatin1String(k)).toString();
+    };
+    a.programmeId = str("programmeId");
+    if (a.programmeId.isEmpty())
+        return ta::rel::RuleAuthority();   // no profile -> LEGACY, explicitly
+    a.rulesetId = str("rulesetId");
+    a.rulesetVersion = str("rulesetVersion");
+    a.ruleNumber = str("ruleNumber");
+    a.programmeVariant = str("programmeVariant");
+    a.competitionContext = str("competitionContext");
+    a.scoringMode = str("scoringMode");
+    a.timingModel = str("timingModel");
+    a.targetStandardId = str("targetStandardId");
+    a.disciplineId = str("disciplineId");
+    a.distanceM = m.value(QStringLiteral("distanceM")).toInt();
+    a.preparationMs = m.value(QStringLiteral("preparationMs")).toLongLong();
+    a.matchMs = m.value(QStringLiteral("matchMs")).toLongLong();
+    a.positionSequence = str("positionSequence");
+    a.positionDurationsMs = str("positionDurationsMs");
+    return a;
+}
+
+QVariantMap authorityToMap(const ta::rel::RuleAuthority& a)
+{
+    QVariantMap m;
+    m[QStringLiteral("present")] = a.isPresent();
+    m[QStringLiteral("programmeId")] = a.programmeId;
+    m[QStringLiteral("rulesetId")] = a.rulesetId;
+    m[QStringLiteral("rulesetVersion")] = a.rulesetVersion;
+    m[QStringLiteral("ruleNumber")] = a.ruleNumber;
+    m[QStringLiteral("programmeVariant")] = a.programmeVariant;
+    m[QStringLiteral("competitionContext")] = a.competitionContext;
+    m[QStringLiteral("scoringMode")] = a.scoringMode;
+    m[QStringLiteral("timingModel")] = a.timingModel;
+    m[QStringLiteral("targetStandardId")] = a.targetStandardId;
+    m[QStringLiteral("disciplineId")] = a.disciplineId;
+    m[QStringLiteral("distanceM")] = a.distanceM;
+    m[QStringLiteral("preparationMs")] = static_cast<qlonglong>(a.preparationMs);
+    m[QStringLiteral("matchMs")] = static_cast<qlonglong>(a.matchMs);
+    m[QStringLiteral("positionSequence")] = a.positionSequence;
+    m[QStringLiteral("positionDurationsMs")] = a.positionDurationsMs;
+    m[QStringLiteral("authorityVersion")] = a.authorityVersion;
+    return m;
+}
+} // namespace
+
+void QualificationController::adoptRuleAuthority(const QVariantMap& authority)
+{
+    m_pendingAuthority = authorityFromMap(authority);
+}
+
+QVariantMap QualificationController::sessionRuleAuthority() const
+{
+    return authorityToMap(m_store->state().ruleAuthority);
+}
+
 // ── lifecycle ──────────────────────────────────────────────────────────────
 
 bool QualificationController::startSession(const QString& disciplineId,
@@ -84,6 +150,13 @@ bool QualificationController::startSession(const QString& disciplineId,
     // stored here only so the caller's intent is explicit at the call site.
     Q_UNUSED(prepMs);
 
+    // The ADOPTED definition is snapshotted into the header here and nowhere
+    // else. After this the session owns its rules: no later catalogue edition,
+    // and no later UI selection, can change what governed it.
+    header.ruleAuthority = m_pendingAuthority;
+    qInfo("competition created: %s discipline=%s shots=%d",
+          qUtf8Printable(header.ruleAuthority.auditLine()),
+          ta::rel::disciplineId(m_discipline), officialShots);
     const ReliabilityResult r = m_store->beginSession(header);
     m_journalFailureNotified = false;
     if (!r.ok) {
@@ -91,6 +164,8 @@ bool QualificationController::startSession(const QString& disciplineId,
         emit journalWriteFailed(journalPath(), r.error.technicalDetail);
         return false;
     }
+    // Consumed. A profile must never leak into a later, unrelated session.
+    m_pendingAuthority = RuleAuthority();
     emit sessionChanged();
     emit shotCountsChanged();
     emit totalsChanged();
@@ -306,6 +381,12 @@ void QualificationController::loadRecoveredState(const RecoveredMatchState& reco
     m_matchMs = s.config.matchMs;
     m_recoveredLastEventMonoMs = recovered.lastEventMonoMs;
     m_recovered = true;
+    // The recovered session brings its OWN rules. Whatever the operator has
+    // since selected in the UI is irrelevant to it, and the catalogue is not
+    // consulted - that is the entire point of snapshotting the authority.
+    qInfo("competition recovered: %s discipline=%s shots=%d",
+          qUtf8Printable(s.ruleAuthority.auditLine()),
+          ta::rel::disciplineId(s.discipline), s.config.officialShots);
     emit sessionChanged();
     emit shotCountsChanged();
     emit totalsChanged();

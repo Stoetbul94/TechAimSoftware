@@ -186,6 +186,9 @@ ReduceResult SessionReducer::apply(const SessionState& current,
             next.deviceId = e.deviceId;
             next.operatingMode = e.operatingMode;   // F10 (empty = Unknown/Legacy)
             next.sessionKind = e.sessionKind;        // T1 (empty = competition)
+            // The adopted rules travel with the session, unchanged, for the
+            // rest of its life. Nothing else in the reducer may write them.
+            next.ruleAuthority = e.ruleAuthority;    // absent = LEGACY
             next.discipline = e.discipline;
             next.matchType = e.matchType;
             next.config = e.config;

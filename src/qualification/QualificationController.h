@@ -61,6 +61,21 @@ public:
                                   int officialShots, qint64 matchMs,
                                   qint64 prepMs, int sighterLimit,
                                   const QString& lane, const QString& targetId);
+    // ── adopted rule authority ───────────────────────────────────────────
+    // The competition definition governing the NEXT session created here. QML
+    // hands over the resolved profile before startSession; the values are
+    // snapshotted into the journal header and never consulted again from the
+    // catalogue. An empty map means no profile - a LEGACY session, which is a
+    // valid state, not an error. Cleared after each startSession so a profile
+    // cannot leak into an unrelated later session.
+    Q_INVOKABLE void adoptRuleAuthority(const QVariantMap& authority);
+    Q_INVOKABLE void clearAdoptedRuleAuthority() { m_pendingAuthority = ta::rel::RuleAuthority(); }
+    // The authority of the LIVE session (fresh or recovered), read from the
+    // reducer state - the same map shape QML passed in, plus "present". This is
+    // what reports and the recovered session read; it never falls back to the
+    // catalogue.
+    Q_INVOKABLE QVariantMap sessionRuleAuthority() const;
+
     Q_INVOKABLE void beginPreparation();
     Q_INVOKABLE void beginSighting();
     Q_INVOKABLE void beginOfficialMatch();
@@ -156,6 +171,8 @@ private:
     // resume; the reducer stays the sole authority for everything else.
     qint64 m_recoveredLastEventMonoMs = 0;
     ta::rel::Discipline m_discipline = ta::rel::Discipline::None;
+    // Adopted-but-not-yet-written authority for the next startSession.
+    ta::rel::RuleAuthority m_pendingAuthority;
     bool m_journalFailureNotified = false;
     // Configured official-shot cap (from startSession; <= 0 = uncapped/free
     // practice). Enforced at the durable boundary so a shot beyond the cap is

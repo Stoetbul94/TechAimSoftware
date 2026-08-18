@@ -32,9 +32,31 @@ three-position course the engine has no course for). A refused programme can be
 selected and reviewed; only starting it is blocked, so nothing is ever run as a
 different competition.
 
-**Not yet persisted.** The session journal and `.tch` files still carry no rule
-authority, so a stored DSB match cannot yet prove which ruleset governed it.
-That is the next gap after the sequencer.
+**Rule authority is persisted.** A session snapshots the competition
+definition it adopted — programme, ruleset and its edition, rule number,
+variant, competition context, scoring mode, timing model, target standard,
+distance, and the preparation and match durations it actually anchored to —
+plus the position sequence and per-position durations the 1.20 sequencer will
+need. Recovery reads that snapshot; it never re-resolves the programme against
+the catalogue, so a later DSB edition reusing rule 1.10 cannot reinterpret a
+2026 match. Two formats carry it, deliberately differently:
+
+| Format | Carries | Absent means |
+|---|---|---|
+| Session journal (`SessionStarted.ruleAuthority`, state v7) | the live recoverable session's rules | LEGACY |
+| Saved match (`.tch` → `Rule_authority`) | which competition produced a saved result | LEGACY |
+
+A session with no competition profile — every ISSF and practice programme —
+adopts nothing and writes nothing, so journals recorded before this existed
+re-serialise byte-identically and keep their hash chains. Absence is read as
+LEGACY explicitly; it is never a reason to reject a session and never a licence
+to invent an identity for one.
+
+The journal path covers the migrated qualification disciplines (AR10, AP10,
+PRONE50) — i.e. DSB 1.10, 2.10 and 1.80. **DSB 1.40 is not journalled yet**
+because 50 m three positions has not been migrated to the qualification seam;
+its authority rides in the `.tch` save, and it joins journal recovery when 3P
+migrates. That migration, not the format, is the remaining gap.
 
 ## Tier 1 — configuration only, current engine
 

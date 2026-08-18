@@ -144,6 +144,7 @@ ReliabilityResult SessionStore::beginSession(const SessionHeader& header)
     started.deviceId = header.deviceId;
     started.operatingMode = header.operatingMode;   // F10: Live/Demo at session start
     started.sessionKind = header.sessionKind;       // T1: Training classification
+    started.ruleAuthority = header.ruleAuthority;   // adopted rules (absent = legacy)
 
     m_state = SessionState();
     m_nextSeq = 0;

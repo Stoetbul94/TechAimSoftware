@@ -288,10 +288,18 @@ Item {
     function applyCompetitionProfile(def) {
         if (!def) return false
         matchShootCount = def.shotCount
+        applyCompetitionDisplay(def)
+        return true
+    }
+
+    // DISPLAY ONLY. A recovered session takes its labels from the catalogue so
+    // it does not read as a generic course, while its RULES stay the ones it
+    // adopted - which is why the shot count is deliberately not touched here.
+    function applyCompetitionDisplay(def) {
+        if (!def) return
         currentGameDisplay1 = qsTr(def.gameDisplay1Key)
         currentGameDisplay2 = qsTr(def.gameDisplay2Key)
         currentmatchDisplay = qsTr(def.matchDisplayKey)
-        return true
     }
 
     function setCurrentGameType(index)
@@ -2180,10 +2188,20 @@ Item {
         // getTimeCount/getPrepTimeCount return seconds.
         var matchMs = authoritativeMatchSeconds() * 1000
         var prepMs = authoritativePrepSeconds() * 1000
+        // ADOPT the competition definition BEFORE the session exists, with the
+        // durations this session is actually anchored to. From here the journal
+        // owns the rules; a programme with no rule authority adopts nothing and
+        // the session is recorded as legacy, exactly as it always was.
+        QUAL.adoptRuleAuthority(
+            window.activeProgrammeId !== ""
+                ? competitionCatalogue.ruleAuthorityFor(window.activeProgrammeId,
+                                                        prepMs, matchMs)
+                : ({}))
         var started = QUAL.startSession(disciplineId, String(matchShootCount),
                                         athlete, matchShootCount, matchMs,
                                         prepMs, -1, "", "")
         if (started) {
+            window.adoptSessionAuthority(QUAL.sessionRuleAuthority())
             QUAL.beginPreparation()
             QUAL.beginSighting()   // combined ISSF prep+sighting phase
             MODREADER.appendToLogFile("QUAL: " + disciplineId
@@ -2208,11 +2226,17 @@ Item {
     // is refused by the reducer's externalId guard.
     function restoreQualificationSession(sessionId, disciplineId)
     {
-        enterQualificationMode(disciplineId, false)
+        // The journal is reopened FIRST so the session's own rules are in force
+        // before anything reads a clock. enterQualificationMode() sets the
+        // sighter clock from the authoritative preparation time, and for a
+        // recovered DSB session that time must come from the session - not from
+        // whichever programme happens to be selected on LoginPage.
         if (!QUAL.resumeFromRecovery(sessionId)) {
             qualDisciplineId = ""
             return false
         }
+        window.adoptSessionAuthority(QUAL.sessionRuleAuthority())
+        enterQualificationMode(disciplineId, false)
         qualRecoveryInProgress = true
         var shots = QUAL.recoveredShots()
         var i, s, p
@@ -2407,6 +2431,7 @@ Item {
         if (qualDisciplineId !== "") {
             QUAL.completeMatch()
             QUAL.closeSession()
+            window.sessionCompetition = null   // no session, no session rules
         }
         MODREADER.appendToLogFile("Match finished: " + globalMatchModel.count
                                   + "/" + matchShootCount + " match shots")

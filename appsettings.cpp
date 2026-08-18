@@ -215,6 +215,13 @@ QString AppSettings::brandSettingsOrganisation()
                                       : QStringLiteral("Seta");
 }
 
+void AppSettings::setSessionRuleAuthority(const QVariantMap& authority)
+{
+    // Stored verbatim. Nothing is derived here: what the session adopted is
+    // what the file must say.
+    m_ruleAuthority = authority;
+}
+
 void AppSettings::saveMatch(bool createNew)
 {
     if (m_matchSavedFile == NULL || createNew) {
@@ -237,6 +244,16 @@ void AppSettings::saveMatch(bool createNew)
         xmlWriter.writeTextElement("game_mode", QString::number(game_mode));
         xmlWriter.writeTextElement("game_event", QString::number(game_event));
         xmlWriter.writeTextElement("game_type", QString::number(game_is_sighter_mode));
+        // Rule authority, appended AFTER the four original elements. The
+        // existing reader walks this block positionally and stops at
+        // game_type, so a build that predates this simply never sees it.
+        if (!m_ruleAuthority.isEmpty()) {
+            xmlWriter.writeStartElement("Rule_authority");
+            for (auto it = m_ruleAuthority.constBegin();
+                 it != m_ruleAuthority.constEnd(); ++it)
+                xmlWriter.writeTextElement(it.key(), it.value().toString());
+            xmlWriter.writeEndElement();
+        }
         xmlWriter.writeEndElement();
 
         xmlWriter.writeStartElement("GameData");
@@ -284,6 +301,16 @@ void AppSettings::autoSaveMatch()
         xmlWriter.writeTextElement("game_mode", QString::number(game_mode));
         xmlWriter.writeTextElement("game_event", QString::number(game_event));
         xmlWriter.writeTextElement("game_type", QString::number(game_is_sighter_mode));
+        // Rule authority, appended AFTER the four original elements. The
+        // existing reader walks this block positionally and stops at
+        // game_type, so a build that predates this simply never sees it.
+        if (!m_ruleAuthority.isEmpty()) {
+            xmlWriter.writeStartElement("Rule_authority");
+            for (auto it = m_ruleAuthority.constBegin();
+                 it != m_ruleAuthority.constEnd(); ++it)
+                xmlWriter.writeTextElement(it.key(), it.value().toString());
+            xmlWriter.writeEndElement();
+        }
         xmlWriter.writeEndElement();
 
         xmlWriter.writeStartElement("GameData");
@@ -415,6 +442,18 @@ bool AppSettings::uploadGame()
 
     QDomElement root = xmlDocument.documentElement();
     QDomElement gameInfoEle = root.firstChild().toElement();
+
+    // Rule authority of the SAVED match, read BY NAME so its position in the
+    // block never matters. Absent -> empty map -> legacy: a file written
+    // before this existed loads exactly as it always did.
+    m_loadedRuleAuthority.clear();
+    const QDomElement authorityEle =
+        gameInfoEle.firstChildElement(QStringLiteral("Rule_authority"));
+    if (!authorityEle.isNull()) {
+        for (QDomElement f = authorityEle.firstChildElement(); !f.isNull();
+             f = f.nextSiblingElement())
+            m_loadedRuleAuthority.insert(f.tagName(), f.text());
+    }
     QString startTag = gameInfoEle.tagName();
     qDebug()<<"The ROOT tag is"<<startTag;
 
@@ -597,6 +636,18 @@ void AppSettings::setGame_is_sighter_mode(int value)
 
     QDomElement root = xmlDocument.documentElement();
     QDomElement gameInfoEle = root.firstChild().toElement();
+
+    // Rule authority of the SAVED match, read BY NAME so its position in the
+    // block never matters. Absent -> empty map -> legacy: a file written
+    // before this existed loads exactly as it always did.
+    m_loadedRuleAuthority.clear();
+    const QDomElement authorityEle =
+        gameInfoEle.firstChildElement(QStringLiteral("Rule_authority"));
+    if (!authorityEle.isNull()) {
+        for (QDomElement f = authorityEle.firstChildElement(); !f.isNull();
+             f = f.nextSiblingElement())
+            m_loadedRuleAuthority.insert(f.tagName(), f.text());
+    }
     QString startTag = gameInfoEle.tagName();
     qDebug()<<"The ROOT tag is"<<startTag;
 

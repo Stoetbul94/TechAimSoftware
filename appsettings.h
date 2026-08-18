@@ -3,6 +3,7 @@
 
 #include <QSettings>
 #include <QObject>
+#include <QVariantMap>
 #include <QFileSystemWatcher>
 
 #include "ModReader/forms/tachuswidget.h"
@@ -29,6 +30,14 @@ public:
     // Registry organisation for the two pre-rebrand keys (EULA, last folder).
     // Not invokable: it is an internal storage-scope detail, not a UI value.
     QString brandSettingsOrganisation();
+    // The competition definition that governed the saved match. Machine
+    // values only - a saved result must identify its own rules years later,
+    // in any language. An empty map means the match had no competition
+    // profile: a LEGACY save, which is a valid state.
+    Q_INVOKABLE void setSessionRuleAuthority(const QVariantMap& authority);
+    Q_INVOKABLE QVariantMap sessionRuleAuthority() const { return m_ruleAuthority; }
+    // Read back from the last loaded .tch. Absent element -> empty map.
+    Q_INVOKABLE QVariantMap loadedRuleAuthority() const { return m_loadedRuleAuthority; }
     Q_INVOKABLE void saveMatch(bool createNew = false);
     Q_INVOKABLE void autoSaveMatch();
     Q_INVOKABLE void autoSaveMatchScore(int index, double xCor, double yCor);
@@ -188,6 +197,11 @@ signals:
     void printPDF();
 
 private:
+    // Adopted rule authority for the match being saved, and the one read
+    // back from the last loaded file. Empty = legacy / no profile.
+    QVariantMap m_ruleAuthority;
+    QVariantMap m_loadedRuleAuthority;
+
     bool m_appMode = false; // false for demo, true for live
     QString m_rawAppModeToken;   // F10: raw app_mode token as read from config
     QString m_brandName = "tachus";

@@ -343,7 +343,7 @@ using DisciplineState =
 // (Idle), which is correct for every snapshot that predates the Wind Map
 // capture workflow. The version moves for the same reason v5 did — a v5
 // snapshot genuinely exists and does not carry the key.
-inline constexpr qint32 kSessionStateVersion = 6;
+inline constexpr qint32 kSessionStateVersion = 7;   // v7: adopted rule authority
 
 struct SessionState {
     // identity & configuration
@@ -357,6 +357,12 @@ struct SessionState {
     // Unknown/Legacy for pre-F10 journals). Authoritative for THIS session and
     // preserved across replay — never re-inferred from the current config.
     QString operatingMode;
+    // The competition definition this session ADOPTED at creation. Empty
+    // (isPresent() == false) means LEGACY - a session from before rule
+    // authority existed. Recovery reads its rules from HERE, never from the
+    // current catalogue, so a later ruleset edition cannot reinterpret a
+    // finished or interrupted match.
+    RuleAuthority ruleAuthority;
     // T1: session classification ("" = competition, "Training" = Training Lab)
     // and the reducer-folded Training projection (empty for competition).
     QString sessionKind;

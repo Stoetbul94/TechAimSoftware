@@ -49,15 +49,47 @@ ApplicationWindow {
     readonly property var activeCompetition:
         activeProgrammeId !== ""
             ? competitionCatalogue.competitionDefinition(activeProgrammeId) : null
+    // The definition the LIVE session ADOPTED, read back from its journal
+    // (null when no session is running, or when the session is legacy). This
+    // is the SESSION's own authority: once a match exists it governs itself,
+    // and the operator browsing another programme - or a later catalogue
+    // edition - cannot reach it. Set at start and at resume, cleared at close.
+    property var sessionCompetition: null
+    // A session's adopted authority becomes the governing definition. An
+    // absent authority (a legacy session, or one started without a profile)
+    // leaves the legacy path in charge - it must never become an empty
+    // profile, which would resolve every duration to -1.
+    function adoptSessionAuthority(authority) {
+        window.sessionCompetition =
+            (authority && authority.present === true) ? authority : null
+        // The catalogue is consulted for the session's LABEL, never for its
+        // rules: a recovered DSB 1.10 must not sit under a generic "MATCH-60"
+        // heading. If the programme has since been renamed or removed, the
+        // labels simply stay as they are - the session's authority is
+        // unaffected either way.
+        if (window.sessionCompetition !== null) {
+            var d = competitionCatalogue.competitionDefinition(
+                        window.sessionCompetition.programmeId)
+            if (d !== null) shootingPage.applyCompetitionDisplay(d)
+        }
+    }
     // Authoritative durations in SECONDS, or -1 when the profile declares none.
     // -1 is deliberate: a caller that ignores it gets an obviously invalid
     // value rather than a plausible wrong clock.
+    // A RUNNING session answers from what it adopted; only when none is
+    // running does the current selection get a say.
     readonly property int profileMatchSeconds:
-        (activeCompetition && activeCompetition.matchMinutes > 0)
-            ? activeCompetition.matchMinutes * 60 : -1
+        sessionCompetition !== null
+            ? (sessionCompetition.matchMs > 0
+                   ? Math.round(sessionCompetition.matchMs / 1000) : -1)
+            : ((activeCompetition && activeCompetition.matchMinutes > 0)
+                   ? activeCompetition.matchMinutes * 60 : -1)
     readonly property int profilePrepSeconds:
-        (activeCompetition && activeCompetition.preparationMinutes > 0)
-            ? activeCompetition.preparationMinutes * 60 : -1
+        sessionCompetition !== null
+            ? (sessionCompetition.preparationMs > 0
+                   ? Math.round(sessionCompetition.preparationMs / 1000) : -1)
+            : ((activeCompetition && activeCompetition.preparationMinutes > 0)
+                   ? activeCompetition.preparationMinutes * 60 : -1)
     // A profile whose DECLARED SHAPE the current engine has no course for. The
     // test is about capability, never about which federation wrote the rule.
     // Two things are missing today:

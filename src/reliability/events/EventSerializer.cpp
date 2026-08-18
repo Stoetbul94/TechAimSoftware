@@ -148,6 +148,33 @@ void writeConfig(OrderedJsonWriter& w, const DisciplineConfig& c)
     w.endObject();
 }
 
+// The adopted rule authority (§ rule-authority persistence). Written ONLY when
+// the session has one, so every journal recorded before this existed
+// re-serialises byte-identically and keeps its hash chain valid.
+void writeRuleAuthority(OrderedJsonWriter& w, const RuleAuthority& a)
+{
+    if (!a.isPresent())
+        return;
+    w.beginObjectField("ruleAuthority");
+    w.field("authorityVersion", static_cast<qint64>(a.authorityVersion));
+    w.field("programmeId", a.programmeId);
+    w.field("rulesetId", a.rulesetId);
+    w.field("rulesetVersion", a.rulesetVersion);
+    w.field("ruleNumber", a.ruleNumber);
+    w.field("programmeVariant", a.programmeVariant);
+    w.field("competitionContext", a.competitionContext);
+    w.field("scoringMode", a.scoringMode);
+    w.field("timingModel", a.timingModel);
+    w.field("targetStandardId", a.targetStandardId);
+    w.field("disciplineId", a.disciplineId);
+    w.field("distanceM", static_cast<qint64>(a.distanceM));
+    w.field("preparationMs", a.preparationMs);
+    w.field("matchMs", a.matchMs);
+    w.field("positionSequence", a.positionSequence);
+    w.field("positionDurationsMs", a.positionDurationsMs);
+    w.endObject();
+}
+
 // Wind Map — the immutable condition snapshot carried by every accepted-shot
 // event. Written flat and always in the same field order so the journal hash
 // is stable. `windValid=false` is written as the single field, so a
@@ -231,6 +258,7 @@ void EventSerializer::serializePayloadInto(const DomainEvent& event,
             // T1: session classification, optional (empty = competition).
             if (!e.sessionKind.isEmpty())
                 w.field("sessionKind", e.sessionKind);
+            writeRuleAuthority(w, e.ruleAuthority);
         },
         [&](const SessionConfigured& e) {
             w.field("discipline", QString::fromLatin1(disciplineId(e.discipline)));
@@ -730,6 +758,46 @@ struct FieldReader {
     }
 };
 
+// Absent object -> a default (LEGACY) RuleAuthority. Absence is a valid,
+// meaningful state: it is how every session recorded before this existed
+// reads back, and it must never be mistaken for a malformed line.
+RuleAuthority readRuleAuthority(FieldReader& top)
+{
+    RuleAuthority a;
+    const QJsonValue v = top.o.value(QLatin1String("ruleAuthority"));
+    if (v.isUndefined())
+        return a;
+    if (!v.isObject()) {
+        top.fail(ReliabilityError::InvalidFieldType,
+                 QStringLiteral("field 'ruleAuthority' is not an object"));
+        return a;
+    }
+    const QJsonObject obj = v.toObject();
+    FieldReader r{obj};
+    a.authorityVersion = static_cast<qint32>(r.reqInt("authorityVersion", 1, INT32_MAX));
+    a.programmeId = r.reqString("programmeId");
+    a.rulesetId = r.reqString("rulesetId");
+    a.rulesetVersion = r.optString("rulesetVersion");
+    a.ruleNumber = r.optString("ruleNumber");
+    a.programmeVariant = r.optString("programmeVariant");
+    a.competitionContext = r.optString("competitionContext");
+    a.scoringMode = r.optString("scoringMode");
+    a.timingModel = r.optString("timingModel");
+    a.targetStandardId = r.optString("targetStandardId");
+    a.disciplineId = r.optString("disciplineId");
+    a.distanceM = static_cast<qint32>(r.reqInt("distanceM", 0, INT32_MAX));
+    a.preparationMs = r.reqInt("preparationMs", 0, std::numeric_limits<qint64>::max());
+    a.matchMs = r.reqInt("matchMs", 0, std::numeric_limits<qint64>::max());
+    a.positionSequence = r.optString("positionSequence");
+    a.positionDurationsMs = r.optString("positionDurationsMs");
+    if (r.failed) {
+        top.failed = true;
+        top.err = r.err;
+        return RuleAuthority();
+    }
+    return a;
+}
+
 DisciplineConfig readConfig(FieldReader& top)
 {
     DisciplineConfig c;
@@ -868,6 +936,7 @@ ReliabilityResult EventSerializer::deserializePayload(const QString& typeId,
         e.deviceId = r.optString("deviceId");
         e.operatingMode = r.optString("operatingMode");   // F10: "" for pre-F10 journals
         e.sessionKind = r.optString("sessionKind");        // T1: "" = competition
+        e.ruleAuthority = readRuleAuthority(r);            // absent = LEGACY
         *out = e;
     } else if (typeId == QLatin1String(SessionConfigured::kType)) {
         SessionConfigured e;

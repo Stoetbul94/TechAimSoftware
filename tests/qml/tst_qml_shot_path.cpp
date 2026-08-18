@@ -3818,6 +3818,159 @@ int main(int argc, char* argv[])
               "DSB-SEAM-001: no timing site branches on a ruleset or rule number");
     }
 
+    // ─────────────────────────────────────────────────────────────────────
+    // RULE-AUTH-002 — the QML side of rule-authority persistence.
+    //
+    // The C++ harness proves the journal keeps what it was given. These checks
+    // prove QML gives it the right thing, and that a RUNNING session outranks
+    // whatever the operator has since selected.
+    // ─────────────────────────────────────────────────────────────────────
+    {
+        QQmlEngine eng;
+        QQmlComponent comp(&eng, QUrl::fromLocalFile(
+            QStringLiteral(TECHAIM_SOURCE_DIR "/CompetitionCatalogue.qml")));
+        QScopedPointer<QObject> cat(comp.create());
+        check(!cat.isNull(), "RULE-AUTH-002: catalogue loads", comp.errorString());
+        if (!cat.isNull()) {
+        const auto authority = [&cat](const char* id, qint64 prepMs, qint64 matchMs) {
+            QVariant v;
+            QMetaObject::invokeMethod(cat.data(), "ruleAuthorityFor",
+                                      Q_RETURN_ARG(QVariant, v),
+                                      Q_ARG(QVariant, QString::fromLatin1(id)),
+                                      Q_ARG(QVariant, QVariant(prepMs)),
+                                      Q_ARG(QVariant, QVariant(matchMs)));
+            return v.toMap();
+        };
+
+        // DSB 1.10 / 60: everything §3 requires, and the durations the session
+        // actually adopted rather than a fresh catalogue lookup.
+        const QVariantMap a110 = authority("dsb.10m.air-rifle.lg60", 900000, 4500000);
+        check(a110.value(QStringLiteral("programmeId")).toString()
+                  == QLatin1String("dsb.10m.air-rifle.lg60")
+              && a110.value(QStringLiteral("rulesetId")).toString() == QLatin1String("dsb")
+              && a110.value(QStringLiteral("rulesetVersion")).toString()
+                     == QLatin1String("2026-01-01")
+              && a110.value(QStringLiteral("ruleNumber")).toString() == QLatin1String("1.10")
+              && a110.value(QStringLiteral("programmeVariant")).toString() == QLatin1String("60")
+              && a110.value(QStringLiteral("competitionContext")).toString()
+                     == QLatin1String("DM_2026")
+              && a110.value(QStringLiteral("scoringMode")).toString() == QLatin1String("DECIMAL")
+              && a110.value(QStringLiteral("timingModel")).toString()
+                     == QLatin1String("SINGLE_MATCH_CLOCK")
+              && a110.value(QStringLiteral("targetStandardId")).toString()
+                     == QLatin1String("issf.10m.air-rifle")
+              && a110.value(QStringLiteral("distanceM")).toInt() == 10
+              && a110.value(QStringLiteral("preparationMs")).toLongLong() == 900000
+              && a110.value(QStringLiteral("matchMs")).toLongLong() == 4500000,
+              "RULE-AUTH-002: DSB 1.10 hands over every field a recovered "
+              "session needs to prove what governed it");
+
+        // 1.40 additionally carries its position sequence, so the schema is
+        // already the shape the 1.20 sequencer will need.
+        const QVariantMap a140 = authority("dsb.50m.rifle.3x20", 900000, 6300000);
+        check(a140.value(QStringLiteral("ruleNumber")).toString() == QLatin1String("1.40")
+              && a140.value(QStringLiteral("scoringMode")).toString() == QLatin1String("INTEGER")
+              && a140.value(QStringLiteral("matchMs")).toLongLong() == 6300000
+              && a140.value(QStringLiteral("positionSequence")).toString()
+                     == QLatin1String("KNEELING,PRONE,STANDING"),
+              "RULE-AUTH-002: DSB 1.40 hands over 105 minutes, integer scoring "
+              "and its position sequence");
+
+        // 1.20 has independent position clocks; its per-position durations must
+        // already persist even though the sequencer that runs them does not
+        // exist yet - otherwise the format would have to change later.
+        const QVariantMap a120 = authority("dsb.10m.air-rifle.3x20", 900000, 0);
+        check(a120.value(QStringLiteral("positionDurationsMs")).toString()
+                  == QLatin1String("2100000,1800000,2400000")
+              && a120.value(QStringLiteral("timingModel")).toString()
+                     == QLatin1String("INDEPENDENT_POSITION_CLOCKS"),
+              "RULE-AUTH-002: per-position durations persist for 1.20 - the "
+              "schema is ready for the sequencer without a format change",
+              a120.value(QStringLiteral("positionDurationsMs")).toString());
+
+        // ISSF and the practice presets have no rule authority to adopt. They
+        // must hand over NOTHING, so their sessions record as legacy and behave
+        // exactly as they always have.
+        const char* legacy[] = { "issf.10m.air-rifle.qualification60",
+                                 "issf.50m.rifle.qualification60",
+                                 "techaim.10m.air-rifle.match40" };
+        int none = 0;
+        for (const char* id : legacy)
+            if (authority(id, 900000, 4500000).isEmpty()) ++none;
+        check(none == 3,
+              "RULE-AUTH-002: an ISSF or practice programme adopts NOTHING - "
+              "its session is legacy, not a fabricated DSB identity",
+              QString::number(none));
+
+        // LANGUAGE. The authority is machine values; nothing in it is a
+        // translated label, so an EN and a DE run persist the same bytes.
+        QStringList translatable;
+        for (auto it = a110.constBegin(); it != a110.constEnd(); ++it) {
+            const QString v = it.value().toString();
+            // Every value must be an id, an enum token, a number or empty -
+            // never prose. A space is the tell: no machine token has one.
+            if (v.contains(QChar(' '))) translatable << it.key();
+        }
+        check(translatable.isEmpty(),
+              "RULE-AUTH-002: no persisted authority value is prose - so the "
+              "same competition records identically in English and German",
+              translatable.join(QStringLiteral(", ")));
+        }
+
+        // ── the wiring, asserted on the source ───────────────────────────
+        const QString mainQml  = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/main.qml"));
+        const QString shootQml = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/ShootingPage.qml"));
+        const QString loginQml = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/LoginPage.qml"));
+
+        // CURRENT UI SELECTION vs SESSION ADOPTED DEFINITION. Both durations
+        // must consult the session FIRST; consulting the selection first is the
+        // defect this whole task exists to remove.
+        check(mainQml.contains(QStringLiteral("property var sessionCompetition: null"))
+              && mainQml.contains(QStringLiteral("readonly property int profileMatchSeconds:\n        sessionCompetition !== null"))
+              && mainQml.contains(QStringLiteral("readonly property int profilePrepSeconds:\n        sessionCompetition !== null")),
+              "RULE-AUTH-002: a running session's own rules outrank the current "
+              "selection for BOTH the match and the preparation clock");
+
+        // The authority is adopted BEFORE the session exists - afterwards would
+        // be too late, the header is already written.
+        const int adoptAt = shootQml.indexOf(QStringLiteral("QUAL.adoptRuleAuthority("));
+        const int startAt = shootQml.indexOf(QStringLiteral("QUAL.startSession("));
+        check(adoptAt > 0 && startAt > adoptAt,
+              "RULE-AUTH-002: the definition is adopted BEFORE the session is "
+              "created, so it reaches the journal header");
+
+        // On resume the journal is reopened BEFORE the qualification mode is
+        // established, because that is what sets the sighter clock - and it
+        // must read the SESSION's preparation time.
+        const int resumeAt = shootQml.indexOf(QStringLiteral("QUAL.resumeFromRecovery(sessionId)"));
+        const int modeAt = shootQml.indexOf(QStringLiteral("enterQualificationMode(disciplineId, false)"));
+        check(resumeAt > 0 && modeAt > resumeAt,
+              "RULE-AUTH-002: recovery adopts the session's rules before "
+              "anything reads a clock from them");
+        check(shootQml.contains(QStringLiteral("window.adoptSessionAuthority(QUAL.sessionRuleAuthority())")),
+              "RULE-AUTH-002: the adopted definition is read back from the "
+              "SESSION, never re-resolved from the catalogue");
+
+        // A finished session stops governing, or the next one would inherit its
+        // clock.
+        check(shootQml.contains(QStringLiteral("window.sessionCompetition = null")),
+              "RULE-AUTH-002: closing a session releases its authority");
+
+        // The saved .tch carries the same identity, which is the only
+        // persistence the unmigrated disciplines have.
+        check(loginQml.contains(QStringLiteral("APPSETTINGS.setSessionRuleAuthority("))
+              && loginQml.contains(QStringLiteral("setaCatalogue.ruleAuthorityFor(")),
+              "RULE-AUTH-002: the saved match file records its competition too");
+
+        // NEGATIVE CONTROL. The old resume path cleared the profile outright.
+        // That exact line must not survive anywhere, or a recovered DSB session
+        // would silently fall back to the legacy clock.
+        check(!loginQml.contains(QStringLiteral("window.activeProgrammeId = \"\"\n        // Recovery"))
+              && !shootQml.contains(QStringLiteral("window.activeProgrammeId = \"\"")),
+              "RULE-AUTH-002 control: no resume path clears the competition "
+              "authority - the behaviour this replaces cannot come back");
+    }
+
     printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
     fflush(stdout);
     return g_failures ? 1 : 0;

@@ -914,6 +914,46 @@ QtObject {
                  "programmeId": d.programmeId }
     }
 
+    // THE ADOPTED AUTHORITY a session records at creation. Everything here is a
+    // machine value: the session must be able to prove what governed it years
+    // later, from a journal written on a range running any language.
+    //
+    // prepMs/matchMs are the durations the session ACTUALLY adopted - passed in
+    // rather than re-read here, because what the clocks were anchored to is the
+    // fact worth persisting, not what the catalogue would say today.
+    //
+    // A programme with no rule authority (ISSF, the practice presets) returns
+    // null: that session is LEGACY, which is an honest answer, not a gap to
+    // fill with an invented identity.
+    function ruleAuthorityFor(programmeId, prepMs, matchMs) {
+        var d = competitionDefinition(programmeId)
+        if (d === null || d.matchTimeAuthority === "") return null
+        var seq = (d.positions && d.positions.length > 1)
+                  ? d.positions.join(",") : ""
+        var durs = ""
+        if (d.positionMinutes && d.positionMinutes.length > 0) {
+            var ms = []
+            for (var i = 0; i < d.positionMinutes.length; ++i)
+                ms.push(d.positionMinutes[i] * 60000)
+            durs = ms.join(",")
+        }
+        return { "programmeId":        d.programmeId,
+                 "rulesetId":          d.rulesetId,
+                 "rulesetVersion":     d.rulesetVersion,
+                 "ruleNumber":         d.ruleNumber,
+                 "programmeVariant":   d.programmeVariant,
+                 "competitionContext": d.competitionContext,
+                 "scoringMode":        d.scoringMode,
+                 "timingModel":        d.timingModel,
+                 "targetStandardId":   d.targetStandardId,
+                 "disciplineId":       d.disciplineId,
+                 "distanceM":          d.distanceM,
+                 "preparationMs":      prepMs,
+                 "matchMs":            matchMs,
+                 "positionSequence":   seq,
+                 "positionDurationsMs": durs }
+    }
+
     // Timing for the engine. Returns milliseconds, because that is what the
     // session controller takes. positionMs is empty for a single-clock
     // programme and matchMs is 0 for an independent-position-clock programme -

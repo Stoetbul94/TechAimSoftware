@@ -68,6 +68,7 @@ SOURCES += \
     tst_reducer.cpp \
     tst_incidents.cpp \
     tst_qualification.cpp \
+    tst_rule_authority.cpp \
     tst_snapshot.cpp \
     tst_store.cpp \
     tst_recovery.cpp \
