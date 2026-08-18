@@ -79,6 +79,16 @@ public:
     Q_INVOKABLE void beginPreparation();
     Q_INVOKABLE void beginSighting();
     Q_INVOKABLE void beginOfficialMatch();
+    // 50 m three positions: the athlete moves to the next position INSIDE the
+    // running master clock. Recorded because the position decides which group a
+    // shot belongs to, and a recovered session has to know which one it is in.
+    // Refused for a discipline that has no positions.
+    Q_INVOKABLE bool changePosition(int positionIndex);
+    // The position the reducer currently holds (-1 = not a position course).
+    Q_INVOKABLE int currentPositionIndex() const;
+    // Match shots accepted in `positionIndex`, folded from the shots
+    // themselves - each carries the position it was fired in.
+    Q_INVOKABLE int matchShotsInPosition(int positionIndex) const;
 
     // Submit a scored shot. `score` is the discipline's final scored value
     // (decimal for rifle, floored integer for full-ring pistol — the caller
@@ -174,6 +184,10 @@ private:
     // Adopted-but-not-yet-written authority for the next startSession.
     ta::rel::RuleAuthority m_pendingAuthority;
     bool m_journalFailureNotified = false;
+    // The master clock is anchored ONCE per session. A three-position course
+    // re-enters the official phase after every position change, and anchoring
+    // again there would hand the athlete a fresh 105 or 165 minutes.
+    bool m_matchClockAnchored = false;
     // Configured official-shot cap (from startSession; <= 0 = uncapped/free
     // practice). Enforced at the durable boundary so a shot beyond the cap is
     // never journalled — the ISSF count is a caller-supplied config value, not

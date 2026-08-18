@@ -551,13 +551,11 @@ ApplicationWindow {
         if (disciplineId === "AR10" || disciplineId === "AP10"
                 || disciplineId === "PRONE50")
             return window.restoreQualification(sessionId, disciplineId)
-        if (disciplineId === "3P50") {
-            dialogManager.showError(qsTr("Recovery Not Yet Available"),
-                qsTr("Crash recovery for this discipline is not implemented in "
-                     + "this build yet.\n\nThe unfinished session has been left "
-                     + qsTr("intact and can be resumed by a later %1 version.").arg(PRODUCT.displayName)))
-            return false
-        }
+        // 50 m three positions now recovers through the SAME qualification
+        // restorer as every other master-clock course - which is what gives
+        // DSB 1.40 and 1.60 their recovery.
+        if (disciplineId === "3P50")
+            return window.restoreQualification(sessionId, disciplineId)
         // Unknown / unsupported discipline: fail safe — never enter the Finals
         // restorer for a non-Finals session.
         dialogManager.showError(qsTr("Recovery Not Supported"),
@@ -650,6 +648,11 @@ ApplicationWindow {
             loginPage.gameMode = 1; gameRange = 10; loginPage.gameSubMode = 0
         } else if (disciplineId === "AP10") {
             loginPage.gameMode = 0; gameRange = 10; loginPage.gameSubMode = 0
+        } else if (disciplineId === "3P50") {
+            // 50 m THREE POSITIONS. Sub-mode 1 is what makes it a position
+            // course; the COURSE itself (3x20 or 3x40) comes from the session's
+            // own adopted authority, not from this page.
+            loginPage.gameMode = 1; gameRange = 50; loginPage.gameSubMode = 1
         } else {                                        // PRONE50
             loginPage.gameMode = 1; gameRange = 50; loginPage.gameSubMode = 0
         }
@@ -662,6 +665,32 @@ ApplicationWindow {
         var evIndex = {10: 0, 20: 1, 30: 2, 40: 3, 60: 4}[expected]
         if (evIndex === undefined) evIndex = 4
         loginPage.gameEvent = evIndex
+        // The RECOVERED SESSION's own programme, adopted before anything reads
+        // a course or a clock from it. This is also what puts the recovered
+        // competition's name on the page instead of the last one browsed - a
+        // 120-shot DSB 1.60 has no legacy event index to be described by.
+        var cand = recoveryDialog.current
+        if (cand && cand.ruleProgrammeId) {
+            // Built from the PERSISTED fields the candidate carries, never from
+            // the catalogue: a DSB 2026 session recovered under a future
+            // edition must still be the competition it was.
+            window.adoptSessionAuthority({
+                "present": true,
+                "programmeId": cand.ruleProgrammeId,
+                "rulesetId": cand.ruleset,
+                "rulesetVersion": cand.rulesetVersion,
+                "ruleNumber": cand.ruleNumber,
+                "programmeVariant": cand.programmeVariant,
+                "competitionContext": cand.competitionContext,
+                "scoringMode": cand.scoringMode,
+                "timingModel": cand.timingModel,
+                "targetStandardId": cand.targetStandardId,
+                "preparationMs": cand.rulePreparationMs * 1,
+                "matchMs": cand.ruleMatchMs * 1,
+                "positionSequence": cand.rulePositionSequence,
+                "positionDurationsMs": cand.rulePositionDurationsMs,
+                "shotsPerPosition": cand.ruleShotsPerPosition })
+        }
         // Fresh-start parity: LoginPage.perfromStart() creates the legacy
         // .tch save-match file; without it setGame_is_sighter_mode()
         // dereferences a null QFile when the match phase engages.

@@ -116,6 +116,8 @@ bool QualificationController::startSession(const QString& disciplineId,
         m_discipline = Discipline::AirPistol10m;
     else if (disciplineId == QLatin1String("PRONE50"))
         m_discipline = Discipline::Prone50m;
+    else if (disciplineId == QLatin1String("3P50"))
+        m_discipline = Discipline::ThreePositions50m;
     else {
         m_discipline = Discipline::None;
         return false;
@@ -129,6 +131,7 @@ bool QualificationController::startSession(const QString& disciplineId,
     m_officialShots = officialShots;
     m_prepMs = prepMs;
     m_matchMs = matchMs;
+    m_matchClockAnchored = false;
 
     SessionHeader header;
     header.sessionId = QUuid::createUuid().toString(QUuid::WithoutBraces);
@@ -148,6 +151,17 @@ bool QualificationController::startSession(const QString& disciplineId,
     header.config.seriesSize = 10;             // ISSF qualification series size
     header.config.matchMs = matchMs;
     header.config.sighterLimit = sighterLimit; // -1 = unlimited
+    // A position course records how it divides. Taken from the ADOPTED
+    // definition when there is one (DSB 1.40 is 20/20/20, 1.60 is 40/40/40) and
+    // otherwise from the course itself, which is how ISSF's 60-shot 3x20 keeps
+    // working without declaring anything.
+    if (m_discipline == Discipline::ThreePositions50m) {
+        const QStringList perPos =
+            m_pendingAuthority.shotsPerPosition.split(QChar(','), Qt::SkipEmptyParts);
+        header.config.perPositionShots = perPos.size() == 3
+            ? perPos.first().trimmed().toInt()
+            : officialShots / 3;
+    }
     // prepMs is carried as a timer anchor via TimerStarted, not part of config;
     // stored here only so the caller's intent is explicit at the call site.
     Q_UNUSED(prepMs);
@@ -166,6 +180,12 @@ bool QualificationController::startSession(const QString& disciplineId,
         emit journalWriteFailed(journalPath(), r.error.technicalDetail);
         return false;
     }
+    // A position course starts IN its first position, and that is a
+    // recorded fact rather than an assumption a reader has to make: the
+    // reducer holds -1 until something says otherwise, and a shot fired
+    // before the first position change would then belong to no position.
+    if (m_discipline == Discipline::ThreePositions50m)
+        submitEvent(DomainEvent(PositionChanged{0}));
     // Consumed. A profile must never leak into a later, unrelated session.
     m_pendingAuthority = RuleAuthority();
     emit sessionChanged();
@@ -189,9 +209,49 @@ void QualificationController::beginSighting()
     submitEvent(DomainEvent(SightingStarted{kSightingStageId}));
 }
 
+bool QualificationController::changePosition(int positionIndex)
+{
+    if (!m_store || !m_store->active())
+        return false;
+    if (m_discipline != Discipline::ThreePositions50m)
+        return false;      // a course without positions cannot change position
+    if (positionIndex < 0 || positionIndex > 2)
+        return false;
+    const SubmitResult r = m_store->submit(DomainEvent(PositionChanged{
+        static_cast<qint8>(positionIndex)}));
+    if (!r.ok)
+        return false;
+    qInfo("competition position: %s position=%d shots=%d/%d",
+          qUtf8Printable(m_store->state().ruleAuthority.auditLine()),
+          positionIndex, officialShotCount(), m_officialShots);
+    emit sessionChanged();
+    return true;
+}
+
+int QualificationController::currentPositionIndex() const
+{
+    if (!m_store || m_discipline != Discipline::ThreePositions50m)
+        return -1;
+    return m_store->state().positionIndex;
+}
+
+int QualificationController::matchShotsInPosition(int positionIndex) const
+{
+    if (!m_store)
+        return 0;
+    int n = 0;
+    for (const StateShotRecord& r : m_store->state().officials)
+        if (r.shot.seriesIndex == positionIndex && !r.invalidated)
+            ++n;
+    return n;
+}
+
 void QualificationController::beginOfficialMatch()
 {
     submitEvent(DomainEvent(OfficialMatchStarted{kOfficialStageId}));
+    if (m_matchClockAnchored)
+        return;   // a position change re-enters the match; the clock runs on
+    m_matchClockAnchored = true;
     // Anchor the official match clock (Phase C): TimerStarted resets the
     // reducer timer to the match duration, so a crash during the match recovers
     // the frozen remaining match time (never the full duration).
@@ -262,7 +322,10 @@ bool QualificationController::submitShot(bool sighter, double xMm, double yMm,
     core.shotNumber = shotNumber;
     core.withinStage = shotNumber;              // single stage
     core.stageId = sighter ? kSightingStageId : kOfficialStageId;
-    core.seriesIndex = 0;
+    // The POSITION this shot was fired in, so a three-position course keeps its
+    // groups in the journal and not only on screen. 0 for every single-position
+    // discipline, which is what it always was.
+    core.seriesIndex = static_cast<qint8>(qMax(0, m_store->state().positionIndex));
     core.xHundredthMm = static_cast<qint32>(qRound(xMm * 100.0));
     core.yHundredthMm = static_cast<qint32>(qRound(yMm * 100.0));
     core.scoreTenths = scoreTenths;
@@ -352,7 +415,7 @@ bool QualificationController::resumeFromRecovery(const QString& sessionId)
     // (finals, 3P-qual, 25m) is refused — never resumed here.
     const Discipline d = rec.state.discipline;
     if (d != Discipline::AirRifle10m && d != Discipline::AirPistol10m
-            && d != Discipline::Prone50m)
+            && d != Discipline::Prone50m && d != Discipline::ThreePositions50m)
         return false;
     loadRecoveredState(rec);
     return true;
@@ -382,13 +445,19 @@ void QualificationController::loadRecoveredState(const RecoveredMatchState& reco
     m_officialShots = s.config.officialShots;
     m_matchMs = s.config.matchMs;
     m_recoveredLastEventMonoMs = recovered.lastEventMonoMs;
+    // The recovered journal already carries the anchor; re-anchoring on the
+    // next position change would restart the master clock.
+    m_matchClockAnchored = (s.timer.timerId == TimerId::Match && s.timer.active);
     m_recovered = true;
     // The recovered session brings its OWN rules. Whatever the operator has
     // since selected in the UI is irrelevant to it, and the catalogue is not
     // consulted - that is the entire point of snapshotting the authority.
-    qInfo("competition recovered: %s discipline=%s shots=%d",
+    qInfo("competition recovered: %s discipline=%s position=%d shots=%d/%d "
+          "perPosition=%d",
           qUtf8Printable(s.ruleAuthority.auditLine()),
-          ta::rel::disciplineId(s.discipline), s.config.officialShots);
+          ta::rel::disciplineId(s.discipline), s.positionIndex,
+          int(s.officials.size()), s.config.officialShots,
+          s.config.perPositionShots);
     emit sessionChanged();
     emit shotCountsChanged();
     emit totalsChanged();

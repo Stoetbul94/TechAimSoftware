@@ -109,6 +109,7 @@ void run_incident_tests();
 void run_qualification_tests();
 void run_rule_authority_tests();
 void run_dsb120_tests();
+void run_qual3p_tests();
 void run_snapshot_tests();
 void run_store_tests();
 void run_recovery_tests();

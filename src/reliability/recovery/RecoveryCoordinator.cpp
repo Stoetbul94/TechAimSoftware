@@ -236,6 +236,7 @@ QVariantList RecoveryCoordinator::scanForQml()
         m[QStringLiteral("rulePositionSequence")] = c.ruleAuthority.positionSequence;
         m[QStringLiteral("rulePositionDurationsMs")] =
             c.ruleAuthority.positionDurationsMs;
+        m[QStringLiteral("ruleShotsPerPosition")] = c.ruleAuthority.shotsPerPosition;
         m[QStringLiteral("startedAtIso")] = c.startedAtIso;
         m[QStringLiteral("lastEventWallIso")] = c.lastEventWallIso;
         m[QStringLiteral("lastModifiedIso")] = c.lastModifiedIso;

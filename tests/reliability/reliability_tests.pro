@@ -72,6 +72,7 @@ SOURCES += \
     tst_qualification.cpp \
     tst_rule_authority.cpp \
     tst_dsb120.cpp \
+    tst_qual3p.cpp \
     tst_snapshot.cpp \
     tst_store.cpp \
     tst_recovery.cpp \

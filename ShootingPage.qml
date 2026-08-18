@@ -2319,6 +2319,15 @@ Item {
             if (APPSETTINGS.getGameMode() === 1
                     && APPSETTINGS.getGameSubMode() === 0 && !is3PMatch)
                 freshQualId = "PRONE50"          // 50m Rifle Prone (decimal)
+            // 50 m THREE POSITIONS: one master clock, three position groups.
+            // Journalled through the SAME seam - it is a qualification course
+            // with an extra axis, not a different kind of competition - and
+            // that is what gives DSB 1.40 and 1.60 their recovery. The course
+            // comes from the adopted definition; ISSF's 3x20 declares nothing
+            // and is conducted exactly as before.
+            else if (APPSETTINGS.getGameMode() === 1
+                    && APPSETTINGS.getGameSubMode() === 1 && is3PMatch)
+                freshQualId = "3P50"
         }
         if (freshQualId !== "")
             enterQualificationMode(freshQualId, true)   // canonical fresh start
@@ -2344,7 +2353,10 @@ Item {
             // path runs (mode flags → models → sighter routing). Fresh-path
             // callers arrive with all of this already done.
             isFinalsMatch = false
-            is3PMatch = false
+            // A three-position session stays one: the discipline comes from the
+            // JOURNAL, so recovery cannot demote a recovered 3x40 course into a
+            // single-position match.
+            is3PMatch = (disciplineId === "3P50")
             resetDataModels()                    // clear stale fresh models
             centerPanel.totalSighterTime = authoritativePrepSeconds()
             changedToSigherMode()                // sighter routing + clean face
@@ -2409,6 +2421,14 @@ Item {
         }
         window.adoptSessionAuthority(QUAL.sessionRuleAuthority())
         enterQualificationMode(disciplineId, false)
+        // 3P: the boundaries already crossed before the crash. Without this the
+        // position watcher sees the count still sitting on a boundary and
+        // replays a transition the athlete already made.
+        if (disciplineId === "3P50") {
+            var recPos = QUAL.currentPositionIndex()
+            p3BreaksDone = recPos <= 0 ? 0
+                         : (recPos === 1 ? p3FirstBreak : p3SecondBreak)
+        }
         qualRecoveryInProgress = true
         var shots = QUAL.recoveredShots()
         var i, s, p
@@ -2536,6 +2556,17 @@ Item {
                 globalModelOfData.append(globalSlighterModel.get(index))
             }
             sligterMode = true
+            // The position change is a fact of the competition, so it is
+            // journalled. The master clock is untouched: this is a change of
+            // position INSIDE the running match time, which is what separates
+            // 1.40 / 1.60 (and ISSF) from the DSB 1.20 gate.
+            if (qualDisciplineId === "3P50") {
+                QUAL.changePosition(p3Position)
+                // Sighting for the NEW position. Journalled so a crash here
+                // recovers into sighting, not into record fire - and the
+                // master clock is not touched by either event.
+                QUAL.beginSighting()
+            }
             // Deliberately NOT calling MODREADER.changeSighterMode() here: its
             // QList swaps race against the 100ms polling worker that reads the
             // same lists and crash the app once shots exist (heap corruption).
