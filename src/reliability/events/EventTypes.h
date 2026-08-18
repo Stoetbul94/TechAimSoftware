@@ -458,7 +458,11 @@ enum class Dsb120Step : quint8 {
     PositionStarted    = 2,   // authorised start; THIS anchors the position clock
     MatchPhaseEntered  = 3,   // sighting -> match, WITHOUT restarting the clock
     PositionCompleted  = 4,
-    MatchFinished      = 5
+    MatchFinished      = 5,
+    // The RETURN to sighting. It exists as a recorded step because refusing it
+    // is a competition rule, not a disabled button: once a position has an
+    // accepted match shot, its sighting is over for good.
+    SightingPhaseReentered = 6
 };
 
 struct Dsb120StepRecorded {
@@ -470,7 +474,7 @@ struct Dsb120StepRecorded {
 
     ReliabilityResult validate() const
     {
-        if (step > static_cast<quint8>(Dsb120Step::MatchFinished))
+        if (step > static_cast<quint8>(Dsb120Step::SightingPhaseReentered))
             return evdetail::invalid(
                 QStringLiteral("Dsb120StepRecorded.step %1 unknown").arg(step));
         if (positionIndex < -1 || positionIndex > 2)

@@ -4046,6 +4046,18 @@ int main(int argc, char* argv[])
         // ISSF 3P is untouched: it still routes through the legacy sub-mode.
         check(shootQml.contains(QStringLiteral("is3PMatch = APPSETTINGS.getGameMode() === 1")),
               "DSB-120-002: ISSF 50 m 3P detection is unchanged");
+
+        // The legacy qualification start control must not appear while the
+        // sequencer owns the competition: it says START MATCH at a gate that
+        // only an authorised position start can open.
+        check(shootQml.contains(QStringLiteral(
+                  "(shootingPage.isFinals10mMatch || shootingPage.isDsb120Match)")),
+              "DSB-120-002: the legacy START MATCH bar is hidden for DSB "
+              "1.20, alongside the 10 m Final that hides it for the same "
+              "reason");
+        check(!shootQml.contains(QStringLiteral("DSB120.startPosition")),
+              "DSB-120-002: and the competition controls are NOT duplicated "
+              "into the action bar - the HUD is the one place they live");
     }
 
     printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);

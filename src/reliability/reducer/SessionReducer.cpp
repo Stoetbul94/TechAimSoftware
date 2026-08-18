@@ -1218,6 +1218,31 @@ ReduceResult SessionReducer::apply(const SessionState& current,
                 d.phase = 5;                       // PositionChange
                 d.completedPositions = static_cast<quint8>(d.completedPositions + 1);
                 break;
+            case Dsb120Step::SightingPhaseReentered:
+                // MATCH -> SIGHTING. Legal only while the position has fired no
+                // counting shot: that is a correction of a premature switch,
+                // not a second sighting period. Once a match shot is accepted
+                // the door is closed, and it is closed HERE - against the
+                // recorded shots - so no journal, replayed in any order, can
+                // reopen it.
+                if (d.phase != 4) {
+                    reject(QStringLiteral("Dsb120: sighting from phase %1").arg(d.phase));
+                    return;
+                }
+                {
+                    const qint16 stage = static_cast<qint16>(d.positionIndex + 1);
+                    for (const StateShotRecord& r : next.officials) {
+                        if (r.shot.stageId == stage && !r.invalidated) {
+                            reject(QStringLiteral(
+                                "Dsb120: position %1 has already fired a match "
+                                "shot - sighting cannot be re-entered")
+                                    .arg(d.positionIndex));
+                            return;
+                        }
+                    }
+                }
+                d.phase = 3;                       // PositionSighting
+                break;
             case Dsb120Step::MatchFinished:
                 d.phase = 6;                       // Finished
                 d.nextPositionIndex = -1;

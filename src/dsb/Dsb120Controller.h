@@ -96,6 +96,11 @@ public:
     Q_INVOKABLE bool startPreparation();
     Q_INVOKABLE bool startPosition(int positionIndex);   // START_KNEELING/PRONE/STANDING
     Q_INVOKABLE bool enterMatchPhase();                  // sighting -> match
+    // The RETURN to sighting, which the engine refuses once the position has an
+    // accepted match shot. It is an action rather than an absent button because
+    // "the operator cannot click it" is not the same statement as "the
+    // competition does not allow it", and only the second one is a rule.
+    Q_INVOKABLE bool requestSighting();
     Q_INVOKABLE bool endPosition();                      // END_POSITION
     Q_INVOKABLE bool finishMatch();                      // FINISH
 

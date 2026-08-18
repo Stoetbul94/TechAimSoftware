@@ -75,6 +75,11 @@ ApplicationWindow {
     function adoptSessionAuthority(authority) {
         window.sessionCompetition =
             (authority && authority.present === true) ? authority : null
+        // The session's programme becomes the ACTIVE one as well, so the legacy
+        // updateGameType() takes its profile-first branch instead of writing
+        // the last committed programme's labels over a recovered session.
+        if (window.sessionCompetition !== null)
+            window.activeProgrammeId = window.sessionCompetition.programmeId
         // The catalogue is consulted for the session's LABEL, never for its
         // rules: a recovered DSB 1.10 must not sit under a generic "MATCH-60"
         // heading. If the programme has since been renamed or removed, the

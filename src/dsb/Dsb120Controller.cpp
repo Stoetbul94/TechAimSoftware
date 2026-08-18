@@ -189,6 +189,20 @@ bool Dsb120Controller::enterMatchPhase()
     return step(Dsb120Step::MatchPhaseEntered, positionIndex(), 0);
 }
 
+bool Dsb120Controller::requestSighting()
+{
+    if (!active() || phase() != Phase::PositionMatch)
+        return false;
+    // THE LOCK. Before the position's first match shot this is a correction of
+    // a premature switch and is allowed; after it, the position's sighting is
+    // over and the engine says so. Kneeling has no sighting phase at all, so
+    // there is nothing for it to return to.
+    if (positionIndex() == 0 || sightingLocked())
+        return false;
+    submitEvent(DomainEvent(SightingStarted{stageIdFor(positionIndex())}));
+    return step(Dsb120Step::SightingPhaseReentered, positionIndex(), 0);
+}
+
 bool Dsb120Controller::endPosition()
 {
     const Phase p = phase();
@@ -494,7 +508,15 @@ qint64 Dsb120Controller::remainingMs() const
     if (m_recovered && m_resumeRemainingMs >= 0) {
         const qint64 remaining =
             m_resumeRemainingMs - (m_store->nowMonotonicMs() - m_resumeAtMonoMs);
-        return remaining > 0 ? remaining : 0;
+        if (remaining <= 0)
+            return 0;
+        // A position clock can never hold MORE than its own duration: 1.20 has
+        // no time credit, so any excess is an artefact of the monotonic clock
+        // restarting with the process (a session resumed twice compares a new
+        // run's timestamps with an old run's anchor). Clamping keeps a resumed
+        // athlete from gaining time; it cannot cost any.
+        const qint64 duration = s.timer.durationMs;
+        return (duration > 0 && remaining > duration) ? duration : remaining;
     }
     const qint64 remaining =
         s.timer.durationMs - (m_store->nowMonotonicMs() - s.timer.startedAtMonoMs);

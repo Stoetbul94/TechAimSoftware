@@ -412,6 +412,85 @@ void run_dsb120_tests()
         }
     }
 
+    // ── THE MATCH -> SIGHTING LOCK, exercised as the actual request ──────
+    // The earlier round proved enterMatchPhase() is refused a second time.
+    // That is the FORWARD transition, and it says nothing about returning. So
+    // these call requestSighting() - the return itself - in both positions
+    // that have a sighting phase, on both sides of the first match shot.
+    //
+    // A helper rather than two copies: the invariant is identical for prone
+    // and standing, and writing it twice invites the second copy to drift.
+    {
+        struct Lock { int position; const char* name; };
+        const Lock cases[] = { {1, "prone"}, {2, "standing"} };
+        for (const Lock& c : cases) {
+            Rig r;
+            r.c.startSession(a3x20(), QStringLiteral("A"));
+            r.c.startPreparation();
+            r.c.startPosition(0);
+            r.fire(20, 1000, 10000 + c.position * 1000);
+            r.c.endPosition();
+            r.c.startPosition(1);
+            if (c.position == 2) {
+                r.c.enterMatchPhase();
+                r.fire(20, 1000, 12000 + c.position * 1000);
+                r.c.endPosition();
+                r.c.startPosition(2);
+            }
+            const QString who = QString::fromLatin1(c.name);
+            check(r.c.phaseId() == int(Phase::PositionSighting)
+                  && r.c.positionIndex() == c.position,
+                  "DSB-120-001 lock: the position opens in sighting", who);
+
+            // BEFORE the first match shot the return is a correction of a
+            // premature switch, and the rule does not forbid it.
+            check(r.c.enterMatchPhase(),
+                  "DSB-120-001 lock: it moves to match", who);
+            check(r.c.requestSighting(),
+                  "DSB-120-001 lock: with NO match shot fired, MATCH -> SIGHTING "
+                  "is allowed - a mis-click is correctable", who);
+            check(r.c.phaseId() == int(Phase::PositionSighting),
+                  "DSB-120-001 lock: and the phase really is sighting again", who);
+
+            // Sighting and match share one clock anchor, so the round trip
+            // cannot restart the position.
+            const qint64 beforeRoundTrip = r.c.remainingMs();
+            r.c.enterMatchPhase();
+            check(r.c.remainingMs() == beforeRoundTrip,
+                  "DSB-120-001 lock: the position clock is unmoved by the "
+                  "sighting round trip", who);
+
+            // AFTER the first match shot: closed, for good.
+            check(r.fire(1, 1000, 14000 + c.position * 1000) == 1,
+                  "DSB-120-001 lock: the first match shot is accepted", who);
+            check(r.c.sightingLocked(),
+                  "DSB-120-001 lock: sighting is now locked", who);
+            check(!r.c.requestSighting(),
+                  "DSB-120-001 lock: MATCH -> SIGHTING is REFUSED after the "
+                  "first match shot", who);
+            check(r.c.phaseId() == int(Phase::PositionMatch),
+                  "DSB-120-001 lock: and the position stays in match - the "
+                  "refusal changed nothing", who);
+
+            // The journal agrees, so no replay can reopen it.
+            const SessionState st = replayOf(r.file);
+            const Dsb120State* d = discOf(st);
+            check(d && d->phase == quint8(Phase::PositionMatch),
+                  "DSB-120-001 lock: the replayed position is in match, not "
+                  "sighting", who);
+        }
+
+        // Kneeling has no sighting phase to return to: its sighting was the
+        // shared preparation period before the position ever started.
+        Rig r;
+        r.c.startSession(a3x10(), QStringLiteral("A"));
+        r.c.startPreparation();
+        r.c.startPosition(0);
+        check(!r.c.requestSighting(),
+              "DSB-120-001 lock: kneeling cannot return to a sighting phase it "
+              "never had");
+    }
+
     // ── NEGATIVE CONTROLS ────────────────────────────────────────────────
     // Each of these is a way the competition could be silently run wrong. They
     // fail as REFUSALS from the engine.

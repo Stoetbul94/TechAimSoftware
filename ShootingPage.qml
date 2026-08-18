@@ -443,8 +443,10 @@ Item {
             spacing: 6
             // UI-TRAIN-001..003: every Training programme owns its own phase
             // model. The competition stepper would read a Final/qualification
-            // phase none of them has.
-            visible: !isFinals10mMatch && !isTrainingModeAny
+            // phase none of them has. DSB 1.20 is excluded for the same reason
+            // as the 10 m Final: its phase is position-scoped (kneeling MATCH,
+            // prone SIGHTING …) and this two-step chip cannot express it.
+            visible: !isFinals10mMatch && !isTrainingModeAny && !isDsb120Match
             Repeater {
                 model: is3PMatch ? [qsTr("SIGHT"), qsTr("KNEEL"), qsTr("PRONE"), qsTr("STAND")]
                                  : [qsTr("SIGHTING"), qsTr("MATCH")]
@@ -492,14 +494,17 @@ Item {
             // count would read 0 here (10m shots never populate it) and contradict
             // FINALS10M — so hide the legacy top counter for the Final.
             Text {
-                visible: !isFinals10mMatch && !isTrainingModeAny
+                // DSB 1.20 counts per position and keeps its record in the
+                // sequencer, not globalMatchModel - this would read 0 / 30
+                // beside a HUD saying 1 / 10.
+                visible: !isFinals10mMatch && !isTrainingModeAny && !isDsb120Match
                 text: globalMatchModel.count + " / " + (matchShootCount > 0 ? matchShootCount : "—")
                 color: "white"; font.family: theme.fontFamily
                 font.pixelSize: 14; font.bold: true
                 anchors.verticalCenter: parent.verticalCenter
             }
             Text {
-                visible: !isFinals10mMatch && !isTrainingModeAny
+                visible: !isFinals10mMatch && !isTrainingModeAny && !isDsb120Match
                 text: qsTr("SHOTS")
                 color: "#9a9ba0"; font.family: theme.fontFamily
                 font.pixelSize: 9; font.letterSpacing: 1.5
@@ -510,7 +515,11 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 // 3P FINAL: the HUD strip owns phase display; the qualification
                 // phase chip (SIGHTING/MATCH from sligterMode) would conflict.
+                // sligterMode is the legacy sighter flag and is not the DSB
+                // 1.20 phase: the sequencer can be in prone MATCH while it is
+                // still true.
                 visible: !isFinalsMatch && !isFinals10mMatch && !isTrainingModeAny
+                         && !isDsb120Match
                 color: matchFinished ? "#1d7a2f" : (sligterMode ? "#8a6d00" : theme.tokens.accentBright)
                 Text {
                     id: phaseChipText
@@ -654,7 +663,17 @@ Item {
             // qualification START MATCH bar must not appear and must never
             // trigger a phase transition. (Completion "VIEW REPORT" is handled by
             // the Finals10m completion panel, not this bar.)
-            visible: shootingPage.isFinals10mMatch ? false
+            //
+            // DSB 1.20 is hidden for the same reason and it matters more here:
+            // this button says START MATCH while the sequencer is at a gate
+            // waiting for an authorised position start, which reads as if the
+            // legacy qualification engine owned the competition. Competition
+            // control for 1.20 lives in ONE place, the DSB HUD, and pressing
+            // this could never have started a position anyway - the engine
+            // refuses it - so what is removed is the contradiction, not a
+            // capability.
+            visible: (shootingPage.isFinals10mMatch || shootingPage.isDsb120Match)
+                     ? false
                      : (finalsMode ? FINALS3P.primaryActionVisible : true)
             color: finalsMode
                    ? (finalsEnabled ? (primaryMouse.containsMouse ? theme.tokens.accentHover : theme.tokens.accentBright)
@@ -995,8 +1014,15 @@ Item {
                 var dsbScore = Math.floor(currentCalculatedScore)
                 var dsbId = ++shootingPage.qualShotSeq
                 var dsbSimulated = (centerPanel.lastShotSource === 1)
-                DSB120.submitShot(centerPanel.lastShotXmm, centerPanel.lastShotYmm,
-                                  dsbScore, dsbId, xPosition, dsbSimulated)
+                // A refusal is logged rather than swallowed: "the shot did
+                // not appear" is the hardest kind of report to answer.
+                if (!DSB120.submitShot(centerPanel.lastShotXmm, centerPanel.lastShotYmm,
+                                       dsbScore, dsbId, xPosition, dsbSimulated))
+                    MODREADER.appendToLogFile(
+                        "DSB120: shot REFUSED - phase " + DSB120.phaseId
+                        + " position " + DSB120.positionIndex
+                        + " matchShots " + DSB120.matchShotsInPosition
+                        + " simulated " + dsbSimulated)
                 return
             }
             // B1/B2: 10m Air Rifle (AR10, decimal) and 10m Air Pistol (AP10,
@@ -2179,6 +2205,12 @@ Item {
         qualDisciplineId = ""
         matchShootCount = DSB120.totalShotsRequired
         window.adoptSessionAuthority(DSB120.sessionRuleAuthority())
+        // Applied again after the page is shown: making it visible runs the
+        // legacy updateGameType(), which would otherwise write the last
+        // committed programme back over the recovered one.
+        Qt.callLater(function() {
+            window.adoptSessionAuthority(DSB120.sessionRuleAuthority())
+        })
         resetDataModels()
         changedToSigherMode()
         centerPanel.suppressLegacyClock = true   // the position clock is the HUD's
