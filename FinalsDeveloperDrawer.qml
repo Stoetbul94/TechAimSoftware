@@ -38,7 +38,7 @@ Item {
             anchors.centerIn: parent
             spacing: 5
 
-            Text { text: "DEVELOPER · TESTING"; color: "#8a8a92"; font.family: "Segoe UI"
+            Text { text: qsTr("DEVELOPER · TESTING"); color: "#8a8a92"; font.family: "Segoe UI"
                    font.pixelSize: 9; font.letterSpacing: 1.5 }
 
             Repeater {
@@ -57,7 +57,7 @@ Item {
                     border.color: "#3a3b42"; border.width: 1
                     Text { id: dTxt; anchors.centerIn: parent
                            text: modelData.l === "PAUSE / RESUME" && drawer.ctl && drawer.ctl.paused
-                                 ? "RESUME" : modelData.l
+                                 ? qsTr("RESUME") : modelData.l
                            color: "#d7d8dd"; font.family: "Segoe UI"; font.pixelSize: 10 }
                     MouseArea { id: dMA; anchors.fill: parent; onClicked: modelData.a() }
                 }

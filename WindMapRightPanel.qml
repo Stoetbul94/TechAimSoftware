@@ -45,8 +45,8 @@ Item {
         id: header
         anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right
         anchors.margins: 16; spacing: 2
-        Text { text: "TRAINING LAB"; color: _red; font.pixelSize: 11; font.bold: true; font.letterSpacing: 2 }
-        Text { text: "Wind Map"; color: _txt; font.pixelSize: 17; font.bold: true }
+        Text { text: qsTr("TRAINING LAB"); color: _red; font.pixelSize: 11; font.bold: true; font.letterSpacing: 2 }
+        Text { text: qsTr("Wind Map"); color: _txt; font.pixelSize: 17; font.bold: true }
         Text { visible: ctl !== null && ctl.threePositions
                text: ctl ? ctl.positionName : ""; color: _green; font.pixelSize: 13; font.bold: true }
         Text { text: ctl ? ctl.phaseName : ""; color: _txtMut; font.pixelSize: 10 }
@@ -77,7 +77,7 @@ Item {
                     anchors.left: parent.left; anchors.leftMargin: 12
                     anchors.right: parent.right; anchors.rightMargin: 12
                     anchors.verticalCenter: parent.verticalCenter; spacing: 4
-                    Text { text: "STANDING CONDITION"; color: _txtMut
+                    Text { text: qsTr("STANDING CONDITION"); color: _txtMut
                            font.pixelSize: 9; font.bold: true; font.letterSpacing: 1 }
                     Text { width: parent.width; wrapMode: Text.WordWrap
                            text: ctl ? ctl.conditionSummary : ""
@@ -86,7 +86,7 @@ Item {
                     Text { visible: text !== ""; width: parent.width; wrapMode: Text.WordWrap
                            text: ctl ? ctl.conditionNote : ""
                            color: _txtSec; font.pixelSize: 10; font.italic: true }
-                    Text { text: ctl ? ("Recorded changes: " + ctl.conditionChanges) : ""
+                    Text { text: ctl ? (qsTr("Recorded changes: ") + ctl.conditionChanges) : ""
                            color: _txtMut; font.pixelSize: 10 }
                 }
             }
@@ -98,7 +98,7 @@ Item {
             Column {
                 width: parent.width; spacing: 6
                 visible: !panel.reviewOpen && ctl && ctl.active && !ctl.completed
-                Text { text: "DIRECTION"; color: _txtMut
+                Text { text: qsTr("DIRECTION"); color: _txtMut
                        font.pixelSize: 9; font.bold: true; font.letterSpacing: 1 }
                 Item {
                     width: parent.width; height: 172
@@ -170,7 +170,7 @@ Item {
                         onTextChanged: panel.pendingNote = text }
                     Text { visible: noteField.text === ""; anchors.left: parent.left
                            anchors.leftMargin: 8; anchors.verticalCenter: parent.verticalCenter
-                           text: "Note (optional)"; color: panel._txtMut; font.pixelSize: 11 } }
+                           text: qsTr("Note (optional)"); color: panel._txtMut; font.pixelSize: 11 } }
 
                 Text { id: condError; visible: text !== ""; width: parent.width
                        wrapMode: Text.WordWrap; text: ""
@@ -213,7 +213,7 @@ Item {
                     Rectangle {
                         width: (bodyCol.width - 12) / 3; height: 46; radius: 8
                         color: "transparent"; border.color: panel._line; border.width: 1
-                        Text { anchors.centerIn: parent; text: "NO READING"; color: panel._txtSec
+                        Text { anchors.centerIn: parent; text: qsTr("NO READING"); color: panel._txtSec
                                font.pixelSize: 10; font.bold: true }
                         MouseArea { anchors.fill: parent
                             onClicked: {
@@ -224,7 +224,7 @@ Item {
                     }
                 }
                 Text { width: parent.width; wrapMode: Text.WordWrap
-                       text: "Calm is a reading. No reading means none was taken — it is not treated as calm."
+                       text: qsTr("Calm is a reading. No reading means none was taken — it is not treated as calm.")
                        color: panel._txtMut; font.pixelSize: 10 }
             }
 
@@ -233,10 +233,10 @@ Item {
                 width: parent.width; spacing: 6
                 visible: panel.inSighters || panel.counting || panel.posReview
                 Rectangle { width: parent.width; height: 1; color: panel._line }
-                Text { visible: panel.inSighters; text: "SIGHTERS"; color: panel._txt
+                Text { visible: panel.inSighters; text: qsTr("SIGHTERS"); color: panel._txt
                        font.pixelSize: 15; font.bold: true }
                 Text { visible: panel.counting
-                       text: "Shot " + (ctl ? ctl.countedShots : 0) + " of " + (ctl ? ctl.shotPlan : 0)
+                       text: qsTr("Shot ") + (ctl ? ctl.countedShots : 0) + qsTr(" of ") + (ctl ? ctl.shotPlan : 0)
                        color: panel._txt; font.family: "Consolas"; font.pixelSize: 20; font.bold: true }
                 Rectangle { visible: panel.counting
                     width: parent.width; height: 12; radius: 6; color: "#0E1014"
@@ -270,7 +270,7 @@ Item {
                 width: parent.width; spacing: 6
                 visible: panel.posReview && ctl && ctl.threePositions
                 Rectangle { width: parent.width; height: 1; color: panel._line }
-                Text { text: "NEXT POSITION"; color: panel._txtMut
+                Text { text: qsTr("NEXT POSITION"); color: panel._txtMut
                        font.pixelSize: 9; font.bold: true; font.letterSpacing: 1 }
                 Row { spacing: 6
                     Repeater {
@@ -289,7 +289,7 @@ Item {
                     }
                 }
                 Text { width: parent.width; wrapMode: Text.WordWrap
-                       text: "Kneeling, Prone and Standing are recorded separately and are never pooled."
+                       text: qsTr("Kneeling, Prone and Standing are recorded separately and are never pooled.")
                        color: panel._txtMut; font.pixelSize: 10 }
                 // The only route from a 3P position review to the session
                 // review. Without it the athlete could change position but
@@ -297,7 +297,7 @@ Item {
                 Rectangle {
                     width: parent.width; height: 46; radius: 8
                     color: "transparent"; border.color: panel._line; border.width: 1
-                    Text { anchors.centerIn: parent; text: "END CAPTURE"; color: panel._txtSec
+                    Text { anchors.centerIn: parent; text: qsTr("END CAPTURE"); color: panel._txtSec
                            font.pixelSize: 12; font.bold: true }
                     MouseArea { anchors.fill: parent
                         onClicked: {

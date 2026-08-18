@@ -40,7 +40,7 @@ Rectangle {
 
         Text { text: perf.stageCaption; color: "#8a8a92"; font.family: "Segoe UI"
                font.pixelSize: 10; font.letterSpacing: 1.2 }
-        Text { text: perf.isSingle ? "" : (perf.ctl ? perf.ctl.shotsInStage : 0) + " / " + perf.stageCap
+        Text { text: perf.isSingle ? "qsTr(" : (perf.ctl ? perf.ctl.shotsInStage : 0) + ") / " + perf.stageCap
                color: "white"; font.family: "Segoe UI"; font.pixelSize: 18; font.bold: true }
 
         Text { visible: !perf.isSingle; text: "STAGE"; color: "#8a8a92"; font.family: "Segoe UI"

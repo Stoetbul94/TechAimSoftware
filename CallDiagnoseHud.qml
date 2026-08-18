@@ -43,7 +43,7 @@ Item {
             anchors.centerIn: parent; spacing: 12
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: hud.awaitingCall ? "SHOT RECEIVED" : "CALL vs ACTUAL"
+                text: hud.awaitingCall ? qsTr("SHOT RECEIVED") : qsTr("CALL vs ACTUAL")
                 color: _txt; font.pixelSize: 22; font.bold: true; font.letterSpacing: 1
             }
             Text {
@@ -51,8 +51,8 @@ Item {
                 width: 520; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap
                 color: _txtSec; font.pixelSize: 13
                 text: hud.awaitingCall
-                      ? "Mark where you believe the shot landed, then confirm your call."
-                      : "CALL (outline) vs ACTUAL (filled). The line shows the difference."
+                      ? qsTr("Mark where you believe the shot landed, then confirm your call.")
+                      : qsTr("CALL (outline) vs ACTUAL (filled). The line shows the difference.")
             }
 
             // the call target face
@@ -88,12 +88,12 @@ Item {
                 Rectangle { anchors.centerIn: parent; width: face.plotR * 2; height: 1; color: "#1c1f26" }
                 Rectangle { anchors.centerIn: parent; width: 1; height: face.plotR * 2; color: "#1c1f26" }
                 Text { anchors.top: parent.top; anchors.topMargin: 6; anchors.horizontalCenter: parent.horizontalCenter
-                       text: "±" + face.activeRange.toFixed(0) + " mm"; color: _txtMut; font.pixelSize: 9 }
+                       text: "±qsTr(" + face.activeRange.toFixed(0) + ") mm"; color: _txtMut; font.pixelSize: 9 }
                 // off-face indicator (a marker lies beyond the scoring face)
                 Text {
                     visible: hud.revealOpen && face.rv.outsideFace === true
                     anchors.bottom: parent.bottom; anchors.bottomMargin: 6; anchors.horizontalCenter: parent.horizontalCenter
-                    text: "OUTSIDE NORMAL TARGET FACE"; color: _redHi; font.pixelSize: 9; font.bold: true
+                    text: qsTr("OUTSIDE NORMAL TARGET FACE"); color: _redHi; font.pixelSize: 9; font.bold: true
                 }
 
                 // ACTUAL marker (reveal only) — filled diamond + label
@@ -147,10 +147,10 @@ Item {
                 property var rv: hud.revealOpen && hud.ctl ? hud.ctl.revealCurrent() : ({})
                 Text { anchors.horizontalCenter: parent.horizontalCenter
                        visible: parent.rv.exact === true
-                       text: "EXACT CALL — 0.0 mm"; color: _green; font.pixelSize: 16; font.bold: true }
+                       text: qsTr("EXACT CALL — 0.0 mm"); color: _green; font.pixelSize: 16; font.bold: true }
                 Text { anchors.horizontalCenter: parent.horizontalCenter
                        visible: parent.rv.exact !== true
-                       text: "CALL DIFFERENCE  " + (parent.rv.errorMm !== undefined ? Number(parent.rv.errorMm).toFixed(1) : "—") + " mm"
+                       text: qsTr("CALL DIFFERENCE  ") + (parent.rv.errorMm !== undefined ? Number(parent.rv.errorMm).toFixed(1) : "—") + " mm"
                              + (parent.rv.errorRingSpacings !== undefined ? "  (~" + Number(parent.rv.errorRingSpacings).toFixed(1) + " ring spacings)" : "")
                        color: _txt; font.pixelSize: 15; font.bold: true }
                 Text { anchors.horizontalCenter: parent.horizontalCenter; width: 520; horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap
@@ -172,10 +172,10 @@ Item {
                 // Comparison Zoom / Target View toggle (touch ≥48px targets)
                 Row { spacing: 0; visible: hud.revealOpen
                     Rectangle { width: 120; height: 30; radius: 6; color: !hud.targetView ? _redHi : "transparent"; border.color: _line; border.width: 1
-                        Text { anchors.centerIn: parent; text: "Comparison"; color: !hud.targetView ? "white" : _txtSec; font.pixelSize: 11 }
+                        Text { anchors.centerIn: parent; text: qsTr("Comparison"); color: !hud.targetView ? "white" : _txtSec; font.pixelSize: 11 }
                         MouseArea { anchors.fill: parent; onClicked: hud.targetView = false } }
                     Rectangle { width: 110; height: 30; radius: 6; color: hud.targetView ? _redHi : "transparent"; border.color: _line; border.width: 1
-                        Text { anchors.centerIn: parent; text: "Target"; color: hud.targetView ? "white" : _txtSec; font.pixelSize: 11 }
+                        Text { anchors.centerIn: parent; text: qsTr("Target"); color: hud.targetView ? "white" : _txtSec; font.pixelSize: 11 }
                         MouseArea { anchors.fill: parent; onClicked: hud.targetView = true } }
                 }
             }
@@ -187,14 +187,14 @@ Item {
                 Rectangle {
                     visible: hud.awaitingCall; width: 130; height: 56; radius: 8
                     color: "transparent"; border.color: _line; border.width: 1
-                    Text { anchors.centerIn: parent; text: "Clear"; color: _txtSec; font.pixelSize: 14 }
+                    Text { anchors.centerIn: parent; text: qsTr("Clear"); color: _txtSec; font.pixelSize: 14 }
                     MouseArea { anchors.fill: parent; onClicked: if (hud.ctl) hud.ctl.clearCall() }
                 }
                 Rectangle {
                     visible: hud.awaitingCall; width: 200; height: 56; radius: 8
                     property bool ready: hud.ctl && hud.ctl.hasPendingCall
                     color: ready ? (confirmMouse.pressed ? _red : _redHi) : "#2A2C34"
-                    Text { anchors.centerIn: parent; text: "CONFIRM CALL"
+                    Text { anchors.centerIn: parent; text: qsTr("CONFIRM CALL")
                            color: parent.ready ? "white" : _txtMut; font.pixelSize: 15; font.bold: true }
                     MouseArea { id: confirmMouse; anchors.fill: parent
                                 onClicked: if (hud.ctl && hud.ctl.hasPendingCall) hud.ctl.confirmCall() }
@@ -205,7 +205,7 @@ Item {
                     color: contMouse.pressed ? theme.tokens.accentPrimary : _red
                     Text { anchors.centerIn: parent
                            text: (hud.ctl && hud.ctl.shotsCompleted >= hud.ctl.shotCount)
-                                 ? "CONTINUE" : "CONTINUE TO NEXT SHOT"
+                                 ? qsTr("CONTINUE") : qsTr("CONTINUE TO NEXT SHOT")
                            color: "white"; font.pixelSize: 15; font.bold: true }
                     MouseArea { id: contMouse; anchors.fill: parent
                                 onClicked: if (hud.ctl) hud.ctl.continueToNext() }
@@ -231,10 +231,10 @@ Item {
                     property var shots: (hud.summaryOpen && hud.ctl) ? hud.ctl.shotReviewList() : []
                     property var ins: (hud.summaryOpen && hud.ctl) ? hud.ctl.callInsights() : ({})
 
-                    Text { text: "CALL & DIAGNOSE COMPLETE"; color: _txt; font.pixelSize: 22; font.bold: true }
-                    Text { text: "TRAINING SESSION"; color: _red; font.pixelSize: 11; font.bold: true; font.letterSpacing: 2 }
+                    Text { text: qsTr("CALL & DIAGNOSE COMPLETE"); color: _txt; font.pixelSize: 22; font.bold: true }
+                    Text { text: qsTr("TRAINING SESSION"); color: _red; font.pixelSize: 11; font.bold: true; font.letterSpacing: 2 }
                     Rectangle { width: notOff.implicitWidth + 22; height: 24; radius: 12; color: "#2a0b10"; border.color: _red; border.width: 1
-                        Text { id: notOff; anchors.centerIn: parent; text: "Not an official competition result"
+                        Text { id: notOff; anchors.centerIn: parent; text: qsTr("Not an official competition result")
                                color: "#ffd0d7"; font.pixelSize: 10; font.bold: true } }
 
                     // overview cards
@@ -273,7 +273,7 @@ Item {
                             id: takeCol
                             anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top; anchors.margins: 12
                             spacing: 8
-                            Text { text: "WHAT YOU SHOULD TAKE FROM THIS SESSION"; color: _redHi; font.pixelSize: 12; font.bold: true; font.letterSpacing: 1 }
+                            Text { text: qsTr("WHAT YOU SHOULD TAKE FROM THIS SESSION"); color: _redHi; font.pixelSize: 12; font.bold: true; font.letterSpacing: 1 }
                             Repeater {
                                 model: {
                                     var i = sumCol.ins
@@ -299,15 +299,15 @@ Item {
                     Column {
                         width: parent.width; spacing: 3
                         visible: (sumCol.ins.reviewShots || []).length > 0
-                        Text { text: "SHOTS TO REVIEW WITH YOUR COACH"; color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 4 }
+                        Text { text: qsTr("SHOTS TO REVIEW WITH YOUR COACH"); color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 4 }
                         Repeater { model: sumCol.ins.reviewShots || []
                             Text { width: sumCol.width; wrapMode: Text.WordWrap
-                                   text: "· Shot " + modelData.shotNumber + ": " + modelData.text
+                                   text: qsTr("· Shot ") + modelData.shotNumber + ": " + modelData.text
                                    color: _txtSec; font.pixelSize: 12 } }
                     }
 
                     // ACCURACY TREND CHART (shot number vs call difference)
-                    Text { text: "CALL DIFFERENCE BY SHOT"; color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 4 }
+                    Text { text: qsTr("CALL DIFFERENCE BY SHOT"); color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 4 }
                     Column {
                         width: parent.width; spacing: 3
                         readonly property real maxErr: {
@@ -322,24 +322,24 @@ Item {
                                 Rectangle { width: sumCol.width * 0.55; height: 11; radius: 3; color: "#0E1014"; anchors.verticalCenter: parent.verticalCenter
                                     Rectangle { height: parent.height; radius: 3; color: s.isOutlier ? _redHi : _green
                                         width: parent.width * Math.min(1, s.errorMm / parent.parent.parent.maxErr) } }
-                                Text { text: Number(s.errorMm).toFixed(1) + " mm"; color: _txt; font.family: "Consolas"; font.pixelSize: 9
+                                Text { text: Number(s.errorMm).toFixed(1) + qsTr(" mm"); color: _txt; font.family: "Consolas"; font.pixelSize: 9
                                        anchors.verticalCenter: parent.verticalCenter } } }
                     }
 
-                    Text { text: "OBSERVED"; color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 4 }
+                    Text { text: qsTr("OBSERVED"); color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 4 }
                     Column { width: parent.width; spacing: 3
                         Repeater { model: sumCol.obs
                             Text { width: sumCol.width; wrapMode: Text.WordWrap; text: "· " + modelData; color: _txtSec; font.pixelSize: 12 } }
-                        Text { visible: sumCol.obs.length === 0; text: "Not enough called shots to summarise."
+                        Text { visible: sumCol.obs.length === 0; text: qsTr("Not enough called shots to summarise.")
                                color: _txtMut; font.pixelSize: 12 } }
 
                     // shot review (called vs actual, error) — revealed shots only
-                    Text { text: "SHOT REVIEW"; color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 4 }
+                    Text { text: qsTr("SHOT REVIEW"); color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 4 }
                     Column { width: parent.width; spacing: 3
                         Row { spacing: 8
                             Text { text: "SHOT"; color: _txtMut; font.pixelSize: 9; width: 70 }
                             Text { text: "SCORE"; color: _txtMut; font.pixelSize: 9; width: 60 }
-                            Text { text: "CALL ERR"; color: _txtMut; font.pixelSize: 9; width: 70 }
+                            Text { text: qsTr("CALL ERR"); color: _txtMut; font.pixelSize: 9; width: 70 }
                             Text { text: "X / Y"; color: _txtMut; font.pixelSize: 9; width: 120 }
                             Text { text: "NOTE"; color: _txtMut; font.pixelSize: 9 } }
                         Repeater { model: sumCol.shots
@@ -347,7 +347,7 @@ Item {
                                 Text { width: 70; color: _txt; font.pixelSize: 11; font.bold: true
                                        text: (s.positionName ? s.positionName.substring(0,1) + " " : "") + "#" + s.shotNumber }
                                 Text { width: 60; color: _txt; font.family: "Consolas"; font.pixelSize: 11; text: Number(s.actualScore).toFixed(1) }
-                                Text { width: 70; color: _txt; font.family: "Consolas"; font.pixelSize: 11; text: Number(s.errorMm).toFixed(1) + " mm" }
+                                Text { width: 70; color: _txt; font.family: "Consolas"; font.pixelSize: 11; text: Number(s.errorMm).toFixed(1) + qsTr(" mm") }
                                 Text { width: 120; color: _txtSec; font.family: "Consolas"; font.pixelSize: 11
                                        text: Number(s.errorXMm).toFixed(1) + " / " + Number(s.errorYMm).toFixed(1) }
                                 Text { color: _txtMut; font.pixelSize: 10; elide: Text.ElideRight; width: 180; text: s.note || "" } } }
@@ -358,16 +358,16 @@ Item {
                         Rectangle { width: 180; height: 56; radius: 8; color: pdfMouse.pressed ? "#2A2C34" : "#23252C"; border.color: _line; border.width: 1
                             Row { anchors.centerIn: parent; spacing: 8
                                 Text { text: "⭳"; color: _green; font.pixelSize: 18; anchors.verticalCenter: parent.verticalCenter }
-                                Text { text: "EXPORT PDF"; color: _txt; font.pixelSize: 14; font.bold: true; anchors.verticalCenter: parent.verticalCenter } }
+                                Text { text: qsTr("EXPORT PDF"); color: _txt; font.pixelSize: 14; font.bold: true; anchors.verticalCenter: parent.verticalCenter } }
                             MouseArea { id: pdfMouse; anchors.fill: parent; onClicked: hud.exportPdfRequested() } }
                         Rectangle { width: 160; height: 56; radius: 8; color: nsMouse.pressed ? theme.tokens.accentPrimary : _red
-                            Text { anchors.centerIn: parent; text: "NEW SESSION"; color: "white"; font.pixelSize: 14; font.bold: true }
+                            Text { anchors.centerIn: parent; text: qsTr("NEW SESSION"); color: "white"; font.pixelSize: 14; font.bold: true }
                             MouseArea { id: nsMouse; anchors.fill: parent
                                 onClicked: dialogManager.showConfirmation(qsTr("Start a new session?"),
                                     qsTr("This session is closed and preserved. A new session ID is created."),
                                     function(ok) { if (ok) hud.newSessionRequested() }, qsTr("New Session"), qsTr("Cancel")) } }
                         Rectangle { width: 120; height: 56; radius: 8; color: "transparent"; border.color: _line; border.width: 1
-                            Text { anchors.centerIn: parent; text: "Home"; color: _txtSec; font.pixelSize: 13 }
+                            Text { anchors.centerIn: parent; text: qsTr("Home"); color: _txtSec; font.pixelSize: 13 }
                             MouseArea { anchors.fill: parent; onClicked: hud.homeRequested() } }
                     }
                 }

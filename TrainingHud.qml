@@ -78,9 +78,9 @@ Item {
                     property var obs: (hud.reviewOpen && hud.ctl)
                                     ? hud.ctl.blockObservations(hud.ctl.currentBlock) : []
 
-                    Text { text: "BLOCK " + (hud.ctl ? hud.ctl.currentBlock : "") + " COMPLETE"
+                    Text { text: qsTr("BLOCK ") + (hud.ctl ? hud.ctl.currentBlock : "") + " COMPLETE"
                            color: _txt; font.pixelSize: 24; font.bold: true }
-                    Text { text: "MEASURED BLOCK RESULT"; color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2 }
+                    Text { text: qsTr("MEASURED BLOCK RESULT"); color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2 }
                     Row {
                         spacing: 10
                         Text { visible: hud.ctl && hud.ctl.positionName !== ""
@@ -88,7 +88,7 @@ Item {
                         Text { text: (reviewCol.m.shotCount !== undefined ? reviewCol.m.shotCount : "0")
                                      + " counted shots · sighters excluded"
                                color: _txtMut; font.pixelSize: 12 }
-                        Text { text: hud.ctl ? ("Focus · " + hud.ctl.technicalFocus) : ""
+                        Text { text: hud.ctl ? (qsTr("Focus · ") + hud.ctl.technicalFocus) : ""
                                color: _txtMut; font.pixelSize: 12 }
                     }
 
@@ -142,7 +142,7 @@ Item {
                                 Text {
                                     anchors.bottom: parent.bottom; anchors.bottomMargin: 6
                                     anchors.horizontalCenter: parent.horizontalCenter
-                                    text: "±" + Number(parent.rangeMm).toFixed(0) + " mm  ·  ● counted shot   ○ group centre"
+                                    text: "±qsTr(" + Number(parent.rangeMm).toFixed(0) + ") mm  ·  ● counted shot   ○ group centre"
                                     color: _txtMut; font.pixelSize: 10
                                 }
                             }
@@ -228,7 +228,7 @@ Item {
                     Column {
                         width: parent.width; spacing: 3
                         visible: reviewCol.obs.length > 0
-                        Text { text: "OBSERVED"; color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 4 }
+                        Text { text: qsTr("OBSERVED"); color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 4 }
                         Repeater {
                             model: reviewCol.obs
                             Text { width: reviewCol.width; wrapMode: Text.WordWrap
@@ -246,7 +246,7 @@ Item {
                             id: gpCol
                             anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top; anchors.margins: 11
                             spacing: 6
-                            Text { text: "GROUP PATTERN INSIGHTS"; color: _red; font.pixelSize: 11; font.bold: true; font.letterSpacing: 1 }
+                            Text { text: qsTr("GROUP PATTERN INSIGHTS"); color: _red; font.pixelSize: 11; font.bold: true; font.letterSpacing: 1 }
                             Repeater {
                                 model: parent.parent.gp.properties || []
                                 delegate: Column { width: gpCol.width; spacing: 1
@@ -254,19 +254,19 @@ Item {
                                         Text { text: modelData.label; color: _green; font.pixelSize: 12; font.bold: true }
                                         Rectangle { width: cf.implicitWidth + 12; height: 16; radius: 8; color: "#0d2018"; border.color: _line; border.width: 1
                                             anchors.verticalCenter: parent.verticalCenter
-                                            Text { id: cf; anchors.centerIn: parent; text: modelData.confidence + " evidence"; color: _txtSec; font.pixelSize: 8 } } }
+                                            Text { id: cf; anchors.centerIn: parent; text: modelData.confidence + qsTr(" evidence"); color: _txtSec; font.pixelSize: 8 } } }
                                     Text { width: gpCol.width; wrapMode: Text.WordWrap; text: modelData.evidence; color: _txtSec; font.pixelSize: 11 } }
                             }
                             Text { visible: (parent.parent.gp.prompt || "") !== ""
                                    width: gpCol.width; wrapMode: Text.WordWrap
-                                   text: "Coach discussion: " + parent.parent.gp.prompt; color: _txt; font.pixelSize: 11; font.italic: true; topPadding: 2 }
+                                   text: qsTr("Coach discussion: ") + parent.parent.gp.prompt; color: _txt; font.pixelSize: 11; font.italic: true; topPadding: 2 }
                             Text { width: gpCol.width; wrapMode: Text.WordWrap
                                    text: parent.parent.gp.disclaimer || ""; color: _txtMut; font.pixelSize: 9 }
                         }
                     }
 
-                    Text { text: "ATHLETE NOTE"; color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 4 }
-                    Text { text: "What did you notice during this block?"; color: _txtMut; font.pixelSize: 11 }
+                    Text { text: qsTr("ATHLETE NOTE"); color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 4 }
+                    Text { text: qsTr("What did you notice during this block?"); color: _txtMut; font.pixelSize: 11 }
                     Rectangle {
                         width: parent.width; height: 96; radius: 6
                         color: "#1D2026"; border.color: noteInput.activeFocus ? _red : _line; border.width: 1
@@ -293,7 +293,7 @@ Item {
                         Rectangle {
                             width: 130; height: 40; radius: 8
                             color: saveNoteMouse.pressed ? "#3A3C44" : "#2B2C33"; border.color: _line; border.width: 1
-                            Text { id: saveNoteLabel; anchors.centerIn: parent; text: "Save Note"; color: _txt; font.pixelSize: 13 }
+                            Text { id: saveNoteLabel; anchors.centerIn: parent; text: qsTr("Save Note"); color: _txt; font.pixelSize: 13 }
                             MouseArea {
                                 id: saveNoteMouse; anchors.fill: parent
                                 onClicked: {
@@ -307,7 +307,7 @@ Item {
                         }
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
-                            text: (300 - noteInput.length) + " characters left · one note per block"
+                            text: (300 - noteInput.length) + qsTr(" characters left · one note per block")
                             color: _txtMut; font.pixelSize: 10
                         }
                     }
@@ -321,7 +321,7 @@ Item {
                             Text {
                                 anchors.centerIn: parent; color: "white"; font.pixelSize: 15; font.bold: true
                                 text: hud.ctl && hud.ctl.currentBlock >= hud.ctl.blockCount
-                                      ? "VIEW SESSION SUMMARY" : "CONTINUE TO BLOCK " + (hud.ctl ? hud.ctl.currentBlock + 1 : "")
+                                      ? qsTr("VIEW SESSION SUMMARY") : qsTr("CONTINUE TO BLOCK ") + (hud.ctl ? hud.ctl.currentBlock + 1 : "")
                             }
                             MouseArea {
                                 id: continueMouse; anchors.fill: parent
@@ -336,7 +336,7 @@ Item {
                         Rectangle {
                             width: parent.width * 0.34; height: 56; radius: 8
                             color: "transparent"; border.color: _line; border.width: 1
-                            Text { anchors.centerIn: parent; text: "End Training"; color: _txtSec; font.pixelSize: 13 }
+                            Text { anchors.centerIn: parent; text: qsTr("End Training"); color: _txtSec; font.pixelSize: 13 }
                             MouseArea {
                                 anchors.fill: parent
                                 onClicked: dialogManager.showConfirmation(qsTr("End training?"),
@@ -379,20 +379,20 @@ Item {
                         return mx
                     }
 
-                    Text { text: (hud.ctl && hud.ctl.endedEarly()) ? "TRAINING ENDED" : "TECHNICAL BLOCKS COMPLETE"
+                    Text { text: (hud.ctl && hud.ctl.endedEarly()) ? qsTr("TRAINING ENDED") : qsTr("TECHNICAL BLOCKS COMPLETE")
                            color: _txt; font.pixelSize: 21; font.bold: true }
-                    Text { text: "TRAINING SESSION"; color: _red; font.pixelSize: 11; font.bold: true; font.letterSpacing: 2 }
+                    Text { text: qsTr("TRAINING SESSION"); color: _red; font.pixelSize: 11; font.bold: true; font.letterSpacing: 2 }
                     Rectangle {
                         width: notOfficial.implicitWidth + 22; height: 24; radius: 12
                         color: "#2a0b10"; border.color: _red; border.width: 1
                         Text { id: notOfficial; anchors.centerIn: parent
-                               text: "Not an official competition result"
+                               text: qsTr("Not an official competition result")
                                color: "#ffd0d7"; font.pixelSize: 10; font.bold: true }
                     }
                     Text {
                         width: parent.width; wrapMode: Text.WordWrap
                         color: _txtSec; font.pixelSize: 11
-                        text: (hud.ctl ? ("Session " + hud.ctl.sessionId.substring(0, 8)
+                        text: (hud.ctl ? (qsTr("Session ") + hud.ctl.sessionId.substring(0, 8)
                               + " · " + (hud.ctl.sessionOperatingMode || "Legacy") + " mode"
                               + " · Focus " + hud.ctl.technicalFocus
                               + " · " + ["Full hidden", "Group only", "Impact, no score"][hud.ctl.visibilityMode]) : "")
@@ -431,7 +431,7 @@ Item {
                     }
 
                     // ── comparison bars (average score + group diameter) ──
-                    Text { text: "GROUP SIZE BY BLOCK"; color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 4 }
+                    Text { text: qsTr("GROUP SIZE BY BLOCK"); color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 4 }
                     Column {
                         width: parent.width; spacing: 4
                         Repeater {
@@ -450,13 +450,13 @@ Item {
                                         width: b.hasGroup ? parent.width * Math.min(1, b.groupDiameter / sumCol.maxDia) : 0
                                     }
                                 }
-                                Text { text: b.hasGroup ? Number(b.groupDiameter).toFixed(1) + " mm" : "—"
+                                Text { text: b.hasGroup ? Number(b.groupDiameter).toFixed(1) + qsTr(" mm") : "—"
                                        color: _txt; font.family: "Consolas"; font.pixelSize: 11
                                        anchors.verticalCenter: parent.verticalCenter }
                             }
                         }
                     }
-                    Text { text: "AVERAGE SCORE BY BLOCK"; color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 4 }
+                    Text { text: qsTr("AVERAGE SCORE BY BLOCK"); color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 4 }
                     Column {
                         width: parent.width; spacing: 4
                         Repeater {
@@ -482,7 +482,7 @@ Item {
                         }
                     }
 
-                    Text { text: "BLOCK COMPARISON"; color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 4 }
+                    Text { text: qsTr("BLOCK COMPARISON"); color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 4 }
                     // header row + per-block rows
                     Column {
                         width: parent.width; spacing: 3
@@ -490,8 +490,8 @@ Item {
                             spacing: 8
                             Text { text: "BLOCK"; color: _txtMut; font.pixelSize: 9; width: 84 }
                             Text { text: "AVG"; color: _txtMut; font.pixelSize: 9; width: 46 }
-                            Text { text: "DIA mm"; color: _txtMut; font.pixelSize: 9; width: 56 }
-                            Text { text: "MPI mm"; color: _txtMut; font.pixelSize: 9; width: 84 }
+                            Text { text: qsTr("DIA mm"); color: _txtMut; font.pixelSize: 9; width: 56 }
+                            Text { text: qsTr("MPI mm"); color: _txtMut; font.pixelSize: 9; width: 84 }
                             Text { text: "SD"; color: _txtMut; font.pixelSize: 9; width: 44 }
                             Text { text: "NOTE"; color: _txtMut; font.pixelSize: 9 }
                         }
@@ -502,7 +502,7 @@ Item {
                                 property var b: modelData
                                 Text {
                                     width: 84; font.pixelSize: 11; color: _txt; font.bold: true
-                                    text: "B" + b.blockIndex + (b.position !== "" && hud.ctl && hud.ctl.positionName !== undefined && b.position !== undefined && b.position !== "Kneeling" || (b.position && hud.ctl.blockCount === 6) ? " · " + b.position.substring(0, 1) : "")
+                                    text: "BqsTr(" + b.blockIndex + (b.position !== ")qsTr(" && hud.ctl && hud.ctl.positionName !== undefined && b.position !== undefined && b.position !== ")KneelingqsTr(" || (b.position && hud.ctl.blockCount === 6) ? ") · qsTr(" + b.position.substring(0, 1) : ")")
                                 }
                                 Text { width: 46; font.family: "Consolas"; font.pixelSize: 11; color: _txt
                                        text: Number(b.averageScore).toFixed(1) }
@@ -518,7 +518,7 @@ Item {
                         }
                     }
 
-                    Text { text: "SIGHTERS"; color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 4 }
+                    Text { text: qsTr("SIGHTERS"); color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 4 }
                     Column {
                         spacing: 2
                         property var au: (hud.summaryOpen && hud.ctl) ? hud.ctl.sighterAudit() : ({})
@@ -534,11 +534,11 @@ Item {
                                 return "Sighters: " + a.total
                             }
                         }
-                        Text { text: "Sighters excluded from Training results."
+                        Text { text: qsTr("Sighters excluded from Training results.")
                                color: _txtMut; font.pixelSize: 10 }
                     }
 
-                    Text { text: "OBSERVED"; color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 4 }
+                    Text { text: qsTr("OBSERVED"); color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 4 }
                     Column {
                         width: parent.width; spacing: 3
                         Repeater {
@@ -547,8 +547,8 @@ Item {
                                    text: "· " + modelData; color: _txtSec; font.pixelSize: 12 }
                         }
                         Text { visible: sumCol.sobs.length === 0
-                               text: sumCol.blocks.length === 0 ? "No completed blocks."
-                                                                : "Not enough blocks to compare."
+                               text: sumCol.blocks.length === 0 ? qsTr("No completed blocks.")
+                                                                : qsTr("Not enough blocks to compare.")
                                color: _txtMut; font.pixelSize: 12 }
                     }
 
@@ -560,14 +560,14 @@ Item {
                             color: pdfMouse.pressed ? "#2A2C34" : "#23252C"; border.color: _line; border.width: 1
                             Row { anchors.centerIn: parent; spacing: 8
                                 Text { text: "⭳"; color: _green; font.pixelSize: 18; anchors.verticalCenter: parent.verticalCenter }
-                                Text { text: "EXPORT PDF"; color: _txt; font.pixelSize: 14; font.bold: true
+                                Text { text: qsTr("EXPORT PDF"); color: _txt; font.pixelSize: 14; font.bold: true
                                        anchors.verticalCenter: parent.verticalCenter }
                             }
                             MouseArea { id: pdfMouse; anchors.fill: parent; onClicked: hud.exportPdfRequested() }
                         }
                         Rectangle {
                             width: 170; height: 56; radius: 8; color: newSessMouse.pressed ? theme.tokens.accentPrimary : _red
-                            Text { anchors.centerIn: parent; text: "NEW SESSION"; color: "white"; font.pixelSize: 14; font.bold: true }
+                            Text { anchors.centerIn: parent; text: qsTr("NEW SESSION"); color: "white"; font.pixelSize: 14; font.bold: true }
                             MouseArea {
                                 id: newSessMouse; anchors.fill: parent
                                 onClicked: dialogManager.showConfirmation(qsTr("Start a new training session?"),
@@ -579,7 +579,7 @@ Item {
                         Rectangle {
                             width: 120; height: 56; radius: 8
                             color: "transparent"; border.color: _line; border.width: 1
-                            Text { anchors.centerIn: parent; text: "Home"; color: _txtSec; font.pixelSize: 13 }
+                            Text { anchors.centerIn: parent; text: qsTr("Home"); color: _txtSec; font.pixelSize: 13 }
                             MouseArea { anchors.fill: parent; onClicked: hud.homeRequested() }
                         }
                     }

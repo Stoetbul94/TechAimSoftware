@@ -5,26 +5,60 @@
 This document tells a German-speaking reviewer exactly what exists, what does
 not, and how to change it without touching application code.
 
-## Current state (P0)
+## Current state — SETA German completion pass (product/seta)
+
+**Status: COMPLETE DRAFT — NATIVE TECHNICAL REVIEW PENDING (on-screen UI).**
+**Overall: PARTIAL** — the printed report / PDF surface is still English.
 
 | Metric | Value |
 |---|---|
-| Extractable source strings | 583 |
-| Translated | 100 |
-| Untranslated (render in English) | 483 |
+| Catalogue entries | 1,095 |
+| Translated | 856 |
+| Untranslated | 239 |
+| **On-screen application surface** | **827 / 827 translated** |
+| Printed report / PDF surface | 0 / 223 |
+| Vendored QModMaster forms (unreachable UI) | not translated |
 | Catalogue | `translations/techaim_de_DE.ts` |
 | Compiled | `translations/techaim_de_DE.qm`, embedded via `techaim_translations.qrc` |
-| Language code | `de-DE` |
-| Source/fallback language | `en` |
+| Language code / fallback | `de-DE` / `en` |
 
-**The 100 translated strings are the release-critical core**: range commands,
-the three shooting positions, sighter/counted-shot vocabulary, primary
-navigation, Training Lab programme names and the "not an official competition
-result" disclaimer.
+### What changed in this pass
 
-**The 483 untranslated strings render in English.** This is by design, not a
-defect: Qt falls back to the source string, so the UI is never blank and never
-shows a raw key. It does mean a German session is currently **mixed-language**.
+The earlier gap was not a thin catalogue. **545 user-visible strings were never
+wrapped in `qsTr()` at all**, so no catalogue could reach them however complete
+it was. This pass wrapped the on-screen surface and authored German for all of
+it: the landing and session screen, the Training Lab setup panels (Technical
+Blocks, Call & Diagnose, Position Transition, Wind Map), the shooting screen and
+its HUDs, the right panels, the dialog framework, recovery and licence dialogs,
+Settings, the Finals and Training Lab cards, and the readiness strip.
+
+**Everything still English on screen is a deliberate technical value**: ` mm`,
+`X:`, `, Y:`, `—`, `S`, `#`, `%1`, ` (%1)`, the shot counts 10/15/20/30/40/60,
+the score bands 10s/9s/8s/≤7, and `Form` (the vendored QModMaster designer name,
+in a window this product never shows).
+
+### What is NOT translated, and why
+
+**The printed report / PDF views (223 strings).** They are documents rather than
+controls, laid out on fixed A4 geometry, and German expands: translating them
+without measuring those page layouts would risk clipped report pages, which is a
+worse defect than an English report. They are a separate, scoped piece of work.
+
+### Gates
+
+`SETA-LANG-004` asserts every on-screen string has German, with the neutral
+values listed explicitly, and asserts that the printed-report surface is *still*
+outstanding — so this document cannot drift into claiming more than the build
+does. `SETA-LANG-005` asserts that switching language leaves `programmeId`,
+`rulesetId`, `disciplineId`, `targetStandardId`, distance, shot count, scoring
+mode, target family, range, weapon and event index **identical**.
+
+### BETA is not removed
+
+Coverage is a string count. Native technical review is a different question:
+whether a German range officer or ISSF-licensed coach would actually say
+*Streukreis*, *Probeschießen*, *Kniend/Liegend/Stehend*, *Ansage & Diagnose*.
+`de-DE` therefore stays flagged beta in `LanguageService`, and a test asserts it.
 
 ## Two limits a reviewer must know about
 

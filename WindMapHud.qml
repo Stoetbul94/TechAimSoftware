@@ -104,8 +104,8 @@ Item {
                     property var shots: (hud.ctl && (hud.reviewOpen || hud.doneOpen))
                                         ? hud.ctl.reviewShots() : []
 
-                    Text { text: hud.doneOpen ? "WIND MAP — SESSION COMPLETE"
-                                              : "WIND MAP — SESSION REVIEW"
+                    Text { text: hud.doneOpen ? qsTr("WIND MAP — SESSION COMPLETE")
+                                              : qsTr("WIND MAP — SESSION REVIEW")
                            color: hud._txt; font.pixelSize: 24; font.bold: true }
                     Text { text: (rvCol.m.disciplineName || "") + " · "
                                  + (rvCol.m.athlete || "") + " · " + (rvCol.m.operatingMode || "")
@@ -147,7 +147,7 @@ Item {
                     // Each tile's definition, stated on screen so no number can
                     // be read as something it is not.
                     Text { width: parent.width; wrapMode: Text.WordWrap
-                           text: "Unique conditions = distinct conditions under which counted shots were recorded. "
+                           text: qsTr("Unique conditions = distinct conditions under which counted shots were recorded. ")
                                  + "You entered a condition " + (rvCol.m.conditionEntries || 0)
                                  + " times in total. Sighters are recorded but are never included in the counted totals."
                            color: hud._txtMut; font.pixelSize: 10 }
@@ -157,7 +157,7 @@ Item {
                         width: parent.width; spacing: 6
                         visible: rvCol.m.threePositions === true
                         Rectangle { width: parent.width; height: 1; color: hud._line }
-                        Text { text: "BY POSITION"; color: hud._txtMut
+                        Text { text: qsTr("BY POSITION"); color: hud._txtMut
                                font.pixelSize: 9; font.bold: true; font.letterSpacing: 1 }
                         Repeater {
                             model: rvCol.m.positions ? rvCol.m.positions : []
@@ -165,9 +165,9 @@ Item {
                                 width: parent.width; spacing: 8
                                 Text { text: modelData.positionName; color: hud._txt
                                        font.pixelSize: 13; font.bold: true; width: parent.width * 0.3 }
-                                Text { text: modelData.countedShots + " counted"
+                                Text { text: modelData.countedShots + qsTr(" counted")
                                        color: hud._txtSec; font.pixelSize: 12; width: parent.width * 0.3 }
-                                Text { text: modelData.sighterShots + " sighters"
+                                Text { text: modelData.sighterShots + qsTr(" sighters")
                                        color: hud._txtMut; font.pixelSize: 12 }
                             }
                         }
@@ -175,16 +175,16 @@ Item {
 
                     // The record itself: each shot beside the condition it kept.
                     Rectangle { width: parent.width; height: 1; color: hud._line }
-                    Text { text: "SHOT RECORD"; color: hud._txtMut
+                    Text { text: qsTr("SHOT RECORD"); color: hud._txtMut
                            font.pixelSize: 9; font.bold: true; font.letterSpacing: 1 }
                     Row {
                         width: parent.width; spacing: 8
                         Text { text: "#";        color: hud._txtMut; font.pixelSize: 10; width: parent.width * 0.07 }
                         Text { text: "TYPE";     color: hud._txtMut; font.pixelSize: 10; width: parent.width * 0.13 }
-                        Text { text: "POSITION"; color: hud._txtMut; font.pixelSize: 10; width: parent.width * 0.15
+                        Text { text: qsTr("POSITION"); color: hud._txtMut; font.pixelSize: 10; width: parent.width * 0.15
                                visible: rvCol.m.threePositions === true }
                         Text { text: "SCORE";    color: hud._txtMut; font.pixelSize: 10; width: parent.width * 0.12 }
-                        Text { text: "CONDITION AT THE SHOT"; color: hud._txtMut; font.pixelSize: 10 }
+                        Text { text: qsTr("CONDITION AT THE SHOT"); color: hud._txtMut; font.pixelSize: 10 }
                     }
                     Repeater {
                         model: rvCol.shots
@@ -192,7 +192,7 @@ Item {
                             width: parent.width; spacing: 8; height: 24
                             Text { text: modelData.shotId; color: hud._txtSec
                                    font.family: "Consolas"; font.pixelSize: 12; width: parent.width * 0.07 }
-                            Text { text: modelData.sighter ? "Sighter" : "Counted"
+                            Text { text: modelData.sighter ? qsTr("Sighter") : qsTr("Counted")
                                    color: modelData.sighter ? hud._txtMut : hud._txt
                                    font.pixelSize: 12; width: parent.width * 0.13 }
                             Text { text: modelData.positionName; color: hud._txtSec
@@ -221,7 +221,7 @@ Item {
                     visible: hud.doneOpen
                     width: 150; height: 52; radius: 8
                     color: "transparent"; border.color: hud._line; border.width: 1
-                    Text { anchors.centerIn: parent; text: "New session"; color: hud._txtSec
+                    Text { anchors.centerIn: parent; text: qsTr("New session"); color: hud._txtSec
                            font.pixelSize: 13 }
                     MouseArea { anchors.fill: parent; onClicked: hud.newSessionRequested() }
                 }
@@ -229,7 +229,7 @@ Item {
                     width: 190; height: 52; radius: 8
                     color: completeMouse.pressed ? hud._red : hud._redHi
                     Text { anchors.centerIn: parent
-                           text: hud.doneOpen ? "Home" : "Complete session"
+                           text: hud.doneOpen ? qsTr("Home") : qsTr("Complete session")
                            color: "white"; font.pixelSize: 14; font.bold: true }
                     MouseArea { id: completeMouse; anchors.fill: parent
                         onClicked: {

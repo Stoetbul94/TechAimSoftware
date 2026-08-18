@@ -17,7 +17,7 @@ Item {
     id: win
 
     // ── Public API ──────────────────────────────────────────────────────
-    property string title: "Window"
+    property string title: qsTr("Window")
     property string subtitle: ""
     property string icon: ""              // optional qrc path, shown in the title bar
     property bool resizable: true

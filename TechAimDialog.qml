@@ -196,7 +196,7 @@ Item {
                 spacing: 6
                 visible: root.details.length > 0
                 Text {
-                    text: (root.detailsOpen ? "Hide Details ▲" : "Show Details ▼")
+                    text: (root.detailsOpen ? qsTr("Hide Details ▲") : qsTr("Show Details ▼"))
                     color: root.inkMuted
                     font.family: "Segoe UI"; font.pixelSize: 11; font.bold: true
                     MouseArea {

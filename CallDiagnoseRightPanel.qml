@@ -33,8 +33,8 @@ Item {
         id: header
         anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right
         anchors.margins: 16; spacing: 2
-        Text { text: "TRAINING LAB"; color: _red; font.pixelSize: 11; font.bold: true; font.letterSpacing: 2 }
-        Text { text: "Call & Diagnose"; color: _txt; font.pixelSize: 17; font.bold: true }
+        Text { text: qsTr("TRAINING LAB"); color: _red; font.pixelSize: 11; font.bold: true; font.letterSpacing: 2 }
+        Text { text: qsTr("Call & Diagnose"); color: _txt; font.pixelSize: 17; font.bold: true }
         Text { visible: ctl && ctl.positionName !== ""; text: ctl ? ctl.positionName : ""
                color: _green; font.pixelSize: 12; font.bold: true }
     }
@@ -52,13 +52,13 @@ Item {
             // SIGHTERS
             Column {
                 width: parent.width; spacing: 8; visible: panel.sighters
-                Text { text: "SIGHTERS"; color: _txt; font.pixelSize: 20; font.bold: true }
+                Text { text: qsTr("SIGHTERS"); color: _txt; font.pixelSize: 20; font.bold: true }
                 Text { width: parent.width; wrapMode: Text.WordWrap; color: _txtSec; font.pixelSize: 12
-                       text: "Optional shots to confirm your position and zero. Sighters are excluded from Call & Diagnose results." }
+                       text: qsTr("Optional shots to confirm your position and zero. Sighters are excluded from Call & Diagnose results.") }
                 Rectangle { width: parent.width; height: 40; radius: 8; color: _card; border.color: _line; border.width: 1
                     Row { anchors.fill: parent; anchors.margins: 10; spacing: 8
-                        Text { text: "Sighters fired"; color: _txtMut; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
-                        Text { text: ctl ? ("" + ctl.sighterCount) : "0"; color: _green
+                        Text { text: qsTr("Sighters fired"); color: _txtMut; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
+                        Text { text: ctl ? ("qsTr(" + ctl.sighterCount) : ")0"; color: _green
                                font.family: "Consolas"; font.pixelSize: 16; font.bold: true; anchors.verticalCenter: parent.verticalCenter } } }
             }
 
@@ -68,7 +68,7 @@ Item {
                 visible: panel.awaitingShot || panel.awaitingCall || panel.revealOpen
                 Text {
                     color: _txt; font.family: "Consolas"; font.pixelSize: 22; font.bold: true
-                    text: ctl ? ("Shot " + ctl.pendingShotNumber + " of " + ctl.shotCount) : ""
+                    text: ctl ? (qsTr("Shot ") + ctl.pendingShotNumber + qsTr(" of ") + ctl.shotCount) : ""
                 }
                 // progress bar (completed calls)
                 Rectangle {
@@ -79,9 +79,9 @@ Item {
                 Text {
                     width: parent.width; wrapMode: Text.WordWrap; font.pixelSize: 13
                     color: panel.awaitingShot ? _txtSec : (panel.awaitingCall ? _redHi : _green)
-                    text: panel.awaitingShot ? "Fire your next shot on the target."
+                    text: panel.awaitingShot ? qsTr("Fire your next shot on the target.")
                           : panel.awaitingCall ? "SHOT RECEIVED — mark where you believe it landed, then confirm."
-                          : "Call revealed. Review the difference and continue."
+                          : qsTr("Call revealed. Review the difference and continue.")
                 }
                 // reveal readout (call difference) — only in Reveal
                 Rectangle {
@@ -93,25 +93,25 @@ Item {
                         anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top; anchors.margins: 10
                         spacing: 5
                         property var rv: panel.revealOpen && panel.ctl ? panel.ctl.revealCurrent() : ({})
-                        Text { text: "CALL DIFFERENCE"; color: _txtMut; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1 }
-                        Text { visible: revealCol.rv.exact === true; text: "EXACT CALL — 0.0 mm"
+                        Text { text: qsTr("CALL DIFFERENCE"); color: _txtMut; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1 }
+                        Text { visible: revealCol.rv.exact === true; text: qsTr("EXACT CALL — 0.0 mm")
                                color: _green; font.family: "Consolas"; font.pixelSize: 20; font.bold: true }
                         Text { visible: revealCol.rv.exact !== true
                                text: (revealCol.rv.errorMm !== undefined ? Number(revealCol.rv.errorMm).toFixed(1) : "—") + " mm"
                                color: _txt; font.family: "Consolas"; font.pixelSize: 22; font.bold: true }
                         Text { visible: revealCol.rv.errorRingSpacings !== undefined
-                               text: "Approximately " + Number(revealCol.rv.errorRingSpacings || 0).toFixed(1) + " ring spacings"
+                               text: qsTr("Approximately ") + Number(revealCol.rv.errorRingSpacings || 0).toFixed(1) + qsTr(" ring spacings")
                                color: _txtMut; font.pixelSize: 10 }
-                        Text { text: "HORIZONTAL"; color: _txtMut; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1; topPadding: 2 }
+                        Text { text: qsTr("HORIZONTAL"); color: _txtMut; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1; topPadding: 2 }
                         Text { width: parent.width; wrapMode: Text.WordWrap; text: revealCol.rv.horizontalSentence || ""
                                color: _txtSec; font.pixelSize: 11 }
-                        Text { text: "VERTICAL"; color: _txtMut; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1; topPadding: 2 }
+                        Text { text: qsTr("VERTICAL"); color: _txtMut; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1; topPadding: 2 }
                         Text { width: parent.width; wrapMode: Text.WordWrap; text: revealCol.rv.verticalSentence || ""
                                color: _txtSec; font.pixelSize: 11 }
-                        Text { text: "ACTUAL SCORE"; color: _txtMut; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1; topPadding: 2 }
+                        Text { text: qsTr("ACTUAL SCORE"); color: _txtMut; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1; topPadding: 2 }
                         Text { text: (revealCol.rv.actualScore !== undefined ? Number(revealCol.rv.actualScore).toFixed(1) : "—")
                                color: _txt; font.family: "Consolas"; font.pixelSize: 14; font.bold: true }
-                        Text { text: "CALL QUALITY"; color: _txtMut; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1; topPadding: 2 }
+                        Text { text: qsTr("CALL QUALITY"); color: _txtMut; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1; topPadding: 2 }
                         Text { width: parent.width; wrapMode: Text.WordWrap; text: revealCol.rv.bandText || ""
                                color: _txtSec; font.pixelSize: 11 }
                     }
@@ -142,9 +142,9 @@ Item {
             Column {
                 width: parent.width; spacing: 6
                 visible: ctl && ctl.phase === 5
-                Text { text: "Session complete"; color: _txt; font.pixelSize: 16; font.bold: true }
+                Text { text: qsTr("Session complete"); color: _txt; font.pixelSize: 16; font.bold: true }
                 Text { width: parent.width; wrapMode: Text.WordWrap; color: _txtMut; font.pixelSize: 11
-                       text: "Results are shown in the main view." }
+                       text: qsTr("Results are shown in the main view.") }
             }
         }
     }
@@ -167,6 +167,6 @@ Item {
         Text { id: hint
             anchors.top: startBtn.bottom; anchors.topMargin: 8; anchors.left: parent.left; anchors.right: parent.right
             wrapMode: Text.WordWrap; color: panel._txtMut; font.pixelSize: 10
-            text: "The target clears and your next shot is the first called shot." }
+            text: qsTr("The target clears and your next shot is the first called shot.") }
     }
 }

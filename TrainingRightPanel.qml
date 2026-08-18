@@ -39,8 +39,8 @@ Item {
         id: header
         anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right
         anchors.margins: 16; spacing: 2
-        Text { text: "TRAINING LAB"; color: _red; font.pixelSize: 11; font.bold: true; font.letterSpacing: 2 }
-        Text { text: "Technical Blocks"; color: _txt; font.pixelSize: 17; font.bold: true }
+        Text { text: qsTr("TRAINING LAB"); color: _red; font.pixelSize: 11; font.bold: true; font.letterSpacing: 2 }
+        Text { text: qsTr("Technical Blocks"); color: _txt; font.pixelSize: 17; font.bold: true }
         Text {
             color: _green; font.pixelSize: 12; font.bold: true
             visible: ctl && ctl.positionName !== ""
@@ -66,19 +66,19 @@ Item {
             Column {
                 width: parent.width; spacing: 8
                 visible: panel.sighters
-                Text { text: "SIGHTERS"; color: _txt; font.pixelSize: 20; font.bold: true; font.letterSpacing: 1 }
+                Text { text: qsTr("SIGHTERS"); color: _txt; font.pixelSize: 20; font.bold: true; font.letterSpacing: 1 }
                 Text {
                     width: parent.width; wrapMode: Text.WordWrap
                     color: _txtSec; font.pixelSize: 12
-                    text: "Optional shots to confirm your position and zero. "
+                    text: qsTr("Optional shots to confirm your position and zero. ")
                         + "Sighters are excluded from Training results."
                 }
                 Rectangle { width: parent.width; height: 40; radius: 8; color: _card; border.color: _line; border.width: 1
                     Row { anchors.fill: parent; anchors.margins: 10; spacing: 8
-                        Text { text: "Sighters fired"; color: _txtMut; font.pixelSize: 12
+                        Text { text: qsTr("Sighters fired"); color: _txtMut; font.pixelSize: 12
                                anchors.verticalCenter: parent.verticalCenter }
                         Item { width: 4; height: 1 }
-                        Text { text: ctl ? ("" + ctl.sighterCount) : "0"; color: _green
+                        Text { text: ctl ? ("qsTr(" + ctl.sighterCount) : ")0"; color: _green
                                font.family: "Consolas"; font.pixelSize: 16; font.bold: true
                                anchors.verticalCenter: parent.verticalCenter }
                     }
@@ -91,12 +91,12 @@ Item {
                 visible: panel.active
                 Text {
                     color: _txt; font.pixelSize: 20; font.bold: true; font.letterSpacing: 1
-                    text: ctl ? ("BLOCK " + ctl.currentBlock + " OF " + ctl.blockCount) : ""
+                    text: ctl ? (qsTr("BLOCK ") + ctl.currentBlock + qsTr(" OF ") + ctl.blockCount) : ""
                 }
                 // Shot {shotsCompleted} of {shotsRequired} — 0 of N before any shot.
                 Text {
                     color: _txt; font.family: "Consolas"; font.pixelSize: 26; font.bold: true
-                    text: ctl ? ("Shot " + ctl.shotsCompleted + " of " + ctl.shotsPerBlock) : ""
+                    text: ctl ? (qsTr("Shot ") + ctl.shotsCompleted + qsTr(" of ") + ctl.shotsPerBlock) : ""
                 }
                 // progress bar (counted shots only)
                 Rectangle {
@@ -113,7 +113,7 @@ Item {
                 }
                 // elapsed block time (polled; the projection has no NOTIFY)
                 Row { spacing: 8
-                    Text { text: "Elapsed"; color: _txtMut; font.pixelSize: 12
+                    Text { text: qsTr("Elapsed"); color: _txtMut; font.pixelSize: 12
                            anchors.verticalCenter: parent.verticalCenter }
                     Text { id: elapsedText; color: _txtSec; font.family: "Consolas"; font.pixelSize: 13
                            anchors.verticalCenter: parent.verticalCenter
@@ -160,11 +160,11 @@ Item {
                 visible: ctl && (ctl.phase === 3 || ctl.phase === 4)
                 Text {
                     color: _txt; font.pixelSize: 16; font.bold: true
-                    text: ctl && ctl.phase === 3 ? "Block review open" : "Session complete"
+                    text: ctl && ctl.phase === 3 ? qsTr("Block review open") : qsTr("Session complete")
                 }
                 Text {
                     width: parent.width; wrapMode: Text.WordWrap; color: _txtMut; font.pixelSize: 11
-                    text: "Results are shown in the main view."
+                    text: qsTr("Results are shown in the main view.")
                 }
             }
         }
@@ -185,7 +185,7 @@ Item {
             color: startMouse.pressed ? panel._red : panel._redHi
             Text {
                 anchors.centerIn: parent
-                text: panel.ctl ? panel.ctl.startBlockLabel.toUpperCase() : "START BLOCK"
+                text: panel.ctl ? panel.ctl.startBlockLabel.toUpperCase() : qsTr("START BLOCK")
                 color: "white"; font.pixelSize: 15; font.bold: true; font.letterSpacing: 1
             }
             MouseArea {
@@ -198,7 +198,7 @@ Item {
             anchors.top: startBtn.bottom; anchors.topMargin: 8
             anchors.left: parent.left; anchors.right: parent.right
             wrapMode: Text.WordWrap; color: panel._txtMut; font.pixelSize: 10
-            text: "The target will clear and your next shot will be counted as Shot 1."
+            text: qsTr("The target will clear and your next shot will be counted as Shot 1.")
         }
     }
 }

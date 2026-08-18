@@ -3,7 +3,7 @@ import QtQuick.Controls 2.15
 
 Dialog {
     id: modBusConnectorDia
-    title: "Port Connector"
+    title: qsTr("Port Connector")
     header: null
     footer: null
 
@@ -19,7 +19,7 @@ Dialog {
 
             spacing: 10
             Text {
-                text: "Please Provide a Port Number"
+                text: qsTr("Please Provide a Port Number")
                 color: "black"
                 font.pixelSize: 15
             }
@@ -28,7 +28,7 @@ Dialog {
                 id: portTextInput
                 width: 100
                 height: 20
-                placeholderText: "e.g. COM6"
+                placeholderText: qsTr("e.g. COM6")
             }
 
             Text {
@@ -42,7 +42,7 @@ Dialog {
             Row {
                 spacing: 8
                 Button {
-                    text: "Connect"
+                    text: qsTr("Connect")
                     onClicked: {
                         console.log("**************************************", portTextInput.text)
                         MODREADER.connectedModbus(portTextInput.text)
@@ -56,7 +56,7 @@ Dialog {
                     }
                 }
                 Button {
-                    text: "Cancel"
+                    text: qsTr("Cancel")
                     onClicked: {
                         connectError.visible = false
                         modBusConnectorDia.close()

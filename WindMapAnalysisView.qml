@@ -648,7 +648,7 @@ Item {
                                        text: qsTr("Group size (widest two shots):"); color: view._txtMut
                                        font.family: theme.fontFamily; font.pixelSize: 10; topPadding: 2 }
                                 Text { visible: sumCol.lead && sumCol.lead.hasDispersion === true
-                                       text: view.metric(sumCol.lead, "groupDiameterMm", "hasDispersion") + " mm"
+                                       text: view.metric(sumCol.lead, "groupDiameterMm", "hasDispersion") + qsTr(" mm")
                                        color: view._txt; font.family: theme.fontFamily; font.pixelSize: 13 }
                                 Text { visible: view.sampleNote(sumCol.lead) !== ""
                                        width: parent.width; wrapMode: Text.WordWrap

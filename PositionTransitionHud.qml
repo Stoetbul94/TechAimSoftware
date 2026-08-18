@@ -50,7 +50,7 @@ Item {
                     property var gp: (rvCol.r.groupPattern) ? rvCol.r.groupPattern : ({})
 
                     Text { text: (rvCol.r.positionName || "") + " REVIEW"; color: _txt; font.pixelSize: 24; font.bold: true }
-                    Text { text: "Repeat " + (rvCol.r.repeat || 1) + " · " + (rvCol.r.verificationShots || 0) + " counted shots · sighters excluded"
+                    Text { text: qsTr("Repeat ") + (rvCol.r.repeat || 1) + " · " + (rvCol.r.verificationShots || 0) + qsTr(" counted shots · sighters excluded")
                            color: _txtMut; font.pixelSize: 12 }
 
                     Row {
@@ -82,7 +82,7 @@ Item {
                                         x: parent.width/2 + (modelData.xMm/parent.rangeMm)*parent.plotR - width/2
                                         y: parent.height/2 - (modelData.yMm/parent.rangeMm)*parent.plotR - height/2 } }
                                 Text { anchors.bottom: parent.bottom; anchors.bottomMargin: 6; anchors.horizontalCenter: parent.horizontalCenter
-                                       text: "±" + Number(parent.rangeMm).toFixed(0) + " mm  ·  ● counted   ◆ first shot (blue)"
+                                       text: "±qsTr(" + Number(parent.rangeMm).toFixed(0) + ") mm  ·  ● counted   ◆ first shot (blue)"
                                        color: _txtMut; font.pixelSize: 9 }
                             }
                         }
@@ -108,7 +108,7 @@ Item {
                                             Text { text: modelData.v; color: _txt; font.family: "Consolas"; font.pixelSize: 14; font.bold: true } } }
                                 }
                             }
-                            Text { text: "MEASURED RESULT"; color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 2 }
+                            Text { text: qsTr("MEASURED RESULT"); color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 2 }
                             Grid {
                                 columns: 3; columnSpacing: 10; rowSpacing: 6; width: parent.width
                                 Repeater {
@@ -130,27 +130,27 @@ Item {
                             }
                             Text { visible: rvCol.r.firstShotSeparated === true
                                    width: parent.width; wrapMode: Text.WordWrap; color: _txtSec; font.pixelSize: 11
-                                   text: "The first shot was separated from the verification group." }
+                                   text: qsTr("The first shot was separated from the verification group.") }
                         }
                     }
 
                     // group pattern insights
                     Column { width: parent.width; spacing: 3; visible: rvCol.gp.hasData === true
-                        Text { text: "GROUP PATTERN INSIGHTS"; color: _redHi; font.pixelSize: 10; font.bold: true; font.letterSpacing: 1; topPadding: 2 }
+                        Text { text: qsTr("GROUP PATTERN INSIGHTS"); color: _redHi; font.pixelSize: 10; font.bold: true; font.letterSpacing: 1; topPadding: 2 }
                         Repeater { model: rvCol.gp.properties || []
                             Column { width: rvCol.width; spacing: 0
-                                Text { text: modelData.label + "  (" + modelData.confidence + " evidence)"; color: _green; font.pixelSize: 11; font.bold: true }
+                                Text { text: modelData.label + "  (" + modelData.confidence + qsTr(" evidence)"); color: _green; font.pixelSize: 11; font.bold: true }
                                 Text { width: rvCol.width; wrapMode: Text.WordWrap; text: modelData.evidence; color: _txtSec; font.pixelSize: 11 } } }
                         Text { width: rvCol.width; wrapMode: Text.WordWrap; text: rvCol.r.disclaimer || ""; color: _txtMut; font.pixelSize: 9 } }
 
                     // note
-                    Text { text: "ATHLETE NOTE"; color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 4 }
+                    Text { text: qsTr("ATHLETE NOTE"); color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 4 }
                     Rectangle { width: parent.width; height: 74; radius: 6; color: "#1D2026"; border.color: ptNote.activeFocus ? _red : _line; border.width: 1
                         TextEdit { id: ptNote; anchors.fill: parent; anchors.margins: 10; color: _txt; font.pixelSize: 13; wrapMode: TextEdit.Wrap
                             onTextChanged: if (length > 300) remove(300, length) } }
                     Row { spacing: 10
                         Rectangle { width: 130; height: 40; radius: 8; color: saveM.pressed ? "#3A3C44" : "#2B2C33"; border.color: _line; border.width: 1
-                            Text { id: saveLbl; anchors.centerIn: parent; text: "Save Note"; color: _txt; font.pixelSize: 13 }
+                            Text { id: saveLbl; anchors.centerIn: parent; text: qsTr("Save Note"); color: _txt; font.pixelSize: 13 }
                             MouseArea { id: saveM; anchors.fill: parent; onClicked: if (hud.ctl && hud.ctl.saveNote(ptNote.text)) { saveLbl.text = "Saved ✓"; savedT.restart() } }
                             Timer { id: savedT; interval: 1500; onTriggered: saveLbl.text = "Save Note" } } }
 
@@ -158,11 +158,11 @@ Item {
                     Row { width: parent.width; spacing: 12; topPadding: 8
                         Rectangle { width: parent.width * 0.62; height: 56; radius: 8; color: contM.pressed ? theme.tokens.accentPrimary : _red
                             Text { anchors.centerIn: parent; color: "white"; font.pixelSize: 15; font.bold: true
-                                   text: (hud.ctl && hud.ctl.hasNext) ? ("BEGIN TRANSITION TO " + hud.ctl.nextPositionName.toUpperCase()) : "VIEW SESSION SUMMARY" }
+                                   text: (hud.ctl && hud.ctl.hasNext) ? (qsTr("BEGIN TRANSITION TO ") + hud.ctl.nextPositionName.toUpperCase()) : qsTr("VIEW SESSION SUMMARY") }
                             MouseArea { id: contM; anchors.fill: parent
                                 onClicked: { if (!hud.ctl) return; if (ptNote.text.length>0) hud.ctl.saveNote(ptNote.text); ptNote.text=""; hud.ctl.continueToNext() } } }
                         Rectangle { width: parent.width * 0.34; height: 56; radius: 8; color: "transparent"; border.color: _line; border.width: 1
-                            Text { anchors.centerIn: parent; text: "End Training"; color: _txtSec; font.pixelSize: 13 }
+                            Text { anchors.centerIn: parent; text: qsTr("End Training"); color: _txtSec; font.pixelSize: 13 }
                             MouseArea { anchors.fill: parent
                                 onClicked: dialogManager.showConfirmation(qsTr("End training?"),
                                     qsTr("Completed positions are preserved."),
@@ -203,10 +203,10 @@ Item {
                     }
                     property int cardCols: Math.max(1, Math.min(3, comp.length))
 
-                    Text { text: "POSITION TRANSITION COMPLETE"; color: _txt; font.pixelSize: 22; font.bold: true }
-                    Text { text: "TRAINING SESSION"; color: _red; font.pixelSize: 11; font.bold: true; font.letterSpacing: 2 }
+                    Text { text: qsTr("POSITION TRANSITION COMPLETE"); color: _txt; font.pixelSize: 22; font.bold: true }
+                    Text { text: qsTr("TRAINING SESSION"); color: _red; font.pixelSize: 11; font.bold: true; font.letterSpacing: 2 }
                     Rectangle { width: notO.implicitWidth + 22; height: 24; radius: 12; color: "#2a0b10"; border.color: _red; border.width: 1
-                        Text { id: notO; anchors.centerIn: parent; text: "Not an official competition result"; color: "#ffd0d7"; font.pixelSize: 10; font.bold: true } }
+                        Text { id: notO; anchors.centerIn: parent; text: qsTr("Not an official competition result"); color: "#ffd0d7"; font.pixelSize: 10; font.bold: true } }
 
                     // overview cards
                     Grid { width: parent.width; columns: 5; columnSpacing: 10; rowSpacing: 10; topPadding: 6
@@ -231,7 +231,7 @@ Item {
                     }
 
                     // ranked indicators (procedural + result highlights)
-                    Text { text: "SESSION HIGHLIGHTS"; color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 4 }
+                    Text { text: qsTr("SESSION HIGHLIGHTS"); color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 4 }
                     Flow { width: parent.width; spacing: 8
                         Repeater {
                             model: {
@@ -257,7 +257,7 @@ Item {
                     }
 
                     // per-position cards
-                    Text { text: "POSITIONS"; color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 8 }
+                    Text { text: qsTr("POSITIONS"); color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 8 }
                     Flow { width: parent.width; spacing: 10
                         Repeater { model: smCol.comp
                             delegate: Rectangle {
@@ -324,12 +324,12 @@ Item {
                                     // comparison bars (relative to session max)
                                     Column { width: parent.width; spacing: 4; topPadding: 2
                                         Column { width: parent.width; spacing: 2
-                                            Text { text: "Setup vs session"; color: _txtMut; font.pixelSize: 8 }
+                                            Text { text: qsTr("Setup vs session"); color: _txtMut; font.pixelSize: 8 }
                                             Rectangle { width: parent.width; height: 6; radius: 3; color: "#0C0E12"
                                                 Rectangle { height: parent.height; radius: 3; color: "#E8A13C"
                                                     width: parent.width * Math.min(1, (r.setupDurationMs||0)/smCol.maxSetup) } } }
                                         Column { width: parent.width; spacing: 2; visible: r.hasGroup === true
-                                            Text { text: "Group vs session"; color: _txtMut; font.pixelSize: 8 }
+                                            Text { text: qsTr("Group vs session"); color: _txtMut; font.pixelSize: 8 }
                                             Rectangle { width: parent.width; height: 6; radius: 3; color: "#0C0E12"
                                                 Rectangle { height: parent.height; radius: 3; color: _green
                                                     width: parent.width * Math.min(1, (r.groupDiameter||0)/smCol.maxDia) } } }
@@ -343,11 +343,11 @@ Item {
                             }
                         }
                     }
-                    Text { text: "● counted   ◆ first shot (blue)   ◎ MPI (green)   ·   rings are relative, not ISSF scoring zones";
+                    Text { text: qsTr("● counted   ◆ first shot (blue)   ◎ MPI (green)   ·   rings are relative, not ISSF scoring zones");
                            color: _txtMut; font.pixelSize: 9; topPadding: 2 }
 
                     // What You Should Take
-                    Text { text: "WHAT YOU SHOULD TAKE FROM THIS SESSION"; color: _redHi; font.pixelSize: 12; font.bold: true; topPadding: 6 }
+                    Text { text: qsTr("WHAT YOU SHOULD TAKE FROM THIS SESSION"); color: _redHi; font.pixelSize: 12; font.bold: true; topPadding: 6 }
                     Column { width: parent.width; spacing: 3
                         Repeater { model: smCol.ins.observations || []
                             Text { width: smCol.width; wrapMode: Text.WordWrap; text: "· " + modelData; color: _txtSec; font.pixelSize: 12 } }
@@ -358,16 +358,16 @@ Item {
                         Rectangle { width: 180; height: 56; radius: 8; color: pdfM.pressed ? "#2A2C34" : "#23252C"; border.color: _line; border.width: 1
                             Row { anchors.centerIn: parent; spacing: 8
                                 Text { text: "⭳"; color: _green; font.pixelSize: 18; anchors.verticalCenter: parent.verticalCenter }
-                                Text { text: "EXPORT PDF"; color: _txt; font.pixelSize: 14; font.bold: true; anchors.verticalCenter: parent.verticalCenter } }
+                                Text { text: qsTr("EXPORT PDF"); color: _txt; font.pixelSize: 14; font.bold: true; anchors.verticalCenter: parent.verticalCenter } }
                             MouseArea { id: pdfM; anchors.fill: parent; onClicked: hud.exportPdfRequested() } }
                         Rectangle { width: 160; height: 56; radius: 8; color: nsM.pressed ? theme.tokens.accentPrimary : _red
-                            Text { anchors.centerIn: parent; text: "NEW SESSION"; color: "white"; font.pixelSize: 14; font.bold: true }
+                            Text { anchors.centerIn: parent; text: qsTr("NEW SESSION"); color: "white"; font.pixelSize: 14; font.bold: true }
                             MouseArea { id: nsM; anchors.fill: parent
                                 onClicked: dialogManager.showConfirmation(qsTr("Start a new session?"),
                                     qsTr("This session is closed and preserved. A new session ID is created."),
                                     function(ok){ if(ok) hud.newSessionRequested() }, qsTr("New Session"), qsTr("Cancel")) } }
                         Rectangle { width: 120; height: 56; radius: 8; color: "transparent"; border.color: _line; border.width: 1
-                            Text { anchors.centerIn: parent; text: "Home"; color: _txtSec; font.pixelSize: 13 }
+                            Text { anchors.centerIn: parent; text: qsTr("Home"); color: _txtSec; font.pixelSize: 13 }
                             MouseArea { anchors.fill: parent; onClicked: hud.homeRequested() } }
                     }
                 }

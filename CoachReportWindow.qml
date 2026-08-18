@@ -10,7 +10,7 @@ import QtQuick 2.15
 // untouched — only the hosting/chrome changes.
 FloatingWindow {
     id: reportWin
-    title: "Coach Report"
+    title: qsTr("Coach Report")
     subtitle: (typeof userName !== "undefined" && userName) ? userName : ""
     minW: 820; minH: 560
 
@@ -85,7 +85,7 @@ FloatingWindow {
         Text {
             visible: reportWin.viewMode !== 2
             anchors.left: parent.left; anchors.leftMargin: 14; anchors.verticalCenter: parent.verticalCenter
-            text: "Open the Print tab to export the report as PDF"
+            text: qsTr("Open the Print tab to export the report as PDF")
             color: "#6b6d75"; font.family: "Segoe UI"; font.pixelSize: 11
         }
 
@@ -97,13 +97,13 @@ FloatingWindow {
             Rectangle {
                 width: sdTxt.implicitWidth + 26; height: 28; radius: 6
                 color: sdMA.pressed ? "#2a2b30" : "#26272c"; border.color: "#3a3b42"; border.width: 1
-                Text { id: sdTxt; anchors.centerIn: parent; text: "Save Diary"; color: "#d7d8dd"; font.family: "Segoe UI"; font.pixelSize: 12 }
+                Text { id: sdTxt; anchors.centerIn: parent; text: qsTr("Save Diary"); color: "#d7d8dd"; font.family: "Segoe UI"; font.pixelSize: 12 }
                 MouseArea { id: sdMA; anchors.fill: parent; onClicked: coachPrint.saveDiary() }
             }
             Rectangle {
                 width: epTxt.implicitWidth + 26; height: 28; radius: 6
                 color: epMA.pressed ? theme.tokens.accentPressed : theme.tokens.accentPrimary
-                Text { id: epTxt; anchors.centerIn: parent; text: "⤓  Export PDF"; color: "white"; font.family: "Segoe UI"; font.pixelSize: 12; font.bold: true }
+                Text { id: epTxt; anchors.centerIn: parent; text: qsTr("⤓  Export PDF"); color: "white"; font.family: "Segoe UI"; font.pixelSize: 12; font.bold: true }
                 MouseArea { id: epMA; anchors.fill: parent; onClicked: coachPrint.exportPdf() }
             }
         }

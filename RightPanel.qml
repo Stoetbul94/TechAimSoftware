@@ -569,12 +569,12 @@ Item {
             spacing: 5
             Text {
                 anchors.right: parent.right
-                text: lastShotCard.hasShot ? ("X   " + lastShotCard.lastXmm.toFixed(1) + " mm") : ""
+                text: lastShotCard.hasShot ? ("X   " + lastShotCard.lastXmm.toFixed(1) + qsTr(" mm")) : ""
                 color: "#c8c9cf"; font.family: theme.fontFamily; font.pixelSize: 13
             }
             Text {
                 anchors.right: parent.right
-                text: lastShotCard.hasShot ? ("Y   " + lastShotCard.lastYmm.toFixed(1) + " mm") : ""
+                text: lastShotCard.hasShot ? ("Y   " + lastShotCard.lastYmm.toFixed(1) + qsTr(" mm")) : ""
                 color: "#c8c9cf"; font.family: theme.fontFamily; font.pixelSize: 13
             }
         }
@@ -821,10 +821,10 @@ Item {
         {
             anchors.fill: parent
             Text{
-                text : "Sub Total     " + subTotal +   "  " + subTotalExculdeDec
+                text : qsTr("Sub Total     ") + subTotal +   "  " + subTotalExculdeDec
             }
             Text{
-                text : "Grand Total   " + grandTotal + "  " + grandTotalExculdeDec
+                text : qsTr("Grand Total   ") + grandTotal + "  " + grandTotalExculdeDec
             }
         }
     }
@@ -1792,7 +1792,7 @@ Item {
                             anchors.centerIn: parent
                             // 3P shows the decimal in brackets under the integer headline;
                             // other disciplines keep the plain integer sub-total.
-                            text: isValidSeries(index) ? (is3PMatch ? "(" + getSeriesTotal(index+1) + ")" : getSeriesTotalNonDecimal(index+1)) : ""
+                            text: isValidSeries(index) ? (is3PMatch ? "(qsTr(" + getSeriesTotal(index+1) + "))qsTr(" : getSeriesTotalNonDecimal(index+1)) : ")"
                             color: "#9a9ba0"
                             font.pointSize: parent.height*0.25//parent.height*0.3
 //                            font.bold: true

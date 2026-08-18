@@ -56,7 +56,7 @@ Item {
         Rectangle {
             width: okTxt.implicitWidth + 24; height: 30; radius: 15
             color: okMA.pressed ? theme.tokens.accentPressed : theme.tokens.accentPrimary
-            Text { id: okTxt; anchors.centerIn: parent; text: "CONFIRM"
+            Text { id: okTxt; anchors.centerIn: parent; text: qsTr("CONFIRM")
                    color: "white"; font.family: "Segoe UI"; font.pixelSize: 11; font.bold: true }
             MouseArea { id: okMA; anchors.fill: parent
                         onClicked: { adv.confirming = false; adv.ctl.confirmStage1Advance() } }

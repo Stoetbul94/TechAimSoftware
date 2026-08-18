@@ -111,7 +111,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter }
         Text {
             anchors.bottom: parent.top; anchors.left: parent.left
-            text: (plot.spanMm / 2).toFixed(0) + " mm"
+            text: (plot.spanMm / 2).toFixed(0) + qsTr(" mm")
             color: plot._txtSec; font.pixelSize: 9
         }
     }

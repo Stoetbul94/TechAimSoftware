@@ -31,8 +31,8 @@ Item {
         id: header
         anchors.top: parent.top; anchors.left: parent.left; anchors.right: parent.right
         anchors.margins: 16; spacing: 2
-        Text { text: "TRAINING LAB"; color: _red; font.pixelSize: 11; font.bold: true; font.letterSpacing: 2 }
-        Text { text: "Position Transition"; color: _txt; font.pixelSize: 17; font.bold: true }
+        Text { text: qsTr("TRAINING LAB"); color: _red; font.pixelSize: 11; font.bold: true; font.letterSpacing: 2 }
+        Text { text: qsTr("Position Transition"); color: _txt; font.pixelSize: 17; font.bold: true }
         Text { text: ctl ? ctl.positionName : ""; color: _green; font.pixelSize: 13; font.bold: true }
         Text { text: ctl ? ctl.sequenceArrow : ""; color: _txtMut; font.pixelSize: 10 }
     }
@@ -50,11 +50,11 @@ Item {
             // SETUP
             Column {
                 width: parent.width; spacing: 8; visible: panel.inSetup
-                Text { text: "POSITION SETUP"; color: _txt; font.pixelSize: 18; font.bold: true }
+                Text { text: qsTr("POSITION SETUP"); color: _txt; font.pixelSize: 18; font.bold: true }
                 Text { width: parent.width; wrapMode: Text.WordWrap; color: _txtSec; font.pixelSize: 12
-                       text: "Build your " + (ctl ? ctl.positionName : "") + " position. Confirm the checklist, then press Position Ready." }
+                       text: qsTr("Build your ") + (ctl ? ctl.positionName : "") + " position. Confirm the checklist, then press Position Ready." }
                 Row { spacing: 8
-                    Text { text: "Setup time"; color: _txtMut; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
+                    Text { text: qsTr("Setup time"); color: _txtMut; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
                     Text { id: setupTimer; color: _txt; font.family: "Consolas"; font.pixelSize: 16; font.bold: true
                            anchors.verticalCenter: parent.verticalCenter
                         Timer { interval: 1000; running: panel.inSetup; repeat: true
@@ -63,7 +63,7 @@ Item {
                 // checklist (touch-friendly)
                 Column { width: parent.width; spacing: 4
                     visible: ctl && ctl.checklistMode !== 2
-                    Text { text: "SETUP CHECKLIST"; color: _txtMut; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1; topPadding: 4 }
+                    Text { text: qsTr("SETUP CHECKLIST"); color: _txtMut; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1; topPadding: 4 }
                     Repeater {
                         model: panel.ctl ? panel.ctl.checklistItems() : []
                         delegate: Rectangle {
@@ -75,7 +75,7 @@ Item {
                                        text: modelData.label; color: _txt; font.pixelSize: 11; wrapMode: Text.WordWrap
                                        elide: Text.ElideRight }
                                 Text { anchors.verticalCenter: parent.verticalCenter; width: 20
-                                       text: modelData.state === 1 ? "✓" : (modelData.state === 2 ? "–" : "○")
+                                       text: modelData.state === 1 ? "✓qsTr(" : (modelData.state === 2 ? ")–" : "○")
                                        color: modelData.state === 1 ? _green : _txtMut; font.pixelSize: 15; font.bold: true } }
                             MouseArea { anchors.fill: parent
                                 onClicked: if (panel.ctl) panel.ctl.setChecklistItem(modelData.index, modelData.state === 1 ? 2 : 1) }
@@ -88,25 +88,25 @@ Item {
             Column {
                 width: parent.width; spacing: 8
                 visible: panel.inSighters || panel.verifying
-                Text { visible: panel.inSighters; text: "SIGHTERS — " + (ctl ? ctl.positionName.toUpperCase() : "")
+                Text { visible: panel.inSighters; text: qsTr("SIGHTERS — ") + (ctl ? ctl.positionName.toUpperCase() : "")
                        color: _txt; font.pixelSize: 18; font.bold: true }
                 Text { visible: panel.verifying
                        color: _txt; font.family: "Consolas"; font.pixelSize: 22; font.bold: true
-                       text: ctl ? (ctl.positionName.toUpperCase() + " VERIFICATION") : "" }
+                       text: ctl ? (ctl.positionName.toUpperCase() + qsTr(" VERIFICATION")) : "" }
                 Text { visible: panel.verifying
                        color: _txt; font.family: "Consolas"; font.pixelSize: 20; font.bold: true
-                       text: ctl ? ("Shot " + ctl.shotsCompleted + " of " + ctl.verificationShots) : "" }
+                       text: ctl ? (qsTr("Shot ") + ctl.shotsCompleted + qsTr(" of ") + ctl.verificationShots) : "" }
                 Rectangle { visible: panel.verifying
                     width: parent.width; height: 12; radius: 6; color: "#0E1014"; border.color: _line; border.width: 1
                     Rectangle { anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom
                         anchors.margins: 2; radius: 5; color: _redHi
                         width: (ctl && ctl.verificationShots > 0) ? (parent.width-4) * Math.min(1, ctl.shotsCompleted/ctl.verificationShots) : 0 } }
                 Row { spacing: 8; visible: panel.inSighters
-                    Text { text: "Sighters fired"; color: _txtMut; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
-                    Text { text: ctl ? ("" + ctl.sighterCount) : "0"; color: _green; font.family: "Consolas"; font.pixelSize: 16; font.bold: true
+                    Text { text: qsTr("Sighters fired"); color: _txtMut; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
+                    Text { text: ctl ? ("qsTr(" + ctl.sighterCount) : ")0"; color: _green; font.family: "Consolas"; font.pixelSize: 16; font.bold: true
                            anchors.verticalCenter: parent.verticalCenter } }
                 Row { spacing: 8
-                    Text { text: "Since Ready"; color: _txtMut; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
+                    Text { text: qsTr("Since Ready"); color: _txtMut; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
                     Text { id: readyTimer; color: _txtSec; font.family: "Consolas"; font.pixelSize: 13; anchors.verticalCenter: parent.verticalCenter
                         Timer { interval: 1000; running: panel.inSighters || panel.verifying; repeat: true
                             onTriggered: { var s = panel.ctl ? panel.ctl.readyElapsedSec() : 0
@@ -136,10 +136,10 @@ Item {
 
             Column { width: parent.width; spacing: 6
                 visible: ctl && (ctl.phase === 4 || ctl.phase === 5)
-                Text { text: ctl && ctl.phase === 4 ? "Position review open" : "Session complete"
+                Text { text: ctl && ctl.phase === 4 ? qsTr("Position review open") : qsTr("Session complete")
                        color: _txt; font.pixelSize: 16; font.bold: true }
                 Text { width: parent.width; wrapMode: Text.WordWrap; color: _txtMut; font.pixelSize: 11
-                       text: "Results are shown in the main view." } }
+                       text: qsTr("Results are shown in the main view.") } }
         }
     }
 
@@ -154,7 +154,7 @@ Item {
             anchors.fill: parent; radius: 10
             color: primaryMouse.pressed ? panel._red : panel._redHi
             Text { anchors.centerIn: parent
-                   text: panel.inSetup ? "POSITION READY"
+                   text: panel.inSetup ? qsTr("POSITION READY")
                          : (panel.ctl ? panel.ctl.startVerifyLabel.toUpperCase() : "START VERIFICATION")
                    color: "white"; font.pixelSize: 15; font.bold: true; font.letterSpacing: 1 }
             MouseArea { id: primaryMouse; anchors.fill: parent

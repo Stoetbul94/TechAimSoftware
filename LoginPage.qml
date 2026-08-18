@@ -321,7 +321,7 @@ Item {
 
     FolderDialog {
         id: networkFolderDialog
-        title: "Select Network Share Folder"
+        title: qsTr("Select Network Share Folder")
         onAccepted: {
             var p = selectedFolder.toString().replace(/^file:\/\/\//, "").replace(/\//g, "\\")
             netowrk_path_text.text = p
@@ -353,22 +353,22 @@ Item {
     }
 
     function getGameEventText(index) {
-        if (index === 6) return qsTr("FINAL")   // 3P FINAL (35) — isFinalsMatch domain
-        if (index === 7) return qsTr("FINAL")   // 10m FINAL (24) — isFinals10mMatch domain
+        if (index === 6) return "FINAL"   // 3P FINAL (35) — isFinalsMatch domain
+        if (index === 7) return "FINAL"   // 10m FINAL (24) — isFinals10mMatch domain
         if (APPSETTINGS.getIs15Shoot()) {
-            if (index === 0) return qsTr("10")
-            else if (index === 1) return qsTr("15")
-            else if (index === 2) return qsTr("20")
-            else if (index === 3) return qsTr("30")
-            else if (index === 4) return qsTr("40")
-            else return qsTr("Free Practice")
+            if (index === 0) return "10"
+            else if (index === 1) return "15"
+            else if (index === 2) return "20"
+            else if (index === 3) return "30"
+            else if (index === 4) return "40"
+            else return "Free Practice"
         } else {
-            if (index === 0) return qsTr("10")
-            else if (index === 1) return qsTr("20")
-            else if (index === 2) return qsTr("30")
-            else if (index === 3) return qsTr("40")
-            else if (index === 4) return qsTr("60")
-            else return qsTr("Free Practice")
+            if (index === 0) return "10"
+            else if (index === 1) return "20"
+            else if (index === 2) return "30"
+            else if (index === 3) return "40"
+            else if (index === 4) return "60"
+            else return "Free Practice"
         }
     }
 
@@ -377,25 +377,25 @@ Item {
     }
 
     function getDisciplineName() {
-        if (gameMode === 0) return "10m Air Pistol"
-        if (gameRange === 10) return "10m Air Rifle"
+        if (gameMode === 0) return qsTr("10m Air Pistol")
+        if (gameRange === 10) return qsTr("10m Air Rifle")
         return gameSubMode === 0 ? "50m Rifle Prone" : "50m Rifle 3 Pos"
     }
 
     function getEventCardTitle(index) {
-        if (index === 7) return getDisciplineName() + " — FINAL (24)"
+        if (index === 7) return getDisciplineName() + qsTr(" — FINAL (24)")
         var shots = getGameEventText(index)
-        if (shots === "FINAL") return getDisciplineName() + " — FINAL (35)"
-        if (shots === "Free Practice") return getDisciplineName() + " — Free Practice"
-        return getDisciplineName() + " — " + shots + " Shots"
+        if (shots === "FINAL") return getDisciplineName() + qsTr(" — FINAL (35)")
+        if (shots === "Free Practice") return getDisciplineName() + qsTr(" — Free Practice")
+        return getDisciplineName() + " — " + shots + qsTr(" Shots")
     }
 
     function getEventCardSubtitle(index) {
-        if (index === 7) return "ISSF 10m Final · 24 shots · decimal · on command"
+        if (index === 7) return qsTr("ISSF 10m Final · 24 shots · decimal · on command")
         var shots = getGameEventText(index)
-        if (shots === "FINAL") return "ISSF Final · 35 shots · decimal · on command"
-        if (shots === "Free Practice") return "Flexible training · no time limit"
-        return "ISSF 2026 · " + shots + " shots"
+        if (shots === "FINAL") return qsTr("ISSF Final · 35 shots · decimal · on command")
+        if (shots === "Free Practice") return qsTr("Flexible training · no time limit")
+        return qsTr("ISSF 2026 · ") + shots + qsTr(" shots")
     }
 
     function getEventCardBadge(index) {
@@ -408,16 +408,16 @@ Item {
     function getMatchTime() {
         var shots = getGameEventText(gameEvent)
         if (shots === "Free Practice") return "—"
-        if (shots === "10") return "10 min"
-        if (shots === "15") return "15 min"
-        if (shots === "20") return "20 min"
-        if (shots === "30") return "30 min"
-        if (shots === "40") return "40 min"
+        if (shots === "10") return qsTr("10 min")
+        if (shots === "15") return qsTr("15 min")
+        if (shots === "20") return qsTr("20 min")
+        if (shots === "30") return qsTr("30 min")
+        if (shots === "40") return qsTr("40 min")
         if (shots === "60") {
-            if (gameMode === 0)      return "75 min"   // 10m Air Pistol  (ISSF 2026)
-            if (gameRange === 10)    return "75 min"   // 10m Air Rifle   (ISSF 2026)
-            if (gameSubMode === 1)   return "90 min"   // 50m Rifle 3 Pos on EST (ISSF 2026)
-            return "50 min"                            // 50m Rifle Prone (ISSF 2026)
+            if (gameMode === 0)      return qsTr("75 min")   // 10m Air Pistol  (ISSF 2026)
+            if (gameRange === 10)    return qsTr("75 min")   // 10m Air Rifle   (ISSF 2026)
+            if (gameSubMode === 1)   return qsTr("90 min")   // 50m Rifle 3 Pos on EST (ISSF 2026)
+            return qsTr("50 min")                            // 50m Rifle Prone (ISSF 2026)
         }
         return "—"
     }
@@ -962,8 +962,8 @@ Item {
                 font.pixelSize: theme.type.helperText.size
                 color: (typeof OPMODE !== "undefined" && OPMODE.restartRequired) ? _warnTxt : _txtSec
                 text: (typeof OPMODE !== "undefined" && OPMODE.restartRequired)
-                      ? "Restart required — the selected mode takes effect on next launch."
-                      : "Switch the target source. Changing mode requires an application restart."
+                      ? qsTr("Restart required — the selected mode takes effect on next launch.")
+                      : qsTr("Switch the target source. Changing mode requires an application restart.")
             }
 
             // Confirm dialog (Restart Now / Later / Cancel) — mirrors Settings.
@@ -981,14 +981,14 @@ Item {
                     spacing: 12; padding: 22; width: opModeConfirm.width
                     Text {
                         width: parent.width - 44
-                        text: opModeConfirm.targetMode === 1 ? "Switch to Demo mode?" : "Switch to Live target mode?"
+                        text: opModeConfirm.targetMode === 1 ? qsTr("Switch to Demo mode?") : qsTr("Switch to Live target mode?")
                         color: _txt; font.family: theme.fontFamily; font.pixelSize: 16; font.bold: true
                         wrapMode: Text.WordWrap
                     }
                     Text {
                         width: parent.width - 44
                         text: opModeConfirm.targetMode === 1
-                              ? "Simulated shots will be enabled. Demo sessions are intended for testing and cannot be treated as Live target results.\n\nThe application must restart before the change takes effect."
+                              ? qsTr("Simulated shots will be enabled. Demo sessions are intended for testing and cannot be treated as Live target results.\n\nThe application must restart before the change takes effect.")
                               : qsTr("Simulated shot input will be disabled. The application will expect the physical %1 target connection.\n\nThe application must restart before the change takes effect.").arg(PRODUCT.displayName)
                         color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 11; wrapMode: Text.WordWrap
                     }
@@ -999,7 +999,7 @@ Item {
                             Rectangle {
                                 width: 74; height: 32; radius: 8; color: "transparent"
                                 border.color: _borderSub; border.width: 1
-                                Text { anchors.centerIn: parent; text: "Cancel"; color: _txt
+                                Text { anchors.centerIn: parent; text: qsTr("Cancel"); color: _txt
                                        font.family: theme.fontFamily; font.pixelSize: 11 }
                                 MouseArea { anchors.fill: parent
                                     onClicked: { if (typeof OPMODE !== "undefined") OPMODE.selectMode(opModeRow.opLive ? 0 : 1); opModeConfirm.close() } }
@@ -1007,14 +1007,14 @@ Item {
                             Rectangle {
                                 width: 104; height: 32; radius: 8; color: _surfaceAlt
                                 border.color: _borderSub; border.width: 1
-                                Text { anchors.centerIn: parent; text: "Restart Later"; color: _txt
+                                Text { anchors.centerIn: parent; text: qsTr("Restart Later"); color: _txt
                                        font.family: theme.fontFamily; font.pixelSize: 11 }
                                 MouseArea { anchors.fill: parent
                                     onClicked: { OPMODE.applyModeChange(false); opModeConfirm.close() } }
                             }
                             Rectangle {
                                 width: 104; height: 32; radius: 8; color: _red
-                                Text { anchors.centerIn: parent; text: "Restart Now"; color: "white"
+                                Text { anchors.centerIn: parent; text: qsTr("Restart Now"); color: "white"
                                        font.family: theme.fontFamily; font.pixelSize: 11; font.bold: true }
                                 MouseArea { anchors.fill: parent
                                     onClicked: { if (OPMODE.applyModeChange(false)) OPMODE.requestRestart(); opModeConfirm.close() } }
@@ -1153,7 +1153,7 @@ Item {
                     }
                     Text {
                         visible: trainingConfirmed && trainingDisciplineId() === "3P50"
-                        text: "POSITION FLOW   Kneeling → Prone → Standing"
+                        text: qsTr("POSITION FLOW   Kneeling → Prone → Standing")
                         color: _txtSec; font.family: theme.fontFamily; font.pixelSize: theme.type.helperText.size; font.letterSpacing: 1
                     }
                     Item { width: 1; height: 6 }
@@ -1167,40 +1167,40 @@ Item {
                 columns: 3; rowSpacing: 12; columnSpacing: 10
                 Repeater {
                     model: wmConfirmed ? [
-                        { lbl: "DISCIPLINE", val: WINDMAP.threePositions ? "50m 3 Pos" : "50m Prone" },
-                        { lbl: "SHOT PLAN",  val: "" + WINDMAP.shotPlan + " shots" },
-                        { lbl: "SIGHTERS",   val: WINDMAP.sightersEnabled ? "Yes" : "No" },
-                        { lbl: "WIND",       val: "Manual entry" },
-                        { lbl: "POSITIONS",  val: WINDMAP.threePositions ? "K · P · S separate" : "Single" },
-                        { lbl: "MODE",       val: appMode ? "Live" : "Demo" }
+                        { lbl: qsTr("DISCIPLINE"), val: WINDMAP.threePositions ? qsTr("50m 3 Pos") : qsTr("50m Prone") },
+                        { lbl: qsTr("SHOT PLAN"),  val: "" + WINDMAP.shotPlan + qsTr(" shots") },
+                        { lbl: qsTr("SIGHTERS"),   val: WINDMAP.sightersEnabled ? qsTr("Yes") : qsTr("No") },
+                        { lbl: qsTr("WIND"),       val: qsTr("Manual entry") },
+                        { lbl: qsTr("POSITIONS"),  val: WINDMAP.threePositions ? qsTr("K · P · S separate") : qsTr("Single") },
+                        { lbl: qsTr("MODE"),       val: appMode ? qsTr("Live") : qsTr("Demo") }
                     ] : ptConfirmed ? [
-                        { lbl: "SEQUENCE",  val: POSTRANS.sequenceString() },
-                        { lbl: "VERIFY",    val: "" + POSTRANS.verificationShots + " / pos" },
-                        { lbl: "REPEATS",   val: "" + POSTRANS.totalRepeats },
-                        { lbl: "FOCUS",     val: POSTRANS.technicalFocus },
-                        { lbl: "CHECKLIST", val: ["Self", "Coach", "Off"][POSTRANS.checklistMode] },
-                        { lbl: "MODE",      val: appMode ? "Live" : "Demo" }
+                        { lbl: qsTr("SEQUENCE"),  val: POSTRANS.sequenceString() },
+                        { lbl: qsTr("VERIFY"),    val: "" + POSTRANS.verificationShots + qsTr(" / pos") },
+                        { lbl: qsTr("REPEATS"),   val: "" + POSTRANS.totalRepeats },
+                        { lbl: qsTr("FOCUS"),     val: POSTRANS.technicalFocus },
+                        { lbl: qsTr("CHECKLIST"), val: [qsTr("Self"), qsTr("Coach"), qsTr("Off")][POSTRANS.checklistMode] },
+                        { lbl: qsTr("MODE"),      val: appMode ? qsTr("Live") : qsTr("Demo") }
                     ] : cdConfirmed ? [
-                        { lbl: "CALLED",    val: "" + CALLDIAG.shotCount + (trainingDisciplineId() === "3P50" ? " / pos" : "") },
-                        { lbl: "TOTAL",     val: "" + (trainingDisciplineId() === "3P50" ? CALLDIAG.shotCount * 3 : CALLDIAG.shotCount) },
-                        { lbl: "FOCUS",     val: CALLDIAG.technicalFocus },
-                        { lbl: "REVEAL",    val: "After each call" },
-                        { lbl: "EST. TIME", val: CALLDIAG.estimatedTime },
-                        { lbl: "MODE",      val: appMode ? "Live" : "Demo" }
+                        { lbl: qsTr("CALLED"),    val: "" + CALLDIAG.shotCount + (trainingDisciplineId() === "3P50" ? qsTr(" / pos") : "") },
+                        { lbl: qsTr("TOTAL"),     val: "" + (trainingDisciplineId() === "3P50" ? CALLDIAG.shotCount * 3 : CALLDIAG.shotCount) },
+                        { lbl: qsTr("FOCUS"),     val: CALLDIAG.technicalFocus },
+                        { lbl: "REVEAL",    val: qsTr("After each call") },
+                        { lbl: qsTr("EST. TIME"), val: CALLDIAG.estimatedTime },
+                        { lbl: qsTr("MODE"),      val: appMode ? qsTr("Live") : qsTr("Demo") }
                     ] : trainingConfirmed ? [
-                        { lbl: "BLOCKS",     val: "" + TRAINING.blockCount },
-                        { lbl: "SHOTS/BLOCK", val: "" + TRAINING.shotsPerBlock },
-                        { lbl: "TOTAL",      val: "" + (TRAINING.blockCount * TRAINING.shotsPerBlock) },
-                        { lbl: "FOCUS",      val: TRAINING.technicalFocus },
-                        { lbl: "VISIBILITY", val: ["Full hidden", "Group only", "Impact only"][TRAINING.visibilityMode] },
-                        { lbl: "EST. TIME",  val: TRAINING.estimatedTime }
+                        { lbl: qsTr("BLOCKS"),     val: "" + TRAINING.blockCount },
+                        { lbl: qsTr("SHOTS/BLOCK"), val: "" + TRAINING.shotsPerBlock },
+                        { lbl: qsTr("TOTAL"),      val: "" + (TRAINING.blockCount * TRAINING.shotsPerBlock) },
+                        { lbl: qsTr("FOCUS"),      val: TRAINING.technicalFocus },
+                        { lbl: qsTr("VISIBILITY"), val: [qsTr("Full hidden"), qsTr("Group only"), qsTr("Impact only")][TRAINING.visibilityMode] },
+                        { lbl: qsTr("EST. TIME"),  val: TRAINING.estimatedTime }
                     ] : [
-                        { lbl: "SHOT PLAN", val: getGameEventText(gameEvent) === "Free Practice" ? "Free" : getGameEventText(gameEvent) + " shots" },
-                        { lbl: "SCORING",   val: (gameMode === 0 || (gameMode === 1 && gameRange === 50 && gameSubMode === 1)) ? "Integer" : "Decimal" },
-                        { lbl: "PREP",      val: "15 min" },
-                        { lbl: "MATCH",     val: getMatchTime() },
-                        { lbl: "DISTANCE",  val: gameRange + " m" },
-                        { lbl: "RULES",     val: "ISSF 2026" }
+                        { lbl: qsTr("SHOT PLAN"), val: getGameEventText(gameEvent) === "Free Practice" ? qsTr("Free") : getGameEventText(gameEvent) + qsTr(" shots") },
+                        { lbl: qsTr("SCORING"),   val: (gameMode === 0 || (gameMode === 1 && gameRange === 50 && gameSubMode === 1)) ? qsTr("Integer") : qsTr("Decimal") },
+                        { lbl: qsTr("PREP"),      val: qsTr("15 min") },
+                        { lbl: qsTr("MATCH"),     val: getMatchTime() },
+                        { lbl: qsTr("DISTANCE"),  val: gameRange + " m" },
+                        { lbl: qsTr("RULES"),     val: "ISSF 2026" }
                     ]
                     delegate: Column {
                         width: (infoTiles.width - infoTiles.columnSpacing * 2) / 3
@@ -1475,7 +1475,7 @@ Item {
                         color: gameSubMode === 1 ? _redDark : _input
                         border.color: gameSubMode === 1 ? _red : _borderSub
                         Text {
-                            anchors.centerIn: parent; text: "3 POSITIONS"
+                            anchors.centerIn: parent; text: qsTr("3 POSITIONS")
                             font.family: theme.fontFamily; font.pixelSize: 11; font.letterSpacing: 1
                             font.bold: gameSubMode === 1
                             color: gameSubMode === 1 ? _red : _txtSec
@@ -1574,16 +1574,16 @@ Item {
                                         visible: getGameEventText(eventIndex) !== "Free Practice"
                                         text: {
                                             var s = getGameEventText(eventIndex)
-                                            if (s === "10") return "·  10 min"
-                                            if (s === "15") return "·  15 min"
-                                            if (s === "20") return "·  20 min"
-                                            if (s === "30") return "·  30 min"
-                                            if (s === "40") return "·  40 min"
+                                            if (s === "10") return qsTr("·  10 min")
+                                            if (s === "15") return qsTr("·  15 min")
+                                            if (s === "20") return qsTr("·  20 min")
+                                            if (s === "30") return qsTr("·  30 min")
+                                            if (s === "40") return qsTr("·  40 min")
                                             if (s === "60") {
-                                                if (gameMode === 0)    return "·  75 min"
-                                                if (gameRange === 10)  return "·  75 min"
-                                                if (gameSubMode === 1) return "·  90 min"
-                                                return "·  50 min"
+                                                if (gameMode === 0)    return qsTr("·  75 min")
+                                                if (gameRange === 10)  return qsTr("·  75 min")
+                                                if (gameSubMode === 1) return qsTr("·  90 min")
+                                                return qsTr("·  50 min")
                                             }
                                             return ""
                                         }
@@ -1618,7 +1618,7 @@ Item {
                     // catalogue programme reached through the hierarchy, so
                     // offering it here as well would be a second selector.
                     Text {
-                        text: "OFFICIAL ISSF MATCH"
+                        text: qsTr("OFFICIAL ISSF MATCH")
                         visible: !setaSelection
                         color: _txtMut; font.family: theme.fontFamily
                         font.pixelSize: theme.type.label.size; font.bold: true; font.letterSpacing: theme.type.label.spacing
@@ -1654,7 +1654,7 @@ Item {
                     // compact presets; Training Lab opens the programme
                     // catalogue in this panel.
                     Text {
-                        text: "TRAINING LAB"
+                        text: qsTr("TRAINING LAB")
                         color: _txtMut; font.family: theme.fontFamily
                         font.pixelSize: theme.type.label.size; font.bold: true; font.letterSpacing: theme.type.label.spacing
                         topPadding: 16; bottomPadding: 8
@@ -1680,10 +1680,10 @@ Item {
                             Column {
                                 anchors.verticalCenter: parent.verticalCenter; spacing: 3
                                 width: parent.width - 38 - 30 - 24
-                                Text { text: "TRAINING LAB"
+                                Text { text: qsTr("TRAINING LAB")
                                        color: _txt; font.family: theme.fontFamily
                                        font.pixelSize: 13; font.bold: true }
-                                Text { text: "Structured technical practice and athlete feedback.\nTechnical Blocks · Shot calling · Group analysis"
+                                Text { text: qsTr("Structured technical practice and athlete feedback.\nTechnical Blocks · Shot calling · Group analysis")
                                        color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 10 }
                             }
                             Text { text: "→"; color: _red; font.pixelSize: 20; font.bold: true
@@ -1692,7 +1692,7 @@ Item {
                         MouseArea { anchors.fill: parent; onClicked: practiceView = 1 }
                     }
                     Text {
-                        text: "PRACTICE"
+                        text: qsTr("PRACTICE")
                         visible: !setaSelection
                         color: _txtMut; font.family: theme.fontFamily
                         font.pixelSize: theme.type.label.size; font.bold: true; font.letterSpacing: theme.type.label.spacing
@@ -1732,7 +1732,7 @@ Item {
                                 Column {
                                     spacing: 3
                                     anchors.verticalCenter: parent.verticalCenter
-                                    Text { text: "OPEN PRACTICE"
+                                    Text { text: qsTr("OPEN PRACTICE")
                                            color: openPracticeCard.selected ? _txt : _txtSec
                                            font.family: theme.fontFamily
                                            font.pixelSize: theme.type.cardTitle.size
@@ -1816,7 +1816,7 @@ Item {
                     bottomPadding: 12
 
                     Text {
-                        text: "← Back to events"
+                        text: qsTr("← Back to events")
                         color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 12
                         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                                     onClicked: practiceView = 0 }
@@ -1824,7 +1824,7 @@ Item {
                     }
                     Row {
                         spacing: 10
-                        Text { text: "TRAINING LAB"; color: _txt
+                        Text { text: qsTr("TRAINING LAB"); color: _txt
                                font.family: theme.fontFamily; font.pixelSize: 18; font.bold: true
                                anchors.verticalCenter: parent.verticalCenter }
                         // T1.1: in-app help — no GitHub docs needed to understand it.
@@ -1832,7 +1832,7 @@ Item {
                             width: 88; height: 30; radius: 15
                             color: _input; border.color: _borderSub; border.width: 1
                             anchors.verticalCenter: parent.verticalCenter
-                            Text { anchors.centerIn: parent; text: "ⓘ  Help"
+                            Text { anchors.centerIn: parent; text: qsTr("ⓘ  Help")
                                    color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 11 }
                             MouseArea {
                                 anchors.fill: parent
@@ -1841,7 +1841,7 @@ Item {
                             }
                         }
                     }
-                    Text { text: "Structured technical practice and athlete feedback."
+                    Text { text: qsTr("Structured technical practice and athlete feedback.")
                            color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 11 }
                     Text { text: getDisciplineName(); color: _red
                            font.family: theme.fontFamily; font.pixelSize: 13; font.bold: true
@@ -1858,21 +1858,21 @@ Item {
                             Row {
                                 spacing: 8
                                 Text { text: gameMode === 1 && gameRange === 50 && gameSubMode === 1
-                                             ? "TECHNICAL BLOCKS · BY POSITION" : "TECHNICAL BLOCKS"
+                                             ? qsTr("TECHNICAL BLOCKS · BY POSITION") : qsTr("TECHNICAL BLOCKS")
                                        color: _txt; font.family: theme.fontFamily; font.pixelSize: 14; font.bold: true }
                                 Rectangle {
                                     width: 74; height: 18; radius: 9; color: _okBg
                                     border.color: _green; border.width: 1
                                     anchors.verticalCenter: parent.verticalCenter
-                                    Text { anchors.centerIn: parent; text: "AVAILABLE"
+                                    Text { anchors.centerIn: parent; text: qsTr("AVAILABLE")
                                            color: _green; font.pixelSize: theme.type.label.size; font.bold: true }
                                 }
                             }
                             Text { text: qsTr("Shoot several short groups while concentrating on one technical part of your process.\nAfter each block, %1 reveals the measured group and lets you record a note.").arg(PRODUCT.displayName)
                                    color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 10 }
                             Text { text: (gameMode === 1 && gameRange === 50 && gameSubMode === 1)
-                                         ? "Default: 36 shots · Kneeling → Prone → Standing · Configurable"
-                                         : "Default: 30 shots · Configurable"
+                                         ? qsTr("Default: 36 shots · Kneeling → Prone → Standing · Configurable")
+                                         : qsTr("Default: 30 shots · Configurable")
                                    color: _txtSec; font.family: "Consolas"; font.pixelSize: 10 }
                         }
                         MouseArea {
@@ -1918,21 +1918,21 @@ Item {
                             Row {
                                 spacing: 8
                                 Text { text: (gameMode === 1 && gameRange === 50 && gameSubMode === 1)
-                                             ? "CALL & DIAGNOSE · BY POSITION" : "CALL & DIAGNOSE"
+                                             ? qsTr("CALL & DIAGNOSE · BY POSITION") : qsTr("CALL & DIAGNOSE")
                                        color: _txt; font.family: theme.fontFamily; font.pixelSize: 14; font.bold: true }
                                 Rectangle {
                                     width: 74; height: 18; radius: 9; color: _okBg
                                     border.color: _green; border.width: 1
                                     anchors.verticalCenter: parent.verticalCenter
-                                    Text { anchors.centerIn: parent; text: "AVAILABLE"
+                                    Text { anchors.centerIn: parent; text: qsTr("AVAILABLE")
                                            color: _green; font.pixelSize: theme.type.label.size; font.bold: true }
                                 }
                             }
-                            Text { text: "Call each shot before the actual impact is revealed.\nCompare where you believed the shot landed with where it actually landed."
+                            Text { text: qsTr("Call each shot before the actual impact is revealed.\nCompare where you believed the shot landed with where it actually landed.")
                                    color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 10 }
                             Text { text: (gameMode === 1 && gameRange === 50 && gameSubMode === 1)
-                                         ? "Default: 10 called shots per position · Configurable"
-                                         : "Default: 20 called shots · Configurable"
+                                         ? qsTr("Default: 10 called shots per position · Configurable")
+                                         : qsTr("Default: 20 called shots · Configurable")
                                    color: _txtSec; font.family: "Consolas"; font.pixelSize: 10 }
                         }
                         MouseArea {
@@ -1954,15 +1954,15 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter; spacing: 3
                             Row {
                                 spacing: 8
-                                Text { text: "POSITION TRANSITION"; color: _txt; font.family: theme.fontFamily; font.pixelSize: 14; font.bold: true }
+                                Text { text: qsTr("POSITION TRANSITION"); color: _txt; font.family: theme.fontFamily; font.pixelSize: 14; font.bold: true }
                                 Rectangle {
                                     width: 74; height: 18; radius: 9; color: _okBg; border.color: _green; border.width: 1
                                     anchors.verticalCenter: parent.verticalCenter
-                                    Text { anchors.centerIn: parent; text: "AVAILABLE"; color: _green; font.pixelSize: theme.type.label.size; font.bold: true } }
+                                    Text { anchors.centerIn: parent; text: qsTr("AVAILABLE"); color: _green; font.pixelSize: theme.type.label.size; font.bold: true } }
                             }
-                            Text { text: "Practise changing between Kneeling, Prone and Standing.\nMeasure setup time, sighters, first-shot timing and early group repeatability after each transition."
+                            Text { text: qsTr("Practise changing between Kneeling, Prone and Standing.\nMeasure setup time, sighters, first-shot timing and early group repeatability after each transition.")
                                    color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 10 }
-                            Text { text: "Default: Kneeling → Prone → Standing · 5 verification shots"
+                            Text { text: qsTr("Default: Kneeling → Prone → Standing · 5 verification shots")
                                    color: _txtSec; font.family: "Consolas"; font.pixelSize: 10 }
                         }
                         MouseArea {
@@ -1983,19 +1983,19 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter; spacing: 3
                             Row {
                                 spacing: 8
-                                Text { text: gameSubMode === 1 ? "WIND MAP · BY POSITION" : "WIND MAP"
+                                Text { text: gameSubMode === 1 ? qsTr("WIND MAP · BY POSITION") : qsTr("WIND MAP")
                                        color: _txt; font.family: theme.fontFamily; font.pixelSize: 14; font.bold: true }
                                 Rectangle {
                                     width: 74; height: 18; radius: 9; color: _okBg; border.color: _green; border.width: 1
                                     anchors.verticalCenter: parent.verticalCenter
-                                    Text { anchors.centerIn: parent; text: "AVAILABLE"; color: _green
+                                    Text { anchors.centerIn: parent; text: qsTr("AVAILABLE"); color: _green
                                            font.pixelSize: theme.type.label.size; font.bold: true } }
                             }
-                            Text { text: "Record the wind you observe while you shoot.\nEach shot keeps the condition that was standing when it was fired, for review afterwards."
+                            Text { text: qsTr("Record the wind you observe while you shoot.\nEach shot keeps the condition that was standing when it was fired, for review afterwards.")
                                    color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 10 }
                             Text { text: gameSubMode === 1
-                                         ? "Manual entry · Kneeling, Prone and Standing kept separate"
-                                         : "Manual entry · Direction in degrees, speed in m/s, or Calm"
+                                         ? qsTr("Manual entry · Kneeling, Prone and Standing kept separate")
+                                         : qsTr("Manual entry · Direction in degrees, speed in m/s, or Calm")
                                    color: _txtSec; font.family: "Consolas"; font.pixelSize: 10 }
                         }
                         MouseArea {
@@ -2013,15 +2013,15 @@ Item {
                         }
                     }
 
-                    Text { text: "INCLUDED INSIGHTS"; color: _txtMut
+                    Text { text: qsTr("INCLUDED INSIGHTS"); color: _txtMut
                            font.family: theme.fontFamily; font.pixelSize: theme.type.label.size; font.bold: true
                            font.letterSpacing: 2; topPadding: 10 }
                     Text {
                         text: {
-                            if (gameMode === 0) return "· Group Pattern Coach\n· Air Pistol technical checklist"
-                            if (gameRange === 10) return "· Group Pattern Coach\n· Air Rifle technical checklist"
-                            if (gameSubMode === 1) return "· Position-specific Group Pattern Coach\n· Kneeling checklist · Prone checklist · Standing checklist"
-                            return "· Group Pattern Coach\n· Prone technical checklist"
+                            if (gameMode === 0) return qsTr("· Group Pattern Coach\n· Air Pistol technical checklist")
+                            if (gameRange === 10) return qsTr("· Group Pattern Coach\n· Air Rifle technical checklist")
+                            if (gameSubMode === 1) return qsTr("· Position-specific Group Pattern Coach\n· Kneeling checklist · Prone checklist · Standing checklist")
+                            return qsTr("· Group Pattern Coach\n· Prone technical checklist")
                         }
                         color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 11
                     }
@@ -2053,19 +2053,19 @@ Item {
                     bottomPadding: 12
 
                     Text {
-                        text: "← Back"
+                        text: qsTr("← Back")
                         color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 12
                         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                                     onClicked: practiceView = 1 }
                     }
-                    Text { text: "TECHNICAL BLOCKS SETUP"; color: _txt
+                    Text { text: qsTr("TECHNICAL BLOCKS SETUP"); color: _txt
                            font.family: theme.fontFamily; font.pixelSize: 17; font.bold: true }
                     Text {
                         width: parent.width; wrapMode: Text.WordWrap
                         color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 11
                         text: trainingDisciplineId() === "3P50"
-                              ? "The programme keeps Kneeling, Prone and Standing separate. Each position gets its own blocks, measurements, notes and comparison \u2014 results are never combined into one generic 3P analysis."
-                              : "You shoot each block while focusing on one selected area. The block then stops and opens a measured review; after adding a note you continue to the next block. Hidden modes reveal scores and impacts only at the review."
+                              ? qsTr("The programme keeps Kneeling, Prone and Standing separate. Each position gets its own blocks, measurements, notes and comparison \u2014 results are never combined into one generic 3P analysis.")
+                              : qsTr("You shoot each block while focusing on one selected area. The block then stops and opens a measured review; after adding a note you continue to the next block. Hidden modes reveal scores and impacts only at the review.")
                     }
                     Text {
                         visible: trainingDisciplineId() === "3P50"
@@ -2114,7 +2114,7 @@ Item {
                     }
 
                     Stepper {
-                        label: trainingDisciplineId() === "3P50" ? "Blocks per position" : "Blocks"
+                        label: trainingDisciplineId() === "3P50" ? qsTr("Blocks per position") : qsTr("Blocks")
                         value: trainingDisciplineId() === "3P50" ? TRAINING.blockCount / 3 : TRAINING.blockCount
                         onMinus: TRAINING.setBlockCount(TRAINING.blockCount
                                      - (trainingDisciplineId() === "3P50" ? 3 : 1))
@@ -2122,16 +2122,16 @@ Item {
                                      + (trainingDisciplineId() === "3P50" ? 3 : 1))
                     }
                     Stepper {
-                        label: "Shots per block"
+                        label: qsTr("Shots per block")
                         value: TRAINING.shotsPerBlock
                         onMinus: TRAINING.setShotsPerBlock(TRAINING.shotsPerBlock - 1)
                         onPlus:  TRAINING.setShotsPerBlock(TRAINING.shotsPerBlock + 1)
                     }
-                    Text { text: "Total: " + (TRAINING.blockCount * TRAINING.shotsPerBlock) + " shots"
+                    Text { text: qsTr("Total: ") + (TRAINING.blockCount * TRAINING.shotsPerBlock) + qsTr(" shots")
                                  + (trainingDisciplineId() === "3P50" ? "  ·  Kneeling → Prone → Standing" : "")
                            color: _txtSec; font.family: "Consolas"; font.pixelSize: 11 }
 
-                    Text { text: "Technical focus"; color: _txtSec
+                    Text { text: qsTr("Technical focus"); color: _txtSec
                            font.family: theme.fontFamily; font.pixelSize: 12; topPadding: 4 }
                     Flow {
                         width: parent.width; spacing: 6
@@ -2169,7 +2169,7 @@ Item {
                             return d[TRAINING.technicalFocus] || ""
                         }
                     }
-                    Text { text: "Visibility"; color: _txtSec
+                    Text { text: qsTr("Visibility"); color: _txtSec
                            font.family: theme.fontFamily; font.pixelSize: 12; topPadding: 4 }
                     Column {
                         spacing: 5
@@ -2189,7 +2189,7 @@ Item {
                                         Text { text: modelData; color: _txt
                                                font.family: theme.fontFamily; font.pixelSize: 12; font.bold: true }
                                         Text {
-                                            text: ["No score or impact is shown until block review.",
+                                            text: [qsTr("No score or impact is shown until block review."),
                                                    "Shot positions form a group; numerical scores stay hidden.",
                                                    "Shot positions are visible; scores stay hidden."][index]
                                             color: _txtMut; font.family: theme.fontFamily; font.pixelSize: theme.type.helperText.size
@@ -2203,7 +2203,7 @@ Item {
                             }
                         }
                     }
-                    Text { text: "Optional shot calling — coming with Call & Diagnose"
+                    Text { text: qsTr("Optional shot calling — coming with Call & Diagnose")
                            color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 10 }
 
                     // Validation (controller-owned — no duplicate rules here).
@@ -2219,13 +2219,13 @@ Item {
                         Rectangle {
                             width: 110; height: 52; radius: 8
                             color: "transparent"; border.color: _borderStr; border.width: 1
-                            Text { anchors.centerIn: parent; text: "Back"; color: _txtSec
+                            Text { anchors.centerIn: parent; text: qsTr("Back"); color: _txtSec
                                    font.family: theme.fontFamily; font.pixelSize: 12 }
                             MouseArea { anchors.fill: parent; onClicked: practiceView = 1 }
                         }
                         Rectangle {
                             width: 180; height: 52; radius: 8; color: _red
-                            Text { anchors.centerIn: parent; text: "Confirm setup"; color: "white"
+                            Text { anchors.centerIn: parent; text: qsTr("Confirm setup"); color: "white"
                                    font.family: theme.fontFamily; font.pixelSize: 13; font.bold: true }
                             MouseArea {
                                 anchors.fill: parent
@@ -2265,25 +2265,25 @@ Item {
                     spacing: 10; bottomPadding: 12
 
                     Text {
-                        text: "← Back"; color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 12
+                        text: qsTr("← Back"); color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 12
                         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                                     onClicked: practiceView = 1 }
                     }
-                    Text { text: "CALL & DIAGNOSE SETUP"; color: _txt
+                    Text { text: qsTr("CALL & DIAGNOSE SETUP"); color: _txt
                            font.family: theme.fontFamily; font.pixelSize: 17; font.bold: true }
                     Text {
                         width: parent.width; wrapMode: Text.WordWrap
                         color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 11
-                        text: "After every shot the actual impact stays hidden. Tap the target where you believe the shot landed, confirm your call, then compare it with the measured result. This assesses how accurately you recognise your own shot."
+                        text: qsTr("After every shot the actual impact stays hidden. Tap the target where you believe the shot landed, confirm your call, then compare it with the measured result. This assesses how accurately you recognise your own shot.")
                             + (trainingDisciplineId() === "3P50"
-                               ? " Kneeling, Prone and Standing are kept separate." : "")
+                               ? qsTr(" Kneeling, Prone and Standing are kept separate.") : "")
                     }
                     Text { text: getDisciplineName() + "  ·  " + username_loginPage + "  ·  " + CALLDIAG.estimatedTime
                            color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 11 }
 
                     Row {
                         spacing: 10
-                        Text { text: trainingDisciplineId() === "3P50" ? "Called shots / position" : "Called shots"
+                        Text { text: trainingDisciplineId() === "3P50" ? qsTr("Called shots / position") : qsTr("Called shots")
                                color: _txtSec; width: 150; font.family: theme.fontFamily; font.pixelSize: 12
                                anchors.verticalCenter: parent.verticalCenter }
                         Rectangle { width: 52; height: 48; radius: 8; color: _input; border.color: _borderSub
@@ -2296,12 +2296,12 @@ Item {
                             Text { anchors.centerIn: parent; text: "+"; color: _txt; font.pixelSize: 16 }
                             MouseArea { anchors.fill: parent; onClicked: CALLDIAG.setShotCount(CALLDIAG.shotCount + 1) } }
                     }
-                    Text { text: "Total: " + (trainingDisciplineId() === "3P50" ? CALLDIAG.shotCount * 3 : CALLDIAG.shotCount)
+                    Text { text: qsTr("Total: ") + (trainingDisciplineId() === "3P50" ? CALLDIAG.shotCount * 3 : CALLDIAG.shotCount)
                                  + " called shots"
                                  + (trainingDisciplineId() === "3P50" ? "  ·  Kneeling → Prone → Standing" : "")
                            color: _txtSec; font.family: "Consolas"; font.pixelSize: 11 }
 
-                    Text { text: "Technical focus"; color: _txtSec
+                    Text { text: qsTr("Technical focus"); color: _txtSec
                            font.family: theme.fontFamily; font.pixelSize: 12; topPadding: 4 }
                     Flow {
                         width: parent.width; spacing: 6
@@ -2319,7 +2319,7 @@ Item {
                             }
                         }
                     }
-                    Text { text: "Reveal happens immediately after each call is confirmed."
+                    Text { text: qsTr("Reveal happens immediately after each call is confirmed.")
                            color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 10 }
 
                     Text {
@@ -2333,13 +2333,13 @@ Item {
                         Rectangle {
                             width: 110; height: 52; radius: 8
                             color: "transparent"; border.color: _borderStr; border.width: 1
-                            Text { anchors.centerIn: parent; text: "Back"; color: _txtSec
+                            Text { anchors.centerIn: parent; text: qsTr("Back"); color: _txtSec
                                    font.family: theme.fontFamily; font.pixelSize: 12 }
                             MouseArea { anchors.fill: parent; onClicked: practiceView = 1 }
                         }
                         Rectangle {
                             width: 180; height: 52; radius: 8; color: _red
-                            Text { anchors.centerIn: parent; text: "Confirm setup"; color: "white"
+                            Text { anchors.centerIn: parent; text: qsTr("Confirm setup"); color: "white"
                                    font.family: theme.fontFamily; font.pixelSize: 13; font.bold: true }
                             MouseArea {
                                 anchors.fill: parent
@@ -2373,16 +2373,16 @@ Item {
                     id: ptSetupCol
                     width: ptSetupFlick.width; spacing: 10; bottomPadding: 12
 
-                    Text { text: "← Back"; color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 12
+                    Text { text: qsTr("← Back"); color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 12
                         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: practiceView = 1 } }
-                    Text { text: "POSITION TRANSITION SETUP"; color: _txt; font.family: theme.fontFamily; font.pixelSize: 17; font.bold: true }
+                    Text { text: qsTr("POSITION TRANSITION SETUP"); color: _txt; font.family: theme.fontFamily; font.pixelSize: 17; font.bold: true }
                     Text {
                         width: parent.width; wrapMode: Text.WordWrap; color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 11
                         text: qsTr("This programme measures how consistently you rebuild each Three-Position shooting position. You begin a position setup, confirm when the position is ready, fire optional sighters, then a short counted verification block. %1 compares the timing and measured result of each position. This is a Training session and not an official competition result.").arg(PRODUCT.displayName)
                     }
                     Text { text: POSTRANS.sequenceArrow; color: _green; font.family: "Consolas"; font.pixelSize: 13; font.bold: true }
 
-                    Text { text: "Positions"; color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 12; topPadding: 4 }
+                    Text { text: qsTr("Positions"); color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 12; topPadding: 4 }
                     Flow { width: parent.width; spacing: 6
                         Repeater {
                             model: [ { l: "Full 3P", p: 0 }, { l: "Kneeling → Prone", p: 1 }, { l: "Prone → Standing", p: 2 },
@@ -2400,7 +2400,7 @@ Item {
                     }
 
                     Row { spacing: 10
-                        Text { text: "Verification shots"; color: _txtSec; width: 150; font.family: theme.fontFamily; font.pixelSize: 12
+                        Text { text: qsTr("Verification shots"); color: _txtSec; width: 150; font.family: theme.fontFamily; font.pixelSize: 12
                                anchors.verticalCenter: parent.verticalCenter }
                         Rectangle { width: 52; height: 48; radius: 8; color: _input; border.color: _borderSub
                             Text { anchors.centerIn: parent; text: "−"; color: _txt; font.pixelSize: 16 }
@@ -2412,7 +2412,7 @@ Item {
                             MouseArea { anchors.fill: parent; onClicked: POSTRANS.setVerificationShots(POSTRANS.verificationShots + 1) } }
                     }
                     Row { spacing: 10
-                        Text { text: "Repeats"; color: _txtSec; width: 150; font.family: theme.fontFamily; font.pixelSize: 12
+                        Text { text: qsTr("Repeats"); color: _txtSec; width: 150; font.family: theme.fontFamily; font.pixelSize: 12
                                anchors.verticalCenter: parent.verticalCenter }
                         Rectangle { width: 52; height: 48; radius: 8; color: _input; border.color: _borderSub
                             Text { anchors.centerIn: parent; text: "−"; color: _txt; font.pixelSize: 16 }
@@ -2424,7 +2424,7 @@ Item {
                             MouseArea { anchors.fill: parent; onClicked: POSTRANS.setRepeats(POSTRANS.totalRepeats + 1) } }
                     }
 
-                    Text { text: "Checklist"; color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 12; topPadding: 4 }
+                    Text { text: qsTr("Checklist"); color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 12; topPadding: 4 }
                     Row { spacing: 6
                         Repeater {
                             model: [ "Athlete self-check", "Coach-assisted", "Disabled" ]
@@ -2439,7 +2439,7 @@ Item {
                         }
                     }
 
-                    Text { text: "Technical focus"; color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 12; topPadding: 4 }
+                    Text { text: qsTr("Technical focus"); color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 12; topPadding: 4 }
                     Flow { width: parent.width; spacing: 6
                         Repeater {
                             model: POSTRANS.focusOptionsForDiscipline()
@@ -2458,10 +2458,10 @@ Item {
                            color: theme.tokens.errorText; font.family: theme.fontFamily; font.pixelSize: 11 }
                     Row { spacing: 10; topPadding: 6
                         Rectangle { width: 110; height: 52; radius: 8; color: "transparent"; border.color: _borderStr; border.width: 1
-                            Text { anchors.centerIn: parent; text: "Back"; color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 12 }
+                            Text { anchors.centerIn: parent; text: qsTr("Back"); color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 12 }
                             MouseArea { anchors.fill: parent; onClicked: practiceView = 1 } }
                         Rectangle { width: 180; height: 52; radius: 8; color: _red
-                            Text { anchors.centerIn: parent; text: "Confirm setup"; color: "white"; font.family: theme.fontFamily; font.pixelSize: 13; font.bold: true }
+                            Text { anchors.centerIn: parent; text: qsTr("Confirm setup"); color: "white"; font.family: theme.fontFamily; font.pixelSize: 13; font.bold: true }
                             MouseArea { anchors.fill: parent
                                 onClicked: {
                                     if (POSTRANS.technicalFocus === "") { ptSetupError.text = "Select a technical focus."; return }
@@ -2496,20 +2496,20 @@ Item {
                     id: wmSetupCol
                     width: wmSetupFlick.width; spacing: 10; bottomPadding: 12
 
-                    Text { text: "← Back to Training Lab"; color: _txtSec
+                    Text { text: qsTr("← Back to Training Lab"); color: _txtSec
                            font.family: theme.fontFamily; font.pixelSize: 12; bottomPadding: 4
                         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                                     onClicked: practiceView = 1 } }
-                    Text { text: "WIND MAP"; color: _txt
+                    Text { text: qsTr("WIND MAP"); color: _txt
                            font.family: theme.fontFamily; font.pixelSize: 18; font.bold: true }
-                    Text { text: WINDMAP.threePositions ? "50 m Rifle 3 Positions · Kneeling, Prone and Standing kept separate"
-                                                        : "50 m Rifle Prone"
+                    Text { text: WINDMAP.threePositions ? qsTr("50 m Rifle 3 Positions · Kneeling, Prone and Standing kept separate")
+                                                        : qsTr("50 m Rifle Prone")
                            color: _red; font.family: theme.fontFamily; font.pixelSize: 13; font.bold: true }
                     Text { width: parent.width; wrapMode: Text.WordWrap
-                           text: "You record the wind you observe. Every shot keeps the condition that was standing when it was fired, so the two can be reviewed together afterwards. Nothing here is scored or corrected."
+                           text: qsTr("You record the wind you observe. Every shot keeps the condition that was standing when it was fired, so the two can be reviewed together afterwards. Nothing here is scored or corrected.")
                            color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 11 }
 
-                    Text { text: "Planned shots"; color: _txtSec
+                    Text { text: qsTr("Planned shots"); color: _txtSec
                            font.family: theme.fontFamily; font.pixelSize: 12; topPadding: 6 }
                     Row { spacing: 6
                         Repeater {
@@ -2530,7 +2530,7 @@ Item {
                     property int plan: 40
                     property bool sighters: true
 
-                    Text { text: "Sighters"; color: _txtSec
+                    Text { text: qsTr("Sighters"); color: _txtSec
                            font.family: theme.fontFamily; font.pixelSize: 12; topPadding: 6 }
                     Row { spacing: 6
                         Repeater {
@@ -2548,7 +2548,7 @@ Item {
                         }
                     }
                     Text { width: parent.width; wrapMode: Text.WordWrap
-                           text: "Sighters are recorded with their conditions but are never counted in the session statistics."
+                           text: qsTr("Sighters are recorded with their conditions but are never counted in the session statistics.")
                            color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 10 }
 
                     Text { id: wmSetupError; visible: text !== ""; text: ""; width: parent.width
@@ -2557,11 +2557,11 @@ Item {
                     Row { spacing: 10; topPadding: 6
                         Rectangle { width: 110; height: 52; radius: 8; color: "transparent"
                             border.color: _borderStr; border.width: 1
-                            Text { anchors.centerIn: parent; text: "Back"; color: _txtSec
+                            Text { anchors.centerIn: parent; text: qsTr("Back"); color: _txtSec
                                    font.family: theme.fontFamily; font.pixelSize: 12 }
                             MouseArea { anchors.fill: parent; onClicked: practiceView = 1 } }
                         Rectangle { width: 180; height: 52; radius: 8; color: _red
-                            Text { anchors.centerIn: parent; text: "Confirm setup"; color: "white"
+                            Text { anchors.centerIn: parent; text: qsTr("Confirm setup"); color: "white"
                                    font.family: theme.fontFamily; font.pixelSize: 13; font.bold: true }
                             MouseArea { anchors.fill: parent
                                 onClicked: {
@@ -2950,7 +2950,7 @@ Item {
                 anchors.top: licHeaderRect.bottom
                 anchors.topMargin: emailLabelRect.anchors.topMargin
                 anchors.left: emailLabelRect.right; anchors.leftMargin: 10
-                placeholderText: "Please enter Licenced user id"
+                placeholderText: qsTr("Please enter Licenced user id")
             }
             Rectangle {
                 id: cancelButton
