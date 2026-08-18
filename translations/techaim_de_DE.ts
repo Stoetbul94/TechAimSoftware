@@ -1411,12 +1411,12 @@ Der Trainerbericht wertet offizielle Wettkampfschüsse aus. Wechseln Sie in den 
 <context>
     <name>LoginPage</name>
     <message>
-        <location filename="../LoginPage.qml" line="174"/>
+        <location filename="../LoginPage.qml" line="203"/>
         <source>Invalid Distance</source>
         <translation>Ungültige Entfernung</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="175"/>
+        <location filename="../LoginPage.qml" line="204"/>
         <source>The configured distance is outside the supported range of 5 m to 10 m.
 
 The application will now close.</source>
@@ -1425,219 +1425,248 @@ The application will now close.</source>
 Die Anwendung wird jetzt beendet.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="324"/>
+        <location filename="../LoginPage.qml" line="353"/>
         <source>Select Network Share Folder</source>
         <translation>Ordner für Netzwerkfreigabe wählen</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="341"/>
+        <location filename="../LoginPage.qml" line="370"/>
         <source>User Name Required</source>
         <translation>Benutzername erforderlich</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="342"/>
+        <location filename="../LoginPage.qml" line="371"/>
         <source>Please enter a user name before logging in.</source>
         <translation>Bitte geben Sie vor dem Anmelden einen Benutzernamen ein.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="380"/>
+        <location filename="../LoginPage.qml" line="409"/>
         <source>10m Air Pistol</source>
         <translation>10 m Luftpistole</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="381"/>
+        <location filename="../LoginPage.qml" line="410"/>
         <source>10m Air Rifle</source>
         <translation>10 m Luftgewehr</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="386"/>
+        <location filename="../LoginPage.qml" line="415"/>
         <source> — FINAL (24)</source>
         <translation> — FINALE (24)</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="388"/>
+        <location filename="../LoginPage.qml" line="417"/>
         <source> — FINAL (35)</source>
         <translation> — FINALE (35)</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="389"/>
+        <location filename="../LoginPage.qml" line="418"/>
         <source> — Free Practice</source>
         <translation> — Freies Training</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="390"/>
+        <location filename="../LoginPage.qml" line="419"/>
         <source> Shots</source>
         <translation> Schüsse</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="394"/>
+        <location filename="../LoginPage.qml" line="423"/>
         <source>ISSF 10m Final · 24 shots · decimal · on command</source>
         <translation>ISSF 10-m-Finale · 24 Schüsse · Zehntelringe · auf Kommando</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="396"/>
+        <location filename="../LoginPage.qml" line="425"/>
         <source>ISSF Final · 35 shots · decimal · on command</source>
         <translation>ISSF-Finale · 35 Schüsse · Zehntelringe · auf Kommando</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="397"/>
+        <location filename="../LoginPage.qml" line="426"/>
         <source>Flexible training · no time limit</source>
         <translation>Flexibles Training · ohne Zeitbegrenzung</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="398"/>
+        <location filename="../LoginPage.qml" line="427"/>
         <source>ISSF 2026 · </source>
         <translation>ISSF 2026 · </translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="411"/>
+        <location filename="../LoginPage.qml" line="441"/>
+        <source>%1 min</source>
+        <translation>%1 Min.</translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="448"/>
+        <source>%1 min per position</source>
+        <translation>%1 Min. je Stellung</translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="451"/>
         <source>10 min</source>
         <translation>10 min</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="413"/>
+        <location filename="../LoginPage.qml" line="453"/>
         <source>20 min</source>
         <translation>20 min</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="414"/>
+        <location filename="../LoginPage.qml" line="454"/>
         <source>30 min</source>
         <translation>30 min</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="415"/>
+        <location filename="../LoginPage.qml" line="455"/>
         <source>40 min</source>
         <translation>40 min</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="417"/>
-        <location filename="../LoginPage.qml" line="418"/>
+        <location filename="../LoginPage.qml" line="457"/>
+        <location filename="../LoginPage.qml" line="458"/>
         <source>75 min</source>
         <translation>75 min</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="419"/>
+        <location filename="../LoginPage.qml" line="459"/>
         <source>90 min</source>
         <translation>90 min</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="420"/>
+        <location filename="../LoginPage.qml" line="460"/>
         <source>50 min</source>
         <translation>50 min</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="450"/>
+        <location filename="../LoginPage.qml" line="490"/>
         <source>Wind Map</source>
         <translation>Windkarte</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="451"/>
+        <location filename="../LoginPage.qml" line="491"/>
         <source>Position Transition</source>
         <translation>Stellungswechsel</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="452"/>
+        <location filename="../LoginPage.qml" line="492"/>
         <source>Call &amp; Diagnose</source>
         <translation>Ansage &amp; Diagnose</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="453"/>
+        <location filename="../LoginPage.qml" line="493"/>
         <source>Technical Blocks</source>
         <translation>Technikblöcke</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="455"/>
+        <location filename="../LoginPage.qml" line="499"/>
         <source> — ISSF</source>
         <translation> — ISSF</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="457"/>
+        <location filename="../LoginPage.qml" line="501"/>
         <source> — Open Practice</source>
         <translation> — Freies Training</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="464"/>
+        <location filename="../LoginPage.qml" line="508"/>
         <source>SELECTED PROGRAMME</source>
         <translation>GEWÄHLTES PROGRAMM</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="465"/>
+        <location filename="../LoginPage.qml" line="509"/>
         <source>SELECTED FINAL</source>
         <translation>GEWÄHLTES FINALE</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="466"/>
+        <location filename="../LoginPage.qml" line="510"/>
         <source>SELECTED PRACTICE</source>
         <translation>GEWÄHLTES TRAINING</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="467"/>
+        <location filename="../LoginPage.qml" line="511"/>
         <source>SELECTED MATCH</source>
         <translation>GEWÄHLTER WETTKAMPF</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="474"/>
+        <location filename="../LoginPage.qml" line="518"/>
         <source>Start wind map  →</source>
         <translation>Windkarte starten  →</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="475"/>
+        <location filename="../LoginPage.qml" line="519"/>
         <source>Start transitions  →</source>
         <translation>Stellungswechsel starten  →</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="476"/>
+        <location filename="../LoginPage.qml" line="520"/>
         <source>Start calling  →</source>
         <translation>Ansagen starten  →</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="477"/>
+        <location filename="../LoginPage.qml" line="521"/>
         <source>Start training  →</source>
         <translation>Training starten  →</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="478"/>
+        <location filename="../LoginPage.qml" line="522"/>
         <source>Start practice  →</source>
         <translation>Training starten  →</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="479"/>
+        <location filename="../LoginPage.qml" line="523"/>
         <source>Start session  →</source>
         <translation>Sitzung starten  →</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="498"/>
+        <location filename="../LoginPage.qml" line="542"/>
         <source>Network share is on but no folder is selected — results will not be shared.</source>
         <translation>Netzwerkfreigabe ist aktiv, aber es ist kein Ordner gewählt — Ergebnisse werden nicht freigegeben.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="500"/>
+        <location filename="../LoginPage.qml" line="544"/>
         <source>No athlete entered</source>
         <translation>Kein Sportler eingegeben</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="502"/>
+        <location filename="../LoginPage.qml" line="546"/>
         <source>Live target</source>
         <translation>Live-Scheibe</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="502"/>
+        <location filename="../LoginPage.qml" line="546"/>
         <source>Demo / Simulation</source>
         <translation>Demo / Simulation</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="533"/>
-        <location filename="../LoginPage.qml" line="542"/>
-        <location filename="../LoginPage.qml" line="2752"/>
-        <location filename="../LoginPage.qml" line="2760"/>
+        <location filename="../LoginPage.qml" line="587"/>
+        <source>Competition not yet available</source>
+        <translation>Wettkampf noch nicht verfügbar</translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="588"/>
+        <source>%1 %2, which this build cannot conduct yet.
+
+The programme can be selected and reviewed, but starting it is blocked so a session is never run as a different competition.</source>
+        <translation>%1 %2, was diese Programmversion noch nicht durchführen kann.
+
+Das Programm kann ausgewählt und geprüft werden; der Start ist jedoch gesperrt, damit eine Sitzung niemals als anderer Wettkampf durchgeführt wird.</translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="593"/>
+        <source>This programme</source>
+        <translation>Dieses Programm</translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="603"/>
+        <location filename="../LoginPage.qml" line="612"/>
+        <location filename="../LoginPage.qml" line="2834"/>
+        <location filename="../LoginPage.qml" line="2842"/>
         <source>Master Not Connected</source>
         <translation>Mastersystem nicht verbunden</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="534"/>
-        <location filename="../LoginPage.qml" line="543"/>
-        <location filename="../LoginPage.qml" line="2753"/>
-        <location filename="../LoginPage.qml" line="2761"/>
+        <location filename="../LoginPage.qml" line="604"/>
+        <location filename="../LoginPage.qml" line="613"/>
+        <location filename="../LoginPage.qml" line="2835"/>
+        <location filename="../LoginPage.qml" line="2843"/>
         <source>The master system is not connected.
 
 Please press “Connect” and try again.</source>
@@ -1646,12 +1675,12 @@ Please press “Connect” and try again.</source>
 Bitte drücken Sie „Verbinden“ und versuchen Sie es erneut.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="553"/>
+        <location filename="../LoginPage.qml" line="623"/>
         <source>COM Port Not Connected</source>
         <translation>COM-Port nicht verbunden</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="554"/>
+        <location filename="../LoginPage.qml" line="624"/>
         <source>No connection to the target COM port was found.
 
 Please connect the target hardware and try again.</source>
@@ -1660,12 +1689,12 @@ Please connect the target hardware and try again.</source>
 Bitte schließen Sie die Scheibenhardware an und versuchen Sie es erneut.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="556"/>
+        <location filename="../LoginPage.qml" line="626"/>
         <source>Hardware Not Connected</source>
         <translation>Hardware nicht verbunden</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="557"/>
+        <location filename="../LoginPage.qml" line="627"/>
         <source>The target hardware is not responding.
 
 Please check the target connection and try again.</source>
@@ -1674,12 +1703,12 @@ Please check the target connection and try again.</source>
 Bitte prüfen Sie die Scheibenverbindung und versuchen Sie es erneut.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="572"/>
+        <location filename="../LoginPage.qml" line="642"/>
         <source>Target Not Ready</source>
         <translation>Scheibe nicht bereit</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="573"/>
+        <location filename="../LoginPage.qml" line="643"/>
         <source>A valid electronic target connection is required before starting this Live session.
 
 Target status: %1%2
@@ -1692,97 +1721,97 @@ Scheibenstatus: %1%2
 Prüfen Sie die USB-Verbindung und versuchen Sie es erneut.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="578"/>
+        <location filename="../LoginPage.qml" line="648"/>
         <source> (%1)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="620"/>
+        <location filename="../LoginPage.qml" line="690"/>
         <source>Start session</source>
         <translation>Sitzung starten</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="658"/>
+        <location filename="../LoginPage.qml" line="728"/>
         <source>Session setup</source>
         <translation>Sitzung einrichten</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="695"/>
+        <location filename="../LoginPage.qml" line="765"/>
         <source>ATHLETE</source>
         <translation>SPORTLER</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="724"/>
+        <location filename="../LoginPage.qml" line="794"/>
         <source>Athlete name</source>
         <translation>Sportlername</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="772"/>
+        <location filename="../LoginPage.qml" line="842"/>
         <source>TARGET CONNECTION — MANUAL PORT FALLBACK</source>
         <translation>SCHEIBENVERBINDUNG — MANUELLER PORT</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="815"/>
+        <location filename="../LoginPage.qml" line="885"/>
         <source>Connected</source>
         <translation>Verbunden</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="816"/>
+        <location filename="../LoginPage.qml" line="886"/>
         <source>Not connected</source>
         <translation>Nicht verbunden</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="817"/>
+        <location filename="../LoginPage.qml" line="887"/>
         <source>Demo · not needed</source>
         <translation>Demo · nicht nötig</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="874"/>
+        <location filename="../LoginPage.qml" line="944"/>
         <source>OPERATING MODE</source>
         <translation>BETRIEBSART</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="903"/>
+        <location filename="../LoginPage.qml" line="973"/>
         <source>LIVE TARGET</source>
         <translation>LIVE-SCHEIBE</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="906"/>
+        <location filename="../LoginPage.qml" line="976"/>
         <source>Physical target</source>
         <translation>Physische Scheibe</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="940"/>
+        <location filename="../LoginPage.qml" line="1010"/>
         <source>DEMO / SIMULATION</source>
         <translation>DEMO / SIMULATION</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="944"/>
+        <location filename="../LoginPage.qml" line="1014"/>
         <source>Simulated clicks</source>
         <translation>Simulierte Schüsse</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="965"/>
+        <location filename="../LoginPage.qml" line="1035"/>
         <source>Restart required — the selected mode takes effect on next launch.</source>
         <translation>Neustart erforderlich — die gewählte Betriebsart wird beim nächsten Start wirksam.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="966"/>
+        <location filename="../LoginPage.qml" line="1036"/>
         <source>Switch the target source. Changing mode requires an application restart.</source>
         <translation>Wechseln Sie die Schussquelle. Ein Wechsel der Betriebsart erfordert einen Neustart der Anwendung.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="984"/>
+        <location filename="../LoginPage.qml" line="1054"/>
         <source>Switch to Demo mode?</source>
         <translation>In den Demo-Modus wechseln?</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="984"/>
+        <location filename="../LoginPage.qml" line="1054"/>
         <source>Switch to Live target mode?</source>
         <translation>In den Live-Scheiben-Modus wechseln?</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="991"/>
+        <location filename="../LoginPage.qml" line="1061"/>
         <source>Simulated shots will be enabled. Demo sessions are intended for testing and cannot be treated as Live target results.
 
 The application must restart before the change takes effect.</source>
@@ -1791,7 +1820,7 @@ The application must restart before the change takes effect.</source>
 Die Anwendung muss neu gestartet werden, damit die Änderung wirksam wird.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="992"/>
+        <location filename="../LoginPage.qml" line="1062"/>
         <source>Simulated shot input will be disabled. The application will expect the physical %1 target connection.
 
 The application must restart before the change takes effect.</source>
@@ -1800,177 +1829,177 @@ The application must restart before the change takes effect.</source>
 Die Anwendung muss neu gestartet werden, damit die Änderung wirksam wird.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1010"/>
+        <location filename="../LoginPage.qml" line="1080"/>
         <source>Restart Later</source>
         <translation>Später neu starten</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1017"/>
+        <location filename="../LoginPage.qml" line="1087"/>
         <source>Restart Now</source>
         <translation>Jetzt neu starten</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1033"/>
+        <location filename="../LoginPage.qml" line="1103"/>
         <source>NETWORK SHARE</source>
         <translation>NETZWERKFREIGABE</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1068"/>
+        <location filename="../LoginPage.qml" line="1138"/>
         <source>Share incomplete</source>
         <translation>Freigabe unvollständig</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1069"/>
+        <location filename="../LoginPage.qml" line="1139"/>
         <source>Share enabled</source>
         <translation>Freigabe aktiviert</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1070"/>
+        <location filename="../LoginPage.qml" line="1140"/>
         <source>Share disabled</source>
         <translation>Freigabe deaktiviert</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1078"/>
+        <location filename="../LoginPage.qml" line="1148"/>
         <source>No folder selected — click to choose</source>
         <translation>Kein Ordner gewählt — zum Wählen klicken</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1156"/>
+        <location filename="../LoginPage.qml" line="1226"/>
         <source>POSITION FLOW   Kneeling → Prone → Standing</source>
         <translation>STELLUNGSFOLGE   Kniend → Liegend → Stehend</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1170"/>
+        <location filename="../LoginPage.qml" line="1240"/>
         <source>DISCIPLINE</source>
         <translation>DISZIPLIN</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1170"/>
+        <location filename="../LoginPage.qml" line="1240"/>
         <source>50m 3 Pos</source>
         <translation>50 m Dreistellung</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1170"/>
+        <location filename="../LoginPage.qml" line="1240"/>
         <source>50m Prone</source>
         <translation>50 m Liegend</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1171"/>
-        <location filename="../LoginPage.qml" line="1198"/>
+        <location filename="../LoginPage.qml" line="1241"/>
+        <location filename="../LoginPage.qml" line="1268"/>
         <source>SHOT PLAN</source>
         <translation>SCHUSSPLAN</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1172"/>
+        <location filename="../LoginPage.qml" line="1242"/>
         <source>SIGHTERS</source>
         <translation>PROBESCHÜSSE</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1172"/>
+        <location filename="../LoginPage.qml" line="1242"/>
         <source>Yes</source>
         <translation>Ja</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1172"/>
+        <location filename="../LoginPage.qml" line="1242"/>
         <source>No</source>
         <translation>Nein</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1173"/>
+        <location filename="../LoginPage.qml" line="1243"/>
         <source>WIND</source>
         <translation>WIND</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1173"/>
+        <location filename="../LoginPage.qml" line="1243"/>
         <source>Manual entry</source>
         <translation>Manuelle Eingabe</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1174"/>
+        <location filename="../LoginPage.qml" line="1244"/>
         <source>POSITIONS</source>
         <translation>STELLUNGEN</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1174"/>
+        <location filename="../LoginPage.qml" line="1244"/>
         <source>K · P · S separate</source>
         <translation>K · L · S getrennt</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1174"/>
+        <location filename="../LoginPage.qml" line="1244"/>
         <source>Single</source>
         <translation>Einzeln</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1175"/>
-        <location filename="../LoginPage.qml" line="1182"/>
-        <location filename="../LoginPage.qml" line="1189"/>
+        <location filename="../LoginPage.qml" line="1245"/>
+        <location filename="../LoginPage.qml" line="1252"/>
+        <location filename="../LoginPage.qml" line="1259"/>
         <source>MODE</source>
         <translation>MODUS</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1175"/>
-        <location filename="../LoginPage.qml" line="1182"/>
-        <location filename="../LoginPage.qml" line="1189"/>
+        <location filename="../LoginPage.qml" line="1245"/>
+        <location filename="../LoginPage.qml" line="1252"/>
+        <location filename="../LoginPage.qml" line="1259"/>
         <source>Live</source>
         <translation>Live</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1175"/>
-        <location filename="../LoginPage.qml" line="1182"/>
-        <location filename="../LoginPage.qml" line="1189"/>
+        <location filename="../LoginPage.qml" line="1245"/>
+        <location filename="../LoginPage.qml" line="1252"/>
+        <location filename="../LoginPage.qml" line="1259"/>
         <source>Demo</source>
         <translation>Demo</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1177"/>
+        <location filename="../LoginPage.qml" line="1247"/>
         <source>SEQUENCE</source>
         <translation>ABFOLGE</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1178"/>
+        <location filename="../LoginPage.qml" line="1248"/>
         <source>VERIFY</source>
         <translation>KONTROLLE</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1178"/>
-        <location filename="../LoginPage.qml" line="1184"/>
+        <location filename="../LoginPage.qml" line="1248"/>
+        <location filename="../LoginPage.qml" line="1254"/>
         <source> / pos</source>
         <translation> / Stlg.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1179"/>
+        <location filename="../LoginPage.qml" line="1249"/>
         <source>REPEATS</source>
         <translation>WIEDERHOLUNGEN</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1180"/>
-        <location filename="../LoginPage.qml" line="1186"/>
-        <location filename="../LoginPage.qml" line="1194"/>
+        <location filename="../LoginPage.qml" line="1250"/>
+        <location filename="../LoginPage.qml" line="1256"/>
+        <location filename="../LoginPage.qml" line="1264"/>
         <source>FOCUS</source>
         <translation>SCHWERPUNKT</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1181"/>
+        <location filename="../LoginPage.qml" line="1251"/>
         <source>CHECKLIST</source>
         <translation>CHECKLISTE</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1181"/>
+        <location filename="../LoginPage.qml" line="1251"/>
         <source>Self</source>
         <translation>Selbst</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1181"/>
+        <location filename="../LoginPage.qml" line="1251"/>
         <source>Coach</source>
         <translation>Trainer</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1181"/>
+        <location filename="../LoginPage.qml" line="1251"/>
         <source>Off</source>
         <translation>Aus</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1184"/>
+        <location filename="../LoginPage.qml" line="1254"/>
         <source>CALLED</source>
         <translation>ANGESAGT</translation>
     </message>
@@ -1980,169 +2009,169 @@ Die Anwendung muss neu gestartet werden, damit die Änderung wirksam wird.</tran
         <translation></translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1185"/>
-        <location filename="../LoginPage.qml" line="1193"/>
+        <location filename="../LoginPage.qml" line="1255"/>
+        <location filename="../LoginPage.qml" line="1263"/>
         <source>TOTAL</source>
         <translation>GESAMT</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1187"/>
+        <location filename="../LoginPage.qml" line="1257"/>
         <source>After each call</source>
         <translation>Nach jeder Ansage</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1188"/>
-        <location filename="../LoginPage.qml" line="1196"/>
+        <location filename="../LoginPage.qml" line="1258"/>
+        <location filename="../LoginPage.qml" line="1266"/>
         <source>EST. TIME</source>
         <translation>GESCH. DAUER</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1191"/>
+        <location filename="../LoginPage.qml" line="1261"/>
         <source>BLOCKS</source>
         <translation>BLÖCKE</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1192"/>
+        <location filename="../LoginPage.qml" line="1262"/>
         <source>SHOTS/BLOCK</source>
         <translation>SCHÜSSE/BLOCK</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1195"/>
+        <location filename="../LoginPage.qml" line="1265"/>
         <source>VISIBILITY</source>
         <translation>SICHTBARKEIT</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1195"/>
+        <location filename="../LoginPage.qml" line="1265"/>
         <source>Full hidden</source>
         <translation>Vollständig verborgen</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1195"/>
+        <location filename="../LoginPage.qml" line="1265"/>
         <source>Group only</source>
         <translation>Nur Streukreis</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1195"/>
+        <location filename="../LoginPage.qml" line="1265"/>
         <source>Impact only</source>
         <translation>Nur Treffer</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1198"/>
+        <location filename="../LoginPage.qml" line="1268"/>
         <source>Free</source>
         <translation>Frei</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1199"/>
+        <location filename="../LoginPage.qml" line="1269"/>
         <source>SCORING</source>
         <translation>WERTUNG</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1199"/>
+        <location filename="../LoginPage.qml" line="1269"/>
         <source>Integer</source>
         <translation>Ganzringe</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1199"/>
+        <location filename="../LoginPage.qml" line="1269"/>
         <source>Decimal</source>
         <translation>Zehntelringe</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1200"/>
+        <location filename="../LoginPage.qml" line="1270"/>
         <source>PREP</source>
         <translation>VORBEREITUNG</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="412"/>
-        <location filename="../LoginPage.qml" line="1200"/>
+        <location filename="../LoginPage.qml" line="452"/>
+        <location filename="../LoginPage.qml" line="1270"/>
         <source>15 min</source>
         <translation>15 min</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1201"/>
+        <location filename="../LoginPage.qml" line="1271"/>
         <source>MATCH</source>
         <translation>WETTKAMPF</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1202"/>
+        <location filename="../LoginPage.qml" line="1272"/>
         <source>DISTANCE</source>
         <translation>ENTFERNUNG</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1203"/>
+        <location filename="../LoginPage.qml" line="1273"/>
         <source>RULES</source>
         <translation>REGELWERK</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1242"/>
+        <location filename="../LoginPage.qml" line="1312"/>
         <source>Choose an event</source>
         <translation>Wettkampf wählen</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1249"/>
+        <location filename="../LoginPage.qml" line="1319"/>
         <source>Match settings are applied automatically.</source>
         <translation>Wettkampfeinstellungen werden automatisch übernommen.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1292"/>
+        <location filename="../LoginPage.qml" line="1370"/>
         <source>Official ISSF course</source>
         <translation>Offizieller ISSF-Wettkampf</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1293"/>
+        <location filename="../LoginPage.qml" line="1365"/>
         <source>Practice - no rule authority</source>
         <translation>Training – keine Regelautorität</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1306"/>
+        <location filename="../LoginPage.qml" line="1383"/>
         <source>CHANGE</source>
         <translation>ÄNDERN</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1621"/>
+        <location filename="../LoginPage.qml" line="1698"/>
         <source>OFFICIAL ISSF MATCH</source>
         <translation>OFFIZIELLER ISSF-WETTKAMPF</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1657"/>
-        <location filename="../LoginPage.qml" line="1683"/>
-        <location filename="../LoginPage.qml" line="1827"/>
+        <location filename="../LoginPage.qml" line="1734"/>
+        <location filename="../LoginPage.qml" line="1760"/>
+        <location filename="../LoginPage.qml" line="1904"/>
         <source>TRAINING LAB</source>
         <translation>TRAININGSLABOR</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1686"/>
+        <location filename="../LoginPage.qml" line="1763"/>
         <source>Structured technical practice and athlete feedback.
 Technical Blocks · Shot calling · Group analysis</source>
         <translation>Strukturiertes Techniktraining mit Rückmeldung für den Sportler.
 Technikblöcke · Schussansage · Streukreisanalyse</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1695"/>
+        <location filename="../LoginPage.qml" line="1772"/>
         <source>PRACTICE</source>
         <translation>TRAINING</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1735"/>
+        <location filename="../LoginPage.qml" line="1812"/>
         <source>OPEN PRACTICE</source>
         <translation>FREIES TRAINING</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1744"/>
+        <location filename="../LoginPage.qml" line="1821"/>
         <source>A flexible shooting session — choose a shot plan</source>
         <translation>Eine flexible Schießsitzung — Schussplan wählen</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1819"/>
+        <location filename="../LoginPage.qml" line="1896"/>
         <source>← Back to events</source>
         <translation>← Zurück zu den Wettkämpfen</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1835"/>
+        <location filename="../LoginPage.qml" line="1912"/>
         <source>ⓘ  Help</source>
         <translation>ⓘ  Hilfe</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1840"/>
+        <location filename="../LoginPage.qml" line="1917"/>
         <source>TECHNICAL BLOCKS
 Shoot several short groups while concentrating on one technical part of your process. After each block, %1 reveals the measured group and lets you record a note before continuing.
 
@@ -2165,516 +2194,521 @@ Kniend, Liegend und Stehend bleiben getrennt: K1 → K2 → P1 → P2 → S1 →
 Trainingsergebnisse dienen ausschließlich der Entwicklung — niemals als offizielles Wettkampfergebnis. Im Demo-Modus ist keine physische Scheibe erforderlich.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1844"/>
+        <location filename="../LoginPage.qml" line="1921"/>
         <source>Structured technical practice and athlete feedback.</source>
         <translation>Strukturiertes Techniktraining mit Rückmeldung für den Sportler.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1867"/>
-        <location filename="../LoginPage.qml" line="1927"/>
-        <location filename="../LoginPage.qml" line="1961"/>
-        <location filename="../LoginPage.qml" line="1991"/>
+        <location filename="../LoginPage.qml" line="1944"/>
+        <location filename="../LoginPage.qml" line="2004"/>
+        <location filename="../LoginPage.qml" line="2038"/>
+        <location filename="../LoginPage.qml" line="2068"/>
         <source>AVAILABLE</source>
         <translation>VERFÜGBAR</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1871"/>
+        <location filename="../LoginPage.qml" line="1948"/>
         <source>Shoot several short groups while concentrating on one technical part of your process.
 After each block, %1 reveals the measured group and lets you record a note.</source>
         <translation>Schießen Sie mehrere kurze Serien und konzentrieren Sie sich dabei auf einen technischen Teil Ihres Ablaufs.
 Nach jedem Block zeigt %1 den gemessenen Streukreis und lässt Sie eine Notiz erfassen.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1931"/>
+        <location filename="../LoginPage.qml" line="2008"/>
         <source>Call each shot before the actual impact is revealed.
 Compare where you believed the shot landed with where it actually landed.</source>
         <translation>Sagen Sie jeden Schuss an, bevor der tatsächliche Treffer gezeigt wird.
 Vergleichen Sie, wo Sie den Schuss vermutet haben, mit der tatsächlichen Lage.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1957"/>
+        <location filename="../LoginPage.qml" line="2034"/>
         <source>POSITION TRANSITION</source>
         <translation>STELLUNGSWECHSEL</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1963"/>
+        <location filename="../LoginPage.qml" line="2040"/>
         <source>Practise changing between Kneeling, Prone and Standing.
 Measure setup time, sighters, first-shot timing and early group repeatability after each transition.</source>
         <translation>Üben Sie den Wechsel zwischen Kniend, Liegend und Stehend.
 Messen Sie Aufbauzeit, Probeschüsse, Zeitpunkt des ersten Schusses und die frühe Wiederholbarkeit des Streukreises nach jedem Wechsel.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1965"/>
+        <location filename="../LoginPage.qml" line="2042"/>
         <source>Default: Kneeling → Prone → Standing · 5 verification shots</source>
         <translation>Voreinstellung: Kniend → Liegend → Stehend · 5 Kontrollschüsse</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1986"/>
+        <location filename="../LoginPage.qml" line="2063"/>
         <source>WIND MAP · BY POSITION</source>
         <translation>WINDKARTE · NACH STELLUNG</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1986"/>
-        <location filename="../LoginPage.qml" line="2503"/>
+        <location filename="../LoginPage.qml" line="2063"/>
+        <location filename="../LoginPage.qml" line="2580"/>
         <source>WIND MAP</source>
         <translation>WINDKARTE</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1994"/>
+        <location filename="../LoginPage.qml" line="2071"/>
         <source>Record the wind you observe while you shoot.
 Each shot keeps the condition that was standing when it was fired, for review afterwards.</source>
         <translation>Erfassen Sie den Wind, den Sie während des Schießens beobachten.
 Jeder Schuss behält die Bedingung, die bei seiner Abgabe herrschte, zur späteren Durchsicht.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2007"/>
+        <location filename="../LoginPage.qml" line="2084"/>
         <source>Wind Map is not available here</source>
         <translation>Die Windkarte ist hier nicht verfügbar</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2016"/>
+        <location filename="../LoginPage.qml" line="2093"/>
         <source>INCLUDED INSIGHTS</source>
         <translation>ENTHALTENE AUSWERTUNGEN</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2056"/>
-        <location filename="../LoginPage.qml" line="2268"/>
-        <location filename="../LoginPage.qml" line="2376"/>
+        <location filename="../LoginPage.qml" line="2133"/>
+        <location filename="../LoginPage.qml" line="2345"/>
+        <location filename="../LoginPage.qml" line="2453"/>
         <source>← Back</source>
         <translation>← Zurück</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2061"/>
+        <location filename="../LoginPage.qml" line="2138"/>
         <source>TECHNICAL BLOCKS SETUP</source>
         <translation>TECHNIKBLÖCKE EINRICHTEN</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2117"/>
+        <location filename="../LoginPage.qml" line="2194"/>
         <source>Blocks per position</source>
         <translation>Blöcke je Stellung</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2117"/>
+        <location filename="../LoginPage.qml" line="2194"/>
         <source>Blocks</source>
         <translation>Blöcke</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2125"/>
+        <location filename="../LoginPage.qml" line="2202"/>
         <source>Shots per block</source>
         <translation>Schüsse je Block</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2130"/>
-        <location filename="../LoginPage.qml" line="2299"/>
+        <location filename="../LoginPage.qml" line="2207"/>
+        <location filename="../LoginPage.qml" line="2376"/>
         <source>Total: </source>
         <translation>Gesamt: </translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="398"/>
-        <location filename="../LoginPage.qml" line="1171"/>
-        <location filename="../LoginPage.qml" line="1198"/>
-        <location filename="../LoginPage.qml" line="2130"/>
+        <location filename="../LoginPage.qml" line="427"/>
+        <location filename="../LoginPage.qml" line="1241"/>
+        <location filename="../LoginPage.qml" line="1268"/>
+        <location filename="../LoginPage.qml" line="2207"/>
         <source> shots</source>
         <translation> Schüsse</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1577"/>
+        <location filename="../LoginPage.qml" line="1367"/>
+        <source>Official %1 course · %2</source>
+        <translation>Offizielles %1-Programm · %2</translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="1654"/>
         <source>·  10 min</source>
         <translation>·  10 min</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1578"/>
+        <location filename="../LoginPage.qml" line="1655"/>
         <source>·  15 min</source>
         <translation>·  15 min</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1579"/>
+        <location filename="../LoginPage.qml" line="1656"/>
         <source>·  20 min</source>
         <translation>·  20 min</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1580"/>
+        <location filename="../LoginPage.qml" line="1657"/>
         <source>·  30 min</source>
         <translation>·  30 min</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1581"/>
+        <location filename="../LoginPage.qml" line="1658"/>
         <source>·  40 min</source>
         <translation>·  40 min</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1583"/>
-        <location filename="../LoginPage.qml" line="1584"/>
+        <location filename="../LoginPage.qml" line="1660"/>
+        <location filename="../LoginPage.qml" line="1661"/>
         <source>·  75 min</source>
         <translation>·  75 min</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1585"/>
+        <location filename="../LoginPage.qml" line="1662"/>
         <source>·  90 min</source>
         <translation>·  90 min</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1586"/>
+        <location filename="../LoginPage.qml" line="1663"/>
         <source>·  50 min</source>
         <translation>·  50 min</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1861"/>
+        <location filename="../LoginPage.qml" line="1938"/>
         <source>TECHNICAL BLOCKS · BY POSITION</source>
         <translation>TECHNIKBLÖCKE · NACH STELLUNG</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1861"/>
+        <location filename="../LoginPage.qml" line="1938"/>
         <source>TECHNICAL BLOCKS</source>
         <translation>TECHNIKBLÖCKE</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1874"/>
+        <location filename="../LoginPage.qml" line="1951"/>
         <source>Default: 36 shots · Kneeling → Prone → Standing · Configurable</source>
         <translation>Voreinstellung: 36 Schüsse · Kniend → Liegend → Stehend · konfigurierbar</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1875"/>
+        <location filename="../LoginPage.qml" line="1952"/>
         <source>Default: 30 shots · Configurable</source>
         <translation>Voreinstellung: 30 Schüsse · konfigurierbar</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1921"/>
+        <location filename="../LoginPage.qml" line="1998"/>
         <source>CALL &amp; DIAGNOSE · BY POSITION</source>
         <translation>ANSAGE &amp; DIAGNOSE · NACH STELLUNG</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1921"/>
+        <location filename="../LoginPage.qml" line="1998"/>
         <source>CALL &amp; DIAGNOSE</source>
         <translation>ANSAGE &amp; DIAGNOSE</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1934"/>
+        <location filename="../LoginPage.qml" line="2011"/>
         <source>Default: 10 called shots per position · Configurable</source>
         <translation>Voreinstellung: 10 angesagte Schüsse je Stellung · konfigurierbar</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1935"/>
+        <location filename="../LoginPage.qml" line="2012"/>
         <source>Default: 20 called shots · Configurable</source>
         <translation>Voreinstellung: 20 angesagte Schüsse · konfigurierbar</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1997"/>
+        <location filename="../LoginPage.qml" line="2074"/>
         <source>Manual entry · Kneeling, Prone and Standing kept separate</source>
         <translation>Manuelle Eingabe · Kniend, Liegend und Stehend bleiben getrennt</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1998"/>
+        <location filename="../LoginPage.qml" line="2075"/>
         <source>Manual entry · Direction in degrees, speed in m/s, or Calm</source>
         <translation>Manuelle Eingabe · Richtung in Grad, Geschwindigkeit in m/s oder Windstille</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2021"/>
+        <location filename="../LoginPage.qml" line="2098"/>
         <source>· Group Pattern Coach
 · Air Pistol technical checklist</source>
         <translation>· Streukreis-Musteranalyse
 · Technik-Checkliste Luftpistole</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2022"/>
+        <location filename="../LoginPage.qml" line="2099"/>
         <source>· Group Pattern Coach
 · Air Rifle technical checklist</source>
         <translation>· Streukreis-Musteranalyse
 · Technik-Checkliste Luftgewehr</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2023"/>
+        <location filename="../LoginPage.qml" line="2100"/>
         <source>· Position-specific Group Pattern Coach
 · Kneeling checklist · Prone checklist · Standing checklist</source>
         <translation>· Stellungsbezogene Streukreis-Musteranalyse
 · Checkliste Kniend · Checkliste Liegend · Checkliste Stehend</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2024"/>
+        <location filename="../LoginPage.qml" line="2101"/>
         <source>· Group Pattern Coach
 · Prone technical checklist</source>
         <translation>· Streukreis-Musteranalyse
 · Technik-Checkliste Liegend</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2067"/>
+        <location filename="../LoginPage.qml" line="2144"/>
         <source>The programme keeps Kneeling, Prone and Standing separate. Each position gets its own blocks, measurements, notes and comparison — results are never combined into one generic 3P analysis.</source>
         <translation>Das Programm hält Kniend, Liegend und Stehend getrennt. Jede Stellung erhält eigene Blöcke, Messungen, Notizen und Vergleiche — Ergebnisse werden nie zu einer allgemeinen Dreistellungs-Auswertung zusammengefasst.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2068"/>
+        <location filename="../LoginPage.qml" line="2145"/>
         <source>You shoot each block while focusing on one selected area. The block then stops and opens a measured review; after adding a note you continue to the next block. Hidden modes reveal scores and impacts only at the review.</source>
         <translation>Sie schießen jeden Block mit Konzentration auf einen gewählten Bereich. Der Block endet dann und öffnet eine gemessene Auswertung; nach dem Erfassen einer Notiz fahren Sie mit dem nächsten Block fort. In den verborgenen Modi werden Wertungen und Treffer erst bei der Auswertung gezeigt.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2134"/>
-        <location filename="../LoginPage.qml" line="2304"/>
-        <location filename="../LoginPage.qml" line="2442"/>
+        <location filename="../LoginPage.qml" line="2211"/>
+        <location filename="../LoginPage.qml" line="2381"/>
+        <location filename="../LoginPage.qml" line="2519"/>
         <source>Technical focus</source>
         <translation>Technischer Schwerpunkt</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2172"/>
+        <location filename="../LoginPage.qml" line="2249"/>
         <source>Visibility</source>
         <translation>Sichtbarkeit</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2192"/>
+        <location filename="../LoginPage.qml" line="2269"/>
         <source>No score or impact is shown until block review.</source>
         <translation>Bis zur Blockauswertung werden weder Wertung noch Treffer angezeigt.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2206"/>
+        <location filename="../LoginPage.qml" line="2283"/>
         <source>Optional shot calling — coming with Call &amp; Diagnose</source>
         <translation>Optionale Schussansage — kommt mit Ansage &amp; Diagnose</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2222"/>
-        <location filename="../LoginPage.qml" line="2336"/>
-        <location filename="../LoginPage.qml" line="2461"/>
-        <location filename="../LoginPage.qml" line="2560"/>
+        <location filename="../LoginPage.qml" line="2299"/>
+        <location filename="../LoginPage.qml" line="2413"/>
+        <location filename="../LoginPage.qml" line="2538"/>
+        <location filename="../LoginPage.qml" line="2637"/>
         <source>Back</source>
         <translation>Zurück</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2228"/>
-        <location filename="../LoginPage.qml" line="2342"/>
-        <location filename="../LoginPage.qml" line="2464"/>
-        <location filename="../LoginPage.qml" line="2564"/>
+        <location filename="../LoginPage.qml" line="2305"/>
+        <location filename="../LoginPage.qml" line="2419"/>
+        <location filename="../LoginPage.qml" line="2541"/>
+        <location filename="../LoginPage.qml" line="2641"/>
         <source>Confirm setup</source>
         <translation>Einrichtung bestätigen</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2272"/>
+        <location filename="../LoginPage.qml" line="2349"/>
         <source>CALL &amp; DIAGNOSE SETUP</source>
         <translation>ANSAGE &amp; DIAGNOSE EINRICHTEN</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2277"/>
+        <location filename="../LoginPage.qml" line="2354"/>
         <source>After every shot the actual impact stays hidden. Tap the target where you believe the shot landed, confirm your call, then compare it with the measured result. This assesses how accurately you recognise your own shot.</source>
         <translation>Nach jedem Schuss bleibt der tatsächliche Treffer verborgen. Tippen Sie auf der Scheibe dorthin, wo Sie den Schuss vermuten, bestätigen Sie Ihre Ansage und vergleichen Sie sie dann mit dem gemessenen Ergebnis. Das prüft, wie genau Sie Ihren eigenen Schuss erkennen.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2279"/>
+        <location filename="../LoginPage.qml" line="2356"/>
         <source> Kneeling, Prone and Standing are kept separate.</source>
         <translation> Kniend, Liegend und Stehend bleiben getrennt.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2286"/>
+        <location filename="../LoginPage.qml" line="2363"/>
         <source>Called shots / position</source>
         <translation>Angesagte Schüsse / Stellung</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2286"/>
+        <location filename="../LoginPage.qml" line="2363"/>
         <source>Called shots</source>
         <translation>Angesagte Schüsse</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2322"/>
+        <location filename="../LoginPage.qml" line="2399"/>
         <source>Reveal happens immediately after each call is confirmed.</source>
         <translation>Die Anzeige erfolgt unmittelbar nach der Bestätigung jeder Ansage.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2378"/>
+        <location filename="../LoginPage.qml" line="2455"/>
         <source>POSITION TRANSITION SETUP</source>
         <translation>STELLUNGSWECHSEL EINRICHTEN</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2381"/>
+        <location filename="../LoginPage.qml" line="2458"/>
         <source>This programme measures how consistently you rebuild each Three-Position shooting position. You begin a position setup, confirm when the position is ready, fire optional sighters, then a short counted verification block. %1 compares the timing and measured result of each position. This is a Training session and not an official competition result.</source>
         <translation>Dieses Programm misst, wie gleichmäßig Sie jede Stellung des Dreistellungskampfs wieder aufbauen. Sie beginnen einen Stellungsaufbau, bestätigen, wenn die Stellung bereit ist, geben optionale Probeschüsse ab und schießen dann einen kurzen gezählten Kontrollblock. %1 vergleicht Zeitbedarf und gemessenes Ergebnis jeder Stellung. Dies ist eine Trainingssitzung und kein offizielles Wettkampfergebnis.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2385"/>
+        <location filename="../LoginPage.qml" line="2462"/>
         <source>Positions</source>
         <translation>Stellungen</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2403"/>
+        <location filename="../LoginPage.qml" line="2480"/>
         <source>Verification shots</source>
         <translation>Kontrollschüsse</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2415"/>
+        <location filename="../LoginPage.qml" line="2492"/>
         <source>Repeats</source>
         <translation>Wiederholungen</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2427"/>
+        <location filename="../LoginPage.qml" line="2504"/>
         <source>Checklist</source>
         <translation>Checkliste</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2499"/>
+        <location filename="../LoginPage.qml" line="2576"/>
         <source>← Back to Training Lab</source>
         <translation>← Zurück zum Trainingslabor</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2505"/>
+        <location filename="../LoginPage.qml" line="2582"/>
         <source>50 m Rifle 3 Positions · Kneeling, Prone and Standing kept separate</source>
         <translation>50 m Gewehr Dreistellung · Kniend, Liegend und Stehend bleiben getrennt</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2506"/>
+        <location filename="../LoginPage.qml" line="2583"/>
         <source>50 m Rifle Prone</source>
         <translation>50 m Gewehr Liegend</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2509"/>
+        <location filename="../LoginPage.qml" line="2586"/>
         <source>You record the wind you observe. Every shot keeps the condition that was standing when it was fired, so the two can be reviewed together afterwards. Nothing here is scored or corrected.</source>
         <translation>Sie erfassen den Wind, den Sie beobachten. Jeder Schuss behält die Bedingung, die bei seiner Abgabe herrschte, sodass beides anschließend gemeinsam durchgesehen werden kann. Nichts davon wird gewertet oder korrigiert.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2512"/>
+        <location filename="../LoginPage.qml" line="2589"/>
         <source>Planned shots</source>
         <translation>Geplante Schüsse</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2533"/>
+        <location filename="../LoginPage.qml" line="2610"/>
         <source>Sighters</source>
         <translation>Probeschüsse</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2551"/>
+        <location filename="../LoginPage.qml" line="2628"/>
         <source>Sighters are recorded with their conditions but are never counted in the session statistics.</source>
         <translation>Probeschüsse werden mit ihren Bedingungen erfasst, zählen aber nie in die Sitzungsstatistik.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2620"/>
+        <location filename="../LoginPage.qml" line="2697"/>
         <source>READY TO START</source>
         <translation>BEREIT ZUM START</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2621"/>
+        <location filename="../LoginPage.qml" line="2698"/>
         <source>CHECK BEFORE STARTING</source>
         <translation>VOR DEM START PRÜFEN</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2651"/>
+        <location filename="../LoginPage.qml" line="2728"/>
         <source>Load saved session</source>
         <translation>Gespeicherte Sitzung laden</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2694"/>
+        <location filename="../LoginPage.qml" line="2776"/>
         <source>Cannot start Wind Map</source>
         <translation>Windkarte kann nicht gestartet werden</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2707"/>
+        <location filename="../LoginPage.qml" line="2789"/>
         <source>Cannot start Position Transition</source>
         <translation>Stellungswechsel kann nicht gestartet werden</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2807"/>
+        <location filename="../LoginPage.qml" line="2889"/>
         <source>Electronic target control</source>
         <translation>Elektronische Scheibensteuerung</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2696"/>
-        <location filename="../LoginPage.qml" line="2709"/>
-        <location filename="../LoginPage.qml" line="2724"/>
+        <location filename="../LoginPage.qml" line="2778"/>
+        <location filename="../LoginPage.qml" line="2791"/>
+        <location filename="../LoginPage.qml" line="2806"/>
         <source>The session could not be started.</source>
         <translation>Die Sitzung konnte nicht gestartet werden.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2721"/>
+        <location filename="../LoginPage.qml" line="2803"/>
         <source>Cannot start Call &amp; Diagnose</source>
         <translation>Ansage &amp; Diagnose kann nicht gestartet werden</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2739"/>
+        <location filename="../LoginPage.qml" line="2821"/>
         <source>Cannot start training</source>
         <translation>Training kann nicht gestartet werden</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2742"/>
+        <location filename="../LoginPage.qml" line="2824"/>
         <source>The training session could not be started.</source>
         <translation>Die Trainingssitzung konnte nicht gestartet werden.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1839"/>
+        <location filename="../LoginPage.qml" line="1916"/>
         <source>Training Lab</source>
         <translation>Trainingslabor</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="93"/>
+        <location filename="../LoginPage.qml" line="120"/>
         <source>ISSF FINAL</source>
         <translation>ISSF-FINALE</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="96"/>
+        <location filename="../LoginPage.qml" line="123"/>
         <source>No programme selected</source>
         <translation>Kein Programm gewählt</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="102"/>
-        <location filename="../LoginPage.qml" line="1478"/>
+        <location filename="../LoginPage.qml" line="129"/>
+        <location filename="../LoginPage.qml" line="1555"/>
         <source>3 POSITIONS</source>
         <translation>3 STELLUNGEN</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2814"/>
+        <location filename="../LoginPage.qml" line="2896"/>
         <source>Contact us</source>
         <translation>Kontakt</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2821"/>
+        <location filename="../LoginPage.qml" line="2903"/>
         <source>● Connected</source>
         <translation>● Verbunden</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2821"/>
+        <location filename="../LoginPage.qml" line="2903"/>
         <source>● Offline</source>
         <translation>● Offline</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2837"/>
+        <location filename="../LoginPage.qml" line="2919"/>
         <source>☁ Share incomplete</source>
         <translation>☁ Freigabe unvollständig</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2838"/>
+        <location filename="../LoginPage.qml" line="2920"/>
         <source>☁ Share on</source>
         <translation>☁ Freigabe ein</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2839"/>
+        <location filename="../LoginPage.qml" line="2921"/>
         <source>☁ Share off</source>
         <translation>☁ Freigabe aus</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2906"/>
+        <location filename="../LoginPage.qml" line="2988"/>
         <source>Accept</source>
         <translation>Annehmen</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2924"/>
+        <location filename="../LoginPage.qml" line="3006"/>
         <source>Lincence verification Process</source>
         <translation>Lizenzprüfung</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2932"/>
+        <location filename="../LoginPage.qml" line="3014"/>
         <source>e-mail id</source>
         <translation>E-Mail-Adresse</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2942"/>
+        <location filename="../LoginPage.qml" line="3024"/>
         <source>Error</source>
         <translation>Fehler</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1002"/>
-        <location filename="../LoginPage.qml" line="2961"/>
+        <location filename="../LoginPage.qml" line="1072"/>
+        <location filename="../LoginPage.qml" line="3043"/>
         <source>Cancel</source>
         <translation>Abbrechen</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2953"/>
+        <location filename="../LoginPage.qml" line="3035"/>
         <source>Please enter Licenced user id</source>
         <translation>Bitte geben Sie die lizenzierte Benutzerkennung ein</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2970"/>
+        <location filename="../LoginPage.qml" line="3052"/>
         <source>Validate</source>
         <translation>Prüfen</translation>
     </message>
@@ -4238,7 +4272,7 @@ Die Anwendung muss neu gestartet werden, damit die Änderung wirksam wird.</tran
     </message>
     <message>
         <location filename="../ShootingPage.qml" line="123"/>
-        <location filename="../ShootingPage.qml" line="408"/>
+        <location filename="../ShootingPage.qml" line="437"/>
         <source>PRONE</source>
         <translation>LIEGEND</translation>
     </message>
@@ -4254,13 +4288,13 @@ Die Anwendung muss neu gestartet werden, damit die Änderung wirksam wird.</tran
     </message>
     <message>
         <location filename="../ShootingPage.qml" line="133"/>
-        <location filename="../ShootingPage.qml" line="409"/>
+        <location filename="../ShootingPage.qml" line="438"/>
         <source>SIGHTING</source>
         <translation>PROBESCHIESSEN</translation>
     </message>
     <message>
         <location filename="../ShootingPage.qml" line="133"/>
-        <location filename="../ShootingPage.qml" line="409"/>
+        <location filename="../ShootingPage.qml" line="438"/>
         <source>MATCH</source>
         <translation>WETTKAMPF</translation>
     </message>
@@ -4285,210 +4319,210 @@ Nach dem Beenden können keine weiteren Schüsse erfasst werden.</translation>
         <translation>Abbrechen</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="408"/>
+        <location filename="../ShootingPage.qml" line="437"/>
         <source>SIGHT</source>
         <translation>PROBE</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="408"/>
+        <location filename="../ShootingPage.qml" line="437"/>
         <source>KNEEL</source>
         <translation>KNIEND</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="408"/>
+        <location filename="../ShootingPage.qml" line="437"/>
         <source>STAND</source>
         <translation>STEHEND</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="462"/>
-        <location filename="../ShootingPage.qml" line="559"/>
+        <location filename="../ShootingPage.qml" line="491"/>
+        <location filename="../ShootingPage.qml" line="588"/>
         <source>SHOTS</source>
         <translation>SCHÜSSE</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="490"/>
+        <location filename="../ShootingPage.qml" line="519"/>
         <source>DEMO</source>
         <translation>DEMO</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="514"/>
+        <location filename="../ShootingPage.qml" line="543"/>
         <source>Wind Map</source>
         <translation>Windkarte</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="515"/>
+        <location filename="../ShootingPage.qml" line="544"/>
         <source>Position Transition</source>
         <translation>Stellungswechsel</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="516"/>
+        <location filename="../ShootingPage.qml" line="545"/>
         <source>Call &amp; Diagnose</source>
         <translation>Ansage &amp; Diagnose</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="517"/>
+        <location filename="../ShootingPage.qml" line="546"/>
         <source>Technical Blocks</source>
         <translation>Technikblöcke</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="528"/>
-        <location filename="../ShootingPage.qml" line="534"/>
-        <location filename="../ShootingPage.qml" line="558"/>
+        <location filename="../ShootingPage.qml" line="557"/>
+        <location filename="../ShootingPage.qml" line="563"/>
+        <location filename="../ShootingPage.qml" line="587"/>
         <source>SIGHTERS</source>
         <translation>PROBESCHÜSSE</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="529"/>
+        <location filename="../ShootingPage.qml" line="558"/>
         <source>COUNTED SHOTS</source>
         <translation>GEZÄHLTE SCHÜSSE</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="533"/>
+        <location filename="../ShootingPage.qml" line="562"/>
         <source>POSITION SETUP</source>
         <translation>STELLUNGSAUFBAU</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="535"/>
+        <location filename="../ShootingPage.qml" line="564"/>
         <source>VERIFICATION</source>
         <translation>KONTROLLE</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="536"/>
+        <location filename="../ShootingPage.qml" line="565"/>
         <source>POSITION REVIEW</source>
         <translation>STELLUNGSAUSWERTUNG</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="537"/>
+        <location filename="../ShootingPage.qml" line="566"/>
         <source>COMPLETE</source>
         <translation>ABGESCHLOSSEN</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="540"/>
-        <location filename="../ShootingPage.qml" line="753"/>
+        <location filename="../ShootingPage.qml" line="569"/>
+        <location filename="../ShootingPage.qml" line="782"/>
         <source>CALL &amp; DIAGNOSE</source>
         <translation>ANSAGE &amp; DIAGNOSE</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="541"/>
+        <location filename="../ShootingPage.qml" line="570"/>
         <source>TECHNICAL BLOCK</source>
         <translation>TECHNIKBLOCK</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="632"/>
+        <location filename="../ShootingPage.qml" line="661"/>
         <source>VIEW REPORT  →</source>
         <translation>BERICHT ANZEIGEN  →</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="634"/>
+        <location filename="../ShootingPage.qml" line="663"/>
         <source>MATCH IN PROGRESS  ·  </source>
         <translation>WETTKAMPF LÄUFT  ·  </translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="634"/>
+        <location filename="../ShootingPage.qml" line="663"/>
         <source>FINISH MATCH</source>
         <translation>WETTKAMPF BEENDEN</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="636"/>
+        <location filename="../ShootingPage.qml" line="665"/>
         <source>START </source>
         <translation>START </translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="637"/>
+        <location filename="../ShootingPage.qml" line="666"/>
         <source>START MATCH  →</source>
         <translation>WETTKAMPF STARTEN  →</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="676"/>
+        <location filename="../ShootingPage.qml" line="705"/>
         <source>Feed paper</source>
         <translation>Papier vorschieben</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="751"/>
+        <location filename="../ShootingPage.qml" line="780"/>
         <source>WIND MAP</source>
         <translation>WINDKARTE</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="752"/>
+        <location filename="../ShootingPage.qml" line="781"/>
         <source>POSITION TRANSITION</source>
         <translation>STELLUNGSWECHSEL</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="754"/>
+        <location filename="../ShootingPage.qml" line="783"/>
         <source>TECHNICAL BLOCKS</source>
         <translation>TECHNIKBLÖCKE</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="1315"/>
+        <location filename="../ShootingPage.qml" line="1344"/>
         <source>Training report saved</source>
         <translation>Trainingsbericht gespeichert</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="1316"/>
-        <location filename="../ShootingPage.qml" line="1353"/>
-        <location filename="../ShootingPage.qml" line="1458"/>
+        <location filename="../ShootingPage.qml" line="1345"/>
+        <location filename="../ShootingPage.qml" line="1382"/>
+        <location filename="../ShootingPage.qml" line="1487"/>
         <source>Saved to:
 %1</source>
         <translation>Gespeichert unter:
 %1</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="1317"/>
-        <location filename="../ShootingPage.qml" line="1354"/>
-        <location filename="../ShootingPage.qml" line="1459"/>
+        <location filename="../ShootingPage.qml" line="1346"/>
+        <location filename="../ShootingPage.qml" line="1383"/>
+        <location filename="../ShootingPage.qml" line="1488"/>
         <source>OK</source>
         <translation>OK</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="1320"/>
-        <location filename="../ShootingPage.qml" line="1356"/>
-        <location filename="../ShootingPage.qml" line="1461"/>
+        <location filename="../ShootingPage.qml" line="1349"/>
+        <location filename="../ShootingPage.qml" line="1385"/>
+        <location filename="../ShootingPage.qml" line="1490"/>
         <source>Export failed</source>
         <translation>Export fehlgeschlagen</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="1352"/>
+        <location filename="../ShootingPage.qml" line="1381"/>
         <source>Call &amp; Diagnose report saved</source>
         <translation>Bericht zu Ansage &amp; Diagnose gespeichert</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="1386"/>
-        <location filename="../ShootingPage.qml" line="1400"/>
+        <location filename="../ShootingPage.qml" line="1415"/>
+        <location filename="../ShootingPage.qml" line="1429"/>
         <source>Call &amp; Diagnose could not be closed safely</source>
         <translation>Ansage &amp; Diagnose konnte nicht sicher geschlossen werden</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="1388"/>
-        <location filename="../ShootingPage.qml" line="1401"/>
-        <location filename="../ShootingPage.qml" line="1488"/>
-        <location filename="../ShootingPage.qml" line="1501"/>
-        <location filename="../ShootingPage.qml" line="1590"/>
-        <location filename="../ShootingPage.qml" line="1603"/>
-        <location filename="../ShootingPage.qml" line="1763"/>
-        <location filename="../ShootingPage.qml" line="1784"/>
+        <location filename="../ShootingPage.qml" line="1417"/>
+        <location filename="../ShootingPage.qml" line="1430"/>
+        <location filename="../ShootingPage.qml" line="1517"/>
+        <location filename="../ShootingPage.qml" line="1530"/>
+        <location filename="../ShootingPage.qml" line="1619"/>
+        <location filename="../ShootingPage.qml" line="1632"/>
+        <location filename="../ShootingPage.qml" line="1792"/>
+        <location filename="../ShootingPage.qml" line="1813"/>
         <source>Your session is preserved and can be recovered. Please try again.</source>
         <translation>Ihre Sitzung ist gesichert und kann wiederhergestellt werden. Bitte versuchen Sie es erneut.</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="1457"/>
+        <location filename="../ShootingPage.qml" line="1486"/>
         <source>Position Transition report saved</source>
         <translation>Bericht zum Stellungswechsel gespeichert</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="1486"/>
-        <location filename="../ShootingPage.qml" line="1500"/>
+        <location filename="../ShootingPage.qml" line="1515"/>
+        <location filename="../ShootingPage.qml" line="1529"/>
         <source>Position Transition could not be closed safely</source>
         <translation>Stellungswechsel konnte nicht sicher geschlossen werden</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="1588"/>
-        <location filename="../ShootingPage.qml" line="1602"/>
+        <location filename="../ShootingPage.qml" line="1617"/>
+        <location filename="../ShootingPage.qml" line="1631"/>
         <source>Wind Map could not be closed safely</source>
         <translation>Windkarte konnte nicht sicher geschlossen werden</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="1760"/>
-        <location filename="../ShootingPage.qml" line="1781"/>
+        <location filename="../ShootingPage.qml" line="1789"/>
+        <location filename="../ShootingPage.qml" line="1810"/>
         <source>Training could not be closed safely</source>
         <translation>Training konnte nicht sicher geschlossen werden</translation>
     </message>
@@ -5653,105 +5687,115 @@ WETTKAMPFERGEBNIS</translation>
 <context>
     <name>main</name>
     <message>
-        <location filename="../main.qml" line="214"/>
-        <location filename="../main.qml" line="230"/>
+        <location filename="../main.qml" line="263"/>
+        <location filename="../main.qml" line="279"/>
         <source>Position Transition could not be closed safely</source>
         <translation>Stellungswechsel konnte nicht sicher geschlossen werden</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="189"/>
-        <location filename="../main.qml" line="205"/>
-        <location filename="../main.qml" line="215"/>
-        <location filename="../main.qml" line="231"/>
-        <location filename="../main.qml" line="241"/>
-        <location filename="../main.qml" line="257"/>
-        <location filename="../main.qml" line="270"/>
-        <location filename="../main.qml" line="288"/>
+        <location filename="../main.qml" line="238"/>
+        <location filename="../main.qml" line="254"/>
+        <location filename="../main.qml" line="264"/>
+        <location filename="../main.qml" line="280"/>
+        <location filename="../main.qml" line="290"/>
+        <location filename="../main.qml" line="306"/>
+        <location filename="../main.qml" line="319"/>
+        <location filename="../main.qml" line="337"/>
         <source>Your session is preserved and can be recovered. Please try again.</source>
         <translation>Ihre Sitzung ist gesichert und kann wiederhergestellt werden. Bitte versuchen Sie es erneut.</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="218"/>
+        <location filename="../main.qml" line="267"/>
         <source>Close Position Transition?</source>
         <translation>Stellungswechsel schließen?</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="193"/>
-        <location filename="../main.qml" line="219"/>
-        <location filename="../main.qml" line="245"/>
+        <location filename="../main.qml" line="242"/>
+        <location filename="../main.qml" line="268"/>
+        <location filename="../main.qml" line="294"/>
         <source>Save and close this session, or keep it so you can resume it next time?</source>
         <translation>Diese Sitzung speichern und schließen oder behalten, um sie beim nächsten Mal fortzusetzen?</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="188"/>
-        <location filename="../main.qml" line="204"/>
+        <location filename="../main.qml" line="85"/>
+        <source>uses independent position clocks</source>
+        <translation>verwendet eigenständige Stellungszeiten</translation>
+    </message>
+    <message>
+        <location filename="../main.qml" line="86"/>
+        <source>is a %1-shot course over %2 positions</source>
+        <translation>ist ein Programm mit %1 Schuss über %2 Stellungen</translation>
+    </message>
+    <message>
+        <location filename="../main.qml" line="237"/>
+        <location filename="../main.qml" line="253"/>
         <source>Wind Map could not be closed safely</source>
         <translation>Windkarte konnte nicht sicher geschlossen werden</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="192"/>
+        <location filename="../main.qml" line="241"/>
         <source>Close Wind Map?</source>
         <translation>Windkarte schließen?</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="195"/>
-        <location filename="../main.qml" line="221"/>
-        <location filename="../main.qml" line="247"/>
-        <location filename="../main.qml" line="277"/>
-        <location filename="../main.qml" line="299"/>
+        <location filename="../main.qml" line="244"/>
+        <location filename="../main.qml" line="270"/>
+        <location filename="../main.qml" line="296"/>
+        <location filename="../main.qml" line="326"/>
+        <location filename="../main.qml" line="348"/>
         <source>Cancel</source>
         <translation>Abbrechen</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="196"/>
-        <location filename="../main.qml" line="222"/>
-        <location filename="../main.qml" line="248"/>
-        <location filename="../main.qml" line="278"/>
+        <location filename="../main.qml" line="245"/>
+        <location filename="../main.qml" line="271"/>
+        <location filename="../main.qml" line="297"/>
+        <location filename="../main.qml" line="327"/>
         <source>Keep for Recovery</source>
         <translation>Zur Wiederherstellung behalten</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="197"/>
-        <location filename="../main.qml" line="223"/>
-        <location filename="../main.qml" line="249"/>
-        <location filename="../main.qml" line="279"/>
+        <location filename="../main.qml" line="246"/>
+        <location filename="../main.qml" line="272"/>
+        <location filename="../main.qml" line="298"/>
+        <location filename="../main.qml" line="328"/>
         <source>Save and Close</source>
         <translation>Speichern und schließen</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="240"/>
-        <location filename="../main.qml" line="256"/>
+        <location filename="../main.qml" line="289"/>
+        <location filename="../main.qml" line="305"/>
         <source>Call &amp; Diagnose could not be closed safely</source>
         <translation>Ansage &amp; Diagnose konnte nicht sicher geschlossen werden</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="244"/>
+        <location filename="../main.qml" line="293"/>
         <source>Close Call &amp; Diagnose?</source>
         <translation>Ansage &amp; Diagnose schließen?</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="269"/>
-        <location filename="../main.qml" line="287"/>
+        <location filename="../main.qml" line="318"/>
+        <location filename="../main.qml" line="336"/>
         <source>Training could not be closed safely</source>
         <translation>Training konnte nicht sicher geschlossen werden</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="274"/>
+        <location filename="../main.qml" line="323"/>
         <source>Close Training?</source>
         <translation>Training schließen?</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="275"/>
+        <location filename="../main.qml" line="324"/>
         <source>Save and close this training session, or keep it so you can resume it next time?</source>
         <translation>Diese Trainingssitzung speichern und schließen oder behalten, um sie beim nächsten Mal fortzusetzen?</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="296"/>
+        <location filename="../main.qml" line="345"/>
         <source>Save Match?</source>
         <translation>Wettkampf speichern?</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="297"/>
+        <location filename="../main.qml" line="346"/>
         <source>The match is finished.
 
 Do you want to save this match before closing the application?</source>
@@ -5760,115 +5804,115 @@ Do you want to save this match before closing the application?</source>
 Möchten Sie diesen Wettkampf speichern, bevor die Anwendung geschlossen wird?</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="300"/>
+        <location filename="../main.qml" line="349"/>
         <source>Discard</source>
         <translation>Verwerfen</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="301"/>
+        <location filename="../main.qml" line="350"/>
         <source>Save</source>
         <translation>Speichern</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="377"/>
+        <location filename="../main.qml" line="426"/>
         <source>Call &amp; Diagnose Recovery Failed</source>
         <translation>Wiederherstellung von Ansage &amp; Diagnose fehlgeschlagen</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="378"/>
+        <location filename="../main.qml" line="427"/>
         <source>The Call &amp; Diagnose session could not be resumed. Its journal has been left intact.</source>
         <translation>Die Sitzung „Ansage &amp; Diagnose“ konnte nicht fortgesetzt werden. Ihr Journal wurde unverändert gelassen.</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="385"/>
+        <location filename="../main.qml" line="434"/>
         <source>Wind Map Recovery Failed</source>
         <translation>Wiederherstellung der Windkarte fehlgeschlagen</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="386"/>
+        <location filename="../main.qml" line="435"/>
         <source>The Wind Map session could not be resumed. Its journal has been left intact.</source>
         <translation>Die Windkarten-Sitzung konnte nicht fortgesetzt werden. Ihr Journal wurde unverändert gelassen.</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="393"/>
+        <location filename="../main.qml" line="442"/>
         <source>Position Transition Recovery Failed</source>
         <translation>Wiederherstellung des Stellungswechsels fehlgeschlagen</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="394"/>
+        <location filename="../main.qml" line="443"/>
         <source>The Position Transition session could not be resumed. Its journal has been left intact.</source>
         <translation>Die Stellungswechsel-Sitzung konnte nicht fortgesetzt werden. Ihr Journal wurde unverändert gelassen.</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="401"/>
+        <location filename="../main.qml" line="450"/>
         <source>Training Recovery Failed</source>
         <translation>Wiederherstellung des Trainings fehlgeschlagen</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="402"/>
+        <location filename="../main.qml" line="451"/>
         <source>The training session could not be resumed. Its journal has been left intact.</source>
         <translation>Die Trainingssitzung konnte nicht fortgesetzt werden. Ihr Journal wurde unverändert gelassen.</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="419"/>
+        <location filename="../main.qml" line="468"/>
         <source>Recovery Not Yet Available</source>
         <translation>Wiederherstellung noch nicht verfügbar</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="422"/>
+        <location filename="../main.qml" line="471"/>
         <source>intact and can be resumed by a later %1 version.</source>
         <translation>unverändert und kann von einer späteren %1-Version fortgesetzt werden.</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="427"/>
+        <location filename="../main.qml" line="476"/>
         <source>Recovery Not Supported</source>
         <translation>Wiederherstellung nicht unterstützt</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="428"/>
+        <location filename="../main.qml" line="477"/>
         <source>This session&apos;s discipline (%1) cannot be recovered by this build.</source>
         <translation>Die Disziplin dieser Sitzung (%1) kann von diesem Build nicht wiederhergestellt werden.</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="430"/>
+        <location filename="../main.qml" line="479"/>
         <source>unknown</source>
         <translation>unbekannt</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="468"/>
-        <location filename="../main.qml" line="499"/>
-        <location filename="../main.qml" line="539"/>
+        <location filename="../main.qml" line="517"/>
+        <location filename="../main.qml" line="548"/>
+        <location filename="../main.qml" line="588"/>
         <source>Recovery Failed</source>
         <translation>Wiederherstellung fehlgeschlagen</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="469"/>
-        <location filename="../main.qml" line="540"/>
+        <location filename="../main.qml" line="518"/>
+        <location filename="../main.qml" line="589"/>
         <source>The unfinished match could not be resumed.</source>
         <translation>Der unabgeschlossene Wettkampf konnte nicht fortgesetzt werden.</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="500"/>
+        <location filename="../main.qml" line="549"/>
         <source>The unfinished 10m final could not be resumed.</source>
         <translation>Das unabgeschlossene 10-m-Finale konnte nicht fortgesetzt werden.</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="601"/>
+        <location filename="../main.qml" line="650"/>
         <source>Could not change operating mode</source>
         <translation>Betriebsart konnte nicht geändert werden</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="619"/>
+        <location filename="../main.qml" line="668"/>
         <source>Exporting Report</source>
         <translation>Bericht wird exportiert</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="629"/>
+        <location filename="../main.qml" line="678"/>
         <source>Session Journal Error</source>
         <translation>Fehler im Sitzungsjournal</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="630"/>
+        <location filename="../main.qml" line="679"/>
         <source>The session journal could not be written. Shots continue to be scored, but this session may not be recoverable after a crash.</source>
         <translation>Das Sitzungsjournal konnte nicht geschrieben werden. Schüsse werden weiterhin gewertet, diese Sitzung ist nach einem Absturz aber möglicherweise nicht wiederherstellbar.</translation>
     </message>

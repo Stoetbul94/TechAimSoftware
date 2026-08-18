@@ -37,6 +37,55 @@ ApplicationWindow {
     // does NOT run a fresh preparation phase — the state is already restored.
     property bool isRecoveredGame: false
     property int gameRange: APPSETTINGS.get10or50mRange()   // 10 for 10m 50 for 50m
+    // The COMPETITION PROFILE currently governing the session, as a stable
+    // programmeId. Empty means "no profile authority" - the legacy ISSF /
+    // practice path, whose durations still come from AppSettings exactly as
+    // before. Ancestor scope, like gameRange, so LoginPage and ShootingPage
+    // read the same value without threading it through signals.
+    property string activeProgrammeId: ""
+    // The resolved definition, or null. Resolved ONCE per selection so no
+    // timing site has to look a programme up, and none can look up a different
+    // one. Display text is never consulted.
+    readonly property var activeCompetition:
+        activeProgrammeId !== ""
+            ? competitionCatalogue.competitionDefinition(activeProgrammeId) : null
+    // Authoritative durations in SECONDS, or -1 when the profile declares none.
+    // -1 is deliberate: a caller that ignores it gets an obviously invalid
+    // value rather than a plausible wrong clock.
+    readonly property int profileMatchSeconds:
+        (activeCompetition && activeCompetition.matchMinutes > 0)
+            ? activeCompetition.matchMinutes * 60 : -1
+    readonly property int profilePrepSeconds:
+        (activeCompetition && activeCompetition.preparationMinutes > 0)
+            ? activeCompetition.preparationMinutes * 60 : -1
+    // A profile whose DECLARED SHAPE the current engine has no course for. The
+    // test is about capability, never about which federation wrote the rule.
+    // Two things are missing today:
+    //   · independent position clocks - the 1.20 sequencer is not built, and
+    //     running that course on one master clock would be a result-integrity
+    //     defect, not a rounding error;
+    //   · every multi-position course except the 50 m 60-shot one the existing
+    //     3P engine conducts (see is3PMatch: 50 m, sub-mode 1, 60 shots).
+    //     A 120-shot 3x40 has no engine at all, so it must not appear to run.
+    readonly property bool profileNeedsUnbuiltEngine:
+        activeCompetition !== null
+        && (activeCompetition.timingModel === "INDEPENDENT_POSITION_CLOCKS"
+            || (profileIsMultiPosition
+                && !(activeCompetition.distanceM === 50
+                     && activeCompetition.shotCount === 60)))
+    readonly property bool profileIsMultiPosition:
+        activeCompetition !== null
+        && activeCompetition.positions !== undefined
+        && activeCompetition.positions.length > 1
+    // WHY the start is refused, in the athlete's own terms. Derived here so the
+    // block always states the actual reason instead of one stock sentence.
+    readonly property string profileUnbuiltEngineReason:
+        !profileNeedsUnbuiltEngine ? ""
+        : (activeCompetition.timingModel === "INDEPENDENT_POSITION_CLOCKS"
+            ? qsTr("uses independent position clocks")
+            : qsTr("is a %1-shot course over %2 positions")
+                .arg(activeCompetition.shotCount)
+                .arg(activeCompetition.positions.length))
     property int shootsPerSeries: 10
     property string greenColor: "#00ff00" //"lightgreen"
     property string mpiColor: /*"transparent"//*/"blue"
@@ -654,6 +703,14 @@ ApplicationWindow {
 
         function updateGameType()
         {
+            // PROFILE FIRST. A competition definition carries its own shot
+            // count and display; the legacy index arithmetic below only runs
+            // for programmes that have no definition - i.e. every ISSF and
+            // practice entry, exactly as before.
+            if (window.activeCompetition !== null) {
+                if (shootingPage.applyCompetitionProfile(window.activeCompetition))
+                    return
+            }
             if (gameMode === 0)
             {
                 if (gameEvent === 0)

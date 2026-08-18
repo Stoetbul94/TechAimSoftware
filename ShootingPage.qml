@@ -281,6 +281,19 @@ Item {
         return PRODUCT.displayName.replace(/\s+/g, "")
     }
 
+    // A competition profile sets the course DIRECTLY: shot count and display
+    // come from the definition, not from a ListModel row. That is what lets a
+    // programme exist whose shot count has no legacy row at all - DSB 1.60 is
+    // 120 shots, and no legacy event card carries that.
+    function applyCompetitionProfile(def) {
+        if (!def) return false
+        matchShootCount = def.shotCount
+        currentGameDisplay1 = qsTr(def.gameDisplay1Key)
+        currentGameDisplay2 = qsTr(def.gameDisplay2Key)
+        currentmatchDisplay = qsTr(def.matchDisplayKey)
+        return true
+    }
+
     function setCurrentGameType(index)
     {
         if (APPSETTINGS.getDeveloperMode()) console.log("setCurrentGameType  ", index)
@@ -336,10 +349,26 @@ Item {
             MODREADER.removeSetaLaneShootDataFile()
     }
 
+    // THE one place a match duration is resolved. Profile authority when the
+    // active competition declares a duration; the legacy shot-count-keyed
+    // lookup otherwise, byte-for-byte as before for ISSF and the presets.
+    function authoritativeMatchSeconds() {
+        if (window.profileMatchSeconds > 0) return window.profileMatchSeconds
+        // A profile that declares independent position clocks has no master
+        // duration, and must NOT borrow one from the shot-count table: a
+        // 60-shot 1.20 course would otherwise pick up the ISSF 75-minute clock.
+        // 0 cannot run a wrong match, and the phase is blocked before it starts.
+        if (window.profileNeedsUnbuiltEngine) return 0
+        return APPSETTINGS.getTimeCount(matchShootCount)
+    }
+    function authoritativePrepSeconds() {
+        return window.profilePrepSeconds > 0 ? window.profilePrepSeconds
+                                             : APPSETTINGS.getPrepTimeCount()
+    }
+
     onMatchShootCountChanged: {
         centerPanel.shotCount = matchShootCount
-//        console.log(APPSETTINGS.getTimeCount(matchShootCount)," Match Shoot count is ",matchShootCount)
-        centerPanel.totalGameTime = APPSETTINGS.getTimeCount(matchShootCount)
+        centerPanel.totalGameTime = authoritativeMatchSeconds()
         MODREADER.setCurrentMatchTotalShotsCount(matchShootCount)
     }
 
@@ -347,7 +376,7 @@ Item {
     // unchanged (e.g. Prone <-> 3 Positions both = 60 shots) so the countdown
     // reflects the current discipline's official time.
     function refreshMatchTime() {
-        centerPanel.totalGameTime = APPSETTINGS.getTimeCount(matchShootCount)
+        centerPanel.totalGameTime = authoritativeMatchSeconds()
         centerPanel.shotCount = matchShootCount
         MODREADER.setCurrentMatchTotalShotsCount(matchShootCount)
     }
@@ -2049,6 +2078,15 @@ Item {
 
     function beginPreparationPhase()
     {
+        // Second gate, at the engine boundary. perfromStart() blocks the UI
+        // path; this blocks every other caller (server start commands) so a
+        // programme the engine cannot conduct can never begin a session.
+        if (window.profileNeedsUnbuiltEngine) {
+            MODREADER.appendToLogFile(
+                "beginPreparationPhase: BLOCKED - " + window.activeProgrammeId
+                + " " + window.profileUnbuiltEngineReason + " (no engine)")
+            return
+        }
         // 10m FINAL (AR/AP): a separate single-athlete finals domain owned by
         // FINALS10M. Selected via the "10m Final" event card (gameEvent 7) at
         // the 10m range; rifle → FINAL_AR10, pistol → FINAL_AP10. Checked first
@@ -2069,13 +2107,13 @@ Item {
             enterFinalsMode(true)            // canonical fresh finals start
             return
         }
-        MODREADER.appendToLogFile("beginPreparationPhase: prep seconds = " + APPSETTINGS.getPrepTimeCount())
+        MODREADER.appendToLogFile("beginPreparationPhase: prep seconds = " + authoritativePrepSeconds())
         is3PMatch = APPSETTINGS.getGameMode() === 1
                  && APPSETTINGS.get10or50mRange() === 50
                  && APPSETTINGS.getGameSubMode() === 1
                  && matchShootCount === 60
         p3BreaksDone = 0
-        centerPanel.totalSighterTime = APPSETTINGS.getPrepTimeCount()
+        centerPanel.totalSighterTime = authoritativePrepSeconds()
         changedToSigherMode()
         centerPanel.startPreparationCountdown()
 
@@ -2128,7 +2166,7 @@ Item {
             isFinalsMatch = false
             is3PMatch = false
             resetDataModels()                    // clear stale fresh models
-            centerPanel.totalSighterTime = APPSETTINGS.getPrepTimeCount()
+            centerPanel.totalSighterTime = authoritativePrepSeconds()
             changedToSigherMode()                // sighter routing + clean face
         }
         qualDisciplineId = disciplineId
@@ -2140,8 +2178,8 @@ Item {
         // the engine): official count + match/prep clocks as timer anchors.
         // matchShootCount = the selected count (60 for the full event);
         // getTimeCount/getPrepTimeCount return seconds.
-        var matchMs = APPSETTINGS.getTimeCount(matchShootCount) * 1000
-        var prepMs = APPSETTINGS.getPrepTimeCount() * 1000
+        var matchMs = authoritativeMatchSeconds() * 1000
+        var prepMs = authoritativePrepSeconds() * 1000
         var started = QUAL.startSession(disciplineId, String(matchShootCount),
                                         athlete, matchShootCount, matchMs,
                                         prepMs, -1, "", "")

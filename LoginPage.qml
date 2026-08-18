@@ -69,13 +69,42 @@ Item {
     function applySetaProgramme(programmeId) {
         var cfg = setaCatalogue ? setaCatalogue.runtimeConfig(programmeId) : null
         if (cfg === null) return
+        // A programme carrying its own timing/scoring authority becomes the
+        // ACTIVE COMPETITION. Everything downstream then asks the definition
+        // instead of re-deriving a duration from shot count and weapon.
+        //
+        // The test is "does this programme declare TIMING AUTHORITY of its own".
+        // Not "does it have a match duration" - a course with independent
+        // position clocks has no master duration at all, and gating on one
+        // would drop exactly that course back onto the legacy single-clock
+        // path. And not "does it declare a timing model" either: every entry
+        // does, because ISSF and the practice presets are single-clock too;
+        // that predicate would pull ISSF into the profile path it must stay out
+        // of. matchTimeAuthority is the field that says a RULE fixes this
+        // programme's time, and only the federation programmes declare it.
+        var def = setaCatalogue.competitionDefinition(programmeId)
+        window.activeProgrammeId =
+            (def !== null && def.matchTimeAuthority !== "") ? programmeId : ""
         trainingConfirmed = false; cdConfirmed = false
         ptConfirmed = false;       wmConfirmed = false
         papermode = 0
+        // Selecting a legacy programme CLEARS the profile authority, so a DSB
+        // duration can never linger into an ISSF session.
         if (gameRange !== cfg.gameRange) rangeSelected(cfg.gameRange)
         gameMode    = cfg.gameMode
-        gameSubMode = 0
-        gameEvent   = cfg.gameEvent
+        // POSITION MODE comes from the definition too. gameSubMode is the
+        // legacy 50 m Prone / 3 Positions switch, and leaving it at 0 for a
+        // course the rule declares as three positions would conduct a prone
+        // match under a three-position name. Programmes whose declared shape
+        // has no engine are refused at the start gate, not quietly reshaped.
+        gameSubMode = (def !== null && def.positions !== undefined
+                       && def.positions.length > 1) ? 1 : 0
+        // gameEvent is the LEGACY event index and is -1 for a profile-driven
+        // programme. Writing -1 would drive the legacy "free practice" branch,
+        // so the profile case sets the official-match slot instead: it clears
+        // any Finals or Training Lab card that was still selected, and
+        // updateGameType() short-circuits on the definition anyway.
+        gameEvent = cfg.gameEvent >= 0 ? cfg.gameEvent : 4
         // gameMode/gameEvent normally drive updateGameType(); calling it
         // explicitly covers the case where only the RANGE changed, in which
         // case neither property emits and ShootingPage would keep the previous
@@ -90,6 +119,8 @@ Item {
     // the 3 Positions or Finals controls change the event underneath it. There
     // is no separate "displayed programme" state to fall out of step.
     function setaProgrammeLabel() {
+        if (window.activeCompetition !== null)
+            return qsTr(window.activeCompetition.nameKey)
         if (gameEvent === 6 || gameEvent === 7) return qsTr("ISSF FINAL")
         var id = setaResolveCurrentProgrammeId()
         var p = (setaCatalogue && id !== "") ? setaCatalogue.profile(id) : null
@@ -103,6 +134,8 @@ Item {
         return label
     }
     function setaProgrammeIsOfficial() {
+        if (window.activeCompetition !== null)
+            return window.activeCompetition.programmeType === "OFFICIAL"
         if (gameEvent === 6 || gameEvent === 7) return true
         var id = setaResolveCurrentProgrammeId()
         var p = (setaCatalogue && id !== "") ? setaCatalogue.profile(id) : null
@@ -406,6 +439,17 @@ Item {
     }
 
     function getMatchTime() {
+        // PROFILE FIRST. The preview and the engine must never disagree; both
+        // read the same authoritative value.
+        if (window.profileMatchSeconds > 0)
+            return qsTr("%1 min").arg(Math.round(window.profileMatchSeconds / 60))
+        // A programme with independent position clocks has NO master duration.
+        // Show the position clocks themselves; presenting a total would be
+        // inventing a number the rule does not contain.
+        var ac = window.activeCompetition
+        if (ac !== null && ac.positionMinutes !== undefined
+            && ac.positionMinutes.length > 0)
+            return qsTr("%1 min per position").arg(ac.positionMinutes.join(" / "))
         var shots = getGameEventText(gameEvent)
         if (shots === "Free Practice") return "—"
         if (shots === "10") return qsTr("10 min")
@@ -452,6 +496,10 @@ Item {
         if (k === "CALLDIAG") return qsTr("Call & Diagnose")
         if (k === "TRAINING") return qsTr("Technical Blocks")
         if (k === "FINAL")    return getEventCardTitle(gameEvent)
+        // A profile-driven course names its OWN rule set. Saying "ISSF" for a
+        // DSB programme is a false claim about which rules govern the session.
+        if (window.activeCompetition !== null)
+            return qsTr(window.activeCompetition.nameKey)
         if (k === "OFFICIAL") return getDisciplineName() + qsTr(" — ISSF")
         // Practice is NOT an ISSF programme and must not claim to be.
         return getDisciplineName() + qsTr(" — Open Practice")
@@ -515,6 +563,11 @@ Item {
 
     function startButtonClickedOnLoadGame() {
         if (APPSETTINGS.getDeveloperMode()) console.log("app mode " + appMode)
+        // A RESUMED session carries the configuration that was saved with it,
+        // and saved sessions predate profile authority. Clearing the active
+        // programme keeps a browsed-but-unstarted selection from imposing its
+        // rules - or its start block - on a session it has nothing to do with.
+        window.activeProgrammeId = ""
         if (!appMode) {
             rootItem.visible = false
         } else {
@@ -526,7 +579,28 @@ Item {
         }
     }
 
+    // THE start gate. A competition whose timing model the engine cannot
+    // conduct must not begin - falling back to a single clock would run the
+    // wrong competition and record the result as if it were right. Both start
+    // paths (the SETA landing button and the legacy grid) ask this one
+    // function, so neither can be given the guard while the other keeps it.
+    // Returns true when the start was refused.
+    function profileStartBlocked() {
+        if (!window.profileNeedsUnbuiltEngine) return false
+        dialogManager.showError(
+            qsTr("Competition not yet available"),
+            qsTr("%1 %2, which this build cannot conduct yet."
+                 + "\n\nThe programme can be selected and reviewed, but "
+                 + "starting it is blocked so a session is never run as a "
+                 + "different competition.")
+                .arg(window.activeCompetition
+                     ? qsTr(window.activeCompetition.nameKey) : qsTr("This programme"))
+                .arg(window.profileUnbuiltEngineReason))
+        return true
+    }
+
     function perfromStart() {
+        if (profileStartBlocked()) return
         if (!appMode) {
             MODREADER.appendToLogFile("Application running in demo mode")
             if (connectToMaster && !MODREADER.isMasterSystemConnected()) {
@@ -1195,12 +1269,26 @@ Item {
                         { lbl: qsTr("VISIBILITY"), val: [qsTr("Full hidden"), qsTr("Group only"), qsTr("Impact only")][TRAINING.visibilityMode] },
                         { lbl: qsTr("EST. TIME"),  val: TRAINING.estimatedTime }
                     ] : [
-                        { lbl: qsTr("SHOT PLAN"), val: getGameEventText(gameEvent) === "Free Practice" ? qsTr("Free") : getGameEventText(gameEvent) + qsTr(" shots") },
-                        { lbl: qsTr("SCORING"),   val: (gameMode === 0 || (gameMode === 1 && gameRange === 50 && gameSubMode === 1)) ? qsTr("Integer") : qsTr("Decimal") },
-                        { lbl: qsTr("PREP"),      val: qsTr("15 min") },
+                        // Every value here is read from the ACTIVE COMPETITION
+                        // when one governs the session. These tiles are the
+                        // legacy grid's summary, and a hardcoded "ISSF 2026" on
+                        // a DSB course would be a false rule-authority claim on
+                        // a surface an operator can still reach.
+                        { lbl: qsTr("SHOT PLAN"), val: window.activeCompetition !== null
+                              ? window.activeCompetition.shotCount + qsTr(" shots")
+                              : (getGameEventText(gameEvent) === "Free Practice" ? qsTr("Free") : getGameEventText(gameEvent) + qsTr(" shots")) },
+                        { lbl: qsTr("SCORING"),   val: window.activeCompetition !== null
+                              ? (window.activeCompetition.scoringMode === "INTEGER" ? qsTr("Integer") : qsTr("Decimal"))
+                              : ((gameMode === 0 || (gameMode === 1 && gameRange === 50 && gameSubMode === 1)) ? qsTr("Integer") : qsTr("Decimal")) },
+                        { lbl: qsTr("PREP"),      val: window.profilePrepSeconds > 0
+                              ? qsTr("%1 min").arg(Math.round(window.profilePrepSeconds / 60))
+                              : qsTr("15 min") },
                         { lbl: qsTr("MATCH"),     val: getMatchTime() },
                         { lbl: qsTr("DISTANCE"),  val: gameRange + " m" },
-                        { lbl: qsTr("RULES"),     val: "ISSF 2026" }
+                        { lbl: qsTr("RULES"),     val: window.activeCompetition !== null
+                              ? window.activeCompetition.federation + " "
+                                + window.activeCompetition.rulesetVersion.substring(0, 4)
+                              : "ISSF 2026" }
                     ]
                     delegate: Column {
                         width: (infoTiles.width - infoTiles.columnSpacing * 2) / 3
@@ -1288,9 +1376,16 @@ Item {
                         }
                         Text {
                             // Rule authority is stated, never implied.
-                            text: setaProgrammeIsOfficial()
-                                  ? qsTr("Official ISSF course")
-                                  : qsTr("Practice - no rule authority")
+                            // Name the FEDERATION that makes it official. The
+                            // label was hardcoded to ISSF, which is a false
+                            // claim on a DSB course.
+                            text: !setaProgrammeIsOfficial()
+                                  ? qsTr("Practice - no rule authority")
+                                  : window.activeCompetition
+                                    ? qsTr("Official %1 course · %2")
+                                        .arg(window.activeCompetition.federation)
+                                        .arg(window.activeCompetition.ruleNumber)
+                                    : qsTr("Official ISSF course")
                             color: setaProgrammeIsOfficial() ? _green : _txtMut
                             font.family: theme.fontFamily; font.pixelSize: 10
                         }
@@ -2685,6 +2780,11 @@ Item {
                         onEntered: startSessionRect._startHov = true
                         onExited:  startSessionRect._startHov = false
                         onClicked: {
+                            // The start gate comes FIRST: this handler is the
+                            // SETA landing page's own start path and does not
+                            // go through perfromStart(), so the guard has to be
+                            // asked here too or the block is one path wide.
+                            if (profileStartBlocked()) return
                             // TRAINING LAB (R2): Wind Map — new Training session
                             // (kind=Training, wind_map; 50m Prone and 50m 3P only).
                             // Opens in Setup so a condition can be recorded before

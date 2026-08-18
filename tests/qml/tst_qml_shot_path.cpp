@@ -3518,6 +3518,306 @@ int main(int argc, char* argv[])
         }
     }
 
+    // ─────────────────────────────────────────────────────────────────────
+    // DSB-SEAM-001 — the profile is the timing authority, and the legacy path
+    // is untouched.
+    //
+    // The seam is one question asked at every timing site: does the ACTIVE
+    // definition declare this duration? These checks prove the answer differs
+    // from the legacy shot-count lookup where it must, and that the legacy
+    // lookup is still the only source where no profile exists.
+    // ─────────────────────────────────────────────────────────────────────
+    {
+        QQmlEngine eng;
+        QQmlComponent comp(&eng, QUrl::fromLocalFile(
+            QStringLiteral(TECHAIM_SOURCE_DIR "/CompetitionCatalogue.qml")));
+        QScopedPointer<QObject> cat(comp.create());
+        check(!cat.isNull(), "DSB-SEAM-001: catalogue loads", comp.errorString());
+        if (!cat.isNull()) {
+        const auto def = [&cat](const char* id) {
+            QVariant v;
+            QMetaObject::invokeMethod(cat.data(), "competitionDefinition",
+                                      Q_RETURN_ARG(QVariant, v),
+                                      Q_ARG(QVariant, QString::fromLatin1(id)));
+            return v.toMap();
+        };
+        // The exact expression main.qml uses to derive the authoritative
+        // seconds, mirrored here so the test measures the SEAM, not a
+        // convenient re-statement of the catalogue.
+        const auto matchSeconds = [&def](const char* id) {
+            const QVariantMap d = def(id);
+            const int m = d.value(QStringLiteral("matchMinutes")).toInt();
+            return m > 0 ? m * 60 : -1;
+        };
+        const auto prepSeconds = [&def](const char* id) {
+            const QVariantMap d = def(id);
+            const int m = d.value(QStringLiteral("preparationMinutes")).toInt();
+            return m > 0 ? m * 60 : -1;
+        };
+
+        struct Op { const char* id; int matchMin; const char* scoring; const char* authority; };
+        const Op ops[] = {
+            { "dsb.10m.air-rifle.lg20",   30, "DECIMAL", "RULE" },
+            { "dsb.10m.air-rifle.lg40",   50, "DECIMAL", "RULE" },
+            { "dsb.10m.air-rifle.lg60",   75, "DECIMAL", "RULE" },
+            { "dsb.50m.rifle.prone60",    50, "DECIMAL", "RULE" },
+            { "dsb.10m.air-pistol.lp20",  30, "INTEGER", "RULE" },
+            { "dsb.10m.air-pistol.lp40",  50, "INTEGER", "RULE" },
+            { "dsb.10m.air-pistol.lp60",  75, "INTEGER", "RULE" },
+            { "dsb.50m.pistol.p60",       90, "INTEGER", "RULE" },
+            { "dsb.50m.pistol.p30",       55, "INTEGER", "RECOMMENDED" },
+            { "dsb.50m.rifle.3x20",      105, "INTEGER", "RULE" },
+            { "dsb.50m.rifle.3x40",      165, "INTEGER", "RULE" },
+        };
+        int ok = 0;
+        QStringList bad;
+        for (const Op& o : ops) {
+            const QVariantMap d = def(o.id);
+            const bool good = matchSeconds(o.id) == o.matchMin * 60
+                && prepSeconds(o.id) == 15 * 60
+                && d.value(QStringLiteral("scoringMode")).toString() == QLatin1String(o.scoring)
+                && d.value(QStringLiteral("matchTimeAuthority")).toString()
+                       == QLatin1String(o.authority)
+                && d.value(QStringLiteral("timingModel")).toString()
+                       == QLatin1String("SINGLE_MATCH_CLOCK");
+            if (good) ++ok; else bad << QLatin1String(o.id);
+        }
+        check(ok == int(sizeof(ops) / sizeof(ops[0])),
+              "DSB-SEAM-001: every operational DSB profile yields its own match "
+              "duration, a 15 min preparation, its scoring mode and its time "
+              "authority through the seam",
+              bad.join(QStringLiteral(", ")));
+
+        // NEGATIVE CONTROL. The legacy lookup keys on shot count alone, so a
+        // 60-shot programme gets one answer for every 60-shot discipline. These
+        // three DSB 60-shot programmes need THREE different clocks, which the
+        // legacy path cannot produce - proving the seam is doing real work and
+        // is not merely agreeing with what would have happened anyway.
+        check(matchSeconds("dsb.10m.air-rifle.lg60") == 75 * 60
+              && matchSeconds("dsb.50m.rifle.prone60") == 50 * 60
+              && matchSeconds("dsb.50m.rifle.3x20") == 105 * 60,
+              "DSB-SEAM-001: three DSB 60-shot programmes resolve to 75, 50 and "
+              "105 minutes - a shot-count-keyed lookup could not tell them apart");
+
+        // 1.60 is 120 shots. No legacy event row carries that count at all, so
+        // it can only work through the profile.
+        check(def("dsb.50m.rifle.3x40").value(QStringLiteral("shotCount")).toInt() == 120,
+              "DSB-SEAM-001: 1.60 is a 120-shot course, which no legacy row has");
+
+        // ── 1.20 must be refused, not silently run ───────────────────────
+        const QVariantMap p120 = def("dsb.10m.air-rifle.3x20");
+        check(p120.value(QStringLiteral("timingModel")).toString()
+                  == QLatin1String("INDEPENDENT_POSITION_CLOCKS")
+              && p120.value(QStringLiteral("matchMinutes")).toInt() == 0,
+              "DSB-SEAM-001: 1.20 declares independent clocks and NO master "
+              "duration, so the single-clock path has nothing to run on");
+        check(matchSeconds("dsb.10m.air-rifle.3x10") == -1
+              && matchSeconds("dsb.10m.air-rifle.3x20") == -1,
+              "DSB-SEAM-001: the seam yields -1 for 1.20 - an obviously invalid "
+              "value, never a plausible 75 or 105 minute fallback");
+
+        // ── which profiles the ENGINE can conduct ────────────────────────
+        // Mirrors main.qml::profileNeedsUnbuiltEngine. A profile is refused on
+        // its declared SHAPE, never on its federation: independent position
+        // clocks have no sequencer, and the only multi-position course this
+        // build conducts is the 50 m 60-shot one the 3P engine runs
+        // (ShootingPage::is3PMatch - 50 m, sub-mode 1, 60 shots).
+        const auto blocked = [&def](const char* id) {
+            const QVariantMap d = def(id);
+            if (d.isEmpty()) return false;
+            const int positions = d.value(QStringLiteral("positions")).toList().size();
+            if (d.value(QStringLiteral("timingModel")).toString()
+                    == QLatin1String("INDEPENDENT_POSITION_CLOCKS")) return true;
+            return positions > 1
+                && !(d.value(QStringLiteral("distanceM")).toInt() == 50
+                     && d.value(QStringLiteral("shotCount")).toInt() == 60);
+        };
+        const char* mustRun[] = { "dsb.10m.air-rifle.lg20", "dsb.10m.air-rifle.lg40",
+                                  "dsb.10m.air-rifle.lg60", "dsb.50m.rifle.prone60",
+                                  "dsb.10m.air-pistol.lp20", "dsb.10m.air-pistol.lp40",
+                                  "dsb.10m.air-pistol.lp60", "dsb.50m.pistol.p60",
+                                  "dsb.50m.pistol.p30", "dsb.50m.rifle.3x20" };
+        int runnable = 0;
+        for (const char* id : mustRun) if (!blocked(id)) ++runnable;
+        check(runnable == int(sizeof(mustRun) / sizeof(mustRun[0])),
+              "DSB-SEAM-001: every single-clock DSB course this build has an "
+              "engine for is conductable, 1.40 included",
+              QString::number(runnable));
+
+        // 1.60 is a 120-shot three-position course. The 3P engine only conducts
+        // the 60-shot one, so 1.60 must be REFUSED - not run as 120 prone shots
+        // under a three-position name.
+        check(blocked("dsb.50m.rifle.3x40")
+              && blocked("dsb.10m.air-rifle.3x10")
+              && blocked("dsb.10m.air-rifle.3x20"),
+              "DSB-SEAM-001: 1.60 and both 1.20 courses are refused - a course "
+              "with no engine must never appear to run");
+
+        // The position mode is DECLARED, so the legacy Prone/3-Positions switch
+        // can be driven from it instead of being left where the operator last
+        // put it. 1.40 is three positions; 1.30 prone is one.
+        check(def("dsb.50m.rifle.3x20").value(QStringLiteral("positions")).toList().size() == 3
+              && def("dsb.50m.rifle.prone60").value(QStringLiteral("positions")).toList().size() == 1,
+              "DSB-SEAM-001: position count is declared per programme, so the "
+              "50 m sub-mode follows the rule and not the last click");
+
+        // SCORING MODE agreement. Nothing routes scoring through the profile
+        // yet, which is only safe while every conductable DSB course declares
+        // exactly what the existing display rule already does (pistol integer,
+        // 50 m three-position integer, everything else decimal). The day that
+        // stops being true, this check fires and scoring needs its own seam.
+        QStringList mismatched;
+        for (const char* id : mustRun) {
+            const QVariantMap d = def(id);
+            const bool pistol = d.value(QStringLiteral("isPistol")).toBool();
+            const bool rifle3P = !pistol
+                && d.value(QStringLiteral("distanceM")).toInt() == 50
+                && d.value(QStringLiteral("positions")).toList().size() > 1;
+            const QString legacy = (pistol || rifle3P) ? QStringLiteral("INTEGER")
+                                                       : QStringLiteral("DECIMAL");
+            if (d.value(QStringLiteral("scoringMode")).toString() != legacy)
+                mismatched << QLatin1String(id);
+        }
+        check(mismatched.isEmpty(),
+              "DSB-SEAM-001: every conductable DSB course declares the scoring "
+              "mode the engine already applies - so scoring needs no seam yet, "
+              "and this check is what says when it does",
+              mismatched.join(QStringLiteral(", ")));
+
+        // ── ISSF is untouched: no profile authority, so the legacy path ──
+        const char* issf[] = { "issf.10m.air-rifle.qualification60",
+                               "issf.10m.air-pistol.qualification60",
+                               "issf.50m.rifle.qualification60",
+                               "issf.50m.pistol.qualification60",
+                               "techaim.10m.air-rifle.match40",
+                               "techaim.50m.rifle.free" };
+        int legacy = 0;
+        for (const char* id : issf)
+            if (matchSeconds(id) == -1 && prepSeconds(id) == -1) ++legacy;
+        check(legacy == int(sizeof(issf) / sizeof(issf[0])),
+              "DSB-SEAM-001: every ISSF and practice programme declares NO "
+              "duration, so the seam falls through to the untouched legacy path",
+              QString::number(legacy));
+
+        // REGRESSION, found by running the application. The activation
+        // predicate must select the federation set EXACTLY. Activating on the
+        // declared timing MODEL pulled in every ISSF and practice entry too -
+        // they are single-clock courses as well - and ISSF immediately started
+        // travelling the profile path, changing its own labels. The field that
+        // means "a rule fixes this programme's time" is matchTimeAuthority.
+        QVariant everything;
+        QMetaObject::invokeMethod(cat.data(), "allEntries", Q_RETURN_ARG(QVariant, everything));
+        QStringList misclassified;
+        for (const QVariant& e : everything.toList()) {
+            const QByteArray id =
+                e.toMap().value(QStringLiteral("programmeId")).toString().toLatin1();
+            const QVariantMap d = def(id.constData());
+            const bool federationRule =
+                d.value(QStringLiteral("rulesetId")).toString() == QLatin1String("dsb");
+            const bool declares =
+                !d.value(QStringLiteral("matchTimeAuthority")).toString().isEmpty();
+            if (federationRule != declares) misclassified << QString::fromLatin1(id);
+        }
+        check(misclassified.isEmpty(),
+              "DSB-SEAM-001: exactly the federation programmes declare timing "
+              "authority - every ISSF and practice entry declares none, so the "
+              "predicate cannot capture them",
+              misclassified.join(QStringLiteral(", ")));
+        }
+
+        // ── the wiring itself, asserted on the source ────────────────────
+        const QString mainQml  = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/main.qml"));
+        const QString shootQml = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/ShootingPage.qml"));
+        const QString loginQml = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/LoginPage.qml"));
+
+        check(mainQml.contains(QStringLiteral("readonly property int profileMatchSeconds"))
+              && mainQml.contains(QStringLiteral("readonly property int profilePrepSeconds"))
+              && mainQml.contains(QStringLiteral("readonly property bool profileNeedsUnbuiltEngine")),
+              "DSB-SEAM-001: the authority lives once, at ancestor scope");
+
+        // The legacy lookups survive ONLY inside the two resolver functions.
+        // Anywhere else would be a second, competing source of truth.
+        QStringList strays;
+        const QStringList lines = shootQml.split(QChar(10));
+        for (int i = 0; i < lines.size(); ++i) {
+            const QString l = lines.at(i).split(QStringLiteral("//")).first();
+            if (!l.contains(QStringLiteral("APPSETTINGS.getTimeCount"))
+                && !l.contains(QStringLiteral("APPSETTINGS.getPrepTimeCount"))) continue;
+            bool insideResolver = false;
+            for (int j = qMax(0, i - 12); j < i; ++j)
+                if (lines.at(j).contains(QStringLiteral("function authoritativeMatchSeconds"))
+                    || lines.at(j).contains(QStringLiteral("function authoritativePrepSeconds")))
+                    insideResolver = true;
+            if (!insideResolver) strays << QString::number(i + 1);
+        }
+        check(strays.isEmpty(),
+              "DSB-SEAM-001: no timing site reads the legacy lookup directly - "
+              "every one goes through the resolver",
+              strays.join(QStringLiteral(", ")));
+
+        // REGRESSION, found by running the application. The authority was first
+        // activated on "does this programme have a match duration", which is a
+        // DIFFERENT question from "does it carry its own timing". 1.20 has no
+        // master duration, so that predicate silently dropped exactly that
+        // programme back onto the legacy path, and the selector committed it as
+        // an ISSF 60-shot match on a 75-minute clock.
+        check(loginQml.contains(QStringLiteral(
+                  "(def !== null && def.matchTimeAuthority !== \"\") ? programmeId : \"\"")),
+              "DSB-SEAM-001: the profile activates on DECLARED TIMING "
+              "AUTHORITY, not on the presence of a duration - otherwise the one "
+              "programme that most needs the seam is the one that escapes it");
+
+
+        // The resolver must refuse to borrow a duration for a programme that
+        // declares none: returning the legacy 75 minutes would run a 1.20 course
+        // on the ISSF clock and record the result as if it were correct.
+        check(shootQml.contains(QStringLiteral("if (window.profileNeedsUnbuiltEngine) return 0")),
+              "DSB-SEAM-001: a profile with no master duration resolves to 0, "
+              "never to the legacy shot-count lookup");
+
+        check(loginQml.contains(QStringLiteral("%1 min per position")),
+              "DSB-SEAM-001: the preview shows the position clocks for a course "
+              "that has no total, instead of presenting an invented total");
+
+        // REGRESSION, found by running the application. Committing a DSB
+        // three-position course left the legacy 50 m switch on Prone, so a
+        // 3x40 selection presented itself as a prone match.
+        check(loginQml.contains(QStringLiteral("def.positions.length > 1) ? 1 : 0")),
+              "DSB-SEAM-001: the 50 m position mode follows the DECLARED "
+              "positions, not the operator's last click");
+
+        // The refusal must name its own reason. One stock sentence about
+        // position clocks would be wrong for a course refused for its shot
+        // count, and a wrong explanation is how an operator learns to ignore a
+        // block.
+        check(mainQml.contains(QStringLiteral("readonly property string profileUnbuiltEngineReason"))
+              && loginQml.contains(QStringLiteral("window.profileUnbuiltEngineReason")),
+              "DSB-SEAM-001: the block states the actual reason it refused");
+
+        check(shootQml.contains(QStringLiteral("window.profileNeedsUnbuiltEngine"))
+              && loginQml.contains(QStringLiteral("window.profileNeedsUnbuiltEngine")),
+              "DSB-SEAM-001: 1.20 is gated at BOTH the UI start and the engine "
+              "boundary, so a server start command cannot bypass the block");
+
+        // REGRESSION, found by running the application. The gate first lived in
+        // perfromStart() alone - but the SETA landing page's start button has
+        // its own handler and never calls it, so 1.20 opened a session anyway.
+        // EVERY start path must ask the same gate.
+        check(loginQml.count(QStringLiteral("if (profileStartBlocked()) return")) >= 2,
+              "DSB-SEAM-001: every start path asks the gate - the landing "
+              "button and the legacy grid alike",
+              QString::number(loginQml.count(QStringLiteral("if (profileStartBlocked()) return"))));
+
+        check(loginQml.contains(QStringLiteral("if (window.profileMatchSeconds > 0)")),
+              "DSB-SEAM-001: the preview clock reads the same authority as the "
+              "engine, so display and session can never disagree");
+
+        // No ruleset name may appear in a timing decision.
+        check(!shootQml.contains(QStringLiteral("=== \"dsb\""))
+              && !shootQml.contains(QStringLiteral("ruleNumber ==")),
+              "DSB-SEAM-001: no timing site branches on a ruleset or rule number");
+    }
+
     printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
     fflush(stdout);
     return g_failures ? 1 : 0;

@@ -1,10 +1,40 @@
 # DSB 2026 — implementation plan
 
 Ranking of DSB programmes by what the current SETA engine would actually have
-to do. Nothing here is implemented; no catalogue entry exists. The tiers come
-from `dsb-2026-software-gap-analysis.md`, not from preference.
+to do. The tiers come from `dsb-2026-software-gap-analysis.md`, not from
+preference.
 
 ---
+
+## Implementation status
+
+| Step | State |
+|---|---|
+| Catalogue schema + 13 DSB profiles | **done** — `CompetitionCatalogue.qml` |
+| Profile / timing authority seam | **done** — the profile supplies preparation, match duration, position mode and rule authority |
+| Independent position clocks (1.20 sequencer) | **not built** — 1.20 is refused at the start gate |
+| 3×40 course engine (120 shots, 3 positions) | **not built** — 1.60 is refused at the start gate |
+
+**The seam.** A selected programme becomes `window.activeProgrammeId`, resolved
+once into `activeCompetition`. Every timing site reads
+`ShootingPage.authoritativeMatchSeconds()` / `authoritativePrepSeconds()`,
+which return the profile's value when it declares one and the legacy
+`AppSettings` lookup when it does not. A programme carries authority when it
+declares `matchTimeAuthority` — only the federation programmes do, so ISSF and
+the practice presets travel the unchanged legacy path. No timing decision
+anywhere branches on a ruleset name or a rule number.
+
+**What is conductable today.** Operational: 1.10 (20/40/60), 2.10 (20/40/60),
+1.80, 2.20 (60 and the recommended 30), and 1.40 — which runs on the existing
+50 m three-position engine with its own 105-minute clock. Refused with a stated
+reason: both 1.20 courses (independent position clocks) and 1.60 (a 120-shot
+three-position course the engine has no course for). A refused programme can be
+selected and reviewed; only starting it is blocked, so nothing is ever run as a
+different competition.
+
+**Not yet persisted.** The session journal and `.tch` files still carry no rule
+authority, so a stored DSB match cannot yet prove which ruleset governed it.
+That is the next gap after the sequencer.
 
 ## Tier 1 — configuration only, current engine
 
@@ -87,9 +117,11 @@ position model twice.
    ready now. These prove the DSB rule set end to end — selector, session,
    report — with zero engine risk.
 4. **Per-position timing model** (gap B3–B5), behind its own tests, with 1.20
-   as its first consumer.
+   as its first consumer. *Still open — 1.20 is refused until it exists.*
 5. **1.60** and **1.40** as configuration — both are single-master-clock
-   programmes and do not depend on the 1.20 position model.
+   programmes and do not depend on the 1.20 position model. *1.40 done. 1.60
+   turned out to need more than configuration: a 120-shot three-position course
+   has no engine, so it is refused rather than run as something else.*
 6. **DSB interruption and protest conduct** (C7–C11, C14) bound to the DSB rule
    set, reusing `EstIncidentController`.
 7. **Tier 3** only if SETA supplies turning-target hardware.
