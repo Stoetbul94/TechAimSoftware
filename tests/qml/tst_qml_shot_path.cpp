@@ -567,7 +567,7 @@ int main(int argc, char* argv[])
 
         QQmlEngine e1;
         const QStringList en = stateOf(e1);
-        check(en.size() == 48, "SETA-LANG-005: the English state snapshot covers all 48 programmes",
+        check(en.size() == 61, "SETA-LANG-005: the English state snapshot covers all 61 programmes",
               QString::number(en.size()));
 
         QTranslator de;
@@ -583,6 +583,315 @@ int main(int argc, char* argv[])
               "SETA-LANG-005: programmeId, rulesetId, disciplineId, targetStandardId, "
               "distance, shot count, scoring mode, target family, range, weapon and "
               "event index are ALL identical in German");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // DSB-CAT-001 — the DSB 2026 ruleset, as a first-class competition set.
+    //
+    // Authority: docs/rules/dsb-2026-*.md, Sportordnung 01.01.2026.
+    // Every number checked here is a rule value with a page reference; this
+    // gate exists so a later edit cannot quietly change a competition.
+    // ─────────────────────────────────────────────────────────────────────
+    {
+        QQmlEngine eng;
+        QQmlComponent comp(&eng, QUrl::fromLocalFile(
+            QStringLiteral(TECHAIM_SOURCE_DIR "/CompetitionCatalogue.qml")));
+        QScopedPointer<QObject> cat(comp.create());
+        check(!cat.isNull(), "DSB-CAT-001: catalogue loads", comp.errorString());
+        if (cat.isNull()) { /* nothing further to assert */ }
+        else {
+        const auto def = [&cat](const char* id) {
+            QVariant v;
+            QMetaObject::invokeMethod(cat.data(), "competitionDefinition",
+                                      Q_RETURN_ARG(QVariant, v),
+                                      Q_ARG(QVariant, QString::fromLatin1(id)));
+            return v.toMap();
+        };
+        const auto timing = [&cat](const char* id) {
+            QVariant v;
+            QMetaObject::invokeMethod(cat.data(), "timingFor", Q_RETURN_ARG(QVariant, v),
+                                      Q_ARG(QVariant, QString::fromLatin1(id)));
+            return v.toMap();
+        };
+        const auto mins = [](const QVariantMap& t, const char* key) {
+            return int(t.value(QLatin1String(key)).toLongLong() / 60000);
+        };
+
+        // ── the ruleset exists and is versioned ──────────────────────────
+        QVariant all;
+        QMetaObject::invokeMethod(cat.data(), "dsbEntries", Q_RETURN_ARG(QVariant, all));
+        check(all.toList().size() == 13,
+              "DSB-CAT-001: 13 DSB programmes are defined",
+              QString::number(all.toList().size()));
+        int versioned = 0, contexted = 0, official = 0;
+        for (const QVariant& e : all.toList()) {
+            const QVariantMap m = e.toMap();
+            if (m.value(QStringLiteral("rulesetVersion")).toString() == QLatin1String("2026-01-01")) ++versioned;
+            if (!m.value(QStringLiteral("competitionContext")).toString().isEmpty()) ++contexted;
+            if (m.value(QStringLiteral("programmeType")).toString() == QLatin1String("OFFICIAL")) ++official;
+        }
+        check(versioned == 13 && contexted == 13 && official == 13,
+              "DSB-CAT-001: every DSB programme is versioned, context-bound and official",
+              QString::number(versioned) + QStringLiteral("/")
+                  + QString::number(contexted) + QStringLiteral("/")
+                  + QString::number(official));
+
+        // ── 1.10 Luftgewehr: shot count -> EST minutes, decimal ──────────
+        struct Simple { const char* id; const char* rule; int shots; int match; int prep;
+                        const char* scoring; };
+        const Simple simple[] = {
+            { "dsb.10m.air-rifle.lg20",   "1.10", 20,  30, 15, "DECIMAL" },
+            { "dsb.10m.air-rifle.lg40",   "1.10", 40,  50, 15, "DECIMAL" },
+            { "dsb.10m.air-rifle.lg60",   "1.10", 60,  75, 15, "DECIMAL" },
+            { "dsb.50m.rifle.prone60",    "1.80", 60,  50, 15, "DECIMAL" },
+            { "dsb.10m.air-pistol.lp20",  "2.10", 20,  30, 15, "INTEGER" },
+            { "dsb.10m.air-pistol.lp40",  "2.10", 40,  50, 15, "INTEGER" },
+            { "dsb.10m.air-pistol.lp60",  "2.10", 60,  75, 15, "INTEGER" },
+            { "dsb.50m.pistol.p60",       "2.20", 60,  90, 15, "INTEGER" },
+            { "dsb.50m.pistol.p30",       "2.20", 30,  55, 15, "INTEGER" },
+            { "dsb.50m.rifle.3x20",       "1.40", 60, 105, 15, "INTEGER" },
+            { "dsb.50m.rifle.3x40",       "1.60", 120,165, 15, "INTEGER" },
+        };
+        int ok = 0;
+        QStringList wrong;
+        for (const Simple& p : simple) {
+            const QVariantMap d = def(p.id), t = timing(p.id);
+            const bool good =
+                d.value(QStringLiteral("ruleNumber")).toString() == QLatin1String(p.rule)
+                && d.value(QStringLiteral("shotCount")).toInt() == p.shots
+                && d.value(QStringLiteral("scoringMode")).toString() == QLatin1String(p.scoring)
+                && t.value(QStringLiteral("timingModel")).toString()
+                       == QLatin1String("SINGLE_MATCH_CLOCK")
+                && mins(t, "matchMs") == p.match
+                && mins(t, "preparationMs") == p.prep
+                && t.value(QStringLiteral("preparationPolicy")).toString()
+                       == QLatin1String("OUTSIDE_MATCH_TIME")
+                && t.value(QStringLiteral("sighterPolicy")).toString()
+                       == QLatin1String("UNLIMITED_IN_PREPARATION")
+                && t.value(QStringLiteral("positionMs")).toList().isEmpty();
+            if (good) ++ok; else wrong << QLatin1String(p.id);
+        }
+        check(ok == int(sizeof(simple) / sizeof(simple[0])),
+              "DSB-CAT-001: every single-master-clock programme carries its rule "
+              "number, shot count, EST time, 15 min outside preparation, unlimited "
+              "sighters and scoring mode",
+              wrong.join(QStringLiteral(", ")));
+
+        // ── 2.20 30-shot time is a RECOMMENDATION, 60-shot is a rule ─────
+        check(timing("dsb.50m.pistol.p30").value(QStringLiteral("matchTimeAuthority")).toString()
+                  == QLatin1String("RECOMMENDED")
+              && timing("dsb.50m.pistol.p60").value(QStringLiteral("matchTimeAuthority")).toString()
+                  == QLatin1String("RULE"),
+              "DSB-CAT-001: the 30-shot 50 m pistol time is recorded as a recommendation, "
+              "the 60-shot time as a rule");
+
+        // ── 1.20: INDEPENDENT position clocks, gated, sighting inside ────
+        struct ThreePos { const char* id; const char* variant; int shots;
+                          int k; int p; int st; };
+        const ThreePos tp[] = {
+            { "dsb.10m.air-rifle.3x10", "3x10", 30, 25, 20, 30 },
+            { "dsb.10m.air-rifle.3x20", "3x20", 60, 35, 30, 40 },
+        };
+        int tpOk = 0;
+        QStringList tpWrong;
+        for (const ThreePos& p : tp) {
+            const QVariantMap d = def(p.id), t = timing(p.id);
+            const QVariantList pos = t.value(QStringLiteral("positionMs")).toList();
+            const QVariantList seq = d.value(QStringLiteral("positions")).toList();
+            const QVariantList spp = d.value(QStringLiteral("shotsPerPosition")).toList();
+            const bool good =
+                d.value(QStringLiteral("ruleNumber")).toString() == QLatin1String("1.20")
+                && d.value(QStringLiteral("programmeVariant")).toString() == QLatin1String(p.variant)
+                && d.value(QStringLiteral("shotCount")).toInt() == p.shots
+                && d.value(QStringLiteral("scoringMode")).toString() == QLatin1String("INTEGER")
+                && t.value(QStringLiteral("timingModel")).toString()
+                       == QLatin1String("INDEPENDENT_POSITION_CLOCKS")
+                && t.value(QStringLiteral("matchMs")).toLongLong() == 0
+                && pos.size() == 3
+                && pos.at(0).toLongLong() == qint64(p.k)  * 60000
+                && pos.at(1).toLongLong() == qint64(p.p)  * 60000
+                && pos.at(2).toLongLong() == qint64(p.st) * 60000
+                && mins(t, "preparationMs") == 15
+                && t.value(QStringLiteral("preparationPolicy")).toString()
+                       == QLatin1String("OUTSIDE_MATCH_TIME")
+                && t.value(QStringLiteral("sighterPolicy")).toString()
+                       == QLatin1String("INSIDE_POSITION_CLOCK")
+                && t.value(QStringLiteral("positionTransitionPolicy")).toString()
+                       == QLatin1String("GATED_BY_MATCH_CONTROL")
+                && seq.size() == 3
+                && seq.at(0).toString() == QLatin1String("KNEELING")
+                && seq.at(1).toString() == QLatin1String("PRONE")
+                && seq.at(2).toString() == QLatin1String("STANDING")
+                && spp.size() == 3
+                && spp.at(0).toInt() * 3 == p.shots;
+            if (good) ++tpOk; else tpWrong << QLatin1String(p.id);
+        }
+        check(tpOk == 2,
+              "DSB-CAT-001: 1.20 3x10 and 3x20 carry independent position clocks "
+              "(25/20/30 and 35/30/40), kneeling-prone-standing, a 15 min outside "
+              "preparation, sighting INSIDE the position clock and a gated transition",
+              tpWrong.join(QStringLiteral(", ")));
+
+        // ── 1.20 has NO master clock; 1.40/1.60 have NO position clocks ──
+        check(timing("dsb.10m.air-rifle.3x20").value(QStringLiteral("matchMs")).toLongLong() == 0,
+              "DSB-CAT-001: 1.20 exposes no master clock - a caller reading the "
+              "wrong field gets 0, never a plausible wrong number");
+        check(timing("dsb.50m.rifle.3x20").value(QStringLiteral("positionMs")).toList().isEmpty()
+              && timing("dsb.50m.rifle.3x40").value(QStringLiteral("positionMs")).toList().isEmpty(),
+              "DSB-CAT-001: 1.40 and 1.60 expose no position clocks");
+
+        // ── target geometry is REUSED, never duplicated ──────────────────
+        struct Face { const char* id; const char* std; int dsbNumber; };
+        const Face faces[] = {
+            { "dsb.10m.air-rifle.lg60",  "issf.10m.air-rifle", 1 },
+            { "dsb.10m.air-rifle.3x20",  "issf.10m.air-rifle", 1 },
+            { "dsb.50m.rifle.3x20",      "issf.50m.rifle",     3 },
+            { "dsb.50m.rifle.3x40",      "issf.50m.rifle",     3 },
+            { "dsb.50m.rifle.prone60",   "issf.50m.rifle",     3 },
+            { "dsb.50m.pistol.p60",      "issf.50m.pistol",    4 },
+            { "dsb.10m.air-pistol.lp60", "issf.10m.air-pistol",7 },
+        };
+        int faceOk = 0;
+        for (const Face& f : faces) {
+            const QVariantMap d = def(f.id);
+            if (d.value(QStringLiteral("targetStandardId")).toString() == QLatin1String(f.std)
+                && d.value(QStringLiteral("dsbTargetNumber")).toInt() == f.dsbNumber)
+                ++faceOk;
+        }
+        check(faceOk == int(sizeof(faces) / sizeof(faces[0])),
+              "DSB-CAT-001: every DSB programme SELECTS an existing ISSF target "
+              "standard - Scheibe 1/3/4/7 - and defines no new geometry",
+              QString::number(faceOk));
+
+        // ── scoring is NOT a property of the ruleset ─────────────────────
+        check(def("dsb.10m.air-rifle.lg60").value(QStringLiteral("scoringMode")).toString()
+                  == QLatin1String("DECIMAL")
+              && def("dsb.10m.air-rifle.3x20").value(QStringLiteral("scoringMode")).toString()
+                  == QLatin1String("INTEGER"),
+              "DSB-CAT-001: DSB is NOT uniformly integer - 1.10 is decimal while "
+              "1.20 is whole ring, from the same ruleset");
+        check(def("dsb.50m.rifle.prone60").value(QStringLiteral("scoringMode")).toString()
+                  == QLatin1String("DECIMAL")
+              && def("dsb.50m.rifle.3x20").value(QStringLiteral("scoringMode")).toString()
+                  == QLatin1String("INTEGER"),
+              "DSB-CAT-001: 1.80 is decimal and 1.40 is integer on the same target face");
+
+        // ── the four layers stay separable ───────────────────────────────
+        const QVariantMap meta = [&cat]() {
+            QVariant v;
+            QMetaObject::invokeMethod(cat.data(), "rulesetMetadata", Q_RETURN_ARG(QVariant, v),
+                Q_ARG(QVariant, QStringLiteral("dsb.50m.rifle.3x20")));
+            return v.toMap();
+        }();
+        check(meta.value(QStringLiteral("ruleset")).toString() == QLatin1String("dsb")
+              && meta.value(QStringLiteral("rulesetVersion")).toString() == QLatin1String("2026-01-01")
+              && meta.value(QStringLiteral("ruleNumber")).toString() == QLatin1String("1.40")
+              && meta.value(QStringLiteral("programmeVariant")).toString() == QLatin1String("3x20")
+              && meta.value(QStringLiteral("competitionContext")).toString() == QLatin1String("DM_2026")
+              && meta.value(QStringLiteral("scoringMode")).toString() == QLatin1String("INTEGER"),
+              "DSB-CAT-001: ruleset, version, rule number, variant, context and "
+              "scoring mode are separately recoverable for the journal and report");
+
+        // ── programmes that are NOT established must not exist ───────────
+        QStringList forbidden;
+        for (const QVariant& e : all.toList()) {
+            const QVariantMap m = e.toMap();
+            const QString v = m.value(QStringLiteral("programmeVariant")).toString();
+            const QString r = m.value(QStringLiteral("ruleNumber")).toString();
+            if (v.contains(QStringLiteral("3x15")))
+                forbidden << m.value(QStringLiteral("programmeId")).toString();
+            if (r == QLatin1String("1.40") && v == QLatin1String("3x10"))
+                forbidden << m.value(QStringLiteral("programmeId")).toString();
+        }
+        check(forbidden.isEmpty(),
+              "DSB-CAT-001: no 10 m 3x15 and no 50 m 1.40 3x10 - neither is "
+              "established by the Sportordnung (S-C.2, S-C.3)",
+              forbidden.join(QStringLiteral(", ")));
+
+        // ── the hardware-blocked programmes are absent, not faked ────────
+        QStringList faked;
+        for (const QVariant& e : all.toList()) {
+            const QString r = e.toMap().value(QStringLiteral("ruleNumber")).toString();
+            if (r == QLatin1String("2.16") || r == QLatin1String("2.17")
+                || r == QLatin1String("2.18"))
+                faked << r;
+        }
+        check(faked.isEmpty(),
+              "DSB-CAT-001: 2.16 / 2.17 / 2.18 are NOT present - they need falling "
+              "targets, a second face and series exposure, and must not be faked "
+              "by changing timers only",
+              faked.join(QStringLiteral(", ")));
+
+        // ── the legacy ISSF rows are untouched ───────────────────────────
+        QVariant legacy;
+        QMetaObject::invokeMethod(cat.data(), "entriesFor", Q_RETURN_ARG(QVariant, legacy),
+                                  Q_ARG(QVariant, QStringLiteral("game10RangeEventModel")));
+        check(legacy.toList().size() == 12
+              && legacy.toList().at(5).toMap().value(QStringLiteral("programmeId")).toString()
+                     == QLatin1String("issf.10m.air-rifle.qualification60"),
+              "DSB-CAT-001: entriesFor() still returns ONLY the index-locked legacy "
+              "rows, so no ISSF row moved");
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // DSB-TIMING-001 — the critical cross-rule test (requirement 28).
+    //
+    // Three three-position competitions, three different timing structures.
+    // If this ever passes by accident, competition behaviour has been inferred
+    // from the words "three position" somewhere, which is the exact defect this
+    // whole design exists to prevent.
+    // ─────────────────────────────────────────────────────────────────────
+    {
+        QQmlEngine eng;
+        QQmlComponent comp(&eng, QUrl::fromLocalFile(
+            QStringLiteral(TECHAIM_SOURCE_DIR "/CompetitionCatalogue.qml")));
+        QScopedPointer<QObject> cat(comp.create());
+        if (!cat.isNull()) {
+            const auto timing = [&cat](const char* id) {
+                QVariant v;
+                QMetaObject::invokeMethod(cat.data(), "timingFor", Q_RETURN_ARG(QVariant, v),
+                                          Q_ARG(QVariant, QString::fromLatin1(id)));
+                return v.toMap();
+            };
+            const QVariantMap dsb120 = timing("dsb.10m.air-rifle.3x20");
+            const QVariantMap dsb140 = timing("dsb.50m.rifle.3x20");
+            const QVariantMap dsb160 = timing("dsb.50m.rifle.3x40");
+            const QVariantMap issf3p = timing("issf.50m.rifle.qualification60");
+
+            check(dsb120.value(QStringLiteral("timingModel")).toString()
+                      == QLatin1String("INDEPENDENT_POSITION_CLOCKS")
+                  && dsb140.value(QStringLiteral("timingModel")).toString()
+                      == QLatin1String("SINGLE_MATCH_CLOCK")
+                  && dsb160.value(QStringLiteral("timingModel")).toString()
+                      == QLatin1String("SINGLE_MATCH_CLOCK"),
+                  "DSB-TIMING-001: DSB 1.20 uses independent position clocks while "
+                  "DSB 1.40 and 1.60 use one master clock - all three are "
+                  "three-position rifle competitions in the same ruleset");
+
+            check(dsb140.value(QStringLiteral("matchMs")).toLongLong() == qint64(105) * 60000
+                  && dsb160.value(QStringLiteral("matchMs")).toLongLong() == qint64(165) * 60000,
+                  "DSB-TIMING-001: the two master clocks are 105 and 165 minutes");
+
+            // DSB 1.20's three clocks are not one clock split three ways.
+            const QVariantList pos = dsb120.value(QStringLiteral("positionMs")).toList();
+            qint64 sum = 0;
+            for (const QVariant& p : pos) sum += p.toLongLong();
+            check(sum == qint64(105) * 60000
+                  && dsb120.value(QStringLiteral("matchMs")).toLongLong() == 0,
+                  "DSB-TIMING-001: 1.20's position clocks happen to total 105 min, "
+                  "and it still exposes NO master clock - the total is a coincidence, "
+                  "not a course time");
+
+            // ISSF must be untouched: it declares no DSB timing at all and keeps
+            // getting its durations from where it always has.
+            check(issf3p.value(QStringLiteral("matchMs")).toLongLong() == 0
+                  && issf3p.value(QStringLiteral("preparationMs")).toLongLong() == 0
+                  && issf3p.value(QStringLiteral("positionMs")).toList().isEmpty()
+                  && issf3p.value(QStringLiteral("preparationPolicy")).toString().isEmpty(),
+                  "DSB-TIMING-001: the ISSF 50 m 3P profile declares NO timing here, "
+                  "so adding DSB cannot have changed how ISSF is conducted");
+        }
     }
 
     printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
@@ -1081,7 +1390,7 @@ int main(int argc, char* argv[])
 
         QQmlEngine e1;
         const QStringList en = stateOf(e1);
-        check(en.size() == 48, "SETA-LANG-005: the English state snapshot covers all 48 programmes",
+        check(en.size() == 61, "SETA-LANG-005: the English state snapshot covers all 61 programmes",
               QString::number(en.size()));
 
         QTranslator de;
@@ -1097,6 +1406,315 @@ int main(int argc, char* argv[])
               "SETA-LANG-005: programmeId, rulesetId, disciplineId, targetStandardId, "
               "distance, shot count, scoring mode, target family, range, weapon and "
               "event index are ALL identical in German");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // DSB-CAT-001 — the DSB 2026 ruleset, as a first-class competition set.
+    //
+    // Authority: docs/rules/dsb-2026-*.md, Sportordnung 01.01.2026.
+    // Every number checked here is a rule value with a page reference; this
+    // gate exists so a later edit cannot quietly change a competition.
+    // ─────────────────────────────────────────────────────────────────────
+    {
+        QQmlEngine eng;
+        QQmlComponent comp(&eng, QUrl::fromLocalFile(
+            QStringLiteral(TECHAIM_SOURCE_DIR "/CompetitionCatalogue.qml")));
+        QScopedPointer<QObject> cat(comp.create());
+        check(!cat.isNull(), "DSB-CAT-001: catalogue loads", comp.errorString());
+        if (cat.isNull()) { /* nothing further to assert */ }
+        else {
+        const auto def = [&cat](const char* id) {
+            QVariant v;
+            QMetaObject::invokeMethod(cat.data(), "competitionDefinition",
+                                      Q_RETURN_ARG(QVariant, v),
+                                      Q_ARG(QVariant, QString::fromLatin1(id)));
+            return v.toMap();
+        };
+        const auto timing = [&cat](const char* id) {
+            QVariant v;
+            QMetaObject::invokeMethod(cat.data(), "timingFor", Q_RETURN_ARG(QVariant, v),
+                                      Q_ARG(QVariant, QString::fromLatin1(id)));
+            return v.toMap();
+        };
+        const auto mins = [](const QVariantMap& t, const char* key) {
+            return int(t.value(QLatin1String(key)).toLongLong() / 60000);
+        };
+
+        // ── the ruleset exists and is versioned ──────────────────────────
+        QVariant all;
+        QMetaObject::invokeMethod(cat.data(), "dsbEntries", Q_RETURN_ARG(QVariant, all));
+        check(all.toList().size() == 13,
+              "DSB-CAT-001: 13 DSB programmes are defined",
+              QString::number(all.toList().size()));
+        int versioned = 0, contexted = 0, official = 0;
+        for (const QVariant& e : all.toList()) {
+            const QVariantMap m = e.toMap();
+            if (m.value(QStringLiteral("rulesetVersion")).toString() == QLatin1String("2026-01-01")) ++versioned;
+            if (!m.value(QStringLiteral("competitionContext")).toString().isEmpty()) ++contexted;
+            if (m.value(QStringLiteral("programmeType")).toString() == QLatin1String("OFFICIAL")) ++official;
+        }
+        check(versioned == 13 && contexted == 13 && official == 13,
+              "DSB-CAT-001: every DSB programme is versioned, context-bound and official",
+              QString::number(versioned) + QStringLiteral("/")
+                  + QString::number(contexted) + QStringLiteral("/")
+                  + QString::number(official));
+
+        // ── 1.10 Luftgewehr: shot count -> EST minutes, decimal ──────────
+        struct Simple { const char* id; const char* rule; int shots; int match; int prep;
+                        const char* scoring; };
+        const Simple simple[] = {
+            { "dsb.10m.air-rifle.lg20",   "1.10", 20,  30, 15, "DECIMAL" },
+            { "dsb.10m.air-rifle.lg40",   "1.10", 40,  50, 15, "DECIMAL" },
+            { "dsb.10m.air-rifle.lg60",   "1.10", 60,  75, 15, "DECIMAL" },
+            { "dsb.50m.rifle.prone60",    "1.80", 60,  50, 15, "DECIMAL" },
+            { "dsb.10m.air-pistol.lp20",  "2.10", 20,  30, 15, "INTEGER" },
+            { "dsb.10m.air-pistol.lp40",  "2.10", 40,  50, 15, "INTEGER" },
+            { "dsb.10m.air-pistol.lp60",  "2.10", 60,  75, 15, "INTEGER" },
+            { "dsb.50m.pistol.p60",       "2.20", 60,  90, 15, "INTEGER" },
+            { "dsb.50m.pistol.p30",       "2.20", 30,  55, 15, "INTEGER" },
+            { "dsb.50m.rifle.3x20",       "1.40", 60, 105, 15, "INTEGER" },
+            { "dsb.50m.rifle.3x40",       "1.60", 120,165, 15, "INTEGER" },
+        };
+        int ok = 0;
+        QStringList wrong;
+        for (const Simple& p : simple) {
+            const QVariantMap d = def(p.id), t = timing(p.id);
+            const bool good =
+                d.value(QStringLiteral("ruleNumber")).toString() == QLatin1String(p.rule)
+                && d.value(QStringLiteral("shotCount")).toInt() == p.shots
+                && d.value(QStringLiteral("scoringMode")).toString() == QLatin1String(p.scoring)
+                && t.value(QStringLiteral("timingModel")).toString()
+                       == QLatin1String("SINGLE_MATCH_CLOCK")
+                && mins(t, "matchMs") == p.match
+                && mins(t, "preparationMs") == p.prep
+                && t.value(QStringLiteral("preparationPolicy")).toString()
+                       == QLatin1String("OUTSIDE_MATCH_TIME")
+                && t.value(QStringLiteral("sighterPolicy")).toString()
+                       == QLatin1String("UNLIMITED_IN_PREPARATION")
+                && t.value(QStringLiteral("positionMs")).toList().isEmpty();
+            if (good) ++ok; else wrong << QLatin1String(p.id);
+        }
+        check(ok == int(sizeof(simple) / sizeof(simple[0])),
+              "DSB-CAT-001: every single-master-clock programme carries its rule "
+              "number, shot count, EST time, 15 min outside preparation, unlimited "
+              "sighters and scoring mode",
+              wrong.join(QStringLiteral(", ")));
+
+        // ── 2.20 30-shot time is a RECOMMENDATION, 60-shot is a rule ─────
+        check(timing("dsb.50m.pistol.p30").value(QStringLiteral("matchTimeAuthority")).toString()
+                  == QLatin1String("RECOMMENDED")
+              && timing("dsb.50m.pistol.p60").value(QStringLiteral("matchTimeAuthority")).toString()
+                  == QLatin1String("RULE"),
+              "DSB-CAT-001: the 30-shot 50 m pistol time is recorded as a recommendation, "
+              "the 60-shot time as a rule");
+
+        // ── 1.20: INDEPENDENT position clocks, gated, sighting inside ────
+        struct ThreePos { const char* id; const char* variant; int shots;
+                          int k; int p; int st; };
+        const ThreePos tp[] = {
+            { "dsb.10m.air-rifle.3x10", "3x10", 30, 25, 20, 30 },
+            { "dsb.10m.air-rifle.3x20", "3x20", 60, 35, 30, 40 },
+        };
+        int tpOk = 0;
+        QStringList tpWrong;
+        for (const ThreePos& p : tp) {
+            const QVariantMap d = def(p.id), t = timing(p.id);
+            const QVariantList pos = t.value(QStringLiteral("positionMs")).toList();
+            const QVariantList seq = d.value(QStringLiteral("positions")).toList();
+            const QVariantList spp = d.value(QStringLiteral("shotsPerPosition")).toList();
+            const bool good =
+                d.value(QStringLiteral("ruleNumber")).toString() == QLatin1String("1.20")
+                && d.value(QStringLiteral("programmeVariant")).toString() == QLatin1String(p.variant)
+                && d.value(QStringLiteral("shotCount")).toInt() == p.shots
+                && d.value(QStringLiteral("scoringMode")).toString() == QLatin1String("INTEGER")
+                && t.value(QStringLiteral("timingModel")).toString()
+                       == QLatin1String("INDEPENDENT_POSITION_CLOCKS")
+                && t.value(QStringLiteral("matchMs")).toLongLong() == 0
+                && pos.size() == 3
+                && pos.at(0).toLongLong() == qint64(p.k)  * 60000
+                && pos.at(1).toLongLong() == qint64(p.p)  * 60000
+                && pos.at(2).toLongLong() == qint64(p.st) * 60000
+                && mins(t, "preparationMs") == 15
+                && t.value(QStringLiteral("preparationPolicy")).toString()
+                       == QLatin1String("OUTSIDE_MATCH_TIME")
+                && t.value(QStringLiteral("sighterPolicy")).toString()
+                       == QLatin1String("INSIDE_POSITION_CLOCK")
+                && t.value(QStringLiteral("positionTransitionPolicy")).toString()
+                       == QLatin1String("GATED_BY_MATCH_CONTROL")
+                && seq.size() == 3
+                && seq.at(0).toString() == QLatin1String("KNEELING")
+                && seq.at(1).toString() == QLatin1String("PRONE")
+                && seq.at(2).toString() == QLatin1String("STANDING")
+                && spp.size() == 3
+                && spp.at(0).toInt() * 3 == p.shots;
+            if (good) ++tpOk; else tpWrong << QLatin1String(p.id);
+        }
+        check(tpOk == 2,
+              "DSB-CAT-001: 1.20 3x10 and 3x20 carry independent position clocks "
+              "(25/20/30 and 35/30/40), kneeling-prone-standing, a 15 min outside "
+              "preparation, sighting INSIDE the position clock and a gated transition",
+              tpWrong.join(QStringLiteral(", ")));
+
+        // ── 1.20 has NO master clock; 1.40/1.60 have NO position clocks ──
+        check(timing("dsb.10m.air-rifle.3x20").value(QStringLiteral("matchMs")).toLongLong() == 0,
+              "DSB-CAT-001: 1.20 exposes no master clock - a caller reading the "
+              "wrong field gets 0, never a plausible wrong number");
+        check(timing("dsb.50m.rifle.3x20").value(QStringLiteral("positionMs")).toList().isEmpty()
+              && timing("dsb.50m.rifle.3x40").value(QStringLiteral("positionMs")).toList().isEmpty(),
+              "DSB-CAT-001: 1.40 and 1.60 expose no position clocks");
+
+        // ── target geometry is REUSED, never duplicated ──────────────────
+        struct Face { const char* id; const char* std; int dsbNumber; };
+        const Face faces[] = {
+            { "dsb.10m.air-rifle.lg60",  "issf.10m.air-rifle", 1 },
+            { "dsb.10m.air-rifle.3x20",  "issf.10m.air-rifle", 1 },
+            { "dsb.50m.rifle.3x20",      "issf.50m.rifle",     3 },
+            { "dsb.50m.rifle.3x40",      "issf.50m.rifle",     3 },
+            { "dsb.50m.rifle.prone60",   "issf.50m.rifle",     3 },
+            { "dsb.50m.pistol.p60",      "issf.50m.pistol",    4 },
+            { "dsb.10m.air-pistol.lp60", "issf.10m.air-pistol",7 },
+        };
+        int faceOk = 0;
+        for (const Face& f : faces) {
+            const QVariantMap d = def(f.id);
+            if (d.value(QStringLiteral("targetStandardId")).toString() == QLatin1String(f.std)
+                && d.value(QStringLiteral("dsbTargetNumber")).toInt() == f.dsbNumber)
+                ++faceOk;
+        }
+        check(faceOk == int(sizeof(faces) / sizeof(faces[0])),
+              "DSB-CAT-001: every DSB programme SELECTS an existing ISSF target "
+              "standard - Scheibe 1/3/4/7 - and defines no new geometry",
+              QString::number(faceOk));
+
+        // ── scoring is NOT a property of the ruleset ─────────────────────
+        check(def("dsb.10m.air-rifle.lg60").value(QStringLiteral("scoringMode")).toString()
+                  == QLatin1String("DECIMAL")
+              && def("dsb.10m.air-rifle.3x20").value(QStringLiteral("scoringMode")).toString()
+                  == QLatin1String("INTEGER"),
+              "DSB-CAT-001: DSB is NOT uniformly integer - 1.10 is decimal while "
+              "1.20 is whole ring, from the same ruleset");
+        check(def("dsb.50m.rifle.prone60").value(QStringLiteral("scoringMode")).toString()
+                  == QLatin1String("DECIMAL")
+              && def("dsb.50m.rifle.3x20").value(QStringLiteral("scoringMode")).toString()
+                  == QLatin1String("INTEGER"),
+              "DSB-CAT-001: 1.80 is decimal and 1.40 is integer on the same target face");
+
+        // ── the four layers stay separable ───────────────────────────────
+        const QVariantMap meta = [&cat]() {
+            QVariant v;
+            QMetaObject::invokeMethod(cat.data(), "rulesetMetadata", Q_RETURN_ARG(QVariant, v),
+                Q_ARG(QVariant, QStringLiteral("dsb.50m.rifle.3x20")));
+            return v.toMap();
+        }();
+        check(meta.value(QStringLiteral("ruleset")).toString() == QLatin1String("dsb")
+              && meta.value(QStringLiteral("rulesetVersion")).toString() == QLatin1String("2026-01-01")
+              && meta.value(QStringLiteral("ruleNumber")).toString() == QLatin1String("1.40")
+              && meta.value(QStringLiteral("programmeVariant")).toString() == QLatin1String("3x20")
+              && meta.value(QStringLiteral("competitionContext")).toString() == QLatin1String("DM_2026")
+              && meta.value(QStringLiteral("scoringMode")).toString() == QLatin1String("INTEGER"),
+              "DSB-CAT-001: ruleset, version, rule number, variant, context and "
+              "scoring mode are separately recoverable for the journal and report");
+
+        // ── programmes that are NOT established must not exist ───────────
+        QStringList forbidden;
+        for (const QVariant& e : all.toList()) {
+            const QVariantMap m = e.toMap();
+            const QString v = m.value(QStringLiteral("programmeVariant")).toString();
+            const QString r = m.value(QStringLiteral("ruleNumber")).toString();
+            if (v.contains(QStringLiteral("3x15")))
+                forbidden << m.value(QStringLiteral("programmeId")).toString();
+            if (r == QLatin1String("1.40") && v == QLatin1String("3x10"))
+                forbidden << m.value(QStringLiteral("programmeId")).toString();
+        }
+        check(forbidden.isEmpty(),
+              "DSB-CAT-001: no 10 m 3x15 and no 50 m 1.40 3x10 - neither is "
+              "established by the Sportordnung (S-C.2, S-C.3)",
+              forbidden.join(QStringLiteral(", ")));
+
+        // ── the hardware-blocked programmes are absent, not faked ────────
+        QStringList faked;
+        for (const QVariant& e : all.toList()) {
+            const QString r = e.toMap().value(QStringLiteral("ruleNumber")).toString();
+            if (r == QLatin1String("2.16") || r == QLatin1String("2.17")
+                || r == QLatin1String("2.18"))
+                faked << r;
+        }
+        check(faked.isEmpty(),
+              "DSB-CAT-001: 2.16 / 2.17 / 2.18 are NOT present - they need falling "
+              "targets, a second face and series exposure, and must not be faked "
+              "by changing timers only",
+              faked.join(QStringLiteral(", ")));
+
+        // ── the legacy ISSF rows are untouched ───────────────────────────
+        QVariant legacy;
+        QMetaObject::invokeMethod(cat.data(), "entriesFor", Q_RETURN_ARG(QVariant, legacy),
+                                  Q_ARG(QVariant, QStringLiteral("game10RangeEventModel")));
+        check(legacy.toList().size() == 12
+              && legacy.toList().at(5).toMap().value(QStringLiteral("programmeId")).toString()
+                     == QLatin1String("issf.10m.air-rifle.qualification60"),
+              "DSB-CAT-001: entriesFor() still returns ONLY the index-locked legacy "
+              "rows, so no ISSF row moved");
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // DSB-TIMING-001 — the critical cross-rule test (requirement 28).
+    //
+    // Three three-position competitions, three different timing structures.
+    // If this ever passes by accident, competition behaviour has been inferred
+    // from the words "three position" somewhere, which is the exact defect this
+    // whole design exists to prevent.
+    // ─────────────────────────────────────────────────────────────────────
+    {
+        QQmlEngine eng;
+        QQmlComponent comp(&eng, QUrl::fromLocalFile(
+            QStringLiteral(TECHAIM_SOURCE_DIR "/CompetitionCatalogue.qml")));
+        QScopedPointer<QObject> cat(comp.create());
+        if (!cat.isNull()) {
+            const auto timing = [&cat](const char* id) {
+                QVariant v;
+                QMetaObject::invokeMethod(cat.data(), "timingFor", Q_RETURN_ARG(QVariant, v),
+                                          Q_ARG(QVariant, QString::fromLatin1(id)));
+                return v.toMap();
+            };
+            const QVariantMap dsb120 = timing("dsb.10m.air-rifle.3x20");
+            const QVariantMap dsb140 = timing("dsb.50m.rifle.3x20");
+            const QVariantMap dsb160 = timing("dsb.50m.rifle.3x40");
+            const QVariantMap issf3p = timing("issf.50m.rifle.qualification60");
+
+            check(dsb120.value(QStringLiteral("timingModel")).toString()
+                      == QLatin1String("INDEPENDENT_POSITION_CLOCKS")
+                  && dsb140.value(QStringLiteral("timingModel")).toString()
+                      == QLatin1String("SINGLE_MATCH_CLOCK")
+                  && dsb160.value(QStringLiteral("timingModel")).toString()
+                      == QLatin1String("SINGLE_MATCH_CLOCK"),
+                  "DSB-TIMING-001: DSB 1.20 uses independent position clocks while "
+                  "DSB 1.40 and 1.60 use one master clock - all three are "
+                  "three-position rifle competitions in the same ruleset");
+
+            check(dsb140.value(QStringLiteral("matchMs")).toLongLong() == qint64(105) * 60000
+                  && dsb160.value(QStringLiteral("matchMs")).toLongLong() == qint64(165) * 60000,
+                  "DSB-TIMING-001: the two master clocks are 105 and 165 minutes");
+
+            // DSB 1.20's three clocks are not one clock split three ways.
+            const QVariantList pos = dsb120.value(QStringLiteral("positionMs")).toList();
+            qint64 sum = 0;
+            for (const QVariant& p : pos) sum += p.toLongLong();
+            check(sum == qint64(105) * 60000
+                  && dsb120.value(QStringLiteral("matchMs")).toLongLong() == 0,
+                  "DSB-TIMING-001: 1.20's position clocks happen to total 105 min, "
+                  "and it still exposes NO master clock - the total is a coincidence, "
+                  "not a course time");
+
+            // ISSF must be untouched: it declares no DSB timing at all and keeps
+            // getting its durations from where it always has.
+            check(issf3p.value(QStringLiteral("matchMs")).toLongLong() == 0
+                  && issf3p.value(QStringLiteral("preparationMs")).toLongLong() == 0
+                  && issf3p.value(QStringLiteral("positionMs")).toList().isEmpty()
+                  && issf3p.value(QStringLiteral("preparationPolicy")).toString().isEmpty(),
+                  "DSB-TIMING-001: the ISSF 50 m 3P profile declares NO timing here, "
+                  "so adding DSB cannot have changed how ISSF is conducted");
+        }
     }
 
     printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
@@ -1774,9 +2392,28 @@ int main(int argc, char* argv[])
         // prose, which is exactly the kind of false signal a gate must not
         // carry. Every id is already asserted to start "issf." above; this
         // adds the federation field itself.
-        check(!catSrc.contains(QStringLiteral("\"rulesetId\": \"DSB\""))
-              && !catSrc.contains(QStringLiteral("\"federation\": \"DSB\"")),
-              "CATALOGUE-001: no unverified federation programme has been added");
+        // SUPERSEDED. The original gate asserted that NO federation programme
+        // existed, which was right while none was researched. DSB 2026 now
+        // does, so the gate asserts the thing that actually protects an
+        // athlete: a federation programme may exist ONLY if it carries its
+        // authority - rule number, ruleset version and competition context.
+        // A federation entry missing any of those is an unverified programme.
+        QVariant fedAll;
+        QMetaObject::invokeMethod(cat.data(), "allEntries", Q_RETURN_ARG(QVariant, fedAll));
+        QStringList unverified;
+        for (const QVariant& e : fedAll.toList()) {
+            const QVariantMap m = e.toMap();
+            if (m.value(QStringLiteral("federation")).toString().isEmpty()) continue;
+            if (m.value(QStringLiteral("federation")).toString() == QLatin1String("ISSF")) continue;
+            if (m.value(QStringLiteral("ruleNumber")).toString().isEmpty()
+                || m.value(QStringLiteral("rulesetVersion")).toString().isEmpty()
+                || m.value(QStringLiteral("competitionContext")).toString().isEmpty())
+                unverified << m.value(QStringLiteral("programmeId")).toString();
+        }
+        check(unverified.isEmpty(),
+              "CATALOGUE-001: every federation programme carries its rule number, "
+              "ruleset version and competition context - no unverified programme",
+              unverified.join(QStringLiteral(", ")));
         // The catalogue SELECTS behaviour - it must never carry scoring.
         check(!catSrc.contains(QStringLiteral("radOf10Ring"))
               && !catSrc.contains(QStringLiteral("r2rDis"))
@@ -1813,8 +2450,8 @@ int main(int argc, char* argv[])
             QMetaObject::invokeMethod(sel.data(), "ruleSets", Q_RETURN_ARG(QVariant, v),
                                       Q_ARG(QVariant, QVariant()));   // unfiltered
             const QVariantList sets = v.toList();
-            check(sets.size() == 2,
-                  "SETA-SEL-001: two rule sets today - ISSF and the practice presets",
+            check(sets.size() == 3,
+                  "SETA-SEL-001: three rule sets - ISSF, DSB 2026 and the practice presets",
                   QString::number(sets.size()));
             check(!sets.isEmpty() && sets.first().toMap()
                       .value(QStringLiteral("rulesetId")).toString() == QStringLiteral("issf"),
@@ -1825,8 +2462,12 @@ int main(int argc, char* argv[])
             for (const QVariant& r : sets)
                 if (r.toMap().value(QStringLiteral("rulesetId")).toString() == QStringLiteral("dsb"))
                     sawDsb = true;
-            check(!sawDsb,
-                  "SETA-SEL-001: DSB is NOT offered - no confirmed profile exists yet");
+            // SUPERSEDED: DSB profiles now exist and are confirmed against the
+            // Sportordnung 01.01.2026, so the rule set MUST be offered. What
+            // still may not exist is a programme without authority - asserted
+            // by DSB-CAT-001 below.
+            check(sawDsb,
+                  "SETA-SEL-001: the DSB rule set is offered now that confirmed profiles exist");
 
             // Every catalogue entry must be reachable through the hierarchy,
             // and the hierarchy must invent nothing.
@@ -1849,10 +2490,12 @@ int main(int argc, char* argv[])
                     }
                 }
             }
-            check(reachable == 48,
-                  "SETA-SEL-001: all 48 catalogue entries are reachable - no programme lost",
+            // 48 ISSF/practice entries + 13 DSB 2026 programmes. Stated as
+            // two numbers on purpose: if either side moves, this fails.
+            check(reachable == 61,
+                  "SETA-SEL-001: all 61 catalogue entries are reachable - no programme lost",
                   QString::number(reachable));
-            check(reachableIds.size() == 48,
+            check(reachableIds.size() == 61,
                   "SETA-SEL-001: the hierarchy invents no programme",
                   QString::number(reachableIds.size()));
 
@@ -2064,7 +2707,9 @@ int main(int argc, char* argv[])
                                           Q_ARG(QVariant, variant == 1));
                 (variant == 1 ? fifteenCount : standard) = v.toList().size();
             }
-            check(standard == 24 && fifteenCount == 24 && standard + fifteenCount == 48,
+            // 24 standard-paper presets + 13 DSB (none of which is a 15-shot
+            // paper variant) = 37, against 24 in 15-shot mode.
+            check(standard == 37 && fifteenCount == 24 && standard + fifteenCount == 61,
                   "SETA-INT-001: the two paper modes partition the catalogue exactly",
                   QString::number(standard) + QStringLiteral("/")
                       + QString::number(fifteenCount));
@@ -2084,8 +2729,8 @@ int main(int argc, char* argv[])
 
             QMetaObject::invokeMethod(cat.data(), "ruleSets", Q_RETURN_ARG(QVariant, rs),
                                       Q_ARG(QVariant, false));
-            check(rs.toList().size() == 2,
-                  "SETA-INT-001: standard paper offers ISSF and the practice presets",
+            check(rs.toList().size() == 3,
+                  "SETA-INT-001: standard paper offers ISSF, DSB and the practice presets",
                   QString::number(rs.toList().size()));
         }
 
@@ -2546,7 +3191,7 @@ int main(int argc, char* argv[])
 
         QQmlEngine e1;
         const QStringList en = stateOf(e1);
-        check(en.size() == 48, "SETA-LANG-005: the English state snapshot covers all 48 programmes",
+        check(en.size() == 61, "SETA-LANG-005: the English state snapshot covers all 61 programmes",
               QString::number(en.size()));
 
         QTranslator de;
@@ -2562,6 +3207,315 @@ int main(int argc, char* argv[])
               "SETA-LANG-005: programmeId, rulesetId, disciplineId, targetStandardId, "
               "distance, shot count, scoring mode, target family, range, weapon and "
               "event index are ALL identical in German");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // DSB-CAT-001 — the DSB 2026 ruleset, as a first-class competition set.
+    //
+    // Authority: docs/rules/dsb-2026-*.md, Sportordnung 01.01.2026.
+    // Every number checked here is a rule value with a page reference; this
+    // gate exists so a later edit cannot quietly change a competition.
+    // ─────────────────────────────────────────────────────────────────────
+    {
+        QQmlEngine eng;
+        QQmlComponent comp(&eng, QUrl::fromLocalFile(
+            QStringLiteral(TECHAIM_SOURCE_DIR "/CompetitionCatalogue.qml")));
+        QScopedPointer<QObject> cat(comp.create());
+        check(!cat.isNull(), "DSB-CAT-001: catalogue loads", comp.errorString());
+        if (cat.isNull()) { /* nothing further to assert */ }
+        else {
+        const auto def = [&cat](const char* id) {
+            QVariant v;
+            QMetaObject::invokeMethod(cat.data(), "competitionDefinition",
+                                      Q_RETURN_ARG(QVariant, v),
+                                      Q_ARG(QVariant, QString::fromLatin1(id)));
+            return v.toMap();
+        };
+        const auto timing = [&cat](const char* id) {
+            QVariant v;
+            QMetaObject::invokeMethod(cat.data(), "timingFor", Q_RETURN_ARG(QVariant, v),
+                                      Q_ARG(QVariant, QString::fromLatin1(id)));
+            return v.toMap();
+        };
+        const auto mins = [](const QVariantMap& t, const char* key) {
+            return int(t.value(QLatin1String(key)).toLongLong() / 60000);
+        };
+
+        // ── the ruleset exists and is versioned ──────────────────────────
+        QVariant all;
+        QMetaObject::invokeMethod(cat.data(), "dsbEntries", Q_RETURN_ARG(QVariant, all));
+        check(all.toList().size() == 13,
+              "DSB-CAT-001: 13 DSB programmes are defined",
+              QString::number(all.toList().size()));
+        int versioned = 0, contexted = 0, official = 0;
+        for (const QVariant& e : all.toList()) {
+            const QVariantMap m = e.toMap();
+            if (m.value(QStringLiteral("rulesetVersion")).toString() == QLatin1String("2026-01-01")) ++versioned;
+            if (!m.value(QStringLiteral("competitionContext")).toString().isEmpty()) ++contexted;
+            if (m.value(QStringLiteral("programmeType")).toString() == QLatin1String("OFFICIAL")) ++official;
+        }
+        check(versioned == 13 && contexted == 13 && official == 13,
+              "DSB-CAT-001: every DSB programme is versioned, context-bound and official",
+              QString::number(versioned) + QStringLiteral("/")
+                  + QString::number(contexted) + QStringLiteral("/")
+                  + QString::number(official));
+
+        // ── 1.10 Luftgewehr: shot count -> EST minutes, decimal ──────────
+        struct Simple { const char* id; const char* rule; int shots; int match; int prep;
+                        const char* scoring; };
+        const Simple simple[] = {
+            { "dsb.10m.air-rifle.lg20",   "1.10", 20,  30, 15, "DECIMAL" },
+            { "dsb.10m.air-rifle.lg40",   "1.10", 40,  50, 15, "DECIMAL" },
+            { "dsb.10m.air-rifle.lg60",   "1.10", 60,  75, 15, "DECIMAL" },
+            { "dsb.50m.rifle.prone60",    "1.80", 60,  50, 15, "DECIMAL" },
+            { "dsb.10m.air-pistol.lp20",  "2.10", 20,  30, 15, "INTEGER" },
+            { "dsb.10m.air-pistol.lp40",  "2.10", 40,  50, 15, "INTEGER" },
+            { "dsb.10m.air-pistol.lp60",  "2.10", 60,  75, 15, "INTEGER" },
+            { "dsb.50m.pistol.p60",       "2.20", 60,  90, 15, "INTEGER" },
+            { "dsb.50m.pistol.p30",       "2.20", 30,  55, 15, "INTEGER" },
+            { "dsb.50m.rifle.3x20",       "1.40", 60, 105, 15, "INTEGER" },
+            { "dsb.50m.rifle.3x40",       "1.60", 120,165, 15, "INTEGER" },
+        };
+        int ok = 0;
+        QStringList wrong;
+        for (const Simple& p : simple) {
+            const QVariantMap d = def(p.id), t = timing(p.id);
+            const bool good =
+                d.value(QStringLiteral("ruleNumber")).toString() == QLatin1String(p.rule)
+                && d.value(QStringLiteral("shotCount")).toInt() == p.shots
+                && d.value(QStringLiteral("scoringMode")).toString() == QLatin1String(p.scoring)
+                && t.value(QStringLiteral("timingModel")).toString()
+                       == QLatin1String("SINGLE_MATCH_CLOCK")
+                && mins(t, "matchMs") == p.match
+                && mins(t, "preparationMs") == p.prep
+                && t.value(QStringLiteral("preparationPolicy")).toString()
+                       == QLatin1String("OUTSIDE_MATCH_TIME")
+                && t.value(QStringLiteral("sighterPolicy")).toString()
+                       == QLatin1String("UNLIMITED_IN_PREPARATION")
+                && t.value(QStringLiteral("positionMs")).toList().isEmpty();
+            if (good) ++ok; else wrong << QLatin1String(p.id);
+        }
+        check(ok == int(sizeof(simple) / sizeof(simple[0])),
+              "DSB-CAT-001: every single-master-clock programme carries its rule "
+              "number, shot count, EST time, 15 min outside preparation, unlimited "
+              "sighters and scoring mode",
+              wrong.join(QStringLiteral(", ")));
+
+        // ── 2.20 30-shot time is a RECOMMENDATION, 60-shot is a rule ─────
+        check(timing("dsb.50m.pistol.p30").value(QStringLiteral("matchTimeAuthority")).toString()
+                  == QLatin1String("RECOMMENDED")
+              && timing("dsb.50m.pistol.p60").value(QStringLiteral("matchTimeAuthority")).toString()
+                  == QLatin1String("RULE"),
+              "DSB-CAT-001: the 30-shot 50 m pistol time is recorded as a recommendation, "
+              "the 60-shot time as a rule");
+
+        // ── 1.20: INDEPENDENT position clocks, gated, sighting inside ────
+        struct ThreePos { const char* id; const char* variant; int shots;
+                          int k; int p; int st; };
+        const ThreePos tp[] = {
+            { "dsb.10m.air-rifle.3x10", "3x10", 30, 25, 20, 30 },
+            { "dsb.10m.air-rifle.3x20", "3x20", 60, 35, 30, 40 },
+        };
+        int tpOk = 0;
+        QStringList tpWrong;
+        for (const ThreePos& p : tp) {
+            const QVariantMap d = def(p.id), t = timing(p.id);
+            const QVariantList pos = t.value(QStringLiteral("positionMs")).toList();
+            const QVariantList seq = d.value(QStringLiteral("positions")).toList();
+            const QVariantList spp = d.value(QStringLiteral("shotsPerPosition")).toList();
+            const bool good =
+                d.value(QStringLiteral("ruleNumber")).toString() == QLatin1String("1.20")
+                && d.value(QStringLiteral("programmeVariant")).toString() == QLatin1String(p.variant)
+                && d.value(QStringLiteral("shotCount")).toInt() == p.shots
+                && d.value(QStringLiteral("scoringMode")).toString() == QLatin1String("INTEGER")
+                && t.value(QStringLiteral("timingModel")).toString()
+                       == QLatin1String("INDEPENDENT_POSITION_CLOCKS")
+                && t.value(QStringLiteral("matchMs")).toLongLong() == 0
+                && pos.size() == 3
+                && pos.at(0).toLongLong() == qint64(p.k)  * 60000
+                && pos.at(1).toLongLong() == qint64(p.p)  * 60000
+                && pos.at(2).toLongLong() == qint64(p.st) * 60000
+                && mins(t, "preparationMs") == 15
+                && t.value(QStringLiteral("preparationPolicy")).toString()
+                       == QLatin1String("OUTSIDE_MATCH_TIME")
+                && t.value(QStringLiteral("sighterPolicy")).toString()
+                       == QLatin1String("INSIDE_POSITION_CLOCK")
+                && t.value(QStringLiteral("positionTransitionPolicy")).toString()
+                       == QLatin1String("GATED_BY_MATCH_CONTROL")
+                && seq.size() == 3
+                && seq.at(0).toString() == QLatin1String("KNEELING")
+                && seq.at(1).toString() == QLatin1String("PRONE")
+                && seq.at(2).toString() == QLatin1String("STANDING")
+                && spp.size() == 3
+                && spp.at(0).toInt() * 3 == p.shots;
+            if (good) ++tpOk; else tpWrong << QLatin1String(p.id);
+        }
+        check(tpOk == 2,
+              "DSB-CAT-001: 1.20 3x10 and 3x20 carry independent position clocks "
+              "(25/20/30 and 35/30/40), kneeling-prone-standing, a 15 min outside "
+              "preparation, sighting INSIDE the position clock and a gated transition",
+              tpWrong.join(QStringLiteral(", ")));
+
+        // ── 1.20 has NO master clock; 1.40/1.60 have NO position clocks ──
+        check(timing("dsb.10m.air-rifle.3x20").value(QStringLiteral("matchMs")).toLongLong() == 0,
+              "DSB-CAT-001: 1.20 exposes no master clock - a caller reading the "
+              "wrong field gets 0, never a plausible wrong number");
+        check(timing("dsb.50m.rifle.3x20").value(QStringLiteral("positionMs")).toList().isEmpty()
+              && timing("dsb.50m.rifle.3x40").value(QStringLiteral("positionMs")).toList().isEmpty(),
+              "DSB-CAT-001: 1.40 and 1.60 expose no position clocks");
+
+        // ── target geometry is REUSED, never duplicated ──────────────────
+        struct Face { const char* id; const char* std; int dsbNumber; };
+        const Face faces[] = {
+            { "dsb.10m.air-rifle.lg60",  "issf.10m.air-rifle", 1 },
+            { "dsb.10m.air-rifle.3x20",  "issf.10m.air-rifle", 1 },
+            { "dsb.50m.rifle.3x20",      "issf.50m.rifle",     3 },
+            { "dsb.50m.rifle.3x40",      "issf.50m.rifle",     3 },
+            { "dsb.50m.rifle.prone60",   "issf.50m.rifle",     3 },
+            { "dsb.50m.pistol.p60",      "issf.50m.pistol",    4 },
+            { "dsb.10m.air-pistol.lp60", "issf.10m.air-pistol",7 },
+        };
+        int faceOk = 0;
+        for (const Face& f : faces) {
+            const QVariantMap d = def(f.id);
+            if (d.value(QStringLiteral("targetStandardId")).toString() == QLatin1String(f.std)
+                && d.value(QStringLiteral("dsbTargetNumber")).toInt() == f.dsbNumber)
+                ++faceOk;
+        }
+        check(faceOk == int(sizeof(faces) / sizeof(faces[0])),
+              "DSB-CAT-001: every DSB programme SELECTS an existing ISSF target "
+              "standard - Scheibe 1/3/4/7 - and defines no new geometry",
+              QString::number(faceOk));
+
+        // ── scoring is NOT a property of the ruleset ─────────────────────
+        check(def("dsb.10m.air-rifle.lg60").value(QStringLiteral("scoringMode")).toString()
+                  == QLatin1String("DECIMAL")
+              && def("dsb.10m.air-rifle.3x20").value(QStringLiteral("scoringMode")).toString()
+                  == QLatin1String("INTEGER"),
+              "DSB-CAT-001: DSB is NOT uniformly integer - 1.10 is decimal while "
+              "1.20 is whole ring, from the same ruleset");
+        check(def("dsb.50m.rifle.prone60").value(QStringLiteral("scoringMode")).toString()
+                  == QLatin1String("DECIMAL")
+              && def("dsb.50m.rifle.3x20").value(QStringLiteral("scoringMode")).toString()
+                  == QLatin1String("INTEGER"),
+              "DSB-CAT-001: 1.80 is decimal and 1.40 is integer on the same target face");
+
+        // ── the four layers stay separable ───────────────────────────────
+        const QVariantMap meta = [&cat]() {
+            QVariant v;
+            QMetaObject::invokeMethod(cat.data(), "rulesetMetadata", Q_RETURN_ARG(QVariant, v),
+                Q_ARG(QVariant, QStringLiteral("dsb.50m.rifle.3x20")));
+            return v.toMap();
+        }();
+        check(meta.value(QStringLiteral("ruleset")).toString() == QLatin1String("dsb")
+              && meta.value(QStringLiteral("rulesetVersion")).toString() == QLatin1String("2026-01-01")
+              && meta.value(QStringLiteral("ruleNumber")).toString() == QLatin1String("1.40")
+              && meta.value(QStringLiteral("programmeVariant")).toString() == QLatin1String("3x20")
+              && meta.value(QStringLiteral("competitionContext")).toString() == QLatin1String("DM_2026")
+              && meta.value(QStringLiteral("scoringMode")).toString() == QLatin1String("INTEGER"),
+              "DSB-CAT-001: ruleset, version, rule number, variant, context and "
+              "scoring mode are separately recoverable for the journal and report");
+
+        // ── programmes that are NOT established must not exist ───────────
+        QStringList forbidden;
+        for (const QVariant& e : all.toList()) {
+            const QVariantMap m = e.toMap();
+            const QString v = m.value(QStringLiteral("programmeVariant")).toString();
+            const QString r = m.value(QStringLiteral("ruleNumber")).toString();
+            if (v.contains(QStringLiteral("3x15")))
+                forbidden << m.value(QStringLiteral("programmeId")).toString();
+            if (r == QLatin1String("1.40") && v == QLatin1String("3x10"))
+                forbidden << m.value(QStringLiteral("programmeId")).toString();
+        }
+        check(forbidden.isEmpty(),
+              "DSB-CAT-001: no 10 m 3x15 and no 50 m 1.40 3x10 - neither is "
+              "established by the Sportordnung (S-C.2, S-C.3)",
+              forbidden.join(QStringLiteral(", ")));
+
+        // ── the hardware-blocked programmes are absent, not faked ────────
+        QStringList faked;
+        for (const QVariant& e : all.toList()) {
+            const QString r = e.toMap().value(QStringLiteral("ruleNumber")).toString();
+            if (r == QLatin1String("2.16") || r == QLatin1String("2.17")
+                || r == QLatin1String("2.18"))
+                faked << r;
+        }
+        check(faked.isEmpty(),
+              "DSB-CAT-001: 2.16 / 2.17 / 2.18 are NOT present - they need falling "
+              "targets, a second face and series exposure, and must not be faked "
+              "by changing timers only",
+              faked.join(QStringLiteral(", ")));
+
+        // ── the legacy ISSF rows are untouched ───────────────────────────
+        QVariant legacy;
+        QMetaObject::invokeMethod(cat.data(), "entriesFor", Q_RETURN_ARG(QVariant, legacy),
+                                  Q_ARG(QVariant, QStringLiteral("game10RangeEventModel")));
+        check(legacy.toList().size() == 12
+              && legacy.toList().at(5).toMap().value(QStringLiteral("programmeId")).toString()
+                     == QLatin1String("issf.10m.air-rifle.qualification60"),
+              "DSB-CAT-001: entriesFor() still returns ONLY the index-locked legacy "
+              "rows, so no ISSF row moved");
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // DSB-TIMING-001 — the critical cross-rule test (requirement 28).
+    //
+    // Three three-position competitions, three different timing structures.
+    // If this ever passes by accident, competition behaviour has been inferred
+    // from the words "three position" somewhere, which is the exact defect this
+    // whole design exists to prevent.
+    // ─────────────────────────────────────────────────────────────────────
+    {
+        QQmlEngine eng;
+        QQmlComponent comp(&eng, QUrl::fromLocalFile(
+            QStringLiteral(TECHAIM_SOURCE_DIR "/CompetitionCatalogue.qml")));
+        QScopedPointer<QObject> cat(comp.create());
+        if (!cat.isNull()) {
+            const auto timing = [&cat](const char* id) {
+                QVariant v;
+                QMetaObject::invokeMethod(cat.data(), "timingFor", Q_RETURN_ARG(QVariant, v),
+                                          Q_ARG(QVariant, QString::fromLatin1(id)));
+                return v.toMap();
+            };
+            const QVariantMap dsb120 = timing("dsb.10m.air-rifle.3x20");
+            const QVariantMap dsb140 = timing("dsb.50m.rifle.3x20");
+            const QVariantMap dsb160 = timing("dsb.50m.rifle.3x40");
+            const QVariantMap issf3p = timing("issf.50m.rifle.qualification60");
+
+            check(dsb120.value(QStringLiteral("timingModel")).toString()
+                      == QLatin1String("INDEPENDENT_POSITION_CLOCKS")
+                  && dsb140.value(QStringLiteral("timingModel")).toString()
+                      == QLatin1String("SINGLE_MATCH_CLOCK")
+                  && dsb160.value(QStringLiteral("timingModel")).toString()
+                      == QLatin1String("SINGLE_MATCH_CLOCK"),
+                  "DSB-TIMING-001: DSB 1.20 uses independent position clocks while "
+                  "DSB 1.40 and 1.60 use one master clock - all three are "
+                  "three-position rifle competitions in the same ruleset");
+
+            check(dsb140.value(QStringLiteral("matchMs")).toLongLong() == qint64(105) * 60000
+                  && dsb160.value(QStringLiteral("matchMs")).toLongLong() == qint64(165) * 60000,
+                  "DSB-TIMING-001: the two master clocks are 105 and 165 minutes");
+
+            // DSB 1.20's three clocks are not one clock split three ways.
+            const QVariantList pos = dsb120.value(QStringLiteral("positionMs")).toList();
+            qint64 sum = 0;
+            for (const QVariant& p : pos) sum += p.toLongLong();
+            check(sum == qint64(105) * 60000
+                  && dsb120.value(QStringLiteral("matchMs")).toLongLong() == 0,
+                  "DSB-TIMING-001: 1.20's position clocks happen to total 105 min, "
+                  "and it still exposes NO master clock - the total is a coincidence, "
+                  "not a course time");
+
+            // ISSF must be untouched: it declares no DSB timing at all and keeps
+            // getting its durations from where it always has.
+            check(issf3p.value(QStringLiteral("matchMs")).toLongLong() == 0
+                  && issf3p.value(QStringLiteral("preparationMs")).toLongLong() == 0
+                  && issf3p.value(QStringLiteral("positionMs")).toList().isEmpty()
+                  && issf3p.value(QStringLiteral("preparationPolicy")).toString().isEmpty(),
+                  "DSB-TIMING-001: the ISSF 50 m 3P profile declares NO timing here, "
+                  "so adding DSB cannot have changed how ISSF is conducted");
+        }
     }
 
     printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);

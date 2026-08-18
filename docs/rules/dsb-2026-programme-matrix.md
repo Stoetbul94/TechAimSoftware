@@ -77,9 +77,9 @@ EST product implements**.
 | Equipment change between positions | **permitted** (S-1.2) |
 | Target | **Scheibe Nr. 3** |
 | Olympic competition | yes (S-0.22) |
-| Scoring mode | **whole ring per S-C.1 — but see Q3a**: one read of the DM 2026 table listed 1.40 among the decimal events. **Confirm by eye before implementing** |
+| Scoring mode | **INTEGER for the DM 2026 context** (S-C.7, Q3a closed). Recorded as competition context — not an immutable property of base rule 1.40 |
 | Class context | DM 2026: all announced classes, 60 shots, with a final for Herren I / Jun. I m / Damen I / Jun. I w (S-DM.3) |
-| Status | 3×20: **CONFIRMED**, blocked only on **Q3a**. 30-shot row: **NOT an official 3 × 10** (S-C.3) |
+| Status | 3×20: **CONFIRMED — READY TO IMPLEMENT**. 30-shot row: **NOT an official 3 × 10** (S-C.3) |
 
 > **The 30-shot row does not by itself create a 50 m 3×10 programme.** The
 > timing table carries a 30-shot time for 1.40 and labels it a *recommendation*,
@@ -255,7 +255,7 @@ explicit `Zehntel` column (S-DM.1).
 |---|---|---|
 | **1.10** Luftgewehr 10 m | **DECIMAL** | S-DM.7 |
 | **1.20** Luftgewehr 3-Stellung | **whole ring** | S-C.1 |
-| **1.40** KK-Sportgewehr 50 m 3×20 | **whole ring — CONFIRM (Q3a)** | S-C.1, contradicted by one read of S-DM.7 |
+| **1.40** KK-Sportgewehr 50 m 3×20 | **INTEGER** (DM 2026 context) | S-C.7 |
 | **1.60** KK-Freigewehr 3×40 | **whole ring** | S-C.1 |
 | **1.80** KK-Liegendkampf | **DECIMAL** | S-DM.7 |
 | **2.10** 10 m Luftpistole | **whole ring** | S-DM.5 |
@@ -265,10 +265,9 @@ Nothing here was inferred from ISSF. Note that the pattern does **not** match
 ISSF: DSB scores 10 m air rifle and 50 m prone in tenths but the three-position
 rifle events in whole rings, and both 10 m and 50 m pistol in whole rings.
 
-**Q3a is the one open item.** Two automated reads of the same DM page disagreed
-about 1.40. The customer determination says whole ring; 1.40 must not be
-implemented until that is confirmed by eye, because a wrong scoring mode is a
-result-integrity defect, not a display preference.
+**Q3a is closed** (S-C.7): 1.40 is integer in the DM 2026 context. It is stored
+as `competitionContext → scoringMode`, so a different context can carry a
+different mode without touching the base rule.
 
 ## 6. Class / competition context — the four layers
 

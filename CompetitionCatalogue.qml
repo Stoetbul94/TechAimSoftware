@@ -534,6 +534,406 @@ QtObject {
         ]
     })
 
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // DSB 2026 — Sportordnung des Deutschen Schützenbundes, Stand 01.01.2026.
+    //
+    // A SEPARATE list, deliberately. The four `models` arrays above are
+    // INDEX-LOCKED (ShootingPage resolves a selection by row index), so adding
+    // DSB rows there would silently move every ISSF programme. These entries
+    // are surfaced through allEntries()/the hierarchy and carry their own
+    // runtime configuration instead of a legacy row index.
+    //
+    // AUTHORITY: docs/rules/dsb-2026-source-register.md and the programme
+    // matrix beside it. Every number below traces to a rule number and a page.
+    //
+    // FOUR SEPARATE LAYERS, never collapsed into one enum:
+    //   rulesetId          DSB_2026
+    //   ruleNumber         1.10 / 1.20 / 1.40 / 1.60 / 1.80 / 2.10 / 2.20
+    //   programmeVariant   20 | 40 | 60 | 3x10 | 3x20 | 3x40 | 30
+    //   competitionContext DM_2026 (…LM, regional and customer contexts later)
+    //
+    // scoringMode belongs to the CONTEXT, not to the rule: DSB DM 2026 scores
+    // 1.10 and 1.80 in tenths and 1.20/1.40/1.60/2.10/2.20 in whole rings, so
+    // "DSB means integer" is false and must never be written anywhere.
+    //
+    // TIMING IS EXPLICIT, never inferred. DSB uses BOTH models for
+    // three-position rifle: 1.20 runs three independent position clocks, while
+    // 1.40 and 1.60 run one master clock across the same three positions.
+    readonly property string timingSingleMatchClock: "SINGLE_MATCH_CLOCK"
+    readonly property string timingIndependentPositionClocks: "INDEPENDENT_POSITION_CLOCKS"
+
+    // Preparation policy: is the preparation/sighting period inside or outside
+    // the shooting time? Every DSB programme here is OUTSIDE (Teil 1 S. 20 /
+    // Teil 2 S. 25); ISSF combines them, which is exactly why this is a field.
+    readonly property string prepOutsideMatchTime: "OUTSIDE_MATCH_TIME"
+
+    // Sighter policy per phase.
+    readonly property string sightersUnlimitedInPreparation: "UNLIMITED_IN_PREPARATION"
+    // 1.20 only: sighting before prone and before standing is at the shooter's
+    // discretion and consumes THAT POSITION'S clock.
+    readonly property string sightersInsidePositionClock: "INSIDE_POSITION_CLOCK"
+
+    // Position transition. DSB 1.20 does not chain its clocks: a position ends,
+    // the session waits in POSITION_CHANGE, and the next clock is started by an
+    // authorised match-control action (S-C.6).
+    readonly property string transitionGated: "GATED_BY_MATCH_CONTROL"
+    // 1.40 / 1.60: the master clock simply keeps running across the change.
+    readonly property string transitionWithinMasterClock: "WITHIN_MASTER_CLOCK"
+
+    // Where a duration's authority comes from. A recommended time may be
+    // overridden by the Ausschreibung; a rule time may not.
+    readonly property string timeAuthorityRule: "RULE"
+    readonly property string timeAuthorityRecommended: "RECOMMENDED"
+
+    readonly property var dsbProgrammes: ([
+        // ── 1.10 Luftgewehr 10 m ─────────────────────────────────────────
+        { "programmeId": "dsb.10m.air-rifle.lg20",
+          "rulesetId": "dsb", "rulesetVersion": "2026-01-01", "federation": "DSB",
+          "ruleNumber": "1.10", "programmeVariant": "20",
+          "competitionContext": "DM_2026", "programmeType": "OFFICIAL",
+          "targetStandardId": "issf.10m.air-rifle", "dsbTargetNumber": 1,
+          "disciplineId": "AR10", "distanceM": 10, "targetFamily": "AIR_RIFLE",
+          "disciplineLabelKey": "Luftgewehr",
+          "isPistol": false, "shotCount": 20, "unlimited": false,
+          "scoringMode": "DECIMAL", "fifteenShotVariant": false,
+          "positions": ["STANDING"], "shotsPerPosition": [20],
+          "timingModel": "SINGLE_MATCH_CLOCK",
+          "matchMinutes": 30, "positionMinutes": [],
+          "matchTimeAuthority": "RULE",
+          "preparationMinutes": 15, "preparationPolicy": "OUTSIDE_MATCH_TIME",
+          "sighterPolicy": "UNLIMITED_IN_PREPARATION",
+          "positionTransitionPolicy": "",
+          "nameKey": "DSB 1.10 LUFTGEWEHR 20", "gameDisplay1Key": "10M AIR",
+          "gameDisplay2Key": "RIFLE", "matchDisplayKey": "LG-20" },
+        { "programmeId": "dsb.10m.air-rifle.lg40",
+          "rulesetId": "dsb", "rulesetVersion": "2026-01-01", "federation": "DSB",
+          "ruleNumber": "1.10", "programmeVariant": "40",
+          "competitionContext": "DM_2026", "programmeType": "OFFICIAL",
+          "targetStandardId": "issf.10m.air-rifle", "dsbTargetNumber": 1,
+          "disciplineId": "AR10", "distanceM": 10, "targetFamily": "AIR_RIFLE",
+          "disciplineLabelKey": "Luftgewehr",
+          "isPistol": false, "shotCount": 40, "unlimited": false,
+          "scoringMode": "DECIMAL", "fifteenShotVariant": false,
+          "positions": ["STANDING"], "shotsPerPosition": [40],
+          "timingModel": "SINGLE_MATCH_CLOCK",
+          "matchMinutes": 50, "positionMinutes": [],
+          "matchTimeAuthority": "RULE",
+          "preparationMinutes": 15, "preparationPolicy": "OUTSIDE_MATCH_TIME",
+          "sighterPolicy": "UNLIMITED_IN_PREPARATION",
+          "positionTransitionPolicy": "",
+          "nameKey": "DSB 1.10 LUFTGEWEHR 40", "gameDisplay1Key": "10M AIR",
+          "gameDisplay2Key": "RIFLE", "matchDisplayKey": "LG-40" },
+        { "programmeId": "dsb.10m.air-rifle.lg60",
+          "rulesetId": "dsb", "rulesetVersion": "2026-01-01", "federation": "DSB",
+          "ruleNumber": "1.10", "programmeVariant": "60",
+          "competitionContext": "DM_2026", "programmeType": "OFFICIAL",
+          "targetStandardId": "issf.10m.air-rifle", "dsbTargetNumber": 1,
+          "disciplineId": "AR10", "distanceM": 10, "targetFamily": "AIR_RIFLE",
+          "disciplineLabelKey": "Luftgewehr",
+          "isPistol": false, "shotCount": 60, "unlimited": false,
+          "scoringMode": "DECIMAL", "fifteenShotVariant": false,
+          "positions": ["STANDING"], "shotsPerPosition": [60],
+          "timingModel": "SINGLE_MATCH_CLOCK",
+          "matchMinutes": 75, "positionMinutes": [],
+          "matchTimeAuthority": "RULE",
+          "preparationMinutes": 15, "preparationPolicy": "OUTSIDE_MATCH_TIME",
+          "sighterPolicy": "UNLIMITED_IN_PREPARATION",
+          "positionTransitionPolicy": "",
+          "nameKey": "DSB 1.10 LUFTGEWEHR 60", "gameDisplay1Key": "10M AIR",
+          "gameDisplay2Key": "RIFLE", "matchDisplayKey": "LG-60" },
+
+        // ── 1.20 Luftgewehr 3-Stellung ───────────────────────────────────
+        // THE ONE PROGRAMME WITH INDEPENDENT POSITION CLOCKS. The 15-minute
+        // preparation runs once, before KNEELING, outside every position clock.
+        // Each position clock then CONTAINS that position's own sighting, and
+        // the next clock is started by match control, never by expiry.
+        { "programmeId": "dsb.10m.air-rifle.3x10",
+          "rulesetId": "dsb", "rulesetVersion": "2026-01-01", "federation": "DSB",
+          "ruleNumber": "1.20", "programmeVariant": "3x10",
+          "competitionContext": "DM_2026", "programmeType": "OFFICIAL",
+          "targetStandardId": "issf.10m.air-rifle", "dsbTargetNumber": 1,
+          "disciplineId": "AR10_3P", "distanceM": 10, "targetFamily": "AIR_RIFLE",
+          "disciplineLabelKey": "Luftgewehr 3-Stellung",
+          "isPistol": false, "shotCount": 30, "unlimited": false,
+          "scoringMode": "INTEGER", "fifteenShotVariant": false,
+          "positions": ["KNEELING", "PRONE", "STANDING"],
+          "shotsPerPosition": [10, 10, 10],
+          "timingModel": "INDEPENDENT_POSITION_CLOCKS",
+          "matchMinutes": 0, "positionMinutes": [25, 20, 30],
+          "matchTimeAuthority": "RULE",
+          "preparationMinutes": 15, "preparationPolicy": "OUTSIDE_MATCH_TIME",
+          "sighterPolicy": "INSIDE_POSITION_CLOCK",
+          "positionTransitionPolicy": "GATED_BY_MATCH_CONTROL",
+          "nameKey": "DSB 1.20 LUFTGEWEHR 3-STELLUNG 3x10",
+          "gameDisplay1Key": "10M AIR", "gameDisplay2Key": "RIFLE",
+          "matchDisplayKey": "3x10" },
+        { "programmeId": "dsb.10m.air-rifle.3x20",
+          "rulesetId": "dsb", "rulesetVersion": "2026-01-01", "federation": "DSB",
+          "ruleNumber": "1.20", "programmeVariant": "3x20",
+          "competitionContext": "DM_2026", "programmeType": "OFFICIAL",
+          "targetStandardId": "issf.10m.air-rifle", "dsbTargetNumber": 1,
+          "disciplineId": "AR10_3P", "distanceM": 10, "targetFamily": "AIR_RIFLE",
+          "disciplineLabelKey": "Luftgewehr 3-Stellung",
+          "isPistol": false, "shotCount": 60, "unlimited": false,
+          "scoringMode": "INTEGER", "fifteenShotVariant": false,
+          "positions": ["KNEELING", "PRONE", "STANDING"],
+          "shotsPerPosition": [20, 20, 20],
+          "timingModel": "INDEPENDENT_POSITION_CLOCKS",
+          "matchMinutes": 0, "positionMinutes": [35, 30, 40],
+          "matchTimeAuthority": "RULE",
+          "preparationMinutes": 15, "preparationPolicy": "OUTSIDE_MATCH_TIME",
+          "sighterPolicy": "INSIDE_POSITION_CLOCK",
+          "positionTransitionPolicy": "GATED_BY_MATCH_CONTROL",
+          "nameKey": "DSB 1.20 LUFTGEWEHR 3-STELLUNG 3x20",
+          "gameDisplay1Key": "10M AIR", "gameDisplay2Key": "RIFLE",
+          "matchDisplayKey": "3x20" },
+
+        // ── 1.40 KK-Sportgewehr 50 m 3x20 ────────────────────────────────
+        // Three positions, ONE master clock. Same position sequence as 1.20 and
+        // a completely different timing model - which is the whole reason
+        // timing is a profile field and not a consequence of "3 positions".
+        { "programmeId": "dsb.50m.rifle.3x20",
+          "rulesetId": "dsb", "rulesetVersion": "2026-01-01", "federation": "DSB",
+          "ruleNumber": "1.40", "programmeVariant": "3x20",
+          "competitionContext": "DM_2026", "programmeType": "OFFICIAL",
+          "targetStandardId": "issf.50m.rifle", "dsbTargetNumber": 3,
+          "disciplineId": "RIFLE50_3P", "distanceM": 50,
+          "disciplineLabelKey": "KK-Sportgewehr 3x20",
+          "targetFamily": "SMALLBORE_RIFLE",
+          "isPistol": false, "shotCount": 60, "unlimited": false,
+          "scoringMode": "INTEGER", "fifteenShotVariant": false,
+          "positions": ["KNEELING", "PRONE", "STANDING"],
+          "shotsPerPosition": [20, 20, 20],
+          "timingModel": "SINGLE_MATCH_CLOCK",
+          "matchMinutes": 105, "positionMinutes": [],
+          "matchTimeAuthority": "RULE",
+          "preparationMinutes": 15, "preparationPolicy": "OUTSIDE_MATCH_TIME",
+          "sighterPolicy": "UNLIMITED_IN_PREPARATION",
+          "positionTransitionPolicy": "WITHIN_MASTER_CLOCK",
+          "nameKey": "DSB 1.40 KK-SPORTGEWEHR 3x20", "gameDisplay1Key": "50 Meter",
+          "gameDisplay2Key": "RIFLE", "matchDisplayKey": "KK 3x20" },
+
+        // ── 1.60 KK-Freigewehr 50 m 3x40 ─────────────────────────────────
+        { "programmeId": "dsb.50m.rifle.3x40",
+          "rulesetId": "dsb", "rulesetVersion": "2026-01-01", "federation": "DSB",
+          "ruleNumber": "1.60", "programmeVariant": "3x40",
+          "competitionContext": "DM_2026", "programmeType": "OFFICIAL",
+          "targetStandardId": "issf.50m.rifle", "dsbTargetNumber": 3,
+          "disciplineId": "RIFLE50_3P", "distanceM": 50,
+          "disciplineLabelKey": "KK-Freigewehr 3x40",
+          "targetFamily": "SMALLBORE_RIFLE",
+          "isPistol": false, "shotCount": 120, "unlimited": false,
+          "scoringMode": "INTEGER", "fifteenShotVariant": false,
+          "positions": ["KNEELING", "PRONE", "STANDING"],
+          "shotsPerPosition": [40, 40, 40],
+          "timingModel": "SINGLE_MATCH_CLOCK",
+          "matchMinutes": 165, "positionMinutes": [],
+          "matchTimeAuthority": "RULE",
+          "preparationMinutes": 15, "preparationPolicy": "OUTSIDE_MATCH_TIME",
+          "sighterPolicy": "UNLIMITED_IN_PREPARATION",
+          "positionTransitionPolicy": "WITHIN_MASTER_CLOCK",
+          "nameKey": "DSB 1.60 KK-FREIGEWEHR 3x40", "gameDisplay1Key": "50 Meter",
+          "gameDisplay2Key": "RIFLE", "matchDisplayKey": "KK 3x40" },
+
+        // ── 1.80 KK-Liegendkampf 50 m ────────────────────────────────────
+        { "programmeId": "dsb.50m.rifle.prone60",
+          "rulesetId": "dsb", "rulesetVersion": "2026-01-01", "federation": "DSB",
+          "ruleNumber": "1.80", "programmeVariant": "60",
+          "competitionContext": "DM_2026", "programmeType": "OFFICIAL",
+          "targetStandardId": "issf.50m.rifle", "dsbTargetNumber": 3,
+          "disciplineId": "PRONE50", "distanceM": 50,
+          "disciplineLabelKey": "KK-Liegendkampf",
+          "targetFamily": "SMALLBORE_RIFLE",
+          "isPistol": false, "shotCount": 60, "unlimited": false,
+          "scoringMode": "DECIMAL", "fifteenShotVariant": false,
+          "positions": ["PRONE"], "shotsPerPosition": [60],
+          "timingModel": "SINGLE_MATCH_CLOCK",
+          "matchMinutes": 50, "positionMinutes": [],
+          "matchTimeAuthority": "RULE",
+          "preparationMinutes": 15, "preparationPolicy": "OUTSIDE_MATCH_TIME",
+          "sighterPolicy": "UNLIMITED_IN_PREPARATION",
+          "positionTransitionPolicy": "",
+          "nameKey": "DSB 1.80 KK-LIEGENDKAMPF", "gameDisplay1Key": "50 Meter",
+          "gameDisplay2Key": "RIFLE", "matchDisplayKey": "KK LIEGEND" },
+
+        // ── 2.10 10 m Luftpistole ────────────────────────────────────────
+        { "programmeId": "dsb.10m.air-pistol.lp20",
+          "rulesetId": "dsb", "rulesetVersion": "2026-01-01", "federation": "DSB",
+          "ruleNumber": "2.10", "programmeVariant": "20",
+          "competitionContext": "DM_2026", "programmeType": "OFFICIAL",
+          "targetStandardId": "issf.10m.air-pistol", "dsbTargetNumber": 7,
+          "disciplineId": "AP10", "distanceM": 10, "targetFamily": "AIR_PISTOL",
+          "disciplineLabelKey": "Luftpistole",
+          "isPistol": true, "shotCount": 20, "unlimited": false,
+          "scoringMode": "INTEGER", "fifteenShotVariant": false,
+          "positions": ["STANDING"], "shotsPerPosition": [20],
+          "timingModel": "SINGLE_MATCH_CLOCK",
+          "matchMinutes": 30, "positionMinutes": [],
+          "matchTimeAuthority": "RULE",
+          "preparationMinutes": 15, "preparationPolicy": "OUTSIDE_MATCH_TIME",
+          "sighterPolicy": "UNLIMITED_IN_PREPARATION",
+          "positionTransitionPolicy": "",
+          "nameKey": "DSB 2.10 LUFTPISTOLE 20", "gameDisplay1Key": "10M AIR",
+          "gameDisplay2Key": "PISTOL", "matchDisplayKey": "LP-20" },
+        { "programmeId": "dsb.10m.air-pistol.lp40",
+          "rulesetId": "dsb", "rulesetVersion": "2026-01-01", "federation": "DSB",
+          "ruleNumber": "2.10", "programmeVariant": "40",
+          "competitionContext": "DM_2026", "programmeType": "OFFICIAL",
+          "targetStandardId": "issf.10m.air-pistol", "dsbTargetNumber": 7,
+          "disciplineId": "AP10", "distanceM": 10, "targetFamily": "AIR_PISTOL",
+          "disciplineLabelKey": "Luftpistole",
+          "isPistol": true, "shotCount": 40, "unlimited": false,
+          "scoringMode": "INTEGER", "fifteenShotVariant": false,
+          "positions": ["STANDING"], "shotsPerPosition": [40],
+          "timingModel": "SINGLE_MATCH_CLOCK",
+          "matchMinutes": 50, "positionMinutes": [],
+          "matchTimeAuthority": "RULE",
+          "preparationMinutes": 15, "preparationPolicy": "OUTSIDE_MATCH_TIME",
+          "sighterPolicy": "UNLIMITED_IN_PREPARATION",
+          "positionTransitionPolicy": "",
+          "nameKey": "DSB 2.10 LUFTPISTOLE 40", "gameDisplay1Key": "10M AIR",
+          "gameDisplay2Key": "PISTOL", "matchDisplayKey": "LP-40" },
+        { "programmeId": "dsb.10m.air-pistol.lp60",
+          "rulesetId": "dsb", "rulesetVersion": "2026-01-01", "federation": "DSB",
+          "ruleNumber": "2.10", "programmeVariant": "60",
+          "competitionContext": "DM_2026", "programmeType": "OFFICIAL",
+          "targetStandardId": "issf.10m.air-pistol", "dsbTargetNumber": 7,
+          "disciplineId": "AP10", "distanceM": 10, "targetFamily": "AIR_PISTOL",
+          "disciplineLabelKey": "Luftpistole",
+          "isPistol": true, "shotCount": 60, "unlimited": false,
+          "scoringMode": "INTEGER", "fifteenShotVariant": false,
+          "positions": ["STANDING"], "shotsPerPosition": [60],
+          "timingModel": "SINGLE_MATCH_CLOCK",
+          "matchMinutes": 75, "positionMinutes": [],
+          "matchTimeAuthority": "RULE",
+          "preparationMinutes": 15, "preparationPolicy": "OUTSIDE_MATCH_TIME",
+          "sighterPolicy": "UNLIMITED_IN_PREPARATION",
+          "positionTransitionPolicy": "",
+          "nameKey": "DSB 2.10 LUFTPISTOLE 60", "gameDisplay1Key": "10M AIR",
+          "gameDisplay2Key": "PISTOL", "matchDisplayKey": "LP-60" },
+
+        // ── 2.20 50 m Pistole ────────────────────────────────────────────
+        // The 30-shot time is printed as a RECOMMENDATION, so its authority is
+        // RECOMMENDED and an Ausschreibung may override it. The 60-shot time is
+        // a rule time and may not be.
+        { "programmeId": "dsb.50m.pistol.p60",
+          "rulesetId": "dsb", "rulesetVersion": "2026-01-01", "federation": "DSB",
+          "ruleNumber": "2.20", "programmeVariant": "60",
+          "competitionContext": "DM_2026", "programmeType": "OFFICIAL",
+          "targetStandardId": "issf.50m.pistol", "dsbTargetNumber": 4,
+          "disciplineId": "FREEPISTOL50", "distanceM": 50,
+          "disciplineLabelKey": "50 m Pistole",
+          "targetFamily": "FREE_PISTOL",
+          "isPistol": true, "shotCount": 60, "unlimited": false,
+          "scoringMode": "INTEGER", "fifteenShotVariant": false,
+          "positions": ["STANDING"], "shotsPerPosition": [60],
+          "timingModel": "SINGLE_MATCH_CLOCK",
+          "matchMinutes": 90, "positionMinutes": [],
+          "matchTimeAuthority": "RULE",
+          "preparationMinutes": 15, "preparationPolicy": "OUTSIDE_MATCH_TIME",
+          "sighterPolicy": "UNLIMITED_IN_PREPARATION",
+          "positionTransitionPolicy": "",
+          "nameKey": "DSB 2.20 PISTOLE 60", "gameDisplay1Key": "50 Meter Free",
+          "gameDisplay2Key": "PISTOL", "matchDisplayKey": "P-60" },
+        { "programmeId": "dsb.50m.pistol.p30",
+          "rulesetId": "dsb", "rulesetVersion": "2026-01-01", "federation": "DSB",
+          "ruleNumber": "2.20", "programmeVariant": "30",
+          "competitionContext": "DM_2026", "programmeType": "OFFICIAL",
+          "targetStandardId": "issf.50m.pistol", "dsbTargetNumber": 4,
+          "disciplineId": "FREEPISTOL50", "distanceM": 50,
+          "disciplineLabelKey": "50 m Pistole",
+          "targetFamily": "FREE_PISTOL",
+          "isPistol": true, "shotCount": 30, "unlimited": false,
+          "scoringMode": "INTEGER", "fifteenShotVariant": false,
+          "positions": ["STANDING"], "shotsPerPosition": [30],
+          "timingModel": "SINGLE_MATCH_CLOCK",
+          "matchMinutes": 55, "positionMinutes": [],
+          "matchTimeAuthority": "RECOMMENDED",
+          "preparationMinutes": 15, "preparationPolicy": "OUTSIDE_MATCH_TIME",
+          "sighterPolicy": "UNLIMITED_IN_PREPARATION",
+          "positionTransitionPolicy": "",
+          "nameKey": "DSB 2.20 PISTOLE 30", "gameDisplay1Key": "50 Meter Free",
+          "gameDisplay2Key": "PISTOL", "matchDisplayKey": "P-30" }
+    ])
+
+    // Every DSB entry, in declaration order.
+    function dsbEntries() { return dsbProgrammes }
+
+    // The full competition definition for a programme, with the ISSF/practice
+    // entries given explicit defaults so callers never branch on ruleset.
+    //
+    // ISSF and the practice presets keep the behaviour they have always had:
+    // one match clock, a combined preparation+sighting period INSIDE the phase
+    // sequence the engine already runs, and the scoring mode the discipline
+    // selects. Nothing about them changes here.
+    function competitionDefinition(programmeId) {
+        var e = profile(programmeId)
+        if (e === null) return null
+        if (e.rulesetId === "dsb") return e
+        return {
+            "programmeId": e.programmeId,
+            "rulesetId": e.rulesetId, "rulesetVersion": "",
+            "federation": e.federation,
+            "ruleNumber": "", "programmeVariant": String(e.shotCount),
+            "competitionContext": "", "programmeType": e.programmeType,
+            "targetStandardId": e.targetStandardId, "dsbTargetNumber": 0,
+            "disciplineId": e.disciplineId, "distanceM": e.distanceM,
+            "targetFamily": e.targetFamily, "isPistol": e.isPistol,
+            "shotCount": e.shotCount, "unlimited": e.unlimited,
+            "scoringMode": e.scoringMode,
+            "fifteenShotVariant": e.fifteenShotVariant,
+            "positions": e.positions, "shotsPerPosition": [],
+            // ISSF/practice timing is NOT expressed here: it stays where it has
+            // always been (AppSettings/the discipline selectors). Declaring a
+            // number would create a second, competing source of truth.
+            "timingModel": timingSingleMatchClock,
+            "matchMinutes": 0, "positionMinutes": [],
+            "matchTimeAuthority": "",
+            "preparationMinutes": 0, "preparationPolicy": "",
+            "sighterPolicy": "", "positionTransitionPolicy": "",
+            "nameKey": e.nameKey, "gameDisplay1Key": e.gameDisplay1Key,
+            "gameDisplay2Key": e.gameDisplay2Key,
+            "matchDisplayKey": e.matchDisplayKey
+        }
+    }
+
+    // Session metadata for the journal and the report. Enough to identify
+    // exactly which rules governed a stored match, so a later rule change
+    // cannot silently reinterpret history (requirement 20).
+    function rulesetMetadata(programmeId) {
+        var d = competitionDefinition(programmeId)
+        if (d === null) return null
+        return { "ruleset": d.rulesetId, "rulesetVersion": d.rulesetVersion,
+                 "ruleNumber": d.ruleNumber,
+                 "programmeVariant": d.programmeVariant,
+                 "competitionContext": d.competitionContext,
+                 "scoringMode": d.scoringMode,
+                 "timingModel": d.timingModel,
+                 "targetStandardId": d.targetStandardId,
+                 "programmeId": d.programmeId }
+    }
+
+    // Timing for the engine. Returns milliseconds, because that is what the
+    // session controller takes. positionMs is empty for a single-clock
+    // programme and matchMs is 0 for an independent-position-clock programme -
+    // a caller that reads the wrong one gets 0, not a plausible wrong number.
+    function timingFor(programmeId) {
+        var d = competitionDefinition(programmeId)
+        if (d === null) return null
+        var pos = []
+        for (var i = 0; i < d.positionMinutes.length; ++i)
+            pos.push(d.positionMinutes[i] * 60000)
+        return { "timingModel": d.timingModel,
+                 "matchMs": d.matchMinutes * 60000,
+                 "positionMs": pos,
+                 "preparationMs": d.preparationMinutes * 60000,
+                 "preparationPolicy": d.preparationPolicy,
+                 "sighterPolicy": d.sighterPolicy,
+                 "positionTransitionPolicy": d.positionTransitionPolicy,
+                 "matchTimeAuthority": d.matchTimeAuthority }
+    }
+
     // The ordered entries backing one ListModel. Order is load-bearing:
     // ShootingPage resolves the user's choice by INDEX.
     function entriesFor(modelKey) {
@@ -551,6 +951,9 @@ QtObject {
             for (var i = 0; i < models[k].length; ++i)
                 if (models[k][i].programmeId === programmeId)
                     return models[k][i]
+        for (var j = 0; j < dsbProgrammes.length; ++j)
+            if (dsbProgrammes[j].programmeId === programmeId)
+                return dsbProgrammes[j]
         return null
     }
 
@@ -599,6 +1002,11 @@ QtObject {
         for (var k in models)
             for (var i = 0; i < models[k].length; ++i)
                 out.push(models[k][i])
+        // DSB entries are NOT in `models` - those arrays are index-locked - so
+        // they are appended here. entriesFor()/fill() deliberately never see
+        // them, which is what keeps every ISSF row index stable.
+        for (var j = 0; j < dsbProgrammes.length; ++j)
+            out.push(dsbProgrammes[j])
         return out
     }
 
@@ -637,11 +1045,17 @@ QtObject {
                        "federation": all[i].federation,
                        "official": all[i].programmeType === "OFFICIAL",
                        "labelKey": r === "issf" ? "ISSF"
-                                 : r === "dsb"  ? "DSB / German"
+                                 : r === "dsb"  ? "DSB 2026"
                                                 : "Practice presets" })
         }
-        out.sort(function(a, b) { return a.rulesetId === "issf" ? -1
-                                       : b.rulesetId === "issf" ?  1 : 0 })
+        // ISSF first, then DSB, then the practice presets. A stable, declared
+        // order - not whichever ruleset happened to appear first in the data.
+        var rank = { "issf": 0, "dsb": 1, "techaim": 2 }
+        out.sort(function(a, b) {
+            var ra = rank[a.rulesetId] === undefined ? 99 : rank[a.rulesetId]
+            var rb = rank[b.rulesetId] === undefined ? 99 : rank[b.rulesetId]
+            return ra - rb
+        })
         return out
     }
 
@@ -656,10 +1070,16 @@ QtObject {
             if (e.rulesetId !== rulesetId) continue
             if (seen[e.disciplineId]) continue
             seen[e.disciplineId] = true
+            // A programme may name its discipline explicitly. DSB needs this:
+            // 1.10 and 1.20 are both "10M AIR RIFLE" by display key, and a
+            // selector that showed the same label twice would be unusable.
             out.push({ "disciplineId": e.disciplineId,
                        "distanceM": e.distanceM,
                        "targetStandardId": e.targetStandardId,
-                       "labelKey": e.gameDisplay1Key + " " + e.gameDisplay2Key })
+                       "labelKey": e.disciplineLabelKey !== undefined
+                                   && e.disciplineLabelKey !== ""
+                                   ? e.disciplineLabelKey
+                                   : e.gameDisplay1Key + " " + e.gameDisplay2Key })
         }
         out.sort(function(a, b) { return a.distanceM - b.distanceM })
         return out
@@ -702,6 +1122,28 @@ QtObject {
     function runtimeConfig(programmeId) {
         var p = profile(programmeId)
         if (p === null) return null
+        // A DSB programme supplies its OWN durations and scoring mode; it never
+        // borrows the legacy shot-count-keyed timing. gameEvent is -1 because
+        // there is no legacy event card behind it.
+        if (p.rulesetId === "dsb") {
+            var t = timingFor(programmeId)
+            return { "programmeId":      p.programmeId,
+                     "gameRange":        p.distanceM,
+                     "gameMode":         p.isPistol ? 0 : 1,
+                     "gameEvent":        -1,
+                     "fifteen":          false,
+                     "shotCount":        p.shotCount,
+                     "targetStandardId": p.targetStandardId,
+                     "programmeType":    p.programmeType,
+                     "matchDisplayKey":  p.matchDisplayKey,
+                     "scoringMode":      p.scoringMode,
+                     "timingModel":      t.timingModel,
+                     "matchMs":          t.matchMs,
+                     "positionMs":       t.positionMs,
+                     "preparationMs":    t.preparationMs,
+                     "positions":        p.positions,
+                     "shotsPerPosition": p.shotsPerPosition }
+        }
         return { "programmeId":      p.programmeId,
                  "gameRange":        p.distanceM,
                  "gameMode":         p.isPistol ? 0 : 1,

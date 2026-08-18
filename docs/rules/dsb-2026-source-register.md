@@ -130,6 +130,7 @@ Sportordnung itself.
 | S-C.4 | **Class → shot count must not be hardcoded globally.** The DM runs 1.20 at 60 shots for Schüler/Jugend while regional competitions also run Schüler 3 × 10, so the programme variant belongs to the **event configuration** |
 | S-C.5 | The ordinary 1.20 rules prescribe **no complete ISSF-style command script**. Range announcements are to be configurable/localised and must **not** be part of the rules engine |
 | S-C.6 | For 1.20 the three position clocks are **not automatically chained**. Finish a position → enter **`POSITION_CHANGE`** → the range officer / control software starts the next position. Stand-occupation timing is the organiser's |
+| S-C.7 | **Q3a resolved.** For the **DSB DM 2026** competition context, **1.40 uses whole-ring / integer scoring**. The DM 2026 Wettbewerbe table carries no `Zehntel` indication for 1.40, while 1.10 and 1.80 explicitly do. This is a **competition-context** determination: integer scoring is **not** an immutable property of base rule 1.40, and the model must keep `ruleset + ruleNumber + programmeVariant + competitionContext → scoringMode` separable |
 
 ---
 
@@ -140,7 +141,7 @@ Sportordnung itself.
 | Q1 | Is 10 m 3×15 a DSB programme? | **CLOSED — NO** (S-C.2). Not DSB; may become a custom profile only with its own authority |
 | Q2 | What is the 30-shot row under 1.40? | **CLOSED — not an official 3 × 10** (S-C.3). A recommended time for a shortened course, nothing more |
 | Q3 | Integer vs decimal per programme | **CLOSED for 1.20 / 1.60** (whole ring, S-C.1) and **for 2.10 / 2.20** (nein, S-DM.5/6). **1.10 and 1.80 are decimal** (S-DM.7) |
-| Q3a | **1.40 scoring mode** | **OPEN** — S-C.1 says whole ring; one read of the DM table listed 1.40 as decimal. Confirm visually before implementing 1.40 |
+| Q3a | **1.40 scoring mode** | **CLOSED — INTEGER for DM 2026** (S-C.7). Resolved by customer authority against the DM 2026 table: no `Zehntel` marking for 1.40, unlike 1.10 and 1.80. Recorded as competition context, not as a property of the base rule |
 | Q4 | Class → programme variant | **CLOSED as an architecture decision** (S-C.4): variant is event configuration, never a hardcoded class rule |
 | Q5 | Rifle range-officer commands | **CLOSED** (S-C.5): configurable and localised, outside the rules engine |
 | Q6 | Automatic vs commanded position clocks | **CLOSED — commanded** (S-C.6): explicit `POSITION_CHANGE` state between position clocks |

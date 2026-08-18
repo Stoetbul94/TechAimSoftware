@@ -26,7 +26,7 @@ controller already models as Preparation → Sighting → OfficialMatch.
 
 | Programme | Shots | EST time | What is new |
 |---|---|---|---|
-| **1.40 KK-Sportgewehr 50 m 3×20** | 60 | 105 min total | three positions on **one** clock; position display and per-position shot counting; equipment change permitted. **Blocked on Q3a (scoring mode)** |
+| **1.40 KK-Sportgewehr 50 m 3×20** | 60 | 105 min total | three positions on **one** clock; position display and per-position shot counting; equipment change permitted. Integer scoring (DM 2026) |
 | **1.60 KK-Freigewehr 50 m 3×40** | 120 | 165 min total | as 1.40 but 40 shots per position; the longest session the product would run |
 | **1.20 Luftgewehr 3-Stellung** | 3×10 / 3×20 | **25/20/30** · **35/30/40** per position | **three independent position clocks** separated by a commanded **`POSITION_CHANGE`**, each containing that position's own sighting, after one shared 15-minute preparation before kneeling. Whole-ring scoring |
 
@@ -77,10 +77,9 @@ position model twice.
 
 ## Sequencing
 
-1. **Confirm Q3a** — 1.40's scoring mode, by eye against the DM 2026
-   competition table. Everything else that blocked Tier 1 and Tier 2 is closed.
-   Q7 (finals per programme) and Q8 (central-computer interface) stay open and
-   block nothing here.
+1. **All blocking questions are closed.** Q3a resolved integer for 1.40 in the
+   DM 2026 context (S-C.7). Q7 (finals per programme) and Q8 (central-computer
+   interface) stay open and block nothing in Tier 1 or Tier 2.
 2. **Extend the catalogue schema** with the DSB fields listed at the end of the
    programme matrix — *schema first, no entries*. The `rulesetId: "dsb"` seam
    and the selector's automatic DSB visibility already exist and are tested.
@@ -89,8 +88,8 @@ position model twice.
    report — with zero engine risk.
 4. **Per-position timing model** (gap B3–B5), behind its own tests, with 1.20
    as its first consumer.
-5. **1.60**, then **1.40** once Q3a is confirmed, as configuration on the
-   position model.
+5. **1.60** and **1.40** as configuration — both are single-master-clock
+   programmes and do not depend on the 1.20 position model.
 6. **DSB interruption and protest conduct** (C7–C11, C14) bound to the DSB rule
    set, reusing `EstIncidentController`.
 7. **Tier 3** only if SETA supplies turning-target hardware.
