@@ -58,7 +58,7 @@ Item {
                 Rectangle { width: parent.width; height: 40; radius: 8; color: _card; border.color: _line; border.width: 1
                     Row { anchors.fill: parent; anchors.margins: 10; spacing: 8
                         Text { text: qsTr("Sighters fired"); color: _txtMut; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
-                        Text { text: ctl ? ("qsTr(" + ctl.sighterCount) : ")0"; color: _green
+                        Text { text: ctl ? ("" + ctl.sighterCount) : "0"; color: _green
                                font.family: "Consolas"; font.pixelSize: 16; font.bold: true; anchors.verticalCenter: parent.verticalCenter } } }
             }
 

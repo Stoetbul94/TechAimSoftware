@@ -142,7 +142,8 @@ Item {
                                 Text {
                                     anchors.bottom: parent.bottom; anchors.bottomMargin: 6
                                     anchors.horizontalCenter: parent.horizontalCenter
-                                    text: "±qsTr(" + Number(parent.rangeMm).toFixed(0) + ") mm  ·  ● counted shot   ○ group centre"
+                                    text: "±" + Number(parent.rangeMm).toFixed(0)
+                                          + qsTr(" mm  ·  ● counted shot   ○ group centre")
                                     color: _txtMut; font.pixelSize: 10
                                 }
                             }
@@ -502,7 +503,11 @@ Item {
                                 property var b: modelData
                                 Text {
                                     width: 84; font.pixelSize: 11; color: _txt; font.bold: true
-                                    text: "BqsTr(" + b.blockIndex + (b.position !== ")qsTr(" && hud.ctl && hud.ctl.positionName !== undefined && b.position !== undefined && b.position !== ")KneelingqsTr(" || (b.position && hud.ctl.blockCount === 6) ? ") · qsTr(" + b.position.substring(0, 1) : ")")
+                                    text: "B" + b.blockIndex
+                                          + ((b.position !== "" && b.position !== undefined
+                                              && b.position !== "Kneeling")
+                                             || (b.position && hud.ctl && hud.ctl.blockCount === 6)
+                                             ? " · " + b.position.substring(0, 1) : "")
                                 }
                                 Text { width: 46; font.family: "Consolas"; font.pixelSize: 11; color: _txt
                                        text: Number(b.averageScore).toFixed(1) }

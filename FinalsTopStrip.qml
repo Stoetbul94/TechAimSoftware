@@ -53,8 +53,8 @@ Rectangle {
         Text {
             visible: !strip.narrow
             anchors.verticalCenter: parent.verticalCenter
-            text: !ctl ? "qsTr(" : ctl.windowState === 2 ? ")MATCH OPEN"
-                 : ctl.windowState === 1 ? "SIGHTING OPEN" : "CLOSED"
+            text: !ctl ? "" : ctl.windowState === 2 ? qsTr("MATCH OPEN")
+                 : ctl.windowState === 1 ? qsTr("SIGHTING OPEN") : qsTr("CLOSED")
             color: ctl && ctl.isFiringWindowOpen ? "#d7d8dd" : "#8a8a92"
             font.family: "Segoe UI"; font.pixelSize: 11; font.letterSpacing: 1
         }

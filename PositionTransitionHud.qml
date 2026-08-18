@@ -82,7 +82,8 @@ Item {
                                         x: parent.width/2 + (modelData.xMm/parent.rangeMm)*parent.plotR - width/2
                                         y: parent.height/2 - (modelData.yMm/parent.rangeMm)*parent.plotR - height/2 } }
                                 Text { anchors.bottom: parent.bottom; anchors.bottomMargin: 6; anchors.horizontalCenter: parent.horizontalCenter
-                                       text: "±qsTr(" + Number(parent.rangeMm).toFixed(0) + ") mm  ·  ● counted   ◆ first shot (blue)"
+                                       text: "±" + Number(parent.rangeMm).toFixed(0)
+                                             + qsTr(" mm  ·  ● counted   ◆ first shot (blue)")
                                        color: _txtMut; font.pixelSize: 9 }
                             }
                         }

@@ -34,6 +34,8 @@
 #include <QQmlComponent>
 #include <QQmlContext>
 #include <QFile>
+#include <QDirIterator>
+#include <QFileInfo>
 #include <QRegularExpression>
 #include <QStringList>
 #include <QDebug>
@@ -4187,6 +4189,67 @@ int main(int argc, char* argv[])
               "position clocks only, which 1.60 does not declare");
         check(!mainQml.contains(QStringLiteral("activeCompetition.shotCount === 60")),
               "DSB-160-001: nothing gates a 50 m course on 60 shots any more");
+    }
+
+
+    // ─────────────────────────────────────────────────────────────────────
+    // QML-LANG-002 — no translation call may sit INSIDE a string literal.
+    //
+    // An automated wrapping pass once treated qsTr( as text and moved the
+    // quotes around it, turning
+    //     "±" + value + " mm"
+    // into
+    //     "±qsTr(" + value + ") mm"
+    // which compiles, runs, and prints the function name at the athlete. Seven
+    // of these shipped. The class is trivial to detect - a string literal can
+    // never legitimately contain qsTr( - so it is detected here rather than
+    // waited for on a screenshot.
+    // ─────────────────────────────────────────────────────────────────────
+    {
+        QStringList offenders;
+        int scanned = 0;
+        const QString root = QDir(QStringLiteral(TECHAIM_SOURCE_DIR)).canonicalPath();
+        QDirIterator it(root, QStringList() << QStringLiteral("*.qml"),
+                        QDir::Files, QDirIterator::Subdirectories);
+        while (it.hasNext()) {
+            const QString path = it.next();
+            if (path.contains(QStringLiteral("/tests/")) || path.contains(QStringLiteral("\\tests\\")))
+                continue;
+            const QString src = readAll(path);
+            if (src.isEmpty())
+                continue;
+            ++scanned;
+            const QStringList lines = src.split(QChar(10));
+            for (int i = 0; i < lines.size(); ++i) {
+                // Comments are not code: a comment quoting the defect (this one
+                // does, two files over) is not the defect.
+                const QString line = lines.at(i).split(QStringLiteral("//")).first();
+                bool inString = false;
+                QChar quote;
+                for (int c = 0; c < line.size(); ++c) {
+                    const QChar ch = line.at(c);
+                    if (inString) {
+                        if (ch == QChar('\\')) { ++c; continue; }
+                        if (ch == quote) { inString = false; continue; }
+                        if (line.mid(c).startsWith(QStringLiteral("qsTr("))) {
+                            offenders << QStringLiteral("%1:%2")
+                                             .arg(QFileInfo(path).fileName()).arg(i + 1);
+                            break;
+                        }
+                    } else if (ch == QChar('"') || ch == QChar('\'')) {
+                        inString = true;
+                        quote = ch;
+                    }
+                }
+            }
+        }
+        check(scanned > 20, "QML-LANG-002: the scan actually read the QML tree",
+              QString::number(scanned));
+        check(offenders.isEmpty(),
+              "QML-LANG-002: no qsTr( is trapped inside a string literal - the "
+              "wrapping-pass mangling that printed \"(qsTr(105.0))qsTr(\" at "
+              "athletes cannot come back",
+              offenders.join(QStringLiteral(", ")));
     }
 
 

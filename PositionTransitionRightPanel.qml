@@ -75,7 +75,7 @@ Item {
                                        text: modelData.label; color: _txt; font.pixelSize: 11; wrapMode: Text.WordWrap
                                        elide: Text.ElideRight }
                                 Text { anchors.verticalCenter: parent.verticalCenter; width: 20
-                                       text: modelData.state === 1 ? "✓qsTr(" : (modelData.state === 2 ? ")–" : "○")
+                                       text: modelData.state === 1 ? "✓" : (modelData.state === 2 ? "–" : "○")
                                        color: modelData.state === 1 ? _green : _txtMut; font.pixelSize: 15; font.bold: true } }
                             MouseArea { anchors.fill: parent
                                 onClicked: if (panel.ctl) panel.ctl.setChecklistItem(modelData.index, modelData.state === 1 ? 2 : 1) }
@@ -103,7 +103,7 @@ Item {
                         width: (ctl && ctl.verificationShots > 0) ? (parent.width-4) * Math.min(1, ctl.shotsCompleted/ctl.verificationShots) : 0 } }
                 Row { spacing: 8; visible: panel.inSighters
                     Text { text: qsTr("Sighters fired"); color: _txtMut; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
-                    Text { text: ctl ? ("qsTr(" + ctl.sighterCount) : ")0"; color: _green; font.family: "Consolas"; font.pixelSize: 16; font.bold: true
+                    Text { text: ctl ? ("" + ctl.sighterCount) : "0"; color: _green; font.family: "Consolas"; font.pixelSize: 16; font.bold: true
                            anchors.verticalCenter: parent.verticalCenter } }
                 Row { spacing: 8
                     Text { text: qsTr("Since Ready"); color: _txtMut; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }

@@ -78,7 +78,7 @@ Item {
                         Text { text: qsTr("Sighters fired"); color: _txtMut; font.pixelSize: 12
                                anchors.verticalCenter: parent.verticalCenter }
                         Item { width: 4; height: 1 }
-                        Text { text: ctl ? ("qsTr(" + ctl.sighterCount) : ")0"; color: _green
+                        Text { text: ctl ? ("" + ctl.sighterCount) : "0"; color: _green
                                font.family: "Consolas"; font.pixelSize: 16; font.bold: true
                                anchors.verticalCenter: parent.verticalCenter }
                     }

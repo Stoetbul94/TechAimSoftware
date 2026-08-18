@@ -88,7 +88,7 @@ Item {
                 Rectangle { anchors.centerIn: parent; width: face.plotR * 2; height: 1; color: "#1c1f26" }
                 Rectangle { anchors.centerIn: parent; width: 1; height: face.plotR * 2; color: "#1c1f26" }
                 Text { anchors.top: parent.top; anchors.topMargin: 6; anchors.horizontalCenter: parent.horizontalCenter
-                       text: "±qsTr(" + face.activeRange.toFixed(0) + ") mm"; color: _txtMut; font.pixelSize: 9 }
+                       text: "±" + face.activeRange.toFixed(0) + " mm"; color: _txtMut; font.pixelSize: 9 }
                 // off-face indicator (a marker lies beyond the scoring face)
                 Text {
                     visible: hud.revealOpen && face.rv.outsideFace === true
