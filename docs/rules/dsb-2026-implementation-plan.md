@@ -12,7 +12,7 @@ preference.
 |---|---|
 | Catalogue schema + 13 DSB profiles | **done** — `CompetitionCatalogue.qml` |
 | Profile / timing authority seam | **done** — the profile supplies preparation, match duration, position mode and rule authority |
-| Independent position clocks (1.20 sequencer) | **not built** — 1.20 is refused at the start gate |
+| Independent position clocks (1.20 sequencer) | **done** — `Dsb120Controller` (DSB120): preparation, three independent clocks, gated transitions, position-aware recovery |
 | 3×40 course engine (120 shots, 3 positions) | **not built** — 1.60 is refused at the start gate |
 
 **The seam.** A selected programme becomes `window.activeProgrammeId`, resolved
@@ -25,12 +25,24 @@ the practice presets travel the unchanged legacy path. No timing decision
 anywhere branches on a ruleset name or a rule number.
 
 **What is conductable today.** Operational: 1.10 (20/40/60), 2.10 (20/40/60),
-1.80, 2.20 (60 and the recommended 30), and 1.40 — which runs on the existing
-50 m three-position engine with its own 105-minute clock. Refused with a stated
-reason: both 1.20 courses (independent position clocks) and 1.60 (a 120-shot
-three-position course the engine has no course for). A refused programme can be
-selected and reviewed; only starting it is blocked, so nothing is ever run as a
-different competition.
+1.80, 2.20 (60 and the recommended 30), 1.40 — which runs on the existing 50 m
+three-position engine with its own 105-minute clock — and **both 1.20 courses**,
+3x10 and 3x20, conducted by the DSB120 sequencer. Still refused with a stated
+reason: 1.60, a 120-shot three-position course the engine has no course for. A
+refused programme can be selected and reviewed; only starting it is blocked, so
+nothing is ever run as a different competition.
+
+**The 1.20 sequencer.** One shared 15-minute preparation with unlimited
+sighters, then a GATE. Each position is started by an authorised competition-
+control action and runs its own clock — 25/20/30 for 3x10, 35/30/40 for 3x20 —
+which is never derived from their sum. Kneeling opens in match, because the
+shared preparation was its sighting period; prone and standing open in sighting
+on a clock that is ALREADY RUNNING, so sighters there cost competition time, and
+moving to match does not restart it. The first match shot of a position closes
+sighting for that position — refused by the engine, not hidden in the UI. A
+completed position arms the next and starts nothing. Shot classification comes
+from the competition state; per-position subtotals are folded from the shots
+themselves (each carries its position), so a position identity cannot be lost.
 
 **Rule authority is persisted.** A session snapshots the competition
 definition it adopted — programme, ruleset and its edition, rule number,
@@ -139,7 +151,7 @@ position model twice.
    ready now. These prove the DSB rule set end to end — selector, session,
    report — with zero engine risk.
 4. **Per-position timing model** (gap B3–B5), behind its own tests, with 1.20
-   as its first consumer. *Still open — 1.20 is refused until it exists.*
+   as its first consumer. *Done — `Dsb120Controller`.*
 5. **1.60** and **1.40** as configuration — both are single-master-clock
    programmes and do not depend on the 1.20 position model. *1.40 done. 1.60
    turned out to need more than configuration: a 120-shot three-position course

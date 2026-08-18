@@ -255,6 +255,9 @@ void run_serializer_tests()
             WindMapSessionCompleted{40, 6, 9},
             // Stage 5: the durable workflow phase (Sighters -> CountedShots).
             WindMapPhaseChanged{2, 3},
+            // DSB 1.20: a position START, which is the step that carries a
+            // clock duration - the one field a lossy round-trip would hurt most.
+            Dsb120StepRecorded{2, 1, 1800000},
         };
         check(catalogue.size() == static_cast<int>(std::variant_size_v<DomainEvent>),
               "round-trip covers every event type",

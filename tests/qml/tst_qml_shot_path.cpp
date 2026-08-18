@@ -3971,6 +3971,83 @@ int main(int argc, char* argv[])
               "authority - the behaviour this replaces cannot come back");
     }
 
+    // ─────────────────────────────────────────────────────────────────────
+    // DSB-120-002 — cross-rule safety for the position sequencer.
+    //
+    // The sequencer must activate on the DECLARED timing model and on nothing
+    // else. Three positions is not the trigger: DSB 1.40 and 1.60 have three
+    // positions on a single master clock, and ISSF 50 m 3P keeps its own
+    // untouched behaviour.
+    // ─────────────────────────────────────────────────────────────────────
+    {
+        QQmlEngine eng;
+        QQmlComponent comp(&eng, QUrl::fromLocalFile(
+            QStringLiteral(TECHAIM_SOURCE_DIR "/CompetitionCatalogue.qml")));
+        QScopedPointer<QObject> cat(comp.create());
+        check(!cat.isNull(), "DSB-120-002: catalogue loads", comp.errorString());
+        if (!cat.isNull()) {
+        const auto def = [&cat](const char* id) {
+            QVariant v;
+            QMetaObject::invokeMethod(cat.data(), "competitionDefinition",
+                                      Q_RETURN_ARG(QVariant, v),
+                                      Q_ARG(QVariant, QString::fromLatin1(id)));
+            return v.toMap();
+        };
+        const auto timing = [&def](const char* id) {
+            return def(id).value(QStringLiteral("timingModel")).toString();
+        };
+        check(timing("dsb.10m.air-rifle.3x10") == QLatin1String("INDEPENDENT_POSITION_CLOCKS")
+              && timing("dsb.10m.air-rifle.3x20") == QLatin1String("INDEPENDENT_POSITION_CLOCKS"),
+              "DSB-120-002: both 1.20 courses declare independent position clocks");
+        check(timing("dsb.50m.rifle.3x20") == QLatin1String("SINGLE_MATCH_CLOCK")
+              && timing("dsb.50m.rifle.3x40") == QLatin1String("SINGLE_MATCH_CLOCK"),
+              "DSB-120-002: 1.40 and 1.60 remain SINGLE_MATCH_CLOCK - the "
+              "sequencer must never claim them");
+        // The rule's own numbers, from the catalogue rather than the engine.
+        check(def("dsb.10m.air-rifle.3x10").value(QStringLiteral("positionMinutes")).toList()
+                  == QVariantList({25, 20, 30})
+              && def("dsb.10m.air-rifle.3x20").value(QStringLiteral("positionMinutes")).toList()
+                  == QVariantList({35, 30, 40}),
+              "DSB-120-002: 25/20/30 and 35/30/40 per position, and no total");
+        check(def("dsb.10m.air-rifle.3x10").value(QStringLiteral("matchMinutes")).toInt() == 0
+              && def("dsb.10m.air-rifle.3x20").value(QStringLiteral("matchMinutes")).toInt() == 0,
+              "DSB-120-002: neither 1.20 course has a master duration, so a 75 "
+              "or 105 minute clock cannot be derived from the catalogue either");
+        check(def("dsb.10m.air-rifle.3x20").value(QStringLiteral("scoringMode")).toString()
+                  == QLatin1String("INTEGER")
+              && def("dsb.10m.air-rifle.3x20").value(QStringLiteral("targetStandardId")).toString()
+                  == QLatin1String("issf.10m.air-rifle"),
+              "DSB-120-002: integer scoring on the EXISTING 10 m air rifle "
+              "target standard - no new geometry");
+        }
+
+        const QString mainQml  = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/main.qml"));
+        const QString shootQml = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/ShootingPage.qml"));
+
+        // The mode is entered on the declared timing model, not on a position
+        // count and not on a ruleset name.
+        check(shootQml.contains(QStringLiteral(
+                  "window.activeCompetition.timingModel === \"INDEPENDENT_POSITION_CLOCKS\"")),
+              "DSB-120-002: the sequencer is entered from the DECLARED timing "
+              "model");
+        check(!shootQml.contains(QStringLiteral("positions.length === 3"))
+              && !shootQml.contains(QStringLiteral("positions.length == 3")),
+              "DSB-120-002: nothing routes on \"three positions\"");
+
+        // The start block is gone for 1.20 and still stands for a course with
+        // no engine.
+        // The refusal reason no longer mentions position clocks at all,
+        // which is the shortest true statement that the block is gone.
+        check(!mainQml.contains(QStringLiteral("uses independent position clocks")),
+              "DSB-120-002: independent position clocks no longer block a start");
+        check(mainQml.contains(QStringLiteral("profileIsMultiPosition")),
+              "DSB-120-002: a multi-position course with no engine is still refused");
+
+        // ISSF 3P is untouched: it still routes through the legacy sub-mode.
+        check(shootQml.contains(QStringLiteral("is3PMatch = APPSETTINGS.getGameMode() === 1")),
+              "DSB-120-002: ISSF 50 m 3P detection is unchanged");
+    }
+
     printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
     fflush(stdout);
     return g_failures ? 1 : 0;

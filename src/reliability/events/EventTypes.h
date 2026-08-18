@@ -445,6 +445,45 @@ struct PositionChanged {
     }
 };
 
+// DSB 1.20 — the gated independent-position-clock sequencer (rule 1.20).
+// ONE parameterised event carries every step, rather than six near-identical
+// event types: the step is data, and the sequence is what matters.
+//
+// PositionArmed is the GATE. It is a separate step from PositionStarted
+// precisely because the next clock must NOT run yet - that distinction is the
+// rule, so it is a recorded fact and not an implicit gap between two events.
+enum class Dsb120Step : quint8 {
+    PreparationStarted = 0,   // the single 15 min preparation + sighting
+    PositionArmed      = 1,   // gate: previous position closed, next not started
+    PositionStarted    = 2,   // authorised start; THIS anchors the position clock
+    MatchPhaseEntered  = 3,   // sighting -> match, WITHOUT restarting the clock
+    PositionCompleted  = 4,
+    MatchFinished      = 5
+};
+
+struct Dsb120StepRecorded {
+    static constexpr const char* kType = "Dsb120StepRecorded";
+    static constexpr qint32 kVersion = 1;
+    quint8 step = 0;             // Dsb120Step
+    qint8  positionIndex = -1;   // 0=kneeling 1=prone 2=standing; -1 = none
+    qint64 durationMs = 0;       // position clock duration (PositionStarted)
+
+    ReliabilityResult validate() const
+    {
+        if (step > static_cast<quint8>(Dsb120Step::MatchFinished))
+            return evdetail::invalid(
+                QStringLiteral("Dsb120StepRecorded.step %1 unknown").arg(step));
+        if (positionIndex < -1 || positionIndex > 2)
+            return evdetail::invalid(
+                QStringLiteral("Dsb120StepRecorded.positionIndex %1 outside -1..2")
+                    .arg(positionIndex));
+        if (durationMs < 0)
+            return evdetail::invalid(
+                QStringLiteral("Dsb120StepRecorded.durationMs negative"));
+        return ReliabilityResult::success();
+    }
+};
+
 struct TimerStarted {
     static constexpr const char* kType = "TimerStarted";
     static constexpr qint32 kVersion = 1;

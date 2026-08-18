@@ -112,6 +112,7 @@ const char* discKindName(const DisciplineState& d)
     if (std::holds_alternative<Finals3PState>(d))      return "finals3p";
     if (std::holds_alternative<TrainingState>(d))      return "training";
     if (std::holds_alternative<Finals10mState>(d))     return "finals10m";
+    if (std::holds_alternative<Dsb120State>(d))        return "dsb120";
     return "none";
 }
 
@@ -500,6 +501,13 @@ QByteArray serializeSessionState(const SessionState& s)
         w.field("windowId", static_cast<qint64>(f10->windowId));
         w.field("shotsInStage", static_cast<qint64>(f10->shotsInStage));
         w.field("version", static_cast<qint64>(f10->version));
+    } else if (const auto* d120 = std::get_if<Dsb120State>(&s.disc)) {
+        w.field("positionIndex", static_cast<qint64>(d120->positionIndex));
+        w.field("phase", static_cast<qint64>(d120->phase));
+        w.field("nextPositionIndex", static_cast<qint64>(d120->nextPositionIndex));
+        w.field("sightingLocked", d120->sightingLocked);
+        w.field("completedPositions", static_cast<qint64>(d120->completedPositions));
+        w.field("version", static_cast<qint64>(d120->version));
     }
     w.endObject();
 
@@ -1234,6 +1242,17 @@ ReliabilityResult deserializeSessionState(const QByteArray& json, SessionState* 
                     static_cast<qint32>(dr.reqInt("shotsInStage", 0, INT32_MAX));
                 f.version = static_cast<qint32>(dr.reqInt("version", 1, INT32_MAX));
                 s.disc = f;
+            } else if (kind == QLatin1String("dsb120")) {
+                Dsb120State d;
+                d.positionIndex = static_cast<qint8>(dr.reqInt("positionIndex", -1, 2));
+                d.phase = static_cast<quint8>(dr.reqInt("phase", 0, 255));
+                d.nextPositionIndex =
+                    static_cast<qint8>(dr.reqInt("nextPositionIndex", -1, 2));
+                d.sightingLocked = dr.reqBool("sightingLocked");
+                d.completedPositions =
+                    static_cast<quint8>(dr.reqInt("completedPositions", 0, 3));
+                d.version = static_cast<qint32>(dr.reqInt("version", 1, INT32_MAX));
+                s.disc = d;
             } else if (kind == QLatin1String("none")) {
                 s.disc = std::monostate{};
             } else if (!dr.failed) {

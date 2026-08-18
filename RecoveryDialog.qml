@@ -25,6 +25,16 @@ Rectangle {
     signal discardRequested(string sessionId)
     signal dismissed()
 
+    // Which restorer owns this session. Keyed on the PERSISTED timing model,
+    // not on a label: a DSB 1.20 session is 10 m air rifle by discipline, so
+    // disciplineId alone would hand it to the qualification restorer, which
+    // cannot conduct it.
+    function restorerId(c) {
+        if (!c) return ""
+        if (c.timingModel === "INDEPENDENT_POSITION_CLOCKS") return "DSB120"
+        return c.disciplineId
+    }
+
     function open(list) {
         candidates = list
         visible = (list && list.length > 0)
@@ -213,7 +223,7 @@ Rectangle {
                                                 ? "POSTRANS"
                                                 : (root.current.trainingProgramId === "wind_map"
                                                     ? "WINDMAP" : "TRAINING")))
-                                        : (root.current.disciplineId || ""))
+                                        : root.restorerId(root.current))
                                 root.visible = false
                             }
                             // Recovery Wizard (non-resumable) is deferred; the

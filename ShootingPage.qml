@@ -54,6 +54,10 @@ Item {
     // prone, 40-59 standing. The overall 105-min match clock runs through
     // position changes; only shot tagging switches to sighter during them.
     property bool is3PMatch: false
+    // DSB 1.20 runs its own competition engine (DSB120). None of the legacy
+    // qualification timing applies to it, which is exactly why it is a separate
+    // flag rather than a variant of is3PMatch.
+    property bool isDsb120Match: false
     // 3P FINAL (35) — separate finals domain; FINALS3P owns all finals timing.
     property bool isFinalsMatch: false
     // 10m Air Rifle / Air Pistol FINAL (24) — single-athlete training course,
@@ -980,6 +984,21 @@ Item {
                                        centerPanel.lastShotSource)   // F10 input-source gate
                 return
             }
+            // DSB 1.20: the competition state decides whether this shot is a
+            // sighter or a match shot - never the sighter button, and never the
+            // phase this page happens to be displaying.
+            if (isDsb120Match) {
+                shootingPage.qualPendingAngle = xPosition
+                shootingPage.qualPendingRadius = yPosition
+                // 1.20 is INTEGER scoring in the DM 2026 context: the ring is
+                // floored before it is journalled, exactly as AP10 is.
+                var dsbScore = Math.floor(currentCalculatedScore)
+                var dsbId = ++shootingPage.qualShotSeq
+                var dsbSimulated = (centerPanel.lastShotSource === 1)
+                DSB120.submitShot(centerPanel.lastShotXmm, centerPanel.lastShotYmm,
+                                  dsbScore, dsbId, xPosition, dsbSimulated)
+                return
+            }
             // B1/B2: 10m Air Rifle (AR10, decimal) and 10m Air Pistol (AP10,
             // integer) — the DURABLE acceptance route. No UI append happens
             // here; the shot is submitted to QUAL first and the QUAL.onShotAccepted
@@ -1829,7 +1848,71 @@ Item {
         loginPage.practiceView = 2           // back to Technical Blocks setup
     }
 
-    // ── B1/B2: qualification durable-shot projection router ──────────────
+    // The DSB 1.20 competition surface. Present only while the sequencer is
+    // conducting; nothing else on this page changes for it.
+    Dsb120Hud {
+        id: dsb120Hud
+        visible: shootingPage.isDsb120Match
+        // Above the target-connection toast: competition control must never be
+        // covered by a status message.
+        z: 60
+        // Sits across the top of the target area: the competition state is
+        // the first thing to read, and the right-hand shot counter stays
+        // visible beside it.
+        anchors.left: centerPanel.left
+        anchors.top: parent.top
+        anchors.topMargin: 4
+    }
+
+    // ── DSB 1.20: durable-shot projection ────────────────────────────────
+    // Same contract as the qualification router below: the shot becomes
+    // visible only after the sequencer has durably accepted it, and it is the
+    // ENGINE's classification (sighter vs match, and which position) that the
+    // projection follows.
+    Connections {
+        target: DSB120
+        enabled: shootingPage.isDsb120Match
+        function onShotAccepted(record) {
+            rightPanel.addToSeries(shootingPage.qualPendingAngle,
+                                   shootingPage.qualPendingRadius,
+                                   record.calculatedscore * 1,
+                                   record.xmm * 1, record.ymm * 1)
+        }
+    }
+
+    // Restore a crashed DSB 1.20 session. The engine rebuilds position, phase,
+    // gate and clock from its own journal; this page only re-projects the shots
+    // and re-enters the mode. Nothing here recomputes a duration.
+    function restoreDsb120Session(sessionId) {
+        if (!DSB120.resumeFromRecovery(sessionId))
+            return false
+        // Reveal the competition surface, as every other restorer does. The
+        // session is already conducting; leaving the login page in front of it
+        // would hide a running position clock.
+        loginPage.gameMode = 1
+        gameRange = 10
+        loginPage.visible = false
+        isDsb120Match = true
+        isFinalsMatch = false; isFinals10mMatch = false; is3PMatch = false
+        qualDisciplineId = ""
+        matchShootCount = DSB120.totalShotsRequired
+        resetDataModels()
+        changedToSigherMode()
+        centerPanel.suppressLegacyClock = true
+        var shots = DSB120.recoveredShots()
+        for (var i = 0; i < shots.length; ++i) {
+            var s = shots[i]
+            if (s.isSighter === true) continue
+            var p = centerPanel.polarForMm(s.xmm * 1, s.ymm * 1)
+            rightPanel.addToSeries(p.x, p.y, s.calculatedscore * 1,
+                                   s.xmm * 1, s.ymm * 1)
+        }
+        MODREADER.appendToLogFile("DSB120: resumed position " + DSB120.positionIndex
+                                  + " phase " + DSB120.phaseId
+                                  + " matchShots " + DSB120.totalMatchShots)
+        return true
+    }
+
     // The ONLY route that appends an AR10/AP10 shot to the visible models. It
     // fires (synchronously) after QUAL has durably submitted the SighterAccepted
     // / ShotAccepted event, so the journal — not the UI — is authoritative. It
@@ -2084,6 +2167,27 @@ Item {
         resetDataModels()             // operator clicks Start → new session id
     }
 
+    // DSB 1.20 mode. The engine is started with the ADOPTED definition and
+    // then asked to begin preparation; from that point every phase, clock and
+    // shot classification is the controller's, and this page only projects it.
+    function enterDsb120Mode() {
+        var authority = window.dsb120Authority()
+        if (!DSB120.startSession(authority, window.userName, "", ""))
+            return false
+        isDsb120Match = true
+        isFinalsMatch = false; isFinals10mMatch = false; is3PMatch = false
+        qualDisciplineId = ""
+        matchShootCount = DSB120.totalShotsRequired
+        window.adoptSessionAuthority(DSB120.sessionRuleAuthority())
+        resetDataModels()
+        changedToSigherMode()
+        centerPanel.suppressLegacyClock = true   // the position clock is the HUD's
+        DSB120.startPreparation()
+        MODREADER.appendToLogFile("DSB120: " + authority.programmeId
+                                  + " started (" + DSB120.journalPath + ")")
+        return true
+    }
+
     function beginPreparationPhase()
     {
         // Second gate, at the engine boundary. perfromStart() blocks the UI
@@ -2093,6 +2197,17 @@ Item {
             MODREADER.appendToLogFile(
                 "beginPreparationPhase: BLOCKED - " + window.activeProgrammeId
                 + " " + window.profileUnbuiltEngineReason + " (no engine)")
+            return
+        }
+        // DSB 1.20: the gated independent-position-clock sequencer owns this
+        // competition end to end - preparation, three clocks, the gates between
+        // them and shot classification. None of the qualification machinery
+        // below runs for it.
+        if (window.activeCompetition !== null
+                && window.activeCompetition.timingModel === "INDEPENDENT_POSITION_CLOCKS") {
+            if (enterDsb120Mode())
+                return
+            MODREADER.appendToLogFile("DSB120: session could not be started")
             return
         }
         // 10m FINAL (AR/AP): a separate single-athlete finals domain owned by

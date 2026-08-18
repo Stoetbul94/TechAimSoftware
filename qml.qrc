@@ -27,6 +27,7 @@
         <file>TechAimDialogManager.qml</file>
         <file>PersistenceBanner.qml</file>
         <file>RecoveryDialog.qml</file>
+        <file>Dsb120Hud.qml</file>
         <file>IncidentWindow.qml</file>
         <file>FloatingWindow.qml</file>
         <file>FloatingWindowGrip.qml</file>

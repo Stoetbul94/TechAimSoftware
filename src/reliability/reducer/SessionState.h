@@ -219,6 +219,27 @@ struct Finals10mState {
     }
 };
 
+// DSB 1.20 — what a restart must know to resume the right clock, in the right
+// position, in the right phase. Per-position SHOT counts are NOT stored: they
+// are folded from the officials, each of which carries its position in stageId,
+// so there is only ever one truth about them.
+struct Dsb120State {
+    qint8  positionIndex = -1;      // -1 = preparation / not started
+    quint8 phase = 0;               // ta::dsb::Dsb120Phase
+    qint8  nextPositionIndex = -1;  // armed at the gate; -1 = none
+    bool   sightingLocked = false;  // first match shot of THIS position fired
+    quint8 completedPositions = 0;
+    qint32 version = 1;
+    bool operator==(const Dsb120State& o) const
+    {
+        return positionIndex == o.positionIndex && phase == o.phase
+            && nextPositionIndex == o.nextPositionIndex
+            && sightingLocked == o.sightingLocked
+            && completedPositions == o.completedPositions
+            && version == o.version;
+    }
+};
+
 struct TrainingState {
     qint32 version = 1;
     bool operator==(const TrainingState& o) const { return version == o.version; }
@@ -319,7 +340,7 @@ struct WindMapShotRecord {
 
 using DisciplineState =
     std::variant<std::monostate, QualificationState, Finals3PState,
-                 TrainingState, Finals10mState>;
+                 TrainingState, Finals10mState, Dsb120State>;
 
 // Serialized state format version (StateSnapshot payloads).
 // v2 (M3 Phase A): adds the `estIncidents` array. Backward compatible — a v1

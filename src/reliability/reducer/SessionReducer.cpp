@@ -194,6 +194,17 @@ ReduceResult SessionReducer::apply(const SessionState& current,
             next.config = e.config;
             next.started = true;
             next.lifecycle = Lifecycle::Active;
+            // DSB 1.20 is 10 m air rifle by discipline, but it is conducted by
+            // the position sequencer, so its state comes from the adopted
+            // TIMING MODEL rather than from the discipline enum. Nothing else
+            // in the reducer branches on the ruleset.
+            if (e.ruleAuthority.timingModel
+                    == QLatin1String("INDEPENDENT_POSITION_CLOCKS")) {
+                next.disc = Dsb120State{};
+                next.started = true;
+                next.lifecycle = Lifecycle::Active;
+                return;
+            }
             switch (e.discipline) {
             case Discipline::Finals3P:
                 next.disc = Finals3PState{};
@@ -1141,6 +1152,79 @@ ReduceResult SessionReducer::apply(const SessionState& current,
             next.wmCompleted = true;
             next.wmPhase = 6;                 // WindMapPhase::Completed
             next.lifecycle = Lifecycle::Complete;
+        },
+        // DSB 1.20. The reducer does NOT own the sequencer's transition table -
+        // the controller does. What it owns is CONSISTENCY under replay: the
+        // step must be applicable to the folded state, so a reordered or
+        // duplicated journal line is refused rather than applied. In particular
+        // a position can only START from its own gate, which is the rule that
+        // makes automatic chaining impossible even at the storage layer.
+        [&](const Dsb120StepRecorded& e) {
+            if (!active) { failure = illegal("Dsb120StepRecorded"); return; }
+            Dsb120State d;
+            if (const auto* cur = std::get_if<Dsb120State>(&next.disc))
+                d = *cur;
+            const auto reject = [&](const QString& why) {
+                failure = rejected(current, ReliabilityError::InvalidStateTransition,
+                                   why, seq);
+            };
+            switch (static_cast<Dsb120Step>(e.step)) {
+            case Dsb120Step::PreparationStarted:
+                if (d.phase != 0) { reject(QStringLiteral("Dsb120: preparation twice")); return; }
+                d.phase = 1;                       // PreparationSighting
+                d.positionIndex = -1;
+                d.nextPositionIndex = 0;           // kneeling is what follows
+                break;
+            case Dsb120Step::PositionArmed:
+                // The GATE. Reachable from preparation and from a completed
+                // position - never from a running one.
+                if (d.phase != 1 && d.phase != 5) {
+                    reject(QStringLiteral("Dsb120: arming from phase %1").arg(d.phase));
+                    return;
+                }
+                d.phase = 2;                       // WaitingStart (gate)
+                d.nextPositionIndex = e.positionIndex;
+                break;
+            case Dsb120Step::PositionStarted:
+                if (d.phase != 2) {
+                    reject(QStringLiteral("Dsb120: a position may start only from its gate"));
+                    return;
+                }
+                if (e.positionIndex != d.nextPositionIndex) {
+                    reject(QStringLiteral("Dsb120: started position %1, gate armed %2")
+                               .arg(e.positionIndex).arg(d.nextPositionIndex));
+                    return;
+                }
+                d.positionIndex = e.positionIndex;
+                d.nextPositionIndex = -1;
+                d.sightingLocked = false;
+                // Kneeling had its sighting in the shared preparation period, so
+                // it starts IN match. Prone and standing open in sighting, on a
+                // clock that is already running.
+                d.phase = (e.positionIndex == 0) ? 4 : 3;
+                break;
+            case Dsb120Step::MatchPhaseEntered:
+                if (d.phase != 3) {
+                    reject(QStringLiteral("Dsb120: match phase from phase %1").arg(d.phase));
+                    return;
+                }
+                d.phase = 4;                       // PositionMatch
+                break;
+            case Dsb120Step::PositionCompleted:
+                if (d.phase != 3 && d.phase != 4) {
+                    reject(QStringLiteral("Dsb120: completing an unstarted position"));
+                    return;
+                }
+                d.phase = 5;                       // PositionChange
+                d.completedPositions = static_cast<quint8>(d.completedPositions + 1);
+                break;
+            case Dsb120Step::MatchFinished:
+                d.phase = 6;                       // Finished
+                d.nextPositionIndex = -1;
+                next.lifecycle = Lifecycle::Complete;
+                break;
+            }
+            next.disc = d;
         }
     }, envelope.payload);
 

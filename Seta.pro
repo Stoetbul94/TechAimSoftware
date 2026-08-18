@@ -77,6 +77,7 @@ SOURCES += main.cpp \
     src/finals/FinalsAudioService.cpp \
     src/finals10m/Finals10mController.cpp \
     src/qualification/QualificationController.cpp \
+    src/dsb/Dsb120Controller.cpp \
     src/incident/EstIncidentController.cpp \
     src/app/ProductIdentity.cpp \
     src/app/BrandPackage.cpp \
@@ -124,6 +125,7 @@ HEADERS += \
     src/finals/FinalsReportBuilder.h \
     src/finals/FinalsAudioService.h \
     src/qualification/QualificationController.h \
+    src/dsb/Dsb120Controller.h \
     src/incident/EstIncidentController.h \
     src/app/ProductIdentity.h \
     src/app/BrandPackage.h \

@@ -13,6 +13,7 @@ include(../../Reliability.pri)
 INCLUDEPATH += $$PWD/../../src
 INCLUDEPATH += $$PWD/../../src/training
 SOURCES += $$PWD/../../src/qualification/QualificationController.cpp
+SOURCES += $$PWD/../../src/dsb/Dsb120Controller.cpp
 SOURCES += $$PWD/../../src/incident/EstIncidentController.cpp
 SOURCES += $$PWD/../../src/mode/OperatingModeService.cpp
 # Stage 5: the Wind Map controller. Compiling it in this QT=core harness is
@@ -24,6 +25,7 @@ HEADERS += $$PWD/../../src/training/WindMapController.h
 HEADERS += $$PWD/../../src/training/WindMapAnalytics.h
 HEADERS += $$PWD/../../src/training/WindMapVerdict.h
 HEADERS += $$PWD/../../src/qualification/QualificationController.h
+HEADERS += $$PWD/../../src/dsb/Dsb120Controller.h
 HEADERS += $$PWD/../../src/incident/EstIncidentController.h
 HEADERS += $$PWD/../../src/mode/OperatingMode.h
 HEADERS += $$PWD/../../src/mode/OperatingModeService.h
@@ -69,6 +71,7 @@ SOURCES += \
     tst_incidents.cpp \
     tst_qualification.cpp \
     tst_rule_authority.cpp \
+    tst_dsb120.cpp \
     tst_snapshot.cpp \
     tst_store.cpp \
     tst_recovery.cpp \

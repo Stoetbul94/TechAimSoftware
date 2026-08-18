@@ -638,6 +638,11 @@ void EventSerializer::serializePayloadInto(const DomainEvent& event,
         [&](const WindMapPhaseChanged& e) {
             w.field("fromPhase", static_cast<qint64>(e.fromPhase));
             w.field("toPhase", static_cast<qint64>(e.toPhase));
+        },
+        [&](const Dsb120StepRecorded& e) {
+            w.field("step", static_cast<qint64>(e.step));
+            w.field("positionIndex", static_cast<qint64>(e.positionIndex));
+            w.field("durationMs", e.durationMs);
         }
     }, event);
 }
@@ -1415,6 +1420,12 @@ ReliabilityResult EventSerializer::deserializePayload(const QString& typeId,
         e.countedShots = static_cast<qint32>(r.reqInt("countedShots", 0, 1000000));
         e.sighterShots = static_cast<qint32>(r.reqInt("sighterShots", 0, 1000000));
         e.conditionChanges = static_cast<qint32>(r.reqInt("conditionChanges", 0, 1000000));
+        *out = e;
+    } else if (typeId == QLatin1String(Dsb120StepRecorded::kType)) {
+        Dsb120StepRecorded e;
+        e.step = static_cast<quint8>(r.reqInt("step", 0, 255));
+        e.positionIndex = static_cast<qint8>(r.reqInt("positionIndex", -1, 2));
+        e.durationMs = r.reqInt("durationMs", 0, std::numeric_limits<qint64>::max());
         *out = e;
     } else if (typeId == QLatin1String(WindMapPhaseChanged::kType)) {
         WindMapPhaseChanged e;

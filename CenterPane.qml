@@ -101,6 +101,19 @@ Item {
 
     property int gameTime: 0
     property int totalGameTime: 0
+    // DSB 1.20 runs three position clocks that this pane knows nothing about,
+    // so its own countdown is suppressed rather than left showing a number that
+    // belongs to no competition. The position clock is displayed by the DSB HUD.
+    property bool suppressLegacyClock: false
+    // Both clock labels are driven imperatively everywhere else in this file,
+    // so they are hidden the same way rather than by a binding a later
+    // assignment would silently break.
+    onSuppressLegacyClockChanged: {
+        if (suppressLegacyClock) {
+            stopTimer.visible = false
+            stStopTimer.visible = false
+        }
+    }
     property int sighterTime: 0
     property int totalSighterTime: 0
     property bool showPolarChart: false
@@ -2175,7 +2188,7 @@ Item {
     {
         //sighter.visible = false;
         sighterTimer.start()
-        stStopTimer.visible = true;
+        if (!suppressLegacyClock) stStopTimer.visible = true;
         gameTimer.stop()
         countText.visible = false
         timerNotification.visible = false
@@ -2191,7 +2204,7 @@ Item {
         MODREADER.appendToLogFile("startPreparationCountdown: totalSighterTime=" + totalSighterTime)
         sighterTime = 0
         stStopTimer.text = minutesToseconds(totalSighterTime)
-        stStopTimer.visible = true
+        if (!suppressLegacyClock) stStopTimer.visible = true
         timerNotification.visible = false
         sighterTimer.restart()
     }

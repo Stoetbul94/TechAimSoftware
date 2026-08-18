@@ -59,6 +59,19 @@ ApplicationWindow {
     // absent authority (a legacy session, or one started without a profile)
     // leaves the legacy path in charge - it must never become an empty
     // profile, which would resolve every duration to -1.
+    // The adopted definition a DSB 1.20 session is started from: the catalogue
+    // profile plus the durations it will anchor to. Built here so the shooting
+    // page never assembles competition authority itself.
+    function dsb120Authority() {
+        if (activeCompetition === null) return ({})
+        var a = competitionCatalogue.ruleAuthorityFor(
+                    activeProgrammeId,
+                    activeCompetition.preparationMinutes * 60000, 0)
+        if (a === null) return ({})
+        a.shotCount = activeCompetition.shotCount
+        return a
+    }
+
     function adoptSessionAuthority(authority) {
         window.sessionCompetition =
             (authority && authority.present === true) ? authority : null
@@ -99,12 +112,16 @@ ApplicationWindow {
     //   · every multi-position course except the 50 m 60-shot one the existing
     //     3P engine conducts (see is3PMatch: 50 m, sub-mode 1, 60 shots).
     //     A 120-shot 3x40 has no engine at all, so it must not appear to run.
+    // DSB 1.20 now has its own sequencer (DSB120), so independent position
+    // clocks are no longer a reason to refuse a start. What remains refused is
+    // a course shape no engine conducts: every multi-position course except the
+    // 50 m 60-shot one the 3P engine runs and the 10 m ones DSB120 runs.
     readonly property bool profileNeedsUnbuiltEngine:
         activeCompetition !== null
-        && (activeCompetition.timingModel === "INDEPENDENT_POSITION_CLOCKS"
-            || (profileIsMultiPosition
-                && !(activeCompetition.distanceM === 50
-                     && activeCompetition.shotCount === 60)))
+        && profileIsMultiPosition
+        && activeCompetition.timingModel !== "INDEPENDENT_POSITION_CLOCKS"
+        && !(activeCompetition.distanceM === 50
+             && activeCompetition.shotCount === 60)
     readonly property bool profileIsMultiPosition:
         activeCompetition !== null
         && activeCompetition.positions !== undefined
@@ -113,11 +130,9 @@ ApplicationWindow {
     // block always states the actual reason instead of one stock sentence.
     readonly property string profileUnbuiltEngineReason:
         !profileNeedsUnbuiltEngine ? ""
-        : (activeCompetition.timingModel === "INDEPENDENT_POSITION_CLOCKS"
-            ? qsTr("uses independent position clocks")
-            : qsTr("is a %1-shot course over %2 positions")
-                .arg(activeCompetition.shotCount)
-                .arg(activeCompetition.positions.length))
+        : qsTr("is a %1-shot course over %2 positions")
+            .arg(activeCompetition.shotCount)
+            .arg(activeCompetition.positions.length)
     property int shootsPerSeries: 10
     property string greenColor: "#00ff00" //"lightgreen"
     property string mpiColor: /*"transparent"//*/"blue"
@@ -475,6 +490,16 @@ ApplicationWindow {
                     qsTr("The Position Transition session could not be resumed. "
                          + "Its journal has been left intact."))
             return okp
+        }
+        if (disciplineId === "DSB120") {
+            var okd = shootingPage.restoreDsb120Session(sessionId)
+            if (!okd)
+                dialogManager.showError(qsTr("DSB 1.20 Recovery Failed"),
+                    qsTr("The DSB 1.20 session could not be resumed. "
+                         + "Its journal has been left intact."))
+            else
+                window.isRecoveredGame = true
+            return okd
         }
         if (disciplineId === "TRAINING") {
             var ok = shootingPage.restoreTrainingSession(sessionId)

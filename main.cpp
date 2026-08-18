@@ -30,6 +30,7 @@
 #include "src/finals/Finals3PController.h"
 #include "src/finals10m/Finals10mController.h"
 #include "src/qualification/QualificationController.h"
+#include "src/dsb/Dsb120Controller.h"
 #include "src/incident/EstIncidentController.h"
 #include "src/finals/FinalsAudioService.h"
 #include "src/mode/OperatingMode.h"
@@ -479,6 +480,12 @@ int main(int argc, char *argv[])
     QualificationController qualController;
     qualController.setOperatingMode(runningModeInt);   // F10 input-source gate
     engine.rootContext()->setContextProperty("QUAL", &qualController);
+    // DSB 1.20 — the gated independent-position-clock sequencer (DSB120). Its
+    // own controller and its own SessionStore, because the rule is a different
+    // competition shape, not a parameter of the qualification seam.
+    Dsb120Controller dsb120Controller;
+    dsb120Controller.setOperatingMode(runningModeInt);
+    engine.rootContext()->setContextProperty("DSB120", &dsb120Controller);
     // Training Lab (T1) — Technical Blocks domain controller. Separate from
     // every competition controller; owns ALL Training state and journals
     // Training-specific events (sessionKind=Training). Same F10 source gate.

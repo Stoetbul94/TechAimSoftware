@@ -207,6 +207,11 @@ const EventMeta kRows[] = {
     // recoverable one.
     row<WindMapPhaseChanged>(DurabilityClass::Sync, BroadcastClass::Broadcast,
                              ReducerClass::Mutating),
+    // DSB 1.20. Sync for the same reason as the Wind Map phase, and one more:
+    // the step also decides which CLOCK is running. A lost step could resume a
+    // position on the wrong duration, which is a result error, not a UI glitch.
+    row<Dsb120StepRecorded>(DurabilityClass::Sync, BroadcastClass::Broadcast,
+                            ReducerClass::Mutating),
 };
 
 struct RegistryIndex {

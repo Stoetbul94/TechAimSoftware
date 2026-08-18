@@ -107,7 +107,12 @@ using DomainEvent = std::variant<
     WindMapPositionChanged,
     WindMapSessionCompleted,
     // Stage 5: the durable workflow phase. Also appended at the END.
-    WindMapPhaseChanged>;
+    WindMapPhaseChanged,
+    // DSB 1.20 gated position sequencer — appended at the END so all prior
+    // variant indexes and journal hashes never move.
+    Dsb120StepRecorded
+>;
+
 
 // Stable type identifier of the alternative currently held.
 inline const char* eventTypeId(const DomainEvent& event)
