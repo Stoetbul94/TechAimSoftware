@@ -78,3 +78,7 @@ tools/uirender/Makefile*
 tools/uirender/release/
 tools/uirender/debug/
 tools/uirender/.qmake.stash
+
+# Python bytecode from the repo tooling.
+__pycache__/
+*.pyc
