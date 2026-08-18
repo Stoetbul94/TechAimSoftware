@@ -193,7 +193,7 @@ Rectangle {
                 }
                 Rectangle {
                     width: 160; height: 40; radius: 8
-                    color: root.resumable ? "#e8003d" : "#3a3b44"
+                    color: root.resumable ? theme.tokens.accentBright : "#3a3b44"
                     Text { anchors.centerIn: parent
                            text: !root.resumable ? qsTr("Recovery Wizard")
                                  : ((root.current && root.current.sessionKind === "Training")

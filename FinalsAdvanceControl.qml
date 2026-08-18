@@ -29,7 +29,7 @@ Item {
         visible: adv.ctl && adv.ctl.advanceLabel !== "" && !adv.confirming
         width: visible ? pillTxt.implicitWidth + 30 : 0
         height: 30; radius: 15
-        color: pillMA.pressed ? "#8a002f" : "#cca80038"
+        color: pillMA.pressed ? theme.tokens.accentPressed : "#cca80038"
         border.color: "#d44a6a"
         border.width: 1
         opacity: visible ? 1 : 0
@@ -55,7 +55,7 @@ Item {
         }
         Rectangle {
             width: okTxt.implicitWidth + 24; height: 30; radius: 15
-            color: okMA.pressed ? "#8a002f" : "#a80038"
+            color: okMA.pressed ? theme.tokens.accentPressed : theme.tokens.accentPrimary
             Text { id: okTxt; anchors.centerIn: parent; text: "CONFIRM"
                    color: "white"; font.family: "Segoe UI"; font.pixelSize: 11; font.bold: true }
             MouseArea { id: okMA; anchors.fill: parent

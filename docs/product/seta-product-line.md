@@ -1,6 +1,6 @@
 # SETA product line — identity boundary and competition selection
 
-Branch `product/seta`. This document records two decisions that a later phase
+Branch `product/seta`. This document records the decisions a later phase
 must not silently reverse.
 
 ---
@@ -13,17 +13,17 @@ Three separate facts, deliberately kept in three separate fields:
 |---|---|---|---|
 | What the product is called | `displayName` / `fullProductName` | Tech Aim | **SETA** |
 | Who publishes the software | `legalPublisher` | JAC SHOOTING SOLUTIONS (PTY) LTD | **JAC SHOOTING SOLUTIONS (PTY) LTD — unchanged** |
-| Which colour/asset package | `BuildFlavour` | `TECH_AIM` | `TECH_AIM` |
+| Which colour/asset package | `BuildFlavour` | `TECH_AIM` (red) | **`SETA_OEM` (blue)** |
 
 Re-branding a product must never silently re-attribute who published the
 software. The publisher is a legal fact, not a skin. It changes only when an
 authoritative business or contractual requirement is supplied — none has been.
 
-`BuildFlavour::SetaOem` is a **different question** and remains reserved and
-unbuildable: it is the full OEM *colour system and asset package*, and no SETA
-palette exists. `BRAND_SETA` is the narrower thing that ships today — name,
-mark and data namespace on the approved Tech Aim colour system. The startup log
-prints both (`brand SETA · flavour TECH_AIM`) so the two are never conflated.
+`BuildFlavour` is the ONE authority for which brand a binary is — it selects the
+`BrandPackage` — and `BRAND_SETA` is the compile-time switch that selects it.
+`SetaOem` was reserved and unbuildable while no SETA palette existed; §4 supplies
+one, sampled from the approved logo, so it is now a real package. The startup log
+prints `brand SETA · flavour SETA_OEM`.
 
 ### Brand assets
 
@@ -170,16 +170,152 @@ timing, scoring mode and applicable classes are unknown.
 `programmeId` is identical under a German translator, and the selector compares
 no translated string (QML-LANG-001 preserved).
 
-**Known gap:** the selector's new UI strings are not present in any
-`translations/*.ts`, so a German UI currently renders the English source text
-for them. That is missing translation *content*, not a logic defect — and it is
-harmless precisely because no logic depends on the label.
+The selector's strings are now in the shipped German catalogue — see §6.
 
 ---
 
+## 4. SETA blue theme
+
+### The palette, and where it came from
+
+`images/logo/seta.png` contains exactly three opaque colours and no others:
+
+| Colour | Pixels | Share | Role in the artwork |
+|---|---|---|---|
+| `#25B0E6` | 13,307 | 73.28% | wordmark / swoosh |
+| `#212D60` | 3,786 | 20.85% | deep navy |
+| `#00539E` | 1,066 | 5.87% | saturated brand blue |
+
+| Token | SETA | Tech Aim | Derivation |
+|---|---|---|---|
+| `accentPrimary` | **#00539E** | #A80038 | logo colour |
+| `accentHover` | **#25B0E6** | #C40046 | logo colour (the lighter state) |
+| `accentPressed` | **#003A6E** | #80032A | accentPrimary × 0.70 |
+| `accentSubtle` | **#0F2740** | #2D0A18 | 28% accentPrimary over `surfacePrimary` |
+| `accentBright` | **#25B0E6** | #E8003D | the live-UI / HUD tone |
+| `focusOutline` | **#25B0E6** | #C40046 | = accentHover |
+| `textOnAccent` | #FFFFFF | #FFFFFF | |
+| `brandLogoSecondary` | **#212D60** | #BF1919 | logo-intrinsic, NOT an accent |
+
+**`accentPrimary` is not the most numerous colour, on purpose.** An accent is a
+fill that carries white text, and `#25B0E6` cannot: white on it is **2.49:1**,
+which fails at any size. White on `#00539E` is **7.69:1** — within 0.02 of Tech
+Aim's own **7.71:1** on `#A80038`. The two products' accents are therefore
+functionally interchangeable, which is why no component needs to know which
+brand it is drawing.
+
+`#25B0E6` becomes the lighter interaction state and the focus ring, mirroring
+how `#C40046` relates to `#A80038`. It reads **7.81:1** on the darkest canvas
+where Tech Aim's ring manages 3.18:1 — SETA's focus visibility is better, not
+merely different. Nothing was invented: every hue is from the artwork, and the
+two derived values are stated with their derivation.
+
+### Where the palette lives
+
+```
+BrandPackage (C++)      the values, one package per flavour   ← authority
+   ↓ PRODUCT.accent*    ProductIdentityBridge
+DesignTokens.qml        the SEMANTIC layer screens consume
+   ↓ theme.tokens.*
+89 call sites           migrated off hard-coded brand literals
+```
+
+**BuildFlavour is now the single authority.** `BRAND_SETA` is the compile-time
+switch that selects it; `TECHAIM_FLAVOUR_SETA_OEM` is still honoured so nothing
+that sets it changes meaning. `SetaOem` is no longer a reserved empty stub — it
+carries the blue palette — and `isFlavourBuildable()` now means "producible by
+THIS build" rather than "does this brand exist". Buildability is deliberately
+not tied to `isComplete()`: Tech Aim ships with an outstanding `.ico`.
+
+### What did NOT become blue
+
+Semantic and scoring colours are not brand decoration, and each was classified
+individually rather than swept:
+
+| Kept | Why |
+|---|---|
+| Demo/Live badge, Demo mode dot | mistaking Demo for Live is a result-integrity risk |
+| NO TARGET / connection fault | a fault must read as a fault in every product |
+| `errorText` / `successText` / `warningText` | semantic tokens; no package may set them |
+| score-band colours (`≤7`), shot-score colours | scoring presentation |
+| Aborted / Critical / fail states in reports | status, not brand |
+| target display colour swatches (Settings) | they show the TARGET's colours |
+| the target face itself | ring geometry, numerals and bull are unchanged |
+| position-transition indicator pair | a two-state indicator already using blue |
+
+One site was **re-classified in the other direction**: the left-pane event badge
+(`LeftPanel.qml`) had been skipped as a "no programme" alert. It is the active
+event badge — brand highlight — so it takes the accent.
+
+Discipline art (`DisciplineArt.qml`) is decorative and took the accent. **No
+scoring-authoritative target face was touched**, and the approved firearm
+artwork was not redrawn.
+
+## 5. Layout at 1366×724
+
+**The previously reported right-panel clipping was a measurement error.** The
+screenshots behind it were taken by a DPI-unaware process on a 1920×1200 display
+at 125% scaling, so Windows returned a virtualised 1536×912 view of a 1920-wide
+window and the right panel appeared to run off the edge. Captured DPI-aware,
+maximised is 1920×1140 — exactly the work area — with correct margins.
+
+The landing screen is anchor-based and proportional (`leftPanel` = 44% of the
+content area, `rightPanel` fills the rest), so it was already responsive. At a
+true 1366×724 window both panels fit horizontally with margins and both scroll
+vertically.
+
+**A real defect WAS found at that size, in the new selector:** its step content
+sat in a clipped, unscrollable Item, so at 1366×724 the second row of ISSF
+disciplines could not be reached — two of the four were effectively missing. An
+option the operator cannot reach is the same as an option that does not exist,
+which is precisely what a catalogue-driven selector must never do. Fixed by:
+
+- every step in a `Flickable` with a scrollbar,
+- responsive card widths (two per row while the panel allows it, one when not),
+- the browsing block taking the full panel height,
+- 10 px reserved so the scrollbar never sits on a card.
+
+## 6. German
+
+The shipped catalogue is `translations/techaim_de_DE.qm`
+(`techaim_translations.qrc`); `german.qm` is a Tachus-era stub that is not
+built into the product, and the earlier "German is untranslated" observation
+was made against that stub.
+
+`SetaCompetitionSelector.qml` and `CompetitionCatalogue.qml` were added to the
+`lupdate` source list. Catalogue labels arrive as **data**
+(`qsTr(modelData.labelKey)`), which `lupdate` cannot see, so the English source
+text is listed in `translatableLabels` — an extraction aid that nothing reads
+and nothing compares.
+
+| Source | German |
+|---|---|
+| Rule set / Discipline / Programme | Regelwerk / Disziplin / Programm |
+| SELECT RULE SET / DISCIPLINE / PROGRAMME | REGELWERK / DISZIPLIN / PROGRAMM WÄHLEN |
+| < Back | < Zurück |
+| Official competition rules | Offizielles Wettkampfreglement |
+| Practice - no rule authority | Training – keine Regelautorität |
+| Official course / Preset | Offizieller Wettkampf / Voreinstellung |
+| Practice presets | Trainings-Voreinstellungen |
+| 10M AIR RIFLE / PISTOL | 10 M LUFTGEWEHR / LUFTPISTOLE |
+| 50 Meter RIFLE / Free PISTOL | 50 Meter GEWEHR / FREIE PISTOLE |
+| UN-LIMITED | UNBEGRENZT |
+
+`SETA-LANG-002` extends QML-LANG-001 beyond `programmeId`: the rule set,
+discipline, target standard and shot count are compared **identically** in
+German across the whole hierarchy. It also asserts the catalogue really
+contains these translations — otherwise "German passes" would only mean German
+is still English.
+
+The QML-LANG-001 negative control moved with it. It needs a string the shipped
+catalogue actually translates; `CenterPane`'s "PISTOL" was that string until the
+QML-LANG-001 fix removed the comparison and `lupdate` dropped the source, so the
+control now uses the selector's discipline label — which is translated, and is
+exactly the text a naive hierarchy would have branched on.
+
 ## Outstanding for SETA
 
-- White/knockout logo, single-ink logo, Windows `.ico`.
+- White/knockout logo, single-ink logo, Windows `.ico` (reported by
+  `BrandPackage::missingAssets()`, never invented).
 - Legal publisher, if SETA is to be named as publisher rather than JAC.
-- German translation of the selector strings.
 - DSB Sportordnung rule detail before any German programme is added.

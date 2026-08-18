@@ -471,7 +471,7 @@ Item {
                 Text { width: parent.width*0.15; height: parent.height; text: qsTr("Teiler"); color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
                 Text { width: parent.width*0.15; height: parent.height; text: qsTr("Time");   color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
             }
-            Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 2; color: "#a80038" }
+            Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 2; color: theme.tokens.accentPrimary }
         }
 
         Repeater {

@@ -44,12 +44,12 @@ Item {
         "warning":  "#c77700",
         "error":    "#d0392b",
         "success":  "#1f8a4c",
-        "confirm":  "#a80038",
+        "confirm":  theme.tokens.accentPrimary,
         "question": "#2f6fd0",
-        "custom":   "#a80038"
+        "custom":   theme.tokens.accentPrimary
     })
     readonly property color accent: accentByType[type] !== undefined
-                                    ? accentByType[type] : "#a80038"
+                                    ? accentByType[type] : theme.tokens.accentPrimary
 
     // Clean SVG glyphs (white, drawn on the accent disc). Never OS icons.
     readonly property var iconByType: ({

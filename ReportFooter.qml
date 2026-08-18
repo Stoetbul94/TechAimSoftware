@@ -6,7 +6,7 @@ Item {
     property string softwareVersion: ""
     property string generatedText: ""
     property string pageText: ""
-    property color  accent: "#a80038"
+    property color  accent: theme.tokens.accentPrimary
     implicitHeight: 28
 
     Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: "#e6e8ec" }

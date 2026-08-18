@@ -55,6 +55,17 @@ struct BrandPackage {
     QString accentHover;            // hover / focus
     QString accentPressed;          // active
     QString accentSubtle;           // tinted fill behind a selected item
+    // The BRIGHT accent the live shooting UI and the Training Lab HUDs use.
+    // It exists because the product shipped a second, lighter brand tone
+    // alongside accentPrimary; naming it here is what lets a package recolour
+    // those screens without every HUD carrying its own literal.
+    QString accentBright;
+    // The only text colour permitted on an accent fill. A package must set it
+    // because it depends on how dark that package's accent is.
+    QString textOnAccent;
+    // Keyboard-focus ring. Must stay legible on the DARKEST canvas, which is
+    // why it is the lighter of the two accents, not accentPrimary.
+    QString focusOutline;
 
     // Colour that is intrinsic to the artwork and must NOT be promoted to a
     // general application accent (Tech Aim: the logo's tagline red).

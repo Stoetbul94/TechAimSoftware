@@ -17,9 +17,12 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QRegularExpression>
+#include <cmath>
 #include <QSet>
 #include <QString>
 #include <QStringList>
+#include <array>
+#include <cmath>
 
 using namespace ta::app;
 
@@ -74,6 +77,22 @@ void run_brand_package_tests()
     // ── the approved accent ─────────────────────────────────────────────────
     {
         const BrandPackage& b = brand();
+        // brand() is the package for THIS build's flavour. Both products'
+        // exact palettes are asserted together further down; here the point is
+        // that the running build gets its OWN package and not the other one.
+#ifdef BRAND_SETA
+        check(b.flavourKey == QLatin1String("SETA_OEM"),
+              "brand: the built flavour is SETA", b.flavourKey);
+        check(b.accentPrimary == QLatin1String("#00539E"),
+              "brand: accentPrimary is the approved SETA #00539E (sampled from seta.png)",
+              b.accentPrimary);
+        check(b.accentHover == QLatin1String("#25B0E6"),
+              "brand: accentHover is #25B0E6", b.accentHover);
+        check(b.accentPressed == QLatin1String("#003A6E"),
+              "brand: accentPressed is #003A6E", b.accentPressed);
+        check(b.logoIntrinsicColour == QLatin1String("#212D60"),
+              "brand: the SETA logo navy is recorded as logo-intrinsic");
+#else
         check(b.flavourKey == QLatin1String("TECH_AIM"),
               "brand: the built flavour is Tech Aim");
         check(b.accentPrimary == QLatin1String("#A80038"),
@@ -84,6 +103,7 @@ void run_brand_package_tests()
               "brand: accentPressed is #80032A");
         check(b.logoIntrinsicColour == QLatin1String("#BF1919"),
               "brand: the logo tagline red is recorded as logo-intrinsic");
+#endif
         check(b.accentPrimary != b.logoIntrinsicColour,
               "brand: the logo-intrinsic red is NOT the application accent");
 
@@ -161,25 +181,146 @@ void run_brand_package_tests()
 #endif
     }
 
-    // ── the OEM seam exists, is empty, and does not fall back ───────────────
+    // ── BRAND-PALETTE SEPARATION (SETA blue vs Tech Aim red) ────────────────
+    // The two packages must be complete, distinct, and neither may leak into
+    // the other. A screen asks for `accentPrimary`; the package decides what
+    // that IS, so nothing here may depend on which product is being drawn.
+    {
+        const BrandPackage& ta = brandFor(BuildFlavour::TechAim);
+        const BrandPackage& sa = brandFor(BuildFlavour::SetaOem);
+
+        // Tech Aim red, EXACTLY as approved 2026-07-29 and unchanged by the
+        // SETA work. If this moves, the Tech Aim product changed appearance.
+        check(ta.accentPrimary == QLatin1String("#A80038")
+              && ta.accentHover   == QLatin1String("#C40046")
+              && ta.accentPressed == QLatin1String("#80032A")
+              && ta.accentSubtle  == QLatin1String("#2D0A18")
+              && ta.accentBright  == QLatin1String("#E8003D"),
+              "brand: the Tech Aim red palette is unchanged",
+              ta.accentPrimary + QStringLiteral("/") + ta.accentBright);
+        check(ta.logoIntrinsicColour == QLatin1String("#BF1919"),
+              "brand: the Tech Aim logo-intrinsic colour is unchanged");
+
+        // SETA blue, sampled from images/logo/seta.png. #25B0E6 and #00539E
+        // are LOGO colours; #003A6E is accentPrimary x 0.70 and #0F2740 is
+        // 28% accentPrimary over surfacePrimary, both stated derivations.
+        check(sa.accentPrimary == QLatin1String("#00539E")
+              && sa.accentHover   == QLatin1String("#25B0E6")
+              && sa.accentPressed == QLatin1String("#003A6E")
+              && sa.accentSubtle  == QLatin1String("#0F2740")
+              && sa.accentBright  == QLatin1String("#25B0E6"),
+              "brand: the SETA blue palette is the approved one",
+              sa.accentPrimary + QStringLiteral("/") + sa.accentBright);
+        check(sa.logoIntrinsicColour == QLatin1String("#212D60"),
+              "brand: the SETA logo navy is declared logo-intrinsic, not an accent");
+
+        // NO LEAKAGE, in either direction.
+        // Hand-rolled on purpose: this harness links QtCore only, so QColor
+        // is not available and pulling QtGui in for three integers would make
+        // a GUI-free test suite depend on a GUI.
+        const auto rgb = [](const QString& hex) {
+            const QString h = QString(hex).remove(QLatin1Char('#'));
+            return std::array<int, 3>{ h.mid(0, 2).toInt(nullptr, 16),
+                                       h.mid(2, 2).toInt(nullptr, 16),
+                                       h.mid(4, 2).toInt(nullptr, 16) };
+        };
+        const auto isBlue = [&rgb](const QString& hex) {
+            const auto c = rgb(hex); return c[2] > c[0] + 25;
+        };
+        const auto isRed = [&rgb](const QString& hex) {
+            const auto c = rgb(hex); return c[0] > c[2] + 25;
+        };
+        check(isRed(ta.accentPrimary) && isRed(ta.accentHover)
+              && isRed(ta.accentPressed) && isRed(ta.accentBright),
+              "brand: no SETA blue leaks into the Tech Aim package");
+        check(isBlue(sa.accentPrimary) && isBlue(sa.accentHover)
+              && isBlue(sa.accentPressed) && isBlue(sa.accentBright),
+              "brand: no Tech Aim red leaks into the SETA package");
+        check(ta.accentPrimary != sa.accentPrimary
+              && ta.accentBright != sa.accentBright
+              && ta.logoColour != sa.logoColour,
+              "brand: the two packages are genuinely different products");
+
+        // An accent is a FILL THAT CARRIES TEXT. Both must clear 4.5:1 with
+        // their declared text colour, or the accent is not usable as one.
+        // WCAG relative luminance / contrast ratio.
+        const auto contrast = [&rgb](const QString& a, const QString& b) {
+            const auto lum = [&rgb](const QString& hex) {
+                const auto c = rgb(hex);
+                auto ch = [](int v) {
+                    const double x = v / 255.0;
+                    return x <= 0.03928 ? x / 12.92 : std::pow((x + 0.055) / 1.055, 2.4);
+                };
+                return 0.2126 * ch(c[0]) + 0.7152 * ch(c[1]) + 0.0722 * ch(c[2]);
+            };
+            const double la = lum(a), lb = lum(b);
+            return (std::max(la, lb) + 0.05) / (std::min(la, lb) + 0.05);
+        };
+        check(contrast(ta.textOnAccent, ta.accentPrimary) >= 4.5,
+              "brand: Tech Aim text-on-accent is legible",
+              QString::number(contrast(ta.textOnAccent, ta.accentPrimary), 'f', 2));
+        check(contrast(sa.textOnAccent, sa.accentPrimary) >= 4.5,
+              "brand: SETA text-on-accent is legible",
+              QString::number(contrast(sa.textOnAccent, sa.accentPrimary), 'f', 2));
+        // The focus ring has to survive the DARKEST canvas, which is the whole
+        // reason it is the lighter accent rather than accentPrimary.
+        check(contrast(ta.focusOutline, QStringLiteral("#0B0D10")) >= 3.0
+              && contrast(sa.focusOutline, QStringLiteral("#0B0D10")) >= 3.0,
+              "brand: both focus rings read on the darkest canvas");
+
+        // Both packages are addressable and neither is a stub any more.
+        check(!sa.productName.isEmpty() && !sa.publisher.isEmpty(),
+              "brand: the SETA package names its product and publisher");
+        check(sa.publisher == ta.publisher,
+              "brand: branding does NOT re-attribute the legal publisher");
+    }
+
+    // ── SEMANTIC COLOURS ARE NOT BRAND COLOURS ──────────────────────────────
+    // A fault must read as a fault in every product. These live in the token
+    // layer, not the brand package, and no package may set them - which is why
+    // BrandPackage has no field for them at all.
+    {
+        bool tokOk = false;
+        const QString tokens = readFile(QStringLiteral("src/ui/theme/DesignTokens.qml"), &tokOk);
+        check(tokOk && !tokens.isEmpty(), "tokens: DesignTokens.qml is readable");
+        // The status block still carries its own literals...
+        QString flat = tokens;
+        flat.remove(QLatin1Char(' '));
+        check(flat.contains(QStringLiteral("errorText:\"#D0392B\""))
+              && flat.contains(QStringLiteral("successText:\"#20C997\""))
+              && flat.contains(QStringLiteral("warningText:\"#E8A13D\"")),
+              "tokens: error / success / warning stay semantic literals");
+        check(!flat.contains(QStringLiteral("errorText:PRODUCT."))
+              && !flat.contains(QStringLiteral("successText:PRODUCT.")),
+              "tokens: no brand package may set a semantic status colour");
+        // ...and the brand accents no longer do.
+        check(!flat.contains(QStringLiteral("accentPrimary:\"#"))
+              && !flat.contains(QStringLiteral("accentHover:\"#")),
+              "tokens: the brand accent comes from the package, not a literal");
+        check(tokens.contains(QStringLiteral("PRODUCT.accentPrimary")),
+              "tokens: the accent is read from the build's brand package");
+    }
+
+    // ── the OEM seam is addressable and does not fall back ──────────────────
     {
         const BrandPackage& oem = brandFor(BuildFlavour::SetaOem);
         check(oem.flavourKey == QLatin1String("SETA_OEM"),
               "oem: the reserved package is addressable");
-        check(oem.accentPrimary.isEmpty(),
-              "oem: no OEM accent is defined (no OEM theme implemented)");
-        check(oem.productName.isEmpty(),
-              "oem: no OEM product name is defined");
+        check(!oem.productName.isEmpty(),
+              "oem: the SETA package now names its product");
         check(!oem.isComplete(),
-              "oem: the reserved package reports itself incomplete");
-        check(oem.missingAssets().size() >= 5,
-              "oem: every absent OEM asset is enumerated");
+              "oem: the package reports itself incomplete while assets are absent");
+        check(oem.missingAssets().size() == 3,
+              QString(QStringLiteral("oem: exactly the three unsupplied SETA assets are reported (%1)"))
+                  .arg(oem.missingAssets().join(QStringLiteral(", "))));
 
         // The critical one: asking for the OEM package must NOT silently hand
         // back Tech Aim artwork.
-        check(oem.logoColour != brand().logoColour,
+        check(oem.logoColour != brandFor(BuildFlavour::TechAim).logoColour,
               "oem: the OEM package does not inherit Tech Aim artwork");
-        check(!isFlavourBuildable(BuildFlavour::SetaOem),
+        check(isFlavourBuildable(currentFlavour()) && !isFlavourBuildable(
+                  currentFlavour() == BuildFlavour::TechAim ? BuildFlavour::SetaOem
+                                                            : BuildFlavour::TechAim),
               "oem: the OEM flavour remains unbuildable");
     }
 
@@ -201,8 +342,9 @@ void run_brand_package_tests()
         check(identity().fullProductName == QLatin1String("Tech Aim Electronic Target Control"),
 #endif
               "boundary: inspecting the OEM package does not change the running identity");
-        check(brand().accentPrimary == QLatin1String("#A80038"),
-              "boundary: inspecting the OEM package does not change the running accent");
+        check(brand().accentPrimary == brandFor(currentFlavour()).accentPrimary,
+              "boundary: inspecting a package does not change the running accent",
+              brand().accentPrimary);
     }
 
     // ── the token layer exists and is semantic ──────────────────────────────
@@ -225,8 +367,8 @@ void run_brand_package_tests()
                   QString(QStringLiteral("tokens: %1 is defined")).arg(QString::fromLatin1(name)));
         }
 
-        check(tokens.contains(QStringLiteral("\"#A80038\"")),
-              "tokens: the approved accent value is present");
+        check(!tokens.contains(QStringLiteral("\"#A80038\"")),
+              "tokens: the brand accent literal has left the token file");
 
         // Semantic naming: no colour-literal token names.
         const QRegularExpression literalName(

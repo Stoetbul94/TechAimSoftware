@@ -8,7 +8,7 @@ Item {
     property string label: ""
     property string value: "—"
     property string unit: ""
-    property color  accent: "#a80038"   // Tech Aim maroon
+    property color  accent: theme.tokens.accentPrimary   // Tech Aim maroon
     property int    valueSize: 26        // override for long values (MPI, time, etc.)
 
     implicitWidth: 172

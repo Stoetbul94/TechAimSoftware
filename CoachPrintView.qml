@@ -31,7 +31,7 @@ Rectangle {
     readonly property color cInk:    "#161616"
     readonly property color cSub:    "#555555"
     readonly property color cRule:   "#c9c5bb"
-    readonly property color cAccent: "#a80038"
+    readonly property color cAccent: theme.tokens.accentPrimary
     readonly property color cGreen:  "#2e7d46"
     readonly property color cAmber:  "#b9891b"
     readonly property color cRed:    "#c0392b"

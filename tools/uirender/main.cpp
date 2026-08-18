@@ -142,6 +142,17 @@ int main(int argc, char** argv)
     product.setProperty("brandLogoPath", "qrc:/images/logo/techaim_color.png");
     product.setProperty("brandLogoOnDarkPath", "qrc:/images/logo/techaim_white.png");
     product.setProperty("brandKey", "TECH_AIM");
+    // DesignTokens and the scene-rendered components read the palette from
+    // PRODUCT. The renderer is a LAYOUT tool: these are the Tech Aim values so
+    // a scene renders in a known brand, and a scene may override them.
+    product.setProperty("accentPrimary", "#A80038");
+    product.setProperty("accentHover", "#C40046");
+    product.setProperty("accentPressed", "#80032A");
+    product.setProperty("accentSubtle", "#2D0A18");
+    product.setProperty("accentBright", "#E8003D");
+    product.setProperty("textOnAccent", "#FFFFFF");
+    product.setProperty("focusOutline", "#C40046");
+    product.setProperty("brandLogoSecondary", "#BF1919");
     product.setProperty("qtVersion", "6.5.3");
     product.setProperty("architecture", "x86_64");
     product.setProperty("windowsVersion", "Windows 11 Home Single Language 10.0.26200");

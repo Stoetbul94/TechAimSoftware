@@ -52,7 +52,7 @@ Row {
             width: (index === 6 && progress.inSingles) ? singlesRow.width + 14
                                                        : lbl.implicitWidth + 14
             color: progress.aborted && isCurrent ? "#d0392b"
-                 : isCurrent ? "#a80038"
+                 : isCurrent ? theme.tokens.accentPrimary
                  : isDone ? (hasMissing ? "#8a6d1a" : "#1f4d33")
                  : "transparent"
             border.color: isCurrent || isDone ? "transparent" : "#3a3b42"

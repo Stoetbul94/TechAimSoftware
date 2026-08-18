@@ -1414,7 +1414,7 @@ Item {
                     width: stepText.implicitWidth + 16
                     anchors.verticalCenter: parent.verticalCenter
                     color: index < phaseStepper.cur ? "#1d7a2f"
-                         : (index === phaseStepper.cur ? "#e8003d" : "#4a4b52")
+                         : (index === phaseStepper.cur ? theme.tokens.accentBright : "#4a4b52")
                     Text {
                         id: stepText
                         anchors.centerIn: parent
@@ -1450,7 +1450,7 @@ Item {
         width: resumeText.implicitWidth + 40
         height: 44
         radius: 8
-        color: "#e8003d"
+        color: theme.tokens.accentBright
         Text {
             id: resumeText
             anchors.centerIn: parent

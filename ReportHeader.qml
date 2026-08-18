@@ -21,7 +21,7 @@ Item {
     // recovered session's RECORDED mode to override.
     property string mode: (typeof OPMODE !== "undefined") ? OPMODE.badgeText : ""
     property var    extraPairs: []       // additional [{l,v}] appended after built-ins (e.g. Shots/Score/Time)
-    property color  accent: "#a80038"
+    property color  accent: theme.tokens.accentPrimary
 
     implicitHeight: 104
 

@@ -19,23 +19,34 @@ import QtQuick 2.15
 QtObject {
 
     // ── BRAND ACCENT ────────────────────────────────────────────────────────
-    // APPROVED 2026-07-29. accentPrimary is sampled from the approved logo
-    // asset images/logo/techaim_color.png, where #A80038 accounts for 276,718
-    // of 710,403 opaque pixels. It also matches Theme.brandPrimary and the
-    // entire report/PDF system, which was already the largest consumer.
+    // The values live in the BUILD's BrandPackage (src/app/BrandPackage.cpp)
+    // and arrive through PRODUCT. This file stays the semantic layer: a screen
+    // asks for `accentPrimary` and gets whichever accent this product uses,
+    // and never has to know which brand it is drawing.
     //
-    // The interaction states are defined HERE rather than by reaching for
-    // whichever red a screen happened to have: the product previously shipped
-    // three competing brand reds (#a80038 / #e8003d / #C40046).
-    readonly property color accentPrimary: "#A80038"   // rest state
-    readonly property color accentHover:   "#C40046"   // hover / focus lift
-    readonly property color accentPressed: "#80032A"   // active / pressed
-    readonly property color accentSubtle:  "#2D0A18"   // tinted fill behind a selected card
-    readonly property color textOnAccent:  "#FFFFFF"   // the only text colour permitted on an accent fill
+    //   TECH_AIM  #A80038  sampled from images/logo/techaim_color.png
+    //   SETA_OEM  #00539E  sampled from images/logo/seta.png
+    //
+    // Both carry white text at ~7.7:1, so the two are functionally
+    // interchangeable and no component needs a per-brand branch. The interaction
+    // states are defined ONCE, in the package, rather than by reaching for
+    // whichever accent a screen happened to have: the product previously
+    // shipped three competing brand reds (#a80038 / #e8003d / #C40046).
+    readonly property color accentPrimary: PRODUCT.accentPrimary   // rest state
+    readonly property color accentHover:   PRODUCT.accentHover     // hover / focus lift
+    readonly property color accentPressed: PRODUCT.accentPressed   // active / pressed
+    readonly property color accentSubtle:  PRODUCT.accentSubtle    // tinted fill behind a selected card
+    readonly property color textOnAccent:  PRODUCT.textOnAccent    // the only text colour permitted on an accent fill
 
-    // Logo-intrinsic only. This is the tagline red inside the approved
-    // artwork. It is NOT an application accent and must not be used as one.
-    readonly property color brandLogoSecondary: "#BF1919"
+    // The BRIGHTER brand tone the live shooting UI and the Training Lab HUDs
+    // already used (#E8003D for Tech Aim). Naming it here is what lets a brand
+    // package recolour those screens without every HUD owning a literal.
+    readonly property color accentBright:  PRODUCT.accentBright
+
+    // Logo-intrinsic only. The colour inside the approved artwork that is NOT
+    // an application accent and must not be used as one (Tech Aim: the tagline
+    // red; SETA: the logo navy).
+    readonly property color brandLogoSecondary: PRODUCT.brandLogoSecondary
 
     // ── SURFACES ────────────────────────────────────────────────────────────
     readonly property color backgroundPrimary:   "#0B0D10"  // the window canvas
@@ -74,8 +85,9 @@ QtObject {
     // ── FOCUS ───────────────────────────────────────────────────────────────
     // Keyboard focus must be visible against every surface above. accentHover
     // is used rather than accentPrimary because it is the lighter of the two
-    // and stays legible on the darkest canvas.
-    readonly property color focusOutline: "#C40046"
+    // and stays legible on the darkest canvas. The package decides which
+    // colour that is (Tech Aim #C40046 at 3.18:1; SETA #25B0E6 at 7.81:1).
+    readonly property color focusOutline: PRODUCT.focusOutline
     readonly property int   focusOutlineWidth: 2
 
     // ── OVERLAY ─────────────────────────────────────────────────────────────

@@ -17,7 +17,7 @@ Item {
     readonly property color _bg:     "#15171C"
     readonly property color _card:   "#1B1E24"
     readonly property color _line:   "#2A2E36"
-    readonly property color _red:    "#C40046"
+    readonly property color _red:    theme.tokens.accentHover
     readonly property color _redHi:  "#E8004F"
     readonly property color _green:  "#20C997"
     readonly property color _txt:    "#F3F6FA"

@@ -24,7 +24,7 @@ Item {
     readonly property color _bg:     "#15171C"
     readonly property color _card:   "#1B1E24"
     readonly property color _line:   "#2A2E36"
-    readonly property color _red:    "#C40046"
+    readonly property color _red:    theme.tokens.accentHover
     readonly property color _redHi:  "#E8004F"
     readonly property color _green:  "#20C997"
     readonly property color _blue:   "#3DA9FC"
@@ -202,7 +202,7 @@ Item {
                 // Reveal: Continue
                 Rectangle {
                     visible: hud.revealOpen; width: 260; height: 56; radius: 8
-                    color: contMouse.pressed ? "#A80038" : _red
+                    color: contMouse.pressed ? theme.tokens.accentPrimary : _red
                     Text { anchors.centerIn: parent
                            text: (hud.ctl && hud.ctl.shotsCompleted >= hud.ctl.shotCount)
                                  ? "CONTINUE" : "CONTINUE TO NEXT SHOT"
@@ -360,7 +360,7 @@ Item {
                                 Text { text: "⭳"; color: _green; font.pixelSize: 18; anchors.verticalCenter: parent.verticalCenter }
                                 Text { text: "EXPORT PDF"; color: _txt; font.pixelSize: 14; font.bold: true; anchors.verticalCenter: parent.verticalCenter } }
                             MouseArea { id: pdfMouse; anchors.fill: parent; onClicked: hud.exportPdfRequested() } }
-                        Rectangle { width: 160; height: 56; radius: 8; color: nsMouse.pressed ? "#A80038" : _red
+                        Rectangle { width: 160; height: 56; radius: 8; color: nsMouse.pressed ? theme.tokens.accentPrimary : _red
                             Text { anchors.centerIn: parent; text: "NEW SESSION"; color: "white"; font.pixelSize: 14; font.bold: true }
                             MouseArea { id: nsMouse; anchors.fill: parent
                                 onClicked: dialogManager.showConfirmation(qsTr("Start a new session?"),

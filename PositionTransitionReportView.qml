@@ -17,7 +17,7 @@ Item {
     readonly property color ink:   "#14171C"
     readonly property color sub:    "#5C636E"
     readonly property color line:   "#D5D9DF"
-    readonly property color red:    "#C40046"
+    readonly property color red:    theme.tokens.accentHover
 
     property var model: ({})
     property var positions: []

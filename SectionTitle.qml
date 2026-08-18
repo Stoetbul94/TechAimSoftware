@@ -4,7 +4,7 @@ import QtQuick 2.15
 Item {
     id: st
     property string title: ""
-    property color  accent: "#a80038"
+    property color  accent: theme.tokens.accentPrimary
     implicitHeight: 26
     width: parent ? parent.width : 200
 

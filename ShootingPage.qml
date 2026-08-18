@@ -412,7 +412,7 @@ Item {
                     radius: 10; height: 20
                     width: stepText.implicitWidth + 18
                     color: isCurrent ? "#3a0d16" : "#26262c"
-                    border.color: isCurrent ? "#e8003d" : "transparent"
+                    border.color: isCurrent ? theme.tokens.accentBright : "transparent"
                     border.width: 1
                     Text {
                         id: stepText
@@ -462,7 +462,7 @@ Item {
                 // 3P FINAL: the HUD strip owns phase display; the qualification
                 // phase chip (SIGHTING/MATCH from sligterMode) would conflict.
                 visible: !isFinalsMatch && !isFinals10mMatch && !isTrainingModeAny
-                color: matchFinished ? "#1d7a2f" : (sligterMode ? "#8a6d00" : "#e8003d")
+                color: matchFinished ? "#1d7a2f" : (sligterMode ? "#8a6d00" : theme.tokens.accentBright)
                 Text {
                     id: phaseChipText
                     anchors.centerIn: parent
@@ -475,12 +475,12 @@ Item {
                 visible: !appMode
                 radius: 4; height: 24; width: demoChipText.implicitWidth + 16
                 anchors.verticalCenter: parent.verticalCenter
-                color: "transparent"; border.color: "#e8003d"; border.width: 1
+                color: "transparent"; border.color: theme.tokens.accentBright; border.width: 1
                 Text {
                     id: demoChipText
                     anchors.centerIn: parent
                     text: qsTr("DEMO")
-                    color: "#e8003d"; font.family: theme.fontFamily
+                    color: theme.tokens.accentBright; font.family: theme.fontFamily
                     font.pixelSize: 10; font.bold: true; font.letterSpacing: 1
                 }
             }
@@ -608,11 +608,11 @@ Item {
             visible: shootingPage.isFinals10mMatch ? false
                      : (finalsMode ? FINALS3P.primaryActionVisible : true)
             color: finalsMode
-                   ? (finalsEnabled ? (primaryMouse.containsMouse ? "#c40034" : "#e8003d")
+                   ? (finalsEnabled ? (primaryMouse.containsMouse ? theme.tokens.accentHover : theme.tokens.accentBright)
                                     : "transparent")
                    : (actionBar.barMode === 1
                       ? "transparent"
-                      : (primaryMouse.containsMouse ? "#c40034" : "#e8003d"))
+                      : (primaryMouse.containsMouse ? theme.tokens.accentHover : theme.tokens.accentBright))
             border.color: (finalsMode ? !finalsEnabled : actionBar.barMode === 1)
                           ? "#3a3b40" : "transparent"
             border.width: 1

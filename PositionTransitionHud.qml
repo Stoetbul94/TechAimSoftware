@@ -17,7 +17,7 @@ Item {
     readonly property color _bg:     "#15171C"
     readonly property color _card:   "#1B1E24"
     readonly property color _line:   "#2A2E36"
-    readonly property color _red:    "#C40046"
+    readonly property color _red:    theme.tokens.accentHover
     readonly property color _redHi:  "#E8004F"
     readonly property color _green:  "#20C997"
     readonly property color _txt:    "#F3F6FA"
@@ -156,7 +156,7 @@ Item {
 
                     // actions
                     Row { width: parent.width; spacing: 12; topPadding: 8
-                        Rectangle { width: parent.width * 0.62; height: 56; radius: 8; color: contM.pressed ? "#A80038" : _red
+                        Rectangle { width: parent.width * 0.62; height: 56; radius: 8; color: contM.pressed ? theme.tokens.accentPrimary : _red
                             Text { anchors.centerIn: parent; color: "white"; font.pixelSize: 15; font.bold: true
                                    text: (hud.ctl && hud.ctl.hasNext) ? ("BEGIN TRANSITION TO " + hud.ctl.nextPositionName.toUpperCase()) : "VIEW SESSION SUMMARY" }
                             MouseArea { id: contM; anchors.fill: parent
@@ -360,7 +360,7 @@ Item {
                                 Text { text: "⭳"; color: _green; font.pixelSize: 18; anchors.verticalCenter: parent.verticalCenter }
                                 Text { text: "EXPORT PDF"; color: _txt; font.pixelSize: 14; font.bold: true; anchors.verticalCenter: parent.verticalCenter } }
                             MouseArea { id: pdfM; anchors.fill: parent; onClicked: hud.exportPdfRequested() } }
-                        Rectangle { width: 160; height: 56; radius: 8; color: nsM.pressed ? "#A80038" : _red
+                        Rectangle { width: 160; height: 56; radius: 8; color: nsM.pressed ? theme.tokens.accentPrimary : _red
                             Text { anchors.centerIn: parent; text: "NEW SESSION"; color: "white"; font.pixelSize: 14; font.bold: true }
                             MouseArea { id: nsM; anchors.fill: parent
                                 onClicked: dialogManager.showConfirmation(qsTr("Start a new session?"),

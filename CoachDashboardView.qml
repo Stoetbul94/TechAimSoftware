@@ -28,7 +28,7 @@ Rectangle {
     readonly property color cBorder: "#e6e2d8"
     readonly property color cText:   "#1c1c1e"
     readonly property color cSub:    "#6c6c72"
-    readonly property color cAccent: "#a80038"
+    readonly property color cAccent: theme.tokens.accentPrimary
     readonly property color cGreen:  "#2e9e5b"
     readonly property color cAmber:  "#e0a020"
     readonly property color cRed:    "#d0392b"

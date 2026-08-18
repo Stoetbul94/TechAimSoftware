@@ -127,7 +127,167 @@ int main(int argc, char* argv[])
     check(f.open(QIODevice::ReadOnly | QIODevice::Text),
           "CenterPane.qml can be read", qmlPath);
     if (!f.isOpen()) {
-        printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
+        // ─────────────────────────────────────────────────────────────────────
+    // SETA-BRAND-001 — the blue theme is a PACKAGE, not a sweep.
+    //
+    // Two separate risks: that a brand recolour reaches a SEMANTIC colour (a
+    // fault stops reading as a fault), and that it reaches SCORING or TARGET
+    // presentation (the picture of the shot changes because of branding).
+    // Both are asserted against the shipped source, not against prose.
+    // ─────────────────────────────────────────────────────────────────────
+    {
+        const QString tokens = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/src/ui/theme/DesignTokens.qml"));
+        QString flatTokens = tokens;
+        flatTokens.remove(QLatin1Char(' '));
+        check(!tokens.isEmpty(), "SETA-BRAND-001: DesignTokens.qml is readable");
+        check(flatTokens.contains(QStringLiteral("accentPrimary:PRODUCT.accentPrimary"))
+              && flatTokens.contains(QStringLiteral("accentBright:PRODUCT.accentBright"))
+              && flatTokens.contains(QStringLiteral("focusOutline:PRODUCT.focusOutline")),
+              "SETA-BRAND-001: the accent comes from the build's brand package");
+        check(flatTokens.contains(QStringLiteral("errorText:\"#D0392B\""))
+              && flatTokens.contains(QStringLiteral("successText:\"#20C997\""))
+              && flatTokens.contains(QStringLiteral("warningText:\"#E8A13D\"")),
+              "SETA-BRAND-001: fault / healthy / warning are NOT brand-driven");
+
+        // Semantic and scoring sites deliberately kept literal. Each one means
+        // something; recolouring them for branding would change what the
+        // operator is being told.
+        struct Site { const char* file; const char* needle; const char* why; };
+        const Site kept[] = {
+            { "/main.qml", "opLive ? \"#2f7d4f\" : \"#e8003d\"",
+              "Demo/Live badge - mistaking Demo for Live is a result-integrity risk" },
+            { "/RightPanel.qml", "c: \"#e8003d\"",
+              "score band <=7 - scoring presentation, not brand" },
+            { "/FinalsReportTarget.qml", "\"#a80038\"",
+              "shot-score colour" },
+            { "/Report3PSeries.qml", "\"#a80038\"",
+              "shot-score colour" },
+            { "/SettingsPage.qml", "gameRange === 10 ? \"#f2c200\" : \"#e8003d\"",
+              "target display colour swatch - shows the TARGET's colours" },
+        };
+        for (const Site& site : kept) {
+            const QString src = readAll(QStringLiteral(TECHAIM_SOURCE_DIR) + QLatin1String(site.file));
+            check(src.contains(QLatin1String(site.needle)),
+                  "SETA-BRAND-001: semantic/scoring colour kept literal",
+                  QLatin1String(site.file) + QStringLiteral(" - ")
+                      + QLatin1String(site.why));
+        }
+
+        // The scoring authority itself must carry no brand colour at all.
+        const QString centre = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/CenterPane.qml"));
+        check(!centre.contains(QStringLiteral("PRODUCT.accentPrimary"))
+              || centre.contains(QStringLiteral("calculateShootingSocre")),
+              "SETA-BRAND-001: CenterPane still owns the scoring function");
+        check(!centre.contains(QStringLiteral("radOf10Ring: PRODUCT"))
+              && !centre.contains(QStringLiteral("radOf10Ring: theme")),
+              "SETA-BRAND-001: ring geometry is not reachable from the brand");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // SETA-LANG-002 — language changes LABELS and nothing else.
+    // Extends QML-LANG-001 from programmeId to every stable identity the
+    // hierarchy exposes: rule set, discipline and target standard.
+    // ─────────────────────────────────────────────────────────────────────
+    {
+        const auto snapshot = [](QQmlEngine& eng) {
+            QQmlComponent comp(&eng, QUrl::fromLocalFile(
+                QStringLiteral(TECHAIM_SOURCE_DIR "/CompetitionCatalogue.qml")));
+            QObject* cat = comp.create();
+            QStringList ids;
+            if (cat) {
+                QVariant rs;
+                QMetaObject::invokeMethod(cat, "ruleSets", Q_RETURN_ARG(QVariant, rs),
+                                          Q_ARG(QVariant, QVariant()));
+                for (const QVariant& r : rs.toList()) {
+                    const QString rid = r.toMap().value(QStringLiteral("rulesetId")).toString();
+                    ids << QStringLiteral("R:") + rid;
+                    QVariant dv;
+                    QMetaObject::invokeMethod(cat, "disciplines", Q_RETURN_ARG(QVariant, dv),
+                                              Q_ARG(QVariant, rid), Q_ARG(QVariant, QVariant()));
+                    for (const QVariant& d : dv.toList()) {
+                        const QString did = d.toMap().value(QStringLiteral("disciplineId")).toString();
+                        ids << QStringLiteral("D:") + rid + QLatin1Char('/') + did
+                               + QStringLiteral(" T:")
+                               + d.toMap().value(QStringLiteral("targetStandardId")).toString();
+                        QVariant pv;
+                        QMetaObject::invokeMethod(cat, "programmes", Q_RETURN_ARG(QVariant, pv),
+                                                  Q_ARG(QVariant, rid), Q_ARG(QVariant, did),
+                                                  Q_ARG(QVariant, QVariant()));
+                        for (const QVariant& p : pv.toList()) {
+                            const QVariantMap m = p.toMap();
+                            ids << QStringLiteral("P:")
+                                   + m.value(QStringLiteral("programmeId")).toString()
+                                   + QStringLiteral(" T:")
+                                   + m.value(QStringLiteral("targetStandardId")).toString()
+                                   + QStringLiteral(" N:")
+                                   + m.value(QStringLiteral("shotCount")).toString();
+                        }
+                    }
+                }
+                delete cat;
+            }
+            return ids;
+        };
+
+        QQmlEngine enEngine;
+        const QStringList en = snapshot(enEngine);
+        check(en.size() > 50, "SETA-LANG-002: the English snapshot is non-trivial",
+              QString::number(en.size()));
+
+        QTranslator deShip;
+        const bool loaded = deShip.load(
+            QStringLiteral(TECHAIM_SOURCE_DIR "/translations/techaim_de_DE.qm"));
+        check(loaded, "SETA-LANG-002: the SHIPPED German catalogue loads");
+        if (loaded) QCoreApplication::installTranslator(&deShip);
+        QQmlEngine deEngine;
+        deEngine.retranslate();
+        const QStringList de = snapshot(deEngine);
+        if (loaded) QCoreApplication::removeTranslator(&deShip);
+
+        check(en == de,
+              "SETA-LANG-002: rule set, discipline, target standard, programme id "
+              "and shot count are IDENTICAL in German",
+              en.size() == de.size() ? QStringLiteral("same size, different content")
+                                     : QStringLiteral("size %1 vs %2")
+                                           .arg(en.size()).arg(de.size()));
+
+        // The German catalogue must actually contain the selector's strings -
+        // otherwise "German passes" only because German is still English.
+        const QString ts = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/translations/techaim_de_DE.ts"));
+        const char* mustTranslate[] = {
+            "SELECT RULE SET", "SELECT DISCIPLINE", "SELECT PROGRAMME",
+            "Rule set", "Discipline", "Programme", "&lt; Back",
+            "Official competition rules", "Practice - no rule authority",
+            "Official course", "Preset"
+        };
+        // Scoped to the SELECTOR's own context: the same English word can
+        // appear in several contexts, and the first match in the file is not
+        // necessarily the one this screen uses.
+        const int ctxAt  = ts.indexOf(QStringLiteral("<name>SetaCompetitionSelector</name>"));
+        const int ctxEnd = ts.indexOf(QStringLiteral("</context>"), ctxAt);
+        const QString ctx = (ctxAt >= 0) ? ts.mid(ctxAt, ctxEnd - ctxAt) : QString();
+        check(!ctx.isEmpty(), "SETA-LANG-002: the selector has its own translation context");
+        int translated = 0;
+        for (const char* src : mustTranslate) {
+            const int at = ctx.indexOf(QStringLiteral("<source>%1</source>").arg(
+                                           QLatin1String(src)));
+            if (at < 0) continue;
+            const int end = ctx.indexOf(QStringLiteral("</message>"), at);
+            const QString msg = ctx.mid(at, end - at);
+            if (!msg.contains(QStringLiteral("type=\"unfinished\""))) ++translated;
+        }
+        check(translated == int(sizeof(mustTranslate) / sizeof(mustTranslate[0])),
+              "SETA-LANG-002: every selector string has a German translation",
+              QString::number(translated) + QStringLiteral("/")
+                  + QString::number(int(sizeof(mustTranslate) / sizeof(mustTranslate[0]))));
+
+        // And the selector still compares no translated string.
+        const QString sel = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/SetaCompetitionSelector.qml"));
+        check(!sel.contains(QStringLiteral("=== qsTr(")) && !sel.contains(QStringLiteral("== qsTr(")),
+              "SETA-LANG-002: QML-LANG-001 still holds in the selector");
+    }
+
+    printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
         return 1;
     }
     const QString source = QString::fromUtf8(f.readAll());
@@ -183,7 +343,167 @@ int main(int argc, char* argv[])
           "the harness carrying the real functions instantiates",
           comp.errorString().trimmed());
     if (!obj) {
-        printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
+        // ─────────────────────────────────────────────────────────────────────
+    // SETA-BRAND-001 — the blue theme is a PACKAGE, not a sweep.
+    //
+    // Two separate risks: that a brand recolour reaches a SEMANTIC colour (a
+    // fault stops reading as a fault), and that it reaches SCORING or TARGET
+    // presentation (the picture of the shot changes because of branding).
+    // Both are asserted against the shipped source, not against prose.
+    // ─────────────────────────────────────────────────────────────────────
+    {
+        const QString tokens = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/src/ui/theme/DesignTokens.qml"));
+        QString flatTokens = tokens;
+        flatTokens.remove(QLatin1Char(' '));
+        check(!tokens.isEmpty(), "SETA-BRAND-001: DesignTokens.qml is readable");
+        check(flatTokens.contains(QStringLiteral("accentPrimary:PRODUCT.accentPrimary"))
+              && flatTokens.contains(QStringLiteral("accentBright:PRODUCT.accentBright"))
+              && flatTokens.contains(QStringLiteral("focusOutline:PRODUCT.focusOutline")),
+              "SETA-BRAND-001: the accent comes from the build's brand package");
+        check(flatTokens.contains(QStringLiteral("errorText:\"#D0392B\""))
+              && flatTokens.contains(QStringLiteral("successText:\"#20C997\""))
+              && flatTokens.contains(QStringLiteral("warningText:\"#E8A13D\"")),
+              "SETA-BRAND-001: fault / healthy / warning are NOT brand-driven");
+
+        // Semantic and scoring sites deliberately kept literal. Each one means
+        // something; recolouring them for branding would change what the
+        // operator is being told.
+        struct Site { const char* file; const char* needle; const char* why; };
+        const Site kept[] = {
+            { "/main.qml", "opLive ? \"#2f7d4f\" : \"#e8003d\"",
+              "Demo/Live badge - mistaking Demo for Live is a result-integrity risk" },
+            { "/RightPanel.qml", "c: \"#e8003d\"",
+              "score band <=7 - scoring presentation, not brand" },
+            { "/FinalsReportTarget.qml", "\"#a80038\"",
+              "shot-score colour" },
+            { "/Report3PSeries.qml", "\"#a80038\"",
+              "shot-score colour" },
+            { "/SettingsPage.qml", "gameRange === 10 ? \"#f2c200\" : \"#e8003d\"",
+              "target display colour swatch - shows the TARGET's colours" },
+        };
+        for (const Site& site : kept) {
+            const QString src = readAll(QStringLiteral(TECHAIM_SOURCE_DIR) + QLatin1String(site.file));
+            check(src.contains(QLatin1String(site.needle)),
+                  "SETA-BRAND-001: semantic/scoring colour kept literal",
+                  QLatin1String(site.file) + QStringLiteral(" - ")
+                      + QLatin1String(site.why));
+        }
+
+        // The scoring authority itself must carry no brand colour at all.
+        const QString centre = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/CenterPane.qml"));
+        check(!centre.contains(QStringLiteral("PRODUCT.accentPrimary"))
+              || centre.contains(QStringLiteral("calculateShootingSocre")),
+              "SETA-BRAND-001: CenterPane still owns the scoring function");
+        check(!centre.contains(QStringLiteral("radOf10Ring: PRODUCT"))
+              && !centre.contains(QStringLiteral("radOf10Ring: theme")),
+              "SETA-BRAND-001: ring geometry is not reachable from the brand");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // SETA-LANG-002 — language changes LABELS and nothing else.
+    // Extends QML-LANG-001 from programmeId to every stable identity the
+    // hierarchy exposes: rule set, discipline and target standard.
+    // ─────────────────────────────────────────────────────────────────────
+    {
+        const auto snapshot = [](QQmlEngine& eng) {
+            QQmlComponent comp(&eng, QUrl::fromLocalFile(
+                QStringLiteral(TECHAIM_SOURCE_DIR "/CompetitionCatalogue.qml")));
+            QObject* cat = comp.create();
+            QStringList ids;
+            if (cat) {
+                QVariant rs;
+                QMetaObject::invokeMethod(cat, "ruleSets", Q_RETURN_ARG(QVariant, rs),
+                                          Q_ARG(QVariant, QVariant()));
+                for (const QVariant& r : rs.toList()) {
+                    const QString rid = r.toMap().value(QStringLiteral("rulesetId")).toString();
+                    ids << QStringLiteral("R:") + rid;
+                    QVariant dv;
+                    QMetaObject::invokeMethod(cat, "disciplines", Q_RETURN_ARG(QVariant, dv),
+                                              Q_ARG(QVariant, rid), Q_ARG(QVariant, QVariant()));
+                    for (const QVariant& d : dv.toList()) {
+                        const QString did = d.toMap().value(QStringLiteral("disciplineId")).toString();
+                        ids << QStringLiteral("D:") + rid + QLatin1Char('/') + did
+                               + QStringLiteral(" T:")
+                               + d.toMap().value(QStringLiteral("targetStandardId")).toString();
+                        QVariant pv;
+                        QMetaObject::invokeMethod(cat, "programmes", Q_RETURN_ARG(QVariant, pv),
+                                                  Q_ARG(QVariant, rid), Q_ARG(QVariant, did),
+                                                  Q_ARG(QVariant, QVariant()));
+                        for (const QVariant& p : pv.toList()) {
+                            const QVariantMap m = p.toMap();
+                            ids << QStringLiteral("P:")
+                                   + m.value(QStringLiteral("programmeId")).toString()
+                                   + QStringLiteral(" T:")
+                                   + m.value(QStringLiteral("targetStandardId")).toString()
+                                   + QStringLiteral(" N:")
+                                   + m.value(QStringLiteral("shotCount")).toString();
+                        }
+                    }
+                }
+                delete cat;
+            }
+            return ids;
+        };
+
+        QQmlEngine enEngine;
+        const QStringList en = snapshot(enEngine);
+        check(en.size() > 50, "SETA-LANG-002: the English snapshot is non-trivial",
+              QString::number(en.size()));
+
+        QTranslator deShip;
+        const bool loaded = deShip.load(
+            QStringLiteral(TECHAIM_SOURCE_DIR "/translations/techaim_de_DE.qm"));
+        check(loaded, "SETA-LANG-002: the SHIPPED German catalogue loads");
+        if (loaded) QCoreApplication::installTranslator(&deShip);
+        QQmlEngine deEngine;
+        deEngine.retranslate();
+        const QStringList de = snapshot(deEngine);
+        if (loaded) QCoreApplication::removeTranslator(&deShip);
+
+        check(en == de,
+              "SETA-LANG-002: rule set, discipline, target standard, programme id "
+              "and shot count are IDENTICAL in German",
+              en.size() == de.size() ? QStringLiteral("same size, different content")
+                                     : QStringLiteral("size %1 vs %2")
+                                           .arg(en.size()).arg(de.size()));
+
+        // The German catalogue must actually contain the selector's strings -
+        // otherwise "German passes" only because German is still English.
+        const QString ts = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/translations/techaim_de_DE.ts"));
+        const char* mustTranslate[] = {
+            "SELECT RULE SET", "SELECT DISCIPLINE", "SELECT PROGRAMME",
+            "Rule set", "Discipline", "Programme", "&lt; Back",
+            "Official competition rules", "Practice - no rule authority",
+            "Official course", "Preset"
+        };
+        // Scoped to the SELECTOR's own context: the same English word can
+        // appear in several contexts, and the first match in the file is not
+        // necessarily the one this screen uses.
+        const int ctxAt  = ts.indexOf(QStringLiteral("<name>SetaCompetitionSelector</name>"));
+        const int ctxEnd = ts.indexOf(QStringLiteral("</context>"), ctxAt);
+        const QString ctx = (ctxAt >= 0) ? ts.mid(ctxAt, ctxEnd - ctxAt) : QString();
+        check(!ctx.isEmpty(), "SETA-LANG-002: the selector has its own translation context");
+        int translated = 0;
+        for (const char* src : mustTranslate) {
+            const int at = ctx.indexOf(QStringLiteral("<source>%1</source>").arg(
+                                           QLatin1String(src)));
+            if (at < 0) continue;
+            const int end = ctx.indexOf(QStringLiteral("</message>"), at);
+            const QString msg = ctx.mid(at, end - at);
+            if (!msg.contains(QStringLiteral("type=\"unfinished\""))) ++translated;
+        }
+        check(translated == int(sizeof(mustTranslate) / sizeof(mustTranslate[0])),
+              "SETA-LANG-002: every selector string has a German translation",
+              QString::number(translated) + QStringLiteral("/")
+                  + QString::number(int(sizeof(mustTranslate) / sizeof(mustTranslate[0]))));
+
+        // And the selector still compares no translated string.
+        const QString sel = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/SetaCompetitionSelector.qml"));
+        check(!sel.contains(QStringLiteral("=== qsTr(")) && !sel.contains(QStringLiteral("== qsTr(")),
+              "SETA-LANG-002: QML-LANG-001 still holds in the selector");
+    }
+
+    printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
         return 1;
     }
 
@@ -460,14 +780,21 @@ int main(int argc, char* argv[])
               offenders.join(QStringLiteral(", ")));
 
         QTranslator de;
-        const QString qm = QStringLiteral(TECHAIM_SOURCE_DIR "/translations/german.qm");
+        const QString qm = QStringLiteral(TECHAIM_SOURCE_DIR "/translations/techaim_de_DE.qm");
         const bool loaded = de.load(qm);
         check(loaded, "QML-LANG-001: the German catalogue loads", qm);
         if (loaded) {
-            const QString translated = de.translate("CenterPane", "PISTOL");
-            check(!translated.isEmpty() && translated != QStringLiteral("PISTOL"),
-                  "QML-LANG-001: German translates PISTOL differently - any logic "
-                  "comparing it would flip discipline",
+            // NEGATIVE CONTROL. It must run against a string the SHIPPED
+            // catalogue really translates, or it proves nothing. CenterPane's
+            // "PISTOL" was that string until QML-LANG-001 removed the compare
+            // and lupdate dropped the source with it - so the control moved to
+            // the selector's discipline label, which IS translated and IS the
+            // text a naive hierarchy would have branched on.
+            const QString translated =
+                de.translate("SetaCompetitionSelector", "10M AIR RIFLE");
+            check(!translated.isEmpty() && translated != QStringLiteral("10M AIR RIFLE"),
+                  "QML-LANG-001: German translates the discipline label differently - "
+                  "any logic comparing it would flip discipline",
                   translated);
         }
 
@@ -822,7 +1149,7 @@ int main(int argc, char* argv[])
                                       Q_ARG(QVariant, QStringLiteral("game10RangeEventModel")),
                                       Q_ARG(QVariant, 11));
             QTranslator de2;
-            const bool loaded2 = de2.load(QStringLiteral(TECHAIM_SOURCE_DIR "/translations/german.qm"));
+            const bool loaded2 = de2.load(QStringLiteral(TECHAIM_SOURCE_DIR "/translations/techaim_de_DE.qm"));
             if (loaded2) QCoreApplication::installTranslator(&de2);
             QString idDe;
             {
@@ -966,7 +1293,7 @@ int main(int argc, char* argv[])
 
             // Language independence of the hierarchy itself.
             QTranslator deSel;
-            const bool okDe = deSel.load(QStringLiteral(TECHAIM_SOURCE_DIR "/translations/german.qm"));
+            const bool okDe = deSel.load(QStringLiteral(TECHAIM_SOURCE_DIR "/translations/techaim_de_DE.qm"));
             QString idEnSel = pv.toList().isEmpty() ? QString()
                               : pv.toList().first().toMap()
                                     .value(QStringLiteral("programmeId")).toString();
@@ -1181,6 +1508,166 @@ int main(int argc, char* argv[])
               "is no second set of match-configuration rules");
         check(!page.contains(QStringLiteral("applySetaProgramme(\"")),
               "SETA-INT-001: nothing applies a hardcoded programme id");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // SETA-BRAND-001 — the blue theme is a PACKAGE, not a sweep.
+    //
+    // Two separate risks: that a brand recolour reaches a SEMANTIC colour (a
+    // fault stops reading as a fault), and that it reaches SCORING or TARGET
+    // presentation (the picture of the shot changes because of branding).
+    // Both are asserted against the shipped source, not against prose.
+    // ─────────────────────────────────────────────────────────────────────
+    {
+        const QString tokens = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/src/ui/theme/DesignTokens.qml"));
+        QString flatTokens = tokens;
+        flatTokens.remove(QLatin1Char(' '));
+        check(!tokens.isEmpty(), "SETA-BRAND-001: DesignTokens.qml is readable");
+        check(flatTokens.contains(QStringLiteral("accentPrimary:PRODUCT.accentPrimary"))
+              && flatTokens.contains(QStringLiteral("accentBright:PRODUCT.accentBright"))
+              && flatTokens.contains(QStringLiteral("focusOutline:PRODUCT.focusOutline")),
+              "SETA-BRAND-001: the accent comes from the build's brand package");
+        check(flatTokens.contains(QStringLiteral("errorText:\"#D0392B\""))
+              && flatTokens.contains(QStringLiteral("successText:\"#20C997\""))
+              && flatTokens.contains(QStringLiteral("warningText:\"#E8A13D\"")),
+              "SETA-BRAND-001: fault / healthy / warning are NOT brand-driven");
+
+        // Semantic and scoring sites deliberately kept literal. Each one means
+        // something; recolouring them for branding would change what the
+        // operator is being told.
+        struct Site { const char* file; const char* needle; const char* why; };
+        const Site kept[] = {
+            { "/main.qml", "opLive ? \"#2f7d4f\" : \"#e8003d\"",
+              "Demo/Live badge - mistaking Demo for Live is a result-integrity risk" },
+            { "/RightPanel.qml", "c: \"#e8003d\"",
+              "score band <=7 - scoring presentation, not brand" },
+            { "/FinalsReportTarget.qml", "\"#a80038\"",
+              "shot-score colour" },
+            { "/Report3PSeries.qml", "\"#a80038\"",
+              "shot-score colour" },
+            { "/SettingsPage.qml", "gameRange === 10 ? \"#f2c200\" : \"#e8003d\"",
+              "target display colour swatch - shows the TARGET's colours" },
+        };
+        for (const Site& site : kept) {
+            const QString src = readAll(QStringLiteral(TECHAIM_SOURCE_DIR) + QLatin1String(site.file));
+            check(src.contains(QLatin1String(site.needle)),
+                  "SETA-BRAND-001: semantic/scoring colour kept literal",
+                  QLatin1String(site.file) + QStringLiteral(" - ")
+                      + QLatin1String(site.why));
+        }
+
+        // The scoring authority itself must carry no brand colour at all.
+        const QString centre = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/CenterPane.qml"));
+        check(!centre.contains(QStringLiteral("PRODUCT.accentPrimary"))
+              || centre.contains(QStringLiteral("calculateShootingSocre")),
+              "SETA-BRAND-001: CenterPane still owns the scoring function");
+        check(!centre.contains(QStringLiteral("radOf10Ring: PRODUCT"))
+              && !centre.contains(QStringLiteral("radOf10Ring: theme")),
+              "SETA-BRAND-001: ring geometry is not reachable from the brand");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // SETA-LANG-002 — language changes LABELS and nothing else.
+    // Extends QML-LANG-001 from programmeId to every stable identity the
+    // hierarchy exposes: rule set, discipline and target standard.
+    // ─────────────────────────────────────────────────────────────────────
+    {
+        const auto snapshot = [](QQmlEngine& eng) {
+            QQmlComponent comp(&eng, QUrl::fromLocalFile(
+                QStringLiteral(TECHAIM_SOURCE_DIR "/CompetitionCatalogue.qml")));
+            QObject* cat = comp.create();
+            QStringList ids;
+            if (cat) {
+                QVariant rs;
+                QMetaObject::invokeMethod(cat, "ruleSets", Q_RETURN_ARG(QVariant, rs),
+                                          Q_ARG(QVariant, QVariant()));
+                for (const QVariant& r : rs.toList()) {
+                    const QString rid = r.toMap().value(QStringLiteral("rulesetId")).toString();
+                    ids << QStringLiteral("R:") + rid;
+                    QVariant dv;
+                    QMetaObject::invokeMethod(cat, "disciplines", Q_RETURN_ARG(QVariant, dv),
+                                              Q_ARG(QVariant, rid), Q_ARG(QVariant, QVariant()));
+                    for (const QVariant& d : dv.toList()) {
+                        const QString did = d.toMap().value(QStringLiteral("disciplineId")).toString();
+                        ids << QStringLiteral("D:") + rid + QLatin1Char('/') + did
+                               + QStringLiteral(" T:")
+                               + d.toMap().value(QStringLiteral("targetStandardId")).toString();
+                        QVariant pv;
+                        QMetaObject::invokeMethod(cat, "programmes", Q_RETURN_ARG(QVariant, pv),
+                                                  Q_ARG(QVariant, rid), Q_ARG(QVariant, did),
+                                                  Q_ARG(QVariant, QVariant()));
+                        for (const QVariant& p : pv.toList()) {
+                            const QVariantMap m = p.toMap();
+                            ids << QStringLiteral("P:")
+                                   + m.value(QStringLiteral("programmeId")).toString()
+                                   + QStringLiteral(" T:")
+                                   + m.value(QStringLiteral("targetStandardId")).toString()
+                                   + QStringLiteral(" N:")
+                                   + m.value(QStringLiteral("shotCount")).toString();
+                        }
+                    }
+                }
+                delete cat;
+            }
+            return ids;
+        };
+
+        QQmlEngine enEngine;
+        const QStringList en = snapshot(enEngine);
+        check(en.size() > 50, "SETA-LANG-002: the English snapshot is non-trivial",
+              QString::number(en.size()));
+
+        QTranslator deShip;
+        const bool loaded = deShip.load(
+            QStringLiteral(TECHAIM_SOURCE_DIR "/translations/techaim_de_DE.qm"));
+        check(loaded, "SETA-LANG-002: the SHIPPED German catalogue loads");
+        if (loaded) QCoreApplication::installTranslator(&deShip);
+        QQmlEngine deEngine;
+        deEngine.retranslate();
+        const QStringList de = snapshot(deEngine);
+        if (loaded) QCoreApplication::removeTranslator(&deShip);
+
+        check(en == de,
+              "SETA-LANG-002: rule set, discipline, target standard, programme id "
+              "and shot count are IDENTICAL in German",
+              en.size() == de.size() ? QStringLiteral("same size, different content")
+                                     : QStringLiteral("size %1 vs %2")
+                                           .arg(en.size()).arg(de.size()));
+
+        // The German catalogue must actually contain the selector's strings -
+        // otherwise "German passes" only because German is still English.
+        const QString ts = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/translations/techaim_de_DE.ts"));
+        const char* mustTranslate[] = {
+            "SELECT RULE SET", "SELECT DISCIPLINE", "SELECT PROGRAMME",
+            "Rule set", "Discipline", "Programme", "&lt; Back",
+            "Official competition rules", "Practice - no rule authority",
+            "Official course", "Preset"
+        };
+        // Scoped to the SELECTOR's own context: the same English word can
+        // appear in several contexts, and the first match in the file is not
+        // necessarily the one this screen uses.
+        const int ctxAt  = ts.indexOf(QStringLiteral("<name>SetaCompetitionSelector</name>"));
+        const int ctxEnd = ts.indexOf(QStringLiteral("</context>"), ctxAt);
+        const QString ctx = (ctxAt >= 0) ? ts.mid(ctxAt, ctxEnd - ctxAt) : QString();
+        check(!ctx.isEmpty(), "SETA-LANG-002: the selector has its own translation context");
+        int translated = 0;
+        for (const char* src : mustTranslate) {
+            const int at = ctx.indexOf(QStringLiteral("<source>%1</source>").arg(
+                                           QLatin1String(src)));
+            if (at < 0) continue;
+            const int end = ctx.indexOf(QStringLiteral("</message>"), at);
+            const QString msg = ctx.mid(at, end - at);
+            if (!msg.contains(QStringLiteral("type=\"unfinished\""))) ++translated;
+        }
+        check(translated == int(sizeof(mustTranslate) / sizeof(mustTranslate[0])),
+              "SETA-LANG-002: every selector string has a German translation",
+              QString::number(translated) + QStringLiteral("/")
+                  + QString::number(int(sizeof(mustTranslate) / sizeof(mustTranslate[0]))));
+
+        // And the selector still compares no translated string.
+        const QString sel = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/SetaCompetitionSelector.qml"));
+        check(!sel.contains(QStringLiteral("=== qsTr(")) && !sel.contains(QStringLiteral("== qsTr(")),
+              "SETA-LANG-002: QML-LANG-001 still holds in the selector");
     }
 
     printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);

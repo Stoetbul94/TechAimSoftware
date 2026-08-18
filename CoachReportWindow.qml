@@ -39,7 +39,7 @@ FloatingWindow {
                     Rectangle {
                         visible: reportWin.viewMode === modelData.m
                         anchors.bottom: parent.bottom; anchors.horizontalCenter: parent.horizontalCenter
-                        width: parent.width * 0.6; height: 2; radius: 1; color: "#a80038"
+                        width: parent.width * 0.6; height: 2; radius: 1; color: theme.tokens.accentPrimary
                     }
                     MouseArea { id: tabMA; anchors.fill: parent; hoverEnabled: true; onClicked: reportWin.viewMode = modelData.m }
                 }
@@ -102,7 +102,7 @@ FloatingWindow {
             }
             Rectangle {
                 width: epTxt.implicitWidth + 26; height: 28; radius: 6
-                color: epMA.pressed ? "#8a002f" : "#a80038"
+                color: epMA.pressed ? theme.tokens.accentPressed : theme.tokens.accentPrimary
                 Text { id: epTxt; anchors.centerIn: parent; text: "⤓  Export PDF"; color: "white"; font.family: "Segoe UI"; font.pixelSize: 12; font.bold: true }
                 MouseArea { id: epMA; anchors.fill: parent; onClicked: coachPrint.exportPdf() }
             }

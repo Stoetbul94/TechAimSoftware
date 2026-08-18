@@ -121,7 +121,7 @@ Item {
                     Text { text: qsTr("MATCH REPORT"); font.pixelSize: 21; font.bold: true; font.letterSpacing: 2; color: "#111111" }
                     Text {
                         text: qsTr("50m Rifle 3 Positions · ISSF 3x20 Qualification") + (appMode ? "" : qsTr("   —  DEMO"))
-                        font.pixelSize: 10; color: appMode ? "#555555" : "#a80038"; font.letterSpacing: 1
+                        font.pixelSize: 10; color: appMode ? "#555555" : theme.tokens.accentPrimary; font.letterSpacing: 1
                     }
                 }
                 Image {
@@ -130,7 +130,7 @@ Item {
                     height: 52; fillMode: Image.PreserveAspectFit
                 }
             }
-            Rectangle { width: parent.width; height: 2; color: "#a80038" }
+            Rectangle { width: parent.width; height: 2; color: theme.tokens.accentPrimary }
 
             // ── Meta line ─────────────────────────────────────────────────
             Row {
@@ -167,7 +167,7 @@ Item {
                         property var st: stats[index]
                         Row {
                             anchors.fill: parent
-                            Text { width: parent.width*0.16; text: posNames[index]; font.pixelSize: 10; font.bold: true; color: "#a80038"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; height: parent.height }
+                            Text { width: parent.width*0.16; text: posNames[index]; font.pixelSize: 10; font.bold: true; color: theme.tokens.accentPrimary; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; height: parent.height }
                             Text { width: parent.width*0.10; text: st ? st.sAi + " (" + fmt(st.sA) + ")" : "-"; font.pixelSize: 10; color: "#111111"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; height: parent.height }
                             Text { width: parent.width*0.10; text: st ? st.sBi + " (" + fmt(st.sB) + ")" : "-"; font.pixelSize: 10; color: "#111111"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; height: parent.height }
                             Text { width: parent.width*0.15; text: st ? st.intg + " (" + fmt(st.dec) + ")" : "-"; font.pixelSize: 10; font.bold: true; color: "#111111"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; height: parent.height }
@@ -179,7 +179,7 @@ Item {
                     }
                 }
                 Rectangle {
-                    width: parent.width; height: 32; color: "#a80038"
+                    width: parent.width; height: 32; color: theme.tokens.accentPrimary
                     Row {
                         anchors.fill: parent
                         Text { width: parent.width*0.16; text: qsTr("TOTAL"); color: "white"; font.pixelSize: 11; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; height: parent.height }
@@ -253,7 +253,7 @@ Item {
                             }
                             Row {
                                 width: faceImg.width
-                                Text { width: parent.width*0.6; text: posNames[posIndex]; font.pixelSize: 9; font.bold: true; color: "#a80038" }
+                                Text { width: parent.width*0.6; text: posNames[posIndex]; font.pixelSize: 9; font.bold: true; color: theme.tokens.accentPrimary }
                                 Text {
                                     width: parent.width*0.4
                                     text: stats[posIndex] ? stats[posIndex].intg + " (" + fmt(stats[posIndex].dec) + ")" : "-"

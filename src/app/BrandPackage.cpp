@@ -23,30 +23,17 @@ BrandPackage makeTechAim()
     BrandPackage b;
     b.flavourKey       = QStringLiteral("TECH_AIM");
 
-    // The NAME comes from the one identity source, so the package can never
-    // disagree with the product it brands. On a SETA build these become the
-    // SETA names; the colour system below stays Tech Aim's approved one,
-    // because no SETA palette has been supplied and inventing one is a brand
-    // act, not an engineering one.
-    b.productName      = identity().fullProductName;
-    b.shortProductName = identity().displayName;
-    b.publisher        = identity().legalPublisher;
+    b.productName      = QStringLiteral("Tech Aim Electronic Target Control");
+    b.shortProductName = QStringLiteral("Tech Aim");
+    b.publisher        = QStringLiteral("JAC SHOOTING SOLUTIONS (PTY) LTD");
 
-    b.logoColour       = identity().brandLogoPath;
-    b.logoWhite        = identity().brandLogoOnDarkPath;
+    b.logoColour       = QStringLiteral("qrc:/images/logo/techaim_color.png");
+    b.logoWhite        = QStringLiteral("qrc:/images/logo/techaim_white.png");
     // No dedicated monochrome mark exists. techaim_black.png is the
     // single-ink variant actually shipped and is what the report/PDF path
     // already uses, so it is declared honestly rather than left empty.
     b.logoMonochrome   = QStringLiteral("qrc:/images/logo/techaim_black.png");
-    b.reportLogo       = identity().brandLogoPath;
-#ifdef BRAND_SETA
-    // SETA supplied ONE mark (seta.png). A white-on-dark and a single-ink
-    // variant do not exist, so they are reported as missing rather than
-    // silently falling back to the Tech Aim logo, which would put the wrong
-    // company's mark on a SETA report.
-    b.logoWhite        = QString();
-    b.logoMonochrome   = QString();
-#endif
+    b.reportLogo       = QStringLiteral("qrc:/images/logo/techaim_color.png");
     // BRAND APPROVAL REQUIRED: no .ico exists and TechAim.rc declares no ICON
     // resource, so the executable carries the default Qt/MinGW icon. Deriving
     // one from the raster logo is a brand act and is deliberately NOT done
@@ -58,35 +45,80 @@ BrandPackage makeTechAim()
     b.accentPressed       = QStringLiteral("#80032A");
     b.accentSubtle        = QStringLiteral("#2D0A18");
     b.logoIntrinsicColour = QStringLiteral("#BF1919");   // logo tagline only
+    // The lighter brand tone the live shooting UI and the HUDs already used.
+    b.accentBright        = QStringLiteral("#E8003D");
+    b.textOnAccent        = QStringLiteral("#FFFFFF");   // 7.71:1 on #A80038
+    b.focusOutline        = b.accentHover;
 
     b.resourceNamespace = QStringLiteral("qrc:/images/logo");
-    b.pdfAttribution    = identity().fullProductName;
-    b.manualBrandName   = identity().displayName;
+    b.pdfAttribution    = QStringLiteral("Tech Aim Electronic Target Control");
+    b.manualBrandName   = QStringLiteral("Tech Aim");
     b.defaultLanguage   = QString();   // the operator's choice wins
     return b;
 }
 
-// ── SETA OEM ────────────────────────────────────────────────────────────────
-// RESERVED AND DELIBERATELY EMPTY.
+// ── SETA ────────────────────────────────────────────────────────────────────
+// APPROVED. The SETA product line is a BLUE theme, and the palette below is
+// sampled from the approved asset images/logo/seta.png, exactly as the Tech Aim
+// accent was sampled from techaim_color.png. That image contains three opaque
+// colours and no others:
 //
-// This exists so the OEM path is a real, testable configuration seam rather
-// than a hypothetical one — a test can ask for this package and assert that it
-// reports its missing assets instead of silently falling back to Tech Aim
-// artwork. Nothing here is approved, and no SETA appearance is implemented.
+//   #25B0E6   13,307 px  73.28%   the wordmark / swoosh
+//   #212D60    3,786 px  20.85%   the deep navy
+//   #00539E    1,066 px   5.87%   the saturated brand blue
 //
-// Note also: "SETA" is the German electronics supplier as well as the legacy
-// OEM brand. Nothing in this file may be used to justify a blanket rename of
-// SETA references elsewhere in the source.
-BrandPackage makeSetaOem()
+// accentPrimary is #00539E rather than the most numerous colour, because an
+// accent is a FILL THAT CARRIES WHITE TEXT and #25B0E6 cannot: white on
+// #25B0E6 is 2.49:1, which fails at any size. White on #00539E is 7.69:1 -
+// within 0.02 of Tech Aim's own 7.71:1 on #A80038, so the two products'
+// accents are functionally interchangeable and no component needs to know
+// which brand it is drawing.
+//
+// #25B0E6 becomes the LIGHTER interaction state and the focus ring, mirroring
+// how #C40046 relates to #A80038. It reads 7.81:1 on the darkest canvas
+// (Tech Aim's focus ring manages 3.18:1), so SETA's focus visibility is better,
+// not merely different.
+//
+// accentPressed is accentPrimary x 0.70 - the same derivation that produced
+// Tech Aim's #80032A from #A80038. accentSubtle is 28% accentPrimary over
+// surfacePrimary #15171C, the same role #2D0A18 plays for Tech Aim.
+//
+// NOTHING HERE IS INVENTED: every hue comes from the supplied artwork, and the
+// two derived values are stated with their derivation.
+BrandPackage makeSeta()
 {
     BrandPackage b;
     b.flavourKey       = QStringLiteral("SETA_OEM");
-    b.productName      = QString();
-    b.shortProductName = QString();
-    b.publisher        = QString();
-    // Every asset intentionally absent — BRAND APPROVAL REQUIRED.
-    b.accentPrimary    = QString();
-    b.resourceNamespace = QStringLiteral("qrc:/assets/brands/seta-oem");
+
+    b.productName      = QStringLiteral("SETA Electronic Target Control");
+    b.shortProductName = QStringLiteral("SETA");
+    // The publisher is a LEGAL fact and is NOT part of the skin.
+    b.publisher        = QStringLiteral("JAC SHOOTING SOLUTIONS (PTY) LTD");
+
+    b.logoColour       = QStringLiteral("qrc:/images/logo/seta.png");
+    b.reportLogo       = QStringLiteral("qrc:/images/logo/seta.png");
+    // SETA supplied ONE mark. A white-on-dark variant, a single-ink variant and
+    // a Windows icon do not exist, so they are REPORTED as missing rather than
+    // falling back to the Tech Aim logo - that would put another company's mark
+    // on a SETA header and a SETA report.
+    b.logoWhite        = QString();
+    b.logoMonochrome   = QString();
+    b.windowsIcon      = QString();
+
+    b.accentPrimary       = QStringLiteral("#00539E");   // logo, white-on 7.69:1
+    b.accentHover         = QStringLiteral("#25B0E6");   // logo, dominant tone
+    b.accentPressed       = QStringLiteral("#003A6E");   // accentPrimary x 0.70
+    b.accentSubtle        = QStringLiteral("#0F2740");   // 28% over #15171C
+    b.accentBright        = QStringLiteral("#25B0E6");
+    b.textOnAccent        = QStringLiteral("#FFFFFF");
+    b.focusOutline        = b.accentHover;
+    // The logo navy. Intrinsic to the artwork - NOT an application accent.
+    b.logoIntrinsicColour = QStringLiteral("#212D60");
+
+    b.resourceNamespace = QStringLiteral("qrc:/images/logo");
+    b.pdfAttribution    = QStringLiteral("SETA Electronic Target Control");
+    b.manualBrandName   = QStringLiteral("SETA");
+    b.defaultLanguage   = QString();   // the operator's choice wins
     return b;
 }
 
@@ -134,7 +166,7 @@ bool BrandPackage::isComplete() const
 const BrandPackage& brandFor(BuildFlavour f)
 {
     static const BrandPackage techAim = makeTechAim();
-    static const BrandPackage setaOem = makeSetaOem();
+    static const BrandPackage setaOem = makeSeta();
     return (f == BuildFlavour::SetaOem) ? setaOem : techAim;
 }
 

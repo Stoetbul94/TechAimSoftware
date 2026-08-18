@@ -35,7 +35,7 @@ Item {
 
     readonly property color _bg:      "#1b1c22"
     readonly property color _bgAlt:   "#24262e"
-    readonly property color _red:     "#e8003d"
+    readonly property color _red:     theme.tokens.accentBright
     readonly property color _txt:     "#f2f3f5"
     readonly property color _txtSec:  "#c9ced6"
     readonly property color _txtMut:  "#9aa0aa"
@@ -372,7 +372,7 @@ Item {
                     Rectangle {
                         width: 132; height: 40; radius: 8
                         color: modelData.accent
-                               ? (actMouse.containsMouse ? "#c40034" : "#e8003d")
+                               ? (actMouse.containsMouse ? theme.tokens.accentHover : theme.tokens.accentBright)
                                : (actMouse.containsMouse ? "#2f3037" : "#26272c")
                         border.color: modelData.accent ? "transparent" : "#3a3b40"
                         border.width: 1

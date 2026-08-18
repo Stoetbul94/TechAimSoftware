@@ -102,7 +102,7 @@ Item {
                     }
                     Text {
                         text: qsTr("50m Rifle 3 Positions · ") + userName + (appMode ? "" : qsTr("  —  DEMO"))
-                        font.pixelSize: 9; color: appMode ? "#555555" : "#a80038"; font.letterSpacing: 1
+                        font.pixelSize: 9; color: appMode ? "#555555" : theme.tokens.accentPrimary; font.letterSpacing: 1
                     }
                 }
                 Image {
@@ -111,7 +111,7 @@ Item {
                     height: 44; fillMode: Image.PreserveAspectFit
                 }
             }
-            Rectangle { width: parent.width; height: 2; color: "#a80038" }
+            Rectangle { width: parent.width; height: 2; color: theme.tokens.accentPrimary }
 
             // ── Series tables + target plot ───────────────────────────────
             Row {
@@ -235,7 +235,7 @@ Item {
                         }
                     }
                     Rectangle {
-                        width: parent.width; height: 30; color: "#a80038"
+                        width: parent.width; height: 30; color: theme.tokens.accentPrimary
                         Row {
                             anchors.fill: parent
                             Text { width: parent.width*0.5; height: parent.height; text: qsTr("  POSITION TOTAL"); color: "white"; font.pixelSize: 10; font.bold: true; verticalAlignment: Text.AlignVCenter }

@@ -127,11 +127,18 @@ ProductIdentity makeTechAim()
 
 } // namespace
 
-// The flavour is fixed at compile time. TECHAIM_FLAVOUR_SETA_OEM is
-// deliberately NOT settable from any build we ship; see isFlavourBuildable().
+// The flavour is fixed at compile time.
+//
+// RATIONALISED: BRAND_SETA and TECHAIM_FLAVOUR_SETA_OEM used to describe the
+// same product through two unrelated mechanisms - one chose the name and mark,
+// the other chose the asset package - and a SETA build reported "flavour
+// TECH_AIM" while calling itself SETA. There is now ONE authority: BuildFlavour
+// selects the BrandPackage, and BRAND_SETA is simply the compile-time switch
+// that selects the flavour. The older define is still honoured so nothing that
+// sets it silently changes meaning.
 BuildFlavour currentFlavour()
 {
-#ifdef TECHAIM_FLAVOUR_SETA_OEM
+#if defined(BRAND_SETA) || defined(TECHAIM_FLAVOUR_SETA_OEM)
     return BuildFlavour::SetaOem;
 #else
     return BuildFlavour::TechAim;
@@ -149,10 +156,13 @@ QString flavourName(BuildFlavour f)
 
 bool isFlavourBuildable(BuildFlavour f)
 {
-    // SETA_OEM is reserved: the branding assets, theme and installer identity
-    // for it do not exist yet. Accepting it here would let an unbranded or
-    // half-branded OEM build ship.
-    return f == BuildFlavour::TechAim;
+    // "Producible by THIS build." SETA_OEM used to be refused outright because
+    // no SETA palette existed; one now does, sampled from the approved logo, so
+    // the question is no longer "does this brand exist" but "is this the brand
+    // this binary was compiled as". Buildability is deliberately NOT tied to
+    // isComplete(): Tech Aim ships with an outstanding .ico and is buildable,
+    // so tying the two would refuse the shipping product.
+    return f == currentFlavour();
 }
 
 const ProductIdentity& identity()

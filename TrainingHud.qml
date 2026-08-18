@@ -23,7 +23,7 @@ Item {
     readonly property color _bg:     "#15171C"
     readonly property color _card:   "#1B1E24"
     readonly property color _line:   "#2A2E36"
-    readonly property color _red:    "#C40046"
+    readonly property color _red:    theme.tokens.accentHover
     readonly property color _green:  "#20C997"
     readonly property color _txt:    "#F3F6FA"
     readonly property color _txtSec: "#B6BCC6"
@@ -133,7 +133,7 @@ Item {
                                     model: parent.shots
                                     Rectangle {
                                         width: 11; height: 11; radius: 6
-                                        color: index === parent.parent.shots.length - 1 ? "#ff2d55" : "#e8003d"
+                                        color: index === parent.parent.shots.length - 1 ? "#ff2d55" : theme.tokens.accentBright
                                         x: parent.width / 2 + (modelData.xMm / parent.rangeMm) * parent.plotR - width / 2
                                         y: parent.height / 2 - (modelData.yMm / parent.rangeMm) * parent.plotR - height / 2
                                         border.color: "#ffffff"; border.width: 1
@@ -317,7 +317,7 @@ Item {
                         width: parent.width; spacing: 12; topPadding: 8
                         Rectangle {
                             width: parent.width * 0.62; height: 56; radius: 8
-                            color: continueMouse.pressed ? "#A80038" : _red
+                            color: continueMouse.pressed ? theme.tokens.accentPrimary : _red
                             Text {
                                 anchors.centerIn: parent; color: "white"; font.pixelSize: 15; font.bold: true
                                 text: hud.ctl && hud.ctl.currentBlock >= hud.ctl.blockCount
@@ -446,7 +446,7 @@ Item {
                                     anchors.verticalCenter: parent.verticalCenter
                                     Rectangle {
                                         anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter
-                                        height: parent.height; radius: 4; color: "#e8003d"
+                                        height: parent.height; radius: 4; color: theme.tokens.accentBright
                                         width: b.hasGroup ? parent.width * Math.min(1, b.groupDiameter / sumCol.maxDia) : 0
                                     }
                                 }
@@ -566,7 +566,7 @@ Item {
                             MouseArea { id: pdfMouse; anchors.fill: parent; onClicked: hud.exportPdfRequested() }
                         }
                         Rectangle {
-                            width: 170; height: 56; radius: 8; color: newSessMouse.pressed ? "#A80038" : _red
+                            width: 170; height: 56; radius: 8; color: newSessMouse.pressed ? theme.tokens.accentPrimary : _red
                             Text { anchors.centerIn: parent; text: "NEW SESSION"; color: "white"; font.pixelSize: 14; font.bold: true }
                             MouseArea {
                                 id: newSessMouse; anchors.fill: parent

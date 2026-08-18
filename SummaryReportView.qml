@@ -206,7 +206,7 @@ Item {
                                     height: 72
                                     radius: 12
                                     color: "white"; border.color: "#e6e8ec"; border.width: 1
-                                    Rectangle { width: 4; radius: 2; height: parent.height * 0.5; color: "#a80038"
+                                    Rectangle { width: 4; radius: 2; height: parent.height * 0.5; color: theme.tokens.accentPrimary
                                         anchors.left: parent.left; anchors.leftMargin: 12; anchors.verticalCenter: parent.verticalCenter }
                                     Column {
                                         anchors.left: parent.left; anchors.leftMargin: 26
@@ -246,7 +246,7 @@ Item {
                                     Text { width: parent.width*0.33; height: parent.height; text: qsTr("Score");    horizontalAlignment: Text.AlignRight; rightPadding: 12; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 11; font.bold: true; font.family: "Segoe UI" }
                                     Text { width: parent.width*0.33; height: parent.height; text: qsTr("Inner 10"); horizontalAlignment: Text.AlignRight; rightPadding: 12; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 11; font.bold: true; font.family: "Segoe UI" }
                                 }
-                                Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 2; color: "#a80038" }
+                                Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 2; color: theme.tokens.accentPrimary }
                             }
                             Repeater {
                                 model: Math.ceil(globalMatchModel.count / 10)

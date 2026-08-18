@@ -165,7 +165,7 @@ Item {
                                     color: modelData.c
                                     border.width: name.isBackGroundBlack === modelData.black ? 2 : 1
                                     border.color: name.isBackGroundBlack === modelData.black
-                                                  ? "#e8003d" : "#5a5b62"
+                                                  ? theme.tokens.accentBright : "#5a5b62"
                                     MouseArea {
                                         anchors.fill: parent
                                         onClicked: name.isBackGroundBlack = modelData.black
@@ -279,7 +279,7 @@ Item {
                         }
                         Rectangle {
                             width: 84; height: 28; radius: 5
-                            color: motorSaveMouse.pressed ? "#c40046" : "#e8003d"
+                            color: motorSaveMouse.pressed ? theme.tokens.accentHover : theme.tokens.accentBright
                             Text {
                                 id: motorSaveText
                                 anchors.centerIn: parent
@@ -454,8 +454,8 @@ Item {
                             delegate: Rectangle {
                                 property bool selected: modelData.code === LANGUAGE.languageCode
                                 width: langCol.width; height: 40; radius: 6
-                                color: selected ? "#a80038" : (langMouse.pressed ? "#34353c" : "#2c2d33")
-                                border.color: selected ? "#c40046" : "#3a3b40"; border.width: 1
+                                color: selected ? theme.tokens.accentPrimary : (langMouse.pressed ? "#34353c" : "#2c2d33")
+                                border.color: selected ? theme.tokens.accentHover : "#3a3b40"; border.width: 1
                                 Text {
                                     anchors.left: parent.left; anchors.leftMargin: 12
                                     anchors.right: langTick.left; anchors.rightMargin: 8
@@ -643,7 +643,7 @@ Item {
                     // Restart Now — write the setting, then relaunch.
                     Rectangle {
                         width: 104; height: 32; radius: 8
-                        color: "#e8003d"
+                        color: theme.tokens.accentBright
                         Text { anchors.centerIn: parent; text: qsTr("Restart Now"); color: "white"; font.pixelSize: 11; font.bold: true }
                         MouseArea {
                             anchors.fill: parent

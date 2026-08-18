@@ -27,17 +27,14 @@
 namespace ta {
 namespace app {
 
-// BuildFlavour is the COLOUR-SYSTEM / asset-package edition, not the brand
-// name. BRAND_SETA (the product/seta build) is a narrower thing: it changes
-// the product name, the brand mark and the user-data namespace while keeping
-// the approved Tech Aim colour system, because no SETA palette exists and
-// inventing one would be a brand act. SetaOem stays reserved and unbuildable
-// until a complete SETA asset package is supplied - see BrandPackage.
+// BuildFlavour is THE authority for which brand a binary is. It selects the
+// BrandPackage (palette, marks, attribution); BRAND_SETA is simply the
+// compile-time switch that selects the flavour, and ProductIdentity's own
+// BRAND_SETA block supplies the matching name and data namespace. There is no
+// longer a second, disagreeing mechanism.
 enum class BuildFlavour {
-    TechAim = 0,   // the current and only buildable edition
-    SetaOem = 1,   // RESERVED. Documented, validated, never produced yet:
-                   // no blue theme, no SETA logo set, no separate output,
-                   // no runtime selector. See docs/product-identity-audit.md.
+    TechAim = 0,   // dark + Tech Aim red   (#A80038, from techaim_color.png)
+    SetaOem = 1,   // dark + SETA blue      (#00539E, from seta.png)
 };
 
 struct ProductIdentity {

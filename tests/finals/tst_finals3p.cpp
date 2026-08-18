@@ -1222,17 +1222,30 @@ static void runProductIdentityChecks()
     check(p.legacyLockFileNames.contains(QLatin1String("tachus_seta.lock")),
           "identity: legacy single-instance lock recognised");
 
-    // Build flavour: TECH_AIM is the only producible edition. SETA_OEM is a
-    // reserved value that must NOT be buildable yet.
+    // Build flavour. RATIONALISED: BuildFlavour is now the ONE authority for
+    // which brand a binary is - it selects the BrandPackage - and BRAND_SETA is
+    // the compile-time switch that selects it. SETA_OEM is no longer a reserved
+    // stub: it carries the blue palette sampled from seta.png.
+#ifdef BRAND_SETA
+    check(ta::app::currentFlavour() == ta::app::BuildFlavour::SetaOem,
+          "flavour: this build is SETA_OEM");
+#else
     check(ta::app::currentFlavour() == ta::app::BuildFlavour::TechAim,
           "flavour: this build is TECH_AIM");
+#endif
     check(ta::app::flavourName(ta::app::BuildFlavour::TechAim) == QLatin1String("TECH_AIM")
           && ta::app::flavourName(ta::app::BuildFlavour::SetaOem) == QLatin1String("SETA_OEM"),
           "flavour: both flavour names defined");
-    check(ta::app::isFlavourBuildable(ta::app::BuildFlavour::TechAim),
-          "flavour: TECH_AIM is buildable");
-    check(!ta::app::isFlavourBuildable(ta::app::BuildFlavour::SetaOem),
-          "flavour: SETA_OEM reserved, NOT buildable (no OEM assets yet)");
+    // "Producible by THIS build": exactly one flavour is, and it is the one
+    // the binary was compiled as. A mis-set define therefore still cannot
+    // produce a half-branded build - which was the original point.
+    check(ta::app::isFlavourBuildable(ta::app::currentFlavour()),
+          "flavour: the compiled flavour is buildable");
+    const ta::app::BuildFlavour other =
+        ta::app::currentFlavour() == ta::app::BuildFlavour::TechAim
+            ? ta::app::BuildFlavour::SetaOem : ta::app::BuildFlavour::TechAim;
+    check(!ta::app::isFlavourBuildable(other),
+          "flavour: the OTHER flavour is not buildable from this binary");
 }
 
 // ── P0 Phase F: localisation contract ───────────────────────────────────

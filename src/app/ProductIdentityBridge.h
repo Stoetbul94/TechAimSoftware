@@ -5,6 +5,7 @@
 #include <QString>
 
 #include "ProductIdentity.h"
+#include "BrandPackage.h"
 #include "training/WindMapAnalytics.h"   // kWindMapAnalyticsVersion
 
 #include <QSysInfo>
@@ -42,6 +43,19 @@ class ProductIdentityBridge : public QObject
     // 0.9.0-RC1 field-test identity, all compile-time.
     Q_PROPERTY(QString brandLogoPath READ brandLogoPath CONSTANT)
     Q_PROPERTY(QString brandLogoOnDarkPath READ brandLogoOnDarkPath CONSTANT)
+    // ── brand palette ────────────────────────────────────────────────────
+    // Read from the BrandPackage for this build's flavour, so DesignTokens
+    // consumes ONE palette instead of every screen carrying its own literal.
+    // A screen must never ask which brand it is drawing - it asks for a
+    // semantic token and gets whichever accent this product uses.
+    Q_PROPERTY(QString accentPrimary READ accentPrimary CONSTANT)
+    Q_PROPERTY(QString accentHover READ accentHover CONSTANT)
+    Q_PROPERTY(QString accentPressed READ accentPressed CONSTANT)
+    Q_PROPERTY(QString accentSubtle READ accentSubtle CONSTANT)
+    Q_PROPERTY(QString accentBright READ accentBright CONSTANT)
+    Q_PROPERTY(QString textOnAccent READ textOnAccent CONSTANT)
+    Q_PROPERTY(QString focusOutline READ focusOutline CONSTANT)
+    Q_PROPERTY(QString brandLogoSecondary READ brandLogoSecondary CONSTANT)
     Q_PROPERTY(QString brandKey READ brandKey CONSTANT)
     Q_PROPERTY(QString applicationStorageName READ applicationStorageName CONSTANT)
     Q_PROPERTY(QString fieldTestNotice READ fieldTestNotice CONSTANT)
@@ -75,6 +89,14 @@ public:
     // baked in at compile time.
     QString brandLogoPath() const      { return ta::app::identity().brandLogoPath; }
     QString brandLogoOnDarkPath() const { return ta::app::identity().brandLogoOnDarkPath; }
+    QString accentPrimary() const      { return ta::app::brand().accentPrimary; }
+    QString accentHover() const        { return ta::app::brand().accentHover; }
+    QString accentPressed() const      { return ta::app::brand().accentPressed; }
+    QString accentSubtle() const       { return ta::app::brand().accentSubtle; }
+    QString accentBright() const       { return ta::app::brand().accentBright; }
+    QString textOnAccent() const       { return ta::app::brand().textOnAccent; }
+    QString focusOutline() const       { return ta::app::brand().focusOutline; }
+    QString brandLogoSecondary() const { return ta::app::brand().logoIntrinsicColour; }
     QString brandKey() const           { return ta::app::identity().brandKey; }
     QString applicationStorageName() const
                                        { return ta::app::identity().applicationStorageName; }

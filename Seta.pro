@@ -281,6 +281,8 @@ SOURCES = CallDiagnoseHud.qml
         SectionTitle.qml 
         SeriesCard.qml 
         SeriesComponent.qml 
+        SetaCompetitionSelector.qml 
+        CompetitionCatalogue.qml 
         SettingsPage.qml 
         ShootingPage.qml 
         ShotTargetCanvas.qml 

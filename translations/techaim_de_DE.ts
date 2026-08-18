@@ -71,88 +71,83 @@
 <context>
     <name>CenterPane</name>
     <message>
-        <location filename="../CenterPane.qml" line="49"/>
-        <source>PISTOL</source>
-        <translation>PISTOLE</translation>
-    </message>
-    <message>
-        <location filename="../CenterPane.qml" line="1058"/>
-        <location filename="../CenterPane.qml" line="1700"/>
+        <location filename="../CenterPane.qml" line="1116"/>
+        <location filename="../CenterPane.qml" line="1758"/>
         <source>X:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../CenterPane.qml" line="1058"/>
-        <location filename="../CenterPane.qml" line="1700"/>
+        <location filename="../CenterPane.qml" line="1116"/>
+        <location filename="../CenterPane.qml" line="1758"/>
         <source>, Y:</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../CenterPane.qml" line="1133"/>
-        <location filename="../CenterPane.qml" line="1722"/>
+        <location filename="../CenterPane.qml" line="1191"/>
+        <location filename="../CenterPane.qml" line="1780"/>
         <source>Group: </source>
         <translation>Streukreis: </translation>
     </message>
     <message>
-        <location filename="../CenterPane.qml" line="1133"/>
-        <location filename="../CenterPane.qml" line="1722"/>
+        <location filename="../CenterPane.qml" line="1191"/>
+        <location filename="../CenterPane.qml" line="1780"/>
         <source> mm</source>
         <translation> mm</translation>
     </message>
     <message>
-        <location filename="../CenterPane.qml" line="1263"/>
+        <location filename="../CenterPane.qml" line="1321"/>
         <source>Match Complete</source>
         <translation>Wettkampf beendet</translation>
     </message>
     <message>
-        <location filename="../CenterPane.qml" line="1264"/>
+        <location filename="../CenterPane.qml" line="1322"/>
         <source>This match has been completed and no further shots can be recorded.
 
 Start a new match to continue shooting.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../CenterPane.qml" line="1342"/>
+        <location filename="../CenterPane.qml" line="1400"/>
         <source>SIGHT</source>
         <translation>PROBE</translation>
     </message>
     <message>
-        <location filename="../CenterPane.qml" line="1342"/>
+        <location filename="../CenterPane.qml" line="1400"/>
         <source>KNEELING</source>
         <translation>KNIEND</translation>
     </message>
     <message>
-        <location filename="../CenterPane.qml" line="1342"/>
+        <location filename="../CenterPane.qml" line="1400"/>
         <source>PRONE</source>
         <translation>LIEGEND</translation>
     </message>
     <message>
-        <location filename="../CenterPane.qml" line="1342"/>
+        <location filename="../CenterPane.qml" line="1400"/>
         <source>STANDING</source>
         <translation>STEHEND</translation>
     </message>
     <message>
-        <location filename="../CenterPane.qml" line="1343"/>
+        <location filename="../CenterPane.qml" line="1401"/>
         <source>SIGHTING</source>
         <translation>PROBESCHIESSEN</translation>
     </message>
     <message>
-        <location filename="../CenterPane.qml" line="1343"/>
+        <location filename="../CenterPane.qml" line="1401"/>
         <source>MATCH</source>
         <translation>WETTKAMPF</translation>
     </message>
     <message>
-        <location filename="../CenterPane.qml" line="1399"/>
+        <location filename="../CenterPane.qml" line="1457"/>
         <source>START </source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../CenterPane.qml" line="1489"/>
+        <location filename="../CenterPane.qml" line="1547"/>
         <source>(Demo)</source>
         <translation>(Demo)</translation>
     </message>
     <message>
-        <location filename="../CenterPane.qml" line="1604"/>
+        <location filename="../CenterPane.qml" line="1662"/>
         <source>Final shot of the match</source>
         <translation>Letzter Schuss des Wettkampfs</translation>
     </message>
@@ -1018,88 +1013,88 @@ Proceed?</source>
 <context>
     <name>LeftPanel</name>
     <message>
-        <location filename="../LeftPanel.qml" line="219"/>
+        <location filename="../LeftPanel.qml" line="292"/>
         <source>Stats</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../LeftPanel.qml" line="221"/>
+        <location filename="../LeftPanel.qml" line="294"/>
         <source>Report</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../LeftPanel.qml" line="223"/>
+        <location filename="../LeftPanel.qml" line="296"/>
         <source>Coach report</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../LeftPanel.qml" line="225"/>
+        <location filename="../LeftPanel.qml" line="298"/>
         <source>Group / MPI</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../LeftPanel.qml" line="227"/>
+        <location filename="../LeftPanel.qml" line="300"/>
         <source>Range incident</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../LeftPanel.qml" line="229"/>
+        <location filename="../LeftPanel.qml" line="302"/>
         <source>Settings</source>
         <translation>Einstellungen</translation>
     </message>
     <message>
-        <location filename="../LeftPanel.qml" line="231"/>
+        <location filename="../LeftPanel.qml" line="307"/>
         <source>Home</source>
         <translation>Startseite</translation>
     </message>
     <message>
-        <location filename="../LeftPanel.qml" line="294"/>
+        <location filename="../LeftPanel.qml" line="370"/>
         <source>Match Summary Unavailable</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../LeftPanel.qml" line="295"/>
+        <location filename="../LeftPanel.qml" line="371"/>
         <source>You are currently in Sighter mode.
 
 A Match Summary can only be generated after official Match shots have been recorded. Switch to Match mode and fire at least one shot before generating the report.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../LeftPanel.qml" line="301"/>
+        <location filename="../LeftPanel.qml" line="377"/>
         <source>Match Report Unavailable</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../LeftPanel.qml" line="302"/>
+        <location filename="../LeftPanel.qml" line="378"/>
         <source>You are currently in Sighter mode.
 
 A Match Report can only be generated after official Match shots have been recorded. Switch to Match mode and fire at least one shot before generating the report.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../LeftPanel.qml" line="308"/>
+        <location filename="../LeftPanel.qml" line="384"/>
         <source>Coach Report Unavailable</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../LeftPanel.qml" line="309"/>
+        <location filename="../LeftPanel.qml" line="385"/>
         <source>You are currently in Sighter mode.
 
 The Coach Report analyses official Match shots. Switch to Match mode and fire at least one shot before opening it.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../LeftPanel.qml" line="495"/>
+        <location filename="../LeftPanel.qml" line="571"/>
         <source>Device connected</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../LeftPanel.qml" line="495"/>
+        <location filename="../LeftPanel.qml" line="571"/>
         <source>Device not connected</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../LeftPanel.qml" line="511"/>
+        <location filename="../LeftPanel.qml" line="587"/>
         <source>SIGHTER</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1107,148 +1102,348 @@ The Coach Report analyses official Match shots. Switch to Match mode and fire at
 <context>
     <name>LoginPage</name>
     <message>
-        <location filename="../LoginPage.qml" line="73"/>
+        <location filename="../LoginPage.qml" line="174"/>
         <source>Invalid Distance</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="74"/>
+        <location filename="../LoginPage.qml" line="175"/>
         <source>The configured distance is outside the supported range of 5 m to 10 m.
 
 The application will now close.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="239"/>
+        <location filename="../LoginPage.qml" line="341"/>
         <source>User Name Required</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="240"/>
+        <location filename="../LoginPage.qml" line="342"/>
         <source>Please enter a user name before logging in.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="254"/>
-        <location filename="../LoginPage.qml" line="255"/>
+        <location filename="../LoginPage.qml" line="356"/>
+        <location filename="../LoginPage.qml" line="357"/>
         <source>FINAL</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="257"/>
-        <location filename="../LoginPage.qml" line="264"/>
+        <location filename="../LoginPage.qml" line="359"/>
+        <location filename="../LoginPage.qml" line="366"/>
         <source>10</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="258"/>
+        <location filename="../LoginPage.qml" line="360"/>
         <source>15</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="259"/>
-        <location filename="../LoginPage.qml" line="265"/>
+        <location filename="../LoginPage.qml" line="361"/>
+        <location filename="../LoginPage.qml" line="367"/>
         <source>20</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="260"/>
-        <location filename="../LoginPage.qml" line="266"/>
+        <location filename="../LoginPage.qml" line="362"/>
+        <location filename="../LoginPage.qml" line="368"/>
         <source>30</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="261"/>
-        <location filename="../LoginPage.qml" line="267"/>
+        <location filename="../LoginPage.qml" line="363"/>
+        <location filename="../LoginPage.qml" line="369"/>
         <source>40</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="262"/>
-        <location filename="../LoginPage.qml" line="269"/>
+        <location filename="../LoginPage.qml" line="364"/>
+        <location filename="../LoginPage.qml" line="371"/>
         <source>Free Practice</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="268"/>
+        <location filename="../LoginPage.qml" line="370"/>
         <source>60</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="351"/>
-        <location filename="../LoginPage.qml" line="360"/>
-        <location filename="../LoginPage.qml" line="1046"/>
-        <location filename="../LoginPage.qml" line="1054"/>
+        <location filename="../LoginPage.qml" line="450"/>
+        <source>Wind Map</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="451"/>
+        <source>Position Transition</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="452"/>
+        <source>Call &amp; Diagnose</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="453"/>
+        <source>Technical Blocks</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="455"/>
+        <source> — ISSF</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="457"/>
+        <source> — Open Practice</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="464"/>
+        <source>SELECTED PROGRAMME</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="465"/>
+        <source>SELECTED FINAL</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="466"/>
+        <source>SELECTED PRACTICE</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="467"/>
+        <source>SELECTED MATCH</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="474"/>
+        <source>Start wind map  →</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="475"/>
+        <source>Start transitions  →</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="476"/>
+        <source>Start calling  →</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="477"/>
+        <source>Start training  →</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="478"/>
+        <source>Start practice  →</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="479"/>
+        <source>Start session  →</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="498"/>
+        <source>Network share is on but no folder is selected — results will not be shared.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="500"/>
+        <source>No athlete entered</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="502"/>
+        <source>Live target</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="502"/>
+        <source>Demo / Simulation</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="533"/>
+        <location filename="../LoginPage.qml" line="542"/>
+        <location filename="../LoginPage.qml" line="2724"/>
+        <location filename="../LoginPage.qml" line="2732"/>
         <source>Master Not Connected</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="352"/>
-        <location filename="../LoginPage.qml" line="361"/>
-        <location filename="../LoginPage.qml" line="1047"/>
-        <location filename="../LoginPage.qml" line="1055"/>
+        <location filename="../LoginPage.qml" line="534"/>
+        <location filename="../LoginPage.qml" line="543"/>
+        <location filename="../LoginPage.qml" line="2725"/>
+        <location filename="../LoginPage.qml" line="2733"/>
         <source>The master system is not connected.
 
 Please press “Connect” and try again.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="371"/>
+        <location filename="../LoginPage.qml" line="553"/>
         <source>COM Port Not Connected</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="372"/>
+        <location filename="../LoginPage.qml" line="554"/>
         <source>No connection to the target COM port was found.
 
 Please connect the target hardware and try again.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="374"/>
+        <location filename="../LoginPage.qml" line="556"/>
         <source>Hardware Not Connected</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="375"/>
+        <location filename="../LoginPage.qml" line="557"/>
         <source>The target hardware is not responding.
 
 Please check the target connection and try again.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1001"/>
+        <location filename="../LoginPage.qml" line="572"/>
+        <source>Target Not Ready</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="573"/>
+        <source>A valid electronic target connection is required before starting this Live session.
+
+Target status: %1%2
+
+Check the USB connection and try again.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="578"/>
+        <source> (%1)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="724"/>
+        <source>Athlete name</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="1040"/>
+        <source>Share incomplete</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="1041"/>
+        <source>Share enabled</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="1042"/>
+        <source>Share disabled</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="1050"/>
+        <source>No folder selected — click to choose</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="1264"/>
+        <source>Official ISSF course</source>
+        <translation>Offizieller ISSF-Wettkampf</translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="1265"/>
+        <source>Practice - no rule authority</source>
+        <translation>Training – keine Regelautorität</translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="1278"/>
+        <source>CHANGE</source>
+        <translation>ÄNDERN</translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="1716"/>
+        <source>A flexible shooting session — choose a shot plan</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="1979"/>
+        <source>Wind Map is not available here</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="2592"/>
+        <source>READY TO START</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="2593"/>
+        <source>CHECK BEFORE STARTING</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="2666"/>
+        <source>Cannot start Wind Map</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="2679"/>
         <source>Cannot start Position Transition</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1003"/>
-        <location filename="../LoginPage.qml" line="1018"/>
+        <location filename="../LoginPage.qml" line="2668"/>
+        <location filename="../LoginPage.qml" line="2681"/>
+        <location filename="../LoginPage.qml" line="2696"/>
         <source>The session could not be started.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1015"/>
+        <location filename="../LoginPage.qml" line="2693"/>
         <source>Cannot start Call &amp; Diagnose</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1033"/>
+        <location filename="../LoginPage.qml" line="2711"/>
         <source>Cannot start training</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1036"/>
+        <location filename="../LoginPage.qml" line="2714"/>
         <source>The training session could not be started.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1536"/>
+        <location filename="../LoginPage.qml" line="1811"/>
         <source>Training Lab</source>
         <translation>Trainingslabor</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1537"/>
+        <location filename="../LoginPage.qml" line="93"/>
+        <source>ISSF FINAL</source>
+        <translation>ISSF-FINALE</translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="96"/>
+        <source>No programme selected</source>
+        <translation>Kein Programm gewählt</translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="102"/>
+        <source>3 POSITIONS</source>
+        <translation>3 STELLUNGEN</translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="1812"/>
         <source>TECHNICAL BLOCKS
 Shoot several short groups while concentrating on one technical part of your process. After each block, TechAim reveals the measured group and lets you record a note before continuing.
 
@@ -1262,32 +1457,47 @@ Training results are for development only — never an official competition resu
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2237"/>
+        <location filename="../LoginPage.qml" line="2808"/>
+        <source>☁ Share incomplete</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="2809"/>
+        <source>☁ Share on</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="2810"/>
+        <source>☁ Share off</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../LoginPage.qml" line="2877"/>
         <source>Accept</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2255"/>
+        <location filename="../LoginPage.qml" line="2895"/>
         <source>Lincence verification Process</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2263"/>
+        <location filename="../LoginPage.qml" line="2903"/>
         <source>e-mail id</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2273"/>
+        <location filename="../LoginPage.qml" line="2913"/>
         <source>Error</source>
         <translation>Fehler</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2292"/>
+        <location filename="../LoginPage.qml" line="2932"/>
         <source>Cancel</source>
         <translation>Abbrechen</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2301"/>
+        <location filename="../LoginPage.qml" line="2941"/>
         <source>Validate</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1751,7 +1961,7 @@ Training results are for development only — never an official competition resu
     <message>
         <location filename="../RecoveryDialog.qml" line="96"/>
         <source>Discipline</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Disziplin</translation>
     </message>
     <message>
         <location filename="../RecoveryDialog.qml" line="99"/>
@@ -2176,6 +2386,104 @@ Training results are for development only — never an official competition resu
     </message>
 </context>
 <context>
+    <name>SetaCompetitionSelector</name>
+    <message>
+        <location filename="../SetaCompetitionSelector.qml" line="101"/>
+        <source>ISSF</source>
+        <translation>ISSF</translation>
+    </message>
+    <message>
+        <location filename="../SetaCompetitionSelector.qml" line="101"/>
+        <source>Practice presets</source>
+        <translation>Trainings-Voreinstellungen</translation>
+    </message>
+    <message>
+        <location filename="../SetaCompetitionSelector.qml" line="101"/>
+        <source>DSB / German</source>
+        <translation>DSB / Deutschland</translation>
+    </message>
+    <message>
+        <location filename="../SetaCompetitionSelector.qml" line="102"/>
+        <source>10M AIR RIFLE</source>
+        <translation>10 M LUFTGEWEHR</translation>
+    </message>
+    <message>
+        <location filename="../SetaCompetitionSelector.qml" line="102"/>
+        <source>10M AIR PISTOL</source>
+        <translation>10 M LUFTPISTOLE</translation>
+    </message>
+    <message>
+        <location filename="../SetaCompetitionSelector.qml" line="103"/>
+        <source>50 Meter RIFLE</source>
+        <translation>50 Meter GEWEHR</translation>
+    </message>
+    <message>
+        <location filename="../SetaCompetitionSelector.qml" line="103"/>
+        <source>50 Meter Free PISTOL</source>
+        <translation>50 Meter FREIE PISTOLE</translation>
+    </message>
+    <message>
+        <location filename="../SetaCompetitionSelector.qml" line="104"/>
+        <source>UN-LIMITED</source>
+        <translation>UNBEGRENZT</translation>
+    </message>
+    <message>
+        <location filename="../SetaCompetitionSelector.qml" line="137"/>
+        <source>&lt; Back</source>
+        <translation>&lt; Zurück</translation>
+    </message>
+    <message>
+        <location filename="../SetaCompetitionSelector.qml" line="155"/>
+        <source>Rule set</source>
+        <translation>Regelwerk</translation>
+    </message>
+    <message>
+        <location filename="../SetaCompetitionSelector.qml" line="155"/>
+        <source>Discipline</source>
+        <translation>Disziplin</translation>
+    </message>
+    <message>
+        <location filename="../SetaCompetitionSelector.qml" line="155"/>
+        <source>Programme</source>
+        <translation>Programm</translation>
+    </message>
+    <message>
+        <location filename="../SetaCompetitionSelector.qml" line="180"/>
+        <source>SELECT RULE SET</source>
+        <translation>REGELWERK WÄHLEN</translation>
+    </message>
+    <message>
+        <location filename="../SetaCompetitionSelector.qml" line="181"/>
+        <source>SELECT DISCIPLINE</source>
+        <translation>DISZIPLIN WÄHLEN</translation>
+    </message>
+    <message>
+        <location filename="../SetaCompetitionSelector.qml" line="182"/>
+        <source>SELECT PROGRAMME</source>
+        <translation>PROGRAMM WÄHLEN</translation>
+    </message>
+    <message>
+        <location filename="../SetaCompetitionSelector.qml" line="234"/>
+        <source>Official competition rules</source>
+        <translation>Offizielles Wettkampfreglement</translation>
+    </message>
+    <message>
+        <location filename="../SetaCompetitionSelector.qml" line="235"/>
+        <source>Practice - no rule authority</source>
+        <translation>Training – keine Regelautorität</translation>
+    </message>
+    <message>
+        <location filename="../SetaCompetitionSelector.qml" line="318"/>
+        <source>Official course</source>
+        <translation>Offizieller Wettkampf</translation>
+    </message>
+    <message>
+        <location filename="../SetaCompetitionSelector.qml" line="318"/>
+        <source>Preset</source>
+        <translation>Voreinstellung</translation>
+    </message>
+</context>
+<context>
     <name>Settings</name>
     <message>
         <location filename="../ModReader/forms/settings.ui" line="32"/>
@@ -2282,152 +2590,207 @@ Training results are for development only — never an official competition resu
 <context>
     <name>SettingsPage</name>
     <message>
-        <location filename="../SettingsPage.qml" line="148"/>
-        <source>Background Color</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../SettingsPage.qml" line="161"/>
-        <source>Pellet Color</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../SettingsPage.qml" line="185"/>
+        <location filename="../SettingsPage.qml" line="224"/>
         <source>MOTOR FEED (SECONDS)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../SettingsPage.qml" line="193"/>
+        <location filename="../SettingsPage.qml" line="238"/>
         <source>Match</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../SettingsPage.qml" line="208"/>
+        <location filename="../SettingsPage.qml" line="260"/>
         <source>Sighter</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../SettingsPage.qml" line="228"/>
-        <location filename="../SettingsPage.qml" line="248"/>
+        <location filename="../SettingsPage.qml" line="286"/>
+        <location filename="../SettingsPage.qml" line="312"/>
         <source>Save</source>
         <translation>Speichern</translation>
     </message>
     <message>
-        <location filename="../SettingsPage.qml" line="241"/>
+        <location filename="../SettingsPage.qml" line="306"/>
         <source>Saved ✓</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../SettingsPage.qml" line="277"/>
+        <location filename="../SettingsPage.qml" line="340"/>
         <source>OPERATING MODE</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../SettingsPage.qml" line="301"/>
+        <location filename="../SettingsPage.qml" line="351"/>
         <source>Live target</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../SettingsPage.qml" line="302"/>
-        <source>Receives shots from the physical TechAim target.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../SettingsPage.qml" line="328"/>
+        <location filename="../SettingsPage.qml" line="354"/>
         <source>Demo / simulation</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../SettingsPage.qml" line="329"/>
+        <location filename="../SettingsPage.qml" line="355"/>
         <source>Allows simulated target shots for testing and demonstration.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../SettingsPage.qml" line="337"/>
+        <location filename="../SettingsPage.qml" line="409"/>
         <source>Current mode: </source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../SettingsPage.qml" line="337"/>
+        <location filename="../SettingsPage.qml" line="410"/>
         <source>LIVE TARGET</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../SettingsPage.qml" line="337"/>
+        <location filename="../SettingsPage.qml" line="410"/>
         <source>DEMO / SIMULATION</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../SettingsPage.qml" line="349"/>
+        <location filename="../SettingsPage.qml" line="423"/>
         <source>Operating mode cannot be changed while a session is active. Close or complete the current session first.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../SettingsPage.qml" line="351"/>
+        <location filename="../SettingsPage.qml" line="425"/>
         <source>Restart required — the new mode takes effect on next launch.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../SettingsPage.qml" line="352"/>
+        <location filename="../SettingsPage.qml" line="426"/>
         <source>Select the other option to switch (requires restart).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../SettingsPage.qml" line="392"/>
+        <location filename="../SettingsPage.qml" line="448"/>
+        <source>LANGUAGE</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../SettingsPage.qml" line="487"/>
+        <source>German is a beta translation awaiting native review. Untranslated text stays in English.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../SettingsPage.qml" line="495"/>
+        <source>Restart required to finish applying the language.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../SettingsPage.qml" line="536"/>
+        <source>Qt: </source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../SettingsPage.qml" line="537"/>
+        <source>Windows: </source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../SettingsPage.qml" line="538"/>
+        <source>Operating mode: </source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../SettingsPage.qml" line="539"/>
+        <source>Live</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../SettingsPage.qml" line="539"/>
+        <source>Demo</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../SettingsPage.qml" line="540"/>
+        <source>Analytics: </source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../SettingsPage.qml" line="597"/>
         <source>Switch to Demo mode?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../SettingsPage.qml" line="393"/>
+        <location filename="../SettingsPage.qml" line="598"/>
         <source>Switch to Live target mode?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../SettingsPage.qml" line="400"/>
+        <location filename="../SettingsPage.qml" line="605"/>
         <source>Simulated shots will be enabled. Demo sessions are intended for testing and cannot be treated as Live target results.
 
 The application must restart before the change takes effect.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../SettingsPage.qml" line="401"/>
+        <location filename="../SettingsPage.qml" line="606"/>
         <source>Simulated shot input will be disabled. The application will expect the physical TechAim target connection.
 
 The application must restart before the change takes effect.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../SettingsPage.qml" line="415"/>
+        <location filename="../SettingsPage.qml" line="620"/>
         <source>Cancel</source>
         <translation>Abbrechen</translation>
     </message>
     <message>
-        <location filename="../SettingsPage.qml" line="429"/>
+        <location filename="../SettingsPage.qml" line="634"/>
         <source>Restart Later</source>
         <translation>Später neu starten</translation>
     </message>
     <message>
-        <location filename="../SettingsPage.qml" line="442"/>
+        <location filename="../SettingsPage.qml" line="647"/>
         <source>Restart Now</source>
         <translation>Jetzt neu starten</translation>
     </message>
     <message>
-        <location filename="../SettingsPage.qml" line="473"/>
+        <location filename="../SettingsPage.qml" line="517"/>
         <source>ABOUT / BUILD</source>
         <translation>ÜBER / VERSION</translation>
     </message>
     <message>
-        <location filename="../SettingsPage.qml" line="494"/>
+        <location filename="../SettingsPage.qml" line="76"/>
+        <source>SETTINGS</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../SettingsPage.qml" line="145"/>
+        <source>TARGET DISPLAY</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../SettingsPage.qml" line="156"/>
+        <source>Background</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../SettingsPage.qml" line="184"/>
+        <source>Pellet</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../SettingsPage.qml" line="352"/>
+        <source>Receives shots from the physical Tech Aim target.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../SettingsPage.qml" line="533"/>
         <source> build</source>
         <translation>-Build</translation>
     </message>
     <message>
-        <location filename="../SettingsPage.qml" line="498"/>
+        <location filename="../SettingsPage.qml" line="534"/>
         <source>Commit: </source>
         <translation>Commit: </translation>
     </message>
     <message>
-        <location filename="../SettingsPage.qml" line="502"/>
+        <location filename="../SettingsPage.qml" line="535"/>
         <source>Built: </source>
         <translation>Erstellt: </translation>
     </message>
@@ -2435,173 +2798,260 @@ The application must restart before the change takes effect.</source>
 <context>
     <name>ShootingPage</name>
     <message>
-        <location filename="../ShootingPage.qml" line="114"/>
+        <location filename="../ShootingPage.qml" line="123"/>
         <source>KNEELING</source>
         <translation>KNIEND</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="114"/>
-        <location filename="../ShootingPage.qml" line="380"/>
+        <location filename="../ShootingPage.qml" line="123"/>
+        <location filename="../ShootingPage.qml" line="400"/>
         <source>PRONE</source>
         <translation>LIEGEND</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="114"/>
+        <location filename="../ShootingPage.qml" line="123"/>
         <source>STANDING</source>
         <translation>STEHEND</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="123"/>
+        <location filename="../ShootingPage.qml" line="132"/>
         <source>MATCH COMPLETE</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="124"/>
-        <location filename="../ShootingPage.qml" line="381"/>
+        <location filename="../ShootingPage.qml" line="133"/>
+        <location filename="../ShootingPage.qml" line="401"/>
         <source>SIGHTING</source>
         <translation>PROBESCHIESSEN</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="124"/>
-        <location filename="../ShootingPage.qml" line="381"/>
+        <location filename="../ShootingPage.qml" line="133"/>
+        <location filename="../ShootingPage.qml" line="401"/>
         <source>MATCH</source>
         <translation>WETTKAMPF</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="184"/>
-        <location filename="../ShootingPage.qml" line="187"/>
+        <location filename="../ShootingPage.qml" line="193"/>
+        <location filename="../ShootingPage.qml" line="196"/>
         <source>Finish Match</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="185"/>
+        <location filename="../ShootingPage.qml" line="194"/>
         <source>Are you sure you want to finish this match?
 
 Once finished, no further shots can be recorded.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="187"/>
+        <location filename="../ShootingPage.qml" line="196"/>
         <source>Cancel</source>
         <translation>Abbrechen</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="380"/>
+        <location filename="../ShootingPage.qml" line="400"/>
         <source>SIGHT</source>
         <translation>PROBE</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="380"/>
+        <location filename="../ShootingPage.qml" line="400"/>
         <source>KNEEL</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="380"/>
+        <location filename="../ShootingPage.qml" line="400"/>
         <source>STAND</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="426"/>
+        <location filename="../ShootingPage.qml" line="454"/>
+        <location filename="../ShootingPage.qml" line="551"/>
         <source>SHOTS</source>
         <translation>SCHÜSSE</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="454"/>
+        <location filename="../ShootingPage.qml" line="482"/>
         <source>DEMO</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <location filename="../ShootingPage.qml" line="506"/>
+        <source>Wind Map</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ShootingPage.qml" line="507"/>
+        <source>Position Transition</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ShootingPage.qml" line="508"/>
+        <source>Call &amp; Diagnose</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ShootingPage.qml" line="509"/>
+        <source>Technical Blocks</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ShootingPage.qml" line="520"/>
+        <location filename="../ShootingPage.qml" line="526"/>
+        <location filename="../ShootingPage.qml" line="550"/>
+        <source>SIGHTERS</source>
+        <translation type="unfinished">PROBESCHÜSSE</translation>
+    </message>
+    <message>
+        <location filename="../ShootingPage.qml" line="521"/>
+        <source>COUNTED SHOTS</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ShootingPage.qml" line="525"/>
+        <source>POSITION SETUP</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <location filename="../ShootingPage.qml" line="527"/>
-        <source>VIEW REPORT  →</source>
+        <source>VERIFICATION</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ShootingPage.qml" line="528"/>
+        <source>POSITION REVIEW</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../ShootingPage.qml" line="529"/>
-        <source>MATCH IN PROGRESS  ·  </source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ShootingPage.qml" line="529"/>
-        <source>FINISH MATCH</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../ShootingPage.qml" line="531"/>
-        <source>START </source>
+        <source>COMPLETE</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../ShootingPage.qml" line="532"/>
+        <location filename="../ShootingPage.qml" line="745"/>
+        <source>CALL &amp; DIAGNOSE</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ShootingPage.qml" line="533"/>
+        <source>TECHNICAL BLOCK</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ShootingPage.qml" line="624"/>
+        <source>VIEW REPORT  →</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ShootingPage.qml" line="626"/>
+        <source>MATCH IN PROGRESS  ·  </source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ShootingPage.qml" line="626"/>
+        <source>FINISH MATCH</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ShootingPage.qml" line="628"/>
+        <source>START </source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ShootingPage.qml" line="629"/>
         <source>START MATCH  →</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="571"/>
+        <location filename="../ShootingPage.qml" line="668"/>
         <source>Feed paper</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="1115"/>
+        <location filename="../ShootingPage.qml" line="743"/>
+        <source>WIND MAP</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ShootingPage.qml" line="744"/>
+        <source>POSITION TRANSITION</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ShootingPage.qml" line="746"/>
+        <source>TECHNICAL BLOCKS</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ShootingPage.qml" line="1307"/>
         <source>Training report saved</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="1116"/>
-        <location filename="../ShootingPage.qml" line="1153"/>
-        <location filename="../ShootingPage.qml" line="1258"/>
+        <location filename="../ShootingPage.qml" line="1308"/>
+        <location filename="../ShootingPage.qml" line="1345"/>
+        <location filename="../ShootingPage.qml" line="1450"/>
         <source>Saved to:
 %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="1117"/>
-        <location filename="../ShootingPage.qml" line="1154"/>
-        <location filename="../ShootingPage.qml" line="1259"/>
+        <location filename="../ShootingPage.qml" line="1309"/>
+        <location filename="../ShootingPage.qml" line="1346"/>
+        <location filename="../ShootingPage.qml" line="1451"/>
         <source>OK</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="1120"/>
-        <location filename="../ShootingPage.qml" line="1156"/>
-        <location filename="../ShootingPage.qml" line="1261"/>
+        <location filename="../ShootingPage.qml" line="1312"/>
+        <location filename="../ShootingPage.qml" line="1348"/>
+        <location filename="../ShootingPage.qml" line="1453"/>
         <source>Export failed</source>
         <translation>Export fehlgeschlagen</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="1152"/>
+        <location filename="../ShootingPage.qml" line="1344"/>
         <source>Call &amp; Diagnose report saved</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="1186"/>
-        <location filename="../ShootingPage.qml" line="1200"/>
+        <location filename="../ShootingPage.qml" line="1378"/>
+        <location filename="../ShootingPage.qml" line="1392"/>
         <source>Call &amp; Diagnose could not be closed safely</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="1188"/>
-        <location filename="../ShootingPage.qml" line="1201"/>
-        <location filename="../ShootingPage.qml" line="1288"/>
-        <location filename="../ShootingPage.qml" line="1301"/>
-        <location filename="../ShootingPage.qml" line="1449"/>
-        <location filename="../ShootingPage.qml" line="1470"/>
+        <location filename="../ShootingPage.qml" line="1380"/>
+        <location filename="../ShootingPage.qml" line="1393"/>
+        <location filename="../ShootingPage.qml" line="1480"/>
+        <location filename="../ShootingPage.qml" line="1493"/>
+        <location filename="../ShootingPage.qml" line="1582"/>
+        <location filename="../ShootingPage.qml" line="1595"/>
+        <location filename="../ShootingPage.qml" line="1755"/>
+        <location filename="../ShootingPage.qml" line="1776"/>
         <source>Your session is preserved and can be recovered. Please try again.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="1257"/>
+        <location filename="../ShootingPage.qml" line="1449"/>
         <source>Position Transition report saved</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="1286"/>
-        <location filename="../ShootingPage.qml" line="1300"/>
+        <location filename="../ShootingPage.qml" line="1478"/>
+        <location filename="../ShootingPage.qml" line="1492"/>
         <source>Position Transition could not be closed safely</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="1446"/>
-        <location filename="../ShootingPage.qml" line="1467"/>
+        <location filename="../ShootingPage.qml" line="1580"/>
+        <location filename="../ShootingPage.qml" line="1594"/>
+        <source>Wind Map could not be closed safely</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../ShootingPage.qml" line="1752"/>
+        <location filename="../ShootingPage.qml" line="1773"/>
         <source>Training could not be closed safely</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2673,6 +3123,86 @@ Once finished, no further shots can be recorded.</source>
     </message>
 </context>
 <context>
+    <name>TargetStatusPanel</name>
+    <message>
+        <location filename="../TargetStatusPanel.qml" line="73"/>
+        <source>TARGET ACQUISITION ERROR</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../TargetStatusPanel.qml" line="74"/>
+        <source>TARGET DISCONNECTED</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../TargetStatusPanel.qml" line="75"/>
+        <source>RECONNECTING…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../TargetStatusPanel.qml" line="76"/>
+        <source>SYNCHRONIZING…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../TargetStatusPanel.qml" line="77"/>
+        <source>SEARCHING FOR TARGET…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../TargetStatusPanel.qml" line="78"/>
+        <source>TARGET FOUND</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../TargetStatusPanel.qml" line="79"/>
+        <source>SELECT TARGET PORT</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../TargetStatusPanel.qml" line="80"/>
+        <source>NO TARGET</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../TargetStatusPanel.qml" line="81"/>
+        <source>READY</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../TargetStatusPanel.qml" line="82"/>
+        <source>CONNECTING…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../TargetStatusPanel.qml" line="155"/>
+        <source>Target Connection</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../TargetStatusPanel.qml" line="203"/>
+        <source>Target and software shot counters are out of synchronization.
+STOP SHOOTING. Check the target connection before continuing.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../TargetStatusPanel.qml" line="207"/>
+        <source>Connection to the electronic target has been lost.
+Please reconnect the target USB cable.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../TargetStatusPanel.qml" line="210"/>
+        <source>Several devices could be the target. Choose the port.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../TargetStatusPanel.qml" line="212"/>
+        <source>Connect the target USB cable.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>TechAimDialogManager</name>
     <message>
         <location filename="../TechAimDialogManager.qml" line="48"/>
@@ -2740,549 +3270,771 @@ Once finished, no further shots can be recorded.</source>
     </message>
 </context>
 <context>
+    <name>TrainingTopBar</name>
+    <message>
+        <location filename="../TrainingTopBar.qml" line="68"/>
+        <source>TRAINING LAB</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../TrainingTopBar.qml" line="119"/>
+        <source>NOT AN OFFICIAL COMPETITION RESULT</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../TrainingTopBar.qml" line="166"/>
+        <source>DEMO</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>WindMapAnalysisView</name>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="84"/>
+        <location filename="../WindMapAnalysisView.qml" line="257"/>
+        <source>Session Overview</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="115"/>
+        <source>centred left to right</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="116"/>
+        <source>right</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="116"/>
+        <source>left</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="121"/>
+        <source>centred high to low</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="122"/>
+        <source>high</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="122"/>
+        <source>low</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="125"/>
+        <source>Not enough shots to report a centre</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="134"/>
+        <source>%1 %2 recorded. %3 more %4 required before a group centre can be reported.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="135"/>
+        <source>shot</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="135"/>
+        <source>shots</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="136"/>
+        <location filename="../WindMapAnalysisView.qml" line="140"/>
+        <source>shot is</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="136"/>
+        <location filename="../WindMapAnalysisView.qml" line="140"/>
+        <source>shots are</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="139"/>
+        <source>%1 shots recorded. %2 more %3 required for a group comparison.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="205"/>
+        <source>WIND MAP — ANALYSIS</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="212"/>
+        <source>NOT AN OFFICIAL
+COMPETITION RESULT</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="223"/>
+        <source>SUMMARY</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="224"/>
+        <source>COMPARE CONDITIONS</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="225"/>
+        <location filename="../WindMapAnalysisView.qml" line="953"/>
+        <source>SHOT DETAILS</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="244"/>
+        <source>Position:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="276"/>
+        <source>filters the page below</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="287"/>
+        <source>Preparing your Wind Map analysis…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="330"/>
+        <source>Home</source>
+        <translation type="unfinished">Startseite</translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="337"/>
+        <source>New Wind Map session</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="347"/>
+        <source>PDF — COMING NEXT</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="383"/>
+        <source>WHAT HAPPENED</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="404"/>
+        <source>No counted shots were recorded in this selection.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="433"/>
+        <location filename="../WindMapAnalysisView.qml" line="803"/>
+        <source>%1 shots</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="450"/>
+        <source>WHAT THIS MEANS</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="457"/>
+        <source>Record some counted shots to see an analysis.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="471"/>
+        <source>NEXT TRAINING STEP</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="477"/>
+        <source>Record every condition you observe, and repeat a condition often enough to compare it with itself.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="493"/>
+        <source>COACH DECISION</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="503"/>
+        <source>EVIDENCE</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="510"/>
+        <source>COUNTED SHOTS</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="511"/>
+        <source>CONDITIONS USED</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="512"/>
+        <source>POSITIONS</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="514"/>
+        <source>DATA QUALITY</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="515"/>
+        <source>Complete</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="515"/>
+        <source>Partial</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="534"/>
+        <source>Data quality: </source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="536"/>
+        <source>  ·  %1 more shots would allow a comparison.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="554"/>
+        <source>SESSION DETAILS</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="563"/>
+        <source>Sighters</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="564"/>
+        <source>Condition entries</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="565"/>
+        <source>Shots with a reading</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="566"/>
+        <source>Calm shots</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="567"/>
+        <source>No-reading shots</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="568"/>
+        <source>Positions recorded</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="584"/>
+        <source>VISUAL RESULT</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="623"/>
+        <source>OBSERVED RESULT</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="633"/>
+        <source>No condition recorded</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="639"/>
+        <source>%1 counted shots</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="642"/>
+        <source>Group centre:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="648"/>
+        <source>Group size (widest two shots):</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="658"/>
+        <source>Evidence: </source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="673"/>
+        <source>LEGEND</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="683"/>
+        <source>Counted shot — %1  (n=%2)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="694"/>
+        <source>Hollow ring — sighter (not counted)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="703"/>
+        <source>Cross — that condition&apos;s group centre</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="711"/>
+        <source>White circle — reference centre (%1)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="721"/>
+        <source>Faint circle — average distance from the group centre</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="725"/>
+        <source>Thin rings and the centre cross are target reference only.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="733"/>
+        <source>The plot shows where your shots landed and where each condition&apos;s group centre sat. It is a record, not an aiming instruction.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="766"/>
+        <source>CONDITIONS RECORDED</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="770"/>
+        <source>Each card describes one condition you recorded. Comparisons are measured from the %1.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="772"/>
+        <source>reference</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="817"/>
+        <source>Average score:  </source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="819"/>
+        <source>Group size:  </source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="825"/>
+        <source>Group centre:  </source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="830"/>
+        <source>Comparison:  this is the reference condition.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="832"/>
+        <source>Comparison:  not enough shots — %1 more required.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="834"/>
+        <source>Comparison:  centre sat %1 from the reference (%2, %3)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="841"/>
+        <source>Evidence:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="885"/>
+        <source>Next: </source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="892"/>
+        <source>SHOW TECHNICAL MEASUREMENTS</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="906"/>
+        <source>Average centre of the recorded shot group</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="907"/>
+        <source>Mean radius</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="909"/>
+        <source>Average distance of each shot from the group centre</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="910"/>
+        <source>Group diameter</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="912"/>
+        <source>Distance between the two widest shots</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="913"/>
+        <source>Horizontal spread</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="915"/>
+        <source>Total left-to-right width</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="916"/>
+        <source>Vertical spread</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="918"/>
+        <source>Total high-to-low height</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="919"/>
+        <source>Score standard deviation</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="921"/>
+        <source>How much the scores varied around their average</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="957"/>
+        <source>Every recorded shot with the condition that was standing when it was fired. Supporting evidence for the analysis above.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="967"/>
+        <source>#</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="968"/>
+        <source>TYPE</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="969"/>
+        <source>POSITION</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="971"/>
+        <source>SCORE</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="972"/>
+        <source>ACROSS / UP</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="973"/>
+        <source>CONDITION WHEN FIRED</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="1001"/>
+        <source>— counted shots begin —</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="1008"/>
+        <source>condition changed → </source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>WindMapHud</name>
+    <message>
+        <location filename="../WindMapHud.qml" line="239"/>
+        <source>Wind Map</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>WindMapRightPanel</name>
+    <message>
+        <location filename="../WindMapRightPanel.qml" line="306"/>
+        <location filename="../WindMapRightPanel.qml" line="346"/>
+        <source>Wind Map</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>WindMapTargetPlot</name>
+    <message>
+        <location filename="../WindMapTargetPlot.qml" line="84"/>
+        <source>HIGH</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapTargetPlot.qml" line="88"/>
+        <source>LOW</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapTargetPlot.qml" line="92"/>
+        <source>LEFT</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../WindMapTargetPlot.qml" line="96"/>
+        <source>RIGHT</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>main</name>
     <message>
-        <location filename="../main.qml" line="68"/>
-        <location filename="../main.qml" line="160"/>
-        <source>10M AIR RIFLE FREE</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../main.qml" line="70"/>
-        <location filename="../main.qml" line="77"/>
-        <location filename="../main.qml" line="84"/>
-        <location filename="../main.qml" line="92"/>
-        <location filename="../main.qml" line="99"/>
-        <location filename="../main.qml" line="106"/>
-        <location filename="../main.qml" line="113"/>
-        <location filename="../main.qml" line="120"/>
-        <location filename="../main.qml" line="127"/>
-        <location filename="../main.qml" line="135"/>
-        <location filename="../main.qml" line="142"/>
-        <location filename="../main.qml" line="149"/>
-        <location filename="../main.qml" line="162"/>
-        <location filename="../main.qml" line="169"/>
-        <location filename="../main.qml" line="176"/>
-        <location filename="../main.qml" line="183"/>
-        <location filename="../main.qml" line="190"/>
-        <location filename="../main.qml" line="197"/>
-        <location filename="../main.qml" line="204"/>
-        <location filename="../main.qml" line="211"/>
-        <location filename="../main.qml" line="218"/>
-        <location filename="../main.qml" line="225"/>
-        <location filename="../main.qml" line="232"/>
-        <location filename="../main.qml" line="239"/>
-        <source>10M AIR</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../main.qml" line="71"/>
-        <location filename="../main.qml" line="78"/>
-        <location filename="../main.qml" line="85"/>
-        <location filename="../main.qml" line="93"/>
-        <location filename="../main.qml" line="100"/>
-        <location filename="../main.qml" line="107"/>
-        <location filename="../main.qml" line="163"/>
-        <location filename="../main.qml" line="170"/>
-        <location filename="../main.qml" line="177"/>
-        <location filename="../main.qml" line="184"/>
-        <location filename="../main.qml" line="191"/>
-        <location filename="../main.qml" line="198"/>
-        <location filename="../main.qml" line="263"/>
-        <location filename="../main.qml" line="270"/>
-        <location filename="../main.qml" line="277"/>
-        <location filename="../main.qml" line="284"/>
-        <location filename="../main.qml" line="291"/>
-        <location filename="../main.qml" line="298"/>
-        <location filename="../main.qml" line="353"/>
-        <location filename="../main.qml" line="360"/>
-        <location filename="../main.qml" line="367"/>
-        <location filename="../main.qml" line="374"/>
-        <location filename="../main.qml" line="381"/>
-        <location filename="../main.qml" line="388"/>
-        <source>RIFLE</source>
-        <translation>GEWEHR</translation>
-    </message>
-    <message>
-        <location filename="../main.qml" line="72"/>
-        <location filename="../main.qml" line="115"/>
-        <location filename="../main.qml" line="164"/>
-        <location filename="../main.qml" line="206"/>
-        <location filename="../main.qml" line="264"/>
-        <location filename="../main.qml" line="306"/>
-        <location filename="../main.qml" line="354"/>
-        <location filename="../main.qml" line="396"/>
-        <source>UN-LIMITED</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../main.qml" line="75"/>
-        <location filename="../main.qml" line="167"/>
-        <source>10M AIR RIFLE 10</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../main.qml" line="79"/>
-        <location filename="../main.qml" line="122"/>
-        <location filename="../main.qml" line="171"/>
-        <location filename="../main.qml" line="213"/>
-        <location filename="../main.qml" line="271"/>
-        <location filename="../main.qml" line="313"/>
-        <location filename="../main.qml" line="361"/>
-        <location filename="../main.qml" line="403"/>
-        <source>MATCH-10</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../main.qml" line="82"/>
-        <location filename="../main.qml" line="181"/>
-        <source>10M AIR RIFLE 20</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../main.qml" line="86"/>
-        <location filename="../main.qml" line="129"/>
-        <location filename="../main.qml" line="185"/>
-        <location filename="../main.qml" line="227"/>
-        <location filename="../main.qml" line="278"/>
-        <location filename="../main.qml" line="320"/>
-        <location filename="../main.qml" line="375"/>
-        <location filename="../main.qml" line="418"/>
-        <source>MATCH-20</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../main.qml" line="90"/>
-        <location filename="../main.qml" line="188"/>
-        <source>10M AIR RIFLE 30</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../main.qml" line="94"/>
-        <location filename="../main.qml" line="137"/>
-        <location filename="../main.qml" line="192"/>
-        <location filename="../main.qml" line="234"/>
-        <location filename="../main.qml" line="285"/>
-        <location filename="../main.qml" line="328"/>
-        <location filename="../main.qml" line="382"/>
-        <location filename="../main.qml" line="425"/>
-        <source>MATCH-30</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../main.qml" line="97"/>
-        <location filename="../main.qml" line="195"/>
-        <source>10M AIR RIFLE 40</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../main.qml" line="101"/>
-        <location filename="../main.qml" line="144"/>
-        <location filename="../main.qml" line="199"/>
-        <location filename="../main.qml" line="241"/>
-        <location filename="../main.qml" line="292"/>
-        <location filename="../main.qml" line="335"/>
-        <location filename="../main.qml" line="389"/>
-        <location filename="../main.qml" line="432"/>
-        <source>MATCH-40</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../main.qml" line="104"/>
-        <source>10M AIR RIFLE 60</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../main.qml" line="108"/>
-        <location filename="../main.qml" line="151"/>
-        <location filename="../main.qml" line="299"/>
-        <location filename="../main.qml" line="342"/>
-        <source>MATCH-60</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../main.qml" line="111"/>
-        <location filename="../main.qml" line="202"/>
-        <source>10M AIR PISTOL FREE</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../main.qml" line="114"/>
-        <location filename="../main.qml" line="121"/>
-        <location filename="../main.qml" line="128"/>
-        <location filename="../main.qml" line="136"/>
-        <location filename="../main.qml" line="143"/>
-        <location filename="../main.qml" line="150"/>
-        <location filename="../main.qml" line="205"/>
-        <location filename="../main.qml" line="212"/>
-        <location filename="../main.qml" line="219"/>
-        <location filename="../main.qml" line="226"/>
-        <location filename="../main.qml" line="233"/>
-        <location filename="../main.qml" line="240"/>
-        <location filename="../main.qml" line="305"/>
-        <location filename="../main.qml" line="312"/>
-        <location filename="../main.qml" line="319"/>
-        <location filename="../main.qml" line="327"/>
-        <location filename="../main.qml" line="334"/>
-        <location filename="../main.qml" line="341"/>
-        <location filename="../main.qml" line="395"/>
-        <location filename="../main.qml" line="402"/>
-        <location filename="../main.qml" line="409"/>
-        <location filename="../main.qml" line="417"/>
-        <location filename="../main.qml" line="424"/>
-        <location filename="../main.qml" line="431"/>
-        <source>PISTOL</source>
-        <translation>PISTOLE</translation>
-    </message>
-    <message>
-        <location filename="../main.qml" line="118"/>
-        <location filename="../main.qml" line="209"/>
-        <source>10M AIR PISTOL 10</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../main.qml" line="125"/>
-        <location filename="../main.qml" line="223"/>
-        <source>10M AIR PISTOL 20</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../main.qml" line="133"/>
+        <location filename="../main.qml" line="214"/>
         <location filename="../main.qml" line="230"/>
-        <source>10M AIR PISTOL 30</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../main.qml" line="140"/>
-        <location filename="../main.qml" line="237"/>
-        <source>10M AIR PISTOL 40</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../main.qml" line="147"/>
-        <source>10M AIR PISTOL 60</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../main.qml" line="174"/>
-        <source>10M AIR RIFLE 15</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../main.qml" line="178"/>
-        <location filename="../main.qml" line="220"/>
-        <location filename="../main.qml" line="368"/>
-        <location filename="../main.qml" line="410"/>
-        <source>MATCH-15</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../main.qml" line="216"/>
-        <source>10M AIR PISTOL 15</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../main.qml" line="260"/>
-        <location filename="../main.qml" line="350"/>
-        <source>50 Meter RIFLE FREE</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../main.qml" line="262"/>
-        <location filename="../main.qml" line="269"/>
-        <location filename="../main.qml" line="276"/>
-        <location filename="../main.qml" line="283"/>
-        <location filename="../main.qml" line="290"/>
-        <location filename="../main.qml" line="297"/>
-        <location filename="../main.qml" line="352"/>
-        <location filename="../main.qml" line="359"/>
-        <location filename="../main.qml" line="366"/>
-        <location filename="../main.qml" line="373"/>
-        <location filename="../main.qml" line="380"/>
-        <location filename="../main.qml" line="387"/>
-        <source>50 Meter</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../main.qml" line="267"/>
-        <location filename="../main.qml" line="357"/>
-        <source>50 Meter RIFLE 10</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../main.qml" line="274"/>
-        <location filename="../main.qml" line="371"/>
-        <source>50 Meter RIFLE 20</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../main.qml" line="281"/>
-        <location filename="../main.qml" line="378"/>
-        <source>50 Meter RIFLE 30</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../main.qml" line="288"/>
-        <location filename="../main.qml" line="385"/>
-        <source>50 Meter RIFLE 40</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../main.qml" line="295"/>
-        <source>50 Meter RIFLE 60</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../main.qml" line="302"/>
-        <location filename="../main.qml" line="392"/>
-        <source>50 Meter Free PISTOL FREE</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../main.qml" line="304"/>
-        <location filename="../main.qml" line="311"/>
-        <location filename="../main.qml" line="318"/>
-        <location filename="../main.qml" line="326"/>
-        <location filename="../main.qml" line="333"/>
-        <location filename="../main.qml" line="340"/>
-        <location filename="../main.qml" line="394"/>
-        <location filename="../main.qml" line="401"/>
-        <location filename="../main.qml" line="408"/>
-        <location filename="../main.qml" line="416"/>
-        <location filename="../main.qml" line="423"/>
-        <location filename="../main.qml" line="430"/>
-        <source>50 Meter Free</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../main.qml" line="309"/>
-        <location filename="../main.qml" line="399"/>
-        <source>50 Meter Free PISTOL 10</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../main.qml" line="316"/>
-        <location filename="../main.qml" line="414"/>
-        <source>50 Meter Free PISTOL 20</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../main.qml" line="324"/>
-        <location filename="../main.qml" line="421"/>
-        <source>50 Meter Free PISTOL 30</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../main.qml" line="331"/>
-        <location filename="../main.qml" line="428"/>
-        <source>50 Meter Free PISTOL 40</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../main.qml" line="338"/>
-        <source>50 Meter Free PISTOL 60</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../main.qml" line="364"/>
-        <source>50 Meter RIFLE 15</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../main.qml" line="406"/>
-        <source>50 Meter Free PISTOL 15</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../main.qml" line="489"/>
-        <location filename="../main.qml" line="505"/>
         <source>Position Transition could not be closed safely</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main.qml" line="490"/>
-        <location filename="../main.qml" line="506"/>
-        <location filename="../main.qml" line="516"/>
-        <location filename="../main.qml" line="532"/>
-        <location filename="../main.qml" line="545"/>
-        <location filename="../main.qml" line="563"/>
+        <location filename="../main.qml" line="189"/>
+        <location filename="../main.qml" line="205"/>
+        <location filename="../main.qml" line="215"/>
+        <location filename="../main.qml" line="231"/>
+        <location filename="../main.qml" line="241"/>
+        <location filename="../main.qml" line="257"/>
+        <location filename="../main.qml" line="270"/>
+        <location filename="../main.qml" line="288"/>
         <source>Your session is preserved and can be recovered. Please try again.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main.qml" line="493"/>
+        <location filename="../main.qml" line="218"/>
         <source>Close Position Transition?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main.qml" line="494"/>
-        <location filename="../main.qml" line="520"/>
+        <location filename="../main.qml" line="193"/>
+        <location filename="../main.qml" line="219"/>
+        <location filename="../main.qml" line="245"/>
         <source>Save and close this session, or keep it so you can resume it next time?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main.qml" line="496"/>
-        <location filename="../main.qml" line="522"/>
-        <location filename="../main.qml" line="552"/>
-        <location filename="../main.qml" line="574"/>
+        <location filename="../main.qml" line="188"/>
+        <location filename="../main.qml" line="204"/>
+        <source>Wind Map could not be closed safely</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../main.qml" line="192"/>
+        <source>Close Wind Map?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../main.qml" line="195"/>
+        <location filename="../main.qml" line="221"/>
+        <location filename="../main.qml" line="247"/>
+        <location filename="../main.qml" line="277"/>
+        <location filename="../main.qml" line="299"/>
         <source>Cancel</source>
         <translation>Abbrechen</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="497"/>
-        <location filename="../main.qml" line="523"/>
-        <location filename="../main.qml" line="553"/>
+        <location filename="../main.qml" line="196"/>
+        <location filename="../main.qml" line="222"/>
+        <location filename="../main.qml" line="248"/>
+        <location filename="../main.qml" line="278"/>
         <source>Keep for Recovery</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main.qml" line="498"/>
-        <location filename="../main.qml" line="524"/>
-        <location filename="../main.qml" line="554"/>
+        <location filename="../main.qml" line="197"/>
+        <location filename="../main.qml" line="223"/>
+        <location filename="../main.qml" line="249"/>
+        <location filename="../main.qml" line="279"/>
         <source>Save and Close</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main.qml" line="515"/>
-        <location filename="../main.qml" line="531"/>
+        <location filename="../main.qml" line="240"/>
+        <location filename="../main.qml" line="256"/>
         <source>Call &amp; Diagnose could not be closed safely</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main.qml" line="519"/>
+        <location filename="../main.qml" line="244"/>
         <source>Close Call &amp; Diagnose?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main.qml" line="544"/>
-        <location filename="../main.qml" line="562"/>
+        <location filename="../main.qml" line="269"/>
+        <location filename="../main.qml" line="287"/>
         <source>Training could not be closed safely</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main.qml" line="549"/>
+        <location filename="../main.qml" line="274"/>
         <source>Close Training?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main.qml" line="550"/>
+        <location filename="../main.qml" line="275"/>
         <source>Save and close this training session, or keep it so you can resume it next time?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main.qml" line="571"/>
+        <location filename="../main.qml" line="296"/>
         <source>Save Match?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main.qml" line="572"/>
+        <location filename="../main.qml" line="297"/>
         <source>The match is finished.
 
 Do you want to save this match before closing the application?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main.qml" line="575"/>
+        <location filename="../main.qml" line="300"/>
         <source>Discard</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main.qml" line="576"/>
+        <location filename="../main.qml" line="301"/>
         <source>Save</source>
         <translation>Speichern</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="652"/>
+        <location filename="../main.qml" line="377"/>
         <source>Call &amp; Diagnose Recovery Failed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main.qml" line="653"/>
+        <location filename="../main.qml" line="378"/>
         <source>The Call &amp; Diagnose session could not be resumed. Its journal has been left intact.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main.qml" line="660"/>
+        <location filename="../main.qml" line="385"/>
+        <source>Wind Map Recovery Failed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../main.qml" line="386"/>
+        <source>The Wind Map session could not be resumed. Its journal has been left intact.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../main.qml" line="393"/>
         <source>Position Transition Recovery Failed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main.qml" line="661"/>
+        <location filename="../main.qml" line="394"/>
         <source>The Position Transition session could not be resumed. Its journal has been left intact.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main.qml" line="668"/>
+        <location filename="../main.qml" line="401"/>
         <source>Training Recovery Failed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main.qml" line="669"/>
+        <location filename="../main.qml" line="402"/>
         <source>The training session could not be resumed. Its journal has been left intact.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main.qml" line="686"/>
+        <location filename="../main.qml" line="419"/>
         <source>Recovery Not Yet Available</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main.qml" line="687"/>
+        <location filename="../main.qml" line="420"/>
         <source>Crash recovery for this discipline is not implemented in this build yet.
 
 The unfinished session has been left intact and can be resumed by a later TechAim version.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main.qml" line="694"/>
+        <location filename="../main.qml" line="427"/>
         <source>Recovery Not Supported</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main.qml" line="695"/>
+        <location filename="../main.qml" line="428"/>
         <source>This session&apos;s discipline (%1) cannot be recovered by this build.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main.qml" line="697"/>
+        <location filename="../main.qml" line="430"/>
         <source>unknown</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main.qml" line="735"/>
-        <location filename="../main.qml" line="766"/>
-        <location filename="../main.qml" line="806"/>
+        <location filename="../main.qml" line="468"/>
+        <location filename="../main.qml" line="499"/>
+        <location filename="../main.qml" line="539"/>
         <source>Recovery Failed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main.qml" line="736"/>
-        <location filename="../main.qml" line="807"/>
+        <location filename="../main.qml" line="469"/>
+        <location filename="../main.qml" line="540"/>
         <source>The unfinished match could not be resumed.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main.qml" line="767"/>
+        <location filename="../main.qml" line="500"/>
         <source>The unfinished 10m final could not be resumed.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main.qml" line="868"/>
+        <location filename="../main.qml" line="601"/>
         <source>Could not change operating mode</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main.qml" line="886"/>
+        <location filename="../main.qml" line="619"/>
         <source>Exporting Report</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main.qml" line="896"/>
+        <location filename="../main.qml" line="629"/>
         <source>Session Journal Error</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../main.qml" line="897"/>
+        <location filename="../main.qml" line="630"/>
         <source>The session journal could not be written. Shots continue to be scored, but this session may not be recoverable after a crash.</source>
         <translation type="unfinished"></translation>
     </message>

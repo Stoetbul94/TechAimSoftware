@@ -34,16 +34,20 @@ QtObject {
     readonly property Typography   type:   Typography   { }
     readonly property Spacing      space:  Spacing      { }
 
-    // --- Brand colors (exact, from logo SVGs) ---
-    readonly property color brandPrimary: "#a80038"   // deep crimson - target rings, dominant accent
-    readonly property color brandAccent:  "#bf1919"   // red - tagline, secondary accent / alerts
+    // --- Brand colors --------------------------------------------------------
+    // These are the LEGACY aliases the ~20 unmigrated screens still use. They
+    // now resolve to the token layer, so a brand package moves them too and a
+    // screen cannot end up half-red / half-blue depending on which era of the
+    // codebase it was written in.
+    readonly property color brandPrimary: tokens.accentPrimary
+    readonly property color brandAccent:  tokens.brandLogoSecondary
     readonly property color brandDark:    "#111111"   // near-black - wordmark
     readonly property color brandLight:   "#fbf9fa"   // off-white - light backgrounds
 
     // --- Logo assets (pick the variant matching the background you're placing it on) ---
     readonly property string logoWhite: PRODUCT.brandLogoOnDarkPath // for dark backgrounds
     readonly property string logoColor: PRODUCT.brandLogoPath // the product brand mark; identity owns it
-    readonly property string logoBlack: "qrc:/images/logo/techaim_black.png" // for light backgrounds, monochrome contexts (e.g. print/PDF)
+    readonly property string logoBlack: "qrc:/images/logo/techaim_black.png" // Tech Aim single-ink mark; SETA has no monochrome variant (reported by BrandPackage)
 
     // --- Dark UI neutral scale (chrome: backgrounds, surfaces, borders) ---
     // Built around brandPrimary as the accent, not copied from any one
@@ -63,7 +67,9 @@ QtObject {
     // APPSETTINGS - these are for UI chrome only: connection state, etc.) ---
     readonly property color statusConnected:    "#2e9e5b"
     readonly property color statusDisconnected: "#9a9a9e"
-    readonly property color statusError:        brandAccent
+    // SEMANTIC, not brand: a fault must read as a fault in every product, so
+    // this is the error token and NOT the brand accent it used to alias.
+    readonly property color statusError:        tokens.errorText
 
     // --- Typography ---
     // "Luxi Mono" (used in the current Header.qml) is a dated monospace

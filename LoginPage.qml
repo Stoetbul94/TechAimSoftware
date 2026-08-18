@@ -1231,8 +1231,13 @@ Item {
                 anchors.topMargin: setaSelection ? 14 : 0
                 anchors.left: parent.left;   anchors.leftMargin: 22
                 anchors.right: parent.right; anchors.rightMargin: 22
+                // While browsing, take the whole panel below the heading: the
+                // selector scrolls internally, so more height means fewer
+                // scrolls, and a short panel can no longer hide a discipline.
+                // setaBlock.y is ~92 from the panel top; 18 keeps the bottom
+                // margin the rest of the panel uses.
                 height: (!setaSelection || practiceView !== 0) ? 0
-                        : (setaBrowsing ? Math.max(280, rightPanel.height - 210) : 68)
+                        : (setaBrowsing ? Math.max(200, rightPanel.height - 110) : 68)
                 visible: height > 0
                 clip: true
 

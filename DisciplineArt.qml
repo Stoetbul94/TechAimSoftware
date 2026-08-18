@@ -25,7 +25,7 @@ Item {
 
     // "AR10" | "AP10" | "PRONE50" | "3P50"
     property string discipline: "AR10"
-    property color accent:  "#e8003d"
+    property color accent:  PRODUCT.accentBright
     property color ink:     "#ffffff"
     property color muted:   "#7d8794"
 

@@ -180,7 +180,7 @@ Item {
                 color: "#232429"
                 Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: "#33353d" }
                 Rectangle {
-                    width: 3; radius: 2; height: 18; color: "#a80038"
+                    width: 3; radius: 2; height: 18; color: theme.tokens.accentPrimary
                     anchors.left: parent.left; anchors.leftMargin: 12; anchors.verticalCenter: parent.verticalCenter
                 }
                 Row {
@@ -235,7 +235,7 @@ Item {
                     }
                     Rectangle {
                         width: 36; height: 28; radius: 6
-                        color: closeMA.containsMouse ? "#a80038" : "transparent"
+                        color: closeMA.containsMouse ? theme.tokens.accentPrimary : "transparent"
                         Text { anchors.centerIn: parent; text: "✕"; color: closeMA.containsMouse ? "white" : "#c8c9cf"; font.pixelSize: 13 }
                         MouseArea { id: closeMA; anchors.fill: parent; hoverEnabled: true; onClicked: win.close() }
                     }

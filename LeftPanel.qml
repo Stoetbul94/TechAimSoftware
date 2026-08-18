@@ -156,7 +156,7 @@ Item {
             width: parent.width
             height: discArt.height + discLabel.implicitHeight + 18
             radius: 10
-            color: "#26272c"; border.color: "#e8003d"; border.width: 1
+            color: "#26272c"; border.color: PRODUCT.accentBright; border.width: 1
 
             DisciplineArt {
                 id: discArt
@@ -185,7 +185,11 @@ Item {
         // the match colour any more than it may borrow the match wording.
         Rectangle {
             width: parent.width; height: 46; radius: 8
-            color: programmeLabel !== "" ? "#1b2733" : "#e8003d"
+            // RECLASSIFIED. This was skipped in the brand sweep as a "no
+            // programme" alert; it is not. It is the ACTIVE EVENT badge - the
+            // brand highlight for a competition event - and the muted slate is
+            // the Training Lab programme style. So it takes the brand accent.
+            color: programmeLabel !== "" ? "#1b2733" : PRODUCT.accentBright
             border.color: programmeLabel !== "" ? "#3d5a75" : "transparent"
             border.width: programmeLabel !== "" ? 1 : 0
             Text {
@@ -329,7 +333,7 @@ Item {
                     height: navColumn.btnHeight
                     radius: 10
                     color: navMouse.containsMouse ? "#2f3037" : "#26272c"
-                    border.color: modelData.key === "mpi" && isShowMPI ? "#e8003d" : "#3a3b40"
+                    border.color: modelData.key === "mpi" && isShowMPI ? PRODUCT.accentBright : "#3a3b40"
                     border.width: modelData.key === "mpi" && isShowMPI ? 2 : 1
                     Row {
                         anchors.left: parent.left
@@ -341,7 +345,7 @@ Item {
                             width: navColumn.compact ? 22 : 26
                             height: width
                             pathData: modelData.path
-                            color: modelData.key === "mpi" && isShowMPI ? "#e8003d" : "white"
+                            color: modelData.key === "mpi" && isShowMPI ? PRODUCT.accentBright : "white"
                             anchors.verticalCenter: parent.verticalCenter
                         }
                         Text {
