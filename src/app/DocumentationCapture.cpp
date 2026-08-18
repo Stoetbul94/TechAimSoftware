@@ -1,3 +1,4 @@
+#include "app/ProductIdentity.h"
 #include "DocumentationCapture.h"
 
 #include <QDateTime>
@@ -99,7 +100,7 @@ CaptureResult validateCaptureRoot(const QString& requestedRoot,
 
     if (isSameOrInside(root, productionRoot))
         return fail(QStringLiteral("The documentation capture data root must not be the "
-                                   "normal Tech Aim data location."),
+                                   "normal %1 data location.").arg(ta::app::identity().displayName),
                     QStringLiteral("refused production root: requested=%1 production=%2")
                         .arg(root, cleaned(productionRoot)), root);
 

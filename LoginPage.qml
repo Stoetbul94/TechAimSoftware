@@ -617,7 +617,7 @@ Item {
             height: 30; spacing: 12
 
             Text {
-                text: "Start session"; color: _txt
+                text: qsTr("Start session"); color: _txt
                 font.family: theme.fontFamily; font.pixelSize: 22; font.bold: true
                 anchors.verticalCenter: parent.verticalCenter
             }
@@ -655,7 +655,7 @@ Item {
                 id: panelTitle
                 anchors.top: parent.top; anchors.topMargin: 18
                 anchors.left: parent.left; anchors.leftMargin: 22
-                text: "Session setup"
+                text: qsTr("Session setup")
                 color: _txt; font.family: theme.fontFamily; font.pixelSize: 16; font.bold: true
             }
 
@@ -692,7 +692,7 @@ Item {
                 id: athleteLabel
                 anchors.top: parent.top; anchors.topMargin: 0
                 anchors.left: parent.left; anchors.leftMargin: 22
-                text: "ATHLETE"
+                text: qsTr("ATHLETE")
                 color: _txtMut; font.family: theme.fontFamily
                 font.pixelSize: 10; font.bold: true; font.letterSpacing: 2
             }
@@ -769,7 +769,7 @@ Item {
                 // value and showed "COM7" on a machine with no COM7 - reading
                 // like an active connection when the target was absent. The
                 // authoritative state is the panel underneath.
-                text: "TARGET CONNECTION — MANUAL PORT FALLBACK"
+                text: qsTr("TARGET CONNECTION — MANUAL PORT FALLBACK")
                 color: _txtMut; font.family: theme.fontFamily
                 font.pixelSize: 10; font.bold: true; font.letterSpacing: 2
                 visible: showComportConnector
@@ -812,7 +812,9 @@ Item {
                             // F11: this button is the target CONNECTION toggle, not the
                             // operating-mode switch (that is the OPERATING MODE control
                             // below). Label reflects connection state only.
-                            text: mod_connected ? "Connected" : (appMode ? "Not connected" : "Demo \u00b7 not needed")
+                            text: mod_connected ? qsTr("Connected")
+                                                : (appMode ? qsTr("Not connected")
+                                                           : qsTr("Demo \u00b7 not needed"))
                             color: mod_connected ? _green : _txtMut
                             font.family: theme.fontFamily; font.pixelSize: 11; font.bold: true
                             anchors.verticalCenter: parent.verticalCenter
@@ -869,7 +871,7 @@ Item {
                 anchors.top: showComportConnector ? loginTargetStatus.bottom : athleteBox.bottom
                 anchors.topMargin: 16
                 anchors.left: parent.left; anchors.leftMargin: 22
-                text: "OPERATING MODE"
+                text: qsTr("OPERATING MODE")
                 color: _txtMut; font.family: theme.fontFamily
                 font.pixelSize: 10; font.bold: true; font.letterSpacing: 2
             }
@@ -887,12 +889,21 @@ Item {
                     color: opModeRow.opLive ? _okBg : _input
                     border.color: opModeRow.opLive ? _green : _borderSub
                     border.width: opModeRow.opLive ? 2 : 1
+                    // The SAME selection cue as the Demo pill, so "selected"
+                    // reads identically whichever mode is active.
+                    Rectangle {
+                        anchors.left: parent.left; anchors.top: parent.top
+                        anchors.bottom: parent.bottom; anchors.margins: 2
+                        width: 4; radius: 2
+                        color: _red                      // the brand accent
+                        visible: opModeRow.opLive
+                    }
                     Column {
                         anchors.centerIn: parent; spacing: 1
-                        Text { text: "LIVE TARGET"; color: opModeRow.opLive ? _green : _txt
+                        Text { text: qsTr("LIVE TARGET"); color: opModeRow.opLive ? _green : _txt
                                font.family: theme.fontFamily; font.pixelSize: 12; font.bold: true
                                anchors.horizontalCenter: parent.horizontalCenter }
-                        Text { text: "Physical target"; color: _txtMut
+                        Text { text: qsTr("Physical target"); color: _txtMut
                                font.family: theme.fontFamily; font.pixelSize: theme.type.helperText.size
                                anchors.horizontalCenter: parent.horizontalCenter }
                     }
@@ -903,17 +914,34 @@ Item {
                     }
                 }
                 // Demo pill
+                //
+                // TWO DIFFERENT THINGS, TWO DIFFERENT CUES. The colour of this
+                // pill states WHAT MODE IT IS - Demo is a result-integrity
+                // warning and stays red - while the brand accent states only
+                // WHICH ONE IS SELECTED. Previously the accent was doing both:
+                // a blue border and blue label sat on the red Demo fill and the
+                // two read as competing signals. The selection cue is now a
+                // single restrained edge strip, identical on both pills, so the
+                // semantic colour is never overpainted.
                 Rectangle {
                     width: (parent.width - parent.spacing) / 2; height: 52; radius: 6
                     color: !opModeRow.opLive ? _errBg : _input
-                    border.color: !opModeRow.opLive ? _red : _borderSub
+                    border.color: !opModeRow.opLive ? theme.tokens.errorText : _borderSub
                     border.width: !opModeRow.opLive ? 2 : 1
+                    Rectangle {
+                        anchors.left: parent.left; anchors.top: parent.top
+                        anchors.bottom: parent.bottom; anchors.margins: 2
+                        width: 4; radius: 2
+                        color: _red                      // the brand accent
+                        visible: !opModeRow.opLive
+                    }
                     Column {
                         anchors.centerIn: parent; spacing: 1
-                        Text { text: "DEMO / SIMULATION"; color: !opModeRow.opLive ? _red : _txt
+                        Text { text: qsTr("DEMO / SIMULATION")
+                               color: !opModeRow.opLive ? theme.tokens.errorText : _txt
                                font.family: theme.fontFamily; font.pixelSize: 12; font.bold: true
                                anchors.horizontalCenter: parent.horizontalCenter }
-                        Text { text: "Simulated clicks"; color: _txtMut
+                        Text { text: qsTr("Simulated clicks"); color: _txtMut
                                font.family: theme.fontFamily; font.pixelSize: theme.type.helperText.size
                                anchors.horizontalCenter: parent.horizontalCenter }
                     }
@@ -961,7 +989,7 @@ Item {
                         width: parent.width - 44
                         text: opModeConfirm.targetMode === 1
                               ? "Simulated shots will be enabled. Demo sessions are intended for testing and cannot be treated as Live target results.\n\nThe application must restart before the change takes effect."
-                              : "Simulated shot input will be disabled. The application will expect the physical TechAim target connection.\n\nThe application must restart before the change takes effect."
+                              : qsTr("Simulated shot input will be disabled. The application will expect the physical %1 target connection.\n\nThe application must restart before the change takes effect.").arg(PRODUCT.displayName)
                         color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 11; wrapMode: Text.WordWrap
                     }
                     Item {
@@ -1002,7 +1030,7 @@ Item {
                 anchors.top: opModeHint.bottom
                 anchors.topMargin: 14
                 anchors.left: parent.left; anchors.leftMargin: 22
-                text: "NETWORK SHARE"
+                text: qsTr("NETWORK SHARE")
                 color: _txtMut; font.family: theme.fontFamily
                 font.pixelSize: 10; font.bold: true; font.letterSpacing: 2
             }
@@ -1211,14 +1239,14 @@ Item {
                 id: rightTitle
                 anchors.top: parent.top; anchors.topMargin: 20
                 anchors.left: parent.left; anchors.leftMargin: 22
-                text: "Choose an event"
+                text: qsTr("Choose an event")
                 color: _txt; font.family: theme.fontFamily; font.pixelSize: 16; font.bold: true
             }
             Text {
                 id: rightSubtitle
                 anchors.top: rightTitle.bottom; anchors.topMargin: 3
                 anchors.left: parent.left; anchors.leftMargin: 22
-                text: "Match settings are applied automatically."
+                text: qsTr("Match settings are applied automatically.")
                 color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 11
             }
 
@@ -1809,7 +1837,7 @@ Item {
                             MouseArea {
                                 anchors.fill: parent
                                 onClicked: dialogManager.showInformation(qsTr("Training Lab"),
-                                    qsTr("TECHNICAL BLOCKS\nShoot several short groups while concentrating on one technical part of your process. After each block, TechAim reveals the measured group and lets you record a note before continuing.\n\nVISIBILITY MODES\nFull hidden — nothing shown until review. Group only — positions without numbers. Impact only — impacts without scores.\n\nTHREE POSITIONS\nKneeling, Prone and Standing stay separate: K1 → K2 → P1 → P2 → S1 → S2.\n\nTraining results are for development only — never an official competition result. In Demo mode no physical target is required."))
+                                    qsTr("TECHNICAL BLOCKS\nShoot several short groups while concentrating on one technical part of your process. After each block, %1 reveals the measured group and lets you record a note before continuing.\n\nVISIBILITY MODES\nFull hidden — nothing shown until review. Group only — positions without numbers. Impact only — impacts without scores.\n\nTHREE POSITIONS\nKneeling, Prone and Standing stay separate: K1 → K2 → P1 → P2 → S1 → S2.\n\nTraining results are for development only — never an official competition result. In Demo mode no physical target is required.").arg(PRODUCT.displayName))
                             }
                         }
                     }
@@ -1840,7 +1868,7 @@ Item {
                                            color: _green; font.pixelSize: theme.type.label.size; font.bold: true }
                                 }
                             }
-                            Text { text: "Shoot several short groups while concentrating on one technical part of your process.\nAfter each block, TechAim reveals the measured group and lets you record a note."
+                            Text { text: qsTr("Shoot several short groups while concentrating on one technical part of your process.\nAfter each block, %1 reveals the measured group and lets you record a note.").arg(PRODUCT.displayName)
                                    color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 10 }
                             Text { text: (gameMode === 1 && gameRange === 50 && gameSubMode === 1)
                                          ? "Default: 36 shots · Kneeling → Prone → Standing · Configurable"
@@ -2350,7 +2378,7 @@ Item {
                     Text { text: "POSITION TRANSITION SETUP"; color: _txt; font.family: theme.fontFamily; font.pixelSize: 17; font.bold: true }
                     Text {
                         width: parent.width; wrapMode: Text.WordWrap; color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 11
-                        text: "This programme measures how consistently you rebuild each Three-Position shooting position. You begin a position setup, confirm when the position is ready, fire optional sighters, then a short counted verification block. Tech Aim compares the timing and measured result of each position. This is a Training session and not an official competition result."
+                        text: qsTr("This programme measures how consistently you rebuild each Three-Position shooting position. You begin a position setup, confirm when the position is ready, fire optional sighters, then a short counted verification block. %1 compares the timing and measured result of each position. This is a Training session and not an official competition result.").arg(PRODUCT.displayName)
                     }
                     Text { text: POSTRANS.sequenceArrow; color: _green; font.family: "Consolas"; font.pixelSize: 13; font.bold: true }
 
@@ -2620,7 +2648,7 @@ Item {
                     width: 210; height: 56
                     color: "transparent"; radius: 8; border.color: _borderStr; border.width: 1
                     Text {
-                        text: "Load saved session"
+                        text: qsTr("Load saved session")
                         color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 14; anchors.centerIn: parent
                     }
                     MouseArea {
@@ -2775,21 +2803,22 @@ Item {
             Text {
                 anchors.left: parent.left; anchors.leftMargin: 16
                 anchors.verticalCenter: parent.verticalCenter
-                text: "TechAim  ·  Electronic target control"
+                // Product identity comes from the build, never a literal.
+                text: PRODUCT.displayName + "  ·  " + qsTr("Electronic target control")
                 color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 11
             }
             Row {
                 anchors.right: parent.right; anchors.rightMargin: 16
                 anchors.verticalCenter: parent.verticalCenter; spacing: 12
                 Text {
-                    text: "Contact us"
+                    text: qsTr("Contact us")
                     color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 11
                     anchors.verticalCenter: parent.verticalCenter
                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: { contactUsDia.visible = true } }
                 }
                 Rectangle { width: 1; height: 12; color: _borderStr; anchors.verticalCenter: parent.verticalCenter }
                 Text {
-                    text: mod_connected ? "● Connected" : "● Offline"
+                    text: mod_connected ? qsTr("● Connected") : qsTr("● Offline")
                     color: mod_connected ? _green : _txtMut
                     font.family: theme.fontFamily; font.pixelSize: 11
                     anchors.verticalCenter: parent.verticalCenter

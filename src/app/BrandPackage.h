@@ -75,6 +75,10 @@ struct BrandPackage {
     QString resourceNamespace;      // "qrc:/assets/brands/techaim"
     QString pdfAttribution;         // printed in report footers
     QString manualBrandName;        // used on manual covers
+    // Brand slogan printed beside the product name on report footers. EMPTY
+    // means NOT SUPPLIED: the footer then shows the product name alone rather
+    // than borrowing another brand's slogan.
+    QString tagline;
 
     // Only authorised where a package is genuinely region-locked; otherwise
     // empty and the user's choice wins. Never a silent language override.

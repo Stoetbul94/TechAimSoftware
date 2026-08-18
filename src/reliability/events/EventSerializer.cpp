@@ -1466,7 +1466,7 @@ ReliabilityResult EventSerializer::deserializeEnvelope(const QByteArray& lineByt
         return ReliabilityResult::failureFrom(r.err);
     if (sv > kJournalSchemaVersion)
         return ReliabilityResult::failure(ReliabilityError::SchemaTooNew,
-            QStringLiteral("This session was written by a newer TechAim version."),
+            QStringLiteral("This session was written by a newer version of this application."),
             QStringLiteral("sv=%1, supported=%2").arg(sv).arg(kJournalSchemaVersion));
     if (sv < 1)
         return ReliabilityResult::failure(ReliabilityError::InvalidFieldType,
@@ -1509,13 +1509,13 @@ ReliabilityResult EventSerializer::deserializeEnvelope(const QByteArray& lineByt
     const EventMeta* meta = EventRegistry::metaForType(env.eventType);
     if (!meta)
         return ReliabilityResult::failure(ReliabilityError::UnsupportedEventType,
-            QStringLiteral("This session contains an event this TechAim version "
-                           "does not understand."),
+            QStringLiteral("This session contains an event this version of the "
+                           "application does not understand."),
             QStringLiteral("type '%1' not in registry").arg(env.eventType),
             QString(), static_cast<qint64>(env.seq));
     if (env.payloadVersion > meta->payloadVersion)
         return ReliabilityResult::failure(ReliabilityError::UnsupportedEventVersion,
-            QStringLiteral("This session was written by a newer TechAim version."),
+            QStringLiteral("This session was written by a newer version of this application."),
             QStringLiteral("pv %1 > supported %2 for '%3'")
                 .arg(env.payloadVersion).arg(meta->payloadVersion).arg(env.eventType),
             QString(), static_cast<qint64>(env.seq));

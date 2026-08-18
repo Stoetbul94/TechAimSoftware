@@ -419,7 +419,7 @@ ApplicationWindow {
             dialogManager.showError(qsTr("Recovery Not Yet Available"),
                 qsTr("Crash recovery for this discipline is not implemented in "
                      + "this build yet.\n\nThe unfinished session has been left "
-                     + "intact and can be resumed by a later TechAim version."))
+                     + qsTr("intact and can be resumed by a later %1 version.").arg(PRODUCT.displayName)))
             return false
         }
         // Unknown / unsupported discipline: fail safe — never enter the Finals

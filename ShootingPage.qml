@@ -273,6 +273,14 @@ Item {
         currentmatchDisplay = "10m FINAL"
     }
 
+    // Exported PDF file names are USER-VISIBLE product identity. Derived from
+    // the build's display name (spaces removed) so a SETA export is not named
+    // after Tech Aim; executableBaseName is deliberately NOT used, because it
+    // is shared between the products on purpose.
+    function productFilePrefix() {
+        return PRODUCT.displayName.replace(/\s+/g, "")
+    }
+
     function setCurrentGameType(index)
     {
         if (APPSETTINGS.getDeveloperMode()) console.log("setCurrentGameType  ", index)
@@ -1410,7 +1418,7 @@ Item {
         var now = new Date()
         var date = "" + now.getFullYear() + ("0" + (now.getMonth() + 1)).slice(-2) + ("0" + now.getDate()).slice(-2)
         var sid = (m.sessionId || "").substring(0, 8)
-        var path = (dir && dir.length ? dir + "/" : "") + "TechAim_CallAndDiagnose_" + athlete + "_" + date + "_" + sid + ".pdf"
+        var path = (dir && dir.length ? dir + "/" : "") + productFilePrefix() + "_CallAndDiagnose_" + athlete + "_" + date + "_" + sid + ".pdf"
         callDiagReportView.exportPdf(path)
     }
     function restoreCallDiagnoseSession(sessionId) {
@@ -1510,7 +1518,7 @@ Item {
         var now = new Date()
         var date = "" + now.getFullYear() + ("0" + (now.getMonth() + 1)).slice(-2) + ("0" + now.getDate()).slice(-2)
         var sid = (m.sessionId || "").substring(0, 8)
-        var path = (dir && dir.length ? dir + "/" : "") + "TechAim_PositionTransition_" + athlete + "_" + date + "_" + sid + ".pdf"
+        var path = (dir && dir.length ? dir + "/" : "") + productFilePrefix() + "_PositionTransition_" + athlete + "_" + date + "_" + sid + ".pdf"
         posTransReportView.exportPdf(path)
     }
     // ── WIND MAP (Release 2) ─────────────────────────────────────────────
@@ -1633,7 +1641,7 @@ Item {
         var now = new Date()
         var date = "" + now.getFullYear() + ("0" + (now.getMonth() + 1)).slice(-2) + ("0" + now.getDate()).slice(-2)
         var sid = (m.sessionId || "").substring(0, 8)
-        var fname = "TechAim_TechnicalBlocks_" + athlete + "_" + date + "_" + sid + ".pdf"
+        var fname = productFilePrefix() + "_TechnicalBlocks_" + athlete + "_" + date + "_" + sid + ".pdf"
         var path = (dir && dir.length ? dir + "/" : "") + fname
         trainingReportView.exportPdf(path)
     }

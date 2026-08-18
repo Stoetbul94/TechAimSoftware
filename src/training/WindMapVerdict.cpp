@@ -1,3 +1,4 @@
+#include "app/ProductIdentity.h"
 #include "WindMapVerdict.h"
 
 #include <QtGlobal>
@@ -311,10 +312,12 @@ QVector<Verdict> WindMapVerdictEngine::evaluate(const SessionAnalysis& a)
                 v.nextTrainingStep = QStringLiteral("Review position stability, aiming and "
                                                     "triggering with Group Pattern Coach or an "
                                                     "aim-trace tool.");
+                // Claim unchanged - a PRODUCT rule, not ISSF and not research.
+                // Only the product name comes from the build.
                 v.limitations << QStringLiteral("The dispersion level used here is a provisional "
-                                                "Tech Aim training rule awaiting coach review. It "
+                                                "%1 training rule awaiting coach review. It "
                                                 "is not an ISSF standard and not a research "
-                                                "finding.");
+                                                "finding.").arg(ta::app::identity().displayName);
                 v.supportingMetricIds << QStringLiteral("radialRmsMm");
                 out.append(v);
             }

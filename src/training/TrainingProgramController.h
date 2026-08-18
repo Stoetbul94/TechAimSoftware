@@ -13,6 +13,7 @@
 // display change. The operating mode captured at session start is stamped
 // into the session header and stays authoritative for the session.
 
+#include "app/ProductIdentity.h"
 #include <QObject>
 #include <QString>
 #include <QVariantList>
@@ -146,8 +147,12 @@ public:
     // athlete is told plainly that this is a default they may change.
     QString configurationNote() const
     {
-        return QStringLiteral("Tech Aim default — you or your coach may set a different "
-                              "number of blocks and shots per block.");
+        // The CLAIM is unchanged: this is a PRODUCT default, not a research
+        // recommendation. Only the product name is now supplied by the build,
+        // so a SETA build does not tell the athlete about "Tech Aim".
+        return QStringLiteral("%1 default — you or your coach may set a different "
+                              "number of blocks and shots per block.")
+                .arg(ta::app::identity().displayName);
     }
     QString sessionId() const;
     QString sessionOperatingMode() const;

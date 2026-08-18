@@ -287,6 +287,145 @@ int main(int argc, char* argv[])
               "SETA-LANG-002: QML-LANG-001 still holds in the selector");
     }
 
+    // ─────────────────────────────────────────────────────────────────────
+    // SETA-ID-001 — no user-visible Tech Aim identity survives in a SETA build.
+    //
+    // Scans STRING LITERALS, with comment lines stripped first: a gate that can
+    // pass or fail on a comment is not a gate. Component type names
+    // (TechAimDialog) and qrc asset paths are deliberately NOT flagged - they
+    // are source identifiers and files, not words an operator ever reads.
+    // ─────────────────────────────────────────────────────────────────────
+    {
+        QDir idRoot(QStringLiteral(TECHAIM_SOURCE_DIR));
+        const QStringList files =
+            idRoot.entryList(QStringList() << QStringLiteral("*.qml"), QDir::Files);
+        QStringList offenders;
+        for (const QString& fname : files) {
+            const QString body = readAll(idRoot.filePath(fname));
+            const QStringList lines = body.split(QChar(10));
+            for (int i = 0; i < lines.size(); ++i) {
+                QString line = lines.at(i);
+                const int comment = line.indexOf(QStringLiteral("//"));
+                if (comment >= 0) line = line.left(comment);
+                // Only what sits INSIDE a double-quoted literal can be shown.
+                int from = 0;
+                while (true) {
+                    const int a = line.indexOf(QLatin1Char('"'), from);
+                    if (a < 0) break;
+                    const int b = line.indexOf(QLatin1Char('"'), a + 1);
+                    if (b < 0) break;
+                    const QString lit = line.mid(a + 1, b - a - 1);
+                    from = b + 1;
+                    if (lit.startsWith(QStringLiteral("qrc:"))) continue;
+                    if (lit.contains(QStringLiteral("Tech Aim"))
+                        || lit.contains(QStringLiteral("TechAim")))
+                        offenders << (fname + QStringLiteral(":")
+                                      + QString::number(i + 1) + QStringLiteral(" \"")
+                                      + lit.left(48) + QStringLiteral("\""));
+                }
+            }
+        }
+        check(offenders.isEmpty(),
+              "SETA-ID-001: no user-visible Tech Aim product identity remains in QML",
+              offenders.join(QStringLiteral(" | ")));
+
+        // The footer is the one that was actually shipping the leak, so it is
+        // named explicitly rather than left to the sweep above.
+        const QString page = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/LoginPage.qml"));
+        check(page.contains(QStringLiteral("PRODUCT.displayName + \"  ·  \" + qsTr(\"Electronic target control\")")),
+              "SETA-ID-001: the footer takes its product name from ProductIdentity");
+        check(!page.contains(QStringLiteral("\"TechAim  ·  Electronic target control\"")),
+              "SETA-ID-001: the hardcoded Tech Aim footer literal is gone");
+
+        // Exported PDF file names are user-visible identity too.
+        const QString shooting = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/ShootingPage.qml"));
+        check(shooting.contains(QStringLiteral("function productFilePrefix()"))
+              && !shooting.contains(QStringLiteral("\"TechAim_")),
+              "SETA-ID-001: exported PDF names derive from the product, not a literal");
+
+        // The C++ side: PDF document metadata and the operator messages that
+        // named the product.
+        const QString print = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/customprint.cpp"));
+        check(!print.contains(QStringLiteral("QStringLiteral(\"Tech Aim "))
+              && print.contains(QStringLiteral("ta::app::identity()")),
+              "SETA-ID-001: PDF metadata is composed from identity");
+
+        // The LEGAL publisher is a different fact and must NOT have moved.
+        const QString ident = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/src/app/ProductIdentity.cpp"));
+        check(ident.contains(QStringLiteral("JAC SHOOTING SOLUTIONS (PTY) LTD")),
+              "SETA-ID-001: the legal publisher is unchanged by the identity sweep");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // SETA-ID-002 — the Demo pill's SEMANTIC colour is independent of the brand.
+    // Colour states WHAT MODE IT IS; the accent states only WHICH IS SELECTED.
+    // ─────────────────────────────────────────────────────────────────────
+    {
+        const QString page = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/LoginPage.qml"));
+        const int at = page.indexOf(QStringLiteral("// Demo pill"));
+        check(at > 0, "SETA-ID-002: the Demo pill is locatable");
+        const QString pill = page.mid(at, 1800);
+        check(pill.contains(QStringLiteral("border.color: !opModeRow.opLive ? theme.tokens.errorText")),
+              "SETA-ID-002: the Demo border is the ERROR token, not the brand accent");
+        check(pill.contains(QStringLiteral("color: !opModeRow.opLive ? theme.tokens.errorText")),
+              "SETA-ID-002: the Demo label is the ERROR token, not the brand accent");
+        check(pill.contains(QStringLiteral("width: 4; radius: 2")),
+              "SETA-ID-002: selection is one restrained accent edge strip");
+        check(pill.contains(QStringLiteral("color: _errBg")) || pill.contains(QStringLiteral("? _errBg :")),
+              "SETA-ID-002: the Demo fill stays the error background");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // SETA-LANG-003 — the landing screen's German is REAL, and still changes
+    // nothing but labels.
+    // ─────────────────────────────────────────────────────────────────────
+    {
+        const QString ts = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/translations/techaim_de_DE.ts"));
+        struct Want { const char* ctx; const char* src; };
+        const Want wanted[] = {
+            { "LoginPage", "Start session" },
+            { "LoginPage", "Session setup" },
+            { "LoginPage", "ATHLETE" },
+            { "LoginPage", "Athlete name" },
+            { "LoginPage", "OPERATING MODE" },
+            { "LoginPage", "Choose an event" },
+            { "LoginPage", "Load saved session" },
+            { "LoginPage", "Contact us" },
+            { "LoginPage", "READY TO START" },
+            { "LoginPage", "No athlete entered" },
+            { "LoginPage", "Electronic target control" },
+            { "TargetStatusPanel", "NO TARGET" },
+            { "TargetStatusPanel", "Connect the target USB cable." },
+            { "TargetStatusPanel", "Target Connection" },
+            { "Header", "ELECTRONIC TARGET" },
+        };
+        int have = 0;
+        QStringList absent;
+        for (const Want& w : wanted) {
+            const int c = ts.indexOf(QStringLiteral("<name>%1</name>").arg(QLatin1String(w.ctx)));
+            if (c < 0) { absent << QLatin1String(w.ctx); continue; }
+            const int cEnd = ts.indexOf(QStringLiteral("</context>"), c);
+            const QString ctx = ts.mid(c, cEnd - c);
+            const int at = ctx.indexOf(QStringLiteral("<source>%1</source>").arg(QLatin1String(w.src)));
+            if (at < 0) { absent << QLatin1String(w.src); continue; }
+            const int end = ctx.indexOf(QStringLiteral("</message>"), at);
+            if (!ctx.mid(at, end - at).contains(QStringLiteral("type=\"unfinished\"")))
+                ++have;
+            else
+                absent << QLatin1String(w.src);
+        }
+        check(have == int(sizeof(wanted) / sizeof(wanted[0])),
+              "SETA-LANG-003: the landing screen's core strings have German",
+              absent.join(QStringLiteral(", ")));
+
+        // German is BETA and the surface is NOT fully translated. Assert the
+        // honest state rather than a claim of completeness: the language option
+        // must still be marked beta.
+        const QString lang = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/src/app/LanguageService.cpp"));
+        check(lang.contains(QStringLiteral("QStringLiteral(\"de-DE\"), QStringLiteral(\"Deutsch\"), true")),
+              "SETA-LANG-003: German is still declared BETA, not complete");
+    }
+
     printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
         return 1;
     }
@@ -501,6 +640,145 @@ int main(int argc, char* argv[])
         const QString sel = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/SetaCompetitionSelector.qml"));
         check(!sel.contains(QStringLiteral("=== qsTr(")) && !sel.contains(QStringLiteral("== qsTr(")),
               "SETA-LANG-002: QML-LANG-001 still holds in the selector");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // SETA-ID-001 — no user-visible Tech Aim identity survives in a SETA build.
+    //
+    // Scans STRING LITERALS, with comment lines stripped first: a gate that can
+    // pass or fail on a comment is not a gate. Component type names
+    // (TechAimDialog) and qrc asset paths are deliberately NOT flagged - they
+    // are source identifiers and files, not words an operator ever reads.
+    // ─────────────────────────────────────────────────────────────────────
+    {
+        QDir idRoot(QStringLiteral(TECHAIM_SOURCE_DIR));
+        const QStringList files =
+            idRoot.entryList(QStringList() << QStringLiteral("*.qml"), QDir::Files);
+        QStringList offenders;
+        for (const QString& fname : files) {
+            const QString body = readAll(idRoot.filePath(fname));
+            const QStringList lines = body.split(QChar(10));
+            for (int i = 0; i < lines.size(); ++i) {
+                QString line = lines.at(i);
+                const int comment = line.indexOf(QStringLiteral("//"));
+                if (comment >= 0) line = line.left(comment);
+                // Only what sits INSIDE a double-quoted literal can be shown.
+                int from = 0;
+                while (true) {
+                    const int a = line.indexOf(QLatin1Char('"'), from);
+                    if (a < 0) break;
+                    const int b = line.indexOf(QLatin1Char('"'), a + 1);
+                    if (b < 0) break;
+                    const QString lit = line.mid(a + 1, b - a - 1);
+                    from = b + 1;
+                    if (lit.startsWith(QStringLiteral("qrc:"))) continue;
+                    if (lit.contains(QStringLiteral("Tech Aim"))
+                        || lit.contains(QStringLiteral("TechAim")))
+                        offenders << (fname + QStringLiteral(":")
+                                      + QString::number(i + 1) + QStringLiteral(" \"")
+                                      + lit.left(48) + QStringLiteral("\""));
+                }
+            }
+        }
+        check(offenders.isEmpty(),
+              "SETA-ID-001: no user-visible Tech Aim product identity remains in QML",
+              offenders.join(QStringLiteral(" | ")));
+
+        // The footer is the one that was actually shipping the leak, so it is
+        // named explicitly rather than left to the sweep above.
+        const QString page = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/LoginPage.qml"));
+        check(page.contains(QStringLiteral("PRODUCT.displayName + \"  ·  \" + qsTr(\"Electronic target control\")")),
+              "SETA-ID-001: the footer takes its product name from ProductIdentity");
+        check(!page.contains(QStringLiteral("\"TechAim  ·  Electronic target control\"")),
+              "SETA-ID-001: the hardcoded Tech Aim footer literal is gone");
+
+        // Exported PDF file names are user-visible identity too.
+        const QString shooting = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/ShootingPage.qml"));
+        check(shooting.contains(QStringLiteral("function productFilePrefix()"))
+              && !shooting.contains(QStringLiteral("\"TechAim_")),
+              "SETA-ID-001: exported PDF names derive from the product, not a literal");
+
+        // The C++ side: PDF document metadata and the operator messages that
+        // named the product.
+        const QString print = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/customprint.cpp"));
+        check(!print.contains(QStringLiteral("QStringLiteral(\"Tech Aim "))
+              && print.contains(QStringLiteral("ta::app::identity()")),
+              "SETA-ID-001: PDF metadata is composed from identity");
+
+        // The LEGAL publisher is a different fact and must NOT have moved.
+        const QString ident = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/src/app/ProductIdentity.cpp"));
+        check(ident.contains(QStringLiteral("JAC SHOOTING SOLUTIONS (PTY) LTD")),
+              "SETA-ID-001: the legal publisher is unchanged by the identity sweep");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // SETA-ID-002 — the Demo pill's SEMANTIC colour is independent of the brand.
+    // Colour states WHAT MODE IT IS; the accent states only WHICH IS SELECTED.
+    // ─────────────────────────────────────────────────────────────────────
+    {
+        const QString page = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/LoginPage.qml"));
+        const int at = page.indexOf(QStringLiteral("// Demo pill"));
+        check(at > 0, "SETA-ID-002: the Demo pill is locatable");
+        const QString pill = page.mid(at, 1800);
+        check(pill.contains(QStringLiteral("border.color: !opModeRow.opLive ? theme.tokens.errorText")),
+              "SETA-ID-002: the Demo border is the ERROR token, not the brand accent");
+        check(pill.contains(QStringLiteral("color: !opModeRow.opLive ? theme.tokens.errorText")),
+              "SETA-ID-002: the Demo label is the ERROR token, not the brand accent");
+        check(pill.contains(QStringLiteral("width: 4; radius: 2")),
+              "SETA-ID-002: selection is one restrained accent edge strip");
+        check(pill.contains(QStringLiteral("color: _errBg")) || pill.contains(QStringLiteral("? _errBg :")),
+              "SETA-ID-002: the Demo fill stays the error background");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // SETA-LANG-003 — the landing screen's German is REAL, and still changes
+    // nothing but labels.
+    // ─────────────────────────────────────────────────────────────────────
+    {
+        const QString ts = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/translations/techaim_de_DE.ts"));
+        struct Want { const char* ctx; const char* src; };
+        const Want wanted[] = {
+            { "LoginPage", "Start session" },
+            { "LoginPage", "Session setup" },
+            { "LoginPage", "ATHLETE" },
+            { "LoginPage", "Athlete name" },
+            { "LoginPage", "OPERATING MODE" },
+            { "LoginPage", "Choose an event" },
+            { "LoginPage", "Load saved session" },
+            { "LoginPage", "Contact us" },
+            { "LoginPage", "READY TO START" },
+            { "LoginPage", "No athlete entered" },
+            { "LoginPage", "Electronic target control" },
+            { "TargetStatusPanel", "NO TARGET" },
+            { "TargetStatusPanel", "Connect the target USB cable." },
+            { "TargetStatusPanel", "Target Connection" },
+            { "Header", "ELECTRONIC TARGET" },
+        };
+        int have = 0;
+        QStringList absent;
+        for (const Want& w : wanted) {
+            const int c = ts.indexOf(QStringLiteral("<name>%1</name>").arg(QLatin1String(w.ctx)));
+            if (c < 0) { absent << QLatin1String(w.ctx); continue; }
+            const int cEnd = ts.indexOf(QStringLiteral("</context>"), c);
+            const QString ctx = ts.mid(c, cEnd - c);
+            const int at = ctx.indexOf(QStringLiteral("<source>%1</source>").arg(QLatin1String(w.src)));
+            if (at < 0) { absent << QLatin1String(w.src); continue; }
+            const int end = ctx.indexOf(QStringLiteral("</message>"), at);
+            if (!ctx.mid(at, end - at).contains(QStringLiteral("type=\"unfinished\"")))
+                ++have;
+            else
+                absent << QLatin1String(w.src);
+        }
+        check(have == int(sizeof(wanted) / sizeof(wanted[0])),
+              "SETA-LANG-003: the landing screen's core strings have German",
+              absent.join(QStringLiteral(", ")));
+
+        // German is BETA and the surface is NOT fully translated. Assert the
+        // honest state rather than a claim of completeness: the language option
+        // must still be marked beta.
+        const QString lang = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/src/app/LanguageService.cpp"));
+        check(lang.contains(QStringLiteral("QStringLiteral(\"de-DE\"), QStringLiteral(\"Deutsch\"), true")),
+              "SETA-LANG-003: German is still declared BETA, not complete");
     }
 
     printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
@@ -1668,6 +1946,145 @@ int main(int argc, char* argv[])
         const QString sel = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/SetaCompetitionSelector.qml"));
         check(!sel.contains(QStringLiteral("=== qsTr(")) && !sel.contains(QStringLiteral("== qsTr(")),
               "SETA-LANG-002: QML-LANG-001 still holds in the selector");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // SETA-ID-001 — no user-visible Tech Aim identity survives in a SETA build.
+    //
+    // Scans STRING LITERALS, with comment lines stripped first: a gate that can
+    // pass or fail on a comment is not a gate. Component type names
+    // (TechAimDialog) and qrc asset paths are deliberately NOT flagged - they
+    // are source identifiers and files, not words an operator ever reads.
+    // ─────────────────────────────────────────────────────────────────────
+    {
+        QDir idRoot(QStringLiteral(TECHAIM_SOURCE_DIR));
+        const QStringList files =
+            idRoot.entryList(QStringList() << QStringLiteral("*.qml"), QDir::Files);
+        QStringList offenders;
+        for (const QString& fname : files) {
+            const QString body = readAll(idRoot.filePath(fname));
+            const QStringList lines = body.split(QChar(10));
+            for (int i = 0; i < lines.size(); ++i) {
+                QString line = lines.at(i);
+                const int comment = line.indexOf(QStringLiteral("//"));
+                if (comment >= 0) line = line.left(comment);
+                // Only what sits INSIDE a double-quoted literal can be shown.
+                int from = 0;
+                while (true) {
+                    const int a = line.indexOf(QLatin1Char('"'), from);
+                    if (a < 0) break;
+                    const int b = line.indexOf(QLatin1Char('"'), a + 1);
+                    if (b < 0) break;
+                    const QString lit = line.mid(a + 1, b - a - 1);
+                    from = b + 1;
+                    if (lit.startsWith(QStringLiteral("qrc:"))) continue;
+                    if (lit.contains(QStringLiteral("Tech Aim"))
+                        || lit.contains(QStringLiteral("TechAim")))
+                        offenders << (fname + QStringLiteral(":")
+                                      + QString::number(i + 1) + QStringLiteral(" \"")
+                                      + lit.left(48) + QStringLiteral("\""));
+                }
+            }
+        }
+        check(offenders.isEmpty(),
+              "SETA-ID-001: no user-visible Tech Aim product identity remains in QML",
+              offenders.join(QStringLiteral(" | ")));
+
+        // The footer is the one that was actually shipping the leak, so it is
+        // named explicitly rather than left to the sweep above.
+        const QString page = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/LoginPage.qml"));
+        check(page.contains(QStringLiteral("PRODUCT.displayName + \"  ·  \" + qsTr(\"Electronic target control\")")),
+              "SETA-ID-001: the footer takes its product name from ProductIdentity");
+        check(!page.contains(QStringLiteral("\"TechAim  ·  Electronic target control\"")),
+              "SETA-ID-001: the hardcoded Tech Aim footer literal is gone");
+
+        // Exported PDF file names are user-visible identity too.
+        const QString shooting = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/ShootingPage.qml"));
+        check(shooting.contains(QStringLiteral("function productFilePrefix()"))
+              && !shooting.contains(QStringLiteral("\"TechAim_")),
+              "SETA-ID-001: exported PDF names derive from the product, not a literal");
+
+        // The C++ side: PDF document metadata and the operator messages that
+        // named the product.
+        const QString print = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/customprint.cpp"));
+        check(!print.contains(QStringLiteral("QStringLiteral(\"Tech Aim "))
+              && print.contains(QStringLiteral("ta::app::identity()")),
+              "SETA-ID-001: PDF metadata is composed from identity");
+
+        // The LEGAL publisher is a different fact and must NOT have moved.
+        const QString ident = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/src/app/ProductIdentity.cpp"));
+        check(ident.contains(QStringLiteral("JAC SHOOTING SOLUTIONS (PTY) LTD")),
+              "SETA-ID-001: the legal publisher is unchanged by the identity sweep");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // SETA-ID-002 — the Demo pill's SEMANTIC colour is independent of the brand.
+    // Colour states WHAT MODE IT IS; the accent states only WHICH IS SELECTED.
+    // ─────────────────────────────────────────────────────────────────────
+    {
+        const QString page = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/LoginPage.qml"));
+        const int at = page.indexOf(QStringLiteral("// Demo pill"));
+        check(at > 0, "SETA-ID-002: the Demo pill is locatable");
+        const QString pill = page.mid(at, 1800);
+        check(pill.contains(QStringLiteral("border.color: !opModeRow.opLive ? theme.tokens.errorText")),
+              "SETA-ID-002: the Demo border is the ERROR token, not the brand accent");
+        check(pill.contains(QStringLiteral("color: !opModeRow.opLive ? theme.tokens.errorText")),
+              "SETA-ID-002: the Demo label is the ERROR token, not the brand accent");
+        check(pill.contains(QStringLiteral("width: 4; radius: 2")),
+              "SETA-ID-002: selection is one restrained accent edge strip");
+        check(pill.contains(QStringLiteral("color: _errBg")) || pill.contains(QStringLiteral("? _errBg :")),
+              "SETA-ID-002: the Demo fill stays the error background");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // SETA-LANG-003 — the landing screen's German is REAL, and still changes
+    // nothing but labels.
+    // ─────────────────────────────────────────────────────────────────────
+    {
+        const QString ts = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/translations/techaim_de_DE.ts"));
+        struct Want { const char* ctx; const char* src; };
+        const Want wanted[] = {
+            { "LoginPage", "Start session" },
+            { "LoginPage", "Session setup" },
+            { "LoginPage", "ATHLETE" },
+            { "LoginPage", "Athlete name" },
+            { "LoginPage", "OPERATING MODE" },
+            { "LoginPage", "Choose an event" },
+            { "LoginPage", "Load saved session" },
+            { "LoginPage", "Contact us" },
+            { "LoginPage", "READY TO START" },
+            { "LoginPage", "No athlete entered" },
+            { "LoginPage", "Electronic target control" },
+            { "TargetStatusPanel", "NO TARGET" },
+            { "TargetStatusPanel", "Connect the target USB cable." },
+            { "TargetStatusPanel", "Target Connection" },
+            { "Header", "ELECTRONIC TARGET" },
+        };
+        int have = 0;
+        QStringList absent;
+        for (const Want& w : wanted) {
+            const int c = ts.indexOf(QStringLiteral("<name>%1</name>").arg(QLatin1String(w.ctx)));
+            if (c < 0) { absent << QLatin1String(w.ctx); continue; }
+            const int cEnd = ts.indexOf(QStringLiteral("</context>"), c);
+            const QString ctx = ts.mid(c, cEnd - c);
+            const int at = ctx.indexOf(QStringLiteral("<source>%1</source>").arg(QLatin1String(w.src)));
+            if (at < 0) { absent << QLatin1String(w.src); continue; }
+            const int end = ctx.indexOf(QStringLiteral("</message>"), at);
+            if (!ctx.mid(at, end - at).contains(QStringLiteral("type=\"unfinished\"")))
+                ++have;
+            else
+                absent << QLatin1String(w.src);
+        }
+        check(have == int(sizeof(wanted) / sizeof(wanted[0])),
+              "SETA-LANG-003: the landing screen's core strings have German",
+              absent.join(QStringLiteral(", ")));
+
+        // German is BETA and the surface is NOT fully translated. Assert the
+        // honest state rather than a claim of completeness: the language option
+        // must still be marked beta.
+        const QString lang = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/src/app/LanguageService.cpp"));
+        check(lang.contains(QStringLiteral("QStringLiteral(\"de-DE\"), QStringLiteral(\"Deutsch\"), true")),
+              "SETA-LANG-003: German is still declared BETA, not complete");
     }
 
     printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);

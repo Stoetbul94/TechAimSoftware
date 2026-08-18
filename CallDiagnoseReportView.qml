@@ -124,7 +124,8 @@ Item {
                 Image { source: PRODUCT.brandLogoPath; height: 12
                     width: sourceSize.height > 0 ? height * sourceSize.width / sourceSize.height : 0
                     fillMode: Image.PreserveAspectFit; smooth: true; mipmap: true; anchors.verticalCenter: parent.verticalCenter }
-                Text { text: "Tech Aim Electronic Target Control  ·  WE AIM TO PLEASE"
+                Text { text: PRODUCT.fullProductName
+                             + (PRODUCT.tagline !== "" ? "  ·  " + PRODUCT.tagline : "")
                        color: view.sub; font.pixelSize: 9; anchors.verticalCenter: parent.verticalCenter } }
             Text { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
                    text: "Page " + pageNo + " of " + view.totalPages; color: view.sub; font.pixelSize: 9 }

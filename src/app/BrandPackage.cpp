@@ -53,6 +53,7 @@ BrandPackage makeTechAim()
     b.resourceNamespace = QStringLiteral("qrc:/images/logo");
     b.pdfAttribution    = QStringLiteral("Tech Aim Electronic Target Control");
     b.manualBrandName   = QStringLiteral("Tech Aim");
+    b.tagline           = QStringLiteral("WE AIM TO PLEASE");
     b.defaultLanguage   = QString();   // the operator's choice wins
     return b;
 }
@@ -118,6 +119,9 @@ BrandPackage makeSeta()
     b.resourceNamespace = QStringLiteral("qrc:/images/logo");
     b.pdfAttribution    = QStringLiteral("SETA Electronic Target Control");
     b.manualBrandName   = QStringLiteral("SETA");
+    // NOT SUPPLIED. "WE AIM TO PLEASE" is Tech Aim's slogan; printing it on a
+    // SETA report would attribute another company's line to SETA.
+    b.tagline           = QString();
     b.defaultLanguage   = QString();   // the operator's choice wins
     return b;
 }

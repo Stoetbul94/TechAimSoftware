@@ -56,6 +56,7 @@ class ProductIdentityBridge : public QObject
     Q_PROPERTY(QString textOnAccent READ textOnAccent CONSTANT)
     Q_PROPERTY(QString focusOutline READ focusOutline CONSTANT)
     Q_PROPERTY(QString brandLogoSecondary READ brandLogoSecondary CONSTANT)
+    Q_PROPERTY(QString tagline READ tagline CONSTANT)
     Q_PROPERTY(QString brandKey READ brandKey CONSTANT)
     Q_PROPERTY(QString applicationStorageName READ applicationStorageName CONSTANT)
     Q_PROPERTY(QString fieldTestNotice READ fieldTestNotice CONSTANT)
@@ -97,6 +98,7 @@ public:
     QString textOnAccent() const       { return ta::app::brand().textOnAccent; }
     QString focusOutline() const       { return ta::app::brand().focusOutline; }
     QString brandLogoSecondary() const { return ta::app::brand().logoIntrinsicColour; }
+    QString tagline() const            { return ta::app::brand().tagline; }
     QString brandKey() const           { return ta::app::identity().brandKey; }
     QString applicationStorageName() const
                                        { return ta::app::identity().applicationStorageName; }

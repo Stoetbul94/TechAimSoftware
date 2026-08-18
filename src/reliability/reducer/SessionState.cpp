@@ -664,7 +664,7 @@ ReliabilityResult deserializeSessionState(const QByteArray& json, SessionState* 
         static_cast<qint32>(r.reqInt("stateVersion", 1, INT32_MAX));
     if (!r.failed && stateVersion > kSessionStateVersion)
         return ReliabilityResult::failure(ReliabilityError::SchemaTooNew,
-            QStringLiteral("Snapshot written by a newer TechAim version."),
+            QStringLiteral("Snapshot written by a newer version of this application."),
             QStringLiteral("stateVersion %1 > supported %2")
                 .arg(stateVersion).arg(kSessionStateVersion));
     s.sessionId = r.reqString("sessionId");

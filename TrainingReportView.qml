@@ -149,7 +149,8 @@ Item {
                     fillMode: Image.PreserveAspectFit; smooth: true; mipmap: true
                     anchors.verticalCenter: parent.verticalCenter
                 }
-                Text { text: "Tech Aim Electronic Target Control  ·  WE AIM TO PLEASE"
+                Text { text: PRODUCT.fullProductName
+                             + (PRODUCT.tagline !== "" ? "  ·  " + PRODUCT.tagline : "")
                        color: view.sub; font.pixelSize: 9; anchors.verticalCenter: parent.verticalCenter }
             }
             Text {

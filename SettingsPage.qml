@@ -349,7 +349,7 @@ Item {
                             model: [
                                 { mode: 0, dot: "#37c76a",
                                   title: qsTr("Live target"),
-                                  desc: qsTr("Receives shots from the physical Tech Aim target.") },
+                                  desc: qsTr("Receives shots from the physical %1 target.").arg(PRODUCT.displayName) },
                                 { mode: 1, dot: "#e8003d",
                                   title: qsTr("Demo / simulation"),
                                   desc: qsTr("Allows simulated target shots for testing and demonstration.") }
@@ -603,7 +603,7 @@ Item {
                 width: parent.width - 44
                 text: opModeConfirm.targetMode === 1
                       ? qsTr("Simulated shots will be enabled. Demo sessions are intended for testing and cannot be treated as Live target results.\n\nThe application must restart before the change takes effect.")
-                      : qsTr("Simulated shot input will be disabled. The application will expect the physical TechAim target connection.\n\nThe application must restart before the change takes effect.")
+                      : qsTr("Simulated shot input will be disabled. The application will expect the physical %1 target connection.\n\nThe application must restart before the change takes effect.").arg(PRODUCT.displayName)
                 color: "#b6b9c0"; font.pixelSize: 11; wrapMode: Text.WordWrap; lineHeight: 1.15
             }
             Item {

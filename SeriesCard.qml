@@ -10,7 +10,7 @@ Item {
     id: card
     property string seriesTitle: "Series"
     property var    chips: []            // array of { l, v, unit, kind }  kind: "" | "bad"
-    property color  accent: theme.tokens.accentPrimary    // Tech Aim maroon
+    property color  accent: theme.tokens.accentPrimary    // the product accent, from the brand package
     default property alias content: body.data
 
     implicitHeight: 340

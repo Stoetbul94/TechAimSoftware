@@ -86,8 +86,9 @@ void CustomPrint::createFinalsPdf()
     pdfWriter.setPageSize(QPageSize(QPageSize::A4));
     pdfWriter.setPageMargins(QMargins(30, 30, 30, 30));
     // T3.1: standardised Tech Aim metadata (no dev/Demo paths).
-    pdfWriter.setTitle(QStringLiteral("Tech Aim 3P Final Report"));
-    pdfWriter.setCreator(QStringLiteral("Tech Aim Electronic Target Control"));
+    pdfWriter.setTitle(ta::app::identity().displayName
+                       + QStringLiteral(" 3P Final Report"));
+    pdfWriter.setCreator(ta::app::identity().reportCreator);
     QPainter painter(&pdfWriter);
     quint32 iWidth = pdfWriter.width();
     quint32 iHeight = pdfWriter.height();
@@ -132,8 +133,9 @@ bool CustomPrint::createTrainingPdf(QString filePath)
     // T1.5 branding: document metadata (no Demo/dev filesystem paths). Title +
     // Creator via the native API; Author/Subject/Keywords via an XMP packet so
     // every reader surfaces them.
-    pdfWriter.setTitle(QStringLiteral("Tech Aim Technical Blocks Training Report"));
-    pdfWriter.setCreator(QStringLiteral("Tech Aim Electronic Target Control"));
+    pdfWriter.setTitle(ta::app::identity().displayName
+                       + QStringLiteral(" Technical Blocks Training Report"));
+    pdfWriter.setCreator(ta::app::identity().reportCreator);
     {
         const QString xmp = QStringLiteral(
             "<?xpacket begin=\"\" id=\"W5M0MpCehiHzreSzNTczkc9d\"?>"
@@ -143,13 +145,14 @@ bool CustomPrint::createTrainingPdf(QString filePath)
             " xmlns:dc=\"http://purl.org/dc/elements/1.1/\""
             " xmlns:pdf=\"http://ns.adobe.com/pdf/1.3/\""
             " xmlns:xmp=\"http://ns.adobe.com/xap/1.0/\">"
-            "<dc:title><rdf:Alt><rdf:li xml:lang=\"x-default\">Tech Aim Technical Blocks Training Report</rdf:li></rdf:Alt></dc:title>"
-            "<dc:creator><rdf:Seq><rdf:li>Tech Aim</rdf:li></rdf:Seq></dc:creator>"
+            "<dc:title><rdf:Alt><rdf:li xml:lang=\"x-default\">%1 Technical Blocks Training Report</rdf:li></rdf:Alt></dc:title>"
+            "<dc:creator><rdf:Seq><rdf:li>%1</rdf:li></rdf:Seq></dc:creator>"
             "<dc:description><rdf:Alt><rdf:li xml:lang=\"x-default\">Electronic Target Training Analysis</rdf:li></rdf:Alt></dc:description>"
-            "<pdf:Keywords>Tech Aim, Training Lab, Technical Blocks, Electronic Target, Shooting</pdf:Keywords>"
-            "<xmp:CreatorTool>Tech Aim Electronic Target Control</xmp:CreatorTool>"
+            "<pdf:Keywords>%1, Training Lab, Technical Blocks, Electronic Target, Shooting</pdf:Keywords>"
+            "<xmp:CreatorTool>%2</xmp:CreatorTool>"
             "</rdf:Description></rdf:RDF></x:xmpmeta>"
-            "<?xpacket end=\"w\"?>");
+            "<?xpacket end=\"w\"?>")
+            .arg(ta::app::identity().displayName, ta::app::identity().reportCreator);
         pdfWriter.setDocumentXmpMetadata(xmp.toUtf8());
     }
     QPainter painter(&pdfWriter);
@@ -187,8 +190,9 @@ void CustomPrint::createSummryPdf()
     pdfWriter.setPageSize(QPageSize(QPageSize::A4));
     pdfWriter.setPageMargins(QMargins(30, 30, 30, 30));
     // T3.1: standardised Tech Aim metadata (no dev/Demo paths).
-    pdfWriter.setTitle(QStringLiteral("Tech Aim Match Summary Report"));
-    pdfWriter.setCreator(QStringLiteral("Tech Aim Electronic Target Control"));
+    pdfWriter.setTitle(ta::app::identity().displayName
+                       + QStringLiteral(" Match Summary Report"));
+    pdfWriter.setCreator(ta::app::identity().reportCreator);
     QPainter painter(&pdfWriter);
     quint32 iWidth = pdfWriter.width();
     quint32 iHeight = pdfWriter.height();
@@ -664,8 +668,9 @@ void CustomPrint::createPdf(QString filePath)
     pdfWriter.setPageSize(QPageSize(QPageSize::A4));
     pdfWriter.setPageMargins(QMargins(30, 30, 30, 30));
     // T3.1: standardised Tech Aim metadata (no dev/Demo paths).
-    pdfWriter.setTitle(QStringLiteral("Tech Aim Match Report"));
-    pdfWriter.setCreator(QStringLiteral("Tech Aim Electronic Target Control"));
+    pdfWriter.setTitle(ta::app::identity().displayName
+                       + QStringLiteral(" Match Report"));
+    pdfWriter.setCreator(ta::app::identity().reportCreator);
     QPainter painter(&pdfWriter);
     quint32 iWidth = pdfWriter.width();
     quint32 iHeight = pdfWriter.height();

@@ -10,6 +10,7 @@ include(../../Reliability.pri)
 
 INCLUDEPATH += $$PWD/../../src
 SOURCES += \
+    $$PWD/../../src/app/ProductIdentity.cpp \
     $$PWD/../../src/training/TrainingProgramController.cpp \
     $$PWD/../../src/training/TrainingBlockMetrics.cpp \
     $$PWD/../../src/training/CallDiagnoseController.cpp \
