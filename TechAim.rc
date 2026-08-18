@@ -12,10 +12,22 @@
 #include <windows.h>
 
 // The Windows application icon. The LOWEST-numbered icon resource is what
-// Explorer, the taskbar and shortcuts use, so this must stay first. Built from
-// the approved Tech Aim target emblem in images/logo/techaim_color.png, with
-// the 7 sizes Windows actually asks for (16..256).
+// Explorer, the taskbar and shortcuts use, so this must stay first. Each
+// flavour ships its OWN icon, selected here rather than by overwriting a shared
+// file: a Tech Aim build must keep the Tech Aim emblem byte for byte, and a
+// SETA build must not go out wearing it.
+//
+// BRAND_SETA reaches the resource compiler through RC_DEFINES in Seta.pro - the
+// same define the C++ already uses, so the icon on the executable cannot
+// disagree with the product identity compiled into it.
+#ifdef BRAND_SETA
+// The SETA target emblem, cropped from the approved images/logo/seta.png by
+// tools/icon/make_seta_ico.py. 7 sizes, 16..256.
+IDI_TECHAIM ICON "images/logo/seta.ico"
+#else
+// The approved Tech Aim target emblem (images/logo/techaim_color.png).
 IDI_TECHAIM ICON "images/logo/techaim.ico"
+#endif
 
 #define IDI_TECHAIM 101
 
@@ -37,12 +49,20 @@ BEGIN
         BLOCK "040904b0"        // US English, Unicode
         BEGIN
             VALUE "CompanyName",      "JAC SHOOTING SOLUTIONS (PTY) LTD\0"
+#ifdef BRAND_SETA
+            VALUE "FileDescription",  "SETA Electronic Target Control\0"
+#else
             VALUE "FileDescription",  "Tech Aim Electronic Target Control\0"
+#endif
             VALUE "FileVersion",      "0.9.0.0\0"
             VALUE "InternalName",     "TechAim\0"
             VALUE "LegalCopyright",   "Copyright (C) JAC SHOOTING SOLUTIONS (PTY) LTD\0"
             VALUE "OriginalFilename", "TechAim.exe\0"
+#ifdef BRAND_SETA
+            VALUE "ProductName",      "SETA Electronic Target Control\0"
+#else
             VALUE "ProductName",      "Tech Aim Electronic Target Control\0"
+#endif
             VALUE "ProductVersion",   "0.9.0.0\0"
             VALUE "Comments",         "Windows Pre-Beta Validation Build\0"
         END

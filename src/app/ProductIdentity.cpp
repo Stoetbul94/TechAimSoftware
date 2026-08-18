@@ -58,6 +58,7 @@ ProductIdentity makeTechAim()
     // Brand mark, as a qrc path so QML asks identity for it rather than
     // hardcoding a logo per screen.
     p.brandLogoPath       = QStringLiteral("qrc:/images/logo/techaim_color.png");
+    p.appIconPath         = QStringLiteral(":/images/logo/techaim.ico");
     p.brandLogoOnDarkPath = QStringLiteral("qrc:/images/logo/techaim_white.png");
 
 #ifdef BRAND_SETA
@@ -74,6 +75,7 @@ ProductIdentity makeTechAim()
     p.displayName      = QStringLiteral("SETA");
     p.fullProductName  = QStringLiteral("SETA Electronic Target Control");
     p.brandLogoPath    = QStringLiteral("qrc:/images/logo/seta.png");
+    p.appIconPath      = QStringLiteral(":/images/logo/seta.ico");
     // SETA supplied ONE mark. There is no white-on-dark variant, so the header
     // uses the same file rather than the Tech Aim white logo - showing another
     // company's mark in a SETA build would be worse than an imperfect one.

@@ -85,6 +85,10 @@ struct ProductIdentity {
     // field because "which file" is a brand fact, not a screen decision - a
     // screen must never pick a logo by asking which product this is.
     QString brandLogoOnDarkPath;
+    // The SQUARE application icon (a Windows .ico). Separate from the brand
+    // mark because the mark is wide: an OS icon has to be square, and the
+    // one Windows draws for the WINDOW is not the one it draws for the FILE.
+    QString appIconPath;
     QString fieldTestNotice;        // "FIELD TEST — NOT FOR OFFICIAL COMPETITION RESULTS"
 
     // ── defaults (NOT user identity — see the language/brand note above) ──

@@ -434,17 +434,17 @@ Starten Sie einen neuen Wettkampf, um weiterzuschießen.</translation>
     <message>
         <location filename="../Dsb120Hud.qml" line="28"/>
         <source>KNEELING</source>
-        <translation type="unfinished">KNIEND</translation>
+        <translation>KNIEND</translation>
     </message>
     <message>
         <location filename="../Dsb120Hud.qml" line="29"/>
         <source>PRONE</source>
-        <translation type="unfinished">LIEGEND</translation>
+        <translation>LIEGEND</translation>
     </message>
     <message>
         <location filename="../Dsb120Hud.qml" line="30"/>
         <source>STANDING</source>
-        <translation type="unfinished">STEHEND</translation>
+        <translation>STEHEND</translation>
     </message>
     <message>
         <location filename="../Dsb120Hud.qml" line="34"/>
@@ -459,12 +459,12 @@ Starten Sie einen neuen Wettkampf, um weiterzuschießen.</translation>
     <message>
         <location filename="../Dsb120Hud.qml" line="36"/>
         <source>SIGHTING</source>
-        <translation type="unfinished">PROBESCHIESSEN</translation>
+        <translation>PROBESCHIESSEN</translation>
     </message>
     <message>
         <location filename="../Dsb120Hud.qml" line="37"/>
         <source>MATCH</source>
-        <translation type="unfinished">WETTKAMPF</translation>
+        <translation>WETTKAMPF</translation>
     </message>
     <message>
         <location filename="../Dsb120Hud.qml" line="38"/>
@@ -479,7 +479,7 @@ Starten Sie einen neuen Wettkampf, um weiterzuschießen.</translation>
     <message>
         <location filename="../Dsb120Hud.qml" line="87"/>
         <source>POSITION</source>
-        <translation type="unfinished">STELLUNG</translation>
+        <translation>STELLUNG</translation>
     </message>
     <message>
         <location filename="../Dsb120Hud.qml" line="96"/>
@@ -494,7 +494,7 @@ Starten Sie einen neuen Wettkampf, um weiterzuschießen.</translation>
     <message>
         <location filename="../Dsb120Hud.qml" line="111"/>
         <source>TIME</source>
-        <translation type="unfinished">ZEIT</translation>
+        <translation>ZEIT</translation>
     </message>
     <message>
         <location filename="../Dsb120Hud.qml" line="116"/>
@@ -5948,7 +5948,7 @@ Möchten Sie diesen Wettkampf speichern, bevor die Anwendung geschlossen wird?</
     <message>
         <location filename="../main.qml" line="498"/>
         <source>The DSB 1.20 session could not be resumed. Its journal has been left intact.</source>
-        <translation type="unfinished"></translation>
+        <translation>Die DSB-1.20-Sitzung konnte nicht fortgesetzt werden. Ihr Journal ist unverändert erhalten.</translation>
     </message>
     <message>
         <location filename="../main.qml" line="507"/>

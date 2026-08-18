@@ -58,6 +58,11 @@ else: DEFINES += APP_BUILD_CONFIG=\\\"Debug\\\"
 # The test harnesses define this too (tests/*/*.pro): a gate that measures the
 # Tech Aim identity would not be measuring the build this branch ships.
 DEFINES += BRAND_SETA
+# The resource compiler needs the same flavour switch: the Windows icon and
+# the two user-visible Properties strings live in TechAim.rc, and a build
+# whose C++ said SETA while its resources said Tech Aim would ship the wrong
+# emblem on the executable.
+win32: RC_DEFINES += BRAND_SETA
 #QMAKE_TARGET_PRODUCT = "TACHUS CPU"
 
 SOURCES += main.cpp \

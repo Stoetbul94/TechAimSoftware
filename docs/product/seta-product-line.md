@@ -319,3 +319,32 @@ exactly the text a naive hierarchy would have branched on.
   `BrandPackage::missingAssets()`, never invented).
 - Legal publisher, if SETA is to be named as publisher rather than JAC.
 - DSB Sportordnung rule detail before any German programme is added.
+
+## Windows icon
+
+The SETA build ships its own executable icon. `images/logo/seta.ico` is built
+from the approved `images/logo/seta.png` by `tools/icon/make_seta_ico.py`,
+which crops the emblem the logo already contains - the crosshair mark, found
+by the artwork's own alpha gutter rather than by hand-typed coordinates - and
+renders it at 16, 24, 32, 48, 64, 128 and 256 px. No symbol was invented and
+the wide logo is never squashed into a square.
+
+Two different icons are involved, and both are product-scoped:
+
+| What draws it | Where it comes from |
+|---|---|
+| Explorer, Properties, shortcuts | the PE resource — `TechAim.rc`, selected by `BRAND_SETA` via `RC_DEFINES` |
+| Taskbar, Alt+Tab | the WINDOW icon — `QApplication::setWindowIcon(product.appIconPath)` |
+
+The window icon is separate because a window that carries none gets the
+Windows placeholder however well branded the binary is; that is exactly what
+the switcher showed before this was set. `techaim.ico` is untouched and never
+reaches a SETA build, and `seta.ico` never reaches a Tech Aim build -
+`tests/release/check_windows_icon.py` proves both directions by reading the
+RT_ICON resources out of the compiled binary.
+
+The executable is still `TechAim.exe`. A product-specific name would be
+clearer on a machine with both products installed, but the name is depended on
+by the qmake TARGET, the single-instance relaunch, the documentation-capture
+script, the deployment check, a manuals gate and 34 manual documents, so it is
+its own task rather than a side effect of an icon change.

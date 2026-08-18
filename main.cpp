@@ -1,4 +1,5 @@
 #include <QApplication>
+#include <QIcon>
 #include <QQmlApplicationEngine>
 #include <QtQml/QQmlContext>
 #include "customprint.h"
@@ -154,6 +155,12 @@ int main(int argc, char *argv[])
     QCoreApplication::setApplicationName(product.applicationStorageName);
     QCoreApplication::setOrganizationDomain(product.organisationDomain);
     QGuiApplication::setApplicationDisplayName(product.fullProductName);
+    // The WINDOW icon, which is not the executable icon: Explorer reads the
+    // PE resource, but Alt+Tab and the taskbar read what the window itself
+    // carries. With none set, Windows drew its generic placeholder next to a
+    // correct SETA title. Same product-scoped asset as the executable, taken
+    // from the product identity rather than named here.
+    app.setWindowIcon(QIcon(product.appIconPath));
 
     // F9B: build identity embedded at COMPILE time (Seta.pro DEFINES + the
     // compiler's __DATE__/__TIME__). The app never runs git; the customer
