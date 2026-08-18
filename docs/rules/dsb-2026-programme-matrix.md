@@ -7,6 +7,10 @@ Nothing here is implemented. No `CompetitionCatalogue` entry exists for any of
 it, and none may be added until the status column says CONFIRMED **and** the
 open questions that programme depends on are closed.
 
+**Updated 2026-08-18** with the customer rule determinations (S-C.1–S-C.6) and
+the DSB Deutsche Meisterschaften 2026 competition table (S-DM.1–S-DM.7). Six
+programmes are now READY TO IMPLEMENT; 1.40 waits only on Q3a.
+
 **Reading the timing columns.** The Sportordnung gives two shooting times: one
 for *Zuganlagen* (pull/paper systems) and one for *andere Systeme*, marked `*`.
 An electronic target is an "anderes System", so **the `*` column is the one an
@@ -28,7 +32,8 @@ EST product implements**.
 | Preparation + sighting | **15 min, unlimited sighters, before the start, NOT part of the shooting time** (S-1.5) |
 | Target | **Scheibe Nr. 1** (S-0.24) |
 | Olympic competition | yes, for Männer/Frauen (S-0.22) |
-| Status | **CONFIRMED** except scoring mode (Q3) and class availability (Q4) |
+| Scoring mode | **DECIMAL** — the DM 2026 table marks 1.10 Zehntel = ja (S-DM.7) |
+| Status | **CONFIRMED — READY TO IMPLEMENT** |
 
 ### 1.20 — Luftgewehr 3-Stellung 10 m
 
@@ -46,7 +51,11 @@ EST product implements**.
 | Sighting before prone and standing | **at the shooter's discretion**, out of that position's own time (S-1.5) |
 | Equipment change between positions | **not** granted to 1.20 — S-1.2 grants it to KK 3×20, KK 3×40 and 300 m Freigewehr only |
 | Target | **Scheibe Nr. 1** |
-| Status | **CONFIRMED** for order, shot counts, per-position times, preparation and sighting. **OPEN:** transition procedure and commands (Q6), scoring mode (Q3), class → 3×10 vs 3×20 (Q4) |
+| Scoring mode | **whole ring** (S-C.1) |
+| Position transition | **commanded, not chained**: finish a position → **`POSITION_CHANGE`** → the range officer / control software starts the next position clock (S-C.6) |
+| Commands | no ISSF-style script exists in the rule; announcements are configurable and localised (S-C.5) |
+| Class → variant | **event configuration, never hardcoded** — the DM runs 60 shots for Schüler 1 / Jugend while regional events also run Schüler 3×10 (S-C.4, S-DM.2) |
+| Status | **FULLY SPECIFIED — READY TO IMPLEMENT** |
 
 > **This is not ISSF 3P.** ISSF 50 m 3×20 gives one preparation-and-sighting
 > period and one block of match time for the whole course, with changeover
@@ -68,7 +77,9 @@ EST product implements**.
 | Equipment change between positions | **permitted** (S-1.2) |
 | Target | **Scheibe Nr. 3** |
 | Olympic competition | yes (S-0.22) |
-| Status | 3×20: **CONFIRMED**. 30-shot row: **AUTHORITY REQUIRED (Q2)** |
+| Scoring mode | **whole ring per S-C.1 — but see Q3a**: one read of the DM 2026 table listed 1.40 among the decimal events. **Confirm by eye before implementing** |
+| Class context | DM 2026: all announced classes, 60 shots, with a final for Herren I / Jun. I m / Damen I / Jun. I w (S-DM.3) |
+| Status | 3×20: **CONFIRMED**, blocked only on **Q3a**. 30-shot row: **NOT an official 3 × 10** (S-C.3) |
 
 > **The 30-shot row does not by itself create a 50 m 3×10 programme.** The
 > timing table carries a 30-shot time for 1.40 and labels it a *recommendation*,
@@ -90,7 +101,9 @@ EST product implements**.
 | Preparation + sighting | 15 min before kneeling, unlimited sighters, not in the shooting time |
 | Equipment change between positions | **permitted** (S-1.2) |
 | Target | **Scheibe Nr. 3** — same face as 1.40 |
-| Status | **CONFIRMED** except scoring mode (Q3) and the fact that the timing row is labelled *Männer* — women's/junior applicability is Q4 |
+| Scoring mode | **whole ring** (S-C.1) |
+| Class context | DM 2026: all announced classes, 120 shots (S-DM.4) |
+| Status | **CONFIRMED — READY TO IMPLEMENT** |
 
 > Note the timing table gives 195/165 as **one time for the whole 120-shot
 > course**, not three position times. That is a different timing shape from
@@ -108,7 +121,8 @@ EST product implements**.
 | Shooting time (paper / **EST**) | **60 / 50 min** (S-1.4) |
 | Preparation + sighting | 15 min, unlimited sighters, before the start, not in the shooting time |
 | Target | **Scheibe Nr. 3** |
-| Status | **CONFIRMED** except scoring mode (Q3) and class context (Q4) |
+| Scoring mode | **DECIMAL** — the DM 2026 table marks 1.80 Zehntel = ja (S-DM.7) |
+| Status | **CONFIRMED — READY TO IMPLEMENT** |
 
 ---
 
@@ -124,7 +138,9 @@ EST product implements**.
 | Preparation + sighting | 15 min, unlimited sighters, before the start, not in the shooting time (S-2.6); 2.11.2 repeats that sighters in that period are unlimited (S-2.1) |
 | Commands | the shooting director announces shot count and time and starts with **„START"** (S-2.1) |
 | Target | **Scheibe Nr. 7** |
-| Status | **CONFIRMED** except scoring mode (Q3) and class context (Q4) |
+| Scoring mode | **whole ring** — DM 2026 Zehntel = nein (S-DM.5) |
+| Class context | Schüler 1 = 20; Herren/Damen I–II and Junioren I–II = 40 (LM) / **60 (DM)**; remaining classes 40 (S-DM.5) |
+| Status | **CONFIRMED — READY TO IMPLEMENT** |
 
 ### 2.16 — 10 m Mehrschüssige Luftpistole
 
@@ -176,7 +192,9 @@ EST product implements**.
 | Shooting time, 30 | **recommended 65 min (paper) / 55 min (EST)** — printed as *empfohlen* |
 | Preparation + sighting | 15 min, unlimited sighters, before the start, not in the shooting time |
 | Target | **Scheibe Nr. 4** |
-| Status | 60 shots **CONFIRMED**. 30 shots **CONFIRMED as a listed shot count**, with the time explicitly a **recommendation** — an implementation must model it as organiser-set, not fixed |
+| Scoring mode | **whole ring** — DM 2026 Zehntel = nein (S-DM.6) |
+| Class context | DM 2026: all classes, 60 shots (S-DM.6) |
+| Status | 60 shots **CONFIRMED — READY TO IMPLEMENT**. 30 shots is a listed shot count whose time is explicitly a **recommendation** — model it as organiser-set, not fixed |
 
 ---
 
@@ -186,14 +204,15 @@ EST product implements**.
 |---|---|---|
 | **10 m 3×10** | **CONFIRMED** — DSB 1.20, 30 shots, 25/20/30 min per position | S-0.24, S-1.4 |
 | **10 m 3×20** | **CONFIRMED** — DSB 1.20, 60 shots, 35/30/40 min per position | S-0.24, S-1.4 |
-| **10 m 3×15** | **NOT A DSB PROGRAMME** on this evidence | Absent from 0.21 and from both Teil 1 tables. **CUSTOMER SOURCE REQUIRED** (Q1) |
+| **10 m 3×15** | **NOT A DSB PROGRAMME — CLOSED** | Absent from 0.21 and both Teil 1 tables; customer confirms it is not a DSB 2026 national programme and must not be implemented as 1.20 (S-C.2). Possible later as a **custom/local profile with its own authority** |
 | **50 m 3×20** | **CONFIRMED** — DSB 1.40, 120 / **105** min | S-0.24, S-1.4 |
 | **50 m 3×40** | **CONFIRMED** — DSB 1.60, 120 shots, 195 / **165** min | S-0.24, S-1.4 |
-| **50 m 3×10** | **NOT ESTABLISHED** | 1.40's competition entry is 3 × 20 only; the 30-shot timing row is a *recommendation* and does not state a 3 × 10 split. **AUTHORITY REQUIRED** (Q2) |
+| **50 m 3×10** | **NOT AN OFFICIAL DSB PROGRAMME — CLOSED** | 1.40's competition entry is 3 × 20 only; the 30-shot row is a recommendation (65 min EST) and never states a 3 × 10 split. Must not be labelled official DSB (S-C.3) |
 
-Four of the six are confirmed outright. Two are not, and the honest answer for
-both is that the Sportordnung does not contain them — which is a different and
-much more useful answer than "unknown".
+Four of the six are confirmed outright. The other two are now **closed as
+negative results**: the Sportordnung does not contain them, and the customer has
+confirmed neither may be presented as an official DSB programme. A negative
+result with authority behind it is a usable answer.
 
 ---
 
@@ -228,21 +247,28 @@ blocked on hardware anyway.
 
 ## 5. Scoring mode
 
-**Not determined. Do not guess, and specifically do not infer it from ISSF.**
+**Resolved per programme. It is a property of the programme *and* the
+competition, not of the discipline** — the DM 2026 competition table carries an
+explicit `Zehntel` column (S-DM.1).
 
-What is established: the DSB target table records every relevant face as
-`10-kreisig` with an inner ten, and 0.4.3.2 requires the EST computer to store
-the ring value *and* the deviation from centre for every shot — so decimal
-values are technically present in DSB electronic scoring. That is a statement
-about the data, **not** a rule about which value is the official result for a
-given programme and competition level.
+| Programme | Scoring mode | Authority |
+|---|---|---|
+| **1.10** Luftgewehr 10 m | **DECIMAL** | S-DM.7 |
+| **1.20** Luftgewehr 3-Stellung | **whole ring** | S-C.1 |
+| **1.40** KK-Sportgewehr 50 m 3×20 | **whole ring — CONFIRM (Q3a)** | S-C.1, contradicted by one read of S-DM.7 |
+| **1.60** KK-Freigewehr 3×40 | **whole ring** | S-C.1 |
+| **1.80** KK-Liegendkampf | **DECIMAL** | S-DM.7 |
+| **2.10** 10 m Luftpistole | **whole ring** | S-DM.5 |
+| **2.20** 50 m Pistole | **whole ring** | S-DM.6 |
 
-The rule that selects integer or decimal per programme/level was not located in
-0.11, in the competition appendix or in either timing table. It is **Q3**, and
-it is the single most important open question after Q1/Q2, because it changes
-what is displayed, recorded, printed and protested.
+Nothing here was inferred from ISSF. Note that the pattern does **not** match
+ISSF: DSB scores 10 m air rifle and 50 m prone in tenths but the three-position
+rifle events in whole rings, and both 10 m and 50 m pistol in whole rings.
 
----
+**Q3a is the one open item.** Two automated reads of the same DM page disagreed
+about 1.40. The customer determination says whole ring; 1.40 must not be
+implemented until that is confirmed by eye, because a wrong scoring mode is a
+result-integrity defect, not a display preference.
 
 ## 6. Class / competition context — the four layers
 
@@ -263,4 +289,8 @@ with a per-class substitution rule, `perPositionTimeMin[]` **or** a single
 outside the shooting time, `sighterPolicy` per position, `scoringMode`,
 `timeSource` (rule-fixed vs organiser-recommended), and `athleteClasses`.
 
-**No class rule is hardcoded by this task.**
+**No class rule is hardcoded by this task, and none may be.** S-C.4 is explicit:
+the DM runs 1.20 at 60 shots for Schüler 1 / Jugend while regional competitions
+also run Schüler 3 × 10, so the shot-count variant is **event configuration**. A
+profile may declare which variants exist; it may not decide from a class which
+one applies.

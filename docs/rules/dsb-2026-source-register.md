@@ -89,15 +89,60 @@ application must implement — facts, not text.
 
 ---
 
-## Open authority — what is NOT established by the above
+## S-DM — DSB Deutsche Meisterschaften 2026 (Ausschreibung)
 
-| Q | Question | Why it matters | Where to look |
-|---|---|---|---|
-| Q1 | Is a **10 m 3×15** programme a DSB competition at all? | Harald requested it | Not present in 0.21, not in the Teil 1 tables. Needs a Landesverband/Ausschreibung source, or it is not DSB |
-| Q2 | What exactly is the **30-shot row under 1.40** in the rifle timing table? | Decides whether a 50 m 3×10 profile may exist | The row exists with 70 / 65 min marked *(Empfehlung)*, but 0.21 lists 1.40's shot count as **3 × 20 only**. Needs the DM/LM Ausschreibung or a class table |
-| Q3 | **Integer vs decimal** scoring per programme and competition level | Directly changes displayed and recorded values | Not located in 0.11 or the tables read so far. Likely in the DM Ausschreibung and/or Teil 15 |
-| Q4 | Which **classes** shoot 3×10 vs 3×20, 20 vs 40 vs 60 | Programme availability per athlete | 0.7 (Klassen) — not yet read |
-| Q5 | Range-officer command wording for 1.10/1.20/1.40 | Command-driven timing | 2.11.3 gives „START" for pistol; the rifle equivalent has not been located |
-| Q6 | Do the per-position times of 1.20 run automatically back-to-back, or is each started by a command? | Timer state machine | Teil 1 S. 20 gives the times and the preparation rule but not the transition procedure |
-| Q7 | Finals applicability per programme | Whether a DSB final follows a DSB qualification | Teil 15, not yet read in detail |
-| Q8 | Does the SpO oblige an EST to expose an interface to a **Zentralrechner**, and in what form? | RMS scope | 0.4.3.2 requires a central computer at the event; it does not specify a protocol |
+| | |
+|---|---|
+| Document | **DSB Ausschreibungen 2026 — Deutsche Meisterschaften — Wettbewerbe** (Schusszahlentabelle) |
+| Location | <https://www.dsb.de/schiesssport/ausschreibungen-2026/deutsche-meisterschaften/wettbewerbe> |
+| Consulted on | 2026-08-18 |
+| Role | **COMPETITION CONTEXT**, not base rule. It settles what the DM actually runs, which the Sportordnung deliberately leaves open |
+
+| ID | Supports |
+|---|---|
+| S-DM.1 | The table carries an explicit **Zehntel (decimal)** column per competition and class. Scoring mode is therefore **per programme and per competition**, not a property of the discipline |
+| S-DM.2 | **1.20** at the DM 2026 is listed for **Schüler 1 / Jugend at 60 shots** |
+| S-DM.3 | **1.40** at the DM 2026: all announced classes, 60 shots; a final is listed for Herren I / Jun. I m / Damen I / Jun. I w |
+| S-DM.4 | **1.60** at the DM 2026: all announced classes, 120 shots |
+| S-DM.5 | **2.10**: Schüler 1 = 20 shots; Herren/Damen I–II and Junioren I–II = 40 (LM) / **60 (DM)**; remaining classes 40. **Zehntel = nein** |
+| S-DM.6 | **2.20**: all classes 60 shots. **Zehntel = nein** |
+| S-DM.7 | Events read as carrying **Zehntel = ja** include **1.10, 1.11, 1.12, 1.80**, the Auflage variants (1.36, 1.41, 2.10 Auflage) and Para rifle events |
+
+> **Reliability note, recorded deliberately.** Two independent automated reads of
+> this page on the same day disagreed about **1.40**: one reported no Zehntel
+> marking, the other listed 1.40 among the decimal events. The customer
+> determination (S-C.1) says whole ring. **1.40's scoring mode must be confirmed
+> by eye against the printed table before it is implemented** — see Q3a. Nothing
+> else on the page was contradictory.
+
+## S-C — Customer rule determinations
+
+Supplied by the customer on 2026-08-18 as the answers to the open questions
+raised by this research. Recorded as **customer authority**: it is the basis on
+which implementation may proceed, and it is distinguishable from the
+Sportordnung itself.
+
+| ID | Determination |
+|---|---|
+| S-C.1 | For the DSB 2026 German Championship, **1.20, 1.40 and 1.60 use whole-ring scoring**, not decimal |
+| S-C.2 | **10 m 3×15 is not a DSB 2026 national programme** and must not be implemented as DSB 1.20. It may later become a configurable local/custom profile if authority is supplied |
+| S-C.3 | **50 m 3×10 is not an official DSB 1.40 programme.** The 30-shot row is a recommendation and never states a 3 × 10 split; it must not be presented as official DSB |
+| S-C.4 | **Class → shot count must not be hardcoded globally.** The DM runs 1.20 at 60 shots for Schüler/Jugend while regional competitions also run Schüler 3 × 10, so the programme variant belongs to the **event configuration** |
+| S-C.5 | The ordinary 1.20 rules prescribe **no complete ISSF-style command script**. Range announcements are to be configurable/localised and must **not** be part of the rules engine |
+| S-C.6 | For 1.20 the three position clocks are **not automatically chained**. Finish a position → enter **`POSITION_CHANGE`** → the range officer / control software starts the next position. Stand-occupation timing is the organiser's |
+
+---
+
+## Open authority — status after the customer determinations
+
+| Q | Question | Status |
+|---|---|---|
+| Q1 | Is 10 m 3×15 a DSB programme? | **CLOSED — NO** (S-C.2). Not DSB; may become a custom profile only with its own authority |
+| Q2 | What is the 30-shot row under 1.40? | **CLOSED — not an official 3 × 10** (S-C.3). A recommended time for a shortened course, nothing more |
+| Q3 | Integer vs decimal per programme | **CLOSED for 1.20 / 1.60** (whole ring, S-C.1) and **for 2.10 / 2.20** (nein, S-DM.5/6). **1.10 and 1.80 are decimal** (S-DM.7) |
+| Q3a | **1.40 scoring mode** | **OPEN** — S-C.1 says whole ring; one read of the DM table listed 1.40 as decimal. Confirm visually before implementing 1.40 |
+| Q4 | Class → programme variant | **CLOSED as an architecture decision** (S-C.4): variant is event configuration, never a hardcoded class rule |
+| Q5 | Rifle range-officer commands | **CLOSED** (S-C.5): configurable and localised, outside the rules engine |
+| Q6 | Automatic vs commanded position clocks | **CLOSED — commanded** (S-C.6): explicit `POSITION_CHANGE` state between position clocks |
+| Q7 | Finals applicability per programme | **OPEN** — Teil 15 not yet read in detail. S-DM.3 shows the DM runs a **1.40 final** for four classes |
+| Q8 | Does the SpO mandate a Zentralrechner interface? | **OPEN** — 0.4.3.2 requires a central computer at the event but specifies no protocol. RMS scope |

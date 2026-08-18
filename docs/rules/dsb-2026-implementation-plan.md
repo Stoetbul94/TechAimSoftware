@@ -13,10 +13,10 @@ geometry change, no scoring change.
 
 | Programme | Shots | EST time | Target | Blocked on |
 |---|---|---|---|---|
-| **1.10 Luftgewehr 10 m** | 20 / 40 / 60 | 30 / 50 / 75 min | Nr. 1 = ISSF 10 m AR | Q3 (scoring mode), Q4 (which classes shoot which variant) |
-| **2.10 10 m Luftpistole** | 20 / 40 / 60 | 30 / 50 / 75 min | Nr. 7 = ISSF 10 m AP | Q3, Q4 |
-| **1.80 KK-Liegendkampf 50 m** | 60 | 50 min | Nr. 3 = ISSF 50 m R | Q3, Q4 |
-| **2.20 50 m Pistole** | 60 (30) | 90 min (30-shot: *recommended* 55) | Nr. 4 = ISSF 50 m P | Q3, Q4 |
+| **1.10 Luftgewehr 10 m** | 20 / 40 / 60 | 30 / 50 / 75 min | Nr. 1 = ISSF 10 m AR | **nothing — decimal, ready** |
+| **2.10 10 m Luftpistole** | 20 / 40 / 60 | 30 / 50 / 75 min | Nr. 7 = ISSF 10 m AP | **nothing — whole ring, ready** |
+| **1.80 KK-Liegendkampf 50 m** | 60 | 50 min | Nr. 3 = ISSF 50 m R | **nothing — decimal, ready** |
+| **2.20 50 m Pistole** | 60 (30) | 90 min (30-shot: *recommended* 55) | Nr. 4 = ISSF 50 m P | **nothing — whole ring, ready** |
 
 All four share the same preparation shape: **15 min with unlimited sighters
 before the start, outside the shooting time** — which the qualification
@@ -26,9 +26,9 @@ controller already models as Preparation → Sighting → OfficialMatch.
 
 | Programme | Shots | EST time | What is new |
 |---|---|---|---|
-| **1.40 KK-Sportgewehr 50 m 3×20** | 60 | 105 min total | three positions on **one** clock; position display and per-position shot counting; equipment change permitted between positions |
+| **1.40 KK-Sportgewehr 50 m 3×20** | 60 | 105 min total | three positions on **one** clock; position display and per-position shot counting; equipment change permitted. **Blocked on Q3a (scoring mode)** |
 | **1.60 KK-Freigewehr 50 m 3×40** | 120 | 165 min total | as 1.40 but 40 shots per position; the longest session the product would run |
-| **1.20 Luftgewehr 3-Stellung** | 3×10 / 3×20 | **25/20/30** · **35/30/40** per position | **three independent position clocks**, each containing that position's own sighting, after one shared 15-minute preparation before kneeling |
+| **1.20 Luftgewehr 3-Stellung** | 3×10 / 3×20 | **25/20/30** · **35/30/40** per position | **three independent position clocks** separated by a commanded **`POSITION_CHANGE`**, each containing that position's own sighting, after one shared 15-minute preparation before kneeling. Whole-ring scoring |
 
 ## Tier 3 — needs hardware behaviour the product does not have
 
@@ -62,35 +62,35 @@ programme running this month", start there. If the goal is "the DSB rifle
 family", 1.20 is the load-bearing one and doing it first avoids building the
 position model twice.
 
-### What must be answered before 1.20 is written
+### The blocking questions are now answered
 
-| | Question | Why it blocks |
-|---|---|---|
-| **Q6** | Do the three position clocks run automatically back to back, or does a range command start each? | It is the difference between an automatic sequencer and a command-driven state machine — the same difference that separates the qualification engine from the finals engine today |
-| **Q3** | Integer or decimal, per competition level | Changes every displayed and recorded value |
-| **Q4** | Which classes shoot 3×10 vs 3×20; when kneeling becomes **sitzend** | Programme availability and position labelling |
-| **Q5** | Rifle range-officer command wording | Only if Q6 says commanded |
+| | Question | Answer | Effect on the design |
+|---|---|---|---|
+| **Q6** | Automatic or commanded position clocks? | **Commanded.** Finish a position, enter **`POSITION_CHANGE`**, the range officer or control software starts the next clock. No fixed transition interval; stand occupation is the organiser's (S-C.6) | The timer becomes a **gated sequencer**, not an auto-chain — closer to the finals controller's command model than to the qualification controller's single clock |
+| **Q3** | Integer or decimal? | **Whole ring** for 1.20 (S-C.1) | No decimal display, storage or printing for this programme |
+| **Q4** | Which class shoots which variant? | **Not an engine decision.** The DM runs 60 shots for Schüler 1 / Jugend while regional events also run Schüler 3 × 10, so the variant is **event configuration** (S-C.4) | The profile declares that 3×10 and 3×20 both exist; the event selects one. No class-to-shot-count table inside the engine |
+| **Q5** | Command wording? | **No ISSF-style script exists in the rule.** Announcements are configurable and localised and stay **outside** the rules engine (S-C.5) | The engine needs a transition *gate*, not a script |
 
-Q6 is the one that decides the shape of the code. **1.20 should not be written
-before Q6 is answered**, because guessing it wrong means rewriting the timer.
+**1.20 is now fully specified and may be written.**
 
 ---
 
 ## Sequencing
 
-1. **Obtain the missing authority** — Q1, Q2, Q3, Q4, Q6 (see the source
-   register). Q1 and Q2 are customer questions; Q3, Q4 and Q6 are DSB document
-   questions that further reading of 0.7, Teil 15 and the DM-Ausschreibung
-   should settle.
+1. **Confirm Q3a** — 1.40's scoring mode, by eye against the DM 2026
+   competition table. Everything else that blocked Tier 1 and Tier 2 is closed.
+   Q7 (finals per programme) and Q8 (central-computer interface) stay open and
+   block nothing here.
 2. **Extend the catalogue schema** with the DSB fields listed at the end of the
    programme matrix — *schema first, no entries*. The `rulesetId: "dsb"` seam
    and the selector's automatic DSB visibility already exist and are tested.
-3. **Tier 1 programmes** as catalogue entries once Q3 and Q4 are closed. These
-   prove the DSB rule set end to end — selector, session, report — with zero
-   engine risk.
+3. **Tier 1 programmes** as catalogue entries — 1.10, 1.80, 2.10 and 2.20 are
+   ready now. These prove the DSB rule set end to end — selector, session,
+   report — with zero engine risk.
 4. **Per-position timing model** (gap B3–B5), behind its own tests, with 1.20
    as its first consumer.
-5. **1.40 and 1.60** as configuration on the position model.
+5. **1.60**, then **1.40** once Q3a is confirmed, as configuration on the
+   position model.
 6. **DSB interruption and protest conduct** (C7–C11, C14) bound to the DSB rule
    set, reusing `EstIncidentController`.
 7. **Tier 3** only if SETA supplies turning-target hardware.
@@ -101,9 +101,12 @@ before Q6 is answered**, because guessing it wrong means rewriting the timer.
   CONFIRMED **and** its blocking questions are closed. A profile whose
   `authorityStatus` is not confirmed must never be presented as an official
   competition.
-- No **10 m 3×15** and no **50 m 3×10** profile on current evidence. Neither
-  exists in the Sportordnung; inventing them would put a fabricated competition
-  in front of an athlete.
+- No **10 m 3×15** and no **50 m 3×10** profile as a DSB programme. Both are
+  now closed negatives (S-C.2, S-C.3). 3×15 may exist later only as a
+  **custom/local profile carrying its own authority and labelled as such** —
+  never under `rulesetId: "dsb"`.
+- No **class-to-shot-count** rule inside the engine (S-C.4).
+- No **command script** inside the rules engine (S-C.5).
 - No change to `calculateShootingSocre()`, to the ring geometry or to the
   projectile diameters — the research found no DSB requirement for any of them.
 - No reuse of the ISSF 3P timing shape for DSB 1.20. They are different rules
