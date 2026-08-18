@@ -172,6 +172,7 @@ void writeRuleAuthority(OrderedJsonWriter& w, const RuleAuthority& a)
     w.field("matchMs", a.matchMs);
     w.field("positionSequence", a.positionSequence);
     w.field("positionDurationsMs", a.positionDurationsMs);
+    w.field("shotsPerPosition", a.shotsPerPosition);
     w.endObject();
 }
 
@@ -795,6 +796,7 @@ RuleAuthority readRuleAuthority(FieldReader& top)
     a.matchMs = r.reqInt("matchMs", 0, std::numeric_limits<qint64>::max());
     a.positionSequence = r.optString("positionSequence");
     a.positionDurationsMs = r.optString("positionDurationsMs");
+    a.shotsPerPosition = r.optString("shotsPerPosition");
     if (r.failed) {
         top.failed = true;
         top.err = r.err;

@@ -13,7 +13,7 @@ preference.
 | Catalogue schema + 13 DSB profiles | **done** — `CompetitionCatalogue.qml` |
 | Profile / timing authority seam | **done** — the profile supplies preparation, match duration, position mode and rule authority |
 | Independent position clocks (1.20 sequencer) | **done** — `Dsb120Controller` (DSB120): preparation, three independent clocks, gated transitions, position-aware recovery |
-| 3×40 course engine (120 shots, 3 positions) | **not built** — 1.60 is refused at the start gate |
+| 3×40 course engine (120 shots, 3 positions) | **done** — the 50 m three-position engine runs a DECLARED course, so 3x20 and 3x40 are one engine |
 
 **The seam.** A selected programme becomes `window.activeProgrammeId`, resolved
 once into `activeCompetition`. Every timing site reads
@@ -28,9 +28,19 @@ anywhere branches on a ruleset name or a rule number.
 1.80, 2.20 (60 and the recommended 30), 1.40 — which runs on the existing 50 m
 three-position engine with its own 105-minute clock — and **both 1.20 courses**,
 3x10 and 3x20, conducted by the DSB120 sequencer. Still refused with a stated
-reason: 1.60, a 120-shot three-position course the engine has no course for. A
-refused programme can be selected and reviewed; only starting it is blocked, so
-nothing is ever run as a different competition.
+reason: nothing. **1.60 is operational**: the 50 m three-position engine takes
+its course (shots per position, and therefore where the positions divide) from
+the adopted definition instead of the constants 20/20/20, so ISSF 3x20, DSB 1.40
+3x20 and DSB 1.60 3x40 are the same engine told three different courses. The
+master clock is untouched by a position change, which is what separates 1.40 and
+1.60 from 1.20.
+
+**Recovery is the remaining gap for BOTH 1.40 and 1.60.** Neither writes a
+session journal, because 50 m three positions has not migrated to the
+qualification seam - the same gap recorded for 1.40 since the persistence work.
+Their adopted authority (including the course, 40/40/40) does persist in the
+saved `.tch`, and the moment 3P is journalled it will persist there too with no
+format change. Until then an interrupted 1.40 or 1.60 cannot be resumed.
 
 **The 1.20 sequencer.** One shared 15-minute preparation with unlimited
 sighters, then a GATE. Each position is started by an authorised competition-

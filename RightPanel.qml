@@ -1792,7 +1792,15 @@ Item {
                             anchors.centerIn: parent
                             // 3P shows the decimal in brackets under the integer headline;
                             // other disciplines keep the plain integer sub-total.
-                            text: isValidSeries(index) ? (is3PMatch ? "(qsTr(" + getSeriesTotal(index+1) + "))qsTr(" : getSeriesTotalNonDecimal(index+1)) : ")"
+                            // The brackets are punctuation, not translatable text:
+                            // an earlier automated wrapping pass turned them into
+                            // literal qsTr( fragments, which every 3P match then
+                            // printed on screen as "(qsTr(105.0))qsTr(". An empty
+                            // series is blank, not a stray bracket.
+                            text: isValidSeries(index)
+                                  ? (is3PMatch ? "(" + getSeriesTotal(index+1) + ")"
+                                               : getSeriesTotalNonDecimal(index+1))
+                                  : ""
                             color: "#9a9ba0"
                             font.pointSize: parent.height*0.25//parent.height*0.3
 //                            font.bold: true

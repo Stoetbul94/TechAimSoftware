@@ -4060,6 +4060,136 @@ int main(int argc, char* argv[])
               "into the action bar - the HUD is the one place they live");
     }
 
+    // ─────────────────────────────────────────────────────────────────────
+    // DSB-160-001 — KK-Freigewehr 50 m 3x40.
+    //
+    // 1.60 is NOT a longer 1.20 and NOT a doubled ISSF course. It is three
+    // positions on ONE master clock, and the only thing that differs from 1.40
+    // is how many shots each position takes - which is why the course is a
+    // declared value rather than a constant in the engine.
+    // ─────────────────────────────────────────────────────────────────────
+    {
+        QQmlEngine eng;
+        QQmlComponent comp(&eng, QUrl::fromLocalFile(
+            QStringLiteral(TECHAIM_SOURCE_DIR "/CompetitionCatalogue.qml")));
+        QScopedPointer<QObject> cat(comp.create());
+        check(!cat.isNull(), "DSB-160-001: catalogue loads", comp.errorString());
+        if (!cat.isNull()) {
+        const auto def = [&cat](const char* id) {
+            QVariant v;
+            QMetaObject::invokeMethod(cat.data(), "competitionDefinition",
+                                      Q_RETURN_ARG(QVariant, v),
+                                      Q_ARG(QVariant, QString::fromLatin1(id)));
+            return v.toMap();
+        };
+        const QVariantMap d = def("dsb.50m.rifle.3x40");
+        check(d.value(QStringLiteral("ruleNumber")).toString() == QLatin1String("1.60")
+              && d.value(QStringLiteral("programmeVariant")).toString() == QLatin1String("3x40")
+              && d.value(QStringLiteral("competitionContext")).toString() == QLatin1String("DM_2026")
+              && d.value(QStringLiteral("shotCount")).toInt() == 120
+              && d.value(QStringLiteral("matchMinutes")).toInt() == 165
+              && d.value(QStringLiteral("preparationMinutes")).toInt() == 15
+              && d.value(QStringLiteral("scoringMode")).toString() == QLatin1String("INTEGER")
+              && d.value(QStringLiteral("distanceM")).toInt() == 50,
+              "DSB-160-001: 3x40, 120 shots, 165 min, 15 min preparation, "
+              "INTEGER, 50 m");
+        check(d.value(QStringLiteral("targetStandardId")).toString()
+                  == QLatin1String("issf.50m.rifle"),
+              "DSB-160-001: the EXISTING 50 m rifle target standard - no new "
+              "geometry");
+        check(d.value(QStringLiteral("shotsPerPosition")).toList()
+                  == QVariantList({40, 40, 40})
+              && d.value(QStringLiteral("positions")).toList().size() == 3,
+              "DSB-160-001: 40 / 40 / 40 over kneeling, prone and standing");
+
+        // ONE clock. The per-position durations that 1.20 carries must be
+        // absent here, or something could run a position timer on 1.60.
+        QVariant timing;
+        QMetaObject::invokeMethod(cat.data(), "timingFor", Q_RETURN_ARG(QVariant, timing),
+                                  Q_ARG(QVariant, QStringLiteral("dsb.50m.rifle.3x40")));
+        const QVariantMap t = timing.toMap();
+        check(t.value(QStringLiteral("timingModel")).toString()
+                  == QLatin1String("SINGLE_MATCH_CLOCK")
+              && t.value(QStringLiteral("matchMs")).toLongLong() == Q_INT64_C(9900000)
+              && t.value(QStringLiteral("preparationMs")).toLongLong() == 900000
+              && t.value(QStringLiteral("positionMs")).toList().isEmpty(),
+              "DSB-160-001: one 165-minute master clock and NO per-position "
+              "clocks", t.value(QStringLiteral("matchMs")).toString());
+
+        // The course reaches the session's ADOPTED authority, so a recovered
+        // 3x40 cannot be re-derived as 3x20 from a shot count.
+        QVariant auth;
+        QMetaObject::invokeMethod(cat.data(), "ruleAuthorityFor", Q_RETURN_ARG(QVariant, auth),
+                                  Q_ARG(QVariant, QStringLiteral("dsb.50m.rifle.3x40")),
+                                  Q_ARG(QVariant, QVariant(900000)),
+                                  Q_ARG(QVariant, QVariant(Q_INT64_C(9900000))));
+        const QVariantMap a = auth.toMap();
+        check(a.value(QStringLiteral("shotsPerPosition")).toString() == QLatin1String("40,40,40")
+              && a.value(QStringLiteral("matchMs")).toLongLong() == Q_INT64_C(9900000)
+              && a.value(QStringLiteral("positionDurationsMs")).toString().isEmpty(),
+              "DSB-160-001: the adopted authority carries the COURSE and the "
+              "master clock, and no position clocks",
+              a.value(QStringLiteral("shotsPerPosition")).toString());
+
+        // BOUNDARIES, derived the way ShootingPage derives them.
+        const QVariantList spp = d.value(QStringLiteral("shotsPerPosition")).toList();
+        const int first = spp.at(0).toInt();
+        const int second = first + spp.at(1).toInt();
+        const auto positionOf = [first, second](int overallShots) {
+            return overallShots < first ? 0 : (overallShots < second ? 1 : 2);
+        };
+        // positionOf takes the count BEFORE the shot, so shot n has count n-1.
+        check(positionOf(0) == 0 && positionOf(39) == 0 && positionOf(40) == 1
+              && positionOf(79) == 1 && positionOf(80) == 2 && positionOf(119) == 2,
+              "DSB-160-001: shots 1-40 kneeling, 41-80 prone, 81-120 standing - "
+              "derived from 40/40/40, not from typed-in thresholds");
+        // The SAME derivation on the ISSF course still gives 20 / 40.
+        check(20 == def("issf.50m.rifle.qualification60")
+                        .value(QStringLiteral("shotCount")).toInt() / 3,
+              "DSB-160-001: and the ISSF 60-shot course still divides 20/20/20");
+
+        // ── cross-rule: three positions is NOT what picks the engine ─────
+        check(def("dsb.10m.air-rifle.3x20").value(QStringLiteral("timingModel")).toString()
+                  == QLatin1String("INDEPENDENT_POSITION_CLOCKS")
+              && def("dsb.50m.rifle.3x20").value(QStringLiteral("timingModel")).toString()
+                  == QLatin1String("SINGLE_MATCH_CLOCK")
+              && def("dsb.50m.rifle.3x40").value(QStringLiteral("timingModel")).toString()
+                  == QLatin1String("SINGLE_MATCH_CLOCK"),
+              "DSB-160-001: 1.20 independent clocks; 1.40 and 1.60 one master "
+              "clock - all three have three positions");
+        check(def("dsb.50m.rifle.3x20").value(QStringLiteral("shotsPerPosition")).toList()
+                  == QVariantList({20, 20, 20}),
+              "DSB-160-001: 1.40 remains 3x20");
+        }
+
+        // ── the wiring, asserted on the source ───────────────────────────
+        const QString mainQml  = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/main.qml"));
+        const QString shootQml = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/ShootingPage.qml"));
+
+        check(!shootQml.contains(QStringLiteral("globalMatchModel.count < 20"))
+              && !shootQml.contains(QStringLiteral("count === 20 || count === 40")),
+              "DSB-160-001: the 20/40 position thresholds are gone - the course "
+              "decides where a position ends");
+        check(shootQml.contains(QStringLiteral("readonly property var p3Course"))
+              && shootQml.contains(QStringLiteral("? window.profileShotsPerPosition : [20, 20, 20]")),
+              "DSB-160-001: the course comes from the profile, with the ISSF "
+              "3x20 course as the unchanged default");
+        check(mainQml.contains(QStringLiteral("readonly property var profileShotsPerPosition"))
+              && mainQml.contains(QStringLiteral("sessionCompetition.shotsPerPosition")),
+              "DSB-160-001: a RECOVERED session reads its course from what it "
+              "adopted");
+        // 1.60 must not be handed to the 1.20 sequencer.
+        const int dsbAt = shootQml.indexOf(QStringLiteral("enterDsb120Mode"));
+        check(dsbAt > 0
+              && shootQml.contains(QStringLiteral(
+                     "window.activeCompetition.timingModel === \"INDEPENDENT_POSITION_CLOCKS\"")),
+              "DSB-160-001: the DSB120 sequencer is entered on independent "
+              "position clocks only, which 1.60 does not declare");
+        check(!mainQml.contains(QStringLiteral("activeCompetition.shotCount === 60")),
+              "DSB-160-001: nothing gates a 50 m course on 60 shots any more");
+    }
+
+
     printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
     fflush(stdout);
     return g_failures ? 1 : 0;

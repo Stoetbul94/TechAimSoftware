@@ -930,6 +930,8 @@ QtObject {
         if (d === null || d.matchTimeAuthority === "") return null
         var seq = (d.positions && d.positions.length > 1)
                   ? d.positions.join(",") : ""
+        var shots = (d.shotsPerPosition && d.shotsPerPosition.length > 1)
+                    ? d.shotsPerPosition.join(",") : ""
         var durs = ""
         if (d.positionMinutes && d.positionMinutes.length > 0) {
             var ms = []
@@ -951,7 +953,8 @@ QtObject {
                  "preparationMs":      prepMs,
                  "matchMs":            matchMs,
                  "positionSequence":   seq,
-                 "positionDurationsMs": durs }
+                 "positionDurationsMs": durs,
+                 "shotsPerPosition":   shots }
     }
 
     // Timing for the engine. Returns milliseconds, because that is what the

@@ -171,6 +171,11 @@ struct RuleAuthority {
     // ptSequence/wmPositionSequence use. Empty for single-clock courses.
     QString positionSequence;     // "KNEELING,PRONE,STANDING"
     QString positionDurationsMs;  // "2100000,1800000,2400000"
+    // Match shots per position, same comma convention: "40,40,40". The course
+    // shape is a RULE, so a session that has to prove which competition it was
+    // has to carry it - and a recovered 3x40 must not be re-derived as 3x20
+    // from a shot count that happens to divide by three.
+    QString shotsPerPosition;
     qint32  authorityVersion = 1; // bumped when THIS record's shape changes
 
     bool isPresent() const { return !programmeId.isEmpty(); }
@@ -187,6 +192,7 @@ struct RuleAuthority {
             && preparationMs == o.preparationMs && matchMs == o.matchMs
             && positionSequence == o.positionSequence
             && positionDurationsMs == o.positionDurationsMs
+            && shotsPerPosition == o.shotsPerPosition
             && authorityVersion == o.authorityVersion;
     }
     bool operator!=(const RuleAuthority& o) const { return !(*this == o); }

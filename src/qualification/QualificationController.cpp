@@ -59,6 +59,7 @@ ta::rel::RuleAuthority authorityFromMap(const QVariantMap& m)
     a.matchMs = m.value(QStringLiteral("matchMs")).toLongLong();
     a.positionSequence = str("positionSequence");
     a.positionDurationsMs = str("positionDurationsMs");
+    a.shotsPerPosition = str("shotsPerPosition");
     return a;
 }
 
@@ -81,6 +82,7 @@ QVariantMap authorityToMap(const ta::rel::RuleAuthority& a)
     m[QStringLiteral("matchMs")] = static_cast<qlonglong>(a.matchMs);
     m[QStringLiteral("positionSequence")] = a.positionSequence;
     m[QStringLiteral("positionDurationsMs")] = a.positionDurationsMs;
+    m[QStringLiteral("shotsPerPosition")] = a.shotsPerPosition;
     m[QStringLiteral("authorityVersion")] = a.authorityVersion;
     return m;
 }

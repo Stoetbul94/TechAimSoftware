@@ -110,6 +110,7 @@ bool Dsb120Controller::startSession(const QVariantMap& authority,
     a.positionSequence = authority.value(QStringLiteral("positionSequence")).toString();
     a.positionDurationsMs =
         authority.value(QStringLiteral("positionDurationsMs")).toString();
+    a.shotsPerPosition = authority.value(QStringLiteral("shotsPerPosition")).toString();
     header.ruleAuthority = a;
 
     qInfo("competition created: %s positions=%s shotsPerPosition=%d",
@@ -410,6 +411,7 @@ QVariantMap Dsb120Controller::sessionRuleAuthority() const
     m[QStringLiteral("matchMs")] = static_cast<qlonglong>(a.matchMs);
     m[QStringLiteral("positionSequence")] = a.positionSequence;
     m[QStringLiteral("positionDurationsMs")] = a.positionDurationsMs;
+    m[QStringLiteral("shotsPerPosition")] = a.shotsPerPosition;
     return m;
 }
 

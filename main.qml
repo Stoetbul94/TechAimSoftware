@@ -108,6 +108,27 @@ ApplicationWindow {
                    ? Math.round(sessionCompetition.preparationMs / 1000) : -1)
             : ((activeCompetition && activeCompetition.preparationMinutes > 0)
                    ? activeCompetition.preparationMinutes * 60 : -1)
+    // The declared COURSE of the governing competition: match shots per
+    // position. Empty when no profile governs, which is every ISSF and practice
+    // programme - they keep the engine's own 20/20/20.
+    readonly property var profileShotsPerPosition: {
+        if (sessionCompetition !== null) {
+            // A RECOVERED session reads its course from what it adopted, never
+            // from a shot count that happens to divide by three.
+            var csv = sessionCompetition.shotsPerPosition
+            if (csv && csv !== "") {
+                var out = []
+                var parts = csv.split(",")
+                for (var i = 0; i < parts.length; ++i) out.push(parseInt(parts[i], 10))
+                return out
+            }
+            return []
+        }
+        if (activeCompetition !== null && activeCompetition.shotsPerPosition !== undefined
+            && activeCompetition.shotsPerPosition.length > 1)
+            return activeCompetition.shotsPerPosition
+        return []
+    }
     // A profile whose DECLARED SHAPE the current engine has no course for. The
     // test is about capability, never about which federation wrote the rule.
     // Two things are missing today:
@@ -121,12 +142,16 @@ ApplicationWindow {
     // clocks are no longer a reason to refuse a start. What remains refused is
     // a course shape no engine conducts: every multi-position course except the
     // 50 m 60-shot one the 3P engine runs and the 10 m ones DSB120 runs.
+    // What remains refused. Independent position clocks have their own
+    // sequencer (DSB120). Single-clock three-position courses are conducted by
+    // the 50 m three-position engine, whose course is now declared rather than
+    // fixed - so 3x20 and 3x40 are the same engine with different numbers, and
+    // a multi-position course at any OTHER distance still has no engine.
     readonly property bool profileNeedsUnbuiltEngine:
         activeCompetition !== null
         && profileIsMultiPosition
         && activeCompetition.timingModel !== "INDEPENDENT_POSITION_CLOCKS"
-        && !(activeCompetition.distanceM === 50
-             && activeCompetition.shotCount === 60)
+        && activeCompetition.distanceM !== 50
     readonly property bool profileIsMultiPosition:
         activeCompetition !== null
         && activeCompetition.positions !== undefined

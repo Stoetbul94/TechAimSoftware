@@ -280,6 +280,7 @@ QByteArray serializeSessionState(const SessionState& s)
         w.field("matchMs", s.ruleAuthority.matchMs);
         w.field("positionSequence", s.ruleAuthority.positionSequence);
         w.field("positionDurationsMs", s.ruleAuthority.positionDurationsMs);
+        w.field("shotsPerPosition", s.ruleAuthority.shotsPerPosition);
         w.endObject();
     }
 
@@ -924,6 +925,7 @@ ReliabilityResult deserializeSessionState(const QByteArray& json, SessionState* 
             a.matchMs = ar.optIntDef("matchMs", 0, 0, INT64_MAX);
             a.positionSequence = ar.optStringDef("positionSequence");
             a.positionDurationsMs = ar.optStringDef("positionDurationsMs");
+            a.shotsPerPosition = ar.optStringDef("shotsPerPosition");
             s.ruleAuthority = a;
         }
     }

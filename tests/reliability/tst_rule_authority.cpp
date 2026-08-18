@@ -174,6 +174,40 @@ void run_rule_authority_tests()
               "generic 60-shot 50 m match");
     }
 
+    // ── DSB 1.60: 3x40 on ONE clock ──────────────────────────────────────
+    // The course is persisted because it is a RULE. A recovered 120-shot
+    // session that had to re-derive its course would divide 120 by three and
+    // arrive at 3x40 by luck; a 1.40 session resumed the same way would be
+    // wrong, and neither should depend on arithmetic.
+    {
+        QVariantMap m = dsb140();
+        m[QStringLiteral("programmeId")] = QStringLiteral("dsb.50m.rifle.3x40");
+        m[QStringLiteral("ruleNumber")] = QStringLiteral("1.60");
+        m[QStringLiteral("programmeVariant")] = QStringLiteral("3x40");
+        m[QStringLiteral("matchMs")] = 9900000;          // 165 min
+        m[QStringLiteral("shotsPerPosition")] = QStringLiteral("40,40,40");
+
+        MemoryJournalFile file;
+        ManualClock clock;
+        buildSession(file, clock, m, "PRONE50", 9900000, 900000);
+        const SessionState s = replayOf(file);
+        check(s.ruleAuthority.ruleNumber == QLatin1String("1.60")
+              && s.ruleAuthority.programmeVariant == QLatin1String("3x40")
+              && s.ruleAuthority.matchMs == 9900000
+              && s.ruleAuthority.preparationMs == 900000
+              && s.ruleAuthority.scoringMode == QLatin1String("INTEGER")
+              && s.ruleAuthority.timingModel == QLatin1String("SINGLE_MATCH_CLOCK"),
+              "RULE-AUTH-001: DSB 1.60 reloads as 3x40 on a 165-minute master "
+              "clock, integer scored", s.ruleAuthority.auditLine());
+        check(s.ruleAuthority.shotsPerPosition == QLatin1String("40,40,40"),
+              "RULE-AUTH-001: and its COURSE reloads as 40/40/40 - never "
+              "re-derived from the shot count",
+              s.ruleAuthority.shotsPerPosition);
+        check(s.ruleAuthority.positionDurationsMs.isEmpty(),
+              "RULE-AUTH-001: 1.60 persists NO per-position clocks, so nothing "
+              "can run it as an independent-clock course");
+    }
+
     // ── LEGACY: a session with no profile ────────────────────────────────
     {
         MemoryJournalFile file;

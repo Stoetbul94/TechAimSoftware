@@ -125,8 +125,24 @@ Item {
     // exactly at the boundary, bouncing them straight back into sighting.
     property int p3BreaksDone: 0
     readonly property var p3Names: [qsTr("KNEELING"), qsTr("PRONE"), qsTr("STANDING")]
-    readonly property int p3Position: globalMatchModel.count < 20 ? 0
-                                    : (globalMatchModel.count < 40 ? 1 : 2)
+    // THE COURSE. 20/20/20 is the ISSF 3x20 course and stays the default; a
+    // competition profile that declares its own (DSB 1.40 is also 3x20, DSB
+    // 1.60 is 3x40) replaces it. Nothing here reads a ruleset name or a total.
+    readonly property var p3Course: (window.profileShotsPerPosition
+                                     && window.profileShotsPerPosition.length === 3)
+                                    ? window.profileShotsPerPosition : [20, 20, 20]
+    // Where one position ends and the next begins, in OVERALL match shots.
+    // Derived, so 3x40 boundaries (40, 80) are a consequence of the course
+    // rather than a second place to keep the same fact.
+    readonly property int p3FirstBreak: p3Course[0]
+    readonly property int p3SecondBreak: p3Course[0] + p3Course[1]
+    readonly property int p3Position: globalMatchModel.count < p3FirstBreak ? 0
+                                    : (globalMatchModel.count < p3SecondBreak ? 1 : 2)
+    // Match shots fired in the CURRENT position, and what that position needs.
+    readonly property int p3ShotsInPosition:
+        globalMatchModel.count - (p3Position === 0 ? 0
+                                  : (p3Position === 1 ? p3FirstBreak : p3SecondBreak))
+    readonly property int p3PositionShotCount: p3Course[p3Position]
 
     property string phaseDebug: ""
 
@@ -2263,10 +2279,19 @@ Item {
             return
         }
         MODREADER.appendToLogFile("beginPreparationPhase: prep seconds = " + authoritativePrepSeconds())
+        // 50 m three positions on one clock. The shot count is no longer part
+        // of the test: a declared three-position course (DSB 1.40's 60, DSB
+        // 1.60's 120) is the same competition shape as ISSF's 60, and the
+        // course itself says how it divides. Without a profile the engine still
+        // only recognises the 60-shot ISSF course, exactly as before.
         is3PMatch = APPSETTINGS.getGameMode() === 1
                  && APPSETTINGS.get10or50mRange() === 50
                  && APPSETTINGS.getGameSubMode() === 1
-                 && matchShootCount === 60
+                 && (matchShootCount === 60
+                     || (window.profileShotsPerPosition.length === 3
+                         && matchShootCount === window.profileShotsPerPosition[0]
+                                              + window.profileShotsPerPosition[1]
+                                              + window.profileShotsPerPosition[2]))
         p3BreaksDone = 0
         centerPanel.totalSighterTime = authoritativePrepSeconds()
         changedToSigherMode()
@@ -2471,7 +2496,8 @@ Item {
         running: is3PMatch && !sligterMode && shootingPage.visible
         onTriggered: {
             var count = globalMatchModel.count
-            if ((count === 20 || count === 40) && count > p3BreaksDone) {
+            if ((count === p3FirstBreak || count === p3SecondBreak)
+                    && count > p3BreaksDone) {
                 shootingPage.p3BreaksDone = count
                 shootingPage.enterPositionTransition()
             }
