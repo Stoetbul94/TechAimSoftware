@@ -140,6 +140,7 @@ Window {
                        : root.currentPage === "displays" ? displaysPage
                        : root.currentPage === "athletes" ? athletesPage
                        : root.currentPage === "results"  ? resultsPage
+                       : root.currentPage === "fieldtest" ? fieldTestPage
                        : root.currentPage === "settings" ? settingsPage
                                                          : homePage
     }
@@ -147,6 +148,7 @@ Window {
     Component { id: homePage
         RmsHomePage { onNavigate: function(t) { root.currentPage = t } } }
     Component { id: livePage;     RmsLiveRangePage {} }
+    Component { id: fieldTestPage; RmsFieldTestPage {} }
     Component { id: newMatchPage; RmsNewMatchPage {} }
     Component { id: athletesPage; RmsAthletesPage {} }
     Component { id: setupPage;    RmsRangeSetupPage {} }

@@ -131,7 +131,7 @@ LEAK_DIRS = ('.git', '.claude', '__pycache__', 'tests', 'docs', 'src',
 # list exists so the intent is written down rather than implied.
 EXPECTED_HANDOFF = ('Launch-TechAimRMS-Demo.cmd', 'Launch-TechAimRMS-Live.cmd',
                     'Reset-Demo.cmd', 'README-FIELD-TEST.txt',
-                    'FIELD-TEST-CHECKLIST.txt')
+                    'FIELD-TEST-CHECKLIST.txt', 'RANGE-DAY-GUIDE.txt')
 # Qt's own QML modules ship .qml/.qmltypes/qmldir - that is Qt runtime, not our
 # source. Our application QML stays inside the executable's resources.
 ALLOWED_QML_ROOTS = ('qml',)

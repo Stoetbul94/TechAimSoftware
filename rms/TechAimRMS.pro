@@ -27,7 +27,7 @@ INCLUDEPATH += $$PWD/../src
 # looks identical on disk and would otherwise be shipped with a manifest naming
 # a commit it was never built from. qmake must be re-run for this to update.
 VERSION = 0.9.0
-RMS_VERSION_STR = 0.9.0-M4.6-FIELDTEST
+RMS_VERSION_STR = 0.9.0-M4.7-FIELDTEST
 RMS_GIT_SHA = $$system(git -C \"$$PWD\" rev-parse --short HEAD)
 
 DEFINES += RMS_VERSION_STR=\\\"$$RMS_VERSION_STR\\\"
@@ -66,6 +66,10 @@ SOURCES += \
     $$PWD/../src/rms/PlanLaneModel.cpp \
     $$PWD/../src/rms/AthleteListModel.cpp \
     $$PWD/../src/rms/ProgrammeDisplay.cpp \
+    $$PWD/../src/rms/StationCode.cpp \
+    $$PWD/../src/rms/FieldTestRecorder.cpp \
+    $$PWD/../src/rms/NetworkDiagnostics.cpp \
+    $$PWD/../src/rms/FieldTestService.cpp \
     $$PWD/../src/rms/RmsUdpObserver.cpp \
     $$PWD/../src/rms/dev/SimulatedRange.cpp
 
@@ -91,6 +95,10 @@ HEADERS += \
     $$PWD/../src/rms/PlanLaneModel.h \
     $$PWD/../src/rms/AthleteListModel.h \
     $$PWD/../src/rms/ProgrammeDisplay.h \
+    $$PWD/../src/rms/StationCode.h \
+    $$PWD/../src/rms/FieldTestRecorder.h \
+    $$PWD/../src/rms/NetworkDiagnostics.h \
+    $$PWD/../src/rms/FieldTestService.h \
     $$PWD/../src/rms/RmsUdpObserver.h \
     $$PWD/../src/rms/dev/SimulatedRange.h
 

@@ -35,6 +35,7 @@ Rectangle {
         { page: "results",  label: "RESULTS",     enabled: true  },
         { page: "displays", label: "DISPLAYS",    enabled: true  },
         { page: "setup",    label: "RANGE SETUP", enabled: true  },
+        { page: "fieldtest",label: "FIELD TEST",  enabled: true  },
         { page: "settings", label: "SETTINGS",    enabled: true  }
     ]
 

@@ -159,7 +159,9 @@ Item {
                     Text {
                         width: parent.width
                         elide: Text.ElideRight
-                        text: model.hasDevice ? model.assignedNodeId : "—"
+                        text: model.hasDevice
+                              ? ("Station " + FIELDTEST.stationCode(model.assignedNodeId))
+                              : "—"
                         font.family: theme.fontFamily
                         font.pixelSize: 13
                         color: model.hasDevice ? theme.textPrimary
@@ -295,13 +297,28 @@ Item {
                         anchors.leftMargin: theme.spacingUnit * 1.5
                         width: parent.width - 120
                         spacing: 2
+                        // THE STATION CODE IS A LABEL, NOT THE IDENTITY.
+                        // An operator commissioning a range should be reading
+                        // "E222-403F", not comparing two twelve-character
+                        // strings by eye. The full nodeId stays underneath,
+                        // because that is what the mapping is actually keyed on.
+                        Text {
+                            width: parent.width
+                            elide: Text.ElideRight
+                            text: "STATION " + FIELDTEST.stationCode(model.nodeId)
+                            font.family: theme.fontFamily
+                            font.pixelSize: 14
+                            font.weight: Font.DemiBold
+                            font.letterSpacing: 0.8
+                            color: theme.textPrimary
+                        }
                         Text {
                             width: parent.width
                             elide: Text.ElideMiddle
                             text: model.nodeId
                             font.family: theme.fontFamily
-                            font.pixelSize: 12
-                            color: theme.textPrimary
+                            font.pixelSize: 9
+                            color: theme.textSecondary
                         }
                         Row {
                             spacing: 6

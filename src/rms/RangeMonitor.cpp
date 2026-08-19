@@ -71,15 +71,34 @@ IngestOutcome RangeMonitor::ingestDatagram(const QByteArray& payload, qint64 now
 {
     IngestOutcome out;
 
+    m_lastDatagramUtcMs = nowUtcMs;
+
     const DecodedMessage msg = decode(payload);
     if (msg.type == MessageType::Unknown) {
         ++m_rejected;
+        // Split by cause. A range chasing "why is nothing showing" needs to
+        // know whether the packets are unreadable, a protocol RMS does not
+        // speak, or simply a type it has no use for - three very different
+        // problems that a single reject count hides.
+        if (msg.rejectReason.contains(QLatin1String("protocolVersion")))
+            ++m_unknownVersion;
+        else if (msg.rejectReason.contains(QLatin1String("unknown type"))
+                 || msg.rejectReason.contains(QLatin1String("unknown message")))
+            ++m_unknownType;
+        else
+            ++m_malformed;
         out.rejectReason = msg.rejectReason;
         emit datagramRejected(msg.rejectReason);
         return out;
     }
 
     ++m_accepted;
+    switch (msg.type) {
+    case MessageType::NodeAnnounce: ++m_announces; break;
+    case MessageType::NodeStatus:   ++m_statuses; break;
+    case MessageType::AcceptedShot: ++m_shotMessages; break;
+    default: break;
+    }
     out.accepted = true;
     out.type = msg.type;
 
@@ -242,6 +261,13 @@ void RangeMonitor::reset()
     m_order.clear();
     m_rejected = 0;
     m_accepted = 0;
+    m_announces = 0;
+    m_statuses = 0;
+    m_shotMessages = 0;
+    m_malformed = 0;
+    m_unknownVersion = 0;
+    m_unknownType = 0;
+    m_lastDatagramUtcMs = 0;
     for (const QString& id : gone)
         emit nodeRemoved(id);
 }

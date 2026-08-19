@@ -68,6 +68,22 @@ public:
     int rejectedDatagrams() const { return m_rejected; }
     int acceptedDatagrams() const { return m_accepted; }
 
+    // ── field-test instrumentation ───────────────────────────────────────
+    // Counted per message type, because "1 200 packets" tells a range nothing
+    // while "600 status, 0 shots" tells it the targets are idle. Every one of
+    // these is an observation of what arrived; none of them changes what RMS
+    // does with it.
+    int announcesReceived() const { return m_announces; }
+    int statusesReceived() const { return m_statuses; }
+    int shotMessagesReceived() const { return m_shotMessages; }
+    // Rejections, split so a firewall problem cannot hide inside a version
+    // mismatch. malformed = undecodable; unknownVersion = a protocol RMS does
+    // not speak; unknownType = a message it does not know.
+    int malformedDatagrams() const { return m_malformed; }
+    int unknownVersionDatagrams() const { return m_unknownVersion; }
+    int unknownTypeDatagrams() const { return m_unknownType; }
+    qint64 lastDatagramUtcMs() const { return m_lastDatagramUtcMs; }
+
     // Simulates an RMS restart: everything RMS knew is dropped. The nodes are
     // untouched — that is the point of the test that uses this.
     void reset();
@@ -102,6 +118,13 @@ private:
     QVector<QString> m_order;           // stable insertion order for the UI
     int m_offlineTimeoutMs = 6000;
     int m_rejected = 0;
+    int m_announces = 0;
+    int m_statuses = 0;
+    int m_shotMessages = 0;
+    int m_malformed = 0;
+    int m_unknownVersion = 0;
+    int m_unknownType = 0;
+    qint64 m_lastDatagramUtcMs = 0;
     int m_accepted = 0;
 };
 

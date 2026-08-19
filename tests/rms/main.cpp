@@ -25,6 +25,7 @@ int main(int argc, char** argv)
     run_competition_state_tests();
     run_target_display_tests();
     run_target_geometry_tests();
+    run_field_test_tests();
     run_readonly_tests();
 
     std::printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);

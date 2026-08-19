@@ -59,7 +59,23 @@ void SimulatedRange::configure(int laneCount, Scenario scenario)
         SimNode s;
         // A stable node identity that is NOT the COM port, NOT the IP and NOT
         // the lane — the whole point of §3 of the milestone brief.
-        s.nodeId    = QStringLiteral("TA-NODE-%1").arg(i + 1, 3, 10, QLatin1Char('0'));
+        // The DEVELOPMENT scenario keeps short ids: tst_simulator asserts them
+        // by name, and a harness that has to be edited to match a demo is a
+        // harness that stops meaning anything.
+        //
+        // The FIELD-TEST scenario uses ids SHAPED LIKE REAL ONES. A real
+        // station mints "TA-NODE-" plus twelve hex characters and the human
+        // station code is the tail of that, so short ids produced codes like
+        // "001" — which told an operator nothing about what a range will
+        // actually show them. Fixed, not random: the same lane must show the
+        // same code on every run.
+        static const char* kDemoHex[] = {
+            "E368E222403F", "9A41C7B10D22", "5C02FA8E9147",
+            "17BD3E60C8A5", "B4F97120DE63", "2D8A05C3F91E"
+        };
+        s.nodeId    = (scenario == Scenario::FieldTestDemo)
+                          ? QStringLiteral("TA-NODE-%1").arg(QLatin1String(kDemoHex[i % 6]))
+                          : QStringLiteral("TA-NODE-%1").arg(i + 1, 3, 10, QLatin1Char('0'));
         s.bootId    = QStringLiteral("boot-%1-a").arg(i + 1);
         s.laneId    = QString::fromLatin1(kPlan[i].lane);
         s.sessionId = QStringLiteral("sess-%1-2026-08-19").arg(i + 1);

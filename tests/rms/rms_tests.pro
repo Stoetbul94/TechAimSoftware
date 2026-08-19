@@ -38,7 +38,12 @@ SOURCES += \
     tst_competition_state.cpp \
     tst_target_display.cpp \
     tst_target_geometry.cpp \
+    tst_field_test.cpp \
     tst_readonly.cpp \
+    $$PWD/../../src/rms/StationCode.cpp \
+    $$PWD/../../src/rms/FieldTestRecorder.cpp \
+    $$PWD/../../src/rms/NetworkDiagnostics.cpp \
+    $$PWD/../../src/rms/FieldTestService.cpp \
     $$PWD/../../src/rms/RmsProtocol.cpp \
     $$PWD/../../src/rms/TargetNodeRecord.cpp \
     $$PWD/../../src/rms/RangeMonitor.cpp \
@@ -64,6 +69,10 @@ SOURCES += \
 
 HEADERS += \
     test_support.h \
+    $$PWD/../../src/rms/StationCode.h \
+    $$PWD/../../src/rms/FieldTestRecorder.h \
+    $$PWD/../../src/rms/NetworkDiagnostics.h \
+    $$PWD/../../src/rms/FieldTestService.h \
     $$PWD/../../src/rms/RmsProtocol.h \
     $$PWD/../../src/rms/TargetNodeRecord.h \
     $$PWD/../../src/rms/RangeMonitor.h \

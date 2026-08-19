@@ -428,10 +428,21 @@ Rectangle {
                 visible: detail.showDiagnostics
 
                 Repeater {
+                    // The station code leads, because that is what an operator
+                    // reads out loud. The full node id sits directly under it,
+                    // because that is what the lane is actually keyed on — and
+                    // the two must never be confused for one another.
                     model: [
+                        { k: "STATION ID",       v: detail.field("assignedNodeId") !== "—"
+                             ? FIELDTEST.stationCode(detail.field("assignedNodeId")) : "—" },
                         { k: "lane id",          v: detail.field("laneId") },
                         { k: "assigned device",  v: detail.field("assignedNodeId") },
                         { k: "node id",          v: detail.field("nodeId") },
+                        { k: "last seen",
+                          v: FIELDTEST.laneDiagnostics(detail.field("laneNumber", "0") * 1)
+                                      .lastSeen !== undefined
+                             ? FIELDTEST.laneDiagnostics(detail.field("laneNumber", "0") * 1).lastSeen
+                             : "—" },
                         { k: "boot id",          v: detail.field("bootId") },
                         { k: "session id",       v: detail.field("sessionId") },
                         { k: "programme id",     v: detail.field("programmeId") },

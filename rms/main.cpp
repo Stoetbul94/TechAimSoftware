@@ -47,12 +47,18 @@
 //   TECHAIM_RMS_STEP        development: New Match wizard step to open on
 //   TECHAIM_RMS_LANE        development: Live Range lane to open selected
 //   TECHAIM_RMS_SIZE        development: main window size, e.g. 1366x768
+//   TECHAIM_RMS_FT_START=1  development: start the field-test log
+//   TECHAIM_RMS_FT_EXPORT_MS  development: export the bundle at this time
 //   TECHAIM_RMS_DISPLAY_LANE / _MODE / _ROTATE / _FULLSCREEN / _FILTER
 //                           development: drive the REAL DisplayController into
 //                           a named state for a capture
 // ─────────────────────────────────────────────────────────────────────────────
 
 #include "rms/AthleteListModel.h"
+#include "rms/FieldTestRecorder.h"
+#include "rms/FieldTestService.h"
+#include "rms/NetworkDiagnostics.h"
+#include "rms/StationCode.h"
 #include "rms/CompetitionState.h"
 #include "rms/DisplayController.h"
 #include "rms/DisplayLaneModel.h"
@@ -315,6 +321,16 @@ int main(int argc, char* argv[])
     DisplayLaneModel displayLanes(&rangeConfig, &monitor, &plans, &athletes, &display);
     TargetGeometryBridge targetGeometry;
 
+    // ── field-test instrumentation ───────────────────────────────────────
+    // Observation of the observation. None of this transmits, and none of it
+    // changes what RMS believes: it watches the monitor, remembers the
+    // transitions worth remembering, and writes RMS's own disk.
+    NetworkDiagnostics network;
+    network.setMode(QString::fromLatin1(runModeName(mode)), live);
+    FieldTestRecorder fieldLog;
+    FieldTestService fieldTest(&monitor, &rangeConfig, &plans, &fieldLog, &network);
+    fieldTest.setMode(QString::fromLatin1(runModeName(mode)), live);
+
     // ── the two mutually exclusive event sources ────────────────────────
     printModeBanner(mode);
 
@@ -330,10 +346,15 @@ int main(int argc, char* argv[])
                                  d, QDateTime::currentMSecsSinceEpoch());
                          });
         if (!observer.listen(kObservationPort)) {
+            // NOT a silent empty range. An operator who cannot tell a dead
+            // socket from quiet tablets will spend the morning blaming the
+            // tablets.
+            network.setListenerState(false, int(kObservationPort), observer.lastError());
             std::fprintf(stderr, "RMS: cannot observe UDP %u - %s\n",
                          unsigned(kObservationPort),
                          qPrintable(observer.lastError()));
         } else {
+            network.setListenerState(true, int(kObservationPort), QString());
             std::fprintf(stderr, "RMS: observing UDP %u (receive only)\n",
                          unsigned(kObservationPort));
         }
@@ -357,6 +378,9 @@ int main(int argc, char* argv[])
             sim.advanceTo(vt);
             monitor.evaluateLiveness(vt);
         }
+        // Same cadence as liveness: the service compares state and records
+        // only what actually changed, so this cannot flood the timeline.
+        fieldTest.poll();
     });
     tick.start(250);
 
@@ -571,6 +595,32 @@ int main(int argc, char* argv[])
         });
     }
 
+    // DEVELOPMENT ONLY. Drives the SAME field-test methods the buttons call,
+    // so a bundle can be produced without a human clicking. The buttons stay
+    // genuinely wired; this replaces the click, not the wiring.
+    {
+        const bool ftStart = qEnvironmentVariableIntValue("TECHAIM_RMS_FT_START") == 1;
+        const int ftExportMs = qEnvironmentVariableIntValue("TECHAIM_RMS_FT_EXPORT_MS");
+        if (ftStart) {
+            QTimer::singleShot(5000, &app, [&fieldLog, &fieldTest, mode]() {
+                fieldLog.start(QStringLiteral("Instrumentation self-test"),
+                               QStringLiteral("Development"),
+                               QStringLiteral("automated"),
+                               QStringLiteral("produced by a development flag"),
+                               QString::fromLatin1(runModeName(mode)));
+                fieldTest.noteLogStarted();
+            });
+        }
+        if (ftExportMs > 0) {
+            QTimer::singleShot(ftExportMs, &app, [&fieldTest, &fieldLog]() {
+                const QString dir = fieldTest.exportFieldTest();
+                std::fprintf(stderr, "RMS: field-test bundle %s\n",
+                             dir.isEmpty() ? "FAILED" : qPrintable(dir));
+                fieldLog.stop();
+            });
+        }
+    }
+
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("RANGECONFIG"), &rangeConfig);
     engine.rootContext()->setContextProperty(QStringLiteral("LANES"), &laneModel);
@@ -583,6 +633,9 @@ int main(int argc, char* argv[])
     engine.rootContext()->setContextProperty(QStringLiteral("DISPLAY"), &display);
     engine.rootContext()->setContextProperty(QStringLiteral("DISPLAYLANES"), &displayLanes);
     engine.rootContext()->setContextProperty(QStringLiteral("TARGETGEO"), &targetGeometry);
+    engine.rootContext()->setContextProperty(QStringLiteral("FIELDTEST"), &fieldTest);
+    engine.rootContext()->setContextProperty(QStringLiteral("FIELDLOG"), &fieldLog);
+    engine.rootContext()->setContextProperty(QStringLiteral("NETDIAG"), &network);
     engine.rootContext()->setContextProperty(QStringLiteral("RMS_SIMULATED"), !live);
     // DEVELOPMENT ONLY. Prints the scale and the last shot's millimetres onto
     // the face so a qualification screenshot states its own geometry instead of

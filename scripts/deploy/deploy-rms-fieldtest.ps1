@@ -199,7 +199,7 @@ foreach ($rt in @('libgcc_s_seh-1.dll', 'libstdc++-6.dll', 'libwinpthread-1.dll'
 $handoff = Join-Path $repo 'scripts\deploy\fieldtest'
 foreach ($f in @('Launch-TechAimRMS-Demo.cmd', 'Launch-TechAimRMS-Live.cmd',
                  'Reset-Demo.cmd', 'README-FIELD-TEST.txt',
-                 'FIELD-TEST-CHECKLIST.txt')) {
+                 'FIELD-TEST-CHECKLIST.txt', 'RANGE-DAY-GUIDE.txt')) {
     $src = Join-Path $handoff $f
     if (-not (Test-Path $src)) { Die "missing handoff file: $src" }
     Copy-Item $src $OutDir
@@ -222,7 +222,7 @@ $manifest = [ordered]@{
     product           = 'Tech Aim Range Management System'
     version           = $bakedVersion
     packageKind       = 'FIELD TEST / DEVELOPMENT EVALUATION - not a competition release'
-    milestone         = 'M4.6 target geometry + shot registration qualification'
+    milestone         = 'M4.7 field-test instrumentation, station identity, lane commissioning'
     executable        = 'TechAimRMS.exe'
     executableSha256  = $sha
     qtVersion         = $qtVersion

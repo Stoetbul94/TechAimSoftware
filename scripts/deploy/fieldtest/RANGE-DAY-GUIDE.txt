@@ -1,0 +1,203 @@
+===============================================================================
+ TECH AIM RMS — RANGE DAY GUIDE
+ First multi-lane field test
+===============================================================================
+
+ Open this on the range PC. Work down it in order.
+
+ RMS OBSERVES. IT CANNOT START, STOP OR CONTROL A TARGET.
+ Run every match on the tablets exactly as you do today.
+
+
+-------------------------------------------------------------------------------
+ 0. BEFORE ANYONE SHOOTS
+-------------------------------------------------------------------------------
+
+ [ ] RMS PC and all tablets on the SAME network. No internet needed.
+ [ ] Start ONE tablet only, for now.
+ [ ] Double-click  Launch-TechAimRMS-Live.cmd
+ [ ] Header top right must say   LIVE   and   OBSERVING UDP 7755
+
+
+-------------------------------------------------------------------------------
+ 1. NETWORK PRECHECK          FIELD TEST -> NETWORK
+-------------------------------------------------------------------------------
+
+ [ ] UDP listener says LISTENING, port 7755
+ [ ] A sensible IPv4 address is listed for your Ethernet or Wi-Fi
+
+ IF IT SAYS ERROR — stop. Nothing else will work. The page shows the socket
+ error. Usually: another program owns the port, or Windows Firewall has not
+ been allowed for TechAimRMS.exe on a private network.
+
+ IF THE LISTENER IS FINE BUT NO STATION APPEARS:
+   - are the tablets on the same network, really?
+   - does the access point have CLIENT ISOLATION on? Turn it off. Devices can
+     each reach the internet and still not reach each other.
+   - is the target application actually running on the tablet?
+
+ RMS does not change any firewall or network setting. That is your decision.
+
+
+-------------------------------------------------------------------------------
+ 2. LANE COMMISSIONING        RANGE SETUP
+-------------------------------------------------------------------------------
+
+ THE RULE:  a physical lane is NOT a device identity.
+            RMS remembers  LANE  <->  STATION  and nothing else.
+
+ DO NOT number lanes from the IP address.
+ DO NOT number lanes from the order things were discovered.
+ DO NOT number lanes from the boot id.
+
+ ONE TABLET AT A TIME — the safe method:
+
+   1. All tablets off or disconnected.
+   2. Power up the tablet for PHYSICAL LANE 1.
+   3. RANGE SETUP: one new entry appears under UNASSIGNED DEVICES,
+      showing a station code such as   E222-403F
+   4. WRITE THAT CODE ON TAPE AND STICK IT ON THE TABLET. Do this.
+   5. Press ASSIGN on Lane 1 and assign that station.
+   6. Power up the next tablet. Assign to Lane 2. Continue.
+
+ Only one unknown station is ever present, so there is nothing to guess.
+ The mapping is remembered permanently until you deliberately change it.
+
+ [ ] Every lane shows its station code and TARGET_CONNECTED
+
+ TO REPLACE A TABLET:
+   RANGE SETUP -> the lane -> CLEAR, then ASSIGN the new station.
+   RMS refuses to drop a new station onto an occupied lane in one step.
+   Replacing a tablet is two deliberate actions, on purpose.
+
+ IF A TABLET'S DATA WAS WIPED it comes back as a NEW station with a new code.
+ RMS will not assume it is the old one. Assign it again. That is correct.
+
+
+-------------------------------------------------------------------------------
+ 3. PHYSICAL ORIENTATION CHECK    ONE LANE, BEFORE ANYTHING ELSE
+-------------------------------------------------------------------------------
+
+ DO THIS BEFORE MULTI-LANE FIRING. If the axes are wrong, finding out on one
+ lane costs ten minutes. Finding out on six costs the day.
+
+ Fire five shots on ONE lane and check RMS each time:
+
+   [ ] centre        -> RMS centre
+   [ ] right         -> RMS right
+   [ ] left          -> RMS left
+   [ ] HIGH          -> RMS HIGH        <-- the one that matters
+   [ ] low           -> RMS low
+
+ Write down, for each: the tablet's x, y and score, and what RMS drew.
+
+ WHICH WAY IS UP HAS NEVER BEEN CONFIRMED AGAINST A REAL PELLET. If a high
+ shot draws low, stop and report it — the fix is one line in RMS and nothing
+ on the tablet.
+
+ ALSO: check the EDGE of the hole against the ring its score names, not the
+ centre of the hole. ISSF scores by outward gauge. On a 10 m air rifle face a
+ 10.0 has its centre well outside the ten ring. That is correct.
+
+ The full sheet is in the repository at:
+   docs/test/rms-physical-shot-registration-checklist.md
+
+
+-------------------------------------------------------------------------------
+ 4. START THE LOG             FIELD TEST -> PREFLIGHT
+-------------------------------------------------------------------------------
+
+ [ ] Verdict reads OBSERVATION PREFLIGHT COMPLETE
+     (warnings are fine; a FAIL is not)
+ [ ] Fill in test name, range, operator
+ [ ] Press START FIELD TEST LOG
+
+ It never says "RANGE READY". RMS cannot certify a target station, so it does
+ not claim to.
+
+
+-------------------------------------------------------------------------------
+ 5. MULTI-LANE TEST
+-------------------------------------------------------------------------------
+
+ Bring 3 to 6 stations up and shoot.
+
+ [ ] every shot lands on the CORRECT LANE
+ [ ] athlete matches
+ [ ] programme matches
+ [ ] shot count matches the tablet
+ [ ] score matches the tablet
+ [ ] target face is right for the discipline
+
+ A shot on the wrong lane is the most serious thing this test can find.
+ Stop and record it.
+
+
+-------------------------------------------------------------------------------
+ 6. DISCONNECT TEST           break it on purpose
+-------------------------------------------------------------------------------
+
+ 1. Disconnect LANE 3 from the network. Pull Wi-Fi, not power.
+ 2. KEEP SHOOTING ON LANE 3. The tablet is fine; only RMS is blind.
+ 3. Reconnect.
+
+ [ ] Lane 3 went OFFLINE but stayed in the list, keeping its last target
+ [ ] It came back as the SAME Lane 3
+ [ ] A warning appeared:  N SHOTS NOT OBSERVED
+ [ ] The lane TOTAL is still the STATION's total, not RMS's own sum
+ [ ] The missing shots are NOT drawn — RMS never invents an impact
+
+
+-------------------------------------------------------------------------------
+ 7. RESTART TEST              target application
+-------------------------------------------------------------------------------
+
+ Close and reopen the target app on LANE 4.
+
+ [ ] Same station, NEW boot id
+ [ ] SAME physical lane — a restart never moves a lane
+ [ ] Restart count went up by one (Lane detail -> Diagnostics)
+
+
+-------------------------------------------------------------------------------
+ 8. RMS RESTART TEST
+-------------------------------------------------------------------------------
+
+ Close RMS completely. Leave the tablets running and shooting. Reopen RMS.
+
+ [ ] Stations return on their own lanes — the mapping persisted
+ [ ] Reconciliation shows what RMS missed while it was gone
+
+ RMS CANNOT RECONSTRUCT WHAT IT NEVER RECEIVED. A new log is a new segment and
+ names the previous one. The gap is recorded honestly.
+
+
+-------------------------------------------------------------------------------
+ 9. EXPORT                    do not skip this
+-------------------------------------------------------------------------------
+
+ [ ] FIELD TEST -> STOP FIELD TEST LOG
+ [ ] EXPORT FIELD TEST
+ [ ] The page shows a folder path. COPY THE WHOLE FOLDER OFF THE PC.
+
+ Also collect:
+ [ ] the completed physical orientation notes
+ [ ] photos of anything that looked wrong
+ [ ] the tablets' own logs for any lane that misbehaved
+
+ The bundle is meant to be readable by someone who was not there. It contains
+ no source code.
+
+
+-------------------------------------------------------------------------------
+ IF SOMETHING IS WRONG
+-------------------------------------------------------------------------------
+
+ Write down what you SAW, not what you think caused it. The bundle plus a
+ sentence of what you expected is enough to work from.
+
+ The two things worth interrupting the day for:
+   - a shot appearing on the wrong lane
+   - a high shot drawing low
+
+ Everything else can be analysed afterwards from the export.

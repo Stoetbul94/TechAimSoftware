@@ -21,6 +21,9 @@
         <file alias="RmsMatchReview.qml">qml/RmsMatchReview.qml</file>
         <file alias="RmsButton.qml">qml/RmsButton.qml</file>
         <file alias="RmsTargetView.qml">qml/RmsTargetView.qml</file>
+        <file alias="RmsFieldTestPage.qml">qml/RmsFieldTestPage.qml</file>
+        <file alias="RmsKeyValue.qml">qml/RmsKeyValue.qml</file>
+        <file alias="RmsFieldInput.qml">qml/RmsFieldInput.qml</file>
         <file alias="RmsTargetCard.qml">qml/RmsTargetCard.qml</file>
         <file alias="RmsTargetGrid.qml">qml/RmsTargetGrid.qml</file>
         <file alias="RmsSingleTarget.qml">qml/RmsSingleTarget.qml</file>

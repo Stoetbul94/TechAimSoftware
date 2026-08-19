@@ -182,6 +182,23 @@ and the read-only boundary) alongside
   ordering/outage tests, useless as a picture. `--demo-range` plays fixtures
   generated outside the product by `tools/fixtures/generate_target_fixtures.py`;
   RMS reads them as opaque authoritative values.
+- **Milestone 4.7 — a PHYSICAL LANE IS NOT A DEVICE IDENTITY.** The mapping is
+  `laneId ↔ nodeId` and nothing else. IP, MAC, COM port, `bootId`, the laneId a
+  station reports, and DISCOVERY ORDER are diagnostics only, and each has a test
+  proving it cannot move a lane. `StationCode` turns a nodeId into a readable
+  `E222-403F` for humans — deterministic, never persisted, never a key, and
+  collision-resolved across the whole set at once. Commissioning is one tablet
+  at a time; `assignNodeToLane` REFUSES an occupied lane, so replacing a station
+  is clear-then-assign, two deliberate acts. A wiped tablet returns as a NEW
+  unassigned station. `FieldTestRecorder` is an append-only JSONL diary of what
+  RMS saw (not SessionStore, not adjudication) that records TRANSITIONS, never
+  heartbeats; `FieldTestService` answers the preflight and writes the evidence
+  bundle. The verdict is `OBSERVATION PREFLIGHT COMPLETE`, never "RANGE READY" —
+  RMS cannot certify a station. A DEMO bundle is stamped simulated everywhere.
+  `IDENTIFY_STATION` is documented and deliberately NOT built: it is a command,
+  and improvising one would create an unaudited control path.
+  See `docs/architecture/rms-field-test-instrumentation.md` and the range-day
+  procedure `docs/test/rms-first-multilane-field-test.md`.
 - **The field-test package.** `scripts/deploy/deploy-rms-fieldtest.ps1` builds
   `dist/TechAimRMS-FieldTest-M4_5/` (+ ZIP) — a self-contained runtime that
   double-clicks on a machine with no Qt. It reuses the method documented in
@@ -200,7 +217,7 @@ and the read-only boundary) alongside
   adjudicated result — never destroy the raw one) and
   `rms-command-boundary-design.md` (legacy UDP 7756 stays outside RMS).
 - Harness: `tests/rms/rms_tests.pro` (`QT = core network`, no platform plugin
-  needed). Currently **1129 checks, 0 failures**.
+  needed). Currently **1301 checks, 0 failures**.
 - Protocol/state must use the stable `programmeId` (plus `rulesetId`,
   `targetStandardId`) from `CompetitionCatalogue.qml`. Display text is derived
   FROM the id; nothing is ever looked up BY a label (QML-LANG-001).
