@@ -146,6 +146,13 @@ Do not describe a concept mockup as the application. Concept files stay stamped
   relinking. Launch-verify with `QT_FORCE_STDERR_LOGGING=1` and read stderr.
 - Deployed `release/` needs `Qt6Multimedia.dll` + `multimedia/` plugins
   (finals audio).
+- **Customer runtime**: `release/` is a DEVELOPMENT tree and is never
+  shipped. One command builds the self-contained folder:
+  `powershell -File scripts\deploy\deploy-seta-release.ps1` → `dist/seta-runtime`,
+  gated by `tests/release/check_deployment.py` (PE import walk) and
+  `scripts/deploy/smoke-test-runtime.ps1` (bare-PATH launch). A release
+  build must be a CLEAN build — the commit is baked in at qmake time.
+  See `docs/deployment/seta-windows-runtime.md`.
 - **Finals harness**: `tests/finals/finals_tests.pro` — standalone console
   binary, run with Qt bin on PATH. Currently **189 checks, 0 failures**.
   The Qt multimedia backend hard-exits at teardown; the harness fflushes
