@@ -4,9 +4,21 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // TECH AIM RANGE MANAGEMENT SYSTEM — target-node ⇄ RMS wire protocol, v1.
 //
-// MILESTONE 1 IS READ-ONLY. This header describes THREE node→range messages
-// and NOTHING ELSE. There is deliberately no command message, no command
-// encoder and no acknowledgement type: see docs/architecture/
+// THIS FILE IS THE SHARED CONTRACT. It is the ONE description of the wire
+// format, and it lives on the shared foundation so that both ends compile the
+// same bytes from the same source:
+//
+//   the TARGET NODE      encodes (src/telemetry/NodeTelemetryService)
+//   the RMS observer     decodes (src/rms/RangeMonitor, RMS product only)
+//
+// A second, hand-maintained copy of this format on either side would drift,
+// and a protocol that drifts silently is one that reports the wrong score on
+// the wrong lane. Nothing else from src/rms/ is shared: the node compiles
+// THIS FILE ONLY and never links the observer, its model or its UI.
+//
+// STILL READ-ONLY. This header describes THREE node→range messages and
+// NOTHING ELSE. There is deliberately no command message, no command encoder
+// and no acknowledgement type: see docs/architecture/
 // rms-milestone-1-readonly.md §"Future control design" for the conceptual
 // design that is explicitly NOT implemented here.
 //
