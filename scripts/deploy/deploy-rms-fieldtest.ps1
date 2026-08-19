@@ -33,8 +33,12 @@
     table of every binary and fails if anything would have to be found outside
     the folder.
 
-    RMS's QML surface is small - QtQuick and QtQuick.Window, no Controls, no
-    Charts, no Multimedia - so its prune list is longer than SETA's.
+    RMS's own QML surface is small - it imports QtQuick and QtQuick.Window and
+    nothing else - so the prune list below is longer than SETA's. What
+    windeployqt still deploys beyond that (Controls, Dialogs, Shapes and so on)
+    is left alone deliberately: windeployqt is the authority on what the binary
+    and its QML actually need, and the import-table check proves the folder is
+    closed. Trimming further on a hunch would be guessing against the tool.
 
 .PARAMETER BuildDir
     The Release build output. Default: <repo>\rms\release

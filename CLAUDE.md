@@ -164,6 +164,19 @@ and the read-only boundary) alongside
   NOTIFYING property `laneOrderList`, because a `Q_INVOKABLE` cannot drive a
   live QML model. See `docs/architecture/rms-target-display-mvp.md`; the future
   spectator/TV client shape is in `rms-spectator-client-design.md`.
+- **The field-test package.** `scripts/deploy/deploy-rms-fieldtest.ps1` builds
+  `dist/TechAimRMS-FieldTest-M4_5/` (+ ZIP) — a self-contained runtime that
+  double-clicks on a machine with no Qt. It reuses the method documented in
+  SETA's `deploy-seta-release.ps1` (windeployqt in the mode this Qt install
+  accepts, then a prune), and `tests/release/check_rms_deployment.py` gates it
+  by walking the PE import table of every binary: nothing may resolve outside
+  the folder, and no source, test or state may ship. **LIVE is the default
+  mode**; `--demo-range` runs the scripted field-test demonstration and
+  `--simulate` the development one. A demo writes to its own profile
+  (`<AppLocalDataLocation>/field-test-demo/`) which LIVE never opens, so
+  `--reset-demo` cannot touch a configured range. The demo's terminal states
+  are development injections stamped SIMULATED — the script declares them at
+  fixed times and never derives them from a score, rank or shot count.
 - Design notes, written and deliberately NOT built:
   `docs/architecture/rms-incident-model-design.md` (raw observed shot vs
   adjudicated result — never destroy the raw one) and
