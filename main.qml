@@ -67,185 +67,27 @@ ApplicationWindow {
         }
     }
 
+    // ── competition catalogue seam ───────────────────────────────────────
+    // The single description of every offered programme. The ListModels below
+    // are VIEWS of it; nothing here changes what is offered.
+    CompetitionCatalogue { id: competitionCatalogue }
+
     ListModel {
         id: game10RangeEventModel
-
-            ListElement {
-                name: qsTr("10M AIR RIFLE FREE")
-                count: -1
-                gameDisplay1: qsTr("10M AIR")
-                gameDisplay2: qsTr("RIFLE")
-                matchDisplay: qsTr("UN-LIMITED")
-            }
-            ListElement {
-            name: qsTr("10M AIR RIFLE 10")
-            count: 10
-            gameDisplay1: qsTr("10M AIR")
-            gameDisplay2: qsTr("RIFLE")
-            matchDisplay: qsTr("MATCH-10")
-        }
-        ListElement {
-            name: qsTr("10M AIR RIFLE 20")
-            count: 20
-            gameDisplay1: qsTr("10M AIR")
-            gameDisplay2: qsTr("RIFLE")
-            matchDisplay: qsTr("MATCH-20")
-        }
-
-        ListElement {
-            name: qsTr("10M AIR RIFLE 30")
-            count: 30
-            gameDisplay1: qsTr("10M AIR")
-            gameDisplay2: qsTr("RIFLE")
-            matchDisplay: qsTr("MATCH-30")
-        }
-        ListElement {
-            name: qsTr("10M AIR RIFLE 40")
-            count: 40
-            gameDisplay1: qsTr("10M AIR")
-            gameDisplay2: qsTr("RIFLE")
-            matchDisplay: qsTr("MATCH-40")
-        }
-        ListElement {
-            name: qsTr("10M AIR RIFLE 60")
-            count: 60
-            gameDisplay1: qsTr("10M AIR")
-            gameDisplay2: qsTr("RIFLE")
-            matchDisplay: qsTr("MATCH-60")
-        }
-        ListElement {
-            name: qsTr("10M AIR PISTOL FREE")
-            count: -1
-            gameDisplay1: qsTr("10M AIR")
-            gameDisplay2: qsTr("PISTOL")
-            matchDisplay: qsTr("UN-LIMITED")
-        }
-        ListElement {
-            name: qsTr("10M AIR PISTOL 10")
-            count: 10
-            gameDisplay1: qsTr("10M AIR")
-            gameDisplay2: qsTr("PISTOL")
-            matchDisplay: qsTr("MATCH-10")
-        }
-        ListElement {
-            name: qsTr("10M AIR PISTOL 20")
-            count: 20
-            gameDisplay1: qsTr("10M AIR")
-            gameDisplay2: qsTr("PISTOL")
-            matchDisplay: qsTr("MATCH-20")
-        
-	        }
-        ListElement {
-            name: qsTr("10M AIR PISTOL 30")
-            count: 30
-            gameDisplay1: qsTr("10M AIR")
-            gameDisplay2: qsTr("PISTOL")
-            matchDisplay: qsTr("MATCH-30")
-        }
-        ListElement {
-            name: qsTr("10M AIR PISTOL 40")
-            count: 40
-            gameDisplay1: qsTr("10M AIR")
-            gameDisplay2: qsTr("PISTOL")
-            matchDisplay: qsTr("MATCH-40")
-        }
-        ListElement {
-            name: qsTr("10M AIR PISTOL 60")
-            count: 60
-            gameDisplay1: qsTr("10M AIR")
-            gameDisplay2: qsTr("PISTOL")
-            matchDisplay: qsTr("MATCH-60")
-
-        }
+        // Built from CompetitionCatalogue, in catalogue order.
+        // ShootingPage resolves the choice by INDEX, so the order
+        // must match the catalogue exactly - it is generated from the
+        // literals this block replaced.
+        Component.onCompleted: competitionCatalogue.fill(this, "game10RangeEventModel")
     }
 
     ListModel {
         id: game10RangeEventModel_15
-
-        ListElement {
-            name: qsTr("10M AIR RIFLE FREE")
-            count: -1
-            gameDisplay1: qsTr("10M AIR")
-            gameDisplay2: qsTr("RIFLE")
-            matchDisplay: qsTr("UN-LIMITED")
-        }
-        ListElement {
-            name: qsTr("10M AIR RIFLE 10")
-            count: 10
-            gameDisplay1: qsTr("10M AIR")
-            gameDisplay2: qsTr("RIFLE")
-            matchDisplay: qsTr("MATCH-10")
-        }
-        ListElement {
-            name: qsTr("10M AIR RIFLE 15")
-            count: 15
-            gameDisplay1: qsTr("10M AIR")
-            gameDisplay2: qsTr("RIFLE")
-            matchDisplay: qsTr("MATCH-15")
-        }
-        ListElement {
-            name: qsTr("10M AIR RIFLE 20")
-            count: 20
-            gameDisplay1: qsTr("10M AIR")
-            gameDisplay2: qsTr("RIFLE")
-            matchDisplay: qsTr("MATCH-20")
-        }
-        ListElement {
-            name: qsTr("10M AIR RIFLE 30")
-            count: 30
-            gameDisplay1: qsTr("10M AIR")
-            gameDisplay2: qsTr("RIFLE")
-            matchDisplay: qsTr("MATCH-30")
-        }
-        ListElement {
-            name: qsTr("10M AIR RIFLE 40")
-            count: 40
-            gameDisplay1: qsTr("10M AIR")
-            gameDisplay2: qsTr("RIFLE")
-            matchDisplay: qsTr("MATCH-40")
-        }
-        ListElement {
-            name: qsTr("10M AIR PISTOL FREE")
-            count: -1
-            gameDisplay1: qsTr("10M AIR")
-            gameDisplay2: qsTr("PISTOL")
-            matchDisplay: qsTr("UN-LIMITED")
-        }
-        ListElement {
-            name: qsTr("10M AIR PISTOL 10")
-            count: 10
-            gameDisplay1: qsTr("10M AIR")
-            gameDisplay2: qsTr("PISTOL")
-            matchDisplay: qsTr("MATCH-10")
-        }
-        ListElement {
-            name: qsTr("10M AIR PISTOL 15")
-            count: 15
-            gameDisplay1: qsTr("10M AIR")
-            gameDisplay2: qsTr("PISTOL")
-            matchDisplay: qsTr("MATCH-15")
-        }
-        ListElement {
-            name: qsTr("10M AIR PISTOL 20")
-            count: 20
-            gameDisplay1: qsTr("10M AIR")
-            gameDisplay2: qsTr("PISTOL")
-            matchDisplay: qsTr("MATCH-20")
-        }
-        ListElement {
-            name: qsTr("10M AIR PISTOL 30")
-            count: 30
-            gameDisplay1: qsTr("10M AIR")
-            gameDisplay2: qsTr("PISTOL")
-            matchDisplay: qsTr("MATCH-30")
-        }
-        ListElement {
-            name: qsTr("10M AIR PISTOL 40")
-            count: 40
-            gameDisplay1: qsTr("10M AIR")
-            gameDisplay2: qsTr("PISTOL")
-            matchDisplay: qsTr("MATCH-40")
-        }
+        // Built from CompetitionCatalogue, in catalogue order.
+        // ShootingPage resolves the choice by INDEX, so the order
+        // must match the catalogue exactly - it is generated from the
+        // literals this block replaced.
+        Component.onCompleted: competitionCatalogue.fill(this, "game10RangeEventModel_15")
     }
 
 
@@ -261,182 +103,20 @@ ApplicationWindow {
 
     ListModel {
         id: game50RangeEventModel
-
-        ListElement {
-            name: qsTr("50 Meter RIFLE FREE")
-            count: -1
-            gameDisplay1: qsTr("50 Meter")
-            gameDisplay2: qsTr("RIFLE")
-            matchDisplay: qsTr("UN-LIMITED")
-        }
-        ListElement {
-            name: qsTr("50 Meter RIFLE 10")
-            count: 10
-            gameDisplay1: qsTr("50 Meter")
-            gameDisplay2: qsTr("RIFLE")
-            matchDisplay: qsTr("MATCH-10")
-        }
-        ListElement {
-            name: qsTr("50 Meter RIFLE 20")
-            count: 20
-            gameDisplay1: qsTr("50 Meter")
-            gameDisplay2: qsTr("RIFLE")
-            matchDisplay: qsTr("MATCH-20")
-        } 
-	        ListElement {
-            name: qsTr("50 Meter RIFLE 30")
-            count: 30
-            gameDisplay1: qsTr("50 Meter")
-            gameDisplay2: qsTr("RIFLE")
-            matchDisplay: qsTr("MATCH-30")
-        }
-        ListElement {
-            name: qsTr("50 Meter RIFLE 40")
-            count: 40
-            gameDisplay1: qsTr("50 Meter")
-            gameDisplay2: qsTr("RIFLE")
-            matchDisplay: qsTr("MATCH-40")
-        }
-        ListElement {
-            name: qsTr("50 Meter RIFLE 60")
-            count: 60
-            gameDisplay1: qsTr("50 Meter")
-            gameDisplay2: qsTr("RIFLE")
-            matchDisplay: qsTr("MATCH-60")
-        }
-        ListElement {
-            name: qsTr("50 Meter Free PISTOL FREE")
-            count: -1
-            gameDisplay1: qsTr("50 Meter Free")
-            gameDisplay2: qsTr("PISTOL")
-            matchDisplay: qsTr("UN-LIMITED")
-        }
-        ListElement {
-            name: qsTr("50 Meter Free PISTOL 10")
-            count: 10
-            gameDisplay1: qsTr("50 Meter Free")
-            gameDisplay2: qsTr("PISTOL")
-            matchDisplay: qsTr("MATCH-10")
-        }
-        ListElement {
-            name: qsTr("50 Meter Free PISTOL 20")
-            count: 20
-            gameDisplay1: qsTr("50 Meter Free")
-            gameDisplay2: qsTr("PISTOL")
-            matchDisplay: qsTr("MATCH-20")
-        }
-
-        ListElement {
-            name: qsTr("50 Meter Free PISTOL 30")
-            count: 30
-            gameDisplay1: qsTr("50 Meter Free")
-            gameDisplay2: qsTr("PISTOL")
-            matchDisplay: qsTr("MATCH-30")
-        }
-        ListElement {
-            name: qsTr("50 Meter Free PISTOL 40")
-            count: 40
-            gameDisplay1: qsTr("50 Meter Free")
-            gameDisplay2: qsTr("PISTOL")
-            matchDisplay: qsTr("MATCH-40")
-        }
-        ListElement {
-            name: qsTr("50 Meter Free PISTOL 60")
-            count: 60
-            gameDisplay1: qsTr("50 Meter Free")
-            gameDisplay2: qsTr("PISTOL")
-            matchDisplay: qsTr("MATCH-60")
-        }
+        // Built from CompetitionCatalogue, in catalogue order.
+        // ShootingPage resolves the choice by INDEX, so the order
+        // must match the catalogue exactly - it is generated from the
+        // literals this block replaced.
+        Component.onCompleted: competitionCatalogue.fill(this, "game50RangeEventModel")
     }
 
     ListModel {
         id: game50RangeEventModel_15
-
-        ListElement {
-            name: qsTr("50 Meter RIFLE FREE")
-            count: -1
-            gameDisplay1: qsTr("50 Meter")
-            gameDisplay2: qsTr("RIFLE")
-            matchDisplay: qsTr("UN-LIMITED")
-        }
-        ListElement {
-            name: qsTr("50 Meter RIFLE 10")
-            count: 10
-            gameDisplay1: qsTr("50 Meter")
-            gameDisplay2: qsTr("RIFLE")
-            matchDisplay: qsTr("MATCH-10")
-        }
-        ListElement {
-            name: qsTr("50 Meter RIFLE 15")
-            count: 15
-            gameDisplay1: qsTr("50 Meter")
-            gameDisplay2: qsTr("RIFLE")
-            matchDisplay: qsTr("MATCH-15")
-        }
-            ListElement {
-            name: qsTr("50 Meter RIFLE 20")
-            count: 20
-            gameDisplay1: qsTr("50 Meter")
-            gameDisplay2: qsTr("RIFLE")
-            matchDisplay: qsTr("MATCH-20")
-        }
-        ListElement {
-            name: qsTr("50 Meter RIFLE 30")
-            count: 30
-            gameDisplay1: qsTr("50 Meter")
-            gameDisplay2: qsTr("RIFLE")
-            matchDisplay: qsTr("MATCH-30")
-        }
-        ListElement {
-            name: qsTr("50 Meter RIFLE 40")
-            count: 40
-            gameDisplay1: qsTr("50 Meter")
-            gameDisplay2: qsTr("RIFLE")
-            matchDisplay: qsTr("MATCH-40")
-        }
-        ListElement {
-            name: qsTr("50 Meter Free PISTOL FREE")
-            count: -1
-            gameDisplay1: qsTr("50 Meter Free")
-            gameDisplay2: qsTr("PISTOL")
-            matchDisplay: qsTr("UN-LIMITED")
-        }
-        ListElement {
-            name: qsTr("50 Meter Free PISTOL 10")
-            count: 10
-            gameDisplay1: qsTr("50 Meter Free")
-            gameDisplay2: qsTr("PISTOL")
-            matchDisplay: qsTr("MATCH-10")
-        }
-        ListElement {
-            name: qsTr("50 Meter Free PISTOL 15")
-            count: 15
-            gameDisplay1: qsTr("50 Meter Free")
-            gameDisplay2: qsTr("PISTOL")
-            matchDisplay: qsTr("MATCH-15")
-        }
-
-        ListElement {
-            name: qsTr("50 Meter Free PISTOL 20")
-            count: 20
-            gameDisplay1: qsTr("50 Meter Free")
-            gameDisplay2: qsTr("PISTOL")
-            matchDisplay: qsTr("MATCH-20")
-        }
-        ListElement {
-            name: qsTr("50 Meter Free PISTOL 30")
-            count: 30
-            gameDisplay1: qsTr("50 Meter Free")
-            gameDisplay2: qsTr("PISTOL")
-            matchDisplay: qsTr("MATCH-30")
-        }
-        ListElement {
-            name: qsTr("50 Meter Free PISTOL 40")
-            count: 40
-            gameDisplay1: qsTr("50 Meter Free")
-            gameDisplay2: qsTr("PISTOL")
-            matchDisplay: qsTr("MATCH-40")
-        }
+        // Built from CompetitionCatalogue, in catalogue order.
+        // ShootingPage resolves the choice by INDEX, so the order
+        // must match the catalogue exactly - it is generated from the
+        // literals this block replaced.
+        Component.onCompleted: competitionCatalogue.fill(this, "game50RangeEventModel_15")
     }
 
 

@@ -2,11 +2,21 @@
 
 Document version 1.0 (P0.1) · Application commit `169eef9`
 
-**STATUS: PENDING — NO APPROVED ICON EXISTS.**
+**STATUS: APPROVED — ARNOLD BAILIE, 2026-08-15 (RC3a).**
 
-No `.ico` has been created, and **none may be invented**. Windows currently
-shows its default application icon. `TechAim.rc` is **not** updated in this
-phase.
+The icon is **not invented**: it is the target emblem taken from the approved
+brand mark `images/logo/techaim_color.png`, cropped to its own bounding box and
+padded onto a square canvas. No new logo was drawn.
+
+`images/logo/techaim.ico` carries the seven sizes Windows requests —
+16, 24, 32, 48, 64, 128 and 256 px — and is embedded in `TechAim.exe` as the
+first (lowest-numbered) `ICON` resource, which is the one Explorer, the taskbar
+and shortcuts use. The Inno Setup script uses the same file for the installer
+and assigns it explicitly to the Start Menu and Desktop shortcuts, so neither
+falls back to the generic executable icon.
+
+The wordmark itself was rejected for this purpose: at 3.25:1 it is illegible
+below about 64 px.
 
 ---
 
