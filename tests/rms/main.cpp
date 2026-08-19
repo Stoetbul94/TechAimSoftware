@@ -23,6 +23,7 @@ int main(int argc, char** argv)
     run_range_config_tests();
     run_match_plan_tests();
     run_competition_state_tests();
+    run_target_display_tests();
     run_readonly_tests();
 
     std::printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);

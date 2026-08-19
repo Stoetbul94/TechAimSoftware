@@ -152,12 +152,24 @@ and the read-only boundary) alongside
   UNKNOWN; carrying it is a deliberate v2 bump, never a widened v1.
   Requirement + v2 field list:
   `docs/architecture/rms-finals-elimination-display.md`.
+- **Milestone 4.5 — the display SHOWS, it does not DECIDE.** `TargetGeometry`
+  maps `xMm`/`yMm` onto a face; it never maps a position back to a value, and
+  there is no coordinate→score function anywhere in the RMS tree. The big
+  number is the STATION's `totalScore`; RMS's own sum of what it received
+  appears only inside the unseen-shot warning, labelled as such. An unsupported
+  `targetStandardId` draws a placeholder, never a substitute face. Telemetry y
+  is up-positive and is flipped exactly once, in `normalise()`. Shot history is
+  bounded at 30 impacts for display only. `DisplayController.laneOrder()` is the
+  single ordered set behind previous/next/rotation — and it is exposed as the
+  NOTIFYING property `laneOrderList`, because a `Q_INVOKABLE` cannot drive a
+  live QML model. See `docs/architecture/rms-target-display-mvp.md`; the future
+  spectator/TV client shape is in `rms-spectator-client-design.md`.
 - Design notes, written and deliberately NOT built:
   `docs/architecture/rms-incident-model-design.md` (raw observed shot vs
   adjudicated result — never destroy the raw one) and
   `rms-command-boundary-design.md` (legacy UDP 7756 stays outside RMS).
 - Harness: `tests/rms/rms_tests.pro` (`QT = core network`, no platform plugin
-  needed). Currently **662 checks, 0 failures**.
+  needed). Currently **926 checks, 0 failures**.
 - Protocol/state must use the stable `programmeId` (plus `rulesetId`,
   `targetStandardId`) from `CompetitionCatalogue.qml`. Display text is derived
   FROM the id; nothing is ever looked up BY a label (QML-LANG-001).

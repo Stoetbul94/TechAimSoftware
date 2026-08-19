@@ -36,6 +36,7 @@ SOURCES += \
     tst_range_config.cpp \
     tst_match_plan.cpp \
     tst_competition_state.cpp \
+    tst_target_display.cpp \
     tst_readonly.cpp \
     $$PWD/../../src/rms/RmsProtocol.cpp \
     $$PWD/../../src/rms/TargetNodeRecord.cpp \
@@ -48,6 +49,9 @@ SOURCES += \
     $$PWD/../../src/rms/UnassignedNodeModel.cpp \
     $$PWD/../../src/rms/RmsJsonStore.cpp \
     $$PWD/../../src/rms/CompetitionState.cpp \
+    $$PWD/../../src/rms/TargetGeometry.cpp \
+    $$PWD/../../src/rms/DisplayController.cpp \
+    $$PWD/../../src/rms/DisplayLaneModel.cpp \
     $$PWD/../../src/rms/MatchPlan.cpp \
     $$PWD/../../src/rms/AthleteRegistry.cpp \
     $$PWD/../../src/rms/MatchPlanService.cpp \
@@ -70,6 +74,9 @@ HEADERS += \
     $$PWD/../../src/rms/UnassignedNodeModel.h \
     $$PWD/../../src/rms/RmsJsonStore.h \
     $$PWD/../../src/rms/CompetitionState.h \
+    $$PWD/../../src/rms/TargetGeometry.h \
+    $$PWD/../../src/rms/DisplayController.h \
+    $$PWD/../../src/rms/DisplayLaneModel.h \
     $$PWD/../../src/rms/Athlete.h \
     $$PWD/../../src/rms/MatchPlan.h \
     $$PWD/../../src/rms/AthleteRegistry.h \
