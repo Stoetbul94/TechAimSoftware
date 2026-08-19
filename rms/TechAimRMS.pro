@@ -21,6 +21,24 @@ TEMPLATE = app
 
 INCLUDEPATH += $$PWD/../src
 
+# ── identity baked into the binary ───────────────────────────────────────────
+# The deployment script asks the EXECUTABLE which commit it was built from
+# rather than asking git, because a binary left over from an earlier commit
+# looks identical on disk and would otherwise be shipped with a manifest naming
+# a commit it was never built from. qmake must be re-run for this to update.
+VERSION = 0.9.0
+RMS_VERSION_STR = 0.9.0-M4.5-FIELDTEST
+RMS_GIT_SHA = $$system(git -C \"$$PWD\" rev-parse --short HEAD)
+
+DEFINES += RMS_VERSION_STR=\\\"$$RMS_VERSION_STR\\\"
+DEFINES += RMS_GIT_SHA=\\\"$$RMS_GIT_SHA\\\"
+
+QMAKE_TARGET_COMPANY     = "Tech Aim"
+QMAKE_TARGET_PRODUCT     = "Tech Aim Range Management System"
+QMAKE_TARGET_DESCRIPTION = "Tech Aim RMS - range observation and configuration"
+QMAKE_TARGET_COPYRIGHT   = "Tech Aim"
+
+
 # The development simulator is compiled in for this milestone because there is
 # no live range to point at yet. It is confined to src/rms/dev/, is guarded by
 # this define, and prints a standing banner whenever it runs.

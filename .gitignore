@@ -13,6 +13,7 @@ qrc_*.cpp
 *.obj
 Seta_resource.rc
 TechAim_resource.rc
+TechAimRMS_resource.rc
 
 .qtcreator/
 .qtc_clangd/

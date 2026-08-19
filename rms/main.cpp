@@ -10,13 +10,25 @@
 // station stands on which lane. Assigning lane 4 tells RMS where a station is;
 // it tells the station nothing.
 //
-//   TechAimRMS                     scripted simulated range (development)
-//   TechAimRMS --live              observe real nodes on UDP 7755
+//   TechAimRMS                     LIVE: observe real nodes on UDP 7755
+//   TechAimRMS --live              LIVE, said explicitly
+//   TechAimRMS --demo-range        FIELD-TEST DEMONSTRATION: a scripted range
+//                                  with no hardware, in its own profile
+//   TechAimRMS --simulate          the development simulator scenario
 //   TechAimRMS --dump [--seconds N]  headless: print the range as text
+//
+// LIVE IS THE DEFAULT, deliberately. A shipped executable that started a
+// simulator when it was double-clicked would eventually be believed. The three
+// modes are mutually exclusive: LIVE binds the observation socket and builds
+// no simulator; the other two build a simulator and bind no socket.
 //
 // Options:
 //   --range-config <path>   use this range file instead of the installed one
 //   --reset-range           development: forget the configured range at start
+//   --reset-demo            with --demo-range: wipe the demo profile first, so
+//                           the demonstration restarts from its known state.
+//                           It cannot touch the real range - the demo profile
+//                           is a separate directory and LIVE never opens it.
 //   --seed-demo-plan <stage>  development: drive the REAL planning services to
 //                           a named wizard stage so it can be captured
 //   --simulate-elimination <lane>:<rank>:<score>
@@ -59,6 +71,7 @@
 
 #include <QDateTime>
 #include <QDir>
+#include <QStandardPaths>
 #include <QFileInfo>
 #include <QElapsedTimer>
 #include <QGuiApplication>
@@ -89,6 +102,75 @@ void printSimulatorBanner()
         "   The devices shown are NOT real targets. No physical range is\n"
         "   connected and no target node is being contacted.\n"
         "  ============================================================\n\n");
+}
+
+// The three mutually exclusive event sources. There is no combination of
+// flags that runs two of them: LIVE binds the observation socket and never
+// constructs a simulator; the other two construct a simulator and never bind
+// a socket. The mode is printed at startup and shown in the window header, so
+// a screen can never be mistaken for the wrong one.
+enum class RunMode {
+    Live,          // observe real target nodes on UDP 7755
+    DevSimulator,  // the harness scenario, for development
+    FieldTestDemo  // the scripted demonstration a human clicks through
+};
+
+RunMode runModeFrom(const QStringList& args)
+{
+    // LIVE is the DEFAULT. A shipped executable that starts a simulator when
+    // double-clicked would eventually be believed, so demonstration has to be
+    // asked for by name.
+    if (args.contains(QStringLiteral("--live")))
+        return RunMode::Live;
+    if (args.contains(QStringLiteral("--demo-range")))
+        return RunMode::FieldTestDemo;
+    if (args.contains(QStringLiteral("--simulate")))
+        return RunMode::DevSimulator;
+    return RunMode::Live;
+}
+
+const char* runModeName(RunMode m)
+{
+    switch (m) {
+    case RunMode::Live:          return "LIVE";
+    case RunMode::DevSimulator:  return "SIMULATOR";
+    case RunMode::FieldTestDemo: return "DEMO";
+    }
+    return "LIVE";
+}
+
+void printModeBanner(RunMode mode)
+{
+    if (mode == RunMode::Live) {
+        std::fprintf(stderr,
+            "\n"
+            "  ============================================================\n"
+            "   TECH AIM RMS - LIVE OBSERVATION\n"
+            "   Listening for real target nodes on UDP 7755. RMS receives\n"
+            "   only; it cannot start, stop or otherwise control a target.\n"
+            "  ============================================================\n\n");
+        return;
+    }
+    std::fprintf(stderr,
+        "\n"
+        "  ============================================================\n"
+        "   TECH AIM RMS - %s RANGE ACTIVE (NOT REAL TARGETS)\n"
+        "   Every device, athlete, shot and score on screen is generated\n"
+        "   locally. No physical range is connected, no target node is\n"
+        "   being contacted, and nothing here is competition data.\n"
+        "  ============================================================\n\n",
+        mode == RunMode::FieldTestDemo ? "FIELD-TEST DEMONSTRATION" : "DEVELOPMENT SIMULATOR");
+}
+
+// Where a demonstration keeps its files. NOT the installed range: a field
+// test must never be able to damage the range a user has actually configured,
+// so the demo profile is a separate directory inside RMS's own namespace and
+// LIVE mode never opens it.
+QString demoProfileDir()
+{
+    const QString base =
+        QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
+    return QDir(base).filePath(QStringLiteral("field-test-demo"));
 }
 
 QString optionValue(const QStringList& args, const QString& name)
@@ -151,8 +233,22 @@ int main(int argc, char* argv[])
     for (int i = 1; i < argc; ++i)
         args << QString::fromLocal8Bit(argv[i]);
 
-    const bool live = args.contains(QStringLiteral("--live"));
-    const QString configPath = optionValue(args, QStringLiteral("--range-config"));
+    const RunMode mode = runModeFrom(args);
+    const bool live = (mode == RunMode::Live);
+    QString configPath = optionValue(args, QStringLiteral("--range-config"));
+
+    // A demonstration works in its OWN profile directory unless the caller
+    // named one. Whatever range the user has really configured is not opened,
+    // not read and not written by a demo run.
+    if (mode == RunMode::FieldTestDemo && configPath.isEmpty()) {
+        const QString dir = demoProfileDir();
+        if (args.contains(QStringLiteral("--reset-demo"))) {
+            QDir(dir).removeRecursively();
+            std::fprintf(stderr, "RMS: demo profile reset (%s)\n", qPrintable(dir));
+        }
+        QDir().mkpath(dir);
+        configPath = QDir(dir).filePath(QStringLiteral("range.json"));
+    }
 
     if (args.contains(QStringLiteral("--dump"))) {
         int seconds = 45;
@@ -168,6 +264,11 @@ int main(int argc, char* argv[])
     // machine that has no node application installed at all.
     app.setOrganizationName(QStringLiteral("Tech Aim"));
     app.setApplicationName(QStringLiteral("Tech Aim RMS"));
+#ifdef RMS_VERSION_STR
+    app.setApplicationVersion(QStringLiteral(RMS_VERSION_STR));
+    std::fprintf(stderr, "RMS: %s (%s)  mode=%s\n",
+                 RMS_VERSION_STR, RMS_GIT_SHA, runModeName(mode));
+#endif
 
     RangeConfigurationService rangeConfig;
     if (!configPath.isEmpty())
@@ -213,6 +314,8 @@ int main(int argc, char* argv[])
     TargetGeometryBridge targetGeometry;
 
     // ── the two mutually exclusive event sources ────────────────────────
+    printModeBanner(mode);
+
     RmsUdpObserver observer;
     dev::SimulatedRange sim;
     QElapsedTimer wall;
@@ -233,8 +336,9 @@ int main(int argc, char* argv[])
                          unsigned(kObservationPort));
         }
     } else {
-        printSimulatorBanner();
-        sim.configure(6);
+        sim.configure(6, mode == RunMode::FieldTestDemo
+                             ? dev::SimulatedRange::Scenario::FieldTestDemo
+                             : dev::SimulatedRange::Scenario::Development);
         QObject::connect(&sim, &dev::SimulatedRange::datagramProduced,
                          [&](const QByteArray& d) {
                              monitor.ingestDatagram(d, sim.virtualNowMs());
@@ -253,6 +357,104 @@ int main(int argc, char* argv[])
         }
     });
     tick.start(250);
+
+    // ── the field-test demonstration ─────────────────────────────────────
+    //
+    // One flag, --demo-range, produces a range a human can click through with
+    // no hardware: six lanes, six athletes, a plan, live shot traffic, and the
+    // states worth looking at.
+    //
+    // It drives the SAME services the buttons drive - createFixedRange,
+    // assignNodeToLane, createPlan, setProgramme, assignAthlete, markReady -
+    // so it creates nothing the UI could not create. It is a script, not an
+    // inference: every event below fires at a fixed point on the simulator's
+    // own clock. Nothing here reads a score, a rank or a shot count to decide
+    // that an athlete is finished or eliminated, because deciding that is the
+    // target node's job and never RMS's.
+    //
+    // Timeline (simulated seconds; TECHAIM_RMS_TIMESCALE scales it):
+    //     3   stations appear, the range and the plan are created
+    //     3+  every lane is shooting
+    //    14   lane 3 loses the network        -> OFFLINE, and stays offline
+    //    14   lane 4 loses the network        -> OFFLINE, last known data
+    //    34   lane 4 returns                  -> unseen-shot warning on lane 4
+    //    40   the script declares lane 5 FINISHED    (SIMULATED)
+    //    50   the script declares lane 6 ELIMINATED  (SIMULATED)
+    //    93   the 60-shot lanes complete; the range then holds its state
+    QTimer demoScript;
+    if (mode == RunMode::FieldTestDemo) {
+        auto* seeded = new bool(false);
+        auto* finishedDone = new bool(false);
+        auto* eliminatedDone = new bool(false);
+        QObject::connect(&demoScript, &QTimer::timeout,
+                         [&sim, &rangeConfig, &unassignedModel, &plans, &athletes,
+                          &monitor, seeded, finishedDone, eliminatedDone]() {
+            const qint64 vt = sim.virtualNowMs();
+
+            if (!*seeded && unassignedModel.rowCountProperty() >= 6) {
+                *seeded = true;
+                if (!rangeConfig.isConfigured()) {
+                    rangeConfig.createFixedRange(QStringLiteral("Tech Aim Demo Range"),
+                                                 QStringLiteral("10 m"), 1, 6);
+                    const QStringList discovered = unassignedModel.nodeIds();
+                    for (int i = 0; i < discovered.size() && i < 6; ++i)
+                        rangeConfig.assignNodeToLane(discovered.at(i), i + 1);
+                }
+                if (!plans.hasPlan()) {
+                    plans.createPlan(QStringLiteral("Demo Relay 1"));
+                    plans.setProgramme(QStringLiteral("issf.10m.air-rifle.qualification60"),
+                                       QStringLiteral("issf"),
+                                       QStringLiteral("issf.10m.air-rifle"),
+                                       QStringLiteral("AR10"), 10, 60,
+                                       QStringLiteral("OFFICIAL"),
+                                       QStringLiteral("10M AIR RIFLE · MATCH-60"));
+                    plans.selectAllOnlineLanes();
+                    // Invented names. No real athlete, club or federation
+                    // record belongs in a demonstration package.
+                    const char* names[] = { "A. Bailie", "M. Keller", "S. Nkosi",
+                                            "J. Bergmann", "P. Rossouw", "T. Adeyemi" };
+                    for (int i = 0; i < 6; ++i)
+                        plans.assignAthlete(athletes.addAthlete(QString::fromUtf8(names[i])),
+                                            i + 1);
+                    plans.markReady();
+                }
+                std::fprintf(stderr, "RMS: DEMO range and plan seeded\n");
+            }
+
+            // The two terminal states. Protocol v1 carries no competition
+            // status, so these can only arrive as a development injection -
+            // which is exactly why every surface stamps them SIMULATED.
+            auto declare = [&](int lane, const char* status, int rank, double score) {
+                const QString nodeId = rangeConfig.nodeForLaneNumber(lane);
+                if (nodeId.isEmpty())
+                    return false;
+                CompetitionState st;
+                st.status = competitionStatusFromString(QString::fromLatin1(status));
+                st.rank = rank;
+                st.finalScore = score;
+                st.finalScoreReported = true;
+                if (st.status == CompetitionStatus::Eliminated) {
+                    st.finalsStage = QStringLiteral("STANDING");
+                    st.eliminatedAtStage = QStringLiteral("STANDING");
+                }
+                monitor.injectDevelopmentCompetitionState(nodeId, st);
+                // The simulated station stops shooting but keeps answering:
+                // an athlete leaving the competition does not break their
+                // target, and the lane must not start looking like a fault.
+                sim.concludeLane(lane);
+                std::fprintf(stderr,
+                    "RMS: DEMO script declares lane %d %s - SIMULATED, not telemetry\n",
+                    lane, status);
+                return true;
+            };
+
+            if (!*finishedDone && vt >= 40000)
+                *finishedDone = declare(5, "FINISHED", 3, 208.4);
+            if (!*eliminatedDone && vt >= 50000)
+                *eliminatedDone = declare(6, "ELIMINATED", 8, 402.7);
+        });
+        demoScript.start(250);
+    }
 
     // DEVELOPMENT ONLY. Builds a demonstration range through the REAL
     // configuration service — the same calls the Create Range button and the
@@ -380,6 +582,8 @@ int main(int argc, char* argv[])
     engine.rootContext()->setContextProperty(QStringLiteral("DISPLAYLANES"), &displayLanes);
     engine.rootContext()->setContextProperty(QStringLiteral("TARGETGEO"), &targetGeometry);
     engine.rootContext()->setContextProperty(QStringLiteral("RMS_SIMULATED"), !live);
+    engine.rootContext()->setContextProperty(QStringLiteral("RMS_MODE"),
+                                             QString::fromLatin1(runModeName(mode)));
     engine.rootContext()->setContextProperty(QStringLiteral("RMS_READ_ONLY"), true);
     engine.rootContext()->setContextProperty(QStringLiteral("RMS_PROTOCOL_VERSION"),
                                              kProtocolVersion);

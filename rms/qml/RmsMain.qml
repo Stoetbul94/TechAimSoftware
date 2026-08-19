@@ -87,13 +87,22 @@ Window {
             anchors.rightMargin: theme.spacingUnit * 3
             spacing: theme.spacingUnit
 
+            // Which mode this window is in, said in one word, always. A
+            // demonstration must never be able to pass for a live range.
             RmsStatusPill {
                 visible: RMS_SIMULATED
-                text: "SIMULATED RANGE"
+                text: RMS_MODE === "DEMO" ? "DEMO RANGE — NOT REAL TARGETS"
+                                          : "SIMULATED RANGE"
                 tone: "warn"
             }
             RmsStatusPill {
-                text: "OBSERVING UDP " + RMS_OBSERVATION_PORT + "  ·  v" + RMS_PROTOCOL_VERSION
+                visible: !RMS_SIMULATED
+                text: "LIVE"
+                tone: "live"
+            }
+            RmsStatusPill {
+                text: (RMS_SIMULATED ? "NOT OBSERVING · " : "OBSERVING ")
+                      + "UDP " + RMS_OBSERVATION_PORT + "  ·  v" + RMS_PROTOCOL_VERSION
                 tone: "neutral"
             }
             RmsStatusPill {

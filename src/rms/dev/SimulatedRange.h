@@ -41,9 +41,31 @@ class SimulatedRange : public QObject
 public:
     explicit SimulatedRange(QObject* parent = nullptr);
 
+    // Which scripted scenario to play.
+    //
+    //   Development   the harness scenario. Lane 3 drops out, lane 5's
+    //                 application restarts. Asserted by tst_simulator; do not
+    //                 change it to suit a demonstration.
+    //   FieldTestDemo the field-test scenario a human clicks through. Lane 3
+    //                 goes offline and STAYS offline, so an operator arriving
+    //                 at any moment sees an offline lane. Lane 4 goes offline
+    //                 and returns, so it carries the unseen-shot warning. Both
+    //                 windows are explicit, not left to a restart's timing.
+    enum class Scenario { Development, FieldTestDemo };
+
     // Builds the scripted scenario. `laneCount` is clamped to 3..6, matching
     // the milestone's "3-6 target nodes".
-    void configure(int laneCount);
+    void configure(int laneCount, Scenario scenario = Scenario::Development);
+
+    // The scenario declares this lane's athlete done — finished or counted out.
+    // The node then stops SHOOTING but keeps answering: an athlete leaving the
+    // competition does not break their target station, and the lane must not
+    // start looking like a fault.
+    //
+    // This is the SCRIPT speaking, not a deduction. Nothing here reads a score,
+    // a rank or a shot count to decide it, and RMS is told by the same
+    // development injection that stamps the value SIMULATED.
+    void concludeLane(int laneNumber);
 
     // Advances virtual time to `nowMs`, emitting every datagram the scenario
     // schedules in between. Safe to call with any cadence — the internal step
@@ -84,9 +106,14 @@ private:
         qint64  nextShotMs = 0;
         // Scenario switches
         bool    dropsOut = false;      // goes silent, then returns
+        // An explicit silent window, when the scenario wants one that is not
+        // the shared landmark. -1 means "use dropsOut and the landmarks".
+        qint64  silentFromMs = -1;
+        qint64  silentToMs = -1;
         bool    restarts = false;      // comes back with a new bootId
         bool    emittedDuplicate = false;
         bool    swapPending = false;   // holds one shot back to arrive late
+        bool    concluded = false;     // scripted: stops shooting, keeps answering
         QByteArray heldShot;
     };
 

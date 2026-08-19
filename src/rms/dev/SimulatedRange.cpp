@@ -46,7 +46,7 @@ SimulatedRange::SimulatedRange(QObject* parent)
 {
 }
 
-void SimulatedRange::configure(int laneCount)
+void SimulatedRange::configure(int laneCount, Scenario scenario)
 {
     const int n = qBound(3, laneCount, 6);
     m_nodes.clear();
@@ -70,8 +70,21 @@ void SimulatedRange::configure(int laneCount)
         s.shotsExpected = kPlan[i].shotsExpected;
         // Stagger the first shot so the dashboard does not pulse in lockstep.
         s.nextShotMs = 3000 + (i * 400);
-        s.dropsOut = (i == 2);   // Lane 3 loses the network and comes back
-        s.restarts = (i == 4);   // Lane 5's application restarts
+        if (scenario == Scenario::FieldTestDemo) {
+            // Lane 3 goes off and stays off: an operator who opens the demo at
+            // any moment must find an offline lane waiting, not one that has
+            // already healed. Lane 4 goes off and comes back, which is what
+            // produces the unseen-shot warning - and it is given an explicit
+            // window rather than being left to a restart's two silent seconds,
+            // which may or may not swallow a shot.
+            s.dropsOut = false;
+            s.restarts = false;
+            if (i == 2) { s.silentFromMs = 14000; s.silentToMs = -1; }
+            if (i == 3) { s.silentFromMs = 14000; s.silentToMs = 34000; }
+        } else {
+            s.dropsOut = (i == 2);   // Lane 3 loses the network and comes back
+            s.restarts = (i == 4);   // Lane 5's application restarts
+        }
         s.swapPending = true;    // every lane delivers one pair out of order
         m_nodes.append(s);
     }
@@ -88,12 +101,24 @@ double SimulatedRange::nextScore()
 
 bool SimulatedRange::isSilent(const SimNode& n, qint64 tMs) const
 {
+    if (n.silentFromMs >= 0 && tMs >= n.silentFromMs
+        && (n.silentToMs < 0 || tMs < n.silentToMs))
+        return true;
     if (n.dropsOut && tMs >= laneDropoutStartMs() && tMs < laneDropoutEndMs())
         return true;
     // A restarting node is silent for one heartbeat around the restart.
     if (n.restarts && tMs >= nodeRestartAtMs() && tMs < nodeRestartAtMs() + 2000)
         return true;
     return false;
+}
+
+void SimulatedRange::concludeLane(int laneNumber)
+{
+    const QString lane = QStringLiteral("Lane %1").arg(laneNumber);
+    for (SimNode& n : m_nodes) {
+        if (n.laneId == lane)
+            n.concluded = true;
+    }
 }
 
 void SimulatedRange::advanceTo(qint64 nowMs)
@@ -136,7 +161,7 @@ void SimulatedRange::stepOnce(qint64 tMs)
             n.nextStatusMs = tMs + kStatusEveryMs;
         }
 
-        const bool matchRunning = tMs >= 3000
+        const bool matchRunning = tMs >= 3000 && !n.concluded
                                   && (n.shotsExpected < 0 || n.shotsAccepted < n.shotsExpected);
         if (matchRunning && tMs >= n.nextShotMs) {
             emitShot(n, tMs, silent);
