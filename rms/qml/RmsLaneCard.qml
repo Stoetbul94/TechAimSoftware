@@ -27,6 +27,13 @@ Rectangle {
     property string shotsLabel: ""
     property string scoreLabel: ""
     property int unobserved: 0
+    // ── the PLAN's intention, shown BESIDE the observation above ─────────
+    // Never merged into it: RMS has not told the station anything, so the two
+    // may legitimately differ and the operator needs to see both.
+    property bool inPlan: false
+    property string plannedAthlete: ""
+    property string plannedProgramme: ""
+    property bool programmeMismatch: false
 
     signal clicked()
 
@@ -46,11 +53,29 @@ Rectangle {
         radius: 2
         anchors { left: parent.left; top: parent.top; bottom: parent.bottom
                   leftMargin: 1; topMargin: 1; bottomMargin: 1 }
-        color: !card.hasDevice ? theme.borderColor
+        color: card.programmeMismatch ? theme.brandAccent
+             : !card.hasDevice ? theme.borderColor
              : !card.online ? theme.statusDisconnected
              : card.phase === "MATCH" ? theme.statusConnected
              : card.phase === "RECOVERY_REQUIRED" ? theme.brandAccent
                                                   : theme.borderColor
+    }
+
+    // A lane taking part in the plan being edited.
+    Rectangle {
+        visible: card.inPlan
+        anchors { top: parent.top; right: parent.right; topMargin: 1; rightMargin: 1 }
+        width: 44; height: 14
+        radius: 2
+        color: Qt.rgba(0.66, 0, 0.22, 0.22)
+        Text {
+            anchors.centerIn: parent
+            text: "IN PLAN"
+            font.family: theme.fontFamily
+            font.pixelSize: 8
+            font.letterSpacing: 0.6
+            color: theme.brandPrimary
+        }
     }
 
     Item {
@@ -72,11 +97,17 @@ Rectangle {
                 color: theme.textPrimary
             }
             Text {
-                text: card.athlete.length > 0 ? card.athlete
-                                              : (card.online ? "—" : "")
+                // The station's own athlete text if it reports one; otherwise
+                // the planned athlete, explicitly marked as a plan value.
+                text: card.athlete.length > 0
+                      ? card.athlete
+                      : (card.plannedAthlete.length > 0
+                            ? card.plannedAthlete + "  (planned)"
+                            : (card.online ? "—" : ""))
                 font.family: theme.fontFamily
                 font.pixelSize: 12
-                color: theme.textSecondary
+                color: (card.athlete.length === 0 && card.plannedAthlete.length > 0)
+                       ? theme.brandPrimary : theme.textSecondary
                 elide: Text.ElideRight
                 width: parent.width
             }
@@ -121,13 +152,19 @@ Rectangle {
                 id: progKind
                 anchors { left: parent.left; right: parent.right
                           top: progName.bottom; topMargin: 2 }
-                text: card.programmeId.length === 0 ? ""
-                      : (card.officialProgramme ? "ISSF OFFICIAL COURSE"
-                                                : "TECH AIM PRESET")
+                // A station set to something other than the plan is the one
+                // thing worth saying here instead of the course type. It will
+                // matter a great deal once commands exist; for now it is
+                // information, and RMS changes neither side.
+                text: card.programmeMismatch
+                      ? "⚠ DOES NOT MATCH PLAN · " + card.plannedProgramme
+                      : (card.programmeId.length === 0 ? ""
+                         : (card.officialProgramme ? "ISSF OFFICIAL COURSE"
+                                                   : "TECH AIM PRESET"))
                 font.family: theme.fontFamily
                 font.pixelSize: 10
                 font.letterSpacing: 0.8
-                color: theme.textSecondary
+                color: card.programmeMismatch ? theme.brandAccent : theme.textSecondary
                 elide: Text.ElideRight
             }
         }

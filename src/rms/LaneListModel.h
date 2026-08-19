@@ -30,6 +30,9 @@
 namespace ta {
 namespace rms {
 
+class MatchPlanService;
+class AthleteRegistry;
+
 class LaneListModel : public QAbstractListModel
 {
     Q_OBJECT
@@ -58,11 +61,23 @@ public:
         ShotsLabelRole,
         ScoreLabelRole,
         UnobservedRole,
-        GapCountRole
+        GapCountRole,
+        // ── the plan's view of this lane, kept strictly beside the
+        // observation and never merged into it ──────────────────────────
+        PlannedAthleteRole,
+        PlannedProgrammeRole,
+        InPlanRole,
+        ProgrammeMatchRole,
+        ProgrammeMismatchRole
     };
 
     LaneListModel(RangeConfigurationService* config, RangeMonitor* monitor,
                   QObject* parent = nullptr);
+
+    // Optional. Without it the Live Range is exactly what it was in milestone
+    // 3 — pure observation. With it, each lane ALSO carries what the plan
+    // intends, so the two can be compared on screen.
+    void setPlanContext(MatchPlanService* plans, AthleteRegistry* athletes);
 
     int rowCount(const QModelIndex& parent = QModelIndex()) const override;
     QVariant data(const QModelIndex& index, int role) const override;
@@ -95,6 +110,8 @@ private:
 
     RangeConfigurationService* m_config = nullptr;
     RangeMonitor* m_monitor = nullptr;
+    MatchPlanService* m_plans = nullptr;
+    AthleteRegistry* m_athletes = nullptr;
 };
 
 } // namespace rms

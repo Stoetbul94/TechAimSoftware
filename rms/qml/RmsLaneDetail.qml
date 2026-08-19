@@ -87,6 +87,64 @@ Rectangle {
                 }
             }
 
+            // ── PLANNED, kept beside OBSERVED and never merged into it ──
+            // RMS has told the station nothing, so these two may legitimately
+            // differ. Showing both is the point; picking one would be a lie
+            // about which side moved.
+            Rectangle {
+                width: parent.width
+                height: plannedCol.height + theme.spacingUnit * 2
+                visible: detail.info && detail.info.inPlan === true
+                radius: theme.radiusSmall
+                color: detail.info && detail.info.programmeMismatch === true
+                       ? Qt.rgba(0.75, 0.10, 0.10, 0.10) : theme.bgBase
+                border.width: 1
+                border.color: detail.info && detail.info.programmeMismatch === true
+                              ? theme.brandAccent : theme.borderColor
+
+                Column {
+                    id: plannedCol
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.margins: theme.spacingUnit
+                    spacing: 3
+                    Text {
+                        text: "PLANNED"
+                        font.family: theme.fontFamily
+                        font.pixelSize: 10
+                        font.letterSpacing: 1.2
+                        color: theme.textSecondary
+                    }
+                    Text {
+                        width: parent.width
+                        elide: Text.ElideRight
+                        text: detail.field("plannedAthlete", "no athlete assigned")
+                        font.family: theme.fontFamily
+                        font.pixelSize: 13
+                        color: theme.textPrimary
+                    }
+                    Text {
+                        width: parent.width
+                        elide: Text.ElideRight
+                        text: detail.field("plannedProgramme", "")
+                        font.family: theme.fontFamily
+                        font.pixelSize: 12
+                        color: theme.textSecondary
+                    }
+                    Text {
+                        width: parent.width
+                        wrapMode: Text.WordWrap
+                        visible: detail.info && detail.info.programmeMismatch === true
+                        text: "⚠ The station reports \"" + detail.field("programmeLabel", "—")
+                              + "\". RMS did not put it there and cannot change it."
+                        font.family: theme.fontFamily
+                        font.pixelSize: 11
+                        color: theme.brandAccent
+                    }
+                }
+            }
+
             // A lane with no device is a configuration state, not a fault —
             // say which it is rather than showing an empty match panel.
             Text {

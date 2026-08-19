@@ -34,6 +34,7 @@ SOURCES += \
     tst_simulator.cpp \
     tst_udp.cpp \
     tst_range_config.cpp \
+    tst_match_plan.cpp \
     tst_readonly.cpp \
     $$PWD/../../src/rms/RmsProtocol.cpp \
     $$PWD/../../src/rms/TargetNodeRecord.cpp \
@@ -44,6 +45,12 @@ SOURCES += \
     $$PWD/../../src/rms/RangeConfigurationService.cpp \
     $$PWD/../../src/rms/LaneListModel.cpp \
     $$PWD/../../src/rms/UnassignedNodeModel.cpp \
+    $$PWD/../../src/rms/RmsJsonStore.cpp \
+    $$PWD/../../src/rms/MatchPlan.cpp \
+    $$PWD/../../src/rms/AthleteRegistry.cpp \
+    $$PWD/../../src/rms/MatchPlanService.cpp \
+    $$PWD/../../src/rms/PlanLaneModel.cpp \
+    $$PWD/../../src/rms/AthleteListModel.cpp \
     $$PWD/../../src/rms/ProgrammeDisplay.cpp \
     $$PWD/../../src/rms/RmsUdpObserver.cpp \
     $$PWD/../../src/rms/dev/SimulatedRange.cpp
@@ -59,6 +66,13 @@ HEADERS += \
     $$PWD/../../src/rms/RangeConfigurationService.h \
     $$PWD/../../src/rms/LaneListModel.h \
     $$PWD/../../src/rms/UnassignedNodeModel.h \
+    $$PWD/../../src/rms/RmsJsonStore.h \
+    $$PWD/../../src/rms/Athlete.h \
+    $$PWD/../../src/rms/MatchPlan.h \
+    $$PWD/../../src/rms/AthleteRegistry.h \
+    $$PWD/../../src/rms/MatchPlanService.h \
+    $$PWD/../../src/rms/PlanLaneModel.h \
+    $$PWD/../../src/rms/AthleteListModel.h \
     $$PWD/../../src/rms/ProgrammeDisplay.h \
     $$PWD/../../src/rms/RmsUdpObserver.h \
     $$PWD/../../src/rms/dev/SimulatedRange.h

@@ -12,6 +12,18 @@ Item {
 
     Theme { id: theme }
 
+    // Readiness comes from live telemetry, so it is re-read whenever the plan
+    // or the range moves. It is never stored.
+    property var planReady: PLANS.readiness()
+    Connections {
+        target: PLANS
+        function onPlanChanged() { page.planReady = PLANS.readiness() }
+    }
+    Connections {
+        target: LANES
+        function onSummaryChanged() { page.planReady = PLANS.readiness() }
+    }
+
     Column {
         anchors { top: parent.top; left: parent.left; right: parent.right }
         anchors.margins: theme.spacingUnit * 3
@@ -76,6 +88,76 @@ Item {
             }
         }
 
+        Rectangle {
+            width: Math.min(parent.width, 720)
+            height: planBody.height + theme.spacingUnit * 3
+            visible: PLANS.hasPlan
+            radius: theme.radiusMedium
+            color: theme.bgSurface
+            border.width: 1
+            border.color: PLANS.planStatus === "READY" ? theme.statusConnected
+                                                       : theme.borderColor
+
+            Column {
+                id: planBody
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.margins: theme.spacingUnit * 2
+                spacing: 5
+
+                Row {
+                    spacing: theme.spacingUnit
+                    Text {
+                        text: PLANS.planStatus === "READY" ? "READY MATCH" : "DRAFT MATCH"
+                        font.family: theme.fontFamily
+                        font.pixelSize: 10
+                        font.letterSpacing: 1.2
+                        color: theme.textSecondary
+                    }
+                    Text {
+                        text: PLANS.planCount > 1 ? "· " + PLANS.planCount + " saved plans" : ""
+                        font.family: theme.fontFamily
+                        font.pixelSize: 10
+                        color: theme.textSecondary
+                    }
+                }
+                Text {
+                    text: PLANS.planName
+                    font.family: theme.fontFamily
+                    font.pixelSize: 18
+                    font.weight: Font.DemiBold
+                    color: theme.textPrimary
+                }
+                Text {
+                    width: parent.width
+                    elide: Text.ElideRight
+                    text: PLANS.programmeLabel.length > 0
+                          ? PLANS.programmeLabel : "No programme chosen yet"
+                    font.family: theme.fontFamily
+                    font.pixelSize: 13
+                    color: theme.textPrimary
+                }
+                Text {
+                    // Lanes and athletes are the PLAN. "ready" counts the lanes
+                    // whose station is answering with a live target — a
+                    // separate question, and not a claim that any station has
+                    // loaded the match.
+                    text: PLANS.selectedLaneCount + " lanes  ·  "
+                          + PLANS.assignedAthleteCount + " athletes assigned  ·  "
+                          + page.planReady.lanesReady + " lane(s) ready now"
+                    font.family: theme.fontFamily
+                    font.pixelSize: 12
+                    color: theme.textSecondary
+                }
+                RmsButton {
+                    label: "CONTINUE SETUP"
+                    primary: PLANS.planStatus !== "READY"
+                    onActivated: page.navigate("newmatch")
+                }
+            }
+        }
+
         Rectangle { width: parent.width; height: 1; color: theme.borderColor }
 
         Text {
@@ -95,11 +177,11 @@ Item {
                       note: "Watch every lane",           enabled: true },
                     { page: "setup",    title: "RANGE SETUP",
                       note: "Lanes and device assignment", enabled: true },
-                    // NEW MATCH implies control of a target. RMS has none, so
-                    // it is rendered plainly unavailable rather than offered
-                    // and then refused.
+                    // NEW MATCH is enabled from milestone 4: it prepares a
+                    // PLAN. It still starts nothing and transmits nothing, and
+                    // the page says so on every step.
                     { page: "newmatch", title: "NEW MATCH",
-                      note: "Central match control — a later milestone", enabled: false }
+                      note: "Prepare a match — saves a plan, controls nothing", enabled: true }
                 ]
                 delegate: Rectangle {
                     width: 236

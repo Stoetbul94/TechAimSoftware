@@ -5,9 +5,11 @@ import QtQuick 2.15
 //
 // A future page is NOT hidden and NOT faked. It is either navigable to a page
 // that states plainly what is and is not built, or — where the name implies
-// control RMS deliberately does not have — visibly disabled. NEW MATCH is the
-// second kind: an operator must never be able to click something that looks
-// like it starts a match.
+// control RMS deliberately does not have — visibly disabled.
+//
+// NEW MATCH became enabled in milestone 4 because it now PREPARES A PLAN and
+// nothing else. It still starts nothing and still transmits nothing; the page
+// itself says so on every step.
 Rectangle {
     id: rail
 
@@ -28,7 +30,7 @@ Rectangle {
     readonly property var items: [
         { page: "home",     label: "HOME",        enabled: true  },
         { page: "live",     label: "LIVE RANGE",  enabled: true  },
-        { page: "newmatch", label: "NEW MATCH",   enabled: false },
+        { page: "newmatch", label: "NEW MATCH",   enabled: true  },
         { page: "athletes", label: "ATHLETES",    enabled: true  },
         { page: "results",  label: "RESULTS",     enabled: true  },
         { page: "displays", label: "DISPLAYS",    enabled: true  },

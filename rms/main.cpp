@@ -17,16 +17,23 @@
 // Options:
 //   --range-config <path>   use this range file instead of the installed one
 //   --reset-range           development: forget the configured range at start
+//   --seed-demo-plan <stage>  development: drive the REAL planning services to
+//                           a named wizard stage so it can be captured
 //
 // Environment:
 //   TECHAIM_RMS_TIMESCALE   speed up the simulated range (default 1.0)
 //   TECHAIM_RMS_CAPTURE     PNG path; grabs the window once and writes it
 //   TECHAIM_RMS_CAPTURE_MS  when to grab, ms after start (default 20000)
 //   TECHAIM_RMS_CAPTURE_QUIT=1  exit after the grab
-//   TECHAIM_RMS_PAGE        development: open on home|live|setup|displays
+//   TECHAIM_RMS_PAGE        development: open on home|live|setup|displays|newmatch
+//   TECHAIM_RMS_STEP        development: New Match wizard step to open on
 // ─────────────────────────────────────────────────────────────────────────────
 
+#include "rms/AthleteListModel.h"
+#include "rms/AthleteRegistry.h"
 #include "rms/LaneListModel.h"
+#include "rms/MatchPlanService.h"
+#include "rms/PlanLaneModel.h"
 #include "rms/RangeConfigurationService.h"
 #include "rms/RangeListModel.h"
 #include "rms/RangeMonitor.h"
@@ -36,6 +43,8 @@
 #include "rms/dev/SimulatedRange.h"
 
 #include <QDateTime>
+#include <QDir>
+#include <QFileInfo>
 #include <QElapsedTimer>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
@@ -159,6 +168,27 @@ int main(int argc, char* argv[])
     LaneListModel laneModel(&rangeConfig, &monitor);      // the physical range
     UnassignedNodeModel unassignedModel(&rangeConfig, &monitor);
 
+    // ── competition preparation ──────────────────────────────────────────
+    // RMS's own start list and match plans. These write RMS data files and
+    // nothing else: preparing a match records an intention, and no station is
+    // told, asked or configured by any of it.
+    AthleteRegistry athletes;
+    MatchPlanService plans(&rangeConfig, &monitor, &athletes);
+    if (!configPath.isEmpty()) {
+        // --range-config also relocates the sibling documents, so a scratch
+        // configuration never mixes with the installed one.
+        const QString dir = QFileInfo(configPath).absolutePath();
+        athletes.setStorePath(QDir(dir).filePath(QStringLiteral("athletes.json")));
+        plans.setStorePath(QDir(dir).filePath(QStringLiteral("plans.json")));
+    }
+    athletes.load();
+    plans.load();
+    // The Live Range shows the plan's intention BESIDE the observation; it
+    // never merges one into the other.
+    laneModel.setPlanContext(&plans, &athletes);
+    AthleteListModel athleteModel(&athletes, &plans);
+    PlanLaneModel planLaneModel(&rangeConfig, &monitor, &plans, &athletes);
+
     // ── the two mutually exclusive event sources ────────────────────────
     RmsUdpObserver observer;
     dev::SimulatedRange sim;
@@ -223,11 +253,64 @@ int main(int argc, char* argv[])
         });
     }
 
+    // DEVELOPMENT ONLY. Drives the REAL planning services — the identical
+    // invokables the New Match buttons call — so a screenshot can be taken of a
+    // populated wizard step without a human clicking through it. It creates
+    // nothing the UI could not create, and it is not reachable from the UI.
+    const QString demoPlan = optionValue(args, QStringLiteral("--seed-demo-plan"));
+    if (!demoPlan.isEmpty()) {
+        QTimer::singleShot(3500, &app, [&plans, &athletes, &planLaneModel, demoPlan]() {
+            if (plans.hasPlan())
+                return;
+            plans.createPlan(QStringLiteral("Morning Relay"));
+            if (demoPlan == QLatin1String("named"))
+                return;
+
+            // The 50 m course, so the simulated 10 m stations disagree with it
+            // and the planned-vs-observed warning has something real to report.
+            const bool fiftyMetre = (demoPlan == QLatin1String("mismatch"));
+            if (fiftyMetre)
+                plans.setProgramme(QStringLiteral("issf.50m.rifle.qualification60"),
+                                   QStringLiteral("issf"), QStringLiteral("issf.50m.rifle"),
+                                   QStringLiteral("RIFLE50"), 50, 60,
+                                   QStringLiteral("OFFICIAL"),
+                                   QStringLiteral("50 Meter RIFLE · MATCH-60"));
+            else
+                plans.setProgramme(QStringLiteral("issf.10m.air-rifle.qualification60"),
+                                   QStringLiteral("issf"), QStringLiteral("issf.10m.air-rifle"),
+                                   QStringLiteral("AR10"), 10, 60,
+                                   QStringLiteral("OFFICIAL"),
+                                   QStringLiteral("10M AIR RIFLE · MATCH-60"));
+            if (demoPlan == QLatin1String("programme"))
+                return;
+
+            plans.selectAllOnlineLanes();
+            if (demoPlan == QLatin1String("lanes"))
+                return;
+
+            const char* names[] = { "Arnold Bailie", "Hennie Jacobs", "Freek van Wyk",
+                                    "S. Nkosi", "M. Keller", "T. Adeyemi" };
+            const int assign = (demoPlan == QLatin1String("athletes")) ? 4 : 6;
+            for (int i = 0; i < 6; ++i) {
+                const QString id = athletes.addAthlete(QString::fromLatin1(names[i]));
+                if (i < assign)
+                    plans.assignAthlete(id, i + 1);
+            }
+            if (demoPlan == QLatin1String("ready") || demoPlan == QLatin1String("mismatch"))
+                plans.markReady();
+            Q_UNUSED(planLaneModel);
+        });
+    }
+
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("RANGECONFIG"), &rangeConfig);
     engine.rootContext()->setContextProperty(QStringLiteral("LANES"), &laneModel);
     engine.rootContext()->setContextProperty(QStringLiteral("UNASSIGNED"), &unassignedModel);
     engine.rootContext()->setContextProperty(QStringLiteral("DEVICES"), &deviceModel);
+    engine.rootContext()->setContextProperty(QStringLiteral("ATHLETES"), &athletes);
+    engine.rootContext()->setContextProperty(QStringLiteral("ATHLETEMODEL"), &athleteModel);
+    engine.rootContext()->setContextProperty(QStringLiteral("PLANS"), &plans);
+    engine.rootContext()->setContextProperty(QStringLiteral("PLANLANES"), &planLaneModel);
     engine.rootContext()->setContextProperty(QStringLiteral("RMS_SIMULATED"), !live);
     engine.rootContext()->setContextProperty(QStringLiteral("RMS_READ_ONLY"), true);
     engine.rootContext()->setContextProperty(QStringLiteral("RMS_PROTOCOL_VERSION"),
@@ -237,6 +320,9 @@ int main(int argc, char* argv[])
     engine.rootContext()->setContextProperty(
         QStringLiteral("RMS_INITIAL_PAGE"),
         qEnvironmentVariable("TECHAIM_RMS_PAGE"));
+    engine.rootContext()->setContextProperty(
+        QStringLiteral("RMS_INITIAL_STEP"),
+        qEnvironmentVariable("TECHAIM_RMS_STEP").toInt());
     engine.load(QUrl(QStringLiteral("qrc:/RmsMain.qml")));
     if (engine.rootObjects().isEmpty())
         return 1;

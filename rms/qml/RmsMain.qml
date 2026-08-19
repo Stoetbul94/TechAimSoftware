@@ -13,7 +13,8 @@ import QtQuick.Window 2.15
 // milestone exists to remove.
 //
 // There is no control anywhere here. The only writes are RMS's own range
-// configuration.
+// configuration, its start list and its match plans. Preparing a match records
+// an intention; it transmits nothing and starts nothing.
 Window {
     id: root
     visible: true
@@ -124,7 +125,8 @@ Window {
         anchors { top: header.bottom; left: rail.right
                   right: parent.right; bottom: parent.bottom }
         visible: RANGECONFIG.configured
-        sourceComponent: root.currentPage === "live"     ? livePage
+        sourceComponent: root.currentPage === "newmatch" ? newMatchPage
+                       : root.currentPage === "live"     ? livePage
                        : root.currentPage === "setup"    ? setupPage
                        : root.currentPage === "displays" ? displaysPage
                        : root.currentPage === "athletes" ? athletesPage
@@ -136,25 +138,11 @@ Window {
     Component { id: homePage
         RmsHomePage { onNavigate: function(t) { root.currentPage = t } } }
     Component { id: livePage;     RmsLiveRangePage {} }
+    Component { id: newMatchPage; RmsNewMatchPage {} }
+    Component { id: athletesPage; RmsAthletesPage {} }
     Component { id: setupPage;    RmsRangeSetupPage {} }
     Component { id: displaysPage; RmsDisplaysPage {} }
 
-    Component {
-        id: athletesPage
-        RmsPlaceholderPage {
-            title: "ATHLETES"
-            milestone: "NEXT MILESTONE — ATHLETE + SESSION + PROGRAMME ASSIGNMENT"
-            summary: "An athlete register, and the assignment of an athlete and a "
-                     + "programme to a lane for a session."
-            notes: [
-                "Not built. No athlete database exists in this build.",
-                "Athlete names shown on the Live Range are OBSERVED from node "
-                + "telemetry — they are what the station reports, not an RMS record.",
-                "Assignment will still be configuration: RMS will record who is on "
-                + "which lane, and will not tell the station anything."
-            ]
-        }
-    }
     Component {
         id: resultsPage
         RmsPlaceholderPage {

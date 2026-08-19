@@ -102,6 +102,10 @@ Item {
                 shotsLabel: model.shotsLabel
                 scoreLabel: model.scoreLabel
                 unobserved: model.unobserved
+                inPlan: model.inPlan
+                plannedAthlete: model.plannedAthlete
+                plannedProgramme: model.plannedProgramme
+                programmeMismatch: model.programmeMismatch
                 onClicked: {
                     page.selectedRow = index
                     page.refreshSelection()
@@ -131,10 +135,18 @@ Item {
         shots: page.selectedShots
     }
 
-    Component.onCompleted: {
-        if (LANES.laneCount > 0) {
-            selectedRow = 0
-            refreshSelection()
+    // Select the first lane as soon as one exists. A range configured after the
+    // page opened (or a first run) would otherwise leave the detail pane
+    // unexplained-blank.
+    Timer {
+        interval: 400
+        running: page.selectedRow < 0
+        repeat: true
+        onTriggered: {
+            if (LANES.laneCount > 0) {
+                page.selectedRow = 0
+                page.refreshSelection()
+            }
         }
     }
 }

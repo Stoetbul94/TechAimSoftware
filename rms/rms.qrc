@@ -17,6 +17,15 @@
         <file alias="RmsLaneCard.qml">qml/RmsLaneCard.qml</file>
         <file alias="RmsLaneDetail.qml">qml/RmsLaneDetail.qml</file>
         <file alias="RmsStatusPill.qml">qml/RmsStatusPill.qml</file>
+        <file alias="RmsNewMatchPage.qml">qml/RmsNewMatchPage.qml</file>
+        <file alias="RmsAthletesPage.qml">qml/RmsAthletesPage.qml</file>
+        <file alias="RmsMatchReview.qml">qml/RmsMatchReview.qml</file>
+        <file alias="RmsButton.qml">qml/RmsButton.qml</file>
+
+        <!-- The competition catalogue, reused UNMODIFIED from the foundation.
+             It is the ONE authority for what programmes exist; RMS reads it and
+             never keeps a second list. -->
+        <file alias="CompetitionCatalogue.qml">../CompetitionCatalogue.qml</file>
 
         <!-- Shared Tech Aim theme, reused UNMODIFIED from the foundation.
              RMS defines no palette of its own and carries no SETA assets.

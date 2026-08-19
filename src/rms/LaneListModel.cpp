@@ -1,4 +1,6 @@
 #include "LaneListModel.h"
+#include "AthleteRegistry.h"
+#include "MatchPlanService.h"
 #include "ProgrammeDisplay.h"
 
 #include <QStringList>
@@ -17,6 +19,18 @@ LaneListModel::LaneListModel(RangeConfigurationService* config,
     connect(m_monitor, &RangeMonitor::nodeAdded,   this, &LaneListModel::onNodeChanged);
     connect(m_monitor, &RangeMonitor::nodeChanged, this, &LaneListModel::onNodeChanged);
     connect(m_monitor, &RangeMonitor::nodeRemoved, this, &LaneListModel::onNodeChanged);
+}
+
+void LaneListModel::setPlanContext(MatchPlanService* plans, AthleteRegistry* athletes)
+{
+    m_plans = plans;
+    m_athletes = athletes;
+    if (m_plans)
+        connect(m_plans, &MatchPlanService::planChanged, this, [this] {
+            if (rowCountProperty() > 0)
+                emit dataChanged(index(0, 0), index(rowCountProperty() - 1, 0));
+            emit summaryChanged();
+        });
 }
 
 const LaneDefinition* LaneListModel::laneAt(int row) const
@@ -135,7 +149,12 @@ QHash<int, QByteArray> LaneListModel::roleNames() const
         { ShotsLabelRole,     "shotsLabel" },
         { ScoreLabelRole,     "scoreLabel" },
         { UnobservedRole,     "unobserved" },
-        { GapCountRole,       "gapCount" }
+        { GapCountRole,       "gapCount" },
+        { PlannedAthleteRole,   "plannedAthlete" },
+        { PlannedProgrammeRole, "plannedProgramme" },
+        { InPlanRole,           "inPlan" },
+        { ProgrammeMatchRole,   "programmeMatch" },
+        { ProgrammeMismatchRole,"programmeMismatch" }
     };
 }
 
@@ -192,6 +211,28 @@ QVariant LaneListModel::data(const QModelIndex& index, int role) const
 
     case UnobservedRole:     return r ? r->unobservedShotCount() : 0;
     case GapCountRole:       return r ? int(r->ledger.missingSequences().size()) : 0;
+
+    // ── PLANNED, never merged into the observed values above ────────────
+    // The plan is what the operator intends. It has not been sent anywhere,
+    // so it may legitimately differ from what the station reports, and the
+    // two are shown side by side rather than one overwriting the other.
+    case InPlanRole:
+        return m_plans && m_plans->isLaneSelected(lane->laneNumber);
+    case PlannedAthleteRole: {
+        if (!m_plans || !m_athletes)
+            return QString();
+        return m_athletes->displayNameFor(m_plans->athleteOnLane(lane->laneNumber));
+    }
+    case PlannedProgrammeRole:
+        return (m_plans && m_plans->isLaneSelected(lane->laneNumber))
+                   ? m_plans->programmeLabel() : QString();
+    case ProgrammeMatchRole:
+        return m_plans ? toString(m_plans->programmeMatchForLane(lane->laneNumber))
+                       : QString();
+    case ProgrammeMismatchRole:
+        return m_plans && m_plans->programmeMatchForLane(lane->laneNumber)
+                              == ProgrammeMatch::Mismatch;
+
     default:                 return QVariant();
     }
 }
@@ -212,6 +253,20 @@ QVariantMap LaneListModel::laneDetail(int row) const
     m[QStringLiteral("notes")]          = lane->notes;
 
     const TargetNodeRecord* r = recordForRow(row);
+    // The plan's intention for this lane, beside the observation.
+    if (m_plans) {
+        m[QStringLiteral("inPlan")] = m_plans->isLaneSelected(lane->laneNumber);
+        m[QStringLiteral("plannedProgramme")] =
+            m_plans->isLaneSelected(lane->laneNumber) ? m_plans->programmeLabel() : QString();
+        m[QStringLiteral("programmeMatch")] =
+            toString(m_plans->programmeMatchForLane(lane->laneNumber));
+        m[QStringLiteral("programmeMismatch")] =
+            m_plans->programmeMatchForLane(lane->laneNumber) == ProgrammeMatch::Mismatch;
+        if (m_athletes)
+            m[QStringLiteral("plannedAthlete")] =
+                m_athletes->displayNameFor(m_plans->athleteOnLane(lane->laneNumber));
+    }
+
     m[QStringLiteral("observed")] = (r != nullptr);
     if (!r) {
         m[QStringLiteral("connection")] = lane->isAssigned()

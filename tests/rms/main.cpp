@@ -21,6 +21,7 @@ int main(int argc, char** argv)
     run_simulator_tests();
     run_udp_tests();
     run_range_config_tests();
+    run_match_plan_tests();
     run_readonly_tests();
 
     std::printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);

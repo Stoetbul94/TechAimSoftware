@@ -125,8 +125,29 @@ and the read-only boundary) alongside
 - Engineering detail (node/boot/session ids, duplicates, gaps, restarts) lives
   in Lane detail → Diagnostics, not on the operator's lane row. Do not delete
   it and do not put it back on the main list.
+- **Milestone 4 — PLANNING is configuration, TELEMETRY is observation.**
+  `MatchPlan` (programme + participating lanes + athletes) and `AthleteRegistry`
+  persist beside `range.json` in RMS's own namespace. **A plan transmits
+  nothing** — saving one records an intention, and the New Match page says so on
+  every step. `MatchPlanService` is the only place a plan changes.
+  See `docs/architecture/rms-milestone-4-match-planning.md`.
+- **Never claim a target loaded a match.** `readiness()` answers two separate
+  questions — PLAN COMPLETE (did the operator fill it in) and RANGE READY (are
+  the stations answering) — and `targetMatchLoaded` is hard-coded false with a
+  note, because no command channel exists.
+- **PLANNED and OBSERVED are compared, never merged.** A station reporting a
+  different `programmeId` is a mismatch shown on both sides; RMS changes neither
+  the plan nor the station. Compared by stable id, never by label.
+- `planId` is NOT a node `sessionId` — one plan will enclose several node
+  sessions once commands exist. Keep them separate.
+- ONLINE/OFFLINE is never persisted; readiness is recomputed from live telemetry
+  after every restart.
+- Design notes, written and deliberately NOT built:
+  `docs/architecture/rms-incident-model-design.md` (raw observed shot vs
+  adjudicated result — never destroy the raw one) and
+  `rms-command-boundary-design.md` (legacy UDP 7756 stays outside RMS).
 - Harness: `tests/rms/rms_tests.pro` (`QT = core network`, no platform plugin
-  needed). Currently **444 checks, 0 failures**.
+  needed). Currently **662 checks, 0 failures**.
 - Protocol/state must use the stable `programmeId` (plus `rulesetId`,
   `targetStandardId`) from `CompetitionCatalogue.qml`. Display text is derived
   FROM the id; nothing is ever looked up BY a label (QML-LANG-001).
