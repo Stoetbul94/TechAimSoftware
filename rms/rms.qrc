@@ -1,0 +1,21 @@
+<RCC>
+    <qresource prefix="/">
+        <!-- RMS screens. Aliased to the resource root so the shared Theme
+             resolves as a sibling type, exactly as it does in the target
+             application. -->
+        <file alias="RmsMain.qml">qml/RmsMain.qml</file>
+        <file alias="RmsSummaryBar.qml">qml/RmsSummaryBar.qml</file>
+        <file alias="RmsLaneCard.qml">qml/RmsLaneCard.qml</file>
+        <file alias="RmsLaneDetail.qml">qml/RmsLaneDetail.qml</file>
+        <file alias="RmsStatusPill.qml">qml/RmsStatusPill.qml</file>
+
+        <!-- Shared Tech Aim theme, reused UNMODIFIED from the foundation.
+             RMS defines no palette of its own and carries no SETA assets.
+             Aliases keep the resource paths Theme.qml already imports. -->
+        <file alias="Theme.qml">../Theme.qml</file>
+        <file alias="src/ui/theme/DesignTokens.qml">../src/ui/theme/DesignTokens.qml</file>
+        <file alias="src/ui/theme/Typography.qml">../src/ui/theme/Typography.qml</file>
+        <file alias="src/ui/theme/Spacing.qml">../src/ui/theme/Spacing.qml</file>
+        <file alias="images/logo/techaim_white.png">../images/logo/techaim_white.png</file>
+    </qresource>
+</RCC>

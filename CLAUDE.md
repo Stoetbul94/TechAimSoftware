@@ -89,6 +89,36 @@ screenshot cannot be produced, the correct status is
 Do not describe a concept mockup as the application. Concept files stay stamped
 **CONCEPT MOCKUP — NOT CURRENT APPLICATION** and are never cited as evidence.
 
+## RMS — this branch (`feature/rms`)
+
+This worktree is the **Tech Aim Range Management System** product line. Do not
+modify SETA, the protected Tech Aim foundation or the frozen RC3a artefacts
+from here.
+
+**Before any RMS work, read `docs/architecture/rms-milestone-1-readonly.md`**
+(protocol, node identity, duplicate/ordering rules, offline reconciliation,
+and the read-only boundary) alongside
+`docs/architecture/three-product-architecture.md`.
+
+- **THE TARGET NODE REMAINS AUTHORITATIVE.** The node owns acquisition,
+  sequence integrity, scoring, SessionStore, recovery and paper feed. RMS
+  observes. **RMS never computes a score** — it transports the node's
+  `authoritativeScore`. If RMS disappears mid-match, the match continues.
+- **Milestone 1 is READ-ONLY and enforced, not promised.** No command exists in
+  protocol v1, `RangeMonitor` has one ingress and no egress, `RmsUdpObserver`
+  only binds and reads, and `tests/rms/tst_readonly.cpp` fails if any authored
+  RMS file gains a transmit call, a TCP connection or a reference to the node's
+  inbound control port 7756. Adding control is a new milestone, not an edit.
+- Separate binary: `rms/TechAimRMS.pro` → `TechAimRMS.exe`. Observer core in
+  `src/rms/` (QtCore + QtNetwork, no GUI). Dev simulator confined to
+  `src/rms/dev/`, gated on `TECHAIM_RMS_DEV_SIMULATOR`, with an on-screen
+  `SIMULATED RANGE` badge — never let it read as a real range.
+- Harness: `tests/rms/rms_tests.pro` (`QT = core network`, no platform plugin
+  needed). Currently **269 checks, 0 failures**.
+- Protocol/state must use the stable `programmeId` (plus `rulesetId`,
+  `targetStandardId`) from `CompetitionCatalogue.qml`. Display text is derived
+  FROM the id; nothing is ever looked up BY a label (QML-LANG-001).
+
 ## Architecture, in short
 
 - `ModReader/qModMaster.pro` is `include()`d directly into `Seta.pro` — one

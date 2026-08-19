@@ -35,6 +35,15 @@ tests/training/Makefile*
 tests/training/release/
 tests/training/debug/
 tests/training/.qmake.stash
+tests/rms/Makefile*
+tests/rms/release/
+tests/rms/debug/
+tests/rms/.qmake.stash
+# Tech Aim RMS application - a separate binary with its own qmake project.
+rms/Makefile*
+rms/release/
+rms/debug/
+rms/.qmake.stash
 # CD-REPORT evidence renderer - same qmake -o Makefile.rel pattern.
 tools/reporttest/Makefile*
 tools/reporttest/release/
