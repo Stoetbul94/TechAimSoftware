@@ -1,0 +1,258 @@
+===============================================================================
+ TECH AIM RMS - FIELD-TEST CHECKLIST
+ Milestone 4.7 - field-test instrumentation + station identity
+ FIELD TEST / DEVELOPMENT EVALUATION
+ NOT FOR OFFICIAL COMPETITION CONTROL
+===============================================================================
+
+ This checklist is for a PERSON to work through. Nothing on it has been ticked
+ by the developer, and none of it should be reported as passing until you have
+ actually done it. Automated tests and screenshots cannot prove that a button
+ is wired to the thing it says it does; only clicking it can.
+
+ FOR THE RANGE DAY ITSELF, follow RANGE-DAY-GUIDE.txt. This checklist is the
+ bench test of the application; that guide is the order to do things in at a
+ range.
+
+ Tester: ______________________     Date: ______________
+
+ Machine / screen size: _______________________________________________
+
+ Work down the list. If something fails, write what you saw next to it - what
+ you expected matters less than what actually happened.
+
+
+-------------------------------------------------------------------------------
+ A. IT STARTS
+-------------------------------------------------------------------------------
+
+ [ ] The application launches by double-clicking Launch-TechAimRMS-Demo.cmd
+ [ ] Launch-TechAimRMS-Live.cmd also launches
+ [ ] No error about a missing DLL, plugin or "Qt platform plugin"
+ [ ] The header says DEMO RANGE - NOT REAL TARGETS
+ [ ] The header also says NOT OBSERVING - UDP 7755
+ [ ] The demo range loads: six lanes appear within about ten seconds
+ [ ] No DEV GEOMETRY text appears anywhere - that is a development overlay and
+     must not be visible in this build
+
+
+-------------------------------------------------------------------------------
+ B. THE PAGES
+-------------------------------------------------------------------------------
+
+ [ ] HOME opens and shows something sensible
+ [ ] LIVE RANGE opens and lists the six lanes
+ [ ] LIVE RANGE - clicking a lane opens its detail
+ [ ] NEW MATCH opens and shows the seeded plan
+ [ ] ATHLETES opens and lists the six demo athletes
+ [ ] RANGE SETUP opens and shows the demo range and its lane assignments
+ [ ] DISPLAYS opens
+
+
+-------------------------------------------------------------------------------
+ C. DISPLAYS - ALL TARGETS
+-------------------------------------------------------------------------------
+
+ [ ] ALL TARGETS shows six target faces with shots on them
+ [ ] The faces look like real ISSF targets, not generic circles
+ [ ] Clicking Lane 1's tile opens Lane 1 large
+ [ ] The lane strip under the toolbar highlights the lane you are on
+
+
+-------------------------------------------------------------------------------
+ D. DISPLAYS - NAVIGATION
+-------------------------------------------------------------------------------
+
+ [ ] PREVIOUS moves to the previous lane
+ [ ] NEXT moves to the next lane
+ [ ] PREVIOUS from Lane 1 wraps round to Lane 6
+ [ ] NEXT from Lane 6 wraps round to Lane 1
+ [ ] Clicking a lane in the strip jumps straight to it
+ [ ] ALL TARGETS returns to the overview
+ [ ] MATCH LANES / ALL LANES changes which lanes are walked
+
+
+-------------------------------------------------------------------------------
+ E. DISPLAYS - FULL SCREEN
+-------------------------------------------------------------------------------
+
+ [ ] FULL SCREEN fills the whole screen
+ [ ] The target is readable from across a room
+ [ ] PREVIOUS / NEXT work in full screen
+ [ ] The LEFT and RIGHT arrow keys work in full screen
+ [ ] ALL TARGETS in full screen shows the whole range, filling the screen
+ [ ] The EXIT FULL SCREEN button leaves full screen
+ [ ] ESC leaves full screen
+ [ ] If you have a second monitor: the DISPLAY OUTPUT picker moves the window
+
+
+-------------------------------------------------------------------------------
+ F. DISPLAYS - AUTO ROTATE
+-------------------------------------------------------------------------------
+
+ [ ] AUTO ROTATE starts cycling through the lanes
+ [ ] The button changes to STOP ROTATE while it is rotating
+ [ ] 5s interval works
+ [ ] 10s interval works
+ [ ] 15s interval works
+ [ ] 30s interval works
+ [ ] Pressing NEXT, PREVIOUS or clicking a lane STOPS the rotation
+ [ ] STOP ROTATE stops it
+ [ ] SPACE starts and stops rotation in full screen
+
+
+-------------------------------------------------------------------------------
+ G0. TARGET GEOMETRY  (new in M4.6 - the point of this rebuild)
+-------------------------------------------------------------------------------
+
+ Open each lane large (DISPLAYS, then click the lane or use NEXT).
+
+ [ ] Lane 1  10 m Air Rifle   - face looks correct
+ [ ] Lane 2  10 m Air Pistol  - face looks correct
+ [ ] Lane 4  50 m Rifle       - face looks correct
+ [ ] Lane 6  50 m Pistol      - face looks correct, and is CLEARLY NOT the same
+                                face as Lane 4
+
+ The four faces should look obviously different from each other. If the 50 m
+ pistol and the 50 m rifle look like the same target, something has regressed.
+
+ [ ] Projectile footprints look reasonable for the distance:
+       10 m lanes - the holes are LARGE relative to the rings
+       50 m lanes - the holes are small relative to the rings
+ [ ] The last-shot highlight (red ring) is clearly a HIGHLIGHT, and is not
+     mistakable for the edge of the bullet hole itself
+ [ ] Where a score is a whole number, the EDGE of the hole - not its centre -
+     sits on the ring line that the score names
+
+ On the 10 m air rifle lane the holes overlap heavily and cover most of the
+ rings. That is what a real air rifle card looks like; it is not a fault.
+
+
+-------------------------------------------------------------------------------
+ G. THE STATES WORTH LOOKING AT
+     (leave the demo running for about a minute first)
+-------------------------------------------------------------------------------
+
+ [ ] Lane 3 goes OFFLINE and STAYS in the list - it is dimmed, not removed
+ [ ] Lane 3 still shows its last known shots and score while offline
+ [ ] Lane 4 goes offline and comes back
+ [ ] Lane 4 then shows an unseen-shot warning
+ [ ] Opening Lane 4 large explains it: how many shots are drawn, how many the
+     station accepted, and both totals
+ [ ] The big TOTAL is the station's total, not RMS's own sum
+ [ ] Lane 5 shows FINISHED
+ [ ] Lane 6 shows ELIMINATED, in a different colour from FINISHED
+ [ ] BOTH of those are clearly marked SIMULATED
+ [ ] An eliminated lane is NOT dimmed like an offline one
+
+
+-------------------------------------------------------------------------------
+ H. RESTART AND RESET
+-------------------------------------------------------------------------------
+
+ [ ] Close RMS and launch the demo again - the range is still configured
+ [ ] Reset-Demo.cmd restores the demonstration to the beginning
+ [ ] After a reset the range rebuilds itself and starts shooting again
+
+
+-------------------------------------------------------------------------------
+ I. LIVE MODE, AND THAT THE DEMO DID NOT DAMAGE IT
+-------------------------------------------------------------------------------
+
+ [ ] Launch-TechAimRMS-Live.cmd starts
+ [ ] The header says LIVE, and OBSERVING UDP 7755
+ [ ] It does NOT show the demo range, the demo athletes or the demo plan
+ [ ] With no stations broadcasting, it correctly shows nothing found
+ [ ] If you had a real range configured before, it is still there
+ [ ] Going back to the demo does not disturb the live configuration
+
+
+-------------------------------------------------------------------------------
+ J. THE THING THAT MATTERS MOST
+-------------------------------------------------------------------------------
+
+ [ ] There is NO button anywhere that starts, stops, resets, loads, pauses or
+     resumes anything on a target
+ [ ] Nothing on any page offers to change what a station is doing
+ [ ] Closing RMS has no effect on anything else
+
+ If you find a control that appears to command a target, stop and report it.
+ That would be a defect of the most serious kind in this product.
+
+
+-------------------------------------------------------------------------------
+ K. STATION IDENTITY AND COMMISSIONING   (new in M4.7)
+-------------------------------------------------------------------------------
+
+ [ ] RANGE SETUP shows a readable STATION code for each lane, e.g. E222-403F
+ [ ] The full station identity is still visible underneath, or in Diagnostics
+ [ ] Two different stations never show the same code
+ [ ] Lane detail -> DIAGNOSTICS shows STATION ID, node id, boot id, last seen
+ [ ] Lane detail -> DIAGNOSTICS shows shots observed vs accepted by the node
+
+ Restart the demo (Reset-Demo.cmd) and check:
+ [ ] the same lane shows the SAME station code as before
+
+ Assignment safety:
+ [ ] Assigning a station to a lane that already has one is refused, with a
+     message saying which station is already there
+ [ ] CLEAR then ASSIGN does replace it
+ [ ] After a restart, the replacement is still in place
+
+
+-------------------------------------------------------------------------------
+ L. FIELD TEST PAGE   (new in M4.7)
+-------------------------------------------------------------------------------
+
+ [ ] FIELD TEST appears in the left rail and opens
+ [ ] PREFLIGHT lists checks with PASS / WARNING / FAIL / WAITING
+ [ ] The verdict line NEVER says "RANGE READY"
+ [ ] NETWORK shows the UDP listener state, the port and local interfaces
+ [ ] TELEMETRY shows packet and shot counters
+ [ ] TIMELINE is empty until a log is started, and says so
+
+ Start a log:
+ [ ] Fill in test name / range / operator, press START FIELD TEST LOG
+ [ ] The pill shows LOGGING with a running clock and an event count
+ [ ] TIMELINE fills with events as the demo runs
+ [ ] Heartbeats do NOT flood the timeline - events are things that happened
+ [ ] Let a lane go offline and come back; both appear in the timeline
+
+ Export:
+ [ ] Press EXPORT FIELD TEST
+ [ ] A green panel shows the folder it was written to
+ [ ] Open that folder: summary.txt reads sensibly to a person
+ [ ] In DEMO mode, summary.txt says SIMULATED / DEMO DATA at the top
+ [ ] The folder contains NO source code
+
+ Stop:
+ [ ] STOP FIELD TEST LOG stops it
+ [ ] Nothing on any target was affected by starting or stopping the log
+
+-------------------------------------------------------------------------------
+ NOTES
+-------------------------------------------------------------------------------
+
+ In DEMO mode the shot positions and their scores now MATCH each other. They
+ are correlated fixture data, generated outside the program from the official
+ rulebook geometry and the target station's own scoring formula. In the M4.5
+ package they did not match, and that was a demo-data fault rather than a
+ display fault.
+
+ So in this build you may judge the arithmetic as well as the layout: if a
+ score and a hole disagree, that is worth reporting.
+
+ The display has still never been checked against a REAL target. When hardware
+ is available the range procedure is:
+     docs/test/rms-physical-shot-registration-checklist.md
+ It checks centre, right, left, above, below, and several known ring-region
+ impacts. Nothing about physical shot orientation is confirmed until it is
+ done.
+
+
+ Anything unexpected:
+ ______________________________________________________________________________
+
+ ______________________________________________________________________________
+
+ ______________________________________________________________________________

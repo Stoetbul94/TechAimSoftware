@@ -1,0 +1,46 @@
+<RCC>
+    <qresource prefix="/">
+        <!-- RMS screens. Aliased to the resource root so the shared Theme
+             resolves as a sibling type, exactly as it does in the target
+             application. -->
+        <file alias="RmsMain.qml">qml/RmsMain.qml</file>
+        <file alias="RmsNavRail.qml">qml/RmsNavRail.qml</file>
+        <file alias="RmsHomePage.qml">qml/RmsHomePage.qml</file>
+        <file alias="RmsLiveRangePage.qml">qml/RmsLiveRangePage.qml</file>
+        <file alias="RmsRangeSetupPage.qml">qml/RmsRangeSetupPage.qml</file>
+        <file alias="RmsDisplaysPage.qml">qml/RmsDisplaysPage.qml</file>
+        <file alias="RmsPlaceholderPage.qml">qml/RmsPlaceholderPage.qml</file>
+        <file alias="RmsFirstRunPage.qml">qml/RmsFirstRunPage.qml</file>
+        <file alias="RmsStatTile.qml">qml/RmsStatTile.qml</file>
+        <file alias="RmsNumberField.qml">qml/RmsNumberField.qml</file>
+        <file alias="RmsLaneCard.qml">qml/RmsLaneCard.qml</file>
+        <file alias="RmsLaneDetail.qml">qml/RmsLaneDetail.qml</file>
+        <file alias="RmsStatusPill.qml">qml/RmsStatusPill.qml</file>
+        <file alias="RmsNewMatchPage.qml">qml/RmsNewMatchPage.qml</file>
+        <file alias="RmsAthletesPage.qml">qml/RmsAthletesPage.qml</file>
+        <file alias="RmsMatchReview.qml">qml/RmsMatchReview.qml</file>
+        <file alias="RmsButton.qml">qml/RmsButton.qml</file>
+        <file alias="RmsTargetView.qml">qml/RmsTargetView.qml</file>
+        <file alias="RmsFieldTestPage.qml">qml/RmsFieldTestPage.qml</file>
+        <file alias="RmsKeyValue.qml">qml/RmsKeyValue.qml</file>
+        <file alias="RmsFieldInput.qml">qml/RmsFieldInput.qml</file>
+        <file alias="RmsTargetCard.qml">qml/RmsTargetCard.qml</file>
+        <file alias="RmsTargetGrid.qml">qml/RmsTargetGrid.qml</file>
+        <file alias="RmsSingleTarget.qml">qml/RmsSingleTarget.qml</file>
+        <file alias="RmsFullScreenDisplay.qml">qml/RmsFullScreenDisplay.qml</file>
+
+        <!-- The competition catalogue, reused UNMODIFIED from the foundation.
+             It is the ONE authority for what programmes exist; RMS reads it and
+             never keeps a second list. -->
+        <file alias="CompetitionCatalogue.qml">../CompetitionCatalogue.qml</file>
+
+        <!-- Shared Tech Aim theme, reused UNMODIFIED from the foundation.
+             RMS defines no palette of its own and carries no SETA assets.
+             Aliases keep the resource paths Theme.qml already imports. -->
+        <file alias="Theme.qml">../Theme.qml</file>
+        <file alias="src/ui/theme/DesignTokens.qml">../src/ui/theme/DesignTokens.qml</file>
+        <file alias="src/ui/theme/Typography.qml">../src/ui/theme/Typography.qml</file>
+        <file alias="src/ui/theme/Spacing.qml">../src/ui/theme/Spacing.qml</file>
+        <file alias="images/logo/techaim_white.png">../images/logo/techaim_white.png</file>
+    </qresource>
+</RCC>

@@ -89,6 +89,139 @@ screenshot cannot be produced, the correct status is
 Do not describe a concept mockup as the application. Concept files stay stamped
 **CONCEPT MOCKUP — NOT CURRENT APPLICATION** and are never cited as evidence.
 
+## RMS — this branch (`feature/rms`)
+
+This worktree is the **Tech Aim Range Management System** product line. Do not
+modify SETA, the protected Tech Aim foundation or the frozen RC3a artefacts
+from here.
+
+**Before any RMS work, read `docs/architecture/rms-milestone-1-readonly.md`**
+(protocol, node identity, duplicate/ordering rules, offline reconciliation,
+and the read-only boundary) alongside
+`docs/architecture/three-product-architecture.md`.
+
+- **THE TARGET NODE REMAINS AUTHORITATIVE.** The node owns acquisition,
+  sequence integrity, scoring, SessionStore, recovery and paper feed. RMS
+  observes. **RMS never computes a score** — it transports the node's
+  `authoritativeScore`. If RMS disappears mid-match, the match continues.
+- **Milestone 1 is READ-ONLY and enforced, not promised.** No command exists in
+  protocol v1, `RangeMonitor` has one ingress and no egress, `RmsUdpObserver`
+  only binds and reads, and `tests/rms/tst_readonly.cpp` fails if any authored
+  RMS file gains a transmit call, a TCP connection or a reference to the node's
+  inbound control port 7756. Adding control is a new milestone, not an edit.
+- Separate binary: `rms/TechAimRMS.pro` → `TechAimRMS.exe`. Observer core in
+  `src/rms/` (QtCore + QtNetwork, no GUI). Dev simulator confined to
+  `src/rms/dev/`, gated on `TECHAIM_RMS_DEV_SIMULATOR`, with an on-screen
+  `SIMULATED RANGE` badge — never let it read as a real range.
+- **Milestone 3 — the range is CONFIGURATION, the nodes are OBSERVATION.**
+  `RangeDefinition`/`LaneDefinition` persist in RMS's OWN namespace
+  (`<AppLocalDataLocation>/range.json`, org "Tech Aim" / app "Tech Aim RMS") —
+  never the node application's AppData. A ten-lane range shows ten lanes with
+  two stations on. The join key is `laneId ↔ nodeId` and nothing else, which is
+  why a station returning on a new IP and a new bootId lands on its own lane
+  with no operator action. `RangeConfigurationService` is the ONLY place the
+  configuration changes; a move between lanes is one atomic save.
+  See `docs/architecture/rms-milestone-3-range-definition.md`.
+- Engineering detail (node/boot/session ids, duplicates, gaps, restarts) lives
+  in Lane detail → Diagnostics, not on the operator's lane row. Do not delete
+  it and do not put it back on the main list.
+- **Milestone 4 — PLANNING is configuration, TELEMETRY is observation.**
+  `MatchPlan` (programme + participating lanes + athletes) and `AthleteRegistry`
+  persist beside `range.json` in RMS's own namespace. **A plan transmits
+  nothing** — saving one records an intention, and the New Match page says so on
+  every step. `MatchPlanService` is the only place a plan changes.
+  See `docs/architecture/rms-milestone-4-match-planning.md`.
+- **Never claim a target loaded a match.** `readiness()` answers two separate
+  questions — PLAN COMPLETE (did the operator fill it in) and RANGE READY (are
+  the stations answering) — and `targetMatchLoaded` is hard-coded false with a
+  note, because no command channel exists.
+- **PLANNED and OBSERVED are compared, never merged.** A station reporting a
+  different `programmeId` is a mismatch shown on both sides; RMS changes neither
+  the plan nor the station. Compared by stable id, never by label.
+- `planId` is NOT a node `sessionId` — one plan will enclose several node
+  sessions once commands exist. Keep them separate.
+- ONLINE/OFFLINE is never persisted; readiness is recomputed from live telemetry
+  after every restart.
+- **3P FINALS ELIMINATION — RMS NEVER DECIDES IT.** Elimination is determined by
+  `Finals3PController` on the node. RMS must never infer it from rank, score,
+  shot count, how many athletes are left, translated text, or another athlete
+  disappearing. `CompetitionStatus` (ACTIVE/WAITING/FINISHED/ELIMINATED) is a
+  THIRD axis, independent of node health and target health — an eliminated
+  athlete's station is normally perfectly healthy, and the lane is never
+  removed. Protocol v1 carries no such field, so every real station reads
+  UNKNOWN; carrying it is a deliberate v2 bump, never a widened v1.
+  Requirement + v2 field list:
+  `docs/architecture/rms-finals-elimination-display.md`.
+- **Milestone 4.5 — the display SHOWS, it does not DECIDE.** `TargetGeometry`
+  maps `xMm`/`yMm` onto a face; it never maps a position back to a value, and
+  there is no coordinate→score function anywhere in the RMS tree. The big
+  number is the STATION's `totalScore`; RMS's own sum of what it received
+  appears only inside the unseen-shot warning, labelled as such. An unsupported
+  `targetStandardId` draws a placeholder, never a substitute face. Telemetry y
+  is up-positive and is flipped exactly once, in `normalise()`. Shot history is
+  bounded at 30 impacts for display only. `DisplayController.laneOrder()` is the
+  single ordered set behind previous/next/rotation — and it is exposed as the
+  NOTIFYING property `laneOrderList`, because a `Q_INVOKABLE` cannot drive a
+  live QML model. See `docs/architecture/rms-target-display-mvp.md`; the future
+  spectator/TV client shape is in `rms-spectator-client-design.md`.
+- **Target geometry is taken from the RULEBOOK, not from another renderer.**
+  `TargetGeometry` stores official **DIAMETERS** (ISSF Rule Book 2026 rule
+  6.3.4) and converts to radii, because a diameter used as a radius is the
+  classic 2x error. Mirroring `IssfTargetCanvas.qml` is how RMS came to draw a
+  50 m *rifle* face for 50 m pistol — that renderer has no pistol entry and
+  falls through to its rifle default. Two foundation correction candidates are
+  recorded in the source register and were deliberately NOT applied from this
+  branch. The projectile is drawn at its true calibre (4.5 mm at 10 m, 5.6 mm at
+  50 m, rules 7.4.6 / 8.4.4): ISSF scores by the OUTWARD GAUGE, so on a 10 m air
+  rifle face a 10.0 has its centre ten times the ten-ring radius out, and a
+  display that draws only a dot makes correct scoring look broken.
+  Qualification: `docs/test/rms-target-geometry-qualification.md`; coordinate
+  path: `docs/architecture/rms-coordinate-contract.md`.
+- **The visual demo uses CORRELATED FIXTURES, not the chaos simulator.** The
+  development scenario draws coordinate and score independently — fine for
+  ordering/outage tests, useless as a picture. `--demo-range` plays fixtures
+  generated outside the product by `tools/fixtures/generate_target_fixtures.py`;
+  RMS reads them as opaque authoritative values.
+- **Milestone 4.7 — a PHYSICAL LANE IS NOT A DEVICE IDENTITY.** The mapping is
+  `laneId ↔ nodeId` and nothing else. IP, MAC, COM port, `bootId`, the laneId a
+  station reports, and DISCOVERY ORDER are diagnostics only, and each has a test
+  proving it cannot move a lane. `StationCode` turns a nodeId into a readable
+  `E222-403F` for humans — deterministic, never persisted, never a key, and
+  collision-resolved across the whole set at once. Commissioning is one tablet
+  at a time; `assignNodeToLane` REFUSES an occupied lane, so replacing a station
+  is clear-then-assign, two deliberate acts. A wiped tablet returns as a NEW
+  unassigned station. `FieldTestRecorder` is an append-only JSONL diary of what
+  RMS saw (not SessionStore, not adjudication) that records TRANSITIONS, never
+  heartbeats; `FieldTestService` answers the preflight and writes the evidence
+  bundle. The verdict is `OBSERVATION PREFLIGHT COMPLETE`, never "RANGE READY" —
+  RMS cannot certify a station. A DEMO bundle is stamped simulated everywhere.
+  `IDENTIFY_STATION` is documented and deliberately NOT built: it is a command,
+  and improvising one would create an unaudited control path.
+  See `docs/architecture/rms-field-test-instrumentation.md` and the range-day
+  procedure `docs/test/rms-first-multilane-field-test.md`.
+- **The field-test package.** `scripts/deploy/deploy-rms-fieldtest.ps1` builds
+  `dist/TechAimRMS-FieldTest-M4_5/` (+ ZIP) — a self-contained runtime that
+  double-clicks on a machine with no Qt. It reuses the method documented in
+  SETA's `deploy-seta-release.ps1` (windeployqt in the mode this Qt install
+  accepts, then a prune), and `tests/release/check_rms_deployment.py` gates it
+  by walking the PE import table of every binary: nothing may resolve outside
+  the folder, and no source, test or state may ship. **LIVE is the default
+  mode**; `--demo-range` runs the scripted field-test demonstration and
+  `--simulate` the development one. A demo writes to its own profile
+  (`<AppLocalDataLocation>/field-test-demo/`) which LIVE never opens, so
+  `--reset-demo` cannot touch a configured range. The demo's terminal states
+  are development injections stamped SIMULATED — the script declares them at
+  fixed times and never derives them from a score, rank or shot count.
+- Design notes, written and deliberately NOT built:
+  `docs/architecture/rms-incident-model-design.md` (raw observed shot vs
+  adjudicated result — never destroy the raw one) and
+  `rms-command-boundary-design.md` (legacy UDP 7756 stays outside RMS).
+- Harness: `tests/rms/rms_tests.pro` (`QT = core network`, no platform plugin
+  needed). Currently **1301 checks, 0 failures**.
+- Protocol/state must use the stable `programmeId` (plus `rulesetId`,
+  `targetStandardId`) from `CompetitionCatalogue.qml`. Display text is derived
+  FROM the id; nothing is ever looked up BY a label (QML-LANG-001).
+
 ## Architecture, in short
 
 - `ModReader/qModMaster.pro` is `include()`d directly into `Seta.pro` — one
@@ -177,8 +310,11 @@ floating-windows work — review/close manually; local
 
 - 25m Pistol disciplines: unimplemented; which events are in scope needs the
   user's decision.
-- 50m Rifle `radOf10Ring = 5.2` in `calculateShootingSocre()`: needs official
-  rulebook confirmation or physical calibration.
+- ~~50m Rifle `radOf10Ring = 5.2`: needs official rulebook confirmation.~~
+  **CLOSED (M4.6).** ISSF Rule Book 2026 rule 6.3.4.2 gives the 50 m rifle 10
+  ring as **10.4 mm DIAMETER**, so the 5.2 mm RADIUS is correct. All four
+  `calculateShootingSocre()` branches were checked against the rulebook and all
+  four are right. See `docs/architecture/rms-target-geometry-source-register.md`.
 - Licence-expiry check: DISABLED (commented in LoginPage, rewritten against
   the dialog framework). Re-enabling needs separate approval + a licence
   test fixture (`MODREADER.isValidLicence()` path).
