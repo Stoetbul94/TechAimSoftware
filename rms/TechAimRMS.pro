@@ -1,10 +1,15 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# Tech Aim Range Management System — read-only range observer (milestone 1).
+# Tech Aim Range Management System.
 #
 # A SEPARATE BINARY. It does not include Seta.pro, does not link ModReader and
 # has no serial/Modbus dependency: RMS never talks to target hardware, only to
 # target NODES, and only by listening. That separation is what keeps range
 # management out of the single-target application.
+#
+# Milestone 1 — read-only observation of whatever nodes are heard.
+# Milestone 3 — a configured physical range: persistent lanes, persistent
+#               nodeId <-> laneId mapping, automatic reconnection. Still no
+#               commands; the only thing RMS writes is its own configuration.
 #
 #   qmake TechAimRMS.pro && mingw32-make -f Makefile.Release
 # ─────────────────────────────────────────────────────────────────────────────
@@ -27,6 +32,11 @@ SOURCES += \
     $$PWD/../src/rms/TargetNodeRecord.cpp \
     $$PWD/../src/rms/RangeMonitor.cpp \
     $$PWD/../src/rms/RangeListModel.cpp \
+    $$PWD/../src/rms/RangeDefinition.cpp \
+    $$PWD/../src/rms/RangeStore.cpp \
+    $$PWD/../src/rms/RangeConfigurationService.cpp \
+    $$PWD/../src/rms/LaneListModel.cpp \
+    $$PWD/../src/rms/UnassignedNodeModel.cpp \
     $$PWD/../src/rms/ProgrammeDisplay.cpp \
     $$PWD/../src/rms/RmsUdpObserver.cpp \
     $$PWD/../src/rms/dev/SimulatedRange.cpp
@@ -36,6 +46,11 @@ HEADERS += \
     $$PWD/../src/rms/TargetNodeRecord.h \
     $$PWD/../src/rms/RangeMonitor.h \
     $$PWD/../src/rms/RangeListModel.h \
+    $$PWD/../src/rms/RangeDefinition.h \
+    $$PWD/../src/rms/RangeStore.h \
+    $$PWD/../src/rms/RangeConfigurationService.h \
+    $$PWD/../src/rms/LaneListModel.h \
+    $$PWD/../src/rms/UnassignedNodeModel.h \
     $$PWD/../src/rms/ProgrammeDisplay.h \
     $$PWD/../src/rms/RmsUdpObserver.h \
     $$PWD/../src/rms/dev/SimulatedRange.h

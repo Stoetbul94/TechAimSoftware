@@ -113,8 +113,20 @@ and the read-only boundary) alongside
   `src/rms/` (QtCore + QtNetwork, no GUI). Dev simulator confined to
   `src/rms/dev/`, gated on `TECHAIM_RMS_DEV_SIMULATOR`, with an on-screen
   `SIMULATED RANGE` badge — never let it read as a real range.
+- **Milestone 3 — the range is CONFIGURATION, the nodes are OBSERVATION.**
+  `RangeDefinition`/`LaneDefinition` persist in RMS's OWN namespace
+  (`<AppLocalDataLocation>/range.json`, org "Tech Aim" / app "Tech Aim RMS") —
+  never the node application's AppData. A ten-lane range shows ten lanes with
+  two stations on. The join key is `laneId ↔ nodeId` and nothing else, which is
+  why a station returning on a new IP and a new bootId lands on its own lane
+  with no operator action. `RangeConfigurationService` is the ONLY place the
+  configuration changes; a move between lanes is one atomic save.
+  See `docs/architecture/rms-milestone-3-range-definition.md`.
+- Engineering detail (node/boot/session ids, duplicates, gaps, restarts) lives
+  in Lane detail → Diagnostics, not on the operator's lane row. Do not delete
+  it and do not put it back on the main list.
 - Harness: `tests/rms/rms_tests.pro` (`QT = core network`, no platform plugin
-  needed). Currently **269 checks, 0 failures**.
+  needed). Currently **444 checks, 0 failures**.
 - Protocol/state must use the stable `programmeId` (plus `rulesetId`,
   `targetStandardId`) from `CompetitionCatalogue.qml`. Display text is derived
   FROM the id; nothing is ever looked up BY a label (QML-LANG-001).

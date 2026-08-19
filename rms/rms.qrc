@@ -4,7 +4,16 @@
              resolves as a sibling type, exactly as it does in the target
              application. -->
         <file alias="RmsMain.qml">qml/RmsMain.qml</file>
+        <file alias="RmsNavRail.qml">qml/RmsNavRail.qml</file>
+        <file alias="RmsHomePage.qml">qml/RmsHomePage.qml</file>
+        <file alias="RmsLiveRangePage.qml">qml/RmsLiveRangePage.qml</file>
+        <file alias="RmsRangeSetupPage.qml">qml/RmsRangeSetupPage.qml</file>
+        <file alias="RmsDisplaysPage.qml">qml/RmsDisplaysPage.qml</file>
+        <file alias="RmsPlaceholderPage.qml">qml/RmsPlaceholderPage.qml</file>
+        <file alias="RmsFirstRunPage.qml">qml/RmsFirstRunPage.qml</file>
         <file alias="RmsSummaryBar.qml">qml/RmsSummaryBar.qml</file>
+        <file alias="RmsStatTile.qml">qml/RmsStatTile.qml</file>
+        <file alias="RmsNumberField.qml">qml/RmsNumberField.qml</file>
         <file alias="RmsLaneCard.qml">qml/RmsLaneCard.qml</file>
         <file alias="RmsLaneDetail.qml">qml/RmsLaneDetail.qml</file>
         <file alias="RmsStatusPill.qml">qml/RmsStatusPill.qml</file>

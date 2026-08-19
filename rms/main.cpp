@@ -1,27 +1,38 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// TECH AIM RANGE MANAGEMENT SYSTEM — milestone 1, READ-ONLY OBSERVER.
+// TECH AIM RANGE MANAGEMENT SYSTEM.
 //
-// This binary can watch a range. It cannot touch one. There is no command
-// encoder, no transmitting socket and no control surface anywhere in the RMS
-// tree; if this application is closed, killed or unplugged, every target node
-// carries on with its match exactly as before, because nothing here was ever
-// part of the node's control loop.
+// RMS observes a range and configures its own view of it. It cannot touch a
+// target. There is no command encoder, no transmitting socket and no control
+// surface anywhere in the RMS tree; if this application is closed, killed or
+// unplugged, every target node carries on with its match exactly as before.
+//
+// The ONLY thing RMS writes is its own range configuration — lanes, and which
+// station stands on which lane. Assigning lane 4 tells RMS where a station is;
+// it tells the station nothing.
 //
 //   TechAimRMS                     scripted simulated range (development)
 //   TechAimRMS --live              observe real nodes on UDP 7755
-//   TechAimRMS --dump [--seconds N]  headless: print the dashboard as text
+//   TechAimRMS --dump [--seconds N]  headless: print the range as text
+//
+// Options:
+//   --range-config <path>   use this range file instead of the installed one
+//   --reset-range           development: forget the configured range at start
 //
 // Environment:
 //   TECHAIM_RMS_TIMESCALE   speed up the simulated range (default 1.0)
 //   TECHAIM_RMS_CAPTURE     PNG path; grabs the window once and writes it
 //   TECHAIM_RMS_CAPTURE_MS  when to grab, ms after start (default 20000)
 //   TECHAIM_RMS_CAPTURE_QUIT=1  exit after the grab
+//   TECHAIM_RMS_PAGE        development: open on home|live|setup|displays
 // ─────────────────────────────────────────────────────────────────────────────
 
+#include "rms/LaneListModel.h"
+#include "rms/RangeConfigurationService.h"
 #include "rms/RangeListModel.h"
 #include "rms/RangeMonitor.h"
 #include "rms/RmsProtocol.h"
 #include "rms/RmsUdpObserver.h"
+#include "rms/UnassignedNodeModel.h"
 #include "rms/dev/SimulatedRange.h"
 
 #include <QDateTime>
@@ -51,21 +62,32 @@ void printSimulatorBanner()
         "\n"
         "  ============================================================\n"
         "   TECH AIM RMS - DEVELOPMENT SIMULATOR ACTIVE\n"
-        "   The lanes shown are NOT real targets. No physical range is\n"
+        "   The devices shown are NOT real targets. No physical range is\n"
         "   connected and no target node is being contacted.\n"
         "  ============================================================\n\n");
 }
 
-// Headless run: drive the simulated range for N seconds of virtual time and
-// print the dashboard the UI would show. This is the harness-friendly way to
-// see the whole product without a display.
-int runTextDump(int argc, char** argv, int seconds)
+QString optionValue(const QStringList& args, const QString& name)
+{
+    const int at = args.indexOf(name);
+    return (at >= 0 && at + 1 < args.size()) ? args.at(at + 1) : QString();
+}
+
+// Headless run: drive the simulated range and print what the LIVE RANGE page
+// would show. Physical lanes, so an unassigned or silent lane still prints.
+int runTextDump(int argc, char** argv, int seconds, const QString& configPath)
 {
     QCoreApplication app(argc, argv);
     Q_UNUSED(app);
 
+    RangeConfigurationService config;
+    if (!configPath.isEmpty())
+        config.setStorePath(configPath);
+    config.load();
+
     RangeMonitor monitor;
-    RangeListModel model(&monitor);
+    LaneListModel lanes(&config, &monitor);
+    UnassignedNodeModel unassigned(&config, &monitor);
     dev::SimulatedRange sim;
     sim.configure(6);
     QObject::connect(&sim, &dev::SimulatedRange::datagramProduced,
@@ -79,25 +101,21 @@ int runTextDump(int argc, char** argv, int seconds)
         monitor.evaluateLiveness(t);
     }
 
-    std::printf("TECH AIM RMS - RANGE DASHBOARD (read-only observer)\n");
-    std::printf("virtual t = %llds   nodes = %d   accepted = %d   rejected = %d\n\n",
-                static_cast<long long>(seconds), model.rowCountProperty(),
-                monitor.acceptedDatagrams(), monitor.rejectedDatagrams());
-    std::fputs(qPrintable(model.renderTextDashboard()), stdout);
-    std::printf("\n");
-    for (int i = 0; i < model.rowCountProperty(); ++i) {
-        const QVariantMap d = model.nodeDetail(i);
-        std::printf("%s  observed=%d  unobserved=%d  duplicates=%d  "
-                    "out-of-order=%d  gaps=[%s]  restarts=%d  offline-episodes=%d\n",
-                    qPrintable(d.value("laneLabel").toString()),
-                    d.value("observedShots").toInt(),
-                    d.value("unobserved").toInt(),
-                    d.value("duplicatesSuppressed").toInt(),
-                    d.value("outOfOrder").toInt(),
-                    qPrintable(d.value("gapList").toString()),
-                    d.value("nodeRestarts").toInt(),
-                    d.value("offlineEpisodes").toInt());
+    if (!config.isConfigured()) {
+        std::printf("No range configured (%s).\n"
+                    "Run the application once to create one, or pass --range-config.\n",
+                    qPrintable(config.configPath()));
+        return 0;
     }
+
+    std::printf("TECH AIM RMS - %s (%s, %d physical lanes)\n",
+                qPrintable(config.rangeName()), qPrintable(config.rangeModeLabel()),
+                config.laneCount());
+    std::printf("virtual t = %llds   online = %d   offline = %d   "
+                "unassigned devices = %d\n\n",
+                static_cast<long long>(seconds), lanes.onlineCount(),
+                lanes.offlineCount(), unassigned.rowCountProperty());
+    std::fputs(qPrintable(lanes.renderTextRange()), stdout);
     return 0;
 }
 
@@ -110,21 +128,36 @@ int main(int argc, char* argv[])
         args << QString::fromLocal8Bit(argv[i]);
 
     const bool live = args.contains(QStringLiteral("--live"));
+    const QString configPath = optionValue(args, QStringLiteral("--range-config"));
 
     if (args.contains(QStringLiteral("--dump"))) {
         int seconds = 45;
-        const int at = args.indexOf(QStringLiteral("--seconds"));
-        if (at >= 0 && at + 1 < args.size())
-            seconds = args.at(at + 1).toInt();
-        return runTextDump(argc, argv, seconds);
+        const QString s = optionValue(args, QStringLiteral("--seconds"));
+        if (!s.isEmpty())
+            seconds = s.toInt();
+        return runTextDump(argc, argv, seconds, configPath);
     }
 
     QGuiApplication app(argc, argv);
-    app.setApplicationName(QStringLiteral("Tech Aim RMS"));
+    // RMS'S OWN NAMESPACE. The range configuration must never land in the
+    // target application's AppData: RMS is a separate product and may run on a
+    // machine that has no node application installed at all.
     app.setOrganizationName(QStringLiteral("Tech Aim"));
+    app.setApplicationName(QStringLiteral("Tech Aim RMS"));
+
+    RangeConfigurationService rangeConfig;
+    if (!configPath.isEmpty())
+        rangeConfig.setStorePath(configPath);
+    if (args.contains(QStringLiteral("--reset-range")))
+        rangeConfig.forgetRangeForDevelopment();
+    rangeConfig.load();
+    std::fprintf(stderr, "RMS: range configuration %s\n",
+                 qPrintable(rangeConfig.configPath()));
 
     RangeMonitor monitor;
-    RangeListModel model(&monitor);
+    RangeListModel deviceModel(&monitor);                 // node-level diagnostics
+    LaneListModel laneModel(&rangeConfig, &monitor);      // the physical range
+    UnassignedNodeModel unassignedModel(&rangeConfig, &monitor);
 
     // ── the two mutually exclusive event sources ────────────────────────
     RmsUdpObserver observer;
@@ -155,8 +188,6 @@ int main(int argc, char* argv[])
                          });
     }
 
-    // One timer drives both modes: it advances the simulated range (when
-    // simulating) and ages out silent nodes (always).
     QTimer tick;
     const double scale = timescale();
     QObject::connect(&tick, &QTimer::timeout, [&]() {
@@ -170,14 +201,42 @@ int main(int argc, char* argv[])
     });
     tick.start(250);
 
+    // DEVELOPMENT ONLY. Builds a demonstration range through the REAL
+    // configuration service — the same calls the Create Range button and the
+    // Range Setup assignment controls make — so a screenshot can be taken of
+    // a populated range without a human clicking through it. It creates
+    // nothing the UI could not create, and it is not reachable from the UI.
+    const QString demoLanes = optionValue(args, QStringLiteral("--create-demo-range"));
+    if (!demoLanes.isEmpty()) {
+        const int assignCount = demoLanes.toInt();
+        QTimer::singleShot(3000, &app, [&rangeConfig, &unassignedModel, assignCount]() {
+            if (rangeConfig.isConfigured())
+                return;
+            rangeConfig.createFixedRange(QStringLiteral("Potchefstroom 50 m"),
+                                         QStringLiteral("50 m"), 1, 10);
+            const QStringList discovered = unassignedModel.nodeIds();
+            for (int i = 0; i < discovered.size() && i < assignCount; ++i)
+                rangeConfig.assignNodeToLane(discovered.at(i), i + 1);
+            std::fprintf(stderr, "RMS: demo range created, %d of %lld devices assigned\n",
+                         qMin(assignCount, int(discovered.size())),
+                         static_cast<long long>(discovered.size()));
+        });
+    }
+
     QQmlApplicationEngine engine;
-    engine.rootContext()->setContextProperty(QStringLiteral("RANGE"), &model);
+    engine.rootContext()->setContextProperty(QStringLiteral("RANGECONFIG"), &rangeConfig);
+    engine.rootContext()->setContextProperty(QStringLiteral("LANES"), &laneModel);
+    engine.rootContext()->setContextProperty(QStringLiteral("UNASSIGNED"), &unassignedModel);
+    engine.rootContext()->setContextProperty(QStringLiteral("DEVICES"), &deviceModel);
     engine.rootContext()->setContextProperty(QStringLiteral("RMS_SIMULATED"), !live);
     engine.rootContext()->setContextProperty(QStringLiteral("RMS_READ_ONLY"), true);
     engine.rootContext()->setContextProperty(QStringLiteral("RMS_PROTOCOL_VERSION"),
                                              kProtocolVersion);
     engine.rootContext()->setContextProperty(QStringLiteral("RMS_OBSERVATION_PORT"),
                                              int(kObservationPort));
+    engine.rootContext()->setContextProperty(
+        QStringLiteral("RMS_INITIAL_PAGE"),
+        qEnvironmentVariable("TECHAIM_RMS_PAGE"));
     engine.load(QUrl(QStringLiteral("qrc:/RmsMain.qml")));
     if (engine.rootObjects().isEmpty())
         return 1;

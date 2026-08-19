@@ -1,10 +1,10 @@
-# Tech Aim RMS test harness — milestone 1, read-only observer.
+# Tech Aim RMS test harness.
 #
 # QT is deliberately restricted to core + network: compiling at all PROVES the
-# RMS observer, its dashboard model and its protocol carry no QML or GUI
-# dependency. It also means this harness needs no platform plugin, so it can
-# never block on the "no Qt platform plugin" modal that has cost time on the
-# GUI-linked harnesses.
+# RMS observer, the range configuration, the view models and the protocol carry
+# no QML or GUI dependency. It also means this harness needs no platform
+# plugin, so it can never block on the "no Qt platform plugin" modal that has
+# cost time on the GUI-linked harnesses.
 #
 #   qmake rms_tests.pro && mingw32-make -f Makefile.Release
 #   ./release/rms_tests.exe
@@ -33,11 +33,17 @@ SOURCES += \
     tst_monitor.cpp \
     tst_simulator.cpp \
     tst_udp.cpp \
+    tst_range_config.cpp \
     tst_readonly.cpp \
     $$PWD/../../src/rms/RmsProtocol.cpp \
     $$PWD/../../src/rms/TargetNodeRecord.cpp \
     $$PWD/../../src/rms/RangeMonitor.cpp \
     $$PWD/../../src/rms/RangeListModel.cpp \
+    $$PWD/../../src/rms/RangeDefinition.cpp \
+    $$PWD/../../src/rms/RangeStore.cpp \
+    $$PWD/../../src/rms/RangeConfigurationService.cpp \
+    $$PWD/../../src/rms/LaneListModel.cpp \
+    $$PWD/../../src/rms/UnassignedNodeModel.cpp \
     $$PWD/../../src/rms/ProgrammeDisplay.cpp \
     $$PWD/../../src/rms/RmsUdpObserver.cpp \
     $$PWD/../../src/rms/dev/SimulatedRange.cpp
@@ -48,6 +54,11 @@ HEADERS += \
     $$PWD/../../src/rms/TargetNodeRecord.h \
     $$PWD/../../src/rms/RangeMonitor.h \
     $$PWD/../../src/rms/RangeListModel.h \
+    $$PWD/../../src/rms/RangeDefinition.h \
+    $$PWD/../../src/rms/RangeStore.h \
+    $$PWD/../../src/rms/RangeConfigurationService.h \
+    $$PWD/../../src/rms/LaneListModel.h \
+    $$PWD/../../src/rms/UnassignedNodeModel.h \
     $$PWD/../../src/rms/ProgrammeDisplay.h \
     $$PWD/../../src/rms/RmsUdpObserver.h \
     $$PWD/../../src/rms/dev/SimulatedRange.h

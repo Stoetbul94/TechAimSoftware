@@ -1,18 +1,25 @@
 import QtQuick 2.15
 
-// One lane, as a row-shaped card: the table/card hybrid the milestone asks
-// for. It reads like a table at 20 lanes and like a card at 6.
+// One PHYSICAL LANE, as a row-shaped card.
 //
-// Every value shown is the NODE's value. There is no computed score here and
-// no button — selecting a lane opens a detail pane and nothing else.
+// This is a range officer's screen, not an engineer's. Node ids, boot ids,
+// protocol versions, duplicate counts and sequence gaps have all moved to the
+// lane's diagnostics panel: valuable, but not what someone running a relay
+// needs in front of them. What is left is what they act on — which lane, who
+// is on it, is the target answering, what are they shooting, where are they in
+// it, how many, and what score.
 Rectangle {
     id: card
 
     property bool selected: false
-    property bool offline: false
+    property int  laneNumber: 0
     property string laneLabel: ""
+    property bool hasDevice: false
+    property bool online: false
+    property bool laneEnabled: true
     property string athlete: ""
     property string connection: ""
+    property string statusText: ""
     property string programmeLabel: ""
     property string programmeId: ""
     property bool officialProgramme: false
@@ -20,7 +27,6 @@ Rectangle {
     property string shotsLabel: ""
     property string scoreLabel: ""
     property int unobserved: 0
-    property int gapCount: 0
 
     signal clicked()
 
@@ -31,15 +37,17 @@ Rectangle {
     color: selected ? theme.bgSurfaceAlt : theme.bgSurface
     border.width: 1
     border.color: selected ? theme.brandPrimary : theme.borderColor
-    opacity: offline ? 0.62 : 1.0
+    // A lane with nothing on it is present but quiet; a lane out of service is
+    // quieter still. Neither disappears.
+    opacity: !laneEnabled ? 0.45 : (online ? 1.0 : 0.66)
 
-    // Left edge: the fastest read on the whole screen.
     Rectangle {
         width: 4
         radius: 2
         anchors { left: parent.left; top: parent.top; bottom: parent.bottom
                   leftMargin: 1; topMargin: 1; bottomMargin: 1 }
-        color: card.offline ? theme.statusDisconnected
+        color: !card.hasDevice ? theme.borderColor
+             : !card.online ? theme.statusDisconnected
              : card.phase === "MATCH" ? theme.statusConnected
              : card.phase === "RECOVERY_REQUIRED" ? theme.brandAccent
                                                   : theme.borderColor
@@ -64,7 +72,8 @@ Rectangle {
                 color: theme.textPrimary
             }
             Text {
-                text: card.athlete.length > 0 ? card.athlete : "—"
+                text: card.athlete.length > 0 ? card.athlete
+                                              : (card.online ? "—" : "")
                 font.family: theme.fontFamily
                 font.pixelSize: 12
                 color: theme.textSecondary
@@ -73,27 +82,21 @@ Rectangle {
             }
         }
 
-        // TARGET / CONNECTION
+        // TARGET STATUS
         RmsStatusPill {
             id: connPill
             anchors.left: laneCol.right
             anchors.verticalCenter: parent.verticalCenter
-            width: 152
+            width: 140
             text: card.connection
-            tone: card.offline ? "offline"
+            tone: !card.hasDevice ? "neutral"
+                : !card.online ? "offline"
                 : card.connection === "TARGET_CONNECTED" ? "live"
                 : card.connection === "TARGET_DISCONNECTED" ? "warn"
                 : "neutral"
         }
 
-        // PROGRAMME — label derived from the stable programmeId, never the
-        // other way round. Elastic: it absorbs the width the fixed columns
-        // on either side do not need, so the row never collides at any
-        // window size.
-        // An Item, not a Column: a Column sized by anchors whose children are
-        // sized from the Column is a binding loop, and QML resolves it by
-        // collapsing the width — which crushed the programme name to an
-        // ellipsis. Anchored children of a sized Item have no such cycle.
+        // PROGRAMME, or why there is none
         Item {
             id: progCol
             anchors.left: connPill.right
@@ -106,10 +109,12 @@ Rectangle {
             Text {
                 id: progName
                 anchors { left: parent.left; right: parent.right; top: parent.top }
-                text: card.programmeLabel.length > 0 ? card.programmeLabel : "—"
+                text: card.programmeLabel.length > 0 ? card.programmeLabel
+                                                     : card.statusText
                 font.family: theme.fontFamily
                 font.pixelSize: 13
-                color: theme.textPrimary
+                color: card.programmeLabel.length > 0 ? theme.textPrimary
+                                                      : theme.textSecondary
                 elide: Text.ElideRight
             }
             Text {
@@ -127,29 +132,28 @@ Rectangle {
             }
         }
 
-        // PHASE — fixed width, pinned to the left of the numeric block.
         RmsStatusPill {
             id: phasePill
             anchors.right: figures.left
             anchors.rightMargin: theme.spacingUnit * 1.75
             anchors.verticalCenter: parent.verticalCenter
-            width: 128
+            width: 100
+            visible: card.phase.length > 0
             text: card.phase
-            tone: card.offline ? "offline"
+            tone: !card.online ? "offline"
                 : card.phase === "MATCH" ? "live"
                 : card.phase === "RECOVERY_REQUIRED" ? "warn"
                 : "neutral"
         }
 
-        // SHOTS + SCORE, right aligned so the numbers form a column.
         Row {
             id: figures
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
-            spacing: theme.spacingUnit * 1.75
+            spacing: theme.spacingUnit * 1.25
 
             Column {
-                width: 66
+                width: 58
                 spacing: 2
                 Text {
                     text: "SHOTS"
@@ -166,7 +170,7 @@ Rectangle {
                 }
             }
             Column {
-                width: 78
+                width: 70
                 spacing: 2
                 Text {
                     text: "SCORE"
@@ -183,11 +187,14 @@ Rectangle {
                     color: theme.textPrimary
                 }
             }
-            // Observation quality. Shown rather than hidden: a gap in what
-            // RMS received is a fact the range officer is entitled to see.
+            // The single piece of observation quality that survives onto the
+            // operator's row: RMS is missing shots the node says it accepted.
+            // That changes what the officer believes about the score, so it
+            // does not belong buried in diagnostics.
             Column {
                 width: 82
                 spacing: 2
+                visible: card.unobserved > 0
                 Text {
                     text: "OBSERVATION"
                     font.family: theme.fontFamily
@@ -196,14 +203,10 @@ Rectangle {
                     color: theme.textSecondary
                 }
                 Text {
-                    text: (card.unobserved === 0 && card.gapCount === 0)
-                          ? "complete"
-                          : (card.unobserved > 0 ? card.unobserved + " unseen"
-                                                 : card.gapCount + " gap")
+                    text: card.unobserved + " unseen"
                     font.family: theme.fontFamily
                     font.pixelSize: 12
-                    color: (card.unobserved === 0 && card.gapCount === 0)
-                           ? theme.textSecondary : theme.brandAccent
+                    color: theme.brandAccent
                 }
             }
         }
@@ -211,6 +214,7 @@ Rectangle {
 
     MouseArea {
         anchors.fill: parent
+        cursorShape: Qt.PointingHandCursor
         onClicked: card.clicked()
     }
 }

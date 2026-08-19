@@ -1,18 +1,19 @@
 import QtQuick 2.15
 
-// The live shot view for one selected lane. A management overview, not a
-// second shooting UI: no target face, no ring geometry, no scoring. It shows
-// what the node reported and how completely RMS received it.
+// The selected lane, in depth — and the home of the engineering detail that
+// used to sit on the main list.
 //
-// The whole pane scrolls as one Flickable. Fixed-height panes silently
-// truncate the observation-quality block on a short window, and the numbers
-// that admit a gap in what RMS saw are exactly the ones that must not be the
-// first thing to disappear.
+// Milestone 1's diagnostics are all still here, none removed: node id, boot
+// id, session id, programme/ruleset/target-standard ids, observed vs accepted,
+// duplicates suppressed, out-of-order arrivals, sequence gaps, restarts and
+// offline episodes. They are simply one click away instead of in front of
+// someone running a relay.
 Rectangle {
     id: detail
 
-    property var info: ({})          // RANGE.nodeDetail(row)
-    property var shots: []           // RANGE.recentShots(row)
+    property var info: ({})
+    property var shots: []
+    property bool showDiagnostics: false
 
     Theme { id: theme }
 
@@ -26,6 +27,8 @@ Rectangle {
         return (info && info[key] !== undefined && info[key] !== "")
                ? info[key] : (fallback !== undefined ? fallback : "—")
     }
+    readonly property bool hasDevice: info && info.hasDevice === true
+    readonly property bool observed: info && info.observed === true
 
     Flickable {
         anchors.fill: parent
@@ -52,41 +55,60 @@ Rectangle {
                     color: theme.textPrimary
                 }
                 Text {
-                    text: detail.field("athlete", "")
+                    text: detail.field("athlete", detail.hasDevice ? "—" : "")
                     font.family: theme.fontFamily
                     font.pixelSize: 14
                     color: theme.textSecondary
                 }
                 Text {
+                    width: parent.width
+                    elide: Text.ElideRight
                     text: detail.field("programmeLabel", "")
                     font.family: theme.fontFamily
                     font.pixelSize: 13
                     color: theme.textPrimary
-                    width: parent.width
-                    elide: Text.ElideRight
                 }
             }
 
             Row {
                 spacing: theme.spacingUnit
                 RmsStatusPill {
-                    text: detail.field("connection", "UNKNOWN")
-                    tone: detail.info && detail.info.offline ? "offline"
+                    text: detail.field("connection", "NO DEVICE")
+                    tone: !detail.hasDevice ? "neutral"
+                        : (detail.info && detail.info.offline) ? "offline"
                         : detail.field("connection") === "TARGET_CONNECTED" ? "live"
                         : "neutral"
                 }
                 RmsStatusPill {
-                    text: detail.field("phase", "UNKNOWN")
+                    visible: detail.field("phase", "").length > 0
+                             && detail.field("phase") !== "—"
+                    text: detail.field("phase", "")
                     tone: detail.field("phase") === "MATCH" ? "live" : "neutral"
                 }
             }
 
-            Rectangle { width: parent.width; height: 1; color: theme.borderColor }
+            // A lane with no device is a configuration state, not a fault —
+            // say which it is rather than showing an empty match panel.
+            Text {
+                visible: !detail.hasDevice && detail.info && detail.info.laneNumber !== undefined
+                width: parent.width
+                wrapMode: Text.WordWrap
+                text: "No device is assigned to this lane. Assign one in Range Setup."
+                font.family: theme.fontFamily
+                font.pixelSize: 12
+                color: theme.textSecondary
+            }
+
+            Rectangle {
+                width: parent.width; height: 1; color: theme.borderColor
+                visible: detail.observed
+            }
 
             // ── latest shot ─────────────────────────────────────────────
             Column {
                 width: parent.width
                 spacing: 6
+                visible: detail.observed
                 Text {
                     text: "LATEST ACCEPTED SHOT"
                     font.family: theme.fontFamily
@@ -146,10 +168,13 @@ Rectangle {
                 }
             }
 
-            Rectangle { width: parent.width; height: 1; color: theme.borderColor }
+            Rectangle {
+                width: parent.width; height: 1; color: theme.borderColor
+                visible: detail.observed
+            }
 
-            // ── recent shots ────────────────────────────────────────────
             Text {
+                visible: detail.observed
                 text: "RECENT SHOTS  ·  newest first"
                 font.family: theme.fontFamily
                 font.pixelSize: 10
@@ -160,6 +185,7 @@ Rectangle {
             Column {
                 width: parent.width
                 spacing: 0
+                visible: detail.observed
                 Repeater {
                     model: detail.shots
                     delegate: Item {
@@ -167,8 +193,7 @@ Rectangle {
                         height: 24
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
-                            x: 0
-                            width: 46
+                            x: 0; width: 46
                             text: "#" + modelData.sequence
                             font.family: theme.fontFamily
                             font.pixelSize: 12
@@ -176,8 +201,7 @@ Rectangle {
                         }
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
-                            x: 52
-                            width: 60
+                            x: 52; width: 60
                             text: modelData.score
                             font.family: theme.fontFamily
                             font.pixelSize: 13
@@ -214,46 +238,62 @@ Rectangle {
 
             Rectangle { width: parent.width; height: 1; color: theme.borderColor }
 
-            // ── identity and observation quality ────────────────────────
-            //
-            // One key per row with a fixed label column: two columns cropped
-            // the values, and a cropped "shots observed by RMS" is precisely
-            // the fact that must never be lost.
-            Column {
-                width: parent.width
-                spacing: 3
-
+            // ── diagnostics ─────────────────────────────────────────────
+            Row {
+                spacing: theme.spacingUnit
                 Text {
-                    text: "NODE IDENTITY AND OBSERVATION QUALITY"
+                    text: "DIAGNOSTICS"
                     font.family: theme.fontFamily
                     font.pixelSize: 10
                     font.letterSpacing: 1.2
                     color: theme.textSecondary
-                    bottomPadding: 4
                 }
+                Text {
+                    text: detail.showDiagnostics ? "▾ hide" : "▸ show"
+                    font.family: theme.fontFamily
+                    font.pixelSize: 10
+                    color: theme.brandPrimary
+                    MouseArea {
+                        anchors.fill: parent
+                        anchors.margins: -6
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: detail.showDiagnostics = !detail.showDiagnostics
+                    }
+                }
+            }
+
+            Column {
+                width: parent.width
+                spacing: 3
+                visible: detail.showDiagnostics
 
                 Repeater {
                     model: [
-                        { k: "node id",         v: detail.field("nodeId") },
-                        { k: "boot id",         v: detail.field("bootId") },
-                        { k: "session id",      v: detail.field("sessionId") },
-                        { k: "programme id",    v: detail.field("programmeId") },
-                        { k: "ruleset id",      v: detail.field("rulesetId") },
-                        { k: "target standard", v: detail.field("targetStandardId") },
-                        { k: "device",          v: detail.field("deviceIdentity") },
-                        { k: "shots observed",  v: detail.field("observedShots", "0")
+                        { k: "lane id",          v: detail.field("laneId") },
+                        { k: "assigned device",  v: detail.field("assignedNodeId") },
+                        { k: "node id",          v: detail.field("nodeId") },
+                        { k: "boot id",          v: detail.field("bootId") },
+                        { k: "session id",       v: detail.field("sessionId") },
+                        { k: "programme id",     v: detail.field("programmeId") },
+                        { k: "ruleset id",       v: detail.field("rulesetId") },
+                        { k: "target standard",  v: detail.field("targetStandardId") },
+                        { k: "device",           v: detail.field("deviceIdentity") },
+                        { k: "app version",      v: detail.field("appVersion") },
+                        { k: "shots observed",   v: detail.field("observedShots", "0")
                              + " of " + detail.field("shotsAccepted", "0")
                              + " accepted by node" },
-                        { k: "unobserved",      v: detail.field("unobserved", "0") },
+                        { k: "unobserved",       v: detail.field("unobserved", "0") },
                         { k: "duplicates suppressed",
                           v: detail.field("duplicatesSuppressed", "0") },
                         { k: "arrived out of order", v: detail.field("outOfOrder", "0") },
                         { k: "sequence conflicts",   v: detail.field("sequenceConflicts", "0") },
-                        { k: "sequence gaps",   v: detail.field("gapCount", "0")
+                        { k: "sequence gaps",    v: detail.field("gapCount", "0")
                              + (detail.field("gapList", "") !== "—"
                                 ? "  [" + detail.field("gapList", "") + "]" : "") },
-                        { k: "node restarts",   v: detail.field("nodeRestarts", "0") },
-                        { k: "offline episodes", v: detail.field("offlineEpisodes", "0") }
+                        { k: "node restarts",    v: detail.field("nodeRestarts", "0") },
+                        { k: "offline episodes", v: detail.field("offlineEpisodes", "0") },
+                        { k: "stale status dropped", v: detail.field("staleStatusDropped", "0") },
+                        { k: "stale boot dropped",   v: detail.field("staleBootDropped", "0") }
                     ]
                     delegate: Row {
                         width: parent.width
@@ -277,10 +317,6 @@ Rectangle {
                 }
             }
 
-            Rectangle { width: parent.width; height: 1; color: theme.borderColor }
-
-            // The boundary, restated where an operator would look for a
-            // control and find none.
             Text {
                 width: parent.width
                 wrapMode: Text.WordWrap
