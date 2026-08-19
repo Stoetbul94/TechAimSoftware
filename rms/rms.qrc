@@ -12,8 +12,6 @@
         <file alias="RmsPlaceholderPage.qml">qml/RmsPlaceholderPage.qml</file>
         <file alias="RmsFirstRunPage.qml">qml/RmsFirstRunPage.qml</file>
         <file alias="RmsSummaryBar.qml">qml/RmsSummaryBar.qml</file>
-        <file alias="RmsTargetView.qml">qml/RmsTargetView.qml</file>
-        <file alias="RmsTargetCard.qml">qml/RmsTargetCard.qml</file>
         <file alias="RmsStatTile.qml">qml/RmsStatTile.qml</file>
         <file alias="RmsNumberField.qml">qml/RmsNumberField.qml</file>
         <file alias="RmsLaneCard.qml">qml/RmsLaneCard.qml</file>
@@ -23,6 +21,11 @@
         <file alias="RmsAthletesPage.qml">qml/RmsAthletesPage.qml</file>
         <file alias="RmsMatchReview.qml">qml/RmsMatchReview.qml</file>
         <file alias="RmsButton.qml">qml/RmsButton.qml</file>
+        <file alias="RmsTargetView.qml">qml/RmsTargetView.qml</file>
+        <file alias="RmsTargetCard.qml">qml/RmsTargetCard.qml</file>
+        <file alias="RmsTargetGrid.qml">qml/RmsTargetGrid.qml</file>
+        <file alias="RmsSingleTarget.qml">qml/RmsSingleTarget.qml</file>
+        <file alias="RmsFullScreenDisplay.qml">qml/RmsFullScreenDisplay.qml</file>
 
         <!-- The competition catalogue, reused UNMODIFIED from the foundation.
              It is the ONE authority for what programmes exist; RMS reads it and

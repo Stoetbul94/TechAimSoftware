@@ -20,6 +20,7 @@
 //   --seed-demo-plan <stage>  development: drive the REAL planning services to
 //                           a named wizard stage so it can be captured
 //   --simulate-elimination <lane>:<rank>:<score>
+//   --simulate-competition <lane>:<STATUS>:<rank>:<score>
 //                           development: inject a terminal COMPETITION state
 //                           so the display can be shown handling one. NOT
 //                           telemetry - protocol v1 carries no such field, and
@@ -33,10 +34,17 @@
 //   TECHAIM_RMS_PAGE        development: open on home|live|setup|displays|newmatch
 //   TECHAIM_RMS_STEP        development: New Match wizard step to open on
 //   TECHAIM_RMS_LANE        development: Live Range lane to open selected
+//   TECHAIM_RMS_SIZE        development: main window size, e.g. 1366x768
+//   TECHAIM_RMS_DISPLAY_LANE / _MODE / _ROTATE / _FULLSCREEN / _FILTER
+//                           development: drive the REAL DisplayController into
+//                           a named state for a capture
 // ─────────────────────────────────────────────────────────────────────────────
 
 #include "rms/AthleteListModel.h"
 #include "rms/CompetitionState.h"
+#include "rms/DisplayController.h"
+#include "rms/DisplayLaneModel.h"
+#include "rms/TargetGeometry.h"
 #include "rms/AthleteRegistry.h"
 #include "rms/LaneListModel.h"
 #include "rms/MatchPlanService.h"
@@ -196,6 +204,14 @@ int main(int argc, char* argv[])
     AthleteListModel athleteModel(&athletes, &plans);
     PlanLaneModel planLaneModel(&rangeConfig, &monitor, &plans, &athletes);
 
+    // ── target display ───────────────────────────────────────────────────
+    // Presentation state only: which lanes are on screen, which one is large,
+    // whether it rotates. All RMS-local — choosing what to look at sends
+    // nothing and no station can tell the difference.
+    DisplayController display(&rangeConfig, &plans);
+    DisplayLaneModel displayLanes(&rangeConfig, &monitor, &plans, &athletes, &display);
+    TargetGeometryBridge targetGeometry;
+
     // ── the two mutually exclusive event sources ────────────────────────
     RmsUdpObserver observer;
     dev::SimulatedRange sim;
@@ -318,28 +334,36 @@ int main(int argc, char* argv[])
     // still never infers elimination — this is an explicit operator-free
     // override for evidence, and the only other way the field can ever move is
     // a deliberate protocol revision.
+    // "<lane>:<rank>:<finalScore>" for elimination, or, for any terminal state,
+    // --simulate-competition "<lane>:<STATUS>:<rank>:<finalScore>".
     const QString simEliminate = optionValue(args, QStringLiteral("--simulate-elimination"));
-    if (!simEliminate.isEmpty()) {
-        QTimer::singleShot(4500, &app, [&rangeConfig, &monitor, simEliminate]() {
-            // "<lane>:<rank>:<finalScore>"
-            const QStringList parts = simEliminate.split(QLatin1Char(':'));
-            const int laneNumber = parts.value(0).toInt();
+    const QString simTerminal = optionValue(args, QStringLiteral("--simulate-competition"));
+    if (!simEliminate.isEmpty() || !simTerminal.isEmpty()) {
+        QTimer::singleShot(4500, &app, [&rangeConfig, &monitor, simEliminate, simTerminal]() {
+            QStringList parts = (simTerminal.isEmpty() ? simEliminate : simTerminal)
+                                    .split(QLatin1Char(':'));
+            const int laneNumber = parts.takeFirst().toInt();
+            QString statusText = QStringLiteral("ELIMINATED");
+            if (!simTerminal.isEmpty() && !parts.isEmpty())
+                statusText = parts.takeFirst().toUpper();
             const QString nodeId = rangeConfig.nodeForLaneNumber(laneNumber);
             if (nodeId.isEmpty()) {
                 std::fprintf(stderr, "RMS: no device on lane %d to simulate\n", laneNumber);
                 return;
             }
             CompetitionState state;
-            state.status = CompetitionStatus::Eliminated;
-            state.rank = parts.value(1).toInt();
-            state.finalScore = parts.value(2).toDouble();
-            state.finalScoreReported = parts.size() > 2;
-            state.finalsStage = QStringLiteral("STANDING");
-            state.eliminatedAtStage = QStringLiteral("STANDING");
+            state.status = competitionStatusFromString(statusText);
+            state.rank = parts.value(0).toInt();
+            state.finalScore = parts.value(1).toDouble();
+            state.finalScoreReported = parts.size() > 1;
+            if (state.status == CompetitionStatus::Eliminated) {
+                state.finalsStage = QStringLiteral("STANDING");
+                state.eliminatedAtStage = QStringLiteral("STANDING");
+            }
             monitor.injectDevelopmentCompetitionState(nodeId, state);
             std::fprintf(stderr,
-                "RMS: SIMULATED elimination injected on lane %d (%s) - not telemetry\n",
-                laneNumber, qPrintable(nodeId));
+                "RMS: SIMULATED %s injected on lane %d (%s) - not telemetry\n",
+                qPrintable(statusText), laneNumber, qPrintable(nodeId));
         });
     }
 
@@ -352,6 +376,9 @@ int main(int argc, char* argv[])
     engine.rootContext()->setContextProperty(QStringLiteral("ATHLETEMODEL"), &athleteModel);
     engine.rootContext()->setContextProperty(QStringLiteral("PLANS"), &plans);
     engine.rootContext()->setContextProperty(QStringLiteral("PLANLANES"), &planLaneModel);
+    engine.rootContext()->setContextProperty(QStringLiteral("DISPLAY"), &display);
+    engine.rootContext()->setContextProperty(QStringLiteral("DISPLAYLANES"), &displayLanes);
+    engine.rootContext()->setContextProperty(QStringLiteral("TARGETGEO"), &targetGeometry);
     engine.rootContext()->setContextProperty(QStringLiteral("RMS_SIMULATED"), !live);
     engine.rootContext()->setContextProperty(QStringLiteral("RMS_READ_ONLY"), true);
     engine.rootContext()->setContextProperty(QStringLiteral("RMS_PROTOCOL_VERSION"),
@@ -367,7 +394,54 @@ int main(int argc, char* argv[])
     engine.rootContext()->setContextProperty(
         QStringLiteral("RMS_INITIAL_LANE"),
         qEnvironmentVariable("TECHAIM_RMS_LANE").toInt());
+    // DEVELOPMENT ONLY. Puts the display into a named state by calling the
+    // SAME DisplayController methods the buttons call, so a capture can be
+    // taken without a human clicking. The controls themselves are genuinely
+    // wired; this replaces the click, not the wiring.
+    {
+        const QString wantLane = qEnvironmentVariable("TECHAIM_RMS_DISPLAY_LANE");
+        const QString wantMode = qEnvironmentVariable("TECHAIM_RMS_DISPLAY_MODE");
+        const bool wantRotate = qEnvironmentVariableIntValue("TECHAIM_RMS_DISPLAY_ROTATE") == 1;
+        const bool wantFull = qEnvironmentVariableIntValue("TECHAIM_RMS_DISPLAY_FULLSCREEN") == 1;
+        const QString wantFilter = qEnvironmentVariable("TECHAIM_RMS_DISPLAY_FILTER");
+        const int wantNext = qEnvironmentVariableIntValue("TECHAIM_RMS_DISPLAY_NEXT");
+        const int wantPrev = qEnvironmentVariableIntValue("TECHAIM_RMS_DISPLAY_PREVIOUS");
+        if (!wantLane.isEmpty() || !wantMode.isEmpty() || wantRotate || wantFull
+            || !wantFilter.isEmpty() || wantNext > 0 || wantPrev > 0) {
+            QTimer::singleShot(4200, &app, [&display, wantLane, wantMode, wantRotate,
+                                            wantFull, wantFilter, wantNext, wantPrev]() {
+                if (!wantFilter.isEmpty())
+                    display.setLaneFilterLabel(wantFilter);
+                if (!wantLane.isEmpty())
+                    display.selectLane(wantLane.toInt());
+                for (int i = 0; i < wantNext; ++i)
+                    display.next();
+                for (int i = 0; i < wantPrev; ++i)
+                    display.previous();
+                if (wantMode == QLatin1String("all"))
+                    display.showAllTargets();
+                if (wantRotate)
+                    display.setRotating(true);
+                if (wantFull)
+                    display.setFullScreen(true);
+            });
+        }
+    }
+
     engine.load(QUrl(QStringLiteral("qrc:/RmsMain.qml")));
+
+    // DEVELOPMENT ONLY. Sizes the main window so a layout can be evidenced at
+    // a named resolution without a human dragging the frame.
+    {
+        const QString size = qEnvironmentVariable("TECHAIM_RMS_SIZE");
+        const QStringList wh = size.split(QLatin1Char('x'));
+        if (wh.size() == 2) {
+            if (auto* w = qobject_cast<QQuickWindow*>(engine.rootObjects().value(0))) {
+                w->setWidth(wh.at(0).toInt());
+                w->setHeight(wh.at(1).toInt());
+            }
+        }
+    }
     if (engine.rootObjects().isEmpty())
         return 1;
 
@@ -380,6 +454,15 @@ int main(int argc, char* argv[])
             atMs = 20000;
         QTimer::singleShot(atMs, &app, [&engine, capture]() {
             auto* w = qobject_cast<QQuickWindow*>(engine.rootObjects().value(0));
+            // A full-screen display is its own window; grabbing the main one
+            // would capture whatever is behind it.
+            if (w) {
+                if (auto* fs = w->findChild<QQuickWindow*>(
+                        QStringLiteral("rmsFullScreenWindow"))) {
+                    if (fs->isVisible())
+                        w = fs;
+                }
+            }
             if (w && w->grabWindow().save(capture))
                 std::fprintf(stderr, "RMS: captured %s\n", qPrintable(capture));
             else

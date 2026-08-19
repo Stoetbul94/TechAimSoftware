@@ -1,99 +1,99 @@
 import QtQuick 2.15
+import QtQuick.Window 2.15
 
-// DISPLAYS — the shell only.
+// DISPLAYS — the target display.
 //
-// The spectator display server is NOT built. This page exists so the
-// navigation it will live under is settled now, and so nobody has to redesign
-// the shell around it later. Every control here is inert and says so; none of
-// them is a stub that looks like it works.
+// ALL TARGETS by default, one lane large on demand, previous/next, full screen
+// and auto-rotation. Everything here is RMS-LOCAL presentation: choosing what
+// to look at sends nothing, and no station can tell the difference.
 Item {
     id: page
 
     Theme { id: theme }
 
-    Column {
+    // Leaving the page must not leave a rotation timer running behind it.
+    Component.onDestruction: DISPLAY.leaveDisplays()
+
+    readonly property var selectedLane: DISPLAYLANES.laneByNumber(DISPLAY.selectedLane)
+    property var laneRefresh: 0
+    Connections {
+        target: DISPLAYLANES
+        function onChanged() { page.laneRefresh = page.laneRefresh + 1 }
+    }
+    // Re-read whenever the model or the selection moves.
+    function currentLane() {
+        laneRefresh    // dependency
+        return DISPLAYLANES.laneByNumber(DISPLAY.selectedLane)
+    }
+
+    // ── toolbar ─────────────────────────────────────────────────────────
+    Rectangle {
+        id: toolbar
         anchors { top: parent.top; left: parent.left; right: parent.right }
-        anchors.margins: theme.spacingUnit * 3
-        spacing: theme.spacingUnit * 2
+        anchors.margins: theme.spacingUnit * 1.5
+        height: 46
+        radius: theme.radiusMedium
+        color: theme.bgSurface
+        border.width: 1
+        border.color: theme.borderColor
 
-        Text {
-            text: "DISPLAYS"
-            font.family: theme.fontFamily
-            font.pixelSize: 24
-            font.weight: Font.DemiBold
-            font.letterSpacing: 1.4
-            color: theme.textPrimary
-        }
-
-        Rectangle {
-            width: parent.width
-            height: 62
-            radius: theme.radiusMedium
-            color: Qt.rgba(0.75, 0.10, 0.10, 0.10)
-            border.width: 1
-            border.color: theme.brandAccent
-            Text {
-                anchors.verticalCenter: parent.verticalCenter
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.margins: theme.spacingUnit * 2
-                wrapMode: Text.WordWrap
-                text: "Display management arrives in a later milestone. Nothing on "
-                      + "this page is connected to a display; the layout exists so "
-                      + "the navigation does not have to be redesigned around it."
-                font.family: theme.fontFamily
-                font.pixelSize: 12
-                color: theme.textPrimary
-            }
-        }
-
-        Text {
-            text: "PLANNED DISPLAY TARGETS"
-            font.family: theme.fontFamily
-            font.pixelSize: 10
-            font.letterSpacing: 1.2
-            color: theme.textSecondary
-        }
-
-        Flow {
-            width: parent.width
+        Row {
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.left: parent.left
+            anchors.leftMargin: theme.spacingUnit * 1.5
             spacing: theme.spacingUnit
-            Repeater {
-                model: [
-                    { name: "ALL",              note: "every configured display" },
-                    { name: "MAIN TV",          note: "range-side scoreboard" },
-                    { name: "CLUBHOUSE",        note: "spectator feed" },
-                    { name: "FINALS",           note: "finals presentation" },
-                    { name: "ATHLETE DISPLAYS", note: "per-lane athlete view" }
-                ]
-                delegate: Rectangle {
-                    width: 220
-                    height: 66
-                    radius: theme.radiusMedium
-                    color: theme.bgBase
-                    border.width: 1
-                    border.color: Qt.rgba(1, 1, 1, 0.06)
-                    Column {
-                        anchors.verticalCenter: parent.verticalCenter
-                        anchors.left: parent.left
-                        anchors.leftMargin: theme.spacingUnit * 2
-                        anchors.right: parent.right
-                        anchors.rightMargin: theme.spacingUnit
-                        spacing: 3
+
+            RmsButton {
+                label: "ALL TARGETS"
+                primary: DISPLAY.showingAll
+                onActivated: DISPLAY.showAllTargets()
+            }
+            RmsButton {
+                label: "◀ PREVIOUS"
+                enabled: DISPLAY.laneCount > 0
+                onActivated: DISPLAY.previous()
+            }
+            RmsButton {
+                label: "NEXT ▶"
+                enabled: DISPLAY.laneCount > 0
+                onActivated: DISPLAY.next()
+            }
+            RmsButton {
+                label: "FULL SCREEN"
+                enabled: DISPLAY.laneCount > 0
+                onActivated: DISPLAY.setFullScreen(true)
+            }
+            RmsButton {
+                label: DISPLAY.rotating ? "■ STOP ROTATE" : "▶ AUTO ROTATE"
+                primary: DISPLAY.rotating
+                enabled: DISPLAY.laneCount > 0
+                onActivated: DISPLAY.setRotating(!DISPLAY.rotating)
+            }
+
+            // Rotation interval.
+            Row {
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 3
+                Repeater {
+                    model: [5, 10, 15, 30]
+                    delegate: Rectangle {
+                        width: 34; height: 24; radius: theme.radiusSmall
+                        readonly property bool chosen:
+                            DISPLAY.rotationIntervalMs === modelData * 1000
+                        color: chosen ? Qt.rgba(0.66, 0, 0.22, 0.20) : theme.bgBase
+                        border.width: 1
+                        border.color: chosen ? theme.brandPrimary : theme.borderColor
                         Text {
-                            text: modelData.name
-                            font.family: theme.fontFamily
-                            font.pixelSize: 13
-                            font.letterSpacing: 1.1
-                            color: theme.statusDisconnected
-                        }
-                        Text {
-                            width: parent.width
-                            elide: Text.ElideRight
-                            text: modelData.note
+                            anchors.centerIn: parent
+                            text: modelData + "s"
                             font.family: theme.fontFamily
                             font.pixelSize: 10
-                            color: theme.textSecondary
+                            color: theme.textPrimary
+                        }
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: DISPLAY.setRotationIntervalMs(modelData * 1000)
                         }
                     }
                 }
@@ -101,32 +101,135 @@ Item {
         }
 
         Row {
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.right: parent.right
+            anchors.rightMargin: theme.spacingUnit * 1.5
             spacing: theme.spacingUnit
+
+            // Which lanes the display walks. A filter changes what is on
+            // screen; it never removes a lane from the range.
             Repeater {
-                model: ["◀ PREVIOUS DISPLAY", "NEXT DISPLAY ▶"]
+                model: [
+                    { id: "PARTICIPATING", label: "MATCH LANES" },
+                    { id: "ALL_PHYSICAL",  label: "ALL LANES" }
+                ]
                 delegate: Rectangle {
-                    width: 190; height: 34
-                    radius: theme.radiusSmall
-                    color: theme.bgBase
+                    width: 108; height: 26; radius: theme.radiusSmall
+                    readonly property bool chosen: DISPLAY.laneFilter === modelData.id
+                    color: chosen ? Qt.rgba(0.66, 0, 0.22, 0.20) : theme.bgBase
                     border.width: 1
-                    border.color: Qt.rgba(1, 1, 1, 0.06)
+                    border.color: chosen ? theme.brandPrimary : theme.borderColor
                     Text {
                         anchors.centerIn: parent
-                        text: modelData
+                        text: modelData.label
                         font.family: theme.fontFamily
-                        font.pixelSize: 11
-                        font.letterSpacing: 1.1
-                        color: theme.statusDisconnected
+                        font.pixelSize: 10
+                        font.letterSpacing: 0.8
+                        color: theme.textPrimary
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: DISPLAY.setLaneFilterLabel(modelData.id)
                     }
                 }
             }
         }
+    }
 
-        Text {
-            text: "Not implemented — no display server exists in this build."
-            font.family: theme.fontFamily
-            font.pixelSize: 10
-            color: theme.textSecondary
+    // ── lane strip ──────────────────────────────────────────────────────
+    // A scrolling strip rather than a wall of buttons: thirty lanes must not
+    // become thirty things to hunt through, and previous/next stay in the
+    // toolbar where they are always one click away.
+    Rectangle {
+        id: strip
+        anchors { top: toolbar.bottom; left: parent.left; right: parent.right }
+        anchors.leftMargin: theme.spacingUnit * 1.5
+        anchors.rightMargin: theme.spacingUnit * 1.5
+        anchors.topMargin: theme.spacingUnit
+        height: DISPLAY.laneCount > 0 ? 32 : 0
+        color: "transparent"
+
+        ListView {
+            anchors.fill: parent
+            orientation: ListView.Horizontal
+            clip: true
+            spacing: 4
+            model: DISPLAY.laneOrderList
+
+            delegate: Rectangle {
+                width: 62; height: 26; radius: theme.radiusSmall
+                readonly property bool chosen: DISPLAY.selectedLane === modelData
+                                               && !DISPLAY.showingAll
+                color: chosen ? theme.brandPrimary : theme.bgSurface
+                border.width: 1
+                border.color: chosen ? theme.brandPrimary : theme.borderColor
+                Text {
+                    anchors.centerIn: parent
+                    text: "LANE " + modelData
+                    font.family: theme.fontFamily
+                    font.pixelSize: 10
+                    font.letterSpacing: 0.8
+                    color: chosen ? theme.textOnBrand : theme.textSecondary
+                }
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: DISPLAY.selectLane(modelData)
+                }
+            }
         }
+    }
+
+    // ── body ────────────────────────────────────────────────────────────
+    Item {
+        id: body
+        anchors {
+            top: strip.bottom; left: parent.left; right: parent.right; bottom: parent.bottom
+            margins: theme.spacingUnit * 1.5
+        }
+
+        // Empty state — never a blank black surface.
+        Column {
+            anchors.centerIn: parent
+            width: Math.min(parent.width - 40, 460)
+            spacing: theme.spacingUnit
+            visible: DISPLAY.laneCount === 0
+            Text {
+                width: parent.width
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.WordWrap
+                text: DISPLAY.emptyReason
+                font.family: theme.fontFamily
+                font.pixelSize: 14
+                color: theme.textSecondary
+            }
+            RmsButton {
+                anchors.horizontalCenter: parent.horizontalCenter
+                label: "SHOW ALL PHYSICAL LANES"
+                visible: DISPLAY.laneFilter === "PARTICIPATING"
+                onActivated: DISPLAY.setLaneFilterLabel("ALL_PHYSICAL")
+            }
+        }
+
+        RmsTargetGrid {
+            anchors.fill: parent
+            visible: DISPLAY.showingAll && DISPLAY.laneCount > 0
+        }
+
+        RmsSingleTarget {
+            anchors.fill: parent
+            visible: !DISPLAY.showingAll && DISPLAY.laneCount > 0
+            lane: page.currentLane()
+            onPreviousLane: DISPLAY.previous()
+            onNextLane: DISPLAY.next()
+            onAllTargets: DISPLAY.showAllTargets()
+        }
+    }
+
+    // ── full screen ─────────────────────────────────────────────────────
+    RmsFullScreenDisplay {
+        id: fullScreen
+        visible: DISPLAY.fullScreen
     }
 }
