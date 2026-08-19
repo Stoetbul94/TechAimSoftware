@@ -11,7 +11,6 @@
         <file alias="RmsDisplaysPage.qml">qml/RmsDisplaysPage.qml</file>
         <file alias="RmsPlaceholderPage.qml">qml/RmsPlaceholderPage.qml</file>
         <file alias="RmsFirstRunPage.qml">qml/RmsFirstRunPage.qml</file>
-        <file alias="RmsSummaryBar.qml">qml/RmsSummaryBar.qml</file>
         <file alias="RmsStatTile.qml">qml/RmsStatTile.qml</file>
         <file alias="RmsNumberField.qml">qml/RmsNumberField.qml</file>
         <file alias="RmsLaneCard.qml">qml/RmsLaneCard.qml</file>

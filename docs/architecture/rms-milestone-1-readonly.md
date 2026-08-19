@@ -173,7 +173,9 @@ scoring and is still **not** an ISSF event; the dashboard labels it
 `TechAimRMS.pro` (a **separate binary**: no `Seta.pro`, no `ModReader`, no
 serial/Modbus — RMS never talks to target hardware), `main.cpp`, `rms.qrc`,
 and `qml/RmsMain.qml`, `RmsSummaryBar.qml`, `RmsLaneCard.qml`,
-`RmsLaneDetail.qml`, `RmsStatusPill.qml`.
+`RmsLaneDetail.qml`, `RmsStatusPill.qml`. (`RmsSummaryBar.qml` was never
+instantiated once the navigation shell landed in Milestone 3, and was removed
+in Milestone 4.5.)
 
 Branding is Tech Aim only: the shared `Theme.qml` and `src/ui/theme/*` are
 reused **unmodified** from the foundation, plus the Tech Aim wordmark. No SETA

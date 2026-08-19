@@ -169,7 +169,7 @@ and the read-only boundary) alongside
   adjudicated result — never destroy the raw one) and
   `rms-command-boundary-design.md` (legacy UDP 7756 stays outside RMS).
 - Harness: `tests/rms/rms_tests.pro` (`QT = core network`, no platform plugin
-  needed). Currently **926 checks, 0 failures**.
+  needed). Currently **924 checks, 0 failures**.
 - Protocol/state must use the stable `programmeId` (plus `rulesetId`,
   `targetStandardId`) from `CompetitionCatalogue.qml`. Display text is derived
   FROM the id; nothing is ever looked up BY a label (QML-LANG-001).
