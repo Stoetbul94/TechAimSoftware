@@ -106,6 +106,12 @@ Item {
                 plannedAthlete: model.plannedAthlete
                 plannedProgramme: model.plannedProgramme
                 programmeMismatch: model.programmeMismatch
+                competitionStatus: model.competitionStatus
+                competitionTerminal: model.competitionTerminal
+                eliminated: model.eliminated
+                finalRankLabel: model.finalRankLabel
+                finalScoreLabel: model.finalScoreLabel
+                competitionSimulated: model.competitionSimulated
                 onClicked: {
                     page.selectedRow = index
                     page.refreshSelection()
@@ -144,7 +150,11 @@ Item {
         repeat: true
         onTriggered: {
             if (LANES.laneCount > 0) {
-                page.selectedRow = 0
+                // A development hook lets a capture open on a named lane; the
+                // first lane is the normal behaviour.
+                var want = (typeof RMS_INITIAL_LANE !== "undefined" && RMS_INITIAL_LANE > 0)
+                           ? RMS_INITIAL_LANE - 1 : 0
+                page.selectedRow = Math.min(want, LANES.laneCount - 1)
                 page.refreshSelection()
             }
         }

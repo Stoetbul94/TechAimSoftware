@@ -15,6 +15,7 @@
 // under-reports a live match is worse than one that admits a gap.
 // ─────────────────────────────────────────────────────────────────────────────
 
+#include "CompetitionState.h"
 #include "RmsProtocol.h"
 
 #include <QList>
@@ -108,6 +109,16 @@ public:
     // dropped, not mistaken for a second restart, which would reset the
     // stale-status guard and let old state overwrite current state.
     QStringList priorBootIds;
+
+    // WHERE THE ATHLETE IS IN THE COMPETITION — a third axis, independent of
+    // whether the station is reachable and whether its target is connected. An
+    // eliminated finalist usually has a perfectly healthy station.
+    //
+    // Protocol v1 does not carry this, so for every real station it stays
+    // Unknown/NotReported. RMS NEVER derives it: not from rank, not from
+    // score, not from shot count, not from how many athletes are left. See
+    // CompetitionState.h.
+    CompetitionState competition;
 
     // Observation bookkeeping
     qint64 firstSeenUtcMs = 0;

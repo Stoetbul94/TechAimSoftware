@@ -221,6 +221,20 @@ void RangeMonitor::evaluateLiveness(qint64 nowUtcMs)
     }
 }
 
+void RangeMonitor::injectDevelopmentCompetitionState(const QString& nodeId,
+                                                     const CompetitionState& state)
+{
+    auto it = m_nodes.find(nodeId);
+    if (it == m_nodes.end())
+        return;
+    it.value().competition = state;
+    // Forced, whatever the caller passed: a value that arrived this way is a
+    // demonstration, and an audit must always be able to tell it from a real
+    // elimination the node decided.
+    it.value().competition.source = CompetitionState::Source::DevelopmentInjection;
+    emit nodeChanged(nodeId);
+}
+
 void RangeMonitor::reset()
 {
     const QVector<QString> gone = m_order;

@@ -154,7 +154,14 @@ QHash<int, QByteArray> LaneListModel::roleNames() const
         { PlannedProgrammeRole, "plannedProgramme" },
         { InPlanRole,           "inPlan" },
         { ProgrammeMatchRole,   "programmeMatch" },
-        { ProgrammeMismatchRole,"programmeMismatch" }
+        { ProgrammeMismatchRole,"programmeMismatch" },
+        { CompetitionStatusRole,    "competitionStatus" },
+        { CompetitionTerminalRole,  "competitionTerminal" },
+        { EliminatedRole,           "eliminated" },
+        { FinalRankRole,            "finalRank" },
+        { FinalRankLabelRole,       "finalRankLabel" },
+        { FinalScoreLabelRole,      "finalScoreLabel" },
+        { CompetitionSimulatedRole, "competitionSimulated" }
     };
 }
 
@@ -233,6 +240,21 @@ QVariant LaneListModel::data(const QModelIndex& index, int role) const
         return m_plans && m_plans->programmeMatchForLane(lane->laneNumber)
                               == ProgrammeMatch::Mismatch;
 
+    // ── COMPETITION STATUS ──────────────────────────────────────────────
+    // Straight from the record. RMS never computes this: an eliminated
+    // athlete is eliminated because the node's finals controller said so,
+    // and until the protocol carries it, every real station reads UNKNOWN.
+    case CompetitionStatusRole:
+        return r ? toString(r->competition.status)
+                 : toString(CompetitionStatus::Unknown);
+    case CompetitionTerminalRole:  return r && r->competition.isTerminal();
+    case EliminatedRole:           return r && r->competition.isEliminated();
+    case FinalRankRole:            return r ? r->competition.rank : 0;
+    case FinalRankLabelRole:       return r ? r->competition.rankLabel() : QString();
+    case FinalScoreLabelRole:      return r ? r->competition.scoreLabel()
+                                            : QStringLiteral("—");
+    case CompetitionSimulatedRole: return r && r->competition.isSimulated();
+
     default:                 return QVariant();
     }
 }
@@ -268,6 +290,21 @@ QVariantMap LaneListModel::laneDetail(int row) const
     }
 
     m[QStringLiteral("observed")] = (r != nullptr);
+    // The competition axis, always present so a display can bind to it even
+    // when nothing is reported yet.
+    m[QStringLiteral("competitionStatus")] =
+        toString(r ? r->competition.status : CompetitionStatus::Unknown);
+    m[QStringLiteral("competitionReported")] = r && r->competition.isReported();
+    m[QStringLiteral("competitionTerminal")] = r && r->competition.isTerminal();
+    m[QStringLiteral("eliminated")]          = r && r->competition.isEliminated();
+    m[QStringLiteral("competitionSimulated")]= r && r->competition.isSimulated();
+    m[QStringLiteral("finalRank")]           = r ? r->competition.rank : 0;
+    m[QStringLiteral("finalRankLabel")]      = r ? r->competition.rankLabel() : QString();
+    m[QStringLiteral("finalScoreLabel")]     = r ? r->competition.scoreLabel()
+                                                 : QStringLiteral("—");
+    m[QStringLiteral("finalsStage")]         = r ? r->competition.finalsStage : QString();
+    m[QStringLiteral("eliminatedAtStage")]   = r ? r->competition.eliminatedAtStage
+                                                 : QString();
     if (!r) {
         m[QStringLiteral("connection")] = lane->isAssigned()
                                               ? QStringLiteral("OFFLINE")

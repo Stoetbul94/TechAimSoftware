@@ -72,6 +72,19 @@ public:
     // untouched — that is the point of the test that uses this.
     void reset();
 
+    // ── development only ─────────────────────────────────────────────────
+    // Sets a station's COMPETITION state directly, tagged as a development
+    // injection so nothing downstream can mistake it for a real elimination.
+    //
+    // It exists because protocol v1 carries no competition status at all, and
+    // a display cannot be shown to handle a terminal state without one. It is
+    // deliberately NOT part of ingestDatagram: no datagram can produce this,
+    // which is what keeps "RMS never infers elimination" true — the only two
+    // ways this field can move are a future v2 telemetry field and this
+    // explicitly-labelled tool.
+    void injectDevelopmentCompetitionState(const QString& nodeId,
+                                           const CompetitionState& state);
+
 signals:
     void nodeAdded(const QString& nodeId);
     void nodeChanged(const QString& nodeId);

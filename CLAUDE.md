@@ -142,6 +142,16 @@ and the read-only boundary) alongside
   sessions once commands exist. Keep them separate.
 - ONLINE/OFFLINE is never persisted; readiness is recomputed from live telemetry
   after every restart.
+- **3P FINALS ELIMINATION — RMS NEVER DECIDES IT.** Elimination is determined by
+  `Finals3PController` on the node. RMS must never infer it from rank, score,
+  shot count, how many athletes are left, translated text, or another athlete
+  disappearing. `CompetitionStatus` (ACTIVE/WAITING/FINISHED/ELIMINATED) is a
+  THIRD axis, independent of node health and target health — an eliminated
+  athlete's station is normally perfectly healthy, and the lane is never
+  removed. Protocol v1 carries no such field, so every real station reads
+  UNKNOWN; carrying it is a deliberate v2 bump, never a widened v1.
+  Requirement + v2 field list:
+  `docs/architecture/rms-finals-elimination-display.md`.
 - Design notes, written and deliberately NOT built:
   `docs/architecture/rms-incident-model-design.md` (raw observed shot vs
   adjudicated result — never destroy the raw one) and

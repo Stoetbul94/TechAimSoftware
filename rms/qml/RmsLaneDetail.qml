@@ -87,6 +87,108 @@ Rectangle {
                 }
             }
 
+            // ── THREE SEPARATE STATUSES ─────────────────────────────────
+            // Node health, target health and where the athlete is in the
+            // competition are different questions. An eliminated finalist
+            // normally has a perfectly healthy station, and a dead tablet is
+            // not an elimination.
+            Rectangle {
+                width: parent.width
+                height: compCol.height + theme.spacingUnit * 2
+                visible: detail.info && detail.info.competitionTerminal === true
+                radius: theme.radiusSmall
+                color: detail.info && detail.info.eliminated === true
+                       ? Qt.rgba(0.75, 0.10, 0.10, 0.12) : theme.bgBase
+                border.width: 1
+                border.color: detail.info && detail.info.eliminated === true
+                              ? theme.brandAccent : theme.borderColor
+
+                Column {
+                    id: compCol
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.margins: theme.spacingUnit
+                    spacing: 4
+
+                    Text {
+                        text: "COMPETITION STATUS"
+                        font.family: theme.fontFamily
+                        font.pixelSize: 10
+                        font.letterSpacing: 1.2
+                        color: theme.textSecondary
+                    }
+                    Text {
+                        text: detail.field("competitionStatus", "UNKNOWN")
+                        font.family: theme.fontFamily
+                        font.pixelSize: 20
+                        font.weight: Font.DemiBold
+                        font.letterSpacing: 1.2
+                        color: detail.info && detail.info.eliminated === true
+                               ? theme.brandAccent : theme.textPrimary
+                    }
+                    Row {
+                        spacing: theme.spacingUnit * 3
+                        visible: detail.field("finalRankLabel", "").length > 0
+                                 || detail.field("finalScoreLabel", "—") !== "—"
+                        Column {
+                            spacing: 1
+                            Text {
+                                text: detail.field("finalRankLabel", "—")
+                                font.family: theme.fontFamily
+                                font.pixelSize: 17
+                                color: theme.textPrimary
+                            }
+                            Text {
+                                text: "final rank"
+                                font.family: theme.fontFamily
+                                font.pixelSize: 10
+                                color: theme.textSecondary
+                            }
+                        }
+                        Column {
+                            spacing: 1
+                            Text {
+                                text: detail.field("finalScoreLabel", "—")
+                                font.family: theme.fontFamily
+                                font.pixelSize: 17
+                                color: theme.textPrimary
+                            }
+                            Text {
+                                // The node's score, as always. RMS adds up a
+                                // final no more than it adds up a qualification.
+                                text: "final score (node)"
+                                font.family: theme.fontFamily
+                                font.pixelSize: 10
+                                color: theme.textSecondary
+                            }
+                        }
+                    }
+                    Text {
+                        width: parent.width
+                        wrapMode: Text.WordWrap
+                        text: "The station remains "
+                              + detail.field("connection", "—")
+                              + ". Node health, target health and competition "
+                              + "status are separate: this lane is not faulty."
+                        font.family: theme.fontFamily
+                        font.pixelSize: 11
+                        color: theme.textSecondary
+                    }
+                    Text {
+                        width: parent.width
+                        wrapMode: Text.WordWrap
+                        visible: detail.info && detail.info.competitionSimulated === true
+                        text: "⚠ SIMULATED STATE — injected by a development tool. "
+                              + "Protocol v1 carries no competition status, so no real "
+                              + "station has reported this."
+                        font.family: theme.fontFamily
+                        font.pixelSize: 11
+                        color: theme.brandAccent
+                    }
+                }
+            }
+
             // ── PLANNED, kept beside OBSERVED and never merged into it ──
             // RMS has told the station nothing, so these two may legitimately
             // differ. Showing both is the point; picking one would be a lie

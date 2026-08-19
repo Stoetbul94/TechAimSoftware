@@ -19,6 +19,11 @@
 //   --reset-range           development: forget the configured range at start
 //   --seed-demo-plan <stage>  development: drive the REAL planning services to
 //                           a named wizard stage so it can be captured
+//   --simulate-elimination <lane>:<rank>:<score>
+//                           development: inject a terminal COMPETITION state
+//                           so the display can be shown handling one. NOT
+//                           telemetry - protocol v1 carries no such field, and
+//                           every surface labels the value SIMULATED.
 //
 // Environment:
 //   TECHAIM_RMS_TIMESCALE   speed up the simulated range (default 1.0)
@@ -27,9 +32,11 @@
 //   TECHAIM_RMS_CAPTURE_QUIT=1  exit after the grab
 //   TECHAIM_RMS_PAGE        development: open on home|live|setup|displays|newmatch
 //   TECHAIM_RMS_STEP        development: New Match wizard step to open on
+//   TECHAIM_RMS_LANE        development: Live Range lane to open selected
 // ─────────────────────────────────────────────────────────────────────────────
 
 #include "rms/AthleteListModel.h"
+#include "rms/CompetitionState.h"
 #include "rms/AthleteRegistry.h"
 #include "rms/LaneListModel.h"
 #include "rms/MatchPlanService.h"
@@ -302,6 +309,40 @@ int main(int argc, char* argv[])
         });
     }
 
+    // DEVELOPMENT ONLY. Injects a terminal COMPETITION state onto a lane so the
+    // display can be shown handling one.
+    //
+    // It is not telemetry and does not pretend to be: protocol v1 carries no
+    // competition status, no real station has reported this, and the value is
+    // tagged DevelopmentInjection so every surface labels it SIMULATED. RMS
+    // still never infers elimination — this is an explicit operator-free
+    // override for evidence, and the only other way the field can ever move is
+    // a deliberate protocol revision.
+    const QString simEliminate = optionValue(args, QStringLiteral("--simulate-elimination"));
+    if (!simEliminate.isEmpty()) {
+        QTimer::singleShot(4500, &app, [&rangeConfig, &monitor, simEliminate]() {
+            // "<lane>:<rank>:<finalScore>"
+            const QStringList parts = simEliminate.split(QLatin1Char(':'));
+            const int laneNumber = parts.value(0).toInt();
+            const QString nodeId = rangeConfig.nodeForLaneNumber(laneNumber);
+            if (nodeId.isEmpty()) {
+                std::fprintf(stderr, "RMS: no device on lane %d to simulate\n", laneNumber);
+                return;
+            }
+            CompetitionState state;
+            state.status = CompetitionStatus::Eliminated;
+            state.rank = parts.value(1).toInt();
+            state.finalScore = parts.value(2).toDouble();
+            state.finalScoreReported = parts.size() > 2;
+            state.finalsStage = QStringLiteral("STANDING");
+            state.eliminatedAtStage = QStringLiteral("STANDING");
+            monitor.injectDevelopmentCompetitionState(nodeId, state);
+            std::fprintf(stderr,
+                "RMS: SIMULATED elimination injected on lane %d (%s) - not telemetry\n",
+                laneNumber, qPrintable(nodeId));
+        });
+    }
+
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("RANGECONFIG"), &rangeConfig);
     engine.rootContext()->setContextProperty(QStringLiteral("LANES"), &laneModel);
@@ -323,6 +364,9 @@ int main(int argc, char* argv[])
     engine.rootContext()->setContextProperty(
         QStringLiteral("RMS_INITIAL_STEP"),
         qEnvironmentVariable("TECHAIM_RMS_STEP").toInt());
+    engine.rootContext()->setContextProperty(
+        QStringLiteral("RMS_INITIAL_LANE"),
+        qEnvironmentVariable("TECHAIM_RMS_LANE").toInt());
     engine.load(QUrl(QStringLiteral("qrc:/RmsMain.qml")));
     if (engine.rootObjects().isEmpty())
         return 1;

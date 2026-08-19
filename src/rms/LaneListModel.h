@@ -68,7 +68,17 @@ public:
         PlannedProgrammeRole,
         InPlanRole,
         ProgrammeMatchRole,
-        ProgrammeMismatchRole
+        ProgrammeMismatchRole,
+        // ── COMPETITION STATUS: a third axis, independent of node and target
+        // health. An eliminated finalist's station is usually perfectly fine.
+        // Reported by the node, never derived here.
+        CompetitionStatusRole,
+        CompetitionTerminalRole,
+        EliminatedRole,
+        FinalRankRole,
+        FinalRankLabelRole,
+        FinalScoreLabelRole,
+        CompetitionSimulatedRole
     };
 
     LaneListModel(RangeConfigurationService* config, RangeMonitor* monitor,

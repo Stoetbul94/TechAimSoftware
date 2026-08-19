@@ -82,7 +82,7 @@ bool applyProgramme(MatchPlanService& plans, const Programme& p)
     return plans.setProgramme(QString::fromLatin1(p.id), QString::fromLatin1(p.ruleset),
                               QString::fromLatin1(p.targetStandard),
                               QString::fromLatin1(p.discipline), p.distance, p.shots,
-                              QString::fromLatin1(p.type), QString::fromLatin1(p.label));
+                              QString::fromLatin1(p.type), QString::fromUtf8(p.label));
 }
 
 // A ten-lane range with `online` stations assigned to lanes 1..online.
@@ -190,7 +190,7 @@ void run_match_plan_tests()
         check(applyProgramme(rig.plans, kAr60), "a programme is selected");
         check(rig.plans.programmeId() == QLatin1String("issf.10m.air-rifle.qualification60"),
               "...by its STABLE id");
-        check(rig.plans.programmeLabel() == QLatin1String("10 m Air Rifle · Qualification 60"),
+        check(rig.plans.programmeLabel() == QStringLiteral("10 m Air Rifle · Qualification 60"),
               "...with the label kept only as a snapshot");
         check(rig.plans.current().programme.shotCount == 60,
               "the programme snapshot carries the course length");
@@ -563,7 +563,7 @@ void run_match_plan_tests()
                   == QStringLiteral("10 m Air Pistol · Free"),
               "...showing what the STATION reports");
         check(live.data(l1, LaneListModel::PlannedProgrammeRole).toString()
-                  == QLatin1String("10 m Air Rifle · Qualification 60"),
+                  == QStringLiteral("10 m Air Rifle · Qualification 60"),
               "...beside what the PLAN intends - neither overwriting the other");
     }
 

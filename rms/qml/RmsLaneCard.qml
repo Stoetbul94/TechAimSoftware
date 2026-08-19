@@ -34,6 +34,15 @@ Rectangle {
     property string plannedAthlete: ""
     property string plannedProgramme: ""
     property bool programmeMismatch: false
+    // ── COMPETITION STATUS — a third axis, not a health state ────────────
+    // An eliminated athlete's station is usually online with a connected
+    // target. The lane stays on the range; only what it SAYS changes.
+    property string competitionStatus: "UNKNOWN"
+    property bool competitionTerminal: false
+    property bool eliminated: false
+    property string finalRankLabel: ""
+    property string finalScoreLabel: ""
+    property bool competitionSimulated: false
 
     signal clicked()
 
@@ -46,6 +55,7 @@ Rectangle {
     border.color: selected ? theme.brandPrimary : theme.borderColor
     // A lane with nothing on it is present but quiet; a lane out of service is
     // quieter still. Neither disappears.
+    // A terminal competition state is NOT a fault and is not dimmed like one.
     opacity: !laneEnabled ? 0.45 : (online ? 1.0 : 0.66)
 
     Rectangle {
@@ -140,12 +150,22 @@ Rectangle {
             Text {
                 id: progName
                 anchors { left: parent.left; right: parent.right; top: parent.top }
-                text: card.programmeLabel.length > 0 ? card.programmeLabel
-                                                     : card.statusText
+                // When the athlete is out, the thing worth reading here is the
+                // terminal result, not which course they were shooting.
+                text: card.eliminated
+                      ? ("ELIMINATED"
+                         + (card.finalRankLabel.length > 0
+                                ? "  ·  " + card.finalRankLabel.toUpperCase() + " PLACE" : "")
+                         + (card.finalScoreLabel.length > 0 && card.finalScoreLabel !== "—"
+                                ? "  ·  " + card.finalScoreLabel : ""))
+                      : (card.programmeLabel.length > 0 ? card.programmeLabel
+                                                        : card.statusText)
                 font.family: theme.fontFamily
                 font.pixelSize: 13
-                color: card.programmeLabel.length > 0 ? theme.textPrimary
-                                                      : theme.textSecondary
+                font.weight: card.eliminated ? Font.DemiBold : Font.Normal
+                color: card.eliminated ? theme.brandAccent
+                     : (card.programmeLabel.length > 0 ? theme.textPrimary
+                                                       : theme.textSecondary)
                 elide: Text.ElideRight
             }
             Text {
@@ -156,11 +176,14 @@ Rectangle {
                 // thing worth saying here instead of the course type. It will
                 // matter a great deal once commands exist; for now it is
                 // information, and RMS changes neither side.
-                text: card.programmeMismatch
-                      ? "⚠ DOES NOT MATCH PLAN · " + card.plannedProgramme
-                      : (card.programmeId.length === 0 ? ""
-                         : (card.officialProgramme ? "ISSF OFFICIAL COURSE"
-                                                   : "TECH AIM PRESET"))
+                text: card.eliminated
+                      ? (card.programmeLabel + (card.competitionSimulated
+                             ? "   ·   SIMULATED STATE" : ""))
+                      : (card.programmeMismatch
+                         ? "⚠ DOES NOT MATCH PLAN · " + card.plannedProgramme
+                         : (card.programmeId.length === 0 ? ""
+                            : (card.officialProgramme ? "ISSF OFFICIAL COURSE"
+                                                      : "TECH AIM PRESET")))
                 font.family: theme.fontFamily
                 font.pixelSize: 10
                 font.letterSpacing: 0.8
@@ -175,9 +198,13 @@ Rectangle {
             anchors.rightMargin: theme.spacingUnit * 1.75
             anchors.verticalCenter: parent.verticalCenter
             width: 100
-            visible: card.phase.length > 0
-            text: card.phase
-            tone: !card.online ? "offline"
+            visible: card.phase.length > 0 || card.competitionTerminal
+            // A finished or eliminated athlete is no longer in a match phase;
+            // saying MATCH there would invite them to keep shooting.
+            text: card.competitionTerminal ? card.competitionStatus : card.phase
+            tone: card.eliminated ? "warn"
+                : card.competitionTerminal ? "neutral"
+                : !card.online ? "offline"
                 : card.phase === "MATCH" ? "live"
                 : card.phase === "RECOVERY_REQUIRED" ? "warn"
                 : "neutral"
