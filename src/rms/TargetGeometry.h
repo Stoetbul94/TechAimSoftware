@@ -16,14 +16,19 @@
 //
 // ═══ WHERE THE NUMBERS COME FROM ═══════════════════════════════════════════
 //
-// The ring specifications match the foundation's own renderer,
-// `IssfTargetCanvas.qml`, so RMS draws the same faces the target application
-// draws. They are not re-derived here.
+// The OFFICIAL RULEBOOK, not another renderer. ISSF Rule Book 2026, EDITION
+// 2025 (Second Print 07/2026), effective 1 July 2026, rule 6.3.4 for the
+// faces and rules 7.4.6 / 8.4.4 for the ammunition. Every value is cited with
+// its rule, page and tolerance in
+// docs/architecture/rms-target-geometry-source-register.md.
 //
-// The 50 m ten-ring radius (5.2 mm) carries the open item already recorded in
-// CLAUDE.md — it awaits official rulebook confirmation or physical
-// calibration. It is used for DRAWING only, so an error there moves a marker
-// slightly; it can never move a score.
+// This file previously mirrored `IssfTargetCanvas.qml` instead. That is how it
+// came to draw a 50 m RIFLE face for 50 m pistol — the foundation renderer has
+// no pistol entry and falls through to its rifle default. Mirroring a renderer
+// copies its mistakes; citing the rulebook does not.
+//
+// The 50 m ten ring is 10.4 mm DIAMETER (rule 6.3.4.2), which confirms the
+// project's long-standing 5.2 mm RADIUS as correct.
 //
 // ═══ AXIS CONVENTION ═══════════════════════════════════════════════════════
 //
@@ -50,24 +55,47 @@ namespace rms {
 struct TargetSpec {
     QString targetStandardId;
     QString displayName;
-    // Outer radius of the 10 ring, in millimetres.
-    double  tenRingRadiusMm = 0.0;
-    // Radial step between consecutive ring edges, in millimetres.
-    double  ringStepMm = 0.0;
-    // Lowest-numbered ring drawn — the edge of the printed face.
+
+    // ── OFFICIAL VALUES, ALL DIAMETERS ───────────────────────────────────
+    // The rulebook states DIAMETERS, so this struct stores diameters and
+    // converts. A diameter silently used as a radius is the classic 2x error
+    // in target software, and the only defence is to never let the two share
+    // a name.
+    double  tenRingDiameterMm = 0.0;
+    // Diameter difference between consecutive ring edges.
+    double  ringStepDiameterMm = 0.0;
+    // Outer edge of the black aiming mark, as a DIAMETER. Not a ring index:
+    // the 50 m rifle's black falls BETWEEN rings (rule 6.3.4.2 says "part of
+    // 3"), so a ring number cannot express it.
+    double  blackDiameterMm = 0.0;
+    // Inner ten, as a DIAMETER. Zero when the discipline does not define one
+    // by dimension - 10 m Air Rifle defines it by gauge outcome instead.
+    double  innerTenDiameterMm = 0.0;
+    // The projectile, from the ammunition rules. Used to draw the hole at its
+    // true size; never to decide what the hole is worth.
+    double  projectileDiameterMm = 0.0;
+
+    // ── DRAWING CHOICES ──────────────────────────────────────────────────
+    // Lowest-numbered ring DRAWN. Real cards carry rings out to 1; a lane tile
+    // that drew all of them would waste most of its area on rings a match
+    // rarely touches, so the face is cropped here and the crop is a display
+    // decision, not a claim about the card.
     int     outermostRing = 4;
-    // The ring whose outer edge is the edge of the black aiming mark.
-    int     blackRing = 4;
     // Telemetry y is positive upwards; screens are positive downwards.
     bool    yAxisUp = true;
     bool    supported = false;
 
-    double ringRadiusMm(int ring) const
+    // ── DERIVED, IN RADII ────────────────────────────────────────────────
+    double ringDiameterMm(int ring) const
     {
-        return tenRingRadiusMm + double(10 - ring) * ringStepMm;
+        return tenRingDiameterMm + double(10 - ring) * ringStepDiameterMm;
     }
-    double faceRadiusMm() const { return ringRadiusMm(outermostRing); }
-    double blackRadiusMm() const { return ringRadiusMm(blackRing); }
+    double ringRadiusMm(int ring) const { return ringDiameterMm(ring) / 2.0; }
+    double faceRadiusMm() const  { return ringRadiusMm(outermostRing); }
+    double blackRadiusMm() const { return blackDiameterMm / 2.0; }
+    double innerTenRadiusMm() const { return innerTenDiameterMm / 2.0; }
+    double projectileRadiusMm() const { return projectileDiameterMm / 2.0; }
+    bool hasInnerTen() const { return innerTenDiameterMm > 0.0; }
 };
 
 class TargetGeometry
@@ -109,8 +137,9 @@ class TargetGeometryBridge : public QObject
 public:
     explicit TargetGeometryBridge(QObject* parent = nullptr) : QObject(parent) {}
 
-    // { supported, displayName, tenRingRadiusMm, ringStepMm, outermostRing,
-    //   blackRing, faceRadiusMm, blackRadiusFraction, ringFractions[] }
+    // { supported, displayName, faceRadiusMm, outermostRing,
+    //   blackRadiusFraction, projectileRadiusFraction, projectileDiameterMm,
+    //   hasInnerTen, innerTenRadiusFraction, rings[{ring, fraction, inBlack}] }
     // Radii are returned as FRACTIONS of the face radius, which is what a
     // renderer needs and keeps millimetre arithmetic out of QML.
     Q_INVOKABLE QVariantMap specFor(const QString& targetStandardId) const;

@@ -584,6 +584,12 @@ int main(int argc, char* argv[])
     engine.rootContext()->setContextProperty(QStringLiteral("DISPLAYLANES"), &displayLanes);
     engine.rootContext()->setContextProperty(QStringLiteral("TARGETGEO"), &targetGeometry);
     engine.rootContext()->setContextProperty(QStringLiteral("RMS_SIMULATED"), !live);
+    // DEVELOPMENT ONLY. Prints the scale and the last shot's millimetres onto
+    // the face so a qualification screenshot states its own geometry instead of
+    // being measured by eye. Never on in a normal display.
+    engine.rootContext()->setContextProperty(
+        QStringLiteral("RMS_GEOMETRY_OVERLAY"),
+        qEnvironmentVariableIntValue("TECHAIM_RMS_GEOMETRY_OVERLAY") == 1);
     engine.rootContext()->setContextProperty(QStringLiteral("RMS_MODE"),
                                              QString::fromLatin1(runModeName(mode)));
     engine.rootContext()->setContextProperty(QStringLiteral("RMS_READ_ONLY"), true);

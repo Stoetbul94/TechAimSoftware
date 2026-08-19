@@ -11,26 +11,46 @@ namespace {
 // figures mirror IssfTargetCanvas.qml in the foundation, so RMS draws the same
 // faces the target application draws.
 //
-// NOTHING HERE SCORES. These radii place a marker; they never value one.
+// NOTHING HERE SCORES. These dimensions place a marker; they never value one.
+//
+// EVERY NUMBER IS A DIAMETER, READ FROM THE OFFICIAL RULEBOOK.
+// ISSF Rule Book 2026, EDITION 2025 (Second Print 07/2026), effective
+// 1 July 2026, rule 6.3.4 "Official ISSF Targets". Ammunition from rules 7.4.6
+// (rifle) and 8.4.4 (pistol). Full citation with page numbers and tolerances:
+// docs/architecture/rms-target-geometry-source-register.md
 struct Entry {
     const char* id;
     const char* name;
-    double tenRingRadiusMm;
-    double ringStepMm;
+    double tenRingDiameterMm;
+    double ringStepDiameterMm;
+    double blackDiameterMm;
+    double innerTenDiameterMm;      // 0 = not defined by dimension
+    double projectileDiameterMm;
     int    outermostRing;
-    int    blackRing;
 };
 
 const Entry kStandards[] = {
-    // 10 m air rifle: a 0.5 mm ten ring, 2.5 mm steps, black out to the 4.
-    { "issf.10m.air-rifle",  "10 m Air Rifle",  0.25, 2.5, 4, 4 },
-    // 10 m air pistol: 11.5 mm ten ring, 8 mm steps, black out to the 7.
-    { "issf.10m.air-pistol", "10 m Air Pistol", 5.75, 8.0, 4, 7 },
-    // 50 m rifle. The 5.2 mm ten ring is the value the foundation renders and
-    // carries the open confirmation recorded in CLAUDE.md.
-    { "issf.50m.rifle",      "50 m Rifle",      5.2,  8.0, 4, 5 },
-    // 50 m pistol shares the 50 m face geometry in the foundation renderer.
-    { "issf.50m.pistol",     "50 m Pistol",     5.2,  8.0, 4, 5 }
+    // 6.3.4.3 — 10 ring 0.5, spacing 5.0, black to the 4 ring (30.5).
+    // Inner ten is defined by gauge outcome, not by a diameter, so it is 0.
+    // The 4.5 mm pellet is NINE TIMES the ten ring across: on this face the
+    // hole is a major object, which is why it is drawn at its true size.
+    { "issf.10m.air-rifle",  "10 m Air Rifle",   0.5,  5.0,  30.5,  0.0, 4.5, 4 },
+
+    // 6.3.4.6 — 10 ring 11.5, spacing 16.0, black to the 7 ring (59.5).
+    { "issf.10m.air-pistol", "10 m Air Pistol", 11.5, 16.0,  59.5,  5.0, 4.5, 4 },
+
+    // 6.3.4.2 — 10 ring 10.4, spacing 16.0. Black is 112.4, which lands
+    // BETWEEN the 4 ring (106.4) and the 3 ring (122.4) — the rule says "part
+    // of 3". Because the face is cropped at the 4 ring, the whole drawn face
+    // is black, and that is correct rather than a mistake.
+    { "issf.50m.rifle",      "50 m Rifle",      10.4, 16.0, 112.4,  5.0, 5.6, 4 },
+
+    // 6.3.4.5 — 10 ring 50, spacing 50, black to the 7 ring (200). A
+    // COMPLETELY DIFFERENT FACE from the 50 m rifle: five times the ten ring
+    // and more than three times the spacing. This entry previously carried a
+    // copy of the rifle row, which plotted every 50 m pistol shot at about
+    // 4.8x its true radius from centre.
+    { "issf.50m.pistol",     "50 m Pistol",     50.0, 50.0, 200.0, 25.0, 5.6, 4 }
 };
 
 } // namespace
@@ -43,10 +63,12 @@ TargetSpec TargetGeometry::specFor(const QString& targetStandardId)
         TargetSpec s;
         s.targetStandardId  = targetStandardId;
         s.displayName       = QString::fromLatin1(e.name);
-        s.tenRingRadiusMm   = e.tenRingRadiusMm;
-        s.ringStepMm        = e.ringStepMm;
-        s.outermostRing     = e.outermostRing;
-        s.blackRing         = e.blackRing;
+        s.tenRingDiameterMm    = e.tenRingDiameterMm;
+        s.ringStepDiameterMm   = e.ringStepDiameterMm;
+        s.blackDiameterMm      = e.blackDiameterMm;
+        s.innerTenDiameterMm   = e.innerTenDiameterMm;
+        s.projectileDiameterMm = e.projectileDiameterMm;
+        s.outermostRing        = e.outermostRing;
         s.supported         = true;
         return s;
     }
@@ -126,8 +148,17 @@ QVariantMap TargetGeometryBridge::specFor(const QString& targetStandardId) const
     const double face = s.faceRadiusMm();
     m[QStringLiteral("faceRadiusMm")]        = face;
     m[QStringLiteral("outermostRing")]       = s.outermostRing;
-    m[QStringLiteral("blackRing")]           = s.blackRing;
     m[QStringLiteral("blackRadiusFraction")] = s.blackRadiusMm() / face;
+    // The projectile, as a fraction of the face, so the hole can be drawn at
+    // its TRUE PHYSICAL SIZE at any view size. On a 10 m air rifle face a
+    // 4.5 mm pellet is 0.148 of the face radius; on a 50 m pistol face a
+    // 5.6 mm bullet is 0.016 of it. A fixed pixel marker would be wrong on
+    // both, and wrong in opposite directions.
+    m[QStringLiteral("projectileRadiusFraction")] = s.projectileRadiusMm() / face;
+    m[QStringLiteral("projectileDiameterMm")]     = s.projectileDiameterMm;
+    m[QStringLiteral("hasInnerTen")]              = s.hasInnerTen();
+    if (s.hasInnerTen())
+        m[QStringLiteral("innerTenRadiusFraction")] = s.innerTenRadiusMm() / face;
 
     // One entry per drawn ring, outermost first, as a fraction of the face.
     QVariantList rings;

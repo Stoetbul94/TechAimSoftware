@@ -42,9 +42,16 @@ Item {
     readonly property real faceRadius: Math.min(width, height) / 2 - 4
     readonly property real cx: width / 2
     readonly property real cy: height / 2
-    // Markers scale with the face so a small card is not a smear of dots and a
-    // full-screen face is not a scatter of pinpricks.
-    readonly property real markerRadius: Math.max(2.0, faceRadius * 0.030)
+    // THE PROJECTILE, AT ITS TRUE PHYSICAL SIZE. Not a fixed pixel dot: a
+    // 4.5 mm pellet is 15% of a 10 m air rifle face and 1.6% of a 50 m pistol
+    // face, and one number cannot be right for both. `projectileRadiusFraction`
+    // comes from the ammunition rules via TargetGeometry.
+    readonly property real projectileRadius:
+        (spec && spec.projectileRadiusFraction !== undefined)
+            ? spec.projectileRadiusFraction * faceRadius : 0
+    // Below this a hole stops being visible at all on a small lane tile. It is
+    // a legibility floor, not a geometry claim.
+    readonly property real minMarkerPx: 1.6
 
     Theme { id: theme }
 
@@ -76,10 +83,13 @@ Item {
             ctx.fillStyle = "#f4efe4"
             ctx.beginPath(); ctx.arc(cx, cy, R, 0, 2 * Math.PI); ctx.fill()
 
-            // black aiming mark
+            // Black aiming mark. On the 50 m rifle the official black (112.4 mm
+            // diameter) is WIDER than the cropped face, so the paint is clamped
+            // to the face while the geometry keeps the true value. Clamping the
+            // brush is presentation; clamping the number would be a lie.
             ctx.fillStyle = "#141414"
             ctx.beginPath()
-            ctx.arc(cx, cy, s.blackRadiusFraction * R, 0, 2 * Math.PI)
+            ctx.arc(cx, cy, Math.min(1.0, s.blackRadiusFraction) * R, 0, 2 * Math.PI)
             ctx.fill()
 
             // ring edges, at their true fractions of the face
@@ -91,6 +101,16 @@ Item {
                 ctx.beginPath(); ctx.arc(cx, cy, r, 0, 2 * Math.PI)
                 ctx.strokeStyle = rings[i].inBlack ? "rgba(255,255,255,0.80)"
                                                    : "rgba(35,35,35,0.55)"
+                ctx.lineWidth = 1
+                ctx.stroke()
+            }
+
+            // The inner ten, where the rules define one by dimension. 10 m Air
+            // Rifle defines it by gauge outcome instead, so it has none to draw.
+            if (s.hasInnerTen === true && s.innerTenRadiusFraction * R > 1.5) {
+                ctx.beginPath()
+                ctx.arc(cx, cy, s.innerTenRadiusFraction * R, 0, 2 * Math.PI)
+                ctx.strokeStyle = "rgba(255,255,255,0.55)"
                 ctx.lineWidth = 1
                 ctx.stroke()
             }
@@ -109,7 +129,7 @@ Item {
                 var band = (rings[j].fraction + nextFraction) / 2 * R
                 if (band < 6)
                     continue
-                ctx.fillStyle = (band <= s.blackRadiusFraction * R) ? "#f4efe4" : "#333333"
+                ctx.fillStyle = (band <= Math.min(1.0, s.blackRadiusFraction) * R) ? "#f4efe4" : "#333333"
                 ctx.fillText(String(ring), cx - band, cy)
                 ctx.fillText(String(ring), cx + band, cy)
             }
@@ -156,16 +176,28 @@ Item {
     }
 
     // ── shot markers ────────────────────────────────────────────────────
+    //
+    // THREE DIFFERENT THINGS, DRAWN DIFFERENTLY, so none can be mistaken for
+    // another:
+    //
+    //   ·  the SHOT CENTRE      the measured x/y, a small solid point
+    //   ○  the PROJECTILE       the real hole, at its true physical diameter
+    //   ◎  the LATEST-SHOT HALO a selection cue, outside the hole, brand red
+    //
+    // The halo is deliberately larger than any pellet so its outer edge cannot
+    // be read as the edge of the hole. ISSF scores by the OUTWARD GAUGE — the
+    // pellet's edge, not its centre — so showing the true footprint is what
+    // makes a displayed score legible to a human at all.
     Repeater {
         model: view.supported ? view.shots : []
 
         delegate: Item {
             // Bound, not painted: one shot arriving moves one marker.
-            x: view.cx + modelData.x * view.faceRadius - width / 2
-            y: view.cy + modelData.y * view.faceRadius - height / 2
-            width: marker.width
-            height: marker.height
+            x: view.cx + modelData.x * view.faceRadius
+            y: view.cy + modelData.y * view.faceRadius
             z: modelData.last ? 2 : 1
+
+            readonly property bool off: modelData.offFace === true
 
             // FUTURE ADJUDICATION. A shot may one day carry a presentation
             // status (disputed, annulled, cross-fire, penalty). The marker
@@ -174,48 +206,130 @@ Item {
             readonly property string presentation:
                 modelData.presentation !== undefined ? modelData.presentation : "NORMAL"
 
+            // The hole, at true physical size. The floor is a legibility
+            // minimum for small cards, not a geometry claim: above it the
+            // radius is exactly projectileRadiusFraction of the face.
             Rectangle {
-                id: marker
-                readonly property real r: modelData.last ? view.markerRadius * 1.35
-                                                         : view.markerRadius
+                id: hole
+                visible: !parent.off
+                anchors.centerIn: parent
+                readonly property real r: Math.max(view.minMarkerPx, view.projectileRadius)
                 width: r * 2
                 height: r * 2
                 radius: r
-                // Not colour alone: the last shot is larger and ringed, so the
-                // distinction survives a projector, a bright range and a
-                // colour-blind operator.
-                color: modelData.last ? theme.brandPrimary : "#1a1a1a"
-                border.width: modelData.last ? 0 : Math.max(1, view.markerRadius * 0.35)
-                border.color: "#f4efe4"
-                opacity: view.stale ? 0.5 : 1.0
+                // Translucent, with a thin rim: on a 10 m air rifle face the
+                // holes genuinely overlap, and a solid fill would turn a
+                // twenty-shot group into one blob with no rings behind it.
+                color: Qt.rgba(0.07, 0.06, 0.05, 0.72)
+                border.width: Math.max(1, r * 0.11)
+                border.color: "#efe7d6"
+                opacity: view.stale ? 0.55 : 1.0
             }
 
-            // The newest shot gets a halo as well as size.
+            // The measured centre. Always drawn, always small, never the same
+            // shape as the hole.
             Rectangle {
-                visible: modelData.last
-                anchors.centerIn: marker
-                width: marker.width * 2.4
-                height: width
-                radius: width / 2
+                visible: !parent.off
+                anchors.centerIn: parent
+                readonly property real r: Math.max(0.75, hole.r * 0.26)
+                width: r * 2
+                height: r * 2
+                radius: r
+                color: modelData.last ? theme.brandPrimary : "#efe7d6"
+                opacity: view.stale ? 0.55 : 1.0
+            }
+
+            // Latest shot: a halo well clear of the hole.
+            Rectangle {
+                visible: modelData.last && !parent.off
+                anchors.centerIn: parent
+                readonly property real r: hole.r + Math.max(3, view.faceRadius * 0.022)
+                width: r * 2
+                height: r * 2
+                radius: r
                 color: "transparent"
-                border.width: Math.max(1, view.markerRadius * 0.35)
+                border.width: Math.max(1.2, view.faceRadius * 0.006)
                 border.color: theme.brandPrimary
-                opacity: view.stale ? 0.4 : 0.9
+                opacity: view.stale ? 0.4 : 0.95
             }
 
-            // A shot that landed off the printed face is held at the edge and
-            // marked, never dropped — a cross-fire is exactly what an operator
-            // needs to see.
-            Rectangle {
-                visible: modelData.offFace === true
-                anchors.centerIn: marker
-                width: marker.width * 3.0
+            // ── OFF THE PRINTED FACE ────────────────────────────────────
+            //
+            // Drawn as an OUTWARD CHEVRON on the rim, never as a hole. A hole
+            // painted on the rim would say the shot struck the outer ring; a
+            // chevron says "it went that way, past the edge". The true
+            // coordinate is untouched in the model - only this symbol sits at
+            // the rim.
+            Canvas {
+                visible: parent.off
+                anchors.centerIn: parent
+                width: Math.max(9, view.faceRadius * 0.07)
                 height: width
-                radius: width / 2
-                color: "transparent"
-                border.width: 1
-                border.color: theme.brandAccent
+                rotation: Math.atan2(modelData.y, modelData.x) * 180 / Math.PI
+                opacity: view.stale ? 0.55 : 1.0
+                onPaint: {
+                    var c = getContext("2d")
+                    c.reset()
+                    c.beginPath()
+                    c.moveTo(width * 0.15, height * 0.12)
+                    c.lineTo(width * 0.85, height * 0.5)
+                    c.lineTo(width * 0.15, height * 0.88)
+                    c.strokeStyle = theme.brandAccent
+                    c.lineWidth = Math.max(1.5, width * 0.16)
+                    c.lineJoin = "round"
+                    c.lineCap = "round"
+                    c.stroke()
+                }
             }
+        }
+    }
+
+    // ── DEVELOPMENT GEOMETRY OVERLAY ────────────────────────────────────
+    //
+    // Off unless TECHAIM_RMS_GEOMETRY_OVERLAY=1. It exists so a qualification
+    // screenshot can state its own scale instead of being measured by eye, and
+    // it must never appear in a normal display.
+    Column {
+        visible: RMS_GEOMETRY_OVERLAY && view.supported && view.faceRadius > 80
+        anchors { left: parent.left; bottom: parent.bottom; margins: 6 }
+        spacing: 1
+
+        Text {
+            text: "DEV GEOMETRY"
+            font.family: theme.fontFamily
+            font.pixelSize: 9
+            font.letterSpacing: 1.0
+            color: theme.brandAccent
+        }
+        Text {
+            text: view.targetStandardId
+            font.family: theme.fontFamily
+            font.pixelSize: 9
+            color: theme.textSecondary
+        }
+        Text {
+            text: "face " + view.spec.faceRadiusMm.toFixed(2) + " mm  ·  "
+                  + (view.faceRadius / view.spec.faceRadiusMm).toFixed(3) + " px/mm"
+            font.family: theme.fontFamily
+            font.pixelSize: 9
+            color: theme.textSecondary
+        }
+        Text {
+            text: "projectile " + view.spec.projectileDiameterMm.toFixed(1) + " mm  ·  "
+                  + (view.projectileRadius * 2).toFixed(1) + " px"
+            font.family: theme.fontFamily
+            font.pixelSize: 9
+            color: theme.textSecondary
+        }
+        Text {
+            visible: view.shots.length > 0
+            readonly property var s: view.shots[view.shots.length - 1]
+            text: "last  x=" + (s.xMm !== undefined ? s.xMm.toFixed(2) : "?")
+                  + " mm  y=" + (s.yMm !== undefined ? s.yMm.toFixed(2) : "?")
+                  + " mm  score=" + s.score
+            font.family: theme.fontFamily
+            font.pixelSize: 9
+            color: theme.textSecondary
         }
     }
 
