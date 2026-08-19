@@ -206,6 +206,44 @@ void run_udp_sink_tests()
     check(sink.sentCount() > 0, "the sink counted what it sent");
     check(sink.failedCount() == 0, "no send failed on loopback");
 
+    // ── the contract's own rules, verified on the foundation ───────────
+    //
+    // The RMS product branch tests these too. They are repeated here because
+    // the contract now lives on the foundation: if a future foundation change
+    // broke version gating, the node would start emitting bytes RMS silently
+    // misreads, and no test on this branch would have noticed.
+    {
+        ta::rms::NodeStatus s;
+        s.nodeId = QStringLiteral("TA-NODE-CONTRACT");
+        s.bootId = QStringLiteral("boot-1");
+        s.shotsAccepted = 17;
+        s.statusSeq = 3;
+        const QByteArray v1 = ta::rms::encode(s);
+
+        check(v1.contains("\"protocolVersion\":1"),
+              "the node stamps the protocol version it implements");
+
+        QByteArray future = v1;
+        future.replace("\"protocolVersion\":1", "\"protocolVersion\":2");
+        check(ta::rms::decode(future).type == ta::rms::MessageType::Unknown,
+              "a newer protocolVersion is REJECTED rather than guessed at");
+
+        QByteArray extended = v1;
+        extended.insert(1, "\"aFieldFromAFutureBuild\":{\"nested\":true},");
+        const ta::rms::DecodedMessage fwd = ta::rms::decode(extended);
+        check(fwd.type == ta::rms::MessageType::NodeStatus,
+              "unknown FIELDS are ignored - the contract is forward compatible",
+              fwd.rejectReason);
+        check(fwd.status.shotsAccepted == 17,
+              "...without disturbing the fields that are known");
+
+        check(ta::rms::decode(QByteArray(
+                  "{\"protocolVersion\":1,\"type\":\"command.startMatch\","
+                  "\"nodeId\":\"n\",\"commandId\":\"c1\"}")).type
+                  == ta::rms::MessageType::Unknown,
+              "a command is not a decodable message - v1 has no command grammar");
+    }
+
     // ── the sink cannot receive ────────────────────────────────────────
     {
         // The one property this milestone must keep: node → RMS only.
