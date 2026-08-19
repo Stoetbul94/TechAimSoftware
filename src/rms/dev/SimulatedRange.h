@@ -26,6 +26,8 @@
 // asserts exact counts with no sleeps and no flakiness.
 // ─────────────────────────────────────────────────────────────────────────────
 
+#include "rms/dev/TargetShotFixtures.h"
+
 #include <QByteArray>
 #include <QObject>
 #include <QString>
@@ -114,8 +116,14 @@ private:
         bool    emittedDuplicate = false;
         bool    swapPending = false;   // holds one shot back to arrive late
         bool    concluded = false;     // scripted: stops shooting, keeps answering
+        // Correlated fixture data for this lane's target, when the scenario
+        // uses it. Null in the development scenario.
+        const FixtureShot* fixtures = nullptr;
+        int     fixtureCount = 0;
         QByteArray heldShot;
     };
+
+    Scenario m_scenario = Scenario::Development;
 
     void stepOnce(qint64 tMs);
     // `silent` suppresses TRANSMISSION only. The node's own state still

@@ -48,6 +48,7 @@ SimulatedRange::SimulatedRange(QObject* parent)
 
 void SimulatedRange::configure(int laneCount, Scenario scenario)
 {
+    m_scenario = scenario;
     const int n = qBound(3, laneCount, 6);
     m_nodes.clear();
     m_nowMs = 0;
@@ -81,6 +82,14 @@ void SimulatedRange::configure(int laneCount, Scenario scenario)
             s.restarts = false;
             if (i == 2) { s.silentFromMs = 14000; s.silentToMs = -1; }
             if (i == 3) { s.silentFromMs = 14000; s.silentToMs = 34000; }
+            // Correlated fixtures for this lane's target standard.
+            for (int f = 0; f < kFixtureTargetCount; ++f) {
+                if (s.targetStandardId == QLatin1String(kFixtureTargets[f].targetStandardId)) {
+                    s.fixtures = kFixtureTargets[f].shots;
+                    s.fixtureCount = kFixtureTargets[f].shotCount;
+                    break;
+                }
+            }
         } else {
             s.dropsOut = (i == 2);   // Lane 3 loses the network and comes back
             s.restarts = (i == 4);   // Lane 5's application restarts
@@ -235,10 +244,33 @@ void SimulatedRange::emitShot(SimNode& n, qint64 tMs, bool silent)
     sh.sessionId    = n.sessionId;
     sh.programmeId  = n.programmeId;
     sh.shotSequence = n.shotsAccepted;
-    sh.rawXMm       = ((int(nextScore() * 10) % 21) - 10) / 2.0;
-    sh.rawYMm       = ((int(nextScore() * 10) % 19) - 9)  / 2.0;
-    // THE SIMULATED NODE SCORES THE SHOT. RMS transports this value.
-    sh.authoritativeScore = nextScore();
+
+    // ── WHERE THE SHOT LANDS, AND WHAT IT IS WORTH ──────────────────────
+    //
+    // Development scenario: coordinate and score are drawn from the same LCG
+    // but INDEPENDENTLY of one another. That is fine for network chaos - the
+    // ordering, duplicate and outage tests do not care where a hole is - and
+    // it is deliberately kept, because those tests assert its exact numbers.
+    //
+    // BUT IT IS USELESS AS A PICTURE. An 8.2 printed beside a hole in the 9
+    // ring is a demo artefact, not a renderer fault, and it wasted real
+    // review time. So the field-test scenario plays CORRELATED FIXTURES
+    // instead: coordinate and score that genuinely belong together, generated
+    // outside this product from the trusted engine's formula and the official
+    // rulebook geometry. See tools/fixtures/generate_target_fixtures.py.
+    //
+    // Either way the SIMULATED NODE supplies the score. RMS transports it and
+    // derives nothing.
+    if (m_scenario == Scenario::FieldTestDemo && n.fixtures && n.fixtureCount > 0) {
+        const FixtureShot& f = n.fixtures[(n.shotsAccepted - 1) % n.fixtureCount];
+        sh.rawXMm = f.xMm;
+        sh.rawYMm = f.yMm;
+        sh.authoritativeScore = f.score;
+    } else {
+        sh.rawXMm = ((int(nextScore() * 10) % 21) - 10) / 2.0;
+        sh.rawYMm = ((int(nextScore() * 10) % 19) - 9)  / 2.0;
+        sh.authoritativeScore = nextScore();
+    }
     sh.integerScore = int(sh.authoritativeScore);
     sh.innerTen     = sh.authoritativeScore >= 10.7;
     sh.timestampUtcMs = tMs;

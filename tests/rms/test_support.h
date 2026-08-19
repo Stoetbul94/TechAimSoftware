@@ -22,6 +22,7 @@ void run_range_config_tests();
 void run_match_plan_tests();
 void run_competition_state_tests();
 void run_target_display_tests();
+void run_target_geometry_tests();
 void run_udp_tests();
 
 #endif // TA_RMS_TEST_SUPPORT_H

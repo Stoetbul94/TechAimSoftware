@@ -37,6 +37,7 @@ SOURCES += \
     tst_match_plan.cpp \
     tst_competition_state.cpp \
     tst_target_display.cpp \
+    tst_target_geometry.cpp \
     tst_readonly.cpp \
     $$PWD/../../src/rms/RmsProtocol.cpp \
     $$PWD/../../src/rms/TargetNodeRecord.cpp \
