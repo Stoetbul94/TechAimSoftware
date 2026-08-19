@@ -142,7 +142,7 @@ def main():
         print('usage: check_rms_deployment.py <deployment-dir>')
         return 2
     root = os.path.abspath(sys.argv[1])
-    print('=== SETA deployment checks (DEPLOY-001) ===\n')
+    print('=== Tech Aim RMS deployment checks (RMS-DEPLOY-001) ===\n')
     print('  folder: %s\n' % root)
 
     check(os.path.isdir(root), 'the deployment folder exists', root)

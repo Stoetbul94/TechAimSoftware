@@ -137,12 +137,16 @@ $PRUNE_DLL_PREFIXES = @(
     'Qt63D', 'Qt6Quick3D', 'Qt6ShaderTools',
     'Qt6VirtualKeyboard',    # no touch keyboard surface
     'Qt6Multimedia',         # no audio, no video
-    'Qt6Sql', 'Qt6Test', 'Qt6Charts', 'Qt6Pdf'
+    'Qt6Sql', 'Qt6Test', 'Qt6Charts', 'Qt6Pdf',
+    # QML LocalStorage is a SQLite binding. RMS stores its own JSON documents
+    # and imports it nowhere, and leaving it behind would drag Qt6Sql back in.
+    'Qt6QmlLocalStorage'
 )
 $PRUNE_QML_MODULES = @(
     'QtQuick3D', 'Qt3D', 'QtQuick\VirtualKeyboard',
     'QtQuick\Scene2D', 'QtQuick\Scene3D',
-    'QtMultimedia', 'QtCharts', 'QtTest', 'QtQuick\Particles'
+    'QtMultimedia', 'QtCharts', 'QtTest', 'QtQuick\Particles',
+    'QtQuick\LocalStorage'
 )
 
 foreach ($d in $PRUNE_DIRS) {

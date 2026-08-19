@@ -233,6 +233,13 @@ int main(int argc, char* argv[])
     for (int i = 1; i < argc; ++i)
         args << QString::fromLocal8Bit(argv[i]);
 
+    // RMS'S OWN NAMESPACE, established BEFORE any path is computed. These are
+    // static, and QStandardPaths reads them: setting them after the first
+    // writableLocation() call puts RMS's files in a bare AppData folder that
+    // belongs to no product.
+    QCoreApplication::setOrganizationName(QStringLiteral("Tech Aim"));
+    QCoreApplication::setApplicationName(QStringLiteral("Tech Aim RMS"));
+
     const RunMode mode = runModeFrom(args);
     const bool live = (mode == RunMode::Live);
     QString configPath = optionValue(args, QStringLiteral("--range-config"));
@@ -259,11 +266,6 @@ int main(int argc, char* argv[])
     }
 
     QGuiApplication app(argc, argv);
-    // RMS'S OWN NAMESPACE. The range configuration must never land in the
-    // target application's AppData: RMS is a separate product and may run on a
-    // machine that has no node application installed at all.
-    app.setOrganizationName(QStringLiteral("Tech Aim"));
-    app.setApplicationName(QStringLiteral("Tech Aim RMS"));
 #ifdef RMS_VERSION_STR
     app.setApplicationVersion(QStringLiteral(RMS_VERSION_STR));
     std::fprintf(stderr, "RMS: %s (%s)  mode=%s\n",
