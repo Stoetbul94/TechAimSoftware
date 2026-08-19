@@ -164,6 +164,24 @@ and the read-only boundary) alongside
   NOTIFYING property `laneOrderList`, because a `Q_INVOKABLE` cannot drive a
   live QML model. See `docs/architecture/rms-target-display-mvp.md`; the future
   spectator/TV client shape is in `rms-spectator-client-design.md`.
+- **Target geometry is taken from the RULEBOOK, not from another renderer.**
+  `TargetGeometry` stores official **DIAMETERS** (ISSF Rule Book 2026 rule
+  6.3.4) and converts to radii, because a diameter used as a radius is the
+  classic 2x error. Mirroring `IssfTargetCanvas.qml` is how RMS came to draw a
+  50 m *rifle* face for 50 m pistol — that renderer has no pistol entry and
+  falls through to its rifle default. Two foundation correction candidates are
+  recorded in the source register and were deliberately NOT applied from this
+  branch. The projectile is drawn at its true calibre (4.5 mm at 10 m, 5.6 mm at
+  50 m, rules 7.4.6 / 8.4.4): ISSF scores by the OUTWARD GAUGE, so on a 10 m air
+  rifle face a 10.0 has its centre ten times the ten-ring radius out, and a
+  display that draws only a dot makes correct scoring look broken.
+  Qualification: `docs/test/rms-target-geometry-qualification.md`; coordinate
+  path: `docs/architecture/rms-coordinate-contract.md`.
+- **The visual demo uses CORRELATED FIXTURES, not the chaos simulator.** The
+  development scenario draws coordinate and score independently — fine for
+  ordering/outage tests, useless as a picture. `--demo-range` plays fixtures
+  generated outside the product by `tools/fixtures/generate_target_fixtures.py`;
+  RMS reads them as opaque authoritative values.
 - **The field-test package.** `scripts/deploy/deploy-rms-fieldtest.ps1` builds
   `dist/TechAimRMS-FieldTest-M4_5/` (+ ZIP) — a self-contained runtime that
   double-clicks on a machine with no Qt. It reuses the method documented in
@@ -182,7 +200,7 @@ and the read-only boundary) alongside
   adjudicated result — never destroy the raw one) and
   `rms-command-boundary-design.md` (legacy UDP 7756 stays outside RMS).
 - Harness: `tests/rms/rms_tests.pro` (`QT = core network`, no platform plugin
-  needed). Currently **924 checks, 0 failures**.
+  needed). Currently **1129 checks, 0 failures**.
 - Protocol/state must use the stable `programmeId` (plus `rulesetId`,
   `targetStandardId`) from `CompetitionCatalogue.qml`. Display text is derived
   FROM the id; nothing is ever looked up BY a label (QML-LANG-001).
@@ -275,8 +293,11 @@ floating-windows work — review/close manually; local
 
 - 25m Pistol disciplines: unimplemented; which events are in scope needs the
   user's decision.
-- 50m Rifle `radOf10Ring = 5.2` in `calculateShootingSocre()`: needs official
-  rulebook confirmation or physical calibration.
+- ~~50m Rifle `radOf10Ring = 5.2`: needs official rulebook confirmation.~~
+  **CLOSED (M4.6).** ISSF Rule Book 2026 rule 6.3.4.2 gives the 50 m rifle 10
+  ring as **10.4 mm DIAMETER**, so the 5.2 mm RADIUS is correct. All four
+  `calculateShootingSocre()` branches were checked against the rulebook and all
+  four are right. See `docs/architecture/rms-target-geometry-source-register.md`.
 - Licence-expiry check: DISABLED (commented in LoginPage, rewritten against
   the dialog framework). Re-enabling needs separate approval + a licence
   test fixture (`MODREADER.isValidLicence()` path).
