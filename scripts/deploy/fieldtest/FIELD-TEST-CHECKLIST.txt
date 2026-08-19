@@ -1,6 +1,6 @@
 ===============================================================================
  TECH AIM RMS - FIELD-TEST CHECKLIST
- Milestone 4.6 - geometry-qualified target display
+ Milestone 4.7 - field-test instrumentation + station identity
  FIELD TEST / DEVELOPMENT EVALUATION
  NOT FOR OFFICIAL COMPETITION CONTROL
 ===============================================================================
@@ -9,6 +9,10 @@
  by the developer, and none of it should be reported as passing until you have
  actually done it. Automated tests and screenshots cannot prove that a button
  is wired to the thing it says it does; only clicking it can.
+
+ FOR THE RANGE DAY ITSELF, follow RANGE-DAY-GUIDE.txt. This checklist is the
+ bench test of the application; that guide is the order to do things in at a
+ range.
 
  Tester: ______________________     Date: ______________
 
@@ -175,6 +179,55 @@
  If you find a control that appears to command a target, stop and report it.
  That would be a defect of the most serious kind in this product.
 
+
+-------------------------------------------------------------------------------
+ K. STATION IDENTITY AND COMMISSIONING   (new in M4.7)
+-------------------------------------------------------------------------------
+
+ [ ] RANGE SETUP shows a readable STATION code for each lane, e.g. E222-403F
+ [ ] The full station identity is still visible underneath, or in Diagnostics
+ [ ] Two different stations never show the same code
+ [ ] Lane detail -> DIAGNOSTICS shows STATION ID, node id, boot id, last seen
+ [ ] Lane detail -> DIAGNOSTICS shows shots observed vs accepted by the node
+
+ Restart the demo (Reset-Demo.cmd) and check:
+ [ ] the same lane shows the SAME station code as before
+
+ Assignment safety:
+ [ ] Assigning a station to a lane that already has one is refused, with a
+     message saying which station is already there
+ [ ] CLEAR then ASSIGN does replace it
+ [ ] After a restart, the replacement is still in place
+
+
+-------------------------------------------------------------------------------
+ L. FIELD TEST PAGE   (new in M4.7)
+-------------------------------------------------------------------------------
+
+ [ ] FIELD TEST appears in the left rail and opens
+ [ ] PREFLIGHT lists checks with PASS / WARNING / FAIL / WAITING
+ [ ] The verdict line NEVER says "RANGE READY"
+ [ ] NETWORK shows the UDP listener state, the port and local interfaces
+ [ ] TELEMETRY shows packet and shot counters
+ [ ] TIMELINE is empty until a log is started, and says so
+
+ Start a log:
+ [ ] Fill in test name / range / operator, press START FIELD TEST LOG
+ [ ] The pill shows LOGGING with a running clock and an event count
+ [ ] TIMELINE fills with events as the demo runs
+ [ ] Heartbeats do NOT flood the timeline - events are things that happened
+ [ ] Let a lane go offline and come back; both appear in the timeline
+
+ Export:
+ [ ] Press EXPORT FIELD TEST
+ [ ] A green panel shows the folder it was written to
+ [ ] Open that folder: summary.txt reads sensibly to a person
+ [ ] In DEMO mode, summary.txt says SIMULATED / DEMO DATA at the top
+ [ ] The folder contains NO source code
+
+ Stop:
+ [ ] STOP FIELD TEST LOG stops it
+ [ ] Nothing on any target was affected by starting or stopping the log
 
 -------------------------------------------------------------------------------
  NOTES

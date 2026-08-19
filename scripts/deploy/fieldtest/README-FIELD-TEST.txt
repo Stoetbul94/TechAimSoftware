@@ -1,13 +1,15 @@
 ===============================================================================
  TECH AIM RANGE MANAGEMENT SYSTEM
  FIELD TEST / DEVELOPMENT EVALUATION PACKAGE
- Milestone 4.6 - GEOMETRY-QUALIFIED target display
+ Milestone 4.7 - FIELD-TEST INSTRUMENTATION + STATION IDENTITY
 ===============================================================================
 
  THIS IS NOT A COMPETITION RELEASE.
  NOT FOR OFFICIAL COMPETITION CONTROL.
 
- This build supersedes the earlier M4.5 package. Use this one.
+ This build supersedes every earlier package. Use this one.
+
+ FOR THE RANGE DAY, OPEN  RANGE-DAY-GUIDE.txt  IN THIS FOLDER.
 
  It is a development evaluation build, produced so the user interface can be
  clicked through by a person before a field test. Do not use it to run, record
@@ -141,6 +143,63 @@
 
 
 -------------------------------------------------------------------------------
+ NEW IN M4.7 - WHAT TO USE AT THE RANGE
+-------------------------------------------------------------------------------
+
+ STATION IDENTITY AND LANE COMMISSIONING
+
+ Each target station now shows a short, readable STATION CODE such as
+
+     E222-403F
+
+ It is derived from the station's own permanent identity, it never changes,
+ and it is what you should write on a piece of tape and stick on the tablet.
+
+ THE RULE THAT MATTERS:  a physical lane is NOT a device identity.
+ RMS remembers  LANE <-> STATION  and nothing else. It never numbers lanes
+ from an IP address, from the order things were discovered, or from a boot id.
+
+ TO COMMISSION A RANGE, one tablet at a time:
+   1. all tablets off
+   2. power up the lane 1 tablet, assign the one new station code to Lane 1
+   3. power up the next, assign it to Lane 2, and so on
+ The mapping is then remembered permanently.
+
+ To replace a tablet: RANGE SETUP -> the lane -> CLEAR, then ASSIGN the new
+ station. RMS refuses to drop a station onto an occupied lane in one step, on
+ purpose: replacing a tablet should be two deliberate actions.
+
+ THE FIELD TEST PAGE
+
+ A new FIELD TEST entry in the left rail, with four tabs:
+
+   PREFLIGHT   is RMS able to observe? is the range commissioned? and the
+               START / STOP FIELD TEST LOG and EXPORT FIELD TEST buttons
+   NETWORK     UDP listener state, port, local network interfaces, and what
+               to check if no station appears
+   TELEMETRY   packet and shot counters, including how many shots the
+               stations accepted that RMS never saw
+   TIMELINE    what happened, in order, as it happens
+
+ The preflight says OBSERVATION PREFLIGHT COMPLETE. It deliberately never says
+ "range ready": RMS cannot command or certify a target station, so it does not
+ claim to.
+
+ THE FIELD-TEST LOG AND EXPORT
+
+ START FIELD TEST LOG begins recording what RMS sees. It does NOT start,
+ stop or affect anything on any target - it is a local diary.
+
+ EXPORT FIELD TEST writes an evidence folder containing a readable summary,
+ the same data as JSON, the lane-to-station mappings, per-station totals, the
+ full timeline and every observed shot as CSV. Send that folder after the
+ test. It contains no source code.
+
+ If RMS is closed and reopened during a test, a new log is a new segment and
+ names the previous one. RMS cannot reconstruct what it never received, and
+ says so rather than pretending otherwise.
+
+-------------------------------------------------------------------------------
  WHAT CHANGED SINCE THE M4.5 PACKAGE
 -------------------------------------------------------------------------------
 
@@ -224,8 +283,10 @@
    measurement. A high shot should appear high; that has never been confirmed
    against a real pellet.
 
-   There is a fifteen-minute range procedure that settles it, in the repository
-   at:  docs/test/rms-physical-shot-registration-checklist.md
+   There is a fifteen-minute range procedure that settles it. Section 3 of
+   RANGE-DAY-GUIDE.txt in this folder walks through it, and the full sheet is
+   in the repository at:
+       docs/test/rms-physical-shot-registration-checklist.md
    It walks through centre, right, left, above, below, and several known
    ring-region impacts. Until it is done and returned, the project's status
    stays PHYSICALLY UNVERIFIED.
