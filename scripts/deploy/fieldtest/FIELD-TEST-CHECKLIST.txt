@@ -1,7 +1,8 @@
 ===============================================================================
  TECH AIM RMS - FIELD-TEST CHECKLIST
- Milestone 4.5 - target display MVP
- FIELD TEST / DEVELOPMENT EVALUATION - not a competition release
+ Milestone 4.6 - geometry-qualified target display
+ FIELD TEST / DEVELOPMENT EVALUATION
+ NOT FOR OFFICIAL COMPETITION CONTROL
 ===============================================================================
 
  This checklist is for a PERSON to work through. Nothing on it has been ticked
@@ -22,10 +23,13 @@
 -------------------------------------------------------------------------------
 
  [ ] The application launches by double-clicking Launch-TechAimRMS-Demo.cmd
+ [ ] Launch-TechAimRMS-Live.cmd also launches
  [ ] No error about a missing DLL, plugin or "Qt platform plugin"
  [ ] The header says DEMO RANGE - NOT REAL TARGETS
  [ ] The header also says NOT OBSERVING - UDP 7755
  [ ] The demo range loads: six lanes appear within about ten seconds
+ [ ] No DEV GEOMETRY text appears anywhere - that is a development overlay and
+     must not be visible in this build
 
 
 -------------------------------------------------------------------------------
@@ -84,10 +88,40 @@
 
  [ ] AUTO ROTATE starts cycling through the lanes
  [ ] The button changes to STOP ROTATE while it is rotating
- [ ] Changing the interval (5s / 10s / 15s / 30s) changes the speed
+ [ ] 5s interval works
+ [ ] 10s interval works
+ [ ] 15s interval works
+ [ ] 30s interval works
  [ ] Pressing NEXT, PREVIOUS or clicking a lane STOPS the rotation
  [ ] STOP ROTATE stops it
  [ ] SPACE starts and stops rotation in full screen
+
+
+-------------------------------------------------------------------------------
+ G0. TARGET GEOMETRY  (new in M4.6 - the point of this rebuild)
+-------------------------------------------------------------------------------
+
+ Open each lane large (DISPLAYS, then click the lane or use NEXT).
+
+ [ ] Lane 1  10 m Air Rifle   - face looks correct
+ [ ] Lane 2  10 m Air Pistol  - face looks correct
+ [ ] Lane 4  50 m Rifle       - face looks correct
+ [ ] Lane 6  50 m Pistol      - face looks correct, and is CLEARLY NOT the same
+                                face as Lane 4
+
+ The four faces should look obviously different from each other. If the 50 m
+ pistol and the 50 m rifle look like the same target, something has regressed.
+
+ [ ] Projectile footprints look reasonable for the distance:
+       10 m lanes - the holes are LARGE relative to the rings
+       50 m lanes - the holes are small relative to the rings
+ [ ] The last-shot highlight (red ring) is clearly a HIGHLIGHT, and is not
+     mistakable for the edge of the bullet hole itself
+ [ ] Where a score is a whole number, the EDGE of the hole - not its centre -
+     sits on the ring line that the score names
+
+ On the 10 m air rifle lane the holes overlap heavily and cover most of the
+ rings. That is what a real air rifle card looks like; it is not a fault.
 
 
 -------------------------------------------------------------------------------
@@ -146,14 +180,21 @@
  NOTES
 -------------------------------------------------------------------------------
 
- In DEMO mode the position a shot is drawn at does not match the score printed
- beside it. That is expected: the demonstration invents positions and scores
- separately, on purpose. Judge the LAYOUT and the BEHAVIOUR here, not the
- arithmetic.
+ In DEMO mode the shot positions and their scores now MATCH each other. They
+ are correlated fixture data, generated outside the program from the official
+ rulebook geometry and the target station's own scoring formula. In the M4.5
+ package they did not match, and that was a demo-data fault rather than a
+ display fault.
 
- The display has never been checked against a real target. When real hardware
- is available, the first thing to verify is that a shot drawn on the screen is
- where the pellet actually went.
+ So in this build you may judge the arithmetic as well as the layout: if a
+ score and a hole disagree, that is worth reporting.
+
+ The display has still never been checked against a REAL target. When hardware
+ is available the range procedure is:
+     docs/test/rms-physical-shot-registration-checklist.md
+ It checks centre, right, left, above, below, and several known ring-region
+ impacts. Nothing about physical shot orientation is confirmed until it is
+ done.
 
 
  Anything unexpected:

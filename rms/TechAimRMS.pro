@@ -27,7 +27,7 @@ INCLUDEPATH += $$PWD/../src
 # looks identical on disk and would otherwise be shipped with a manifest naming
 # a commit it was never built from. qmake must be re-run for this to update.
 VERSION = 0.9.0
-RMS_VERSION_STR = 0.9.0-M4.5-FIELDTEST
+RMS_VERSION_STR = 0.9.0-M4.6-FIELDTEST
 RMS_GIT_SHA = $$system(git -C \"$$PWD\" rev-parse --short HEAD)
 
 DEFINES += RMS_VERSION_STR=\\\"$$RMS_VERSION_STR\\\"

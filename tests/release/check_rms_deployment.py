@@ -230,9 +230,16 @@ def main():
     check(product is None or 'SETA' not in product,
           'and it is not a SETA build - RMS ships through its own path',
           str(product))
-    check('0.9.0-M4.5-FIELDTEST'.encode('utf-16-le') in raw
-          or b'0.9.0-M4.5-FIELDTEST' in raw,
-          'the field-test version string is baked into the binary')
+    # The milestone moves; the SHAPE of the version string does not. Pinning a
+    # literal here meant the check silently passed on an M4.5 string inside an
+    # M4.6 package, so it now finds whatever is baked in and requires the
+    # manifest to name the same one.
+    import re as _re
+    found = _re.search(rb'0\.9\.0-M4\.\d+-FIELDTEST', raw)
+    check(found is not None,
+          'a field-test version string is baked into the binary',
+          found.group(0).decode() if found else 'none')
+    baked_version = found.group(0).decode() if found else None
 
     # ── no development material ships ─────────────────────────────────────
     leaks = []
@@ -276,6 +283,9 @@ def main():
               (man.get('executableSha256') or '')[:16] + ' vs ' + sha[:16])
         check(man.get('product') and man.get('qtVersion') and man.get('gitCommit'),
               'the manifest carries product, Qt version and commit')
+        check(baked_version is not None and man.get('version') == baked_version,
+              'the manifest names the version the binary actually reports',
+              '%s vs %s' % (man.get('version'), baked_version))
         blob = json.dumps(man)
         check('C:\\\\Users' not in blob and 'C:/Users' not in blob,
               'and no build-machine path is written into a customer-facing file')

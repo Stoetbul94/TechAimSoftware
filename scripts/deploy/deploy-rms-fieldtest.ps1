@@ -44,7 +44,7 @@
     The Release build output. Default: <repo>\rms\release
 .PARAMETER OutDir
     Deployment target, wiped and recreated.
-    Default: <repo>\dist\TechAimRMS-FieldTest-M4_5
+    Default: <repo>\dist\TechAimRMS-FieldTest-<milestone from the binary>
 .PARAMETER QtBin
     Qt bin directory. Default: C:\Qt\6.5.3\mingw_64\bin
 .PARAMETER MingwBin
@@ -67,7 +67,10 @@ param(
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 if (-not $BuildDir) { $BuildDir = Join-Path $repo 'rms\release' }
-if (-not $OutDir)   { $OutDir   = Join-Path $repo 'dist\TechAimRMS-FieldTest-M4_5' }
+# $OutDir is decided AFTER the binary has been read, from the milestone the
+# binary itself reports. A folder name typed in here would eventually name a
+# milestone the executable inside it does not belong to - which is exactly the
+# ambiguity this package must not have.
 
 function Say($m) { Write-Host "[rms-deploy] $m" }
 function Die($m) { Write-Host "[rms-deploy] ERROR: $m" -ForegroundColor Red; exit 1 }
@@ -87,6 +90,16 @@ $utf16 = [System.Text.Encoding]::Unicode.GetString($bytes)
 if ($utf16 -notmatch 'Range Management System') {
     Die "$exe does not identify as Tech Aim RMS in its version resource"
 }
+
+# The version, and therefore the package name, come from the binary too.
+$verMatch = [regex]::Match($ascii, '0\.9\.0-M(\d+)\.(\d+)-FIELDTEST')
+if (-not $verMatch.Success) { Die "$exe carries no field-test version string" }
+$bakedVersion = $verMatch.Value
+$milestoneTag = "M$($verMatch.Groups[1].Value)_$($verMatch.Groups[2].Value)"
+if (-not $OutDir) {
+    $OutDir = Join-Path $repo "dist\TechAimRMS-FieldTest-$milestoneTag"
+}
+Say "version: $bakedVersion  ->  package $milestoneTag"
 
 # The commit is baked in at QMAKE time (TechAimRMS.pro reads git once), so a
 # binary left over from an earlier commit looks identical on disk and would be
@@ -207,8 +220,9 @@ $allFiles = @(Get-ChildItem $OutDir -Recurse -File)
 
 $manifest = [ordered]@{
     product           = 'Tech Aim Range Management System'
+    version           = $bakedVersion
     packageKind       = 'FIELD TEST / DEVELOPMENT EVALUATION - not a competition release'
-    milestone         = 'M4.5 target display MVP'
+    milestone         = 'M4.6 target geometry + shot registration qualification'
     executable        = 'TechAimRMS.exe'
     executableSha256  = $sha
     qtVersion         = $qtVersion

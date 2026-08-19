@@ -1,10 +1,13 @@
 ===============================================================================
  TECH AIM RANGE MANAGEMENT SYSTEM
  FIELD TEST / DEVELOPMENT EVALUATION PACKAGE
- Milestone 4.5 - target display MVP
+ Milestone 4.6 - GEOMETRY-QUALIFIED target display
 ===============================================================================
 
  THIS IS NOT A COMPETITION RELEASE.
+ NOT FOR OFFICIAL COMPETITION CONTROL.
+
+ This build supersedes the earlier M4.5 package. Use this one.
 
  It is a development evaluation build, produced so the user interface can be
  clicked through by a person before a field test. Do not use it to run, record
@@ -40,14 +43,23 @@
     50    the script declares Lane 6 ELIMINATED     (marked SIMULATED)
     93    the 60-shot lanes finish; the range then holds its final state
 
+ The shots are CORRELATED FIXTURE DATA: each one's position and its score
+ genuinely belong together. They were generated outside this program from the
+ official rulebook geometry and the target station's own scoring formula, then
+ frozen. RMS reads a position and a score and does not compute the
+ relationship - it has no way to.
+
  So after about a minute you are looking at all six states at once:
 
-     Lane 1   online, shooting
-     Lane 2   online, shooting
-     Lane 3   OFFLINE - dimmed, still listed, showing its last known data
-     Lane 4   online, with an unseen-shot warning
-     Lane 5   FINISHED   (SIMULATED)
-     Lane 6   ELIMINATED (SIMULATED)
+     Lane 1   10 m Air Rifle    online, shooting
+     Lane 2   10 m Air Pistol   online, shooting
+     Lane 3   10 m Air Rifle    OFFLINE - dimmed, still listed, last known data
+     Lane 4   50 m Rifle        online, with an unseen-shot warning
+     Lane 5   10 m Air Pistol   FINISHED   (SIMULATED)
+     Lane 6   50 m Pistol       ELIMINATED (SIMULATED)
+
+ Four different target faces, so all four qualified geometries can be seen in
+ one range.
 
  The state is worth leaving to run for a minute before judging it.
 
@@ -129,6 +141,44 @@
 
 
 -------------------------------------------------------------------------------
+ WHAT CHANGED SINCE THE M4.5 PACKAGE
+-------------------------------------------------------------------------------
+
+ The target faces were qualified against the current official rulebook
+ (ISSF Rule Book 2026, EDITION 2025 Second Print 07/2026, rule 6.3.4). Three
+ things were wrong and are now fixed:
+
+ 1. 50 M PISTOL WAS DRAWING A 50 M RIFLE FACE. Every 50 m pistol shot was
+    plotted at about 4.8 times its true distance from centre. The pistol face
+    is a completely different target - 50 mm ten ring against 10.4 mm.
+
+ 2. THE 50 M RIFLE BLACK STOPPED TOO SOON. The rule puts it at 112.4 mm
+    diameter, which is past the edge of the face RMS draws, so the whole 50 m
+    rifle face is black. It previously stopped at the 5 ring.
+
+ 3. THE BULLET HOLE WAS AN ARBITRARY DOT. It is now drawn at the real calibre -
+    4.5 mm at 10 m, 5.6 mm at 50 m, from the ammunition rules.
+
+ THAT THIRD ONE MATTERS MORE THAN IT SOUNDS, and it is worth understanding
+ before you judge what you see:
+
+ ISSF scores by the OUTWARD GAUGE - the EDGE of the hole, not its centre. On a
+ 10 m air rifle target the ten ring is 0.5 mm across and the pellet is 4.5 mm,
+ NINE TIMES WIDER. So a shot scoring exactly 10.0 has its CENTRE about 2.5 mm
+ out from the middle, well outside the ten ring. That is correct. If the
+ display drew only a small dot it would look like a scoring error; drawn at the
+ true size, you can see the hole's edge touching the ring that the score names.
+
+ On the 10 m air rifle lane the holes are large and overlap heavily. That is
+ what a real 10 m air rifle card looks like after twenty shots on one aiming
+ mark - it is not a rendering fault.
+
+ The demo data was also fixed. In the M4.5 package the demo generated a shot's
+ position and its score independently, so they disagreed on purpose-built
+ nonsense. They now match.
+
+
+-------------------------------------------------------------------------------
  WHAT IS IMPLEMENTED
 -------------------------------------------------------------------------------
 
@@ -157,9 +207,10 @@
    station remains the authority for everything about the match.
 
  - RMS DOES NOT CALCULATE SCORES. Every score and every total shown comes from
-   the target station (or, in demo mode, from the demonstration data). RMS
+   the target station (or, in demo mode, from the correlated fixture data). RMS
    places a shot on a face so you can see the group; it never turns a position
-   into a value.
+   into a value. There is no function anywhere in the product that takes a
+   coordinate and returns a score, and the build is scanned for one.
 
  - 3P FINALS ELIMINATION IS SIMULATED IN DEMO ONLY. The current protocol
    carries no competition status at all, so no real station can report FINISHED
@@ -168,17 +219,21 @@
    for itself - not from score, rank, shot count, or an athlete going quiet.
 
  - PHYSICAL TARGET DISPLAY PATH IS UNVERIFIED. No real target hardware has been
-   used with the display yet. The shot positions drawn from a live station
-   should be checked against the physical target before anyone relies on them.
+   used with the display yet, and no shot has been fired. In particular, which
+   way is UP is taken from the target application's own renderers, not from a
+   measurement. A high shot should appear high; that has never been confirmed
+   against a real pellet.
+
+   There is a fifteen-minute range procedure that settles it, in the repository
+   at:  docs/test/rms-physical-shot-registration-checklist.md
+   It walks through centre, right, left, above, below, and several known
+   ring-region impacts. Until it is done and returned, the project's status
+   stays PHYSICALLY UNVERIFIED.
 
  - Results, ranking, leaderboards, follow-the-leader displays, a finals
    director view and a smart-TV client are not implemented.
 
- - The demo's shot positions and its scores are generated independently of one
-   another, so in DEMO mode the position a shot is drawn at does not correspond
-   to the score shown next to it. That is a property of the demonstration data,
-   not of the display. Correlating them would require a rule that turns a
-   position into a score, which is the one thing this product must not contain.
+ - Ranking, results, leaderboards and any Smart-TV client are not implemented.
 
 
 -------------------------------------------------------------------------------
