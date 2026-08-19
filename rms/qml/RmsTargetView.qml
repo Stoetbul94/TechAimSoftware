@@ -289,9 +289,16 @@ Item {
     // Off unless TECHAIM_RMS_GEOMETRY_OVERLAY=1. It exists so a qualification
     // screenshot can state its own scale instead of being measured by eye, and
     // it must never appear in a normal display.
-    Column {
-        visible: RMS_GEOMETRY_OVERLAY && view.supported && view.faceRadius > 80
+    //
+    // A LOADER, not a hidden Column: QML evaluates bindings whether or not an
+    // item is visible, so a merely invisible overlay still ran its arithmetic
+    // on every lane and logged type errors for lanes with no shots or no
+    // supported face. Inactive means not instantiated, which is the only
+    // version of "off" worth having in a shipped build.
+    Loader {
+        active: RMS_GEOMETRY_OVERLAY && view.supported && view.faceRadius > 80
         anchors { left: parent.left; bottom: parent.bottom; margins: 6 }
+        sourceComponent: Column {
         spacing: 1
 
         Text {
@@ -323,13 +330,16 @@ Item {
         }
         Text {
             visible: view.shots.length > 0
-            readonly property var s: view.shots[view.shots.length - 1]
-            text: "last  x=" + (s.xMm !== undefined ? s.xMm.toFixed(2) : "?")
-                  + " mm  y=" + (s.yMm !== undefined ? s.yMm.toFixed(2) : "?")
-                  + " mm  score=" + s.score
+            readonly property var s: view.shots.length > 0
+                                     ? view.shots[view.shots.length - 1] : null
+            text: s ? ("last  x=" + (s.xMm !== undefined ? s.xMm.toFixed(2) : "?")
+                       + " mm  y=" + (s.yMm !== undefined ? s.yMm.toFixed(2) : "?")
+                       + " mm  score=" + s.score)
+                    : ""
             font.family: theme.fontFamily
             font.pixelSize: 9
             color: theme.textSecondary
+        }
         }
     }
 
