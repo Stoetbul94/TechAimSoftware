@@ -160,6 +160,10 @@ INCLUDEPATH += src/mode
 
 # Session Reliability Layer (M0) - QtCore-only storage foundation.
 include(Reliability.pri)
+# RMS node telemetry: the shared protocol contract + this station's publisher.
+# Node -> RMS observation only; there is no inbound command path.
+include(Telemetry.pri)
+QT += network
 # QSoundEffect for the finals audio cues (FinalsAudioService).
 QT += multimedia
 

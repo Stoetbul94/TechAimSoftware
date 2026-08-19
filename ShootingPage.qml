@@ -273,6 +273,21 @@ Item {
         currentmatchDisplay = "10m FINAL"
     }
 
+    // RMS telemetry carries the STABLE programme identity, never a display
+    // label (QML-LANG-001). The catalogue is the single description of what
+    // "issf.10m.air-rifle.qualification60" means; this pushes the id the user
+    // actually selected, plus the rule authority and target standard that
+    // identity resolves to, down to the node telemetry publisher.
+    function publishProgrammeIdentity(programmeId)
+    {
+        if (typeof NODETELEMETRY === "undefined")
+            return
+        var profile = competitionCatalogue.profile(programmeId)
+        NODETELEMETRY.setProgramme(programmeId ? programmeId : "",
+                                   profile ? profile.rulesetId : "",
+                                   profile ? profile.targetStandardId : "")
+    }
+
     function setCurrentGameType(index)
     {
         if (APPSETTINGS.getDeveloperMode()) console.log("setCurrentGameType  ", index)
@@ -287,6 +302,7 @@ Item {
                 currentGameDisplay1 = game10RangeEventModel_15.get(index).gameDisplay1
                 currentGameDisplay2 = game10RangeEventModel_15.get(index).gameDisplay2
                 currentmatchDisplay = game10RangeEventModel_15.get(index).matchDisplay
+                publishProgrammeIdentity(game10RangeEventModel_15.get(index).programmeId)
             } else {
                 if (index >= game10RangeEventModel.count)
                     return
@@ -295,6 +311,7 @@ Item {
                 currentGameDisplay1 = game10RangeEventModel.get(index).gameDisplay1
                 currentGameDisplay2 = game10RangeEventModel.get(index).gameDisplay2
                 currentmatchDisplay = game10RangeEventModel.get(index).matchDisplay
+                publishProgrammeIdentity(game10RangeEventModel.get(index).programmeId)
             }
         } else if (gameRange === 50) {
             // if 15 shoots
@@ -306,6 +323,7 @@ Item {
                 currentGameDisplay1 = game50RangeEventModel_15.get(index).gameDisplay1
                 currentGameDisplay2 = game50RangeEventModel_15.get(index).gameDisplay2
                 currentmatchDisplay = game50RangeEventModel_15.get(index).matchDisplay
+                publishProgrammeIdentity(game50RangeEventModel_15.get(index).programmeId)
             } else {
                 if (index >= game50RangeEventModel.count)
                     return
@@ -314,6 +332,7 @@ Item {
                 currentGameDisplay1 = game50RangeEventModel.get(index).gameDisplay1
                 currentGameDisplay2 = game50RangeEventModel.get(index).gameDisplay2
                 currentmatchDisplay = game50RangeEventModel.get(index).matchDisplay
+                publishProgrammeIdentity(game50RangeEventModel.get(index).programmeId)
             }
 
     }

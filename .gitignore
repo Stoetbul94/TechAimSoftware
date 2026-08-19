@@ -35,6 +35,15 @@ tests/training/Makefile*
 tests/training/release/
 tests/training/debug/
 tests/training/.qmake.stash
+tests/telemetry/Makefile*
+tests/telemetry/release/
+tests/telemetry/debug/
+tests/telemetry/.qmake.stash
+# RMS node harness - development tool, its own qmake project.
+tools/rmsnode/Makefile*
+tools/rmsnode/release/
+tools/rmsnode/debug/
+tools/rmsnode/.qmake.stash
 # CD-REPORT evidence renderer - same qmake -o Makefile.rel pattern.
 tools/reporttest/Makefile*
 tools/reporttest/release/
