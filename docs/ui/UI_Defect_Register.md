@@ -823,3 +823,50 @@ evidence only and require human visual confirmation on a physical tablet:
 font substitution and report layout, software-keyboard field visibility,
 rotation with a live session, background/foreground return, and the landscape
 three-pane layout at tablet dimensions.
+
+---
+
+## 1m. Android tablet — short-viewport blockers found in hands-on use (2026-08-20)
+
+Found by Arnold using the A1 build on an API 34 emulator, not by any automated
+check. Both are the SAME root cause and neither is visible on Windows: the
+application viewport on this device is **807 x 345 units** (a 2220x1080 panel
+at 440 dpi, devicePixelRatio 2.75), against the **1366 x 724** reference the
+layouts were built for. Less than half the vertical space.
+
+| ID | Severity | Defect | Status |
+|---|---|---|---|
+| UI-AND-009 | **1 — unpassable** | The first-run licence dialog could not be dismissed. `eulaPage` is a fixed 600 x 400 centred on a 345-unit-tall screen, so it overflowed by 55 units and the Accept control — which lives in the panel's bottom 20 units — sat **entirely below the bottom edge of the display**. No gesture could reach it. The app could not be used at all past first launch. | **RESOLVED — VERIFIED ON DEVICE**: panel clamped to `Math.min(400, parent.height - 24)`; Accept observed on screen and tapped successfully |
+| UI-AND-010 | **1 — no route home** | During a match there was no way back to the home screen. `LeftPanel`'s header cards consumed ~209 of the pane's ~249 units, leaving the seven nav buttons a viewport of about **ten units** (a 27-pixel strip). The buttons were laid out below it and drawn off-screen; Home is the LAST of the seven. The sizing comment claimed "a scroll fallback would engage" — no such fallback existed, so dragging did nothing. | **RESOLVED — VERIFIED ON DEVICE**: nav is now a `Flickable` that becomes interactive only when it overflows, plus a `tightPane` header compaction; Home observed reachable and fully visible |
+
+**Windows is untouched by both.** The EULA clamp uses `Math.min`, so the desktop
+dialog stays exactly 600 x 400. `tightPane` is false at every desktop window
+size, and the nav `Flickable` is non-interactive when its content fits, so drag,
+hover and click behave as before. The Accept hit area grows via
+`Math.max(size, PLATFORM.minTouchTarget)`, and `minTouchTarget` is 0 on desktop.
+
+### UI-AND-011 — Android Back terminates the application mid-match
+
+**Severity 2. OPEN — not fixed.**
+
+Pressing the Android Back button during a live match **kills the app process**
+outright rather than navigating anywhere. It is not a route home and it is a
+data-loss hazard: an athlete reaching for a system gesture ends the session.
+
+Mitigation observed, and it is real: the session survived intact. On relaunch
+the app offered *Unfinished Match Found* with the correct discipline, athlete,
+DEMO mode, shot count, phase and time remaining, and reported the journal
+**Clean**. The reliability layer did exactly its job on Android.
+
+Not fixed here because the correct behaviour is a product decision — confirm
+before exit, ignore Back during a match, or treat Back as Home — and it should
+not be chosen mid-session. Recorded for A3.
+
+### UI-AND-012 — "Connect the target USB cable" is wrong guidance on Android
+
+**Severity 3. OPEN — not fixed.**
+
+The no-target panel instructs the operator to connect a USB cable. On Android
+USB acquisition is NOT IMPLEMENTED, so this advises an action that cannot work
+and implies a capability the build does not have. The wording needs to follow
+the platform. Recorded rather than changed, as it is operator-facing copy.

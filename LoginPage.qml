@@ -2658,7 +2658,22 @@ Item {
 
     Rectangle {
         id: eulaPage
-        width: 600; height: 400
+        // Was a FIXED 600 x 400, which made this dialog impossible to dismiss
+        // on the Android tablet build.
+        //
+        // The application viewport there is 807 x 345 dp (a 2220x1080 panel at
+        // 440 dpi, devicePixelRatio 2.75). A 400-unit-tall panel centred on a
+        // 345-unit-tall screen overflows by 55 units, roughly 27 off each end -
+        // and the Accept control lives in the panel's bottom 20 units, so it
+        // sat entirely BELOW the bottom edge of the display. There was no
+        // gesture that could reach it: the licence gate was unpassable, not
+        // merely fiddly.
+        //
+        // Clamped to what is actually on screen. Math.min keeps the desktop
+        // exactly at 600 x 400 wherever there is room for it, so the Windows
+        // dialog is unchanged.
+        width: Math.min(600, parent.width - 24)
+        height: Math.min(400, parent.height - 24)
         anchors.centerIn: parent
         color: theme.bgSurface; z: 51
         visible: !APPSETTINGS.isEulaAccepted() || !MODREADER.isValidLicence()
@@ -2690,8 +2705,15 @@ Item {
             source: "qrc:/images/loginPage/reset.png"
             anchors.top: eulaScroll.bottom; anchors.right: parent.right
             width: 50; height: 20; opacity: 1
+            // The artwork stays 50 x 20 so the desktop dialog looks identical.
+            // Only the HIT AREA grows, and only where a finger has to find it:
+            // PLATFORM.minTouchTarget is 0 on desktop, so Math.max leaves the
+            // Windows target at exactly 50 x 20. A 20-unit-tall control is
+            // about a millimetre on a 440 dpi panel.
             MouseArea {
-                anchors.fill: parent
+                anchors.centerIn: parent
+                width: Math.max(parent.width, PLATFORM.minTouchTarget)
+                height: Math.max(parent.height, PLATFORM.minTouchTarget)
                 onClicked: { APPSETTINGS.eulaAccepted(); eulaPage.visible = false }
             }
         }

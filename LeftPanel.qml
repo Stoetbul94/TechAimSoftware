@@ -73,6 +73,25 @@ Item {
         "L45 22 L45 14 L41 14 L39 17 L37 17 L37 14 L34 14 L34 21 L28 21 L28 14 " +
         "L11 14 L8 15 L9 16 L8 17 L8 20 L4 20 Z"
 
+    // TIGHT PANE. True when this panel is far shorter than the layout it was
+    // designed against, which is the normal case on an Android tablet in
+    // landscape: the whole application viewport there is 345 units tall (a
+    // 2220x1080 panel at 440 dpi, devicePixelRatio 2.75) versus the 725-unit
+    // reference at the top of this file. After the app header, status strip
+    // and action bar, this pane gets roughly 249 units.
+    //
+    // The header cards then consumed about 209 of those 249, leaving the seven
+    // navigation buttons a viewport of about TEN units - a 27-pixel strip. The
+    // buttons were laid out below it and simply drawn off the bottom of the
+    // screen, and Home is the LAST of the seven, so during a match there was
+    // no way back to the home screen at all.
+    //
+    // The threshold is the height below which all seven buttons cannot be
+    // shown at a tappable size (7*40 + 6*10 = 340) plus the header's own
+    // needs. Desktop windows sit far above it, so `tightPane` is false there
+    // and nothing about the Windows pane changes.
+    readonly property bool tightPane: height > 0 && height < 420
+
     signal homeButtonClicked()
     signal settingsClicked()
 
@@ -163,7 +182,15 @@ Item {
                 anchors.top: parent.top; anchors.topMargin: 6
                 anchors.horizontalCenter: parent.horizontalCenter
                 width: Math.min(parent.width - 16, 132)
-                height: width * (64 / 120)
+                // On a tight pane the silhouette is the first thing to go. It
+                // is the single largest item in the header, and it is
+                // DECORATIVE here: discLabel below carries the full discipline
+                // name in words, so nothing identifying is lost. Trading it
+                // away is what buys the navigation a usable viewport.
+                // The card's height derives from this value, so zero here
+                // collapses the card without touching its formula.
+                visible: !tightPane
+                height: tightPane ? 0 : width * (64 / 120)
                 discipline: disciplineKey
             }
             Text {
@@ -184,7 +211,8 @@ Item {
         // event; a Training Lab programme is not a match and must not borrow
         // the match colour any more than it may borrow the match wording.
         Rectangle {
-            width: parent.width; height: 46; radius: 8
+            // Tight pane trims the badge and name cards too - see `tightPane`.
+            width: parent.width; height: tightPane ? 34 : 46; radius: 8
             color: programmeLabel !== "" ? "#1b2733" : "#e8003d"
             border.color: programmeLabel !== "" ? "#3d5a75" : "transparent"
             border.width: programmeLabel !== "" ? 1 : 0
@@ -209,7 +237,7 @@ Item {
         // Shooter name
         Rectangle {
             id: nameCard
-            width: parent.width; height: 42; radius: 8
+            width: parent.width; height: tightPane ? 32 : 42; radius: 8
             color: "#26272c"; border.color: "#3a3b40"; border.width: 1
             Text {
                 anchors.centerIn: parent
@@ -316,9 +344,40 @@ Item {
         // Slightly smaller icon/text at short heights so labels never clip.
         readonly property bool compact: btnHeight < 54
 
-        Column {
+        // The scroll fallback the sizing comment above promised, which did not
+        // actually exist.
+        //
+        // btnHeight floors at 40 so buttons never become un-tappable, which
+        // means the column needs 7*40 + 6*10 = 340 units MINIMUM. On this
+        // Android tablet build the whole application viewport is 807 x 345 dp
+        // (a 2220x1080 panel at 440dpi, devicePixelRatio 2.75) against the
+        // 1366 x 724 desktop reference this pane was laid out for. After the
+        // app header and the discipline/athlete header card, navColumn is left
+        // with roughly 150 units - far under the 340 it needs.
+        //
+        // The Column simply overflowed, and Home is the LAST item, so during a
+        // match the way back to the home screen was pushed off the bottom of
+        // the panel with no way to reach it. Nothing was scrollable, so
+        // dragging did nothing.
+        //
+        // Flickable + interactive-only-when-overflowing is deliberately
+        // conservative: when the content fits (every desktop window size) the
+        // Flickable is inert and non-interactive, so drag, hover and click
+        // behaviour on Windows are exactly as before.
+        Flickable {
+            id: navFlick
             anchors.fill: parent
-            spacing: navColumn.navSpacing
+            contentWidth: width
+            contentHeight: navContent.height
+            clip: true
+            interactive: contentHeight > height
+            boundsBehavior: Flickable.StopAtBounds
+            flickDeceleration: 4000
+
+            Column {
+                id: navContent
+                width: navFlick.width
+                spacing: navColumn.navSpacing
 
             Repeater {
                 id: navRepeater
@@ -362,6 +421,29 @@ Item {
                     }
                 }
             }
+            }
+        }
+
+        // Scroll affordance, drawn with a plain Rectangle rather than a
+        // Controls ScrollBar: this file imports QtQuick only, and adding
+        // QtQuick.Controls to a pane this size to gain one indicator risks
+        // type shadowing for no benefit.
+        //
+        // It exists because a Flickable that overflows gives NO hint that it
+        // scrolls - which is precisely how Home became unreachable rather than
+        // merely inconvenient. Present only while there is somewhere to scroll.
+        Rectangle {
+            visible: navFlick.interactive
+            width: 3
+            radius: 1.5
+            color: "#5a5c63"
+            anchors.right: parent.right
+            y: navFlick.contentHeight > 0
+               ? (navFlick.contentY / navFlick.contentHeight) * navFlick.height
+               : 0
+            height: navFlick.contentHeight > 0
+                    ? Math.max(24, (navFlick.height / navFlick.contentHeight) * navFlick.height)
+                    : 0
         }
 
         function navAction(key) {
