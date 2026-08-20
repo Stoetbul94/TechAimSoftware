@@ -65,6 +65,14 @@ Item {
     // consistent with this look) so hover feedback and color are fully
     // theme-driven and don't depend on matching an external image's style.
     Row {
+        // A1/A2: desktop-only window controls.
+        //
+        // Minimise and close belong to a frameless desktop window that draws
+        // its own chrome. On Android the system owns the window: Home and the
+        // back gesture already do this, and an in-app close button that kills
+        // a live shooting session with one tap is an actively bad control to
+        // put on a touch screen. Hidden there; unchanged on Windows.
+        visible: PLATFORM.desktopWindowChrome
         anchors.right: parent.right
         anchors.rightMargin: theme.spacingUnit
         anchors.verticalCenter: parent.verticalCenter

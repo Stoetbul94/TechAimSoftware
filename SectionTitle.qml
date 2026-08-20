@@ -13,7 +13,7 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
         spacing: 8
         Rectangle { width: 3; height: 15; radius: 2; color: st.accent; anchors.verticalCenter: parent.verticalCenter }
-        Text { text: st.title; color: "#191b1f"; font.pixelSize: 15; font.bold: true; font.family: "Segoe UI" }
+        Text { text: st.title; color: "#191b1f"; font.pixelSize: 15; font.bold: true; font.family: PLATFORM.uiFont }
     }
     Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: "#eceef1" }
 }

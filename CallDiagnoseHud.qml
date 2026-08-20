@@ -259,7 +259,7 @@ Item {
                                 width: (sumCol.width - 30) / 4; height: 60; radius: 8; color: "#1D2026"; border.color: _line; border.width: 1
                                 Column { anchors.fill: parent; anchors.margins: 8; spacing: 3
                                     Text { text: modelData.l; color: _txtMut; font.pixelSize: 8; font.bold: true; font.letterSpacing: 1 }
-                                    Text { text: modelData.v; color: _txt; font.family: "Consolas"; font.pixelSize: 15; font.bold: true } }
+                                    Text { text: modelData.v; color: _txt; font.family: PLATFORM.monoFont; font.pixelSize: 15; font.bold: true } }
                             }
                         }
                     }
@@ -322,7 +322,7 @@ Item {
                                 Rectangle { width: sumCol.width * 0.55; height: 11; radius: 3; color: "#0E1014"; anchors.verticalCenter: parent.verticalCenter
                                     Rectangle { height: parent.height; radius: 3; color: s.isOutlier ? _redHi : _green
                                         width: parent.width * Math.min(1, s.errorMm / parent.parent.parent.maxErr) } }
-                                Text { text: Number(s.errorMm).toFixed(1) + " mm"; color: _txt; font.family: "Consolas"; font.pixelSize: 9
+                                Text { text: Number(s.errorMm).toFixed(1) + " mm"; color: _txt; font.family: PLATFORM.monoFont; font.pixelSize: 9
                                        anchors.verticalCenter: parent.verticalCenter } } }
                     }
 
@@ -346,9 +346,9 @@ Item {
                             delegate: Row { spacing: 8; property var s: modelData
                                 Text { width: 70; color: _txt; font.pixelSize: 11; font.bold: true
                                        text: (s.positionName ? s.positionName.substring(0,1) + " " : "") + "#" + s.shotNumber }
-                                Text { width: 60; color: _txt; font.family: "Consolas"; font.pixelSize: 11; text: Number(s.actualScore).toFixed(1) }
-                                Text { width: 70; color: _txt; font.family: "Consolas"; font.pixelSize: 11; text: Number(s.errorMm).toFixed(1) + " mm" }
-                                Text { width: 120; color: _txtSec; font.family: "Consolas"; font.pixelSize: 11
+                                Text { width: 60; color: _txt; font.family: PLATFORM.monoFont; font.pixelSize: 11; text: Number(s.actualScore).toFixed(1) }
+                                Text { width: 70; color: _txt; font.family: PLATFORM.monoFont; font.pixelSize: 11; text: Number(s.errorMm).toFixed(1) + " mm" }
+                                Text { width: 120; color: _txtSec; font.family: PLATFORM.monoFont; font.pixelSize: 11
                                        text: Number(s.errorXMm).toFixed(1) + " / " + Number(s.errorYMm).toFixed(1) }
                                 Text { color: _txtMut; font.pixelSize: 10; elide: Text.ElideRight; width: 180; text: s.note || "" } } }
                     }

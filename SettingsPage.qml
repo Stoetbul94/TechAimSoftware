@@ -534,7 +534,12 @@ Item {
                                 qsTr("Commit: ") + (typeof BUILDINFO !== "undefined" ? BUILDINFO.commit : "?"),
                                 qsTr("Built: ") + (typeof BUILDINFO !== "undefined" ? BUILDINFO.built : "?"),
                                 qsTr("Qt: ") + PRODUCT.qtVersion + "   ·   " + PRODUCT.architecture,
-                                qsTr("Windows: ") + PRODUCT.windowsVersion,
+                                // The OS label follows the platform. On an
+                                // Android tablet "Windows: ..." would be
+                                // simply wrong, and this line is read during
+                                // support calls.
+                                (PLATFORM.isAndroid ? qsTr("Android: ") : qsTr("Windows: "))
+                                    + PRODUCT.windowsVersion,
                                 qsTr("Operating mode: ")
                                     + (APPSETTINGS.getAppMode() ? qsTr("Live") : qsTr("Demo")),
                                 qsTr("Analytics: ") + PRODUCT.analyticsVersion
@@ -546,6 +551,59 @@ Item {
                                 wrapMode: Text.WordWrap
                             }
                         }
+                        // ── A1/A2 §41: Android storage diagnostics ──────
+                        // On Android these directories are app-private: no
+                        // file manager can reach them, and adb is not
+                        // something a coach on a range has. If the paths are
+                        // not on screen they cannot be checked at all, which
+                        // makes this the difference between a diagnosable
+                        // tablet and an opaque one.
+                        //
+                        // Android-only: the desktop Settings page is
+                        // deliberately unchanged.
+                        Column {
+                            visible: PLATFORM.isAndroid
+                            width: aboutCol.width
+                            spacing: 3
+                            topPadding: 8
+
+                            Text {
+                                text: qsTr("STORAGE (ANDROID)")
+                                color: "#9a9ba0"; font.pixelSize: 9
+                                font.bold: true; font.letterSpacing: 1
+                            }
+                            Repeater {
+                                model: (typeof BUILDINFO === "undefined") ? [] : [
+                                    { k: qsTr("Shell"),    v: BUILDINFO.platformShell },
+                                    { k: qsTr("App data"), v: BUILDINFO.appDataRoot },
+                                    { k: qsTr("Settings"), v: BUILDINFO.settingsPath },
+                                    { k: qsTr("Sessions"), v: BUILDINFO.sessionsPath },
+                                    { k: qsTr("Exports"),  v: BUILDINFO.exportsPath },
+                                    { k: qsTr("Logs"),     v: BUILDINFO.logsPath }
+                                ]
+                                Column {
+                                    width: aboutCol.width
+                                    Text {
+                                        text: modelData.k
+                                        color: "#9a9ba0"; font.pixelSize: 9
+                                    }
+                                    Text {
+                                        width: aboutCol.width
+                                        text: modelData.v || "?"
+                                        color: "#c9ced6"; font.pixelSize: 9
+                                        font.family: PLATFORM.monoFont
+                                        wrapMode: Text.WrapAnywhere
+                                    }
+                                }
+                            }
+                            Text {
+                                width: aboutCol.width
+                                text: qsTr("Target transport: DEMO / NO-TARGET. USB RTU is not implemented.")
+                                color: "#E8B4B8"; font.pixelSize: 9; font.bold: true
+                                wrapMode: Text.WordWrap
+                            }
+                        }
+
                         // Restrained, and only in a build that IS a field test.
                         Text {
                             visible: PRODUCT.isFieldTest

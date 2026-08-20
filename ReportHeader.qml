@@ -60,7 +60,7 @@ Item {
                 smooth: true
                 mipmap: true
             }
-            Text { text: header.reportTitle; color: "#191b1f"; font.pixelSize: 22; font.bold: true; font.family: "Segoe UI" }
+            Text { text: header.reportTitle; color: "#191b1f"; font.pixelSize: 22; font.bold: true; font.family: PLATFORM.uiFont }
         }
     }
 
@@ -75,8 +75,8 @@ Item {
             model: header.metaPairs()
             delegate: Row {
                 spacing: 6
-                Text { text: modelData.l + ":"; color: "#8a8f98"; font.pixelSize: 11; font.family: "Segoe UI" }
-                Text { text: modelData.v; color: "#33373d"; font.pixelSize: 11; font.bold: true; font.family: "Segoe UI" }
+                Text { text: modelData.l + ":"; color: "#8a8f98"; font.pixelSize: 11; font.family: PLATFORM.uiFont }
+                Text { text: modelData.v; color: "#33373d"; font.pixelSize: 11; font.bold: true; font.family: PLATFORM.uiFont }
             }
         }
     }

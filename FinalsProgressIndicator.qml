@@ -65,7 +65,7 @@ Row {
                 visible: !(index === 6 && progress.inSingles)
                 text: modelData.l + (hasMissing ? " !" : "")
                 color: isCurrent ? "white" : isDone ? "#9fd3b4" : "#8a8a92"
-                font.family: "Segoe UI"; font.pixelSize: 9
+                font.family: PLATFORM.uiFont; font.pixelSize: 9
                 font.bold: isCurrent; font.letterSpacing: 0.5
             }
 
@@ -81,7 +81,7 @@ Row {
                         text: 31 + index
                         color: (progress.ctl && progress.ctl.stepIndex - 6 === index) ? "white"
                              : (progress.ctl && progress.ctl.stepIndex - 6 > index) ? "#9fd3b4" : "#c99aa8"
-                        font.family: "Segoe UI"; font.pixelSize: 9
+                        font.family: PLATFORM.uiFont; font.pixelSize: 9
                         font.bold: progress.ctl && progress.ctl.stepIndex - 6 === index
                     }
                 }

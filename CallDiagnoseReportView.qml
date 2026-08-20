@@ -203,7 +203,7 @@ Item {
                     }
                     delegate: Column { width: 210; spacing: 1
                         Text { text: modelData.l; color: view.sub; font.pixelSize: 10 }
-                        Text { text: modelData.v; color: view.ink; font.family: "Consolas"; font.pixelSize: 14; font.bold: true } }
+                        Text { text: modelData.v; color: view.ink; font.family: PLATFORM.monoFont; font.pixelSize: 14; font.bold: true } }
                 }
             }
             Item { height: 8; width: 1 }
@@ -256,7 +256,7 @@ Item {
                         Rectangle { width: 480; height: 11; color: "#EEEFF2"; anchors.verticalCenter: parent.verticalCenter
                             Rectangle { height: parent.height; color: view.red; radius: 2
                                 width: parent.width * Math.min(1, s.errorMm / parent.parent.parent.maxErr) } }
-                        Text { text: Number(s.errorMm).toFixed(1) + " mm"; color: view.ink; font.family: "Consolas"; font.pixelSize: 9
+                        Text { text: Number(s.errorMm).toFixed(1) + " mm"; color: view.ink; font.family: PLATFORM.monoFont; font.pixelSize: 9
                                anchors.verticalCenter: parent.verticalCenter } }
                 }
             }
@@ -319,7 +319,7 @@ Item {
                                 Text { text: "Call error " + Number(s.errorMm).toFixed(1) + " mm"; color: view.ink; font.pixelSize: 10 }
                                 Text { text: Math.abs(s.errorXMm).toFixed(1) + (s.errorXMm >= 0 ? " R" : " L")
                                              + " · " + Math.abs(s.errorYMm).toFixed(1) + (s.errorYMm >= 0 ? " Hi" : " Lo")
-                                       color: view.sub; font.pixelSize: 10; font.family: "Consolas" }
+                                       color: view.sub; font.pixelSize: 10; font.family: PLATFORM.monoFont }
                                 Text { visible: s.note && s.note.length > 0; text: s.note || ""; color: view.sub; font.pixelSize: 9
                                        width: 120; wrapMode: Text.WordWrap } }
                         }

@@ -189,7 +189,7 @@ Item {
                                         Text { text: modelData.l; color: _txtMut; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1
                                                width: parent.width; wrapMode: Text.WordWrap }
                                         Row { spacing: 3
-                                            Text { text: modelData.v; color: _txt; font.family: "Consolas"; font.pixelSize: 20; font.bold: true }
+                                            Text { text: modelData.v; color: _txt; font.family: PLATFORM.monoFont; font.pixelSize: 20; font.bold: true }
                                             Text { text: modelData.u; color: _txtSec; font.pixelSize: 11; anchors.bottom: parent.bottom; anchors.bottomMargin: 3 }
                                         }
                                         Text { text: modelData.e; color: _txtSec; font.pixelSize: 9; width: parent.width; wrapMode: Text.WordWrap }
@@ -219,7 +219,7 @@ Item {
                             delegate: Column {
                                 width: (reviewCol.width - 42) / 4; spacing: 2
                                 Text { text: modelData.l; color: _txtMut; font.pixelSize: 10 }
-                                Text { text: "" + modelData.v; color: _txt; font.family: "Consolas"; font.pixelSize: 14; font.bold: true }
+                                Text { text: "" + modelData.v; color: _txt; font.family: PLATFORM.monoFont; font.pixelSize: 14; font.bold: true }
                             }
                         }
                     }
@@ -451,7 +451,7 @@ Item {
                                     }
                                 }
                                 Text { text: b.hasGroup ? Number(b.groupDiameter).toFixed(1) + " mm" : "—"
-                                       color: _txt; font.family: "Consolas"; font.pixelSize: 11
+                                       color: _txt; font.family: PLATFORM.monoFont; font.pixelSize: 11
                                        anchors.verticalCenter: parent.verticalCenter }
                             }
                         }
@@ -476,7 +476,7 @@ Item {
                                     }
                                 }
                                 Text { text: Number(b.averageScore).toFixed(1)
-                                       color: _txt; font.family: "Consolas"; font.pixelSize: 11
+                                       color: _txt; font.family: PLATFORM.monoFont; font.pixelSize: 11
                                        anchors.verticalCenter: parent.verticalCenter }
                             }
                         }
@@ -504,13 +504,13 @@ Item {
                                     width: 84; font.pixelSize: 11; color: _txt; font.bold: true
                                     text: "B" + b.blockIndex + (b.position !== "" && hud.ctl && hud.ctl.positionName !== undefined && b.position !== undefined && b.position !== "Kneeling" || (b.position && hud.ctl.blockCount === 6) ? " · " + b.position.substring(0, 1) : "")
                                 }
-                                Text { width: 46; font.family: "Consolas"; font.pixelSize: 11; color: _txt
+                                Text { width: 46; font.family: PLATFORM.monoFont; font.pixelSize: 11; color: _txt
                                        text: Number(b.averageScore).toFixed(1) }
-                                Text { width: 56; font.family: "Consolas"; font.pixelSize: 11; color: _txt
+                                Text { width: 56; font.family: PLATFORM.monoFont; font.pixelSize: 11; color: _txt
                                        text: b.hasGroup ? Number(b.groupDiameter).toFixed(1) : "—" }
-                                Text { width: 84; font.family: "Consolas"; font.pixelSize: 11; color: _txtSec
+                                Text { width: 84; font.family: PLATFORM.monoFont; font.pixelSize: 11; color: _txtSec
                                        text: Number(b.mpiX).toFixed(1) + "/" + Number(b.mpiY).toFixed(1) }
-                                Text { width: 44; font.family: "Consolas"; font.pixelSize: 11; color: _txtSec
+                                Text { width: 44; font.family: PLATFORM.monoFont; font.pixelSize: 11; color: _txtSec
                                        text: Number(b.scoreStdDev).toFixed(2) }
                                 Text { font.pixelSize: 10; color: _txtMut; elide: Text.ElideRight; width: 150
                                        text: b.note || "" }

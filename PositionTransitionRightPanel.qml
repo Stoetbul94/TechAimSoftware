@@ -55,7 +55,7 @@ Item {
                        text: "Build your " + (ctl ? ctl.positionName : "") + " position. Confirm the checklist, then press Position Ready." }
                 Row { spacing: 8
                     Text { text: "Setup time"; color: _txtMut; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
-                    Text { id: setupTimer; color: _txt; font.family: "Consolas"; font.pixelSize: 16; font.bold: true
+                    Text { id: setupTimer; color: _txt; font.family: PLATFORM.monoFont; font.pixelSize: 16; font.bold: true
                            anchors.verticalCenter: parent.verticalCenter
                         Timer { interval: 1000; running: panel.inSetup; repeat: true
                             onTriggered: { var s = panel.ctl ? panel.ctl.setupElapsedSec() : 0
@@ -91,10 +91,10 @@ Item {
                 Text { visible: panel.inSighters; text: "SIGHTERS — " + (ctl ? ctl.positionName.toUpperCase() : "")
                        color: _txt; font.pixelSize: 18; font.bold: true }
                 Text { visible: panel.verifying
-                       color: _txt; font.family: "Consolas"; font.pixelSize: 22; font.bold: true
+                       color: _txt; font.family: PLATFORM.monoFont; font.pixelSize: 22; font.bold: true
                        text: ctl ? (ctl.positionName.toUpperCase() + " VERIFICATION") : "" }
                 Text { visible: panel.verifying
-                       color: _txt; font.family: "Consolas"; font.pixelSize: 20; font.bold: true
+                       color: _txt; font.family: PLATFORM.monoFont; font.pixelSize: 20; font.bold: true
                        text: ctl ? ("Shot " + ctl.shotsCompleted + " of " + ctl.verificationShots) : "" }
                 Rectangle { visible: panel.verifying
                     width: parent.width; height: 12; radius: 6; color: "#0E1014"; border.color: _line; border.width: 1
@@ -103,11 +103,11 @@ Item {
                         width: (ctl && ctl.verificationShots > 0) ? (parent.width-4) * Math.min(1, ctl.shotsCompleted/ctl.verificationShots) : 0 } }
                 Row { spacing: 8; visible: panel.inSighters
                     Text { text: "Sighters fired"; color: _txtMut; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
-                    Text { text: ctl ? ("" + ctl.sighterCount) : "0"; color: _green; font.family: "Consolas"; font.pixelSize: 16; font.bold: true
+                    Text { text: ctl ? ("" + ctl.sighterCount) : "0"; color: _green; font.family: PLATFORM.monoFont; font.pixelSize: 16; font.bold: true
                            anchors.verticalCenter: parent.verticalCenter } }
                 Row { spacing: 8
                     Text { text: "Since Ready"; color: _txtMut; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
-                    Text { id: readyTimer; color: _txtSec; font.family: "Consolas"; font.pixelSize: 13; anchors.verticalCenter: parent.verticalCenter
+                    Text { id: readyTimer; color: _txtSec; font.family: PLATFORM.monoFont; font.pixelSize: 13; anchors.verticalCenter: parent.verticalCenter
                         Timer { interval: 1000; running: panel.inSighters || panel.verifying; repeat: true
                             onTriggered: { var s = panel.ctl ? panel.ctl.readyElapsedSec() : 0
                                 readyTimer.text = Math.floor(s/60) + ":" + ("0"+(s%60)).slice(-2) } } } }

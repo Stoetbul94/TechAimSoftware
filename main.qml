@@ -53,7 +53,18 @@ ApplicationWindow {
 
     signal appVisiblityModeChanged(int mode)
 
-    flags: Qt.FramelessWindowHint | Qt.Window
+    // A1/A2 window chrome seam.
+    //
+    // Windows keeps the frameless shell it has always had: the title bar in
+    // Header.qml IS the window chrome, and removing the frame is what makes
+    // that work. Unchanged.
+    //
+    // On Android there is no window to frame — the system owns the surface and
+    // the app fills the content area. Applying FramelessWindowHint there is at
+    // best meaningless and at worst interferes with the platform window, so
+    // the plain window flag is used instead.
+    flags: PLATFORM.desktopWindowChrome ? (Qt.FramelessWindowHint | Qt.Window)
+                                        : Qt.Window
 
     function scoreCutoffTofirstDecimal(value) {
         return MODREADER.getFormatedSCore(value).toFixed(2)
@@ -140,7 +151,12 @@ ApplicationWindow {
     }
 
 //    visibility: "FullScreen"
-    visibility: "Maximized"
+    // Windows: Maximized, exactly as before.
+    // Android: FullScreen. "Maximized" has no meaning to the Android window
+    // manager, and the three-pane shooting layout wants every pixel — a
+    // status/navigation bar eating the top of the target view is not
+    // acceptable during a match.
+    visibility: PLATFORM.desktopWindowChrome ? "Maximized" : "FullScreen"
 
     // Formal parameter declared: injecting signal parameters into the handler
     // scope is deprecated in Qt 6 and warned about on every launch.

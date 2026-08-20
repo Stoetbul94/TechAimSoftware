@@ -20,7 +20,7 @@ Item {
         color: tabMA.pressed ? "#2a2b30" : "#26272c"
         border.color: "#3a3b42"; border.width: 1
         Text { anchors.centerIn: parent; text: "DEV"; color: "#8a8a92"
-               font.family: "Segoe UI"; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1 }
+               font.family: PLATFORM.uiFont; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1 }
         MouseArea { id: tabMA; anchors.fill: parent; onClicked: drawer.open = true }
     }
 
@@ -38,7 +38,7 @@ Item {
             anchors.centerIn: parent
             spacing: 5
 
-            Text { text: "DEVELOPER · TESTING"; color: "#8a8a92"; font.family: "Segoe UI"
+            Text { text: "DEVELOPER · TESTING"; color: "#8a8a92"; font.family: PLATFORM.uiFont
                    font.pixelSize: 9; font.letterSpacing: 1.5 }
 
             Repeater {
@@ -58,7 +58,7 @@ Item {
                     Text { id: dTxt; anchors.centerIn: parent
                            text: modelData.l === "PAUSE / RESUME" && drawer.ctl && drawer.ctl.paused
                                  ? "RESUME" : modelData.l
-                           color: "#d7d8dd"; font.family: "Segoe UI"; font.pixelSize: 10 }
+                           color: "#d7d8dd"; font.family: PLATFORM.uiFont; font.pixelSize: 10 }
                     MouseArea { id: dMA; anchors.fill: parent; onClicked: modelData.a() }
                 }
             }

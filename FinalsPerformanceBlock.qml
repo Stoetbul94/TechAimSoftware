@@ -38,26 +38,26 @@ Rectangle {
         rowSpacing: 3
         verticalItemAlignment: Grid.AlignVCenter
 
-        Text { text: perf.stageCaption; color: "#8a8a92"; font.family: "Segoe UI"
+        Text { text: perf.stageCaption; color: "#8a8a92"; font.family: PLATFORM.uiFont
                font.pixelSize: 10; font.letterSpacing: 1.2 }
         Text { text: perf.isSingle ? "" : (perf.ctl ? perf.ctl.shotsInStage : 0) + " / " + perf.stageCap
-               color: "white"; font.family: "Segoe UI"; font.pixelSize: 18; font.bold: true }
+               color: "white"; font.family: PLATFORM.uiFont; font.pixelSize: 18; font.bold: true }
 
-        Text { visible: !perf.isSingle; text: "STAGE"; color: "#8a8a92"; font.family: "Segoe UI"
+        Text { visible: !perf.isSingle; text: "STAGE"; color: "#8a8a92"; font.family: PLATFORM.uiFont
                font.pixelSize: 10; font.letterSpacing: 1.2 }
         Text { visible: !perf.isSingle; text: perf.ctl ? perf.ctl.stageSubtotal.toFixed(1) : ""
-               color: "white"; font.family: "Segoe UI"; font.pixelSize: 22; font.bold: true }
+               color: "white"; font.family: PLATFORM.uiFont; font.pixelSize: 22; font.bold: true }
 
         Text { visible: !perf.isSingle && perf.ctl && perf.ctl.nextShotNumber > 0
-               text: "NEXT"; color: "#8a8a92"; font.family: "Segoe UI"
+               text: "NEXT"; color: "#8a8a92"; font.family: PLATFORM.uiFont
                font.pixelSize: 10; font.letterSpacing: 1.2 }
         Text { visible: !perf.isSingle && perf.ctl && perf.ctl.nextShotNumber > 0
                text: perf.ctl ? perf.ctl.nextShotNumber : ""
-               color: "#c8c9cf"; font.family: "Segoe UI"; font.pixelSize: 16; font.bold: true }
+               color: "#c8c9cf"; font.family: PLATFORM.uiFont; font.pixelSize: 16; font.bold: true }
 
-        Text { text: "TOTAL"; color: "#8a8a92"; font.family: "Segoe UI"
+        Text { text: "TOTAL"; color: "#8a8a92"; font.family: PLATFORM.uiFont
                font.pixelSize: 10; font.letterSpacing: 1.2 }
         Text { text: perf.ctl ? perf.ctl.cumulativeTotal.toFixed(1) : ""
-               color: "white"; font.family: "Segoe UI"; font.pixelSize: 22; font.bold: true }
+               color: "white"; font.family: PLATFORM.uiFont; font.pixelSize: 22; font.bold: true }
     }
 }

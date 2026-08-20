@@ -71,7 +71,7 @@ FloatingWindow {
                     Text {
                         id: tt; anchors.centerIn: parent; text: modelData.l
                         color: reportWin.tab === modelData.t ? "white" : "#9aa0a6"
-                        font.family: "Segoe UI"; font.pixelSize: 13; font.bold: reportWin.tab === modelData.t
+                        font.family: PLATFORM.uiFont; font.pixelSize: 13; font.bold: reportWin.tab === modelData.t
                     }
                     Rectangle {
                         visible: reportWin.tab === modelData.t
@@ -120,13 +120,13 @@ FloatingWindow {
                 visible: reportWin.tab !== 2
                 width: crTxt.implicitWidth + 26; height: 28; radius: 6
                 color: crMA.pressed ? "#2a2b30" : "#26272c"; border.color: "#3a3b42"; border.width: 1
-                Text { id: crTxt; anchors.centerIn: parent; text: "Coach Report"; color: "#d7d8dd"; font.family: "Segoe UI"; font.pixelSize: 12 }
+                Text { id: crTxt; anchors.centerIn: parent; text: "Coach Report"; color: "#d7d8dd"; font.family: PLATFORM.uiFont; font.pixelSize: 12 }
                 MouseArea { id: crMA; anchors.fill: parent; onClicked: reportWin.coachRequestedFromReport() }
             }
             Rectangle {
                 width: spTxt.implicitWidth + 26; height: 28; radius: 6
                 color: spMA.pressed ? "#8a002f" : "#a80038"
-                Text { id: spTxt; anchors.centerIn: parent; text: "⤓  Save PDF"; color: "white"; font.family: "Segoe UI"; font.pixelSize: 12; font.bold: true }
+                Text { id: spTxt; anchors.centerIn: parent; text: "⤓  Save PDF"; color: "white"; font.family: PLATFORM.uiFont; font.pixelSize: 12; font.bold: true }
                 MouseArea {
                     id: spMA; anchors.fill: parent
                     onClicked: reportWin.tab === 2 ? finalsView.exportPdf()

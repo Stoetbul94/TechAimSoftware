@@ -464,12 +464,12 @@ Item {
             color: "#f1f3f5"
             Row {
                 anchors.fill: parent
-                Text { width: parent.width*0.12; height: parent.height; text: qsTr("Sr");     color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                Text { width: parent.width*0.22; height: parent.height; text: qsTr("Score");  color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; leftPadding: 10; verticalAlignment: Text.AlignVCenter }
-                Text { width: parent.width*0.18; height: parent.height; text: qsTr("X (mm)"); color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
-                Text { width: parent.width*0.18; height: parent.height; text: qsTr("Y (mm)"); color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
-                Text { width: parent.width*0.15; height: parent.height; text: qsTr("Teiler"); color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
-                Text { width: parent.width*0.15; height: parent.height; text: qsTr("Time");   color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
+                Text { width: parent.width*0.12; height: parent.height; text: qsTr("Sr");     color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: PLATFORM.uiFont; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                Text { width: parent.width*0.22; height: parent.height; text: qsTr("Score");  color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: PLATFORM.uiFont; leftPadding: 10; verticalAlignment: Text.AlignVCenter }
+                Text { width: parent.width*0.18; height: parent.height; text: qsTr("X (mm)"); color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: PLATFORM.uiFont; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
+                Text { width: parent.width*0.18; height: parent.height; text: qsTr("Y (mm)"); color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: PLATFORM.uiFont; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
+                Text { width: parent.width*0.15; height: parent.height; text: qsTr("Teiler"); color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: PLATFORM.uiFont; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
+                Text { width: parent.width*0.15; height: parent.height; text: qsTr("Time");   color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: PLATFORM.uiFont; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
             }
             Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 2; color: "#a80038" }
         }
@@ -678,7 +678,7 @@ Item {
                 Text {
                     width: parent.width*0.12; height: parent.height
                     text: index+1
-                    color: "#8a8f98"; font.pixelSize: 11; font.family: "Segoe UI"
+                    color: "#8a8f98"; font.pixelSize: 11; font.family: PLATFORM.uiFont
                     horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
                 }
 
@@ -691,7 +691,7 @@ Item {
                         Text {
                             id: scoreText
                             text: getScoreOfShoot(index)
-                            font.pixelSize: 12; font.bold: true; font.family: "Segoe UI"
+                            font.pixelSize: 12; font.bold: true; font.family: PLATFORM.uiFont
                             color: low ? "#bf1919" : (inner ? "#a80038" : "#191b1f")
                             anchors.verticalCenter: parent.verticalCenter
                         }
@@ -708,25 +708,25 @@ Item {
                 Text {
                     width: parent.width*0.18; height: parent.height
                     text: (MODREADER.getXMPIForShoot(seriesIndex, index)*1).toFixed(2)
-                    color: "#33373d"; font.pixelSize: 11; font.family: "Segoe UI"
+                    color: "#33373d"; font.pixelSize: 11; font.family: PLATFORM.uiFont
                     horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter
                 }
                 Text {
                     width: parent.width*0.18; height: parent.height
                     text: (MODREADER.getYMPIForShoot(seriesIndex, index)*1).toFixed(2)
-                    color: "#33373d"; font.pixelSize: 11; font.family: "Segoe UI"
+                    color: "#33373d"; font.pixelSize: 11; font.family: PLATFORM.uiFont
                     horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter
                 }
                 Text {
                     width: parent.width*0.15; height: parent.height
                     text: (MODREADER.getTeilerForShoot(seriesIndex, index)*1).toFixed(2)
-                    color: "#33373d"; font.pixelSize: 11; font.family: "Segoe UI"
+                    color: "#33373d"; font.pixelSize: 11; font.family: PLATFORM.uiFont
                     horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter
                 }
                 Text {
                     width: parent.width*0.15; height: parent.height
                     text: getTimeStamp(index)
-                    color: "#33373d"; font.pixelSize: 11; font.family: "Segoe UI"
+                    color: "#33373d"; font.pixelSize: 11; font.family: PLATFORM.uiFont
                     horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter
                 }
             }

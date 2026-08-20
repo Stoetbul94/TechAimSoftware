@@ -212,18 +212,18 @@ Item {
                                         anchors.left: parent.left; anchors.leftMargin: 26
                                         anchors.verticalCenter: parent.verticalCenter
                                         spacing: 3
-                                        Text { text: modelData.n; color: "#6b7280"; font.family: "Segoe UI"; font.pixelSize: 12; font.letterSpacing: 0.4 }
+                                        Text { text: modelData.n; color: "#6b7280"; font.family: PLATFORM.uiFont; font.pixelSize: 12; font.letterSpacing: 0.4 }
                                         // ISSF 3P: integer position total primary, decimal in brackets.
                                         Text {
                                             text: (screenPresence.tick, getPositionTotalInt(modelData.p) + " (" + getPositionTotal(modelData.p) + ")")
-                                            color: "#191b1f"; font.family: "Segoe UI"; font.pixelSize: 20; font.bold: true
+                                            color: "#191b1f"; font.family: PLATFORM.uiFont; font.pixelSize: 20; font.bold: true
                                         }
                                         Text {
                                             // Depend on `tick` (like the score above) so the count/stars
                                             // re-evaluate as shots land — the delegate is built before any
                                             // shots exist, so without this it stays stuck at "0 shots".
                                             text: (screenPresence.tick, getPositionCount(modelData.p) + " shots · ★ " + getPositionInner(modelData.p))
-                                            color: "#8a8f98"; font.family: "Segoe UI"; font.pixelSize: 11
+                                            color: "#8a8f98"; font.family: PLATFORM.uiFont; font.pixelSize: 11
                                         }
                                     }
                                 }
@@ -242,9 +242,9 @@ Item {
                                 width: parent.width; height: 26; color: "#f1f3f5"
                                 Row {
                                     anchors.fill: parent
-                                    Text { width: parent.width*0.34; height: parent.height; text: qsTr("Series");   leftPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 11; font.bold: true; font.family: "Segoe UI" }
-                                    Text { width: parent.width*0.33; height: parent.height; text: qsTr("Score");    horizontalAlignment: Text.AlignRight; rightPadding: 12; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 11; font.bold: true; font.family: "Segoe UI" }
-                                    Text { width: parent.width*0.33; height: parent.height; text: qsTr("Inner 10"); horizontalAlignment: Text.AlignRight; rightPadding: 12; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 11; font.bold: true; font.family: "Segoe UI" }
+                                    Text { width: parent.width*0.34; height: parent.height; text: qsTr("Series");   leftPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 11; font.bold: true; font.family: PLATFORM.uiFont }
+                                    Text { width: parent.width*0.33; height: parent.height; text: qsTr("Score");    horizontalAlignment: Text.AlignRight; rightPadding: 12; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 11; font.bold: true; font.family: PLATFORM.uiFont }
+                                    Text { width: parent.width*0.33; height: parent.height; text: qsTr("Inner 10"); horizontalAlignment: Text.AlignRight; rightPadding: 12; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 11; font.bold: true; font.family: PLATFORM.uiFont }
                                 }
                                 Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 2; color: "#a80038" }
                             }
@@ -255,9 +255,9 @@ Item {
                                     color: index % 2 ? "#f7f8fa" : "#ffffff"
                                     Row {
                                         anchors.fill: parent
-                                        Text { width: parent.width*0.34; height: parent.height; text: qsTr("Series ") + (index+1); leftPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 12; font.family: "Segoe UI" }
-                                        Text { width: parent.width*0.33; height: parent.height; text: getSeriesScoreVal(index+1); horizontalAlignment: Text.AlignRight; rightPadding: 12; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 12; font.bold: true; font.family: "Segoe UI" }
-                                        Text { width: parent.width*0.33; height: parent.height; text: "" + getSeriesInnerVal(index+1); horizontalAlignment: Text.AlignRight; rightPadding: 12; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 12; font.family: "Segoe UI" }
+                                        Text { width: parent.width*0.34; height: parent.height; text: qsTr("Series ") + (index+1); leftPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 12; font.family: PLATFORM.uiFont }
+                                        Text { width: parent.width*0.33; height: parent.height; text: getSeriesScoreVal(index+1); horizontalAlignment: Text.AlignRight; rightPadding: 12; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 12; font.bold: true; font.family: PLATFORM.uiFont }
+                                        Text { width: parent.width*0.33; height: parent.height; text: "" + getSeriesInnerVal(index+1); horizontalAlignment: Text.AlignRight; rightPadding: 12; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 12; font.family: PLATFORM.uiFont }
                                     }
                                     Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: "#eceef1" }
                                 }

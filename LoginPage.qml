@@ -1351,7 +1351,7 @@ Item {
                                 Text {
                                     text: getEventCardBadge(eventIndex)
                                     color: "white"
-                                    font.family: "Consolas"
+                                    font.family: PLATFORM.monoFont
                                     font.pixelSize: eventIndex === 5 ? 9 : 12
                                     font.bold: true
                                     anchors.centerIn: parent
@@ -1391,7 +1391,7 @@ Item {
                                             }
                                             return ""
                                         }
-                                        color: _txtMut; font.family: "Consolas"; font.pixelSize: 10
+                                        color: _txtMut; font.family: PLATFORM.monoFont; font.pixelSize: 10
                                     }
                                 }
                             }
@@ -1474,7 +1474,7 @@ Item {
                                 width: 38; height: 38; radius: 19
                                 color: trainingConfirmed ? _red : _borderStr
                                 anchors.verticalCenter: parent.verticalCenter
-                                Text { text: "TL"; color: "white"; font.family: "Consolas"
+                                Text { text: "TL"; color: "white"; font.family: PLATFORM.monoFont
                                        font.pixelSize: 12; font.bold: true; anchors.centerIn: parent }
                             }
                             Column {
@@ -1557,7 +1557,7 @@ Item {
                                         Text { anchors.centerIn: parent
                                                text: modelData.t
                                                color: gameEvent === modelData.e ? "white" : _txtSec
-                                               font.family: "Consolas"; font.pixelSize: 12; font.bold: true }
+                                               font.family: PLATFORM.monoFont; font.pixelSize: 12; font.bold: true }
                                         MouseArea { anchors.fill: parent; onClicked: { trainingConfirmed = false; cdConfirmed = false; ptConfirmed = false; wmConfirmed = false; gameEvent = modelData.e } }
                                     }
                                 }
@@ -1669,7 +1669,7 @@ Item {
                             Text { text: (gameMode === 1 && gameRange === 50 && gameSubMode === 1)
                                          ? "Default: 36 shots · Kneeling → Prone → Standing · Configurable"
                                          : "Default: 30 shots · Configurable"
-                                   color: _txtSec; font.family: "Consolas"; font.pixelSize: 10 }
+                                   color: _txtSec; font.family: PLATFORM.monoFont; font.pixelSize: 10 }
                         }
                         MouseArea {
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
@@ -1729,7 +1729,7 @@ Item {
                             Text { text: (gameMode === 1 && gameRange === 50 && gameSubMode === 1)
                                          ? "Default: 10 called shots per position · Configurable"
                                          : "Default: 20 called shots · Configurable"
-                                   color: _txtSec; font.family: "Consolas"; font.pixelSize: 10 }
+                                   color: _txtSec; font.family: PLATFORM.monoFont; font.pixelSize: 10 }
                         }
                         MouseArea {
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
@@ -1759,7 +1759,7 @@ Item {
                             Text { text: "Practise changing between Kneeling, Prone and Standing.\nMeasure setup time, sighters, first-shot timing and early group repeatability after each transition."
                                    color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 10 }
                             Text { text: "Default: Kneeling → Prone → Standing · 5 verification shots"
-                                   color: _txtSec; font.family: "Consolas"; font.pixelSize: 10 }
+                                   color: _txtSec; font.family: PLATFORM.monoFont; font.pixelSize: 10 }
                         }
                         MouseArea {
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
@@ -1792,7 +1792,7 @@ Item {
                             Text { text: gameSubMode === 1
                                          ? "Manual entry · Kneeling, Prone and Standing kept separate"
                                          : "Manual entry · Direction in degrees, speed in m/s, or Calm"
-                                   color: _txtSec; font.family: "Consolas"; font.pixelSize: 10 }
+                                   color: _txtSec; font.family: PLATFORM.monoFont; font.pixelSize: 10 }
                         }
                         MouseArea {
                             anchors.fill: parent; cursorShape: Qt.PointingHandCursor
@@ -1866,7 +1866,7 @@ Item {
                     Text {
                         visible: trainingDisciplineId() === "3P50"
                         width: parent.width; wrapMode: Text.WordWrap
-                        color: _green; font.family: "Consolas"; font.pixelSize: 12; font.bold: true
+                        color: _green; font.family: PLATFORM.monoFont; font.pixelSize: 12; font.bold: true
                         text: {
                             var bpp = Math.max(1, TRAINING.blockCount / 3)
                             var seq = [], names = ["K", "P", "S"]
@@ -1900,7 +1900,7 @@ Item {
                             MouseArea { anchors.fill: parent; onClicked: parent.parent.minus() }
                         }
                         Text { text: value; color: _txt; width: 40; horizontalAlignment: Text.AlignHCenter
-                               font.family: "Consolas"; font.pixelSize: 16; font.bold: true
+                               font.family: PLATFORM.monoFont; font.pixelSize: 16; font.bold: true
                                anchors.verticalCenter: parent.verticalCenter }
                         Rectangle {
                             width: 52; height: 48; radius: 8; color: _input; border.color: _borderSub
@@ -1925,7 +1925,7 @@ Item {
                     }
                     Text { text: "Total: " + (TRAINING.blockCount * TRAINING.shotsPerBlock) + " shots"
                                  + (trainingDisciplineId() === "3P50" ? "  ·  Kneeling → Prone → Standing" : "")
-                           color: _txtSec; font.family: "Consolas"; font.pixelSize: 11 }
+                           color: _txtSec; font.family: PLATFORM.monoFont; font.pixelSize: 11 }
 
                     Text { text: "Technical focus"; color: _txtSec
                            font.family: theme.fontFamily; font.pixelSize: 12; topPadding: 4 }
@@ -2086,7 +2086,7 @@ Item {
                             Text { anchors.centerIn: parent; text: "−"; color: _txt; font.pixelSize: 16 }
                             MouseArea { anchors.fill: parent; onClicked: CALLDIAG.setShotCount(CALLDIAG.shotCount - 1) } }
                         Text { text: CALLDIAG.shotCount; color: _txt; width: 40; horizontalAlignment: Text.AlignHCenter
-                               font.family: "Consolas"; font.pixelSize: 16; font.bold: true
+                               font.family: PLATFORM.monoFont; font.pixelSize: 16; font.bold: true
                                anchors.verticalCenter: parent.verticalCenter }
                         Rectangle { width: 52; height: 48; radius: 8; color: _input; border.color: _borderSub
                             Text { anchors.centerIn: parent; text: "+"; color: _txt; font.pixelSize: 16 }
@@ -2095,7 +2095,7 @@ Item {
                     Text { text: "Total: " + (trainingDisciplineId() === "3P50" ? CALLDIAG.shotCount * 3 : CALLDIAG.shotCount)
                                  + " called shots"
                                  + (trainingDisciplineId() === "3P50" ? "  ·  Kneeling → Prone → Standing" : "")
-                           color: _txtSec; font.family: "Consolas"; font.pixelSize: 11 }
+                           color: _txtSec; font.family: PLATFORM.monoFont; font.pixelSize: 11 }
 
                     Text { text: "Technical focus"; color: _txtSec
                            font.family: theme.fontFamily; font.pixelSize: 12; topPadding: 4 }
@@ -2176,7 +2176,7 @@ Item {
                         width: parent.width; wrapMode: Text.WordWrap; color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 11
                         text: "This programme measures how consistently you rebuild each Three-Position shooting position. You begin a position setup, confirm when the position is ready, fire optional sighters, then a short counted verification block. Tech Aim compares the timing and measured result of each position. This is a Training session and not an official competition result."
                     }
-                    Text { text: POSTRANS.sequenceArrow; color: _green; font.family: "Consolas"; font.pixelSize: 13; font.bold: true }
+                    Text { text: POSTRANS.sequenceArrow; color: _green; font.family: PLATFORM.monoFont; font.pixelSize: 13; font.bold: true }
 
                     Text { text: "Positions"; color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 12; topPadding: 4 }
                     Flow { width: parent.width; spacing: 6
@@ -2202,7 +2202,7 @@ Item {
                             Text { anchors.centerIn: parent; text: "−"; color: _txt; font.pixelSize: 16 }
                             MouseArea { anchors.fill: parent; onClicked: POSTRANS.setVerificationShots(POSTRANS.verificationShots - 1) } }
                         Text { text: POSTRANS.verificationShots; color: _txt; width: 40; horizontalAlignment: Text.AlignHCenter
-                               font.family: "Consolas"; font.pixelSize: 16; font.bold: true; anchors.verticalCenter: parent.verticalCenter }
+                               font.family: PLATFORM.monoFont; font.pixelSize: 16; font.bold: true; anchors.verticalCenter: parent.verticalCenter }
                         Rectangle { width: 52; height: 48; radius: 8; color: _input; border.color: _borderSub
                             Text { anchors.centerIn: parent; text: "+"; color: _txt; font.pixelSize: 16 }
                             MouseArea { anchors.fill: parent; onClicked: POSTRANS.setVerificationShots(POSTRANS.verificationShots + 1) } }
@@ -2214,7 +2214,7 @@ Item {
                             Text { anchors.centerIn: parent; text: "−"; color: _txt; font.pixelSize: 16 }
                             MouseArea { anchors.fill: parent; onClicked: POSTRANS.setRepeats(POSTRANS.totalRepeats - 1) } }
                         Text { text: POSTRANS.totalRepeats; color: _txt; width: 40; horizontalAlignment: Text.AlignHCenter
-                               font.family: "Consolas"; font.pixelSize: 16; font.bold: true; anchors.verticalCenter: parent.verticalCenter }
+                               font.family: PLATFORM.monoFont; font.pixelSize: 16; font.bold: true; anchors.verticalCenter: parent.verticalCenter }
                         Rectangle { width: 52; height: 48; radius: 8; color: _input; border.color: _borderSub
                             Text { anchors.centerIn: parent; text: "+"; color: _txt; font.pixelSize: 16 }
                             MouseArea { anchors.fill: parent; onClicked: POSTRANS.setRepeats(POSTRANS.totalRepeats + 1) } }
@@ -2316,7 +2316,7 @@ Item {
                                 border.color: wmSetupCol.plan === modelData ? _red : _borderSub
                                 Text { anchors.centerIn: parent; text: modelData
                                        color: wmSetupCol.plan === modelData ? "white" : _txtSec
-                                       font.family: "Consolas"; font.pixelSize: 13; font.bold: true }
+                                       font.family: PLATFORM.monoFont; font.pixelSize: 13; font.bold: true }
                                 MouseArea { anchors.fill: parent; onClicked: wmSetupCol.plan = modelData }
                             }
                         }

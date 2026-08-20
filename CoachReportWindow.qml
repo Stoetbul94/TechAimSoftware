@@ -34,7 +34,7 @@ FloatingWindow {
                     Text {
                         id: tabTxt; anchors.centerIn: parent; text: modelData.l
                         color: reportWin.viewMode === modelData.m ? "white" : "#9aa0a6"
-                        font.family: "Segoe UI"; font.pixelSize: 13; font.bold: reportWin.viewMode === modelData.m
+                        font.family: PLATFORM.uiFont; font.pixelSize: 13; font.bold: reportWin.viewMode === modelData.m
                     }
                     Rectangle {
                         visible: reportWin.viewMode === modelData.m
@@ -86,7 +86,7 @@ FloatingWindow {
             visible: reportWin.viewMode !== 2
             anchors.left: parent.left; anchors.leftMargin: 14; anchors.verticalCenter: parent.verticalCenter
             text: "Open the Print tab to export the report as PDF"
-            color: "#6b6d75"; font.family: "Segoe UI"; font.pixelSize: 11
+            color: "#6b6d75"; font.family: PLATFORM.uiFont; font.pixelSize: 11
         }
 
         Row {
@@ -97,13 +97,13 @@ FloatingWindow {
             Rectangle {
                 width: sdTxt.implicitWidth + 26; height: 28; radius: 6
                 color: sdMA.pressed ? "#2a2b30" : "#26272c"; border.color: "#3a3b42"; border.width: 1
-                Text { id: sdTxt; anchors.centerIn: parent; text: "Save Diary"; color: "#d7d8dd"; font.family: "Segoe UI"; font.pixelSize: 12 }
+                Text { id: sdTxt; anchors.centerIn: parent; text: "Save Diary"; color: "#d7d8dd"; font.family: PLATFORM.uiFont; font.pixelSize: 12 }
                 MouseArea { id: sdMA; anchors.fill: parent; onClicked: coachPrint.saveDiary() }
             }
             Rectangle {
                 width: epTxt.implicitWidth + 26; height: 28; radius: 6
                 color: epMA.pressed ? "#8a002f" : "#a80038"
-                Text { id: epTxt; anchors.centerIn: parent; text: "⤓  Export PDF"; color: "white"; font.family: "Segoe UI"; font.pixelSize: 12; font.bold: true }
+                Text { id: epTxt; anchors.centerIn: parent; text: "⤓  Export PDF"; color: "white"; font.family: PLATFORM.uiFont; font.pixelSize: 12; font.bold: true }
                 MouseArea { id: epMA; anchors.fill: parent; onClicked: coachPrint.exportPdf() }
             }
         }

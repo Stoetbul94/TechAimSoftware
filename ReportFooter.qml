@@ -25,18 +25,18 @@ Item {
         }
         Text {
             text: footer.softwareVersion.length ? ("· " + footer.softwareVersion) : ""
-            color: "#9aa0aa"; font.pixelSize: 10; font.family: "Segoe UI"
+            color: "#9aa0aa"; font.pixelSize: 10; font.family: PLATFORM.uiFont
             anchors.verticalCenter: parent.verticalCenter
         }
     }
     Text {
         anchors.centerIn: parent
         text: footer.generatedText
-        color: "#9aa0aa"; font.pixelSize: 10; font.family: "Segoe UI"
+        color: "#9aa0aa"; font.pixelSize: 10; font.family: PLATFORM.uiFont
     }
     Text {
         anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
         text: footer.pageText
-        color: "#9aa0aa"; font.pixelSize: 10; font.family: "Segoe UI"
+        color: "#9aa0aa"; font.pixelSize: 10; font.family: PLATFORM.uiFont
     }
 }

@@ -20,12 +20,12 @@ Rectangle {
         Text {
             anchors.verticalCenter: parent.verticalCenter
             text: chip.label
-            color: "#9aa0a6"; font.family: "Segoe UI"; font.pixelSize: 11; font.bold: true
+            color: "#9aa0a6"; font.family: PLATFORM.uiFont; font.pixelSize: 11; font.bold: true
         }
         Text {
             anchors.verticalCenter: parent.verticalCenter
             text: chip.value
-            color: "white"; font.family: "Segoe UI"; font.pixelSize: 12
+            color: "white"; font.family: PLATFORM.uiFont; font.pixelSize: 12
         }
     }
 }

@@ -490,3 +490,102 @@ and `tests/qml` enforces it file-wide rather than at the one site that failed.
 **Affected decisions.** UI-DEC-001 through UI-DEC-014 are all **preserved**.
 
 **Supersedes.** Nothing.
+
+---
+
+## UI-DEC-016 — Typography is a platform token, not a Windows font name
+
+| | |
+|---|---|
+| **Date** | 2026-08-20 |
+| **Status** | ACCEPTED |
+| **Commit** | Android tablet milestone A1/A2 (`feature/android-tablet`) |
+| **Approved by** | *pending* — raised by the Android milestone, not yet countersigned |
+
+**Decision.** The UI and numeric font families are named by **role tokens**
+resolved at the platform boundary, never by a literal family name in QML:
+
+| Token | Windows | Android |
+|---|---|---|
+| `PLATFORM.uiFont` | `Segoe UI` | `Roboto` |
+| `PLATFORM.monoFont` | `Consolas` | `monospace` |
+
+All 217 hardcoded `"Segoe UI"` / `"Consolas"` literals across 40 QML files are
+replaced by these tokens. `Typography.qml` resolves the same tokens for the
+design-system roles, with a `typeof` fallback to the Windows names so
+standalone tooling that runs in its own QML engine still renders.
+
+**No Microsoft font file is added to the repository or shipped in any
+package.** `Segoe UI` and `Consolas` are proprietary and are not ours to
+redistribute; each name refers only to a face the host system already has.
+
+**Reasoning.** `Segoe UI` and `Consolas` do not exist on Android. Left as
+literals they do not fail loudly — Android silently substitutes a default face
+with different metrics, so every fixed-width column and every A4 report layout
+shifts, and nothing in the build reports it. Naming the substitute makes the
+Android metrics *chosen and predictable* rather than accidental. Windows
+resolves to exactly the historical families, so the desktop UI and every
+existing PDF layout are unchanged, and the design system's `Consolas`
+discipline (UI-DEC family, `numericMetric` role only) is untouched — the token
+renames the face, not the rule.
+
+**Affected areas.** 40 QML files, `src/ui/theme/Typography.qml`,
+`src/platform/PlatformBridge.h`, `docs/design/TechAim_Design_System.md` §
+typography.
+
+**Affected decisions.** UI-DEC-001 through UI-DEC-015 are all **preserved**.
+UI-DEC-015 in particular is *reinforced*: a font token is presentation-only and
+participates in no product decision.
+
+**Supersedes.** Nothing.
+
+**Open evidence.** Android font rendering is **not yet visually verified on a
+device**. Until it is, the correct status for any Android typography claim is
+`AUTOMATED EVIDENCE ONLY, HUMAN VISUAL CHECK REQUIRED`.
+
+---
+
+## UI-DEC-017 — The Android shell suppresses desktop window chrome and pointer-precision controls
+
+| | |
+|---|---|
+| **Date** | 2026-08-20 |
+| **Status** | ACCEPTED |
+| **Commit** | Android tablet milestone A1/A2 (`feature/android-tablet`) |
+| **Approved by** | *pending* — raised by the Android milestone, not yet countersigned |
+
+**Decision.** On the Android tablet shell, and **only** there:
+
+1. The frameless-window hint is not applied and the window is full screen; the
+   system owns the window. Windows keeps `Qt.FramelessWindowHint` + `Maximized`.
+2. The custom minimise and close buttons in `Header.qml` are hidden. Android
+   already provides Home and Back, and a one-tap close beside a live shooting
+   session is a hazard on a touch screen.
+3. `FloatingWindow` defaults to `resizable: false` and `movable: false`, which
+   removes all eight 6–12 px resize grips (they already gate on `resizable`),
+   and such windows open **maximized** as full sheets.
+4. Interactive controls take `PLATFORM.minTouchTarget` (48 dp) as a **lower
+   bound**, never a fixed size. It is 0 on desktop, so Windows sizing is
+   arithmetically unchanged.
+
+**Reasoning.** These are pointer-precision affordances. A 6 px grip is not
+hittable with a fingertip, and a stray touch that does catch one silently
+resizes a report mid-read. The floating-window close button is the clearest
+case: on Android these sheets open maximized and ESC needs a hardware
+keyboard, so that button is the only exit and it was 28 px tall.
+
+**Not decided here.** The report and coach windows are **not** redesigned for
+touch. They must open, be readable and close safely; a mobile-native redesign
+is deliberately out of scope for A1/A2.
+
+**Affected areas.** `main.qml`, `Header.qml`, `FloatingWindow.qml`,
+`src/platform/PlatformBridge.h`.
+
+**Affected decisions.** UI-DEC-001 through UI-DEC-016 are all **preserved**.
+None is superseded: every change is gated on the Android shell and the Windows
+homepage and window behaviour are bit-for-bit as accepted.
+
+**Supersedes.** Nothing.
+
+**Open evidence.** Not visually verified on a device. Status for any Android
+layout claim remains `AUTOMATED EVIDENCE ONLY, HUMAN VISUAL CHECK REQUIRED`.

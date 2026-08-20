@@ -70,7 +70,7 @@ QtObject {
     // choice for UI chrome. Segoe UI is the standard Windows system font
     // (this project's .pro file targets Windows SDK paths) with broadly
     // available fallbacks for other platforms.
-    readonly property string fontFamily: "Segoe UI"
+    readonly property string fontFamily: PLATFORM.uiFont
 
     // --- Corner radius / spacing conventions, for the card-based look ---
     readonly property int radiusSmall:  4

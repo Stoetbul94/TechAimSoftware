@@ -37,7 +37,7 @@ Item {
         Text {
             id: pillTxt; anchors.centerIn: parent
             text: adv.ctl ? adv.ctl.advanceLabel : ""
-            color: "white"; font.family: "Segoe UI"; font.pixelSize: 12; font.bold: true
+            color: "white"; font.family: PLATFORM.uiFont; font.pixelSize: 12; font.bold: true
             font.letterSpacing: 1
         }
         MouseArea { id: pillMA; anchors.fill: parent; onClicked: adv.ctl.advanceStage1() }
@@ -51,13 +51,13 @@ Item {
             width: promptTxt.implicitWidth + 20; height: 30; radius: 15
             color: "#c614151a"; border.color: "#e8b93d"; border.width: 1
             Text { id: promptTxt; anchors.centerIn: parent; text: adv.prompt
-                   color: "#e8b93d"; font.family: "Segoe UI"; font.pixelSize: 11; font.bold: true }
+                   color: "#e8b93d"; font.family: PLATFORM.uiFont; font.pixelSize: 11; font.bold: true }
         }
         Rectangle {
             width: okTxt.implicitWidth + 24; height: 30; radius: 15
             color: okMA.pressed ? "#8a002f" : "#a80038"
             Text { id: okTxt; anchors.centerIn: parent; text: "CONFIRM"
-                   color: "white"; font.family: "Segoe UI"; font.pixelSize: 11; font.bold: true }
+                   color: "white"; font.family: PLATFORM.uiFont; font.pixelSize: 11; font.bold: true }
             MouseArea { id: okMA; anchors.fill: parent
                         onClicked: { adv.confirming = false; adv.ctl.confirmStage1Advance() } }
         }
@@ -65,7 +65,7 @@ Item {
             width: noTxt.implicitWidth + 24; height: 30; radius: 15
             color: noMA.pressed ? "#2a2b30" : "#26272c"; border.color: "#3a3b42"; border.width: 1
             Text { id: noTxt; anchors.centerIn: parent; text: "CANCEL"
-                   color: "#d7d8dd"; font.family: "Segoe UI"; font.pixelSize: 11 }
+                   color: "#d7d8dd"; font.family: PLATFORM.uiFont; font.pixelSize: 11 }
             MouseArea { id: noMA; anchors.fill: parent
                         onClicked: { adv.confirming = false; adv.ctl.cancelStage1Advance() } }
         }

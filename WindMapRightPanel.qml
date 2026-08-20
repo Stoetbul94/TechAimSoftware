@@ -129,7 +129,7 @@ Item {
                             anchors.centerIn: parent; spacing: 0
                             Text { anchors.horizontalCenter: parent.horizontalCenter
                                    text: panel.pendingDeg + "°"; color: panel._txt
-                                   font.family: "Consolas"; font.pixelSize: 20; font.bold: true }
+                                   font.family: PLATFORM.monoFont; font.pixelSize: 20; font.bold: true }
                             Text { anchors.horizontalCenter: parent.horizontalCenter
                                    text: "pending"; color: panel._txtMut; font.pixelSize: 9 }
                         }
@@ -143,7 +143,7 @@ Item {
                         TextInput { id: degField
                             anchors.fill: parent; anchors.margins: 8
                             verticalAlignment: TextInput.AlignVCenter
-                            color: panel._txt; font.family: "Consolas"; font.pixelSize: 15
+                            color: panel._txt; font.family: PLATFORM.monoFont; font.pixelSize: 15
                             text: "0"; inputMethodHints: Qt.ImhDigitsOnly
                             onTextChanged: { var v = parseInt(text); if (!isNaN(v)) panel.pendingDeg = ((v % 360) + 360) % 360 }
                         }
@@ -154,7 +154,7 @@ Item {
                         TextInput { id: speedField
                             anchors.fill: parent; anchors.margins: 8
                             verticalAlignment: TextInput.AlignVCenter
-                            color: panel._txt; font.family: "Consolas"; font.pixelSize: 15
+                            color: panel._txt; font.family: PLATFORM.monoFont; font.pixelSize: 15
                             text: ""; inputMethodHints: Qt.ImhFormattedNumbersOnly
                             onTextChanged: panel.pendingSpeed = text }
                         Text { visible: speedField.text === ""; anchors.left: parent.left
@@ -237,7 +237,7 @@ Item {
                        font.pixelSize: 15; font.bold: true }
                 Text { visible: panel.counting
                        text: "Shot " + (ctl ? ctl.countedShots : 0) + " of " + (ctl ? ctl.shotPlan : 0)
-                       color: panel._txt; font.family: "Consolas"; font.pixelSize: 20; font.bold: true }
+                       color: panel._txt; font.family: PLATFORM.monoFont; font.pixelSize: 20; font.bold: true }
                 Rectangle { visible: panel.counting
                     width: parent.width; height: 12; radius: 6; color: "#0E1014"
                     border.color: panel._line; border.width: 1

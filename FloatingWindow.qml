@@ -20,8 +20,18 @@ Item {
     property string title: "Window"
     property string subtitle: ""
     property string icon: ""              // optional qrc path, shown in the title bar
-    property bool resizable: true
-    property bool movable: true
+    // A1/A2 touch defaults.
+    //
+    // The 6-12px resize grips and title-bar drag are pointer-precision
+    // controls: a fingertip is roughly 9mm, so a 6px edge grip is not
+    // realistically hittable and a stray touch that DOES catch it silently
+    // resizes a report the athlete is reading. Both are therefore off on
+    // Android, where these overlays open as large sheets instead (see open()).
+    //
+    // Every grip already gates on `resizable`, so this single default removes
+    // all eight without touching the grip code. Windows is unchanged.
+    property bool resizable: PLATFORM.desktopWindowChrome
+    property bool movable: PLATFORM.desktopWindowChrome
     property bool maximizable: true
     property bool modal: false
     property bool escCloses: true
@@ -60,6 +70,14 @@ Item {
             restoreGeometry()   // first open -> centre; reopen -> last geometry (clamped on-screen)
             opened = true
         }
+        // A1/A2: on a tablet a floating panel that cannot be moved or resized
+        // should not be left floating at a desktop-sized default in the middle
+        // of the screen — it just wastes the surface and leaves an unusable
+        // border. Reports and coach views open as full sheets instead. The
+        // close button and ESC still work exactly as before, and maximize()
+        // is the existing code path, not a new one.
+        if (!PLATFORM.desktopWindowChrome && !frame.maximized)
+            maximize()
         raise()
         forceActiveFocus()
     }
@@ -194,12 +212,12 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                     }
                     Text {
-                        text: win.title; color: "white"; font.family: "Segoe UI"
+                        text: win.title; color: "white"; font.family: PLATFORM.uiFont
                         font.pixelSize: 14; font.bold: true; anchors.verticalCenter: parent.verticalCenter
                     }
                     Text {
                         visible: win.subtitle.length > 0
-                        text: "·  " + win.subtitle; color: "#9aa0a6"; font.family: "Segoe UI"
+                        text: "·  " + win.subtitle; color: "#9aa0a6"; font.family: PLATFORM.uiFont
                         font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter
                     }
                 }
@@ -226,15 +244,26 @@ Item {
                     anchors.right: parent.right; anchors.rightMargin: 6
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 2
+                    // A1/A2 touch sizing. 36x28 is comfortably clickable with a
+                    // mouse and below the 48dp Android accessibility floor.
+                    // CLOSE matters most: on Android these sheets open
+                    // maximized and ESC needs a hardware keyboard, so this
+                    // button is the only way out. Applied as a LOWER BOUND via
+                    // Math.max, and PLATFORM.minTouchTarget is 0 on desktop —
+                    // so the Windows buttons stay exactly 36x28.
                     Rectangle {
                         visible: win.maximizable
-                        width: 36; height: 28; radius: 6
+                        width: Math.max(36, PLATFORM.minTouchTarget)
+                        height: Math.max(28, PLATFORM.minTouchTarget)
+                        radius: 6
                         color: maxMA.containsMouse ? "#2f3138" : "transparent"
                         Text { anchors.centerIn: parent; text: frame.maximized ? "❐" : "▢"; color: "#c8c9cf"; font.pixelSize: 15 }
                         MouseArea { id: maxMA; anchors.fill: parent; hoverEnabled: true; onClicked: win.toggleMaximize() }
                     }
                     Rectangle {
-                        width: 36; height: 28; radius: 6
+                        width: Math.max(36, PLATFORM.minTouchTarget)
+                        height: Math.max(28, PLATFORM.minTouchTarget)
+                        radius: 6
                         color: closeMA.containsMouse ? "#a80038" : "transparent"
                         Text { anchors.centerIn: parent; text: "✕"; color: closeMA.containsMouse ? "white" : "#c8c9cf"; font.pixelSize: 13 }
                         MouseArea { id: closeMA; anchors.fill: parent; hoverEnabled: true; onClicked: win.close() }

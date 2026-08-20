@@ -31,7 +31,7 @@ Item {
             color: "#14bf1919"
             font.pixelSize: 160
             font.bold: true
-            font.family: "Segoe UI"
+            font.family: PLATFORM.uiFont
         }
     }
 }

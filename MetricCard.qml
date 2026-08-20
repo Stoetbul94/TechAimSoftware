@@ -44,19 +44,19 @@ Item {
             Text {
                 width: parent.width; elide: Text.ElideRight
                 text: card.label
-                color: "#6b7280"; font.pixelSize: 11; font.family: "Segoe UI"; font.letterSpacing: 0.4
+                color: "#6b7280"; font.pixelSize: 11; font.family: PLATFORM.uiFont; font.letterSpacing: 0.4
             }
             Row {
                 spacing: 5
                 Text {
                     text: card.value
-                    color: "#191b1f"; font.pixelSize: card.valueSize; font.bold: true; font.family: "Segoe UI"
+                    color: "#191b1f"; font.pixelSize: card.valueSize; font.bold: true; font.family: PLATFORM.uiFont
                 }
                 Text {
                     visible: card.unit.length > 0
                     anchors.bottom: parent.bottom; anchors.bottomMargin: 4
                     text: card.unit
-                    color: "#8a8f98"; font.pixelSize: 12; font.family: "Segoe UI"
+                    color: "#8a8f98"; font.pixelSize: 12; font.family: PLATFORM.uiFont
                 }
             }
         }

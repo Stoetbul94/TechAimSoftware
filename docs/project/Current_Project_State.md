@@ -325,3 +325,80 @@ appeared in `%LOCALAPPDATA%\TechAim\TechAim\cache\`: Qt QML and pipeline
 the capture profile. No session, athlete or result data was created or
 modified. Recorded for completeness so the earlier "123 files / 3,151,405
 bytes" figure is not treated as a discrepancy.
+
+---
+
+# ANDROID TABLET — MILESTONE A1/A2
+
+**Added 2026-08-20.** A new product workstream, isolated from the Windows
+product, SETA/OEM and RMS. This section is appended rather than merged into the
+sections above: those describe the Windows product state and remain accurate
+for it.
+
+| | |
+|---|---|
+| Worktree | `C:\Users\User\Downloads\TechAimSoftware-Android` |
+| Branch | `feature/android-tablet` |
+| Foundation | `feature/rc2e-latency-and-reset` @ `f4058fa` |
+| Version | `0.9.0-ANDROID-A1` |
+| Channel | ANDROID DEVELOPMENT — **not for official competition results** |
+| Package id | `za.co.techaim.target` |
+| ABIs | `arm64-v8a` (tablet), `x86_64` (emulator) |
+
+## Toolchain (verified, not assumed)
+
+| | |
+|---|---|
+| Qt | 6.5.3 — `android_arm64_v8a`, `android_x86_64` |
+| Android SDK | `%LOCALAPPDATA%\Android\Sdk` — platforms 31/33/34, build-tools 30.0.3 + 34.0.0 |
+| NDK | 25.1.8937393 (installed during this milestone) |
+| JDK | 17.0.7 — Android Studio bundled JBR. **Not installed**; JDK 21 left untouched and `JAVA_HOME` is still unset machine-wide |
+| Gradle plugin | AGP 7.4.1 (Qt 6.5.3 template) — requires JDK 11–17, fails on 21 |
+| min / target SDK | 23 / 34 |
+
+## What this milestone established
+
+- **The entire C++ core compiles and links for Android unchanged.** 118 files
+  under `src/`; only six touch GUI at all. No domain code was forked.
+- A named platform boundary — `src/platform/PlatformService.*` — is the only
+  place permitted to ask which platform the binary targets.
+- Windows behaviour is preserved by construction: every capability is `true`
+  on Windows, so a capability can only ever *subtract* on Android.
+
+## Target transport
+
+```
+CURRENT TARGET TRANSPORT : DEMO / NO-TARGET
+ANDROID USB RTU          : NOT IMPLEMENTED
+MODBUS TCP               : present in shared code, NOT tested on Android
+PHYSICAL TARGET          : NOT TESTED
+```
+
+The decision is deferred to **A3** and documented in
+`docs/architecture/android-target-transport-options.md`. It cannot be closed
+from this repository: it depends on customer hardware facts (can the installed
+target speak Modbus TCP; is a per-lane gateway acceptable; what shot-timestamp
+accuracy must be guaranteed).
+
+## Documents added
+
+- `docs/architecture/android-product-architecture.md` — the platform split
+- `docs/architecture/android-target-transport-options.md` — A3 go/no-go
+- `docs/architecture/three-product-architecture.md` §4.1 — correction:
+  target *discovery* is transport/platform-specific, not generic core
+- `docs/ui/UI_Decision_Log.md` — UI-DEC-016 (font tokens), UI-DEC-017
+  (Android shell chrome and touch targets)
+
+## Open verification items
+
+Everything Android-visual is **AUTOMATED EVIDENCE ONLY, HUMAN VISUAL CHECK
+REQUIRED**. Specifically unverified on hardware: font substitution and report
+layout, software-keyboard field visibility, rotation with a live session, and
+background/foreground behaviour.
+
+## Not in scope for A1/A2
+
+USB acquisition, physical target testing, RMS telemetry (not present in the
+shared foundation — promotion surface recorded in
+`android-product-architecture.md` §7.1), Storage Access Framework export,
+portrait/phone layouts, production signing.

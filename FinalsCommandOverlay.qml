@@ -56,7 +56,7 @@ Rectangle {
         horizontalAlignment: Text.AlignHCenter
         wrapMode: Text.WordWrap
         color: overlay.isNotice ? "#c8c9cf" : "white"
-        font.family: "Segoe UI"
+        font.family: PLATFORM.uiFont
         font.bold: !overlay.isNotice
         font.letterSpacing: overlay.isNotice ? 0.5 : 3
         font.pixelSize: overlay.isNotice ? 15 : (text.length > 22 ? 22 : 34)

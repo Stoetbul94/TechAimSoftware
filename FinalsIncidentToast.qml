@@ -62,7 +62,7 @@ Rectangle {
         anchors.centerIn: parent
         anchors.horizontalCenterOffset: 4
         text: toast.message
-        color: "#d7d8dd"; font.family: "Segoe UI"; font.pixelSize: 11; font.bold: true
+        color: "#d7d8dd"; font.family: PLATFORM.uiFont; font.pixelSize: 11; font.bold: true
         font.letterSpacing: 0.5
     }
 

@@ -46,7 +46,7 @@ Item {
                 text: card.seriesTitle
                 anchors.left: parent.left; anchors.leftMargin: 28
                 anchors.verticalCenter: parent.verticalCenter
-                font.pixelSize: 15; font.bold: true; color: "#191b1f"; font.family: "Segoe UI"
+                font.pixelSize: 15; font.bold: true; color: "#191b1f"; font.family: PLATFORM.uiFont
             }
             Row {
                 anchors.right: parent.right; anchors.rightMargin: 16
@@ -58,18 +58,18 @@ Item {
                         spacing: 4
                         Text {
                             text: modelData.l + ":"
-                            color: "#8a8f98"; font.pixelSize: 10; font.family: "Segoe UI"
+                            color: "#8a8f98"; font.pixelSize: 10; font.family: PLATFORM.uiFont
                             anchors.bottom: parent.bottom; anchors.bottomMargin: 1
                         }
                         Text {
                             text: modelData.v
                             color: modelData.kind === "bad" ? "#bf1919" : "#191b1f"
-                            font.pixelSize: 13; font.bold: true; font.family: "Segoe UI"
+                            font.pixelSize: 13; font.bold: true; font.family: PLATFORM.uiFont
                         }
                         Text {
                             visible: modelData.unit !== undefined && String(modelData.unit).length > 0
                             text: modelData.unit ? modelData.unit : ""
-                            color: "#b3b8c0"; font.pixelSize: 9; font.family: "Segoe UI"
+                            color: "#b3b8c0"; font.pixelSize: 9; font.family: PLATFORM.uiFont
                             anchors.bottom: parent.bottom; anchors.bottomMargin: 2
                         }
                     }

@@ -136,7 +136,7 @@ Item {
                                     anchors.centerIn: parent; spacing: 4
                                     Text { anchors.horizontalCenter: parent.horizontalCenter
                                            text: modelData.v; color: hud._txt
-                                           font.family: "Consolas"; font.pixelSize: 22; font.bold: true }
+                                           font.family: PLATFORM.monoFont; font.pixelSize: 22; font.bold: true }
                                     Text { anchors.horizontalCenter: parent.horizontalCenter
                                            text: modelData.k; color: hud._txtMut
                                            font.pixelSize: 9; font.bold: true; font.letterSpacing: 1 }
@@ -191,7 +191,7 @@ Item {
                         delegate: Row {
                             width: parent.width; spacing: 8; height: 24
                             Text { text: modelData.shotId; color: hud._txtSec
-                                   font.family: "Consolas"; font.pixelSize: 12; width: parent.width * 0.07 }
+                                   font.family: PLATFORM.monoFont; font.pixelSize: 12; width: parent.width * 0.07 }
                             Text { text: modelData.sighter ? "Sighter" : "Counted"
                                    color: modelData.sighter ? hud._txtMut : hud._txt
                                    font.pixelSize: 12; width: parent.width * 0.13 }
@@ -199,7 +199,7 @@ Item {
                                    font.pixelSize: 12; width: parent.width * 0.15
                                    visible: rvCol.m.threePositions === true }
                             Text { text: Number(modelData.score).toFixed(1); color: hud._txtSec
-                                   font.family: "Consolas"; font.pixelSize: 12; width: parent.width * 0.12 }
+                                   font.family: PLATFORM.monoFont; font.pixelSize: 12; width: parent.width * 0.12 }
                             Text { text: hud.condText(modelData); color: hud.condColor(modelData)
                                    font.pixelSize: 12 }
                         }

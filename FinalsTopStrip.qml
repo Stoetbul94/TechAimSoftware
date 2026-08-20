@@ -18,7 +18,7 @@ Rectangle {
         anchors.verticalCenter: parent.verticalCenter
         width: parent.width * (strip.narrow ? 0.5 : 0.32)
         text: ctl ? ctl.stageLabel : ""
-        color: "white"; font.family: "Segoe UI"; font.bold: true
+        color: "white"; font.family: PLATFORM.uiFont; font.bold: true
         font.pixelSize: Math.max(12, Math.min(15, strip.height * 0.34))
         font.letterSpacing: 1.2
         elide: Text.ElideRight
@@ -39,7 +39,7 @@ Rectangle {
         Text {
             anchors.verticalCenter: parent.verticalCenter
             text: strip.ended || !ctl ? "" : ctl.remainingFormatted
-            color: "white"; font.family: "Segoe UI"; font.bold: true
+            color: "white"; font.family: PLATFORM.uiFont; font.bold: true
             font.pixelSize: Math.max(16, Math.min(22, strip.height * 0.5))
         }
         Rectangle {
@@ -56,7 +56,7 @@ Rectangle {
             text: !ctl ? "" : ctl.windowState === 2 ? "MATCH OPEN"
                  : ctl.windowState === 1 ? "SIGHTING OPEN" : "CLOSED"
             color: ctl && ctl.isFiringWindowOpen ? "#d7d8dd" : "#8a8a92"
-            font.family: "Segoe UI"; font.pixelSize: 11; font.letterSpacing: 1
+            font.family: PLATFORM.uiFont; font.pixelSize: 11; font.letterSpacing: 1
         }
     }
 }

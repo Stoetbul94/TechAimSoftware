@@ -79,7 +79,7 @@ Item {
                                anchors.verticalCenter: parent.verticalCenter }
                         Item { width: 4; height: 1 }
                         Text { text: ctl ? ("" + ctl.sighterCount) : "0"; color: _green
-                               font.family: "Consolas"; font.pixelSize: 16; font.bold: true
+                               font.family: PLATFORM.monoFont; font.pixelSize: 16; font.bold: true
                                anchors.verticalCenter: parent.verticalCenter }
                     }
                 }
@@ -95,7 +95,7 @@ Item {
                 }
                 // Shot {shotsCompleted} of {shotsRequired} — 0 of N before any shot.
                 Text {
-                    color: _txt; font.family: "Consolas"; font.pixelSize: 26; font.bold: true
+                    color: _txt; font.family: PLATFORM.monoFont; font.pixelSize: 26; font.bold: true
                     text: ctl ? ("Shot " + ctl.shotsCompleted + " of " + ctl.shotsPerBlock) : ""
                 }
                 // progress bar (counted shots only)
@@ -115,7 +115,7 @@ Item {
                 Row { spacing: 8
                     Text { text: "Elapsed"; color: _txtMut; font.pixelSize: 12
                            anchors.verticalCenter: parent.verticalCenter }
-                    Text { id: elapsedText; color: _txtSec; font.family: "Consolas"; font.pixelSize: 13
+                    Text { id: elapsedText; color: _txtSec; font.family: PLATFORM.monoFont; font.pixelSize: 13
                            anchors.verticalCenter: parent.verticalCenter
                         Timer {
                             interval: 1000; running: panel.active; repeat: true

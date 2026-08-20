@@ -30,13 +30,13 @@ Rectangle {
         anchors.left: parent.left; anchors.leftMargin: 10
         anchors.verticalCenter: parent.verticalCenter
         text: chip.title
-        color: "#9aa0a6"; font.family: "Segoe UI"; font.pixelSize: 11
+        color: "#9aa0a6"; font.family: PLATFORM.uiFont; font.pixelSize: 11
     }
     Text {
         id: valueText
         anchors.right: parent.right; anchors.rightMargin: 10
         anchors.verticalCenter: parent.verticalCenter
         text: chip.value
-        color: "white"; font.family: "Segoe UI"; font.pixelSize: 13; font.bold: true
+        color: "white"; font.family: PLATFORM.uiFont; font.pixelSize: 13; font.bold: true
     }
 }

@@ -783,3 +783,43 @@ having to be set by hand to avoid a segfault, and text rendering as empty boxes
 about the evidence status below:** the renderer still draws the same QML
 through the same Qt Quick scene graph without being the application, so its
 output remains automated evidence and not human visual approval.
+
+---
+
+## 1k. Android tablet shell — platform defects found and fixed (2026-08-20)
+
+Milestone A1/A2, branch `feature/android-tablet`. These are **platform**
+defects, not homepage defects: none of them is visible on Windows and none
+changes the accepted desktop UI. Recorded here so the Android shell has the
+same evidence discipline as the rest of the product.
+
+| ID | Severity | Defect | Status |
+|---|---|---|---|
+| UI-AND-001 | **1 — boot blocker** | `config.ini` was resolved relative to the working directory. On Android the working directory is `/` and is not writable, so the application could not read or persist its configuration at all. | **RESOLVED — AUTOMATED EVIDENCE** (`tst_platform.cpp`, config-path + seeding checks) |
+| UI-AND-002 | **1 — trust** | `androiddeployqt` expanded the Qt template's permission markers from the *linked modules*, adding CAMERA, RECORD_AUDIO, BLUETOOTH, MODIFY_AUDIO_SETTINGS and WRITE/READ_EXTERNAL_STORAGE to the APK, plus camera and bluetooth `uses-feature` entries that would block installation on hardware without them. | **RESOLVED — VERIFIED** by `aapt2 dump badging`: the shipped APK declares exactly INTERNET and ACCESS_NETWORK_STATE |
+| UI-AND-003 | 2 | Finals audio fell back to `QApplication::beep()`, which is a silent no-op on Android — the service reported a fallback cue that was never audible. | **RESOLVED — AUTOMATED EVIDENCE**; the absence is now logged, and `usedFallback` still reports truthfully |
+| UI-AND-004 | 2 | Finals audio clips were resolved from `applicationDirPath()`, which on Android is the native-library directory and can never contain packaged assets. | **RESOLVED — AUTOMATED EVIDENCE** (`assets:/audio/finals`, asserted in `tst_platform.cpp`) |
+| UI-AND-005 | 2 | `FloatingWindow` exposed eight 6–12 px resize grips and title-bar drag — pointer-precision controls. The close button was 36×28, below the 48 dp touch floor, and on Android is the ONLY way to dismiss a maximized sheet (ESC needs a hardware keyboard). | **RESOLVED — AUTOMATED EVIDENCE ONLY, HUMAN VISUAL CHECK REQUIRED** (UI-DEC-017) |
+| UI-AND-006 | 2 | 217 hardcoded `"Segoe UI"` / `"Consolas"` literals across 40 QML files. Neither face exists on Android; the platform substitutes silently and every fixed-width column and A4 report layout shifts with no diagnostic. | **RESOLVED — AUTOMATED EVIDENCE ONLY, HUMAN VISUAL CHECK REQUIRED** (UI-DEC-016) |
+| UI-AND-007 | 3 | Settings ▸ About printed a fixed `"Windows: "` OS label, which is simply wrong on a tablet and is read out during support calls. | **RESOLVED — AUTOMATED EVIDENCE** |
+| UI-AND-008 | 3 | The desktop single-instance lock, self-relaunch and pre-QML widget dialogs had no meaning or no working implementation on Android. | **RESOLVED — AUTOMATED EVIDENCE** (capability contract asserted per platform in `tst_platform.cpp`) |
+
+### Audited and found NOT defective
+
+- **Hover discoverability (§31).** All 19 `containsMouse` uses across the app
+  QML drive **colour and border only**. Zero gate `visible`, `opacity` or
+  `enabled`. No action in the product is discoverable only by hovering, so no
+  change was required.
+- **Right-click-only actions.** None exist (`acceptedButtons` / `RightButton`
+  appear nowhere in the app QML).
+- **Multiple top-level windows.** `FloatingWindow` is a QML `Item`, not a
+  `Window`. The only top-level `Window` declarations are in test and tooling
+  QML, so the classic Qt-on-Android multi-window failure does not arise.
+
+### Open — cannot be closed without a device
+
+Per `CLAUDE.md`, code changing is not closure. The following have automated
+evidence only and require human visual confirmation on a physical tablet:
+font substitution and report layout, software-keyboard field visibility,
+rotation with a live session, background/foreground return, and the landscape
+three-pane layout at tablet dimensions.

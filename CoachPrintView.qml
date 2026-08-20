@@ -35,7 +35,7 @@ Rectangle {
     readonly property color cGreen:  "#2e7d46"
     readonly property color cAmber:  "#b9891b"
     readonly property color cRed:    "#c0392b"
-    readonly property string fam: "Segoe UI"
+    readonly property string fam: PLATFORM.uiFont
 
     Connections {
         target: COACHREPORT

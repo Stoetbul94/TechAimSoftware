@@ -5,7 +5,11 @@ import QtQuick 2.15
 Item {
     width: 1536; height: 42
     property real reserve: 380 + 32          // compact panel width + margins
-    QtObject { id: theme; property string fontFamily: "Segoe UI" }
+    // PLATFORM is not registered in this tool's standalone QQuickView, so the
+    // guard is required (same idiom as src/ui/theme/Typography.qml). The tool
+    // renders the DESKTOP look, so the fallback is the Windows face.
+    QtObject { id: theme; property string fontFamily:
+        (typeof PLATFORM !== "undefined") ? PLATFORM.uiFont : "Segoe UI" }
     Rectangle { anchors.fill: parent; color: "#15161a" }
     Loader {
         id: ld

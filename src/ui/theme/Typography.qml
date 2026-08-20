@@ -8,16 +8,29 @@ import QtQuick 2.15
 //
 // Reached as `theme.type.<role>.size` / `.bold` / `.spacing`.
 //
-// FONTS: both families ship with Windows, so nothing here introduces a
-// distribution dependency and no proprietary font is required.
-//   uiFamily      — Segoe UI, the Windows system face
-//   numericFamily — Consolas, FUNCTIONAL use only (see below)
+// FONTS: resolved through the platform boundary (PLATFORM context property,
+// src/platform/PlatformBridge.h) rather than hardcoded, so the same token
+// yields the right face on each platform:
+//   uiFamily      — Segoe UI on Windows, Roboto on Android
+//   numericFamily — Consolas on Windows, monospace on Android
+//                   FUNCTIONAL use only (see below)
+// No proprietary font file is shipped or redistributed on either platform;
+// each name refers to a face the host system already provides.
+//
+// The `typeof` guard is the codebase's established idiom for a context
+// property that may be absent (cf. OPMODE / BUILDINFO elsewhere). It matters
+// here because this file is ALSO instantiated by standalone tooling
+// (tools/designsystem/DesignSystemGallery.qml) that runs in its own QML
+// engine with no PLATFORM registered. Without the fallback those tools would
+// silently render with an empty font family.
 
 QtObject {
     id: type
 
-    readonly property string uiFamily:      "Segoe UI"
-    readonly property string numericFamily: "Consolas"
+    readonly property string uiFamily:
+        (typeof PLATFORM !== "undefined") ? PLATFORM.uiFont : "Segoe UI"
+    readonly property string numericFamily:
+        (typeof PLATFORM !== "undefined") ? PLATFORM.monoFont : "Consolas"
 
     // Consolas is permitted ONLY where fixed-width alignment does a job:
     // series score columns, shot tables, anything read down a column. Using it

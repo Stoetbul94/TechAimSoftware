@@ -105,7 +105,7 @@ Item {
                                     delegate: Rectangle { width: (parent.width-10)/2; height: 56; radius: 8; color: "#1D2026"; border.color: _line; border.width: 1
                                         Column { anchors.fill: parent; anchors.margins: 8; spacing: 2
                                             Text { text: modelData.l; color: _txtMut; font.pixelSize: 9; width: parent.width; wrapMode: Text.WordWrap }
-                                            Text { text: modelData.v; color: _txt; font.family: "Consolas"; font.pixelSize: 14; font.bold: true } } }
+                                            Text { text: modelData.v; color: _txt; font.family: PLATFORM.monoFont; font.pixelSize: 14; font.bold: true } } }
                                 }
                             }
                             Text { text: "MEASURED RESULT"; color: _txtMut; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2; topPadding: 2 }
@@ -125,7 +125,7 @@ Item {
                                     }
                                     delegate: Column { width: (parent.width-20)/3; spacing: 1
                                         Text { text: modelData.l; color: _txtMut; font.pixelSize: 9 }
-                                        Text { text: modelData.v; color: _txt; font.family: "Consolas"; font.pixelSize: 13; font.bold: true } }
+                                        Text { text: modelData.v; color: _txt; font.family: PLATFORM.monoFont; font.pixelSize: 13; font.bold: true } }
                                 }
                             }
                             Text { visible: rvCol.r.firstShotSeparated === true
@@ -318,7 +318,7 @@ Item {
                                             ]
                                             delegate: Column { width: (parent.width-8)/2; spacing: 1
                                                 Text { text: modelData.l; color: _txtMut; font.pixelSize: 9 }
-                                                Text { text: modelData.v; color: _txt; font.family: "Consolas"; font.pixelSize: 12; font.bold: true } }
+                                                Text { text: modelData.v; color: _txt; font.family: PLATFORM.monoFont; font.pixelSize: 12; font.bold: true } }
                                         }
                                     }
                                     // comparison bars (relative to session max)

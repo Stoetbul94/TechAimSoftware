@@ -431,7 +431,7 @@ Item {
                             Text {
                                 text: sumCol.find && sumCol.find.sampleCountCompared > 0
                                       ? qsTr("%1 shots").arg(sumCol.find.sampleCountCompared) : ""
-                                color: view._txtMut; font.family: "Consolas"; font.pixelSize: 11
+                                color: view._txtMut; font.family: PLATFORM.monoFont; font.pixelSize: 11
                                 anchors.verticalCenter: parent.verticalCenter
                             }
                         }
@@ -521,7 +521,7 @@ Item {
                                 anchors.centerIn: parent; spacing: 4; width: parent.width - 16
                                 Text { width: parent.width; horizontalAlignment: Text.AlignHCenter
                                        text: modelData.v; color: view._txt; elide: Text.ElideRight
-                                       font.family: "Consolas"; font.pixelSize: 20; font.bold: true }
+                                       font.family: PLATFORM.monoFont; font.pixelSize: 20; font.bold: true }
                                 Text { width: parent.width; horizontalAlignment: Text.AlignHCenter
                                        text: modelData.k; color: view._txtMut; elide: Text.ElideRight
                                        font.family: theme.fontFamily; font.pixelSize: 9
@@ -926,7 +926,7 @@ Item {
                                                color: view._txtSec; font.family: theme.fontFamily
                                                font.pixelSize: 11 }
                                         Text { width: parent.width * 0.18; text: modelData.v
-                                               color: view._txt; font.family: "Consolas"; font.pixelSize: 11 }
+                                               color: view._txt; font.family: PLATFORM.monoFont; font.pixelSize: 11 }
                                         Text { width: parent.width * 0.5; text: modelData.d
                                                color: view._txtMut; font.family: theme.fontFamily
                                                font.pixelSize: 10; elide: Text.ElideRight }
@@ -1012,7 +1012,7 @@ Item {
                     Row {
                         width: parent.width; spacing: 8; height: 22
                         Text { width: parent.width * 0.06; text: modelData.shotId
-                               color: view._txtSec; font.family: "Consolas"; font.pixelSize: 11 }
+                               color: view._txtSec; font.family: PLATFORM.monoFont; font.pixelSize: 11 }
                         Text { width: parent.width * 0.10; text: modelData.type
                                color: modelData.sighter ? view._txtMut : view._txt
                                font.family: theme.fontFamily; font.pixelSize: 11 }
@@ -1020,7 +1020,7 @@ Item {
                                color: view._txtSec; font.family: theme.fontFamily; font.pixelSize: 11
                                visible: view.threeP }
                         Text { width: parent.width * 0.08; text: view.mm(modelData.score)
-                               color: view._txtSec; font.family: "Consolas"; font.pixelSize: 11 }
+                               color: view._txtSec; font.family: PLATFORM.monoFont; font.pixelSize: 11 }
                         Text { width: parent.width * 0.16
                                text: view.acrossWords(modelData.xMm) + ", " + view.upWords(modelData.yMm)
                                color: view._txtSec; font.family: theme.fontFamily; font.pixelSize: 10

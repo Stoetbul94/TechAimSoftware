@@ -174,7 +174,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     text: root.title
                     color: root.inkPrimary
-                    font.family: "Segoe UI"; font.pixelSize: 17; font.bold: true
+                    font.family: PLATFORM.uiFont; font.pixelSize: 17; font.bold: true
                     wrapMode: Text.WordWrap
                 }
             }
@@ -184,7 +184,7 @@ Item {
                 width: parent.width
                 text: root.message
                 color: root.inkSecondary
-                font.family: "Segoe UI"; font.pixelSize: 13
+                font.family: PLATFORM.uiFont; font.pixelSize: 13
                 lineHeight: 1.25
                 wrapMode: Text.WordWrap
                 visible: root.message.length > 0
@@ -198,7 +198,7 @@ Item {
                 Text {
                     text: (root.detailsOpen ? "Hide Details ▲" : "Show Details ▼")
                     color: root.inkMuted
-                    font.family: "Segoe UI"; font.pixelSize: 11; font.bold: true
+                    font.family: PLATFORM.uiFont; font.pixelSize: 11; font.bold: true
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
@@ -218,7 +218,7 @@ Item {
                         x: 10; y: 10; width: parent.width - 20
                         text: root.details
                         color: root.inkMuted
-                        font.family: "Consolas"; font.pixelSize: 11
+                        font.family: PLATFORM.monoFont; font.pixelSize: 11
                         wrapMode: Text.WrapAnywhere
                     }
                 }
@@ -244,7 +244,7 @@ Item {
                             anchors.centerIn: parent
                             text: modelData.label
                             color: modelData.accent === true ? "white" : "#d7d8dd"
-                            font.family: "Segoe UI"; font.pixelSize: 12
+                            font.family: PLATFORM.uiFont; font.pixelSize: 12
                             font.bold: modelData.accent === true
                         }
                         MouseArea {

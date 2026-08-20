@@ -194,12 +194,12 @@ Item {
                                 spacing: 1
                                 Text {
                                     text: "3P FINAL REPORT"
-                                    color: "#191b1f"; font.family: "Segoe UI"
+                                    color: "#191b1f"; font.family: PLATFORM.uiFont
                                     font.pixelSize: 20; font.bold: true; font.letterSpacing: 0.5
                                 }
                                 Text {
                                     text: "ISSF 50m Rifle 3 Positions — Final · 35 shots · decimal scoring"
-                                    color: "#6b7280"; font.family: "Segoe UI"; font.pixelSize: 11
+                                    color: "#6b7280"; font.family: PLATFORM.uiFont; font.pixelSize: 11
                                 }
                             }
                         }
@@ -221,8 +221,8 @@ Item {
                                 ]
                                 delegate: Row {
                                     spacing: 6
-                                    Text { text: modelData.l + ":"; color: "#8a8f98"; font.pixelSize: 10; font.family: "Segoe UI" }
-                                    Text { text: String(modelData.v); color: "#33373d"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
+                                    Text { text: modelData.l + ":"; color: "#8a8f98"; font.pixelSize: 10; font.family: PLATFORM.uiFont }
+                                    Text { text: String(modelData.v); color: "#33373d"; font.pixelSize: 10; font.bold: true; font.family: PLATFORM.uiFont }
                                 }
                             }
                         }
@@ -243,7 +243,7 @@ Item {
                                 width: parent.width; height: 18
                                 Text {
                                     text: "MATCH VALIDATION"
-                                    color: "#5b6270"; font.family: "Segoe UI"
+                                    color: "#5b6270"; font.family: PLATFORM.uiFont
                                     font.pixelSize: 11; font.bold: true; font.letterSpacing: 1
                                 }
                                 Text {
@@ -251,7 +251,7 @@ Item {
                                     text: finalsReport.validationValid()
                                           ? "✓  REPORT VERIFIED" : "⚠  MATCH INCOMPLETE"
                                     color: finalsReport.validationValid() ? "#1f8a4c" : "#c77700"
-                                    font.family: "Segoe UI"; font.pixelSize: 11; font.bold: true
+                                    font.family: PLATFORM.uiFont; font.pixelSize: 11; font.bold: true
                                     font.letterSpacing: 0.5
                                 }
                             }
@@ -265,11 +265,11 @@ Item {
                                         Text {
                                             text: modelData.ok ? "✓" : "✗"
                                             color: modelData.ok ? "#1f8a4c" : "#a80038"
-                                            font.family: "Segoe UI"; font.pixelSize: 12; font.bold: true
+                                            font.family: PLATFORM.uiFont; font.pixelSize: 12; font.bold: true
                                         }
                                         Text {
                                             text: modelData.label
-                                            color: "#191b1f"; font.family: "Segoe UI"; font.pixelSize: 11
+                                            color: "#191b1f"; font.family: PLATFORM.uiFont; font.pixelSize: 11
                                         }
                                     }
                                 }
@@ -284,7 +284,7 @@ Item {
                                     delegate: Text {
                                         width: parent.width
                                         text: "Reason — " + modelData.label + ": " + modelData.detail
-                                        color: "#c77700"; font.family: "Segoe UI"; font.pixelSize: 10
+                                        color: "#c77700"; font.family: PLATFORM.uiFont; font.pixelSize: 10
                                         wrapMode: Text.WordWrap
                                     }
                                 }
@@ -339,15 +339,15 @@ Item {
                             width: parent.width; height: 24; color: "#f1f3f5"
                             Row {
                                 anchors.fill: parent
-                                Text { width: parent.width*0.17; height: parent.height; text: "Stage";   leftPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.09; height: parent.height; text: "Shots";   horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.12; height: parent.height; text: "Score";   horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.10; height: parent.height; text: "Average"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.10; height: parent.height; text: "Best";    horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.10; height: parent.height; text: "Worst";   horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.08; height: parent.height; text: "★ 10";    horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.10; height: parent.height; text: "Time";    horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.14; height: parent.height; text: "Status";  horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.17; height: parent.height; text: "Stage";   leftPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: PLATFORM.uiFont }
+                                Text { width: parent.width*0.09; height: parent.height; text: "Shots";   horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: PLATFORM.uiFont }
+                                Text { width: parent.width*0.12; height: parent.height; text: "Score";   horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: PLATFORM.uiFont }
+                                Text { width: parent.width*0.10; height: parent.height; text: "Average"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: PLATFORM.uiFont }
+                                Text { width: parent.width*0.10; height: parent.height; text: "Best";    horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: PLATFORM.uiFont }
+                                Text { width: parent.width*0.10; height: parent.height; text: "Worst";   horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: PLATFORM.uiFont }
+                                Text { width: parent.width*0.08; height: parent.height; text: "★ 10";    horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: PLATFORM.uiFont }
+                                Text { width: parent.width*0.10; height: parent.height; text: "Time";    horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: PLATFORM.uiFont }
+                                Text { width: parent.width*0.14; height: parent.height; text: "Status";  horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: PLATFORM.uiFont }
                             }
                             Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 2; color: "#a80038" }
                         }
@@ -358,15 +358,15 @@ Item {
                                 color: index % 2 ? "#f7f8fa" : "#ffffff"
                                 Row {
                                     anchors.fill: parent
-                                    Text { width: parent.width*0.17; height: parent.height; text: finalsReport.stageDisplay(modelData.stageId); leftPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.family: "Segoe UI"; elide: Text.ElideRight }
-                                    Text { width: parent.width*0.09; height: parent.height; text: modelData.fired + "/" + modelData.expected; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.family: "Segoe UI" }
-                                    Text { width: parent.width*0.12; height: parent.height; text: Number(modelData.subtotal).toFixed(1); horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
-                                    Text { width: parent.width*0.10; height: parent.height; text: modelData.fired > 0 ? Number(modelData.average).toFixed(2) : "—"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.family: "Segoe UI" }
-                                    Text { width: parent.width*0.10; height: parent.height; text: modelData.fired > 0 ? Number(modelData.bestShot).toFixed(1) : "—"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.family: "Segoe UI" }
-                                    Text { width: parent.width*0.10; height: parent.height; text: modelData.fired > 0 ? Number(modelData.worstShot).toFixed(1) : "—"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.family: "Segoe UI" }
-                                    Text { width: parent.width*0.08; height: parent.height; text: modelData.fired > 0 ? "" + modelData.innerTens : "—"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.family: "Segoe UI" }
-                                    Text { width: parent.width*0.10; height: parent.height; text: modelData.fired > 0 ? modelData.timeUsedSec + " s" : "—"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.family: "Segoe UI" }
-                                    Text { width: parent.width*0.14; height: parent.height; text: finalsReport.statusDisplay(modelData.statusName); horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: finalsReport.statusColor(modelData.statusName); font.pixelSize: 9; font.bold: true; font.family: "Segoe UI" }
+                                    Text { width: parent.width*0.17; height: parent.height; text: finalsReport.stageDisplay(modelData.stageId); leftPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.family: PLATFORM.uiFont; elide: Text.ElideRight }
+                                    Text { width: parent.width*0.09; height: parent.height; text: modelData.fired + "/" + modelData.expected; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.family: PLATFORM.uiFont }
+                                    Text { width: parent.width*0.12; height: parent.height; text: Number(modelData.subtotal).toFixed(1); horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.bold: true; font.family: PLATFORM.uiFont }
+                                    Text { width: parent.width*0.10; height: parent.height; text: modelData.fired > 0 ? Number(modelData.average).toFixed(2) : "—"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.family: PLATFORM.uiFont }
+                                    Text { width: parent.width*0.10; height: parent.height; text: modelData.fired > 0 ? Number(modelData.bestShot).toFixed(1) : "—"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.family: PLATFORM.uiFont }
+                                    Text { width: parent.width*0.10; height: parent.height; text: modelData.fired > 0 ? Number(modelData.worstShot).toFixed(1) : "—"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.family: PLATFORM.uiFont }
+                                    Text { width: parent.width*0.08; height: parent.height; text: modelData.fired > 0 ? "" + modelData.innerTens : "—"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.family: PLATFORM.uiFont }
+                                    Text { width: parent.width*0.10; height: parent.height; text: modelData.fired > 0 ? modelData.timeUsedSec + " s" : "—"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.family: PLATFORM.uiFont }
+                                    Text { width: parent.width*0.14; height: parent.height; text: finalsReport.statusDisplay(modelData.statusName); horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: finalsReport.statusColor(modelData.statusName); font.pixelSize: 9; font.bold: true; font.family: PLATFORM.uiFont }
                                 }
                                 Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: "#eceef1" }
                             }
@@ -376,15 +376,15 @@ Item {
                             width: parent.width; height: 28; color: "#f1f3f5"
                             Row {
                                 anchors.fill: parent
-                                Text { width: parent.width*0.17; height: parent.height; text: "TOTAL"; leftPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.09; height: parent.height; text: finalsReport.summaryVal("officialShotCount", 0) + "/35"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.12; height: parent.height; text: Number(finalsReport.summaryVal("cumulativeTotal", 0)).toFixed(1); horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#a80038"; font.pixelSize: 11; font.bold: true; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.10; height: parent.height; text: finalsReport.summaryVal("officialShotCount", 0) > 0 ? Number(finalsReport.summaryVal("averageShot", 0)).toFixed(2) : "—"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.10; height: parent.height; text: finalsReport.summaryVal("officialShotCount", 0) > 0 ? Number(finalsReport.summaryVal("highestShot", 0)).toFixed(1) : "—"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.10; height: parent.height; text: finalsReport.summaryVal("officialShotCount", 0) > 0 ? Number(finalsReport.summaryVal("lowestShot", 0)).toFixed(1) : "—"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.08; height: parent.height; text: "" + finalsReport.summaryVal("innerTens", 0); horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.17; height: parent.height; text: "TOTAL"; leftPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.bold: true; font.family: PLATFORM.uiFont }
+                                Text { width: parent.width*0.09; height: parent.height; text: finalsReport.summaryVal("officialShotCount", 0) + "/35"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.bold: true; font.family: PLATFORM.uiFont }
+                                Text { width: parent.width*0.12; height: parent.height; text: Number(finalsReport.summaryVal("cumulativeTotal", 0)).toFixed(1); horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#a80038"; font.pixelSize: 11; font.bold: true; font.family: PLATFORM.uiFont }
+                                Text { width: parent.width*0.10; height: parent.height; text: finalsReport.summaryVal("officialShotCount", 0) > 0 ? Number(finalsReport.summaryVal("averageShot", 0)).toFixed(2) : "—"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.bold: true; font.family: PLATFORM.uiFont }
+                                Text { width: parent.width*0.10; height: parent.height; text: finalsReport.summaryVal("officialShotCount", 0) > 0 ? Number(finalsReport.summaryVal("highestShot", 0)).toFixed(1) : "—"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.family: PLATFORM.uiFont }
+                                Text { width: parent.width*0.10; height: parent.height; text: finalsReport.summaryVal("officialShotCount", 0) > 0 ? Number(finalsReport.summaryVal("lowestShot", 0)).toFixed(1) : "—"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.family: PLATFORM.uiFont }
+                                Text { width: parent.width*0.08; height: parent.height; text: "" + finalsReport.summaryVal("innerTens", 0); horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.bold: true; font.family: PLATFORM.uiFont }
                                 Item { width: parent.width*0.10; height: 1 }
-                                Text { width: parent.width*0.14; height: parent.height; text: finalsReport.report ? finalsReport.report.completionStatus : "—"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: finalsReport.completionColor(finalsReport.report ? finalsReport.report.completionStatus : ""); font.pixelSize: 9; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.14; height: parent.height; text: finalsReport.report ? finalsReport.report.completionStatus : "—"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: finalsReport.completionColor(finalsReport.report ? finalsReport.report.completionStatus : ""); font.pixelSize: 9; font.bold: true; font.family: PLATFORM.uiFont }
                             }
                             Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: "#a80038" }
                         }
@@ -403,7 +403,7 @@ Item {
                                     width: parent.width * 0.15
                                     anchors.verticalCenter: parent.verticalCenter
                                     text: modelData.label
-                                    color: "#5b6270"; font.family: "Segoe UI"
+                                    color: "#5b6270"; font.family: PLATFORM.uiFont
                                     font.pixelSize: 10; font.bold: true; font.letterSpacing: 0.5
                                 }
                                 Rectangle {
@@ -422,7 +422,7 @@ Item {
                                     anchors.verticalCenter: parent.verticalCenter
                                     text: Number(modelData.score).toFixed(1)
                                           + "   (" + modelData.firedShots + "/" + modelData.expectedShots + ")"
-                                    color: "#191b1f"; font.family: "Segoe UI"
+                                    color: "#191b1f"; font.family: PLATFORM.uiFont
                                     font.pixelSize: 11; font.bold: true
                                 }
                             }
@@ -476,7 +476,7 @@ Item {
                         width: parent.width
                         horizontalAlignment: Text.AlignHCenter
                         text: "True ISSF ring geometry · holes at bullet scale · ● ≥ 10.5   ● 10.0 – 10.4   ● < 10.0"
-                        color: "#8a8f98"; font.family: "Segoe UI"; font.pixelSize: 9
+                        color: "#8a8f98"; font.family: PLATFORM.uiFont; font.pixelSize: 9
                     }
 
                     SectionTitle { width: parent.width; title: "Momentum — Shot Score" }
@@ -566,13 +566,13 @@ Item {
                             width: parent.width; height: 26; color: "#f1f3f5"
                             Row {
                                 anchors.fill: parent
-                                Text { width: parent.width*0.07; height: parent.height; text: "#";             leftPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.21; height: parent.height; text: "Stage";         verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.11; height: parent.height; text: "Score";         horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.11; height: parent.height; text: "Hold";          horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.11; height: parent.height; text: "Split";         horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.15; height: parent.height; text: "Running Total"; horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.24; height: parent.height; text: "Notes";         horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.07; height: parent.height; text: "#";             leftPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: PLATFORM.uiFont }
+                                Text { width: parent.width*0.21; height: parent.height; text: "Stage";         verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: PLATFORM.uiFont }
+                                Text { width: parent.width*0.11; height: parent.height; text: "Score";         horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: PLATFORM.uiFont }
+                                Text { width: parent.width*0.11; height: parent.height; text: "Hold";          horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: PLATFORM.uiFont }
+                                Text { width: parent.width*0.11; height: parent.height; text: "Split";         horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: PLATFORM.uiFont }
+                                Text { width: parent.width*0.15; height: parent.height; text: "Running Total"; horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: PLATFORM.uiFont }
+                                Text { width: parent.width*0.24; height: parent.height; text: "Notes";         horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: PLATFORM.uiFont }
                             }
                             Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 2; color: "#a80038" }
                         }
@@ -584,15 +584,15 @@ Item {
                                                              : (index % 2 ? "#f7f8fa" : "#ffffff")
                                 Row {
                                     anchors.fill: parent
-                                    Text { width: parent.width*0.07; height: parent.height; text: modelData.number; leftPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
-                                    Text { width: parent.width*0.21; height: parent.height; text: finalsReport.seriesDisplay(modelData.seriesIndex); verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.family: "Segoe UI"; elide: Text.ElideRight }
-                                    Text { width: parent.width*0.11; height: parent.height; text: Number(modelData.score).toFixed(1) + (modelData.innerTen ? " ★" : ""); horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter; color: modelData.provisional ? "#c77700" : "#191b1f"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
+                                    Text { width: parent.width*0.07; height: parent.height; text: modelData.number; leftPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.bold: true; font.family: PLATFORM.uiFont }
+                                    Text { width: parent.width*0.21; height: parent.height; text: finalsReport.seriesDisplay(modelData.seriesIndex); verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.family: PLATFORM.uiFont; elide: Text.ElideRight }
+                                    Text { width: parent.width*0.11; height: parent.height; text: Number(modelData.score).toFixed(1) + (modelData.innerTen ? " ★" : ""); horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter; color: modelData.provisional ? "#c77700" : "#191b1f"; font.pixelSize: 10; font.bold: true; font.family: PLATFORM.uiFont }
                                     // Hold time: future hardware feature — the builder ships -1 until
                                     // it exists; the column keeps the layout future-proof.
-                                    Text { width: parent.width*0.11; height: parent.height; text: modelData.holdSec >= 0 ? modelData.holdSec + " s" : "—"; horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#8a8f98"; font.pixelSize: 10; font.family: "Segoe UI" }
-                                    Text { width: parent.width*0.11; height: parent.height; text: modelData.provisional ? "—" : modelData.timeUsedSec + " s"; horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.family: "Segoe UI" }
-                                    Text { width: parent.width*0.15; height: parent.height; text: Number(modelData.runningTotal).toFixed(1); horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.bold: modelData.number % 5 === 0; font.family: "Segoe UI" }
-                                    Text { width: parent.width*0.24; height: parent.height; text: modelData.note; horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#c77700"; font.pixelSize: 9; font.family: "Segoe UI"; elide: Text.ElideRight }
+                                    Text { width: parent.width*0.11; height: parent.height; text: modelData.holdSec >= 0 ? modelData.holdSec + " s" : "—"; horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#8a8f98"; font.pixelSize: 10; font.family: PLATFORM.uiFont }
+                                    Text { width: parent.width*0.11; height: parent.height; text: modelData.provisional ? "—" : modelData.timeUsedSec + " s"; horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.family: PLATFORM.uiFont }
+                                    Text { width: parent.width*0.15; height: parent.height; text: Number(modelData.runningTotal).toFixed(1); horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.bold: modelData.number % 5 === 0; font.family: PLATFORM.uiFont }
+                                    Text { width: parent.width*0.24; height: parent.height; text: modelData.note; horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#c77700"; font.pixelSize: 9; font.family: PLATFORM.uiFont; elide: Text.ElideRight }
                                 }
                                 Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: "#eceef1" }
                             }
@@ -602,7 +602,7 @@ Item {
                     Text {
                         width: parent.width
                         text: "★ inner ten (≥ 10.2) · Split = time since the previous shot in the firing window · Hold pending hardware support"
-                        color: "#8a8f98"; font.family: "Segoe UI"; font.pixelSize: 9
+                        color: "#8a8f98"; font.family: PLATFORM.uiFont; font.pixelSize: 9
                     }
                 }
 
@@ -634,7 +634,7 @@ Item {
                         visible: !finalsReport.report
                                  || finalsReport.report.incidents.length === 0
                         text: "No incidents — no shots were rejected during this final."
-                        color: "#8a8f98"; font.family: "Segoe UI"; font.pixelSize: 11
+                        color: "#8a8f98"; font.family: PLATFORM.uiFont; font.pixelSize: 11
                     }
                     Column {
                         width: parent.width
@@ -644,10 +644,10 @@ Item {
                             width: parent.width; height: 22; color: "#f1f3f5"
                             Row {
                                 anchors.fill: parent
-                                Text { width: parent.width*0.13; height: parent.height; text: "Time";     leftPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.22; height: parent.height; text: "Stage";    verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.17; height: parent.height; text: "Severity"; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.48; height: parent.height; text: "Event";    verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.13; height: parent.height; text: "Time";     leftPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: PLATFORM.uiFont }
+                                Text { width: parent.width*0.22; height: parent.height; text: "Stage";    verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: PLATFORM.uiFont }
+                                Text { width: parent.width*0.17; height: parent.height; text: "Severity"; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: PLATFORM.uiFont }
+                                Text { width: parent.width*0.48; height: parent.height; text: "Event";    verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: PLATFORM.uiFont }
                             }
                             Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 2; color: "#a80038" }
                         }
@@ -660,8 +660,8 @@ Item {
                                 color: index % 2 ? "#f7f8fa" : "#ffffff"
                                 Row {
                                     anchors.fill: parent
-                                    Text { width: parent.width*0.13; height: parent.height; text: modelData.timestamp.length >= 19 ? modelData.timestamp.substr(11, 8) : modelData.timestamp; leftPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#6b7280"; font.pixelSize: 10; font.family: "Segoe UI" }
-                                    Text { width: parent.width*0.22; height: parent.height; text: modelData.stageLabel; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.family: "Segoe UI"; elide: Text.ElideRight }
+                                    Text { width: parent.width*0.13; height: parent.height; text: modelData.timestamp.length >= 19 ? modelData.timestamp.substr(11, 8) : modelData.timestamp; leftPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#6b7280"; font.pixelSize: 10; font.family: PLATFORM.uiFont }
+                                    Text { width: parent.width*0.22; height: parent.height; text: modelData.stageLabel; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.family: PLATFORM.uiFont; elide: Text.ElideRight }
                                     Row {
                                         width: parent.width*0.17; height: parent.height
                                         spacing: 5
@@ -675,10 +675,10 @@ Item {
                                             text: modelData.severity
                                             verticalAlignment: Text.AlignVCenter
                                             color: finalsReport.severityColor(modelData.severity)
-                                            font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"
+                                            font.pixelSize: 10; font.bold: true; font.family: PLATFORM.uiFont
                                         }
                                     }
-                                    Text { width: parent.width*0.48; height: parent.height; text: modelData.displayText.length ? modelData.displayText : modelData.reason; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.family: "Segoe UI"; elide: Text.ElideRight; rightPadding: 8 }
+                                    Text { width: parent.width*0.48; height: parent.height; text: modelData.displayText.length ? modelData.displayText : modelData.reason; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.family: PLATFORM.uiFont; elide: Text.ElideRight; rightPadding: 8 }
                                 }
                                 Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: "#eceef1" }
                             }
@@ -689,7 +689,7 @@ Item {
                             text: "+ " + (finalsReport.report
                                           ? finalsReport.report.incidents.length - finalsReport.maxIncidentRows : 0)
                                   + " further incidents — see the session journal (finals_session.jsonl)"
-                            color: "#8a8f98"; font.family: "Segoe UI"; font.pixelSize: 9
+                            color: "#8a8f98"; font.family: PLATFORM.uiFont; font.pixelSize: 9
                             topPadding: 4
                         }
                     }
@@ -705,9 +705,9 @@ Item {
                                    : []
                             delegate: Item {
                                 width: parent.width; height: 19
-                                Text { x: 8; width: parent.width*0.11; height: parent.height; text: finalsReport.fmtClock(modelData.issuedAtMs); verticalAlignment: Text.AlignVCenter; color: "#8a8f98"; font.pixelSize: 10; font.family: "Segoe UI" }
-                                Text { x: parent.width*0.13; width: parent.width*0.22; height: parent.height; text: modelData.type; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; font.letterSpacing: 0.3 }
-                                Text { x: parent.width*0.36; width: parent.width*0.62; height: parent.height; text: modelData.text; verticalAlignment: Text.AlignVCenter; color: "#6b7280"; font.pixelSize: 10; font.family: "Segoe UI"; elide: Text.ElideRight }
+                                Text { x: 8; width: parent.width*0.11; height: parent.height; text: finalsReport.fmtClock(modelData.issuedAtMs); verticalAlignment: Text.AlignVCenter; color: "#8a8f98"; font.pixelSize: 10; font.family: PLATFORM.uiFont }
+                                Text { x: parent.width*0.13; width: parent.width*0.22; height: parent.height; text: modelData.type; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.bold: true; font.family: PLATFORM.uiFont; font.letterSpacing: 0.3 }
+                                Text { x: parent.width*0.36; width: parent.width*0.62; height: parent.height; text: modelData.text; verticalAlignment: Text.AlignVCenter; color: "#6b7280"; font.pixelSize: 10; font.family: PLATFORM.uiFont; elide: Text.ElideRight }
                                 Rectangle { anchors.bottom: parent.bottom; x: 8; width: parent.width - 16; height: 1; color: "#f0f1f4" }
                             }
                         }
@@ -717,7 +717,7 @@ Item {
                             text: "+ " + (finalsReport.report
                                           ? finalsReport.report.timeline.length - finalsReport.maxTimelineRows : 0)
                                   + " further events — see the session journal (finals_session.jsonl)"
-                            color: "#8a8f98"; font.family: "Segoe UI"; font.pixelSize: 9
+                            color: "#8a8f98"; font.family: PLATFORM.uiFont; font.pixelSize: 9
                             topPadding: 4
                         }
                     }
@@ -750,15 +750,15 @@ Item {
                             delegate: Column {
                                 width: perfRepeater.parent.cw
                                 spacing: 1
-                                Text { text: modelData.l; color: "#8a8f98"; font.family: "Segoe UI"; font.pixelSize: 9; font.letterSpacing: 0.4 }
-                                Text { text: modelData.v; color: "#191b1f"; font.family: "Segoe UI"; font.pixelSize: 14; font.bold: true }
-                                Text { text: modelData.d; color: "#8a8f98"; font.family: "Segoe UI"; font.pixelSize: 9 }
+                                Text { text: modelData.l; color: "#8a8f98"; font.family: PLATFORM.uiFont; font.pixelSize: 9; font.letterSpacing: 0.4 }
+                                Text { text: modelData.v; color: "#191b1f"; font.family: PLATFORM.uiFont; font.pixelSize: 14; font.bold: true }
+                                Text { text: modelData.d; color: "#8a8f98"; font.family: PLATFORM.uiFont; font.pixelSize: 9 }
                             }
                         }
                         Text {
                             visible: parent.perf === null
                             text: "Not available — no official shots recorded."
-                            color: "#8a8f98"; font.family: "Segoe UI"; font.pixelSize: 11
+                            color: "#8a8f98"; font.family: PLATFORM.uiFont; font.pixelSize: 11
                         }
                     }
 

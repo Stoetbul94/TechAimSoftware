@@ -46,7 +46,7 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                     }
                     Text {
-                        text: "· Match Report — Series Detail"; color: "#9aa0aa"; font.pixelSize: 12; font.family: "Segoe UI"
+                        text: "· Match Report — Series Detail"; color: "#9aa0aa"; font.pixelSize: 12; font.family: PLATFORM.uiFont
                         anchors.verticalCenter: parent.verticalCenter
                     }
                 }
@@ -54,7 +54,7 @@ Item {
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                     text: userName
-                    color: "#33373d"; font.pixelSize: 11; font.bold: true; font.family: "Segoe UI"
+                    color: "#33373d"; font.pixelSize: 11; font.bold: true; font.family: PLATFORM.uiFont
                 }
                 Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: "#e6e8ec" }
             }

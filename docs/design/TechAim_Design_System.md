@@ -117,8 +117,26 @@ The audit found five near-identical greys doing the `textSecondary` job
 
 ## 4. Typography
 
-`Segoe UI` (UI) and `Consolas` (numeric). Both ship with Windows: **no
-proprietary font is distributed**, and nothing falls back to a substitute face.
+Typography is named by **platform tokens**, not by a font family literal
+(UI-DEC-016):
+
+| Token | Windows | Android |
+|---|---|---|
+| `PLATFORM.uiFont` (UI) | `Segoe UI` | `Roboto` |
+| `PLATFORM.monoFont` (numeric) | `Consolas` | `monospace` |
+
+**No proprietary font is distributed** on either platform — each token names a
+face the host system already provides. On Windows nothing changes: the
+resolved families are exactly `Segoe UI` and `Consolas`, and no layout or PDF
+moves.
+
+On Android, `Segoe UI` and `Consolas` do not exist. The tokens name the
+substitute deliberately so its metrics are predictable, instead of letting the
+platform pick one silently. Android typography is **not yet visually verified
+on a device** — see UI-DEC-016 open evidence.
+
+The role table below is unchanged; `family` on each role resolves through the
+tokens above.
 
 | Role | Size | Weight | Tracking | Use |
 |---|---:|---|---:|---|

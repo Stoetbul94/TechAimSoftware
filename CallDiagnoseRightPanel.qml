@@ -59,7 +59,7 @@ Item {
                     Row { anchors.fill: parent; anchors.margins: 10; spacing: 8
                         Text { text: "Sighters fired"; color: _txtMut; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
                         Text { text: ctl ? ("" + ctl.sighterCount) : "0"; color: _green
-                               font.family: "Consolas"; font.pixelSize: 16; font.bold: true; anchors.verticalCenter: parent.verticalCenter } } }
+                               font.family: PLATFORM.monoFont; font.pixelSize: 16; font.bold: true; anchors.verticalCenter: parent.verticalCenter } } }
             }
 
             // CALLING STATUS (AwaitingShot / AwaitingCall / Reveal)
@@ -67,7 +67,7 @@ Item {
                 width: parent.width; spacing: 8
                 visible: panel.awaitingShot || panel.awaitingCall || panel.revealOpen
                 Text {
-                    color: _txt; font.family: "Consolas"; font.pixelSize: 22; font.bold: true
+                    color: _txt; font.family: PLATFORM.monoFont; font.pixelSize: 22; font.bold: true
                     text: ctl ? ("Shot " + ctl.pendingShotNumber + " of " + ctl.shotCount) : ""
                 }
                 // progress bar (completed calls)
@@ -95,10 +95,10 @@ Item {
                         property var rv: panel.revealOpen && panel.ctl ? panel.ctl.revealCurrent() : ({})
                         Text { text: "CALL DIFFERENCE"; color: _txtMut; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1 }
                         Text { visible: revealCol.rv.exact === true; text: "EXACT CALL — 0.0 mm"
-                               color: _green; font.family: "Consolas"; font.pixelSize: 20; font.bold: true }
+                               color: _green; font.family: PLATFORM.monoFont; font.pixelSize: 20; font.bold: true }
                         Text { visible: revealCol.rv.exact !== true
                                text: (revealCol.rv.errorMm !== undefined ? Number(revealCol.rv.errorMm).toFixed(1) : "—") + " mm"
-                               color: _txt; font.family: "Consolas"; font.pixelSize: 22; font.bold: true }
+                               color: _txt; font.family: PLATFORM.monoFont; font.pixelSize: 22; font.bold: true }
                         Text { visible: revealCol.rv.errorRingSpacings !== undefined
                                text: "Approximately " + Number(revealCol.rv.errorRingSpacings || 0).toFixed(1) + " ring spacings"
                                color: _txtMut; font.pixelSize: 10 }
@@ -110,7 +110,7 @@ Item {
                                color: _txtSec; font.pixelSize: 11 }
                         Text { text: "ACTUAL SCORE"; color: _txtMut; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1; topPadding: 2 }
                         Text { text: (revealCol.rv.actualScore !== undefined ? Number(revealCol.rv.actualScore).toFixed(1) : "—")
-                               color: _txt; font.family: "Consolas"; font.pixelSize: 14; font.bold: true }
+                               color: _txt; font.family: PLATFORM.monoFont; font.pixelSize: 14; font.bold: true }
                         Text { text: "CALL QUALITY"; color: _txtMut; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1; topPadding: 2 }
                         Text { width: parent.width; wrapMode: Text.WordWrap; text: revealCol.rv.bandText || ""
                                color: _txtSec; font.pixelSize: 11 }
