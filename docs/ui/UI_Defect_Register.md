@@ -907,3 +907,33 @@ Back terminates the app **only when no IME is showing**. With the software
 keyboard up, Back correctly dismisses the keyboard and leaves the app running
 (verified: same PID). The hazard is therefore narrower than first recorded, but
 still real during a match.
+
+### UI-AND-018 — Settings drawer opens off-screen on very short viewports
+
+**Severity 3. OPEN — not fixed.** Viewport-dependent, verified both ways.
+
+`SettingsPage` is positioned at `y: leftPanel.settingsY`, and
+`settingsY = navColumn.y + 5*(btnHeight + navSpacing)` — an ABSOLUTE offset
+computed as though the pane had its full design height.
+
+| Viewport | settingsY (approx) | Result |
+|---|---|---|
+| 807x345dp (phone profile) | ~380dp, pane is ~249dp | **Opens entirely below the screen — unreachable** |
+| 1280x716dp (10-inch tablet) | ~475dp, pane is ~579dp | **Opens correctly and scrolls** — verified, ABOUT/BUILD and the Android STORAGE panel are both reachable |
+
+Same family as UI-AND-010: a fixed dp offset measured against a 725dp design
+height. **Predates the A1/A2 nav Flickable** — before the header was compacted
+the offset was larger (~466dp), i.e. further off-screen, so the Flickable
+change moved it closer to visible, not further away. The Flickable does add a
+second-order error (the offset does not account for `contentY` when the nav is
+scrolled), but it is not the cause.
+
+Not fixed because the product targets 10-13" tablets, where it works, and a
+correct fix means positioning the drawer against the visible viewport rather
+than a computed row offset — a layout change that deserves its own decision.
+
+**Positive result recorded here:** the Android storage-diagnostics panel added
+in A1/A2 (§41) was confirmed working on device at tablet size, showing the
+real `Settings`, `Sessions`, `Exports` and `Logs` paths — each matching what
+`adb run-as` reported — plus the "Target transport: DEMO / NO-TARGET. USB RTU
+is not implemented." notice.
