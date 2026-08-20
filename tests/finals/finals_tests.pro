@@ -10,6 +10,9 @@ INCLUDEPATH += ../../src/finals
 # Session Reliability Layer (M0): the controller resolves its journal path
 # through StoragePaths.
 include(../../Reliability.pri)
+# A1/A2: FinalsAudioService now resolves its clips root and its beep
+# fallback through the platform boundary, so the harness needs the seam.
+include(../../Platform.pri)
 
 SOURCES += \
     tst_finals3p.cpp \

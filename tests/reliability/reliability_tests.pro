@@ -7,6 +7,9 @@ CONFIG -= app_bundle
 TARGET = reliability_tests
 
 include(../../Reliability.pri)
+# A1/A2 platform boundary. Compiling it in this QT=core harness is what
+# proves the seam carries no QML/GUI dependency.
+include(../../Platform.pri)
 
 # Phase B0: the qualification write-path seam. QtCore-only — compiling it in
 # this GUI-free harness proves it carries no QML/GUI dependency.
@@ -54,6 +57,7 @@ SOURCES += \
     tst_windmap_verdict.cpp \
     tst_windmap_dispersion.cpp \
     tst_target_hardware.cpp \
+    tst_platform.cpp \
     ../../src/target/TargetDeviceFingerprint.cpp \
     ../../src/target/PaperFeedCoordinator.cpp \
     seed_windmap.cpp \
