@@ -1,6 +1,8 @@
 #include "customprint.h"
 #include "defines.h"
 #include "app/ProductIdentity.h"
+#include "platform/PlatformService.h"
+#include "reliability/storage/StoragePaths.h"
 
 #include <QFileDialog>
 #include <QDir>
@@ -8,12 +10,63 @@
 #include <QFileInfo>
 #include <QPainter>
 #include <QImage>
-#include <QtPrintSupport/QPrinter>
-#include <QtPrintSupport/QPrintDialog>
+// QtPrintSupport/QPrinter and QPrintDialog were included here historically but
+// NEVER used — every export path in this file writes through QPdfWriter, which
+// lives in QtGui. The includes are removed rather than scoped: keeping them
+// would force the Android build to link a module it has no engine for, and
+// they were dead weight on Windows too. If real system printing is ever added,
+// it comes back behind a platform capability, not a bare include.
 #include <QPdfWriter>
 #include <QVariant>
 #include <QDebug>
 #include <QDateTime>
+
+namespace {
+
+// A1/A2 — where a generated PDF is written.
+//
+// Windows: unchanged. The native QFileDialog save picker is shown exactly as
+//   before, with the same caption, default name and filter, and the operator
+//   chooses the destination. An empty return still means "cancelled" and the
+//   existing call-site behaviour around that is untouched.
+//
+// Android: the desktop QWidget file picker is not usable, and Storage Access
+//   Framework is NOT implemented — so nothing here pretends to be a picker.
+//   The file is written to the app-owned exports directory under
+//   AppLocalDataLocation with a timestamped name, and the resolved path is
+//   logged so early tablet testing can find it. Surfacing that file to the
+//   user (a share intent, or SAF) is deliberately deferred; see
+//   docs/architecture/android-product-architecture.md §6.
+//
+// Returning a usable path on Android also means the caller never receives the
+// empty string there, so no export can half-run against an invalid writer.
+QString chooseSavePath(const QString& defaultName)
+{
+    if (ta::platform::supportsDesktopFileDialogs()) {
+        return QFileDialog::getSaveFileName(0, QObject::tr("Save File"),
+                                            defaultName,
+                                            QObject::tr("*.pdf"));
+    }
+
+    const QString dir = ta::rel::StoragePaths::exportsDirectory();
+    if (!QDir().mkpath(dir)) {
+        qWarning().noquote() << "PDF export: cannot create exports directory" << dir;
+        return QString();
+    }
+
+    // Timestamp the name: there is no picker to warn about overwriting, and a
+    // second report of the same kind must never silently replace the first.
+    const QString stamp =
+        QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd-HHmmss"));
+    QFileInfo base(defaultName);
+    const QString fileName = base.completeBaseName() + QLatin1Char('-') + stamp
+                             + QStringLiteral(".pdf");
+    const QString full = QDir(dir).filePath(fileName);
+    qInfo().noquote() << "PDF export ->" << full;
+    return full;
+}
+
+} // namespace
 
 
 CustomPrint::CustomPrint(TachusWidget *tachus, QObject *parent) : QObject(parent), m_tachus(tachus)
@@ -37,9 +90,7 @@ void CustomPrint::addImage(QVariant data)
 
 void CustomPrint::createPdf()
 {
-    QString fileName = QFileDialog::getSaveFileName(0, tr("Save File"),
-                                                    "untitled.pdf",
-                                                    tr("*.pdf"));
+    QString fileName = chooseSavePath(QStringLiteral("untitled.pdf"));
     qDebug() << __FUNCTION__ << fileName;
     QPdfWriter pdfWriter(fileName);
     pdfWriter.setPageSize(QPageSize(QPageSize::A4));
@@ -76,9 +127,7 @@ void CustomPrint::createPdf()
 // default filename. No qualification path is touched.
 void CustomPrint::createFinalsPdf()
 {
-    QString fileName = QFileDialog::getSaveFileName(0, tr("Save File"),
-                                                    "finals_report.pdf",
-                                                    tr("*.pdf"));
+    QString fileName = chooseSavePath(QStringLiteral("finals_report.pdf"));
     qDebug() << __FUNCTION__ << fileName;
     if (fileName.isEmpty())
         return;
@@ -179,9 +228,7 @@ bool CustomPrint::createTrainingPdf(QString filePath)
 
 void CustomPrint::createSummryPdf()
 {
-    QString fileName = QFileDialog::getSaveFileName(0, tr("Save File"),
-                                                    "summary_report.pdf",
-                                                    tr("*.pdf"));
+    QString fileName = chooseSavePath(QStringLiteral("summary_report.pdf"));
     qDebug() << __FUNCTION__ << fileName;
     QPdfWriter pdfWriter(fileName);
     pdfWriter.setPageSize(QPageSize(QPageSize::A4));
@@ -693,9 +740,7 @@ void CustomPrint::createPdf(QString filePath)
 
 void CustomPrint::print(QVariant data)
 {
-    QString fileName = QFileDialog::getSaveFileName(0, tr("Save File"),
-                                                    "untitled.pdf",
-                                                    tr("*.pdf"));
+    QString fileName = chooseSavePath(QStringLiteral("untitled.pdf"));
     QPdfWriter pdfWriter(fileName);
     pdfWriter.setPageSize(QPageSize(QPageSize::A4));
     pdfWriter.setPageMargins(QMargins(30, 30, 30, 30));

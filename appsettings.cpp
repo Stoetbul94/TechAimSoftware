@@ -1,5 +1,6 @@
 #include "appsettings.h"
 #include "defines.h"
+#include "platform/PlatformService.h"
 
 #include <QDebug>
 #include <QFile>
@@ -382,6 +383,16 @@ bool AppSettings::uploadGame()
     QString dirName = QCoreApplication::applicationDirPath();
     if (!getLoadFileLocation().isEmpty()) {
         dirName = getLoadFileLocation();
+    }
+
+    // A1/A2: no desktop file picker on Android, and Storage Access Framework
+    // is NOT implemented — so loading a saved match is unavailable there
+    // rather than faked. The caller already treats an empty name as "operator
+    // cancelled" and returns false, so this needs no new failure path.
+    if (!ta::platform::supportsDesktopFileDialogs()) {
+        qInfo().noquote() << "Load match: file picker unavailable on this platform "
+                             "— Android import UI pending.";
+        return false;
     }
 
     QString fileName = QFileDialog::getOpenFileName(tachusWidget, tr("Open File"),
@@ -1042,6 +1053,14 @@ void AppSettings::setSetaServerPath(const QString &setaServerPath)
 
 QString AppSettings::selectSetaSettingsFile()
 {
+    // A1/A2: see loadMatch() above — no desktop picker on Android. Returning
+    // an empty string is the existing "nothing selected" contract.
+    if (!ta::platform::supportsDesktopFileDialogs()) {
+        qInfo().noquote() << "Settings file picker unavailable on this platform "
+                             "— Android import UI pending.";
+        return QString();
+    }
+
     QString fileName = QFileDialog::getOpenFileName(tachusWidget, tr("Open File"),
                                                     "",
                                                     tr("File (*.csv)"));

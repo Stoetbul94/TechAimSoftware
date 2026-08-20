@@ -39,6 +39,8 @@
 #include "src/training/PositionTransitionController.h"
 #include "src/training/WindMapController.h"
 #include "src/reliability/storage/StoragePaths.h"
+#include "src/platform/PlatformService.h"
+#include "src/platform/PlatformBridge.h"
 #include "src/app/ProductIdentity.h"
 #include "src/app/ProductIdentityBridge.h"
 #include "src/app/LanguageService.h"
@@ -57,6 +59,7 @@
 #include <QHBoxLayout>
 #include <QQuickWindow>
 #include <QSGRendererInterface>
+#include <QSysInfo>
 
 QTranslator *Translator;
 
@@ -66,6 +69,32 @@ QTranslator *Translator;
 // Returns true if the operator chose Retry, false for Exit.
 static bool showStorageFailureDialog(const ta::rel::StorageResult& r)
 {
+    // A1/A2 platform seam. The desktop surface below is a frameless,
+    // translucent, stylesheet-driven QDialog shown BEFORE the QML engine
+    // exists. That is not a reliable startup surface on Android, and there is
+    // no operator sitting at a keyboard to press Retry on a tablet that has
+    // just failed to create its own private data directory.
+    //
+    // On Android the failure is reported to logcat and treated as fatal.
+    // This is not a downgrade in safety: app-private storage under
+    // AppLocalDataLocation is created by the system for the package, so the
+    // desktop failure modes this dialog exists for (a disconnected network
+    // share, a read-only install directory, a roaming-profile permission
+    // problem) do not arise. If it fails anyway, the device is in a state the
+    // application cannot repair by retrying, and continuing without session
+    // storage would be far worse than refusing to start.
+    //
+    // Returning false means "operator chose Exit" to the caller.
+    if (!ta::platform::supportsDesktopStartupDialogs()) {
+        qCritical().noquote()
+            << "FATAL: session storage unavailable —" << r.operatorMessage
+            << "| detail:" << r.technicalDetail
+            << "| path:" << (r.affectedPath.isEmpty()
+                                 ? ta::rel::StoragePaths::applicationDataRoot()
+                                 : r.affectedPath);
+        return false;
+    }
+
     QDialog box(nullptr, Qt::FramelessWindowHint | Qt::Dialog);
     box.setAttribute(Qt::WA_TranslucentBackground);
     QVBoxLayout* outer = new QVBoxLayout(&box);
@@ -184,17 +213,32 @@ int main(int argc, char *argv[])
         product.executableBaseName + QStringLiteral(".lock")));
     std::unique_ptr<QLockFile> legacyLock;
     bool blockedByLegacy = false;
-    for (const QString& legacyName : product.legacyLockFileNames) {
-        auto lk = std::make_unique<QLockFile>(QDir::temp().absoluteFilePath(legacyName));
-        if (!lk->tryLock(100)) { blockedByLegacy = true; break; }
-        legacyLock = std::move(lk);   // held for the process lifetime
+    bool singleInstanceBlocked = false;
+
+    // A1/A2 platform seam. On Android the whole single-instance mechanism is
+    // meaningless: the system guarantees one task instance per package, there
+    // is no second process to collide with, and there is no legacy Seta.exe
+    // to migrate away from. Acquiring a lock file in the temp directory would
+    // defend against nothing while adding a startup failure mode.
+    //
+    // The lockFile object is still CONSTRUCTED on every platform because the
+    // operating-mode restart handler below captures it; it simply is not
+    // acquired here on Android. Windows behaviour is unchanged.
+    if (ta::platform::supportsSingleInstanceLock()) {
+        for (const QString& legacyName : product.legacyLockFileNames) {
+            auto lk = std::make_unique<QLockFile>(QDir::temp().absoluteFilePath(legacyName));
+            if (!lk->tryLock(100)) { blockedByLegacy = true; break; }
+            legacyLock = std::move(lk);   // held for the process lifetime
+        }
+
+        /* Trying to close the Lock File, if the attempt is unsuccessful for 100 milliseconds,
+             * then there is a Lock File already created by another process.
+             / Therefore, we throw a warning and close the program
+             * */
+        singleInstanceBlocked = !lockFile.tryLock(100) || blockedByLegacy;
     }
 
-    /* Trying to close the Lock File, if the attempt is unsuccessful for 100 milliseconds,
-         * then there is a Lock File already created by another process.
-         / Therefore, we throw a warning and close the program
-         * */
-    if(!lockFile.tryLock(100) || blockedByLegacy){
+    if (singleInstanceBlocked) {
         // TechAim dialog framework (C5): this fires BEFORE the QML engine
         // exists, so it cannot use dialogManager — a small frameless
         // TechAim-styled widget dialog replaces the native QMessageBox.
@@ -318,7 +362,31 @@ int main(int argc, char *argv[])
             LogType::interfaceLevel);
     }
 
-    AppSettings *appsettings = new AppSettings("config.ini");
+    // ── A1/A2: platform-safe configuration path ────────────────────────
+    // Historically this was the literal relative name "config.ini", which
+    // QSettings resolves against the WORKING DIRECTORY. On Windows that is the
+    // install directory holding the operator's config.ini, and that resolution
+    // is preserved exactly — configFilePath() returns the name unchanged there,
+    // so no deployed install moves and no operator has to find a new file.
+    //
+    // On Android the working directory is "/" and is not writable, and neither
+    // is the application binary directory. The path resolves instead into
+    // app-private storage via the existing StoragePaths settings directory.
+    const QString configFileName = QStringLiteral("config.ini");
+    const QString configPath = ta::platform::configFilePath(configFileName);
+
+    // Seed a first-run config ONLY on a platform whose installer ships none.
+    // On Windows a missing config.ini is meaningful (AppSettings falls back to
+    // documented in-code defaults) and must never be manufactured.
+    if (!ta::platform::shipsConfigFileWithInstall()) {
+        if (!ta::platform::ensureConfigSeeded(configPath)) {
+            qWarning().noquote()
+                << "Could not seed first-run configuration at" << configPath
+                << "— continuing with in-code defaults.";
+        }
+    }
+
+    AppSettings *appsettings = new AppSettings(configPath);
 
     // Language is persisted alongside app_mode. Applied here, before the QML
     // engine is created. Language selection deliberately touches translations
@@ -427,11 +495,41 @@ int main(int argc, char *argv[])
     buildInfo[QStringLiteral("config")]  = QStringLiteral(APP_BUILD_CONFIG);
     buildInfo[QStringLiteral("commit")]  = QStringLiteral(APP_GIT_SHA);
     buildInfo[QStringLiteral("built")]   = kBuildTimestamp;
+    // A1/A2 §41 — runtime platform diagnostics. Early tablet testing needs to
+    // see WHERE the app actually put its data, not where we believe it did;
+    // an Android app-private path is not reachable through a file manager, so
+    // if it is not on screen it cannot be checked at all. Read-only strings.
+    buildInfo[QStringLiteral("platformShell")] =
+        ta::platform::shellName(ta::platform::currentShell());
+    buildInfo[QStringLiteral("qtVersion")]   = QString::fromLatin1(qVersion());
+    buildInfo[QStringLiteral("abi")]         = QSysInfo::buildCpuArchitecture();
+    buildInfo[QStringLiteral("osVersion")]   = QSysInfo::prettyProductName();
+    buildInfo[QStringLiteral("appDataRoot")] = ta::rel::StoragePaths::applicationDataRoot();
+    buildInfo[QStringLiteral("settingsPath")] = configPath;
+    buildInfo[QStringLiteral("sessionsPath")] = ta::rel::StoragePaths::currentSessionsDirectory();
+    buildInfo[QStringLiteral("exportsPath")]  = ta::rel::StoragePaths::exportsDirectory();
+    buildInfo[QStringLiteral("logsPath")]     = ta::rel::StoragePaths::logsDirectory();
     engine.rootContext()->setContextProperty("BUILDINFO", buildInfo);
+
+    // Same facts to the log, so a logcat capture from a tablet in the field is
+    // self-describing without anyone having to navigate to a Settings screen.
+    qInfo().noquote() << "Platform shell:"
+                      << ta::platform::shellName(ta::platform::currentShell())
+                      << "| Qt" << qVersion()
+                      << "| ABI" << QSysInfo::buildCpuArchitecture();
+    qInfo().noquote() << "App data root :" << ta::rel::StoragePaths::applicationDataRoot();
+    qInfo().noquote() << "Settings file :" << configPath;
+    qInfo().noquote() << "Sessions dir  :" << ta::rel::StoragePaths::currentSessionsDirectory();
     // P0 Phase B: product identity for QML. Read-only build-time facts —
     // QML must take product names from here instead of hardcoding them.
     ProductIdentityBridge* productBridge = new ProductIdentityBridge(&app);
     engine.rootContext()->setContextProperty("PRODUCT", productBridge);
+    // A1/A2: platform facts + font tokens for QML. Registered on the ROOT
+    // CONTEXT so it is in scope in every QML file this engine loads, including
+    // report views and floating windows that sit outside the `theme` ancestor
+    // chain (see src/platform/PlatformBridge.h for why that matters).
+    PlatformBridge* platformBridge = new PlatformBridge(&app);
+    engine.rootContext()->setContextProperty("PLATFORM", platformBridge);
     // P0 Phase F: the engine lets a live language switch re-evaluate every
     // qsTr() binding, so most screens change without a restart.
     languageService->setQmlEngine(&engine);
@@ -452,6 +550,27 @@ int main(int argc, char *argv[])
     // ensured no session is active before this can be requested.
     QObject::connect(opMode, &OperatingModeService::restartRequested,
                      qApp, [&lockFile]() {
+        // A1/A2 platform seam. Android has no supported way for an app to
+        // relaunch itself: there is no equivalent of startDetached on our own
+        // package, and the Java tricks that approximate it are brittle and
+        // version-dependent. Deliberately NOT emulated (see
+        // docs/architecture/android-product-architecture.md §5).
+        //
+        // The new mode is already written to config.ini by applyModeChange(),
+        // and OPMODE.restartRequired stays true, so the Settings screen keeps
+        // telling the operator a restart is needed. They close and reopen the
+        // app; the next launch reads the new mode. Nothing is lost.
+        if (!ta::platform::supportsSelfRelaunch()) {
+            LogFile::instance().appendToLogFile(
+                QStringLiteral("Operating-mode change staged; self-relaunch is not "
+                               "available on this platform — operator must restart "
+                               "the application manually."),
+                LogType::interfaceLevel);
+            qInfo().noquote()
+                << "Operating mode changed. Close and reopen Tech Aim to apply it.";
+            return;
+        }
+
         const QString exe = QCoreApplication::applicationFilePath();
         const QString cwd = QDir::currentPath();
         lockFile.unlock();
@@ -507,6 +626,50 @@ int main(int argc, char *argv[])
             return nullptr;
         });
     engine.rootContext()->setContextProperty("INCIDENTS", &incidentController);
+
+    // ── A1/A2: application lifecycle → durability pump ──────────────────
+    // Android may pause, background or kill this process without warning and
+    // without any equivalent of closeEvent. Windows effectively never does.
+    //
+    // This introduces NO new recovery system. Official events are already
+    // written with DurabilityClass::Sync and are durable at write time; the
+    // only state that can be pending is the retry queue, which holds events
+    // accepted while a write was failing. Draining it is exactly what
+    // SessionStore::pumpRetryQueue() exists for — production already drives it
+    // from a backoff timer — so backgrounding simply asks for that same drain
+    // immediately instead of waiting for the next tick.
+    //
+    // Idempotent by construction: pumpRetryQueue() returns true when the queue
+    // is or becomes empty, so repeated lifecycle notifications (Android emits
+    // Inactive then Hidden then Suspended for a single Home press) cost
+    // nothing and cannot corrupt state.
+    //
+    // Every discipline that owns a store is pumped, not just the "current"
+    // one — a Training session and a qualification session are separate stores
+    // and either could be the live one.
+    QObject::connect(&app, &QGuiApplication::applicationStateChanged, qApp,
+                     [&qualController, &finalsController, &finals10mController,
+                      &trainingController, &callDiagnoseController,
+                      &positionTransitionController](Qt::ApplicationState state) {
+        if (state == Qt::ApplicationActive)
+            return;                       // coming back to the foreground
+
+        ta::rel::SessionStore* const stores[] = {
+            qualController.store(),        finalsController.store(),
+            finals10mController.store(),   trainingController.store(),
+            callDiagnoseController.store(), positionTransitionController.store()
+        };
+        int pumped = 0;
+        for (ta::rel::SessionStore* s : stores) {
+            if (s && s->active()) { s->pumpRetryQueue(); ++pumped; }
+        }
+        if (pumped > 0) {
+            LogFile::instance().appendToLogFile(
+                QStringLiteral("Lifecycle: state %1 — drained retry queue for %2 active store(s)")
+                    .arg(static_cast<int>(state)).arg(pumped),
+                LogType::interfaceLevel);
+        }
+    });
     engine.load(QUrl(QLatin1String("qrc:/main.qml")));
     if (engine.rootObjects().isEmpty())
         return -1;

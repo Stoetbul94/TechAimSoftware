@@ -1,5 +1,7 @@
 #include "FinalsAudioService.h"
 
+#include "platform/PlatformService.h"
+
 #include <QSoundEffect>
 #include <QApplication>
 #include <QCoreApplication>
@@ -11,8 +13,18 @@
 FinalsAudioService::FinalsAudioService(QObject* parent)
     : QObject(parent)
 {
-    m_clipsDir = QCoreApplication::applicationDirPath()
-                 + QStringLiteral("/audio/finals");
+    // A1/A2: the clips root is platform-resolved.
+    //
+    // Windows keeps <applicationDirPath>/audio/finals exactly as before —
+    // dropping <cueId>.wav files next to the executable still works and no
+    // deployed install changes.
+    //
+    // Android has no writable, populated "application directory" to read
+    // assets from, so clips resolve through the Qt Android asset namespace
+    // ("assets:/audio/finals") and travel inside the APK. No audio file is
+    // duplicated in the repository to make this work — the repository ships
+    // no WAV clips at all today, on either platform.
+    m_clipsDir = ta::platform::finalsAudioClipsRoot();
 }
 
 QString FinalsAudioService::clipPathForCue(const QString& cueId,
@@ -58,7 +70,23 @@ void FinalsAudioService::playCue(const QString& cueId)
         effectFor(path)->play();
     } else {
         m_lastFallback = true;
-        QApplication::beep();
+        // A1/A2: QApplication::beep() is a SILENT NO-OP on Android. Calling it
+        // there and reporting "fallback played" would claim an audible cue
+        // that never happened — for a finals command sequence, that is a
+        // safety-relevant lie. So the beep is only attempted where it actually
+        // sounds, and the absence is logged rather than papered over.
+        //
+        // usedFallback is still reported truthfully in the signal either way,
+        // so the developer drawer and tests observe the same thing on both
+        // platforms: this cue produced no clip.
+        if (ta::platform::supportsSystemBeep()) {
+            QApplication::beep();
+        } else {
+            qWarning().noquote()
+                << "Finals audio: no clip for cue" << cueId
+                << "and no system beep on this platform — command cue was SILENT."
+                << "Expected clip:" << path;
+        }
     }
     emit cuePlayed(cueId, m_lastFallback);
 }
