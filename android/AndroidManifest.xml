@@ -1,0 +1,151 @@
+<?xml version="1.0"?>
+<!--
+  Tech Aim — Android tablet shell (milestone A1/A2).
+
+  Derived from the Qt 6.5.3 template. Every deviation from that template is
+  deliberate and is noted inline. androiddeployqt substitutes the INSERT
+  placeholders at package time; do not fill them in by hand.
+  (Note: an XML comment may not contain two consecutive hyphens, so the
+  placeholder tokens cannot be quoted literally in this header.)
+
+  PACKAGE ID. za.co.techaim.target sits in the existing product namespace
+  (src/app/ProductIdentity.cpp declares za.co.techaim.electronic-target-control).
+  That declared id cannot be used verbatim as an Android package: Java package
+  segments may not contain hyphens. The namespace is preserved; the leaf is
+  Android-legal.
+
+  PUBLISHER. JAC SHOOTING SOLUTIONS (PTY) LTD. Nothing here is registered or
+  published externally.
+
+  PERMISSIONS. Exactly two, both install-time (no runtime dialog):
+    INTERNET             — the app constructs UDP sockets at startup
+                           (ReceiverTachus) and Modbus TCP is the only target
+                           transport with an Android future. Socket creation
+                           fails outright without it.
+    ACCESS_NETWORK_STATE — report whether a network exists before blaming a
+                           target for a failed connection.
+  Deliberately ABSENT:
+    - No storage permissions. All persistent data lives in app-private
+      storage under QStandardPaths::AppLocalDataLocation, which needs none.
+    - No USB host feature or device intent-filter. USB target acquisition is
+      NOT IMPLEMENTED, and advertising the capability would imply a target
+      can be plugged in. It cannot.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="za.co.techaim.target"
+    android:installLocation="auto"
+    android:versionCode="-- %%INSERT_VERSION_CODE%% --"
+    android:versionName="-- %%INSERT_VERSION_NAME%% --">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!--
+      THE Qt PERMISSION AND FEATURE INJECTION MARKERS ARE DELIBERATELY ABSENT.
+
+      The Qt template carries INSERT_PERMISSIONS and INSERT_FEATURES markers.
+      androiddeployqt expands them by scanning the LINKED Qt MODULES, not by
+      what the application actually does. Because this binary links Qt
+      Multimedia (one WAV cue service) and Qt Bluetooth arrives transitively,
+      that expansion added, verified with `aapt2 dump badging`:
+
+          CAMERA, RECORD_AUDIO, BLUETOOTH, MODIFY_AUDIO_SETTINGS,
+          WRITE_EXTERNAL_STORAGE  (and READ_EXTERNAL_STORAGE by implication)
+
+      plus uses-feature entries for camera and bluetooth hardware.
+
+      None of that is acceptable. An electronic-target scoring application
+      asking a range official for camera and microphone access is a trust
+      problem before it is a technical one, the storage permissions are
+      pointless when every file lives in app-private storage, and the implied
+      uses-feature entries would stop the app installing on a tablet with no
+      camera.
+
+      Removing the markers means androiddeployqt injects nothing and the
+      permission set is exactly the two declared above. If a future feature
+      genuinely needs a permission, declare it HERE, explicitly, with a reason.
+    -->
+
+    <!--
+      Tablet target: 10-13". Small screens are not excluded outright (that
+      would block installation on devices we simply have not tested), but the
+      three-pane shooting UI is designed for a large landscape surface.
+    -->
+    <supports-screens
+        android:anyDensity="true"
+        android:largeScreens="true"
+        android:xlargeScreens="true"
+        android:normalScreens="true"
+        android:smallScreens="true" />
+
+    <application
+        android:name="org.qtproject.qt.android.bindings.QtApplication"
+        android:hardwareAccelerated="true"
+        android:label="Tech Aim"
+        android:allowNativeHeapPointerTagging="false"
+        android:allowBackup="false"
+        android:fullBackupOnly="false">
+        <!--
+          allowBackup=false (template default is true). Session journals are
+          an append-only hash-chained match record. Allowing Android's backup
+          agent to snapshot and later RESTORE that directory could reintroduce
+          a stale journal underneath a running session, which the recovery
+          layer would then treat as authoritative. Sessions are restored by
+          our own recovery path or not at all.
+
+          android:requestLegacyExternalStorage was dropped from the template
+          copy: nothing is written outside app-private storage.
+        -->
+        <activity
+            android:name="org.qtproject.qt.android.bindings.QtActivity"
+            android:configChanges="orientation|uiMode|screenLayout|screenSize|smallestScreenSize|layoutDirection|locale|fontScale|keyboard|keyboardHidden|navigation|mcc|mnc|density"
+            android:label="Tech Aim"
+            android:launchMode="singleTop"
+            android:screenOrientation="sensorLandscape"
+            android:windowSoftInputMode="adjustResize"
+            android:exported="true">
+            <!--
+              windowSoftInputMode=adjustResize: the content area shrinks when
+              the software keyboard opens instead of the keyboard being laid
+              over it. Athlete name entry on the login screen and the incident
+              / coach report forms all sit low enough on a landscape tablet
+              that the default behaviour can bury the focused field.
+
+              This is the conventional fix, not a verified one: whether every
+              focused field ends up visible depends on the layout under a real
+              keyboard, and that is an on-device check. Recorded as an open
+              verification item in README-ANDROID-A1.txt.
+            -->
+            <!--
+              screenOrientation=sensorLandscape (template default is
+              "unspecified"). Landscape only, in either direction, so a tablet
+              flipped 180 degrees on the bench still works while portrait
+              shooting - which the three-pane layout does not support - is not
+              offered.
+
+              configChanges retains the template's full list, which INCLUDES
+              orientation and screenSize. That means Android does NOT destroy
+              and recreate the activity on rotation, so a rotation cannot tear
+              down a live shooting session. SessionStore remains authoritative
+              regardless; this simply avoids exercising recovery for a gesture
+              that should be free.
+            -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.app.lib_name"
+                android:value="-- %%INSERT_APP_LIB_NAME%% --" />
+
+            <meta-data
+                android:name="android.app.arguments"
+                android:value="-- %%INSERT_APP_ARGUMENTS%% --" />
+
+            <meta-data
+                android:name="android.app.extract_android_style"
+                android:value="minimal" />
+        </activity>
+    </application>
+</manifest>

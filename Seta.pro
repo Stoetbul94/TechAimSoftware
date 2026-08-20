@@ -1,4 +1,12 @@
-QT += charts qml quick printsupport widgets xml
+QT += charts qml quick widgets xml
+
+# PrintSupport is a DESKTOP-ONLY link. Audited during the Android milestone
+# (A1/A2): no QPrinter or QPrintDialog is ever constructed anywhere in the
+# codebase — customprint.cpp included the headers but every PDF path goes
+# through QPdfWriter, which lives in QtGui. Windows linkage is unchanged;
+# Android simply does not carry a module it cannot use (Android has no native
+# print engine, so QPrinter would silently degrade to PDF output anyway).
+!android: QT += printsupport
 
 CONFIG += c++17
 #QMAKE_CXXFLAGS += /std:c++17
@@ -15,6 +23,26 @@ VERSION = 0.9.0
 # VFT_DLL. RC_FILE takes precedence over the QMAKE_TARGET_* variables.
 win32: RC_FILE = TechAim.rc
 
+# ── Android tablet shell (milestone A1/A2) ───────────────────────────────
+# Everything Android-specific in this project file lives in THIS scope. The
+# Windows build never evaluates it, so the desktop product is unaffected by
+# construction.
+android {
+    # The Java/manifest/gradle side of the APK. androiddeployqt merges this
+    # over the Qt template; anything absent here falls back to Qt's default.
+    ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android
+
+    # SDK 23 is the floor Qt 6.5 supports; 34 matches the newest platform
+    # installed on the build machine. Both are recorded in
+    # docs/architecture/android-product-architecture.md.
+    ANDROID_MIN_SDK_VERSION = 23
+    ANDROID_TARGET_SDK_VERSION = 34
+
+    # ANDROID_VERSION_NAME is set below, once APP_VERSION_STR exists — qmake
+    # evaluates top to bottom and this scope runs before that assignment.
+    ANDROID_VERSION_CODE = 1
+}
+
 # Release-clean: a previously built Seta.exe sits in the SAME output folder
 # and stays launchable after the rename, so an operator (or a stale shortcut)
 # could run an outdated binary that looks like the product. Delete known
@@ -24,11 +52,23 @@ win32: RC_FILE = TechAim.rc
 # delete the directory rather than the file. shell_path() picks the right
 # separators for whichever shell qmake configured, and both rm -f and del
 # exit 0 when the legacy file is already absent.
-CONFIG(release, debug|release): LEGACY_OUT_DIR = $$OUT_PWD/release
-else:                           LEGACY_OUT_DIR = $$OUT_PWD/debug
-LEGACY_EXES = Seta.exe Seeds.exe
-for(legacy, LEGACY_EXES) {
-    QMAKE_POST_LINK += $$quote($(DEL_FILE) $$shell_quote($$shell_path($$LEGACY_OUT_DIR/$$legacy)))$$escape_expand(\\n\\t)
+#
+# A1/A2: scoped to the DESKTOP build. An Android build links a .so, never a
+# Seta.exe, so there is no stale legacy executable to protect anyone from —
+# and running the cleanup there actively breaks the build. With Git's sh.exe
+# absent from PATH (which the Android build requires, so that qmake emits
+# native paths androiddeployqt can follow) $(DEL_FILE) resolves to cmd's `del`,
+# which reports "The system cannot find the file specified" and returns a
+# FAILURE exit code for an already-absent file. make then aborts the link step.
+# The original comment here assumed del exits 0 in that case; it does not.
+# Windows behaviour is unchanged.
+!android {
+    CONFIG(release, debug|release): LEGACY_OUT_DIR = $$OUT_PWD/release
+    else:                           LEGACY_OUT_DIR = $$OUT_PWD/debug
+    LEGACY_EXES = Seta.exe Seeds.exe
+    for(legacy, LEGACY_EXES) {
+        QMAKE_POST_LINK += $$quote($(DEL_FILE) $$shell_quote($$shell_path($$LEGACY_OUT_DIR/$$legacy)))$$escape_expand(\\n\\t)
+    }
 }
 
 # F9B: build identity embedded at COMPILE time (no runtime git). qmake runs
@@ -39,12 +79,20 @@ for(legacy, LEGACY_EXES) {
 # live-range testing, not the public 1.0. The channel travels with the version
 # so a binary can never be mistaken for a general release.
 APP_VERSION_STR = 0.9.0-RC3a-SETA
+# Android carries its OWN channel string. The Windows value above is a frozen
+# release-candidate identity that was audited and shipped; an APK must never
+# be mistaken for it. A1 is a development milestone, not a release, and the
+# label says so wherever the version is displayed.
+android: APP_VERSION_STR = 0.9.0-ANDROID-A1
 GIT_SHA = $$system(git -C \"$$PWD\" rev-parse --short HEAD)
 isEmpty(GIT_SHA): GIT_SHA = unknown
 DEFINES += APP_VERSION_STR=\\\"$$APP_VERSION_STR\\\"
 DEFINES += APP_GIT_SHA=\\\"$$GIT_SHA\\\"
 CONFIG(release, debug|release): DEFINES += APP_BUILD_CONFIG=\\\"Release\\\"
 else: DEFINES += APP_BUILD_CONFIG=\\\"Debug\\\"
+# Now that APP_VERSION_STR is resolved, hand it to the APK manifest so the
+# version shown in Android's app info matches the version shown in-app.
+android: ANDROID_VERSION_NAME = $$APP_VERSION_STR
 #QMAKE_TARGET_PRODUCT = "TACHUS CPU"
 
 SOURCES += main.cpp \
@@ -160,6 +208,9 @@ INCLUDEPATH += src/mode
 
 # Session Reliability Layer (M0) - QtCore-only storage foundation.
 include(Reliability.pri)
+# Platform boundary (A1/A2). MUST come after Reliability.pri: the platform
+# service resolves paths through ta::rel::StoragePaths.
+include(Platform.pri)
 # QSoundEffect for the finals audio cues (FinalsAudioService).
 QT += multimedia
 
