@@ -102,6 +102,42 @@ Only one item is genuinely mis-placed today: **discipline and programme
 definitions are hardcoded in QML ListModels**. Everything else already sits
 behind a reasonable boundary.
 
+## 4.1 Correction (2026-08-20) — target discovery is platform-specific
+
+*Raised by the Android tablet milestone A1/A2 on `feature/android-tablet`. The
+matrix row above is left intact deliberately; this entry supersedes its
+classification rather than editing it away.*
+
+**The matrix classifies "Serial / FTDI discovery" as A (core/shared). That
+classification is too broad and is corrected here.**
+
+Two different things were collapsed into one row:
+
+| Concern | Correct class | Why |
+|---|---|---|
+| Target **connection interface** — what a target is, how one is chosen, ranked, remembered and reconnected (`ISerialDeviceProvider`, `TargetDeviceFingerprint`, `PaperFeedCoordinator`) | **A — genuinely shared** | Pure logic over a `SerialDeviceInfo` struct. It does not care where the list came from and compiles unchanged on every platform. |
+| **Windows FTDI/COM enumeration** — `QSerialPortInfo::availablePorts()`, `CreateFileA("COMxx:")`, CH340/CP210x/FT232 device-node access (`QtSerialDeviceProvider`, libmodbus RTU backend) | **Platform shell, not core** | Has no Android implementation and cannot have one without the Java `UsbManager` API. On an unrooted tablet `availablePorts()` returns nothing usable. |
+
+**The rationale.** The generic core owns the *interface*; it does not own one
+platform's enumeration mechanism. The existing code already had this right —
+`ISerialDeviceProvider` was introduced so the selection logic could be tested
+without hardware — but the architecture document described the whole row as
+shared, which would license a future product to assume COM-port enumeration is
+universally available. It is not.
+
+Nothing in the codebase moves as a result of this correction. It changes what
+may be *assumed*, not what is *built*:
+
+- `src/target/TargetDeviceFingerprint.*` and `PaperFeedCoordinator.*` stay
+  shared and are used unmodified by the Android build.
+- `QtSerialDeviceProvider` is Windows shell. Android supplies its own provider
+  behind the same interface.
+- libmodbus stays a vendored shared dependency, but its **RTU backend** is
+  Windows/desktop-only in practice while its **TCP backend** is portable.
+
+Detail and the transport decision: `android-target-transport-options.md` and
+`android-product-architecture.md` §4.
+
 ## 5. SETA competition-profile design (design only)
 
 A profile is **data**, not code. One record per programme, loaded from a
