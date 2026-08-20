@@ -83,7 +83,7 @@ APP_VERSION_STR = 0.9.0-RC3a-SETA
 # release-candidate identity that was audited and shipped; an APK must never
 # be mistaken for it. A1 is a development milestone, not a release, and the
 # label says so wherever the version is displayed.
-android: APP_VERSION_STR = 0.9.0-ANDROID-A1
+android: APP_VERSION_STR = 0.9.0-ANDROID-A2.5
 GIT_SHA = $$system(git -C \"$$PWD\" rev-parse --short HEAD)
 isEmpty(GIT_SHA): GIT_SHA = unknown
 DEFINES += APP_VERSION_STR=\\\"$$APP_VERSION_STR\\\"

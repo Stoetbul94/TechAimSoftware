@@ -870,3 +870,40 @@ The no-target panel instructs the operator to connect a USB cable. On Android
 USB acquisition is NOT IMPLEMENTED, so this advises an action that cannot work
 and implies a capability the build does not have. The wording needs to follow
 the platform. Recorded rather than changed, as it is operator-facing copy.
+
+---
+
+## 1n. Android A2.5 — emulator/runtime qualification findings (2026-08-20)
+
+Found by driving the real APK on an Android 14 / API 34 emulator across three
+tablet display profiles. Verified on device unless stated.
+
+| ID | Severity | Defect | Status |
+|---|---|---|---|
+| UI-AND-013 | **1 — data integrity** | **PDF export produced a valid but COMPLETELY EMPTY page.** `MatchReportView.exportPdf()` scheduled every `grabToImage()` and then called `CUSTOMPRINT.createPdf()` on the next line. `grabToImage` is asynchronous, so no callback had run and `m_images` was still empty. It only ever appeared to work on Windows because `createPdf()` opens a **modal QFileDialog**, and a modal spins the event loop — the dialog was an accidental synchronisation point. Android has no such dialog, so the race became visible. Measured: 1,234 bytes, 1 page, **0 image XObjects**. Parallel grabs also never guaranteed page ORDER. | **RESOLVED — VERIFIED ON DEVICE.** Grabs now run sequentially and the PDF is written only when the last page has been captured (the pattern `TrainingReportView`, `CallDiagnoseReportView` and `PositionTransitionReportView` already used). After: **831,421 bytes, 2 pages, 2 image XObjects**, valid A4. |
+| UI-AND-014 | 2 | **Software keyboard completely hid the focused field.** `windowSoftInputMode` was `adjustResize`, which **has no effect on a fullscreen window** — and this activity is fullscreen so the three-pane layout gets every pixel. On a 345dp-tall landscape screen the IME covered roughly two thirds of the display and the athlete-name field was entirely behind it. Text reached the field, but the athlete could not see what they were typing. | **RESOLVED — VERIFIED ON DEVICE**: `adjustPan` pans the window instead; "ARNOLD" was observed readable in the field with the keyboard open. |
+| UI-AND-015 | 2 | **A recovered match loses the athlete name in the UI.** After force-stop and Resume, the shooting screen and the **Match Report** both show the default `Athlete`, while the recovery dialog correctly showed `RNOLDA`. The journal is correct — `"athlete":"RNOLDA"` is in the `SessionStarted` event — so this is a UI restore gap, not a storage fault. Consequence: **a recovered match prints the wrong athlete on the report.** | **OPEN — NOT FIXED.** Not Android-specific (the resume path is shared), and out of A2.5 scope, which forbids changing qualification/recovery logic. Needs confirmation on Windows and a decision. |
+| UI-AND-016 | 3 | Several icon glyphs render as missing-glyph boxes on Android (report window title bar, the "Save PDF" leading glyph). The characters are not present in the Android system font. | **OPEN — cosmetic.** |
+| UI-AND-017 | 3 | At the low-resolution tablet profile (1024x516dp) the right pane's "SERIES 1" heading visually overlaps the "Score / Time (s)" column headers. | **OPEN — cosmetic, low-res profile only.** |
+
+### Resolved by investigation — NOT an application defect
+
+**The black wedges and diagonal tearing reported in A1/A2 are an emulator
+software-OpenGL artefact, not an application renderer defect.** Established by
+running the *same APK* under two emulator graphics backends:
+
+| Renderer | Result | Evidence |
+|---|---|---|
+| `-gpu auto` (host GPU) | **Clean** — no artefacts, repeatedly | `docs/img/android-a25-hostgpu-clean.png` |
+| `-gpu swiftshader_indirect` (software) | **Artefact reproduced** — identical wedges/tearing | `docs/img/android-a25-swiftshader-artefact.png` |
+
+Answer to the A2.5 §3 question: **A — artefact only occurs with the software
+renderer.** The A1/A2 run was headless on swiftshader, which is why it appeared.
+This remains **unconfirmed on physical hardware** — no tablet was available.
+
+### Refinement to UI-AND-011 (Android Back)
+
+Back terminates the app **only when no IME is showing**. With the software
+keyboard up, Back correctly dismisses the keyboard and leaves the app running
+(verified: same PID). The hazard is therefore narrower than first recorded, but
+still real during a match.

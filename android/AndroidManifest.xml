@@ -102,19 +102,24 @@
             android:label="Tech Aim"
             android:launchMode="singleTop"
             android:screenOrientation="sensorLandscape"
-            android:windowSoftInputMode="adjustResize"
+            android:windowSoftInputMode="adjustPan"
             android:exported="true">
             <!--
-              windowSoftInputMode=adjustResize: the content area shrinks when
-              the software keyboard opens instead of the keyboard being laid
-              over it. Athlete name entry on the login screen and the incident
-              / coach report forms all sit low enough on a landscape tablet
-              that the default behaviour can bury the focused field.
+              windowSoftInputMode=adjustPan, changed from adjustResize in A2.5
+              after testing it on an API 34 emulator.
 
-              This is the conventional fix, not a verified one: whether every
-              focused field ends up visible depends on the layout under a real
-              keyboard, and that is an on-device check. Recorded as an open
-              verification item in README-ANDROID-A1.txt.
+              ADJUST_RESIZE HAS NO EFFECT ON A FULLSCREEN WINDOW. This activity
+              runs full screen (main.qml sets visibility FullScreen on Android
+              so the three-pane shooting layout gets every pixel), and Android
+              does not resize a fullscreen window for the IME. Measured result:
+              tapping the athlete-name field opened a keyboard covering roughly
+              two thirds of a 345dp-tall landscape screen, and the focused
+              field was COMPLETELY hidden behind it. Text still reached the
+              field, but the athlete could not see what they were typing.
+
+              ADJUST_PAN pans the window instead of resizing it, which does
+              work with a fullscreen window: the system scrolls the focused
+              control above the keyboard.
             -->
             <!--
               screenOrientation=sensorLandscape (template default is

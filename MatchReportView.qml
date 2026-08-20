@@ -298,23 +298,58 @@ Item {
 
     // Manual "Save PDF" (footer). Grab path unchanged from the old printImage():
     // page 1 (report3p or print_region) + each series page -> CUSTOMPRINT -> PDF.
+    // Grab pages SEQUENTIALLY and write the PDF only once every page has
+    // actually been captured. Same pattern TrainingReportView,
+    // CallDiagnoseReportView and PositionTransitionReportView already use.
+    //
+    // The previous version scheduled all the grabs and then called
+    // createPdf() on the very next line. grabToImage is ASYNCHRONOUS: none of
+    // those callbacks had run yet, so m_images was still EMPTY when the PDF
+    // was written.
+    //
+    // It appeared to work on Windows only by accident. createPdf() opens a
+    // modal QFileDialog, and a modal dialog spins the event loop - so while
+    // the operator was choosing a filename the grab callbacks fired and
+    // filled m_images just in time. The dialog was acting as an accidental
+    // synchronisation point.
+    //
+    // Android has no such dialog (export goes straight to the app-owned
+    // Exports directory), nothing spun the loop, and the export produced a
+    // structurally valid but COMPLETELY EMPTY A4 page - verified on device:
+    // 1234 bytes, one page, zero image XObjects.
+    //
+    // Sequencing also fixes page ORDER, which parallel grabs never guaranteed:
+    // pages were appended in completion order, not document order.
+    //
+    // addImage stays INSIDE each callback because result.image is only valid
+    // for the callback's duration.
     function exportPdf()
     {
         screenPresence._pendingClose = true
         CUSTOMPRINT.clearImagesList()
         var page1 = is3PMatch ? report3p : print_region
         var pages = is3PMatch ? report3pSeriesRepeater : reportRepeater
-        var stat = page1.grabToImage(function(result) {
-            CUSTOMPRINT.addImage(result.image);
-        }, Qt.size(8917/4, 13033/4)); //2229, 3258
-        for (var i=0; i < pages.count; ++i)
-        {
-            pages.itemAt(i).grabToImage(function(result) {
-                CUSTOMPRINT.addImage(result.image);
-            }, Qt.size(8917/4, 13033/4));
+        var grabSize = Qt.size(8917/4, 13033/4)   //2229, 3258
+
+        function finish() {
+            CUSTOMPRINT.setServerPath(APPSETTINGS.getPrintPDFFilePath());
+            CUSTOMPRINT.createPdf();
         }
-        CUSTOMPRINT.setServerPath(APPSETTINGS.getPrintPDFFilePath());
-        CUSTOMPRINT.createPdf();
+        // A failed grab must never strand the export with no PDF at all, so a
+        // false return advances to the next page instead of ending the chain.
+        function grabSeriesPage(i) {
+            if (i >= pages.count) { finish(); return }
+            var started = pages.itemAt(i).grabToImage(function(result) {
+                CUSTOMPRINT.addImage(result.image);
+                grabSeriesPage(i + 1);
+            }, grabSize);
+            if (!started) grabSeriesPage(i + 1);
+        }
+        var startedFirst = page1.grabToImage(function(result) {
+            CUSTOMPRINT.addImage(result.image);
+            grabSeriesPage(0);
+        }, grabSize);
+        if (!startedFirst) grabSeriesPage(0);
     }
 
     // Kiosk auto-export path, unchanged from the old printImageInNetworkPath().

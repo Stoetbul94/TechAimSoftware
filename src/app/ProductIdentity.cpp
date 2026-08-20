@@ -44,7 +44,20 @@ ProductIdentity makeTechAim()
     // exists to observe the acquisition decision. What must NEVER change is
     // the invariant the harness enforces: an internal field-test channel that
     // makes no production, general-release or stable claim.
+    // A2.5 branding audit. The channel is shown in Settings > About and logged
+    // at every startup, so on the generic Tech Aim ANDROID product "SETA
+    // Evaluation" was simply the wrong customer's name on the tin - this APK
+    // is not a SETA evaluation of anything. It is ordinary (non-legal)
+    // branding, so it is corrected here rather than reported.
+    //
+    // Windows is deliberately untouched: that build IS the SETA evaluation
+    // candidate, and its channel names the candidate as the comment above
+    // requires.
+#if defined(Q_OS_ANDROID)
+    p.releaseChannel = QStringLiteral("Android Development");
+#else
     p.releaseChannel = QStringLiteral("SETA Evaluation");
+#endif
 
     // Shown wherever a result could be mistaken for an official one. Short
     // enough to sit in a status strip without covering scores or controls.

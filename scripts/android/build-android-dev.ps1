@@ -20,7 +20,11 @@ param(
     [ValidateSet('arm64-v8a','x86_64')]
     [string]$Abi = 'arm64-v8a',
     [switch]$Clean,
-    [string]$ExpectedBranch = 'feature/android-tablet'
+    [string]$ExpectedBranch = 'feature/android-tablet',
+    # Milestone label used for the dist folder and the APK filename. Bump this
+    # per milestone so artefacts from different qualification rounds can never
+    # be confused with each other.
+    [string]$Milestone = 'A2_5'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -150,9 +154,9 @@ $apk = Get-ChildItem (Join-Path $buildDir 'android-build\build\outputs\apk') -Re
        Sort-Object LastWriteTime -Descending | Select-Object -First 1
 if (-not $apk) { Fail "no APK found under $buildDir\android-build\build\outputs\apk" }
 
-$distDir = Join-Path $repo 'dist\TechAim-Android-A1'
+$distDir = Join-Path $repo "dist\TechAim-Android-$Milestone"
 New-Item -ItemType Directory -Force -Path $distDir | Out-Null
-$outName = "TechAim-Android-A1-$Abi.apk"
+$outName = "TechAim-Android-$Milestone-$Abi.apk"
 $outPath = Join-Path $distDir $outName
 Copy-Item $apk.FullName $outPath -Force
 
@@ -160,6 +164,7 @@ $sha = (Get-FileHash $outPath -Algorithm SHA256).Hash.ToLower()
 
 Write-Host ''
 Write-Host '================ BUILD COMPLETE ================' -ForegroundColor Green
+Write-Host "  Milestone: $Milestone"
 Write-Host "  ABI      : $Abi"
 Write-Host "  Branch   : $branch"
 Write-Host "  Commit   : $commit"
