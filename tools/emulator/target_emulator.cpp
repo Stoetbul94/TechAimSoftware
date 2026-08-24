@@ -101,6 +101,15 @@ struct Emu {
     int  resetLatencyMs = 0;
     bool resetPending   = false;
     time_t resetAskedAt = 0;
+
+    // -- the remaining release-blocking scenarios (section 13) -------------
+    int  jumpEverySec  = 0;        // H: counter leaps forward, no coordinates
+    int  jumpBy        = 0;
+    time_t lastJump    = 0;
+    bool failCoordReads = false;   // J: the coordinate region answers an error
+    int  flakyCoordOneIn = 0;      // K: every Nth coordinate read fails
+    long coordReadSeq  = 0;
+    int  dropAfterSec  = 0;        // L: drop the client, keep the counter
 };
 
 static void setShot(modbus_mapping_t* m, int index, double xMm, double yMm)
@@ -196,6 +205,37 @@ static void applyScenario(Emu& e, modbus_mapping_t* m)
         if (e.fireEverySec == 0) e.fireEverySec = 8;
         break;
 
+    case 'H':   // Counter JUMPS forward with no coordinates behind it. A real
+        // lost-shot condition - the guard must still fire. This is the case the
+        // ACQ-FLUSH-001 fix must NOT have weakened.
+        e.hwCount = 0; e.honourReset = true;
+        if (e.jumpEverySec == 0) e.jumpEverySec = 12;
+        if (e.jumpBy == 0) e.jumpBy = 4;
+        break;
+
+    case 'J':   // Every coordinate read fails. The counter still advances, so
+        // the application sees a genuine shot and cannot read where it landed.
+        // It must accept nothing rather than decode the buffer it was given.
+        e.hwCount = 0; e.honourReset = true;
+        e.failCoordReads = true;
+        if (e.fireEverySec == 0) e.fireEverySec = 8;
+        break;
+
+    case 'K':   // A flaky link: one coordinate read in three fails. Partial
+        // acquisition is worse than none, because some shots look fine.
+        e.hwCount = 0; e.honourReset = true;
+        e.flakyCoordOneIn = 3;
+        if (e.fireEverySec == 0) e.fireEverySec = 8;
+        break;
+
+    case 'L':   // Disconnect mid-session and keep the counter. On reconnect the
+        // target reports the SAME count it had - nothing was missed, and the
+        // application must resume without inventing or replaying anything.
+        e.hwCount = 0; e.honourReset = true;
+        if (e.fireEverySec == 0) e.fireEverySec = 6;
+        if (e.dropAfterSec == 0) e.dropAfterSec = 40;
+        break;
+
     default:
         e.hwCount = 0; e.honourReset = true;
         break;
@@ -232,12 +272,19 @@ int main(int argc, char* argv[])
         else if (a == "--fire-every" && i + 1 < argc) e.fireEverySec = atoi(argv[++i]);
         else if (a == "--fire-limit" && i + 1 < argc) e.fireLimit = atoi(argv[++i]);
         else if (a == "--reset-latency-ms" && i + 1 < argc) e.resetLatencyMs = atoi(argv[++i]);
+        else if (a == "--jump-every" && i + 1 < argc) e.jumpEverySec = atoi(argv[++i]);
+        else if (a == "--jump-by" && i + 1 < argc) e.jumpBy = atoi(argv[++i]);
+        else if (a == "--drop-after" && i + 1 < argc) e.dropAfterSec = atoi(argv[++i]);
         else if (a == "--help") {
             printf("target_emulator --scenario <A-N> [--port 1502] [--delay-ms 0]\n"
                    "                [--fire-after SEC] [--fire-every SEC] [--fire-limit N]\n"
                    "                [--fire-delta N] [--reset-latency-ms MS]\n"
                    "  F  10-shot flush boundary, hands-free (ACQ-FLUSH-001)\n"
-                   "  G  reconnect with a mismatched counter (ACQ-DESYNC-002)\n");
+                   "  G  reconnect with a mismatched counter (ACQ-DESYNC-002)\n"
+                   "  H  counter jumps forward with no coordinates (real lost shots)\n"
+                   "  J  every coordinate read fails (ACQ-READ-004)\n"
+                   "  K  one coordinate read in three fails - a flaky link\n"
+                   "  L  disconnect mid-session, reconnect with the SAME counter\n");
             return 0;
         }
     }
@@ -324,6 +371,30 @@ int main(int argc, char* argv[])
                       7.0 - (e.shotsFired % 13) * 1.1);
         }
 
+        // H. A counter that leaps forward with NOTHING written behind it -
+        // shots the target counted and the application never got. This is a
+        // real lost-shot condition and the guard must still catch it: the
+        // ACQ-FLUSH-001 work must not have bought its boundary by going deaf.
+        if (e.jumpEverySec > 0
+            && difftime(time(NULL), e.lastJump) >= e.jumpEverySec) {
+            e.lastJump = time(NULL);
+            e.hwCount += e.jumpBy;
+            publishCount(map, e.hwCount);
+            printf("[emu] COUNTER JUMPED by %d with no coordinates -> now %d\n",
+                   e.jumpBy, e.hwCount);
+            fflush(stdout);
+        }
+
+        // L. Drop the client mid-session and keep the counter. The application
+        // must come back, see the SAME count, and resume without replaying.
+        if (e.dropAfterSec > 0
+            && difftime(time(NULL), connectedAt) >= e.dropAfterSec) {
+            e.dropAfterSec = 0;                  // once per run
+            printf("[emu] DROPPING THE CLIENT - counter stays %d\n", e.hwCount);
+            fflush(stdout);
+            break;
+        }
+
         // A reset the target honours only after resetLatencyMs. The
         // application must judge nothing while its own reset is outstanding.
         if (e.resetPending && difftime(time(NULL), e.resetAskedAt) * 1000.0
@@ -363,6 +434,27 @@ int main(int argc, char* argv[])
                 fflush(stdout);
             } else if (addr == kRegMotorOn && val == 0) {
                 e.motorOn = false;
+            }
+        }
+
+        // J / K. ACQ-READ-004 at the wire. A read of the coordinate region is
+        // answered with a server failure instead of data, so the application
+        // gets a negative return code and a buffer it did not fill. It must
+        // decode nothing, accept nothing, score nothing and feed nothing.
+        if (rc >= 6 && (query[7] == 0x03 || query[7] == 0x04)) {
+            const int raddr = (query[8] << 8) | query[9];
+            if (raddr > kRegShotBase) {
+                ++e.coordReadSeq;
+                const bool fail = e.failCoordReads
+                    || (e.flakyCoordOneIn > 0 && (e.coordReadSeq % e.flakyCoordOneIn) == 0);
+                if (fail) {
+                    printf("[emu] COORDINATE READ REFUSED addr=%d (seq %ld)\n",
+                           raddr, e.coordReadSeq);
+                    fflush(stdout);
+                    modbus_reply_exception(ctx, query,
+                                           MODBUS_EXCEPTION_SLAVE_OR_SERVER_FAILURE);
+                    continue;
+                }
             }
         }
 
