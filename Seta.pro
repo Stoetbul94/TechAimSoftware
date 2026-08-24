@@ -38,7 +38,13 @@ for(legacy, LEGACY_EXES) {
 # 0.9.0-RC2 — INTERNAL FIELD TEST. This is a release candidate for controlled
 # live-range testing, not the public 1.0. The channel travels with the version
 # so a binary can never be mistaken for a general release.
-APP_VERSION_STR = 0.9.0-RC3a-SETA
+# 0.9.0-RC3B-DIAG - INTERNAL PHYSICAL QUALIFICATION. Not a SETA evaluation
+# build and not to be sent as one: developer_mode is 1 on purpose, because
+# this build exists to be diagnosed at the range. RC3a stays exactly where
+# it is - it is tagged, hashed and handed over, and nothing here overwrites
+# it. The next external build gets its own number, decided after the
+# physical qualification passes, not before.
+APP_VERSION_STR = 0.9.0-RC3B-DIAG
 GIT_SHA = $$system(git -C \"$$PWD\" rev-parse --short HEAD)
 isEmpty(GIT_SHA): GIT_SHA = unknown
 DEFINES += APP_VERSION_STR=\\\"$$APP_VERSION_STR\\\"
