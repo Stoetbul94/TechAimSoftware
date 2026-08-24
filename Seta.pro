@@ -211,6 +211,15 @@ include(Reliability.pri)
 # Platform boundary (A1/A2). MUST come after Reliability.pri: the platform
 # service resolves paths through ta::rel::StoragePaths.
 include(Platform.pri)
+
+# RMS node telemetry: the shared protocol contract + this station's publisher.
+# Node -> RMS observation only; there is no inbound command path.
+#
+# SHARED, NOT PLATFORM-SPECIFIC: this include is deliberately unscoped, so the
+# Windows, Android and SETA-branded builds all compile the SAME publisher and
+# speak the SAME protocol v1. There is no per-platform networking fork.
+include(Telemetry.pri)
+QT += network
 # QSoundEffect for the finals audio cues (FinalsAudioService).
 QT += multimedia
 

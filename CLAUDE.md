@@ -89,6 +89,35 @@ screenshot cannot be produced, the correct status is
 Do not describe a concept mockup as the application. Concept files stay stamped
 **CONCEPT MOCKUP — NOT CURRENT APPLICATION** and are never cited as evidence.
 
+## RMS node telemetry (shared foundation)
+
+The target station publishes protocol-v1 telemetry to a Range Management
+System. **Before touching it, read
+`docs/architecture/rms-milestone-2-node-telemetry.md`.**
+
+- `src/rms/RmsProtocol.*` is the **shared wire contract** — the one
+  description of the format, compiled by the node (encode) and by RMS
+  (decode). Never write a second copy on either side. Nothing else from
+  `src/rms/` belongs to the node; `Telemetry.pri` holds that line.
+- **Publish only from `SessionStore::eventApplied`, with `replayed == false`.**
+  That is downstream of validation and the reducer, which is what makes it
+  impossible to publish a raw Modbus read, a candidate shot or a rejected one.
+  Never add a publish call in the acquisition path.
+- **Telemetry may never affect a shot.** The slot only formats bytes and
+  appends to a bounded outbox; sending is on a timer, off that call stack.
+  No socket call there, no synchronous retry, no unbounded queue.
+- **Node → RMS only.** `UdpTelemetrySink` never binds; the legacy inbound port
+  7756 is untouched; there is no command grammar in v1.
+- Three fields are deliberately NOT sent — `innerTen`, `position`, and
+  sighters as accepted shots. Each is a v2 question, and none may be faked;
+  the reasons are in the milestone document.
+- Legacy `&*&` / `shootdata` telemetry is unchanged and additive-only. Never
+  re-dress a legacy packet as a v1 message.
+- Harnesses: `tests/reliability` (`QT = core`, so compiling proves the
+  publisher has no GUI or socket dependency) and `tests/telemetry`
+  (`QT = core network`, the real UDP path). `tools/rmsnode` is a
+  **development-only** multi-node harness.
+
 ## Architecture, in short
 
 - `ModReader/qModMaster.pro` is `include()`d directly into `Seta.pro` — one
