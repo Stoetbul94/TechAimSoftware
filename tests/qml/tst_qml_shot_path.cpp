@@ -925,6 +925,21 @@ int main(int argc, char* argv[])
         check(my > 0 && tw.mid(my, 520).contains(QStringLiteral("qQNaN()"))
               && !tw.mid(my, 520).contains(QStringLiteral("return -1;")),
               "ACQ-SENTINEL-003: getYMPIForShoot returns no numeric sentinel either");
+
+        // Every OTHER C++ consumer of a coordinate, categorised and guarded.
+        // SCORING CRITICAL because each one publishes off the machine: the UDP
+        // broadcast to the range network, the server lane file and the SETA
+        // lane CSV. REPORTING for the printed PDF table, whose loop is driven
+        // by a SEPARATE counter (m_scoreList_gameMode) and can therefore
+        // outrun the coordinate arrays.
+        for (const char* who : { "broadCastNewShoot", "updateShootData",
+                                 "updateSetaShootData", "getPDFString" }) {
+            const int at = tw.indexOf(QStringLiteral("TachusWidget::") + QLatin1String(who));
+            const QString body = at > 0 ? tw.mid(at, 1400) : QString();
+            check(at > 0 && body.contains(QStringLiteral("coordinateHasValue(")),
+                  "ACQ-SENTINEL-003: this coordinate consumer asks before it publishes",
+                  QLatin1String(who));
+        }
         check(mx > 0 && tw.mid(mx, 520).contains(QStringLiteral("index >= m_xCordList.count()")),
               "ACQ-SENTINEL-003: getXMPIForShoot bounds the index it indexes with, not shootNumber");
     }

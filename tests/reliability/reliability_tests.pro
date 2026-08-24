@@ -15,6 +15,9 @@ INCLUDEPATH += $$PWD/../../src/training
 SOURCES += $$PWD/../../src/qualification/QualificationController.cpp
 SOURCES += $$PWD/../../src/incident/EstIncidentController.cpp
 SOURCES += $$PWD/../../src/mode/OperatingModeService.cpp
+# LOG-DEFECT-007 is tested against the REAL logger, not a copy of it.
+SOURCES += $$PWD/../../logfile.cpp
+INCLUDEPATH += $$PWD/../..
 # Stage 5: the Wind Map controller. Compiling it in this QT=core harness is
 # what proves it carries no QML/GUI dependency.
 SOURCES += $$PWD/../../src/training/WindMapController.cpp
@@ -55,6 +58,7 @@ SOURCES += \
     tst_windmap_dispersion.cpp \
     tst_target_hardware.cpp \
     tst_acquisition_integrity.cpp \
+    tst_logging_integrity.cpp \
     ../../src/target/TargetDeviceFingerprint.cpp \
     ../../src/target/PaperFeedCoordinator.cpp \
     seed_windmap.cpp \

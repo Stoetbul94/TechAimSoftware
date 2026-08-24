@@ -124,6 +124,7 @@ void run_windmap_verdict_tests();
 void run_windmap_dispersion_tests();
 void run_target_hardware_tests();
 void run_acquisition_integrity_tests();
+void run_logging_integrity_tests();
 void run_training_parity_tests();
 void run_fixture_tests(bool regenerate);
 

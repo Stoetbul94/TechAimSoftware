@@ -360,6 +360,109 @@ void run_acquisition_integrity_tests()
               "E. the repeated-10.8 path does not reappear later in the session");
     }
 
+    // == tablet02_reconnect_desync_must_never_score_sentinel ================
+    //
+    // The named, permanent regression for the 2026-08-23 corruption. It is in
+    // two halves ON PURPOSE.
+    //
+    // The first half is the HISTORICAL implementation, written out here as the
+    // handful of lines it actually was, and driven through the exact Tablet-02
+    // sequence. It must still FAIL - if it does not, this test is not
+    // reproducing the defect and proves nothing about the fix. The second half
+    // drives the current sequencer through the same sequence and must not
+    // reach the sentinel at all.
+    //
+    // The sequence, from tachus_log23082026-150736.log and session 6506fc2d:
+    //   ten shots captured, counter flushed, USB replugged, the target answers
+    //   "target reports 1", the next genuine shot arrives with real
+    //   coordinates (-3.9, +1.0 mm as logged) - and the application asked for a
+    //   coordinate index one past the end of its own arrays.
+    {
+        // -- the historical implementation, exactly as it behaved ------------
+        struct LegacyTachus {
+            int oldResetCount = 0;          // m_oldResetCount
+            int currentShoots = 0;          // m_currentShootsCount
+            std::vector<double> xs, ys;     // m_xCordList / m_yCordList
+            int  shootCount() const { return oldResetCount + currentShoots; }
+            // getXCord()/getYCord() as they were: -1 for an index it does not
+            // hold, which is a legal coordinate in millimetres.
+            double xCord(int index) const {
+                if (xs.empty() || index == 0) return -1;
+                if (static_cast<int>(xs.size()) >= index) return xs[index - 1];
+                return -1;
+            }
+            double yCord(int index) const {
+                if (ys.empty() || index == 0) return -1;
+                if (static_cast<int>(ys.size()) >= index) return ys[index - 1];
+                return -1;
+            }
+        } legacy;
+
+        for (int i = 1; i <= 10; ++i) {                  // ten real shots
+            legacy.xs.push_back(-2.0 + i * 0.3);
+            legacy.ys.push_back(1.0 - i * 0.2);
+            legacy.currentShoots = i;
+        }
+        // The flush at ten: the baseline is retired and zeroed.
+        legacy.oldResetCount += legacy.currentShoots;    // 10
+        legacy.currentShoots = 0;
+        // The replug. The target answers 1 and the old code simply assigned it.
+        legacy.currentShoots = 1;                        // "adopted as baseline"
+        check(legacy.shootCount() == 11 && legacy.xs.size() == 10,
+              "LEGACY. the reconnect leaves getShootCount()=11 against 10 coordinates",
+              QStringLiteral("shootCount=%1 coords=%2")
+                  .arg(legacy.shootCount()).arg(legacy.xs.size()));
+        // The next genuine shot: real coordinates arrive and are stored...
+        legacy.xs.push_back(-3.9); legacy.ys.push_back(1.0);
+        legacy.currentShoots = 2;
+        const int legacyAsked = legacy.shootCount();     // 12
+        const double lx = legacy.xCord(legacyAsked);
+        const double ly = legacy.yCord(legacyAsked);
+        check(legacyAsked == 12 && static_cast<int>(legacy.xs.size()) == 11,
+              "LEGACY. it asks for coordinate 12 while holding 11",
+              QStringLiteral("asked=%1 held=%2").arg(legacyAsked).arg(legacy.xs.size()));
+        check(qFuzzyCompare(lx, -1.0) && qFuzzyCompare(ly, -1.0),
+              "LEGACY. and receives the -1/-1 sentinel - the pair that scored 10.8",
+              QStringLiteral("x=%1 y=%2").arg(lx).arg(ly));
+        // The measured coordinate was RIGHT THERE, one index below.
+        check(qFuzzyCompare(legacy.xCord(11), -3.9) && qFuzzyCompare(legacy.yCord(11), 1.0),
+              "LEGACY. the genuine coordinate existed at index 11 and was never used");
+
+        // -- the current implementation, same sequence -----------------------
+        AcquisitionSequencer seq; FakeTarget t; AppState app;
+        long long now = 0;
+        settle(seq, t, app, now, 3);
+        for (int i = 1; i <= 10; ++i)
+            fireAndSettle(seq, t, app, now, -2.0 + i * 0.3, 1.0 - i * 0.2);
+        check(app.faults == 0 && app.xs.size() == 10,
+              "TABLET02. ten shots captured before the flush");
+
+        // The link drops and the target comes back reading 1.
+        seq.noteLinkLost();
+        t.counter = 1;
+        settle(seq, t, app, now, 6);
+        check(seq.capturedShots() == static_cast<int>(app.xs.size()),
+              "TABLET02. after the reconnect the shot count IS the coordinate count",
+              QStringLiteral("seq=%1 coords=%2").arg(seq.capturedShots()).arg(app.xs.size()));
+
+        // The genuine next shot, with the coordinates the field log recorded.
+        const size_t before = app.xs.size();
+        fireAndSettle(seq, t, app, now, -3.9, 1.0);
+        check(app.tenPointEightFromSentinel == 0,
+              "TABLET02. NO shot is scored from a coordinate that does not exist");
+        check(!app.everScoredWithoutCoordinate,
+              "TABLET02. the sentinel path is not merely unlikely - it is unreachable");
+        const bool captured = app.xs.size() == before + 1;
+        const bool faulted  = app.faults > 0;
+        check(captured || faulted,
+              "TABLET02. the outcome is the real coordinate OR an explicit fault - never a guess",
+              QStringLiteral("captured=%1 faults=%2").arg(captured).arg(app.faults));
+        if (captured)
+            check(qFuzzyCompare(app.xs.back(), -3.9) && qFuzzyCompare(app.ys.back(), 1.0),
+                  "TABLET02. and it is the coordinate the target actually measured",
+                  QStringLiteral("x=%1 y=%2").arg(app.xs.back()).arg(app.ys.back()));
+    }
+
     // ══ TEST F — FAILED COORDINATE READ ════════════════════════════════════
     {
         AcquisitionSequencer seq; FakeTarget t; AppState app;
@@ -463,6 +566,64 @@ void run_acquisition_integrity_tests()
         }
     }
 
+    // == TEST I-2 - RECONNECT WITH THE TARGET AT OR AHEAD OF THE BASELINE ===
+    // TEST I covers a target that comes back BEHIND the application, which is
+    // what a power-cycled target does. The other half of the field space is a
+    // target that kept its counter across the interruption: it reads the same
+    // as the baseline (nothing happened while we were blind) or ahead of it
+    // (the athlete fired and we did not see it).
+    //
+    // POLICY, one line each:
+    //   same      resume; nothing was missed
+    //   +1 / +2   resume, and SAY that N shots were counted and never captured
+    //             - they are not ours to invent, replay or renumber
+    // In every case the shot number stays equal to the coordinates held.
+    {
+        const int ahead[] = { 0, 1, 2 };
+        for (unsigned k = 0; k < 3; ++k) {
+            AcquisitionSequencer seq; FakeTarget t; AppState app;
+            long long now = 0;
+            settle(seq, t, app, now, 3);
+            for (int n = 1; n <= 5; ++n) fireAndSettle(seq, t, app, now, 0.5 * n, -0.5 * n);
+            const int baseline = seq.hardwareBaseline();
+            check(baseline == 5 && app.xs.size() == 5,
+                  "I2. five shots captured, baseline five",
+                  QStringLiteral("baseline=%1 coords=%2").arg(baseline).arg(app.xs.size()));
+
+            seq.noteLinkLost();
+            t.counter = baseline + ahead[k];
+            for (int i = 1; i <= t.counter; ++i) t.slotData[i] = std::make_pair(0.0, 0.0);
+            seq.noteLinkRestored();
+            settle(seq, t, app, now, 4);
+
+            check(app.uncapturedReported == ahead[k],
+                  QStringLiteral("I2. target %1 ahead reports %2 uncaptured shot(s)")
+                      .arg(ahead[k]).arg(ahead[k]),
+                  QStringLiteral("reported=%1").arg(app.uncapturedReported));
+            check(static_cast<int>(app.xs.size()) == 5,
+                  QStringLiteral("I2. target %1 ahead invents no coordinate for them")
+                      .arg(ahead[k]));
+            check(app.tenPointEightFromSentinel == 0 && !app.everScoredWithoutCoordinate,
+                  QStringLiteral("I2. and nothing is scored without a coordinate (ahead %1)")
+                      .arg(ahead[k]));
+
+            // The next genuine shot is numbered from the coordinates held, not
+            // from the target's counter - the assignment that caused the field
+            // defect.
+            t.fire(-4.4, 2.2);
+            settle(seq, t, app, now, 6);
+            check(static_cast<int>(app.xs.size()) == 6
+                  && app.publishedShotNumbers.back() == 6,
+                  QStringLiteral("I2. the next real shot is number 6, from its own coordinates (ahead %1)")
+                      .arg(ahead[k]),
+                  QStringLiteral("captured=%1 published=%2")
+                      .arg(app.xs.size()).arg(app.publishedShotNumbers.back()));
+            check(qFuzzyCompare(app.xs.back(), -4.4) && qFuzzyCompare(app.ys.back(), 2.2),
+                  QStringLiteral("I2. and they are the coordinates the target measured (ahead %1)")
+                      .arg(ahead[k]));
+        }
+    }
+
     // ══ TEST J — SIGHTER TO COUNTED ════════════════════════════════════════
     // Numbering legitimately restarts. It must restart cleanly, not leave the
     // sequencer holding a count no coordinate supports.
@@ -513,12 +674,31 @@ void run_acquisition_integrity_tests()
         check(!coordinateIndexValid(12, 11, 11),
               "INV. the Tablet-02 request (index 12 into 11 coordinates) is invalid");
 
-        const AdoptionPlan clean = planBaselineAdoption(0, 10, true);
+        // Expectation 0 (the app had just flushed): a target back at 0 missed
+        // nothing, a target back at 1 counted one we never saw.
+        const AdoptionPlan clean = planBaselineAdoption(0, 10, true, 0);
         check(!clean.shotsCountedWhileBlind,
               "INV. adopting counter 0 after a link loss reports nothing uncaptured");
-        const AdoptionPlan dirty = planBaselineAdoption(1, 10, true);
+        const AdoptionPlan dirty = planBaselineAdoption(1, 10, true, 0);
         check(dirty.shotsCountedWhileBlind && dirty.uncapturedShots == 1,
               "INV. adopting counter 1 after a link loss reports one uncaptured shot");
+        // Expectation 5, target still 5: the counter was KEPT across the
+        // interruption and nothing was missed. Reporting five here would have
+        // sent an operator to raise an EST incident for shots that exist.
+        const AdoptionPlan kept = planBaselineAdoption(5, 5, true, 5);
+        check(!kept.shotsCountedWhileBlind && kept.uncapturedShots == 0,
+              "INV. a counter that survived the interruption reports NOTHING uncaptured",
+              QStringLiteral("reported=%1").arg(kept.uncapturedShots));
+        const AdoptionPlan ahead = planBaselineAdoption(7, 5, true, 5);
+        check(ahead.shotsCountedWhileBlind && ahead.uncapturedShots == 2,
+              "INV. a counter two ahead of the expectation reports exactly two",
+              QStringLiteral("reported=%1").arg(ahead.uncapturedShots));
+        // Expectation 5, target restarted at 2: the target power-cycled, so all
+        // two it has counted since are ours to declare missed.
+        const AdoptionPlan restarted = planBaselineAdoption(2, 5, true, 5);
+        check(restarted.shotsCountedWhileBlind && restarted.uncapturedShots == 2,
+              "INV. a restarted counter reports everything it has counted since",
+              QStringLiteral("reported=%1").arg(restarted.uncapturedShots));
 
         const ResetRequest none = decideCounterReset(9, 10);
         check(!none.shouldReset, "INV. no reset is requested at nine shots");
@@ -640,6 +820,95 @@ void run_acquisition_integrity_tests()
               QStringLiteral("captured=%1").arg(app.xs.size()));
         check(qFuzzyCompare(app.xs[0], -2.5) && qFuzzyCompare(app.ys[0], 4.5),
               "N. and its coordinates are the ones the target measured");
+    }
+
+    // == PAPER-FEED INTEGRITY (section 8) ==================================
+    // ONE ACCEPTED PHYSICAL SHOT -> AT MOST ONE AUTOMATIC FEED.
+    // Rejected acquisition, replay and reconnect -> ZERO.
+    //
+    // The coordinator's own duplicate rules are covered in tst_target_hardware.
+    // What is asserted here is the thing that test cannot see: WHERE production
+    // calls it from. A feed hook reachable from a failure branch would drive
+    // the motor for a shot that was never scored.
+    {
+        QFile f(repoFile("ModReader/forms/tachuswidget.cpp"));
+        const bool opened = f.open(QIODevice::ReadOnly | QIODevice::Text);
+        check(opened, "FEED. the production acquisition source is readable", f.fileName());
+        if (opened) {
+            const QString src = QString::fromUtf8(f.readAll());
+            const int captured = src.indexOf(QLatin1String("m_seq.noteCoordinateCaptured()"));
+            const int hook     = src.indexOf(QLatin1String("onPhysicalShotAccepted("));
+            const int failed   = src.indexOf(QLatin1String("ACQ_COORD_READ_FAILED"));
+            check(captured > 0 && hook > 0 && failed > 0,
+                  "FEED. the capture, the feed hook and the read-failure branch all exist");
+            check(hook > captured,
+                  "FEED. the feed is requested only AFTER the coordinate is captured",
+                  QStringLiteral("captured@%1 hook@%2").arg(captured).arg(hook));
+            check(failed < captured,
+                  "FEED. the read-failure branch returns before any capture or feed",
+                  QStringLiteral("failed@%1 captured@%2").arg(failed).arg(captured));
+            // Exactly one call site in the acquisition path: a second one is how
+            // a shot gets fed twice.
+            check(src.count(QLatin1String("onPhysicalShotAccepted(")) == 2,
+                  "FEED. one call site plus its definition - no second feed path",
+                  QStringLiteral("occurrences=%1")
+                      .arg(src.count(QLatin1String("onPhysicalShotAccepted("))));
+            // The failure branch between the diagnostic and the capture must
+            // contain a return and no feed.
+            const QString betweenFailAndCapture = src.mid(failed, captured - failed);
+            check(!betweenFailAndCapture.contains(QLatin1String("onPhysicalShotAccepted(")),
+                  "FEED. nothing feeds paper between a failed read and its return");
+            check(betweenFailAndCapture.contains(QLatin1String("return;")),
+                  "FEED. and that branch does return - it does not fall through to acceptance");
+        }
+        // Recovery restores numbers; it must not re-emit the shots behind them,
+        // and the feed hook hangs off the emission.
+        AcquisitionSequencer seq; FakeTarget t; AppState app;
+        long long now = 0;
+        t.counter = 7;                       // a session already 7 shots in
+        settle(seq, t, app, now, 3);
+        check(app.publishedShotNumbers.empty(),
+              "FEED. recovery publishes no shot, so it can request no feed",
+              QStringLiteral("published=%1").arg(app.publishedShotNumbers.size()));
+        seq.noteLinkLost(); seq.noteLinkRestored();
+        settle(seq, t, app, now, 4);
+        check(app.publishedShotNumbers.empty(),
+              "FEED. and a reconnect on its own publishes no shot either");
+        t.fire(1.5, -1.5);
+        settle(seq, t, app, now, 5);
+        check(app.publishedShotNumbers.size() == 1,
+              "FEED. only a genuinely new physical shot publishes - exactly one",
+              QStringLiteral("published=%1").arg(app.publishedShotNumbers.size()));
+    }
+
+    // == SERIAL-DEFAULT-005 - the defaults ARE the field target =============
+    // The port CHOICE is covered by tst_target_hardware (Bluetooth rejection,
+    // CH340 preference, remembered fingerprint). What that suite cannot see is
+    // the PARAMETERS used once a port is chosen. ModbusCommSettings needs
+    // QsLog, which this QtCore-only harness deliberately does not link, so this
+    // is a source assertion and is reported as one - not as an executed test.
+    {
+        QFile f(repoFile("ModReader/src/modbuscommsettings.cpp"));
+        const bool opened = f.open(QIODevice::ReadOnly | QIODevice::Text);
+        check(opened, "SERIAL. the settings source is readable", f.fileName());
+        if (opened) {
+            const QString src = QString::fromUtf8(f.readAll());
+            check(src.contains(QLatin1String("m_baud = \"19200\"")),
+                  "SERIAL. the default baud is the field target's 19200, not 9600");
+            check(src.contains(QLatin1String("m_parity = \"Even\"")),
+                  "SERIAL. the default parity is Even, not None");
+            check(src.contains(QLatin1String("m_dataBits = \"8\""))
+                  && src.contains(QLatin1String("m_stopBits = \"1\"")),
+                  "SERIAL. 8 data bits, 1 stop bit");
+            check(!src.contains(QLatin1String("m_baud = \"9600\"")),
+                  "SERIAL. 9600 is not a default anywhere - it was the 63-minute outage");
+            // A STORED value must still win: the defaults are what "nothing
+            // stored" means, not an override.
+            check(src.contains(QLatin1String("if (s->value(\"RTU/Baud\").isNull())")),
+                  "SERIAL. the default applies only when nothing is stored");
+            check(src.contains(QLatin1String("if (s->value(\"RTU/Parity\").isNull())")),
+                  "SERIAL. and the same for parity");
+        }
     }
 
     // ══ CALL-ORDER BINDING ═════════════════════════════════════════════════
