@@ -42,9 +42,31 @@ signals:
 private slots:
     void readPending();
 
+public:
+    // Diagnostics. Which families actually came up, so a range-day log can
+    // say what is listening rather than what was intended.
+    bool listeningIPv4() const { return m_listening4; }
+    bool listeningIPv6() const { return m_listening6; }
+
 private:
-    QUdpSocket* m_socket = nullptr;
-    bool    m_listening = false;
+    // TWO SOCKETS, ONE PER FAMILY — deliberately not one dual-stack socket.
+    //
+    // The nodes broadcast to 255.255.255.255. A single socket bound to
+    // QHostAddress::Any comes up as "::" (IPv6) with dual-stack enabled, and
+    // whether Windows delivers an IPv4 BROADCAST to that socket is not
+    // something this project can rely on: it was observed working for a
+    // same-machine broadcast here, but that is a different path from a frame
+    // arriving off the Wi-Fi adapter, and range day is not the place to find
+    // out. An explicit IPv4 socket removes the question entirely.
+    //
+    // The IPv6 socket is bound IPv6-ONLY so a v4-mapped datagram cannot also
+    // be delivered to it — otherwise one announce could be processed twice
+    // and a node would look like it was heart-beating at double rate.
+    QUdpSocket* m_socket4 = nullptr;   // 0.0.0.0  — the one nodes actually use
+    QUdpSocket* m_socket6 = nullptr;   // ::       — kept for IPv6-only ranges
+    bool    m_listening = false;       // true when EITHER family is up
+    bool    m_listening4 = false;
+    bool    m_listening6 = false;
     quint16 m_boundPort = 0;
     QString m_lastError;
 };
