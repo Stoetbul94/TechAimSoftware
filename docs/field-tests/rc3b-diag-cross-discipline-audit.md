@@ -21,6 +21,8 @@ and they are never merged.
 | Sighter shots | APPLIES | PASS | PENDING | PENDING |
 | Counted shots | APPLIES | PASS | PENDING | PENDING |
 | Reconnect | APPLIES | PASS | PARTIAL | PENDING |
+| Paper feed | APPLIES | PASS | PENDING | PENDING |
+| Logging / evidence | APPLIES | PASS | PARTIAL | PENDING |
 | Recovery / restart | APPLIES | PASS | PENDING | PENDING |
 
 **Shared fix = APPLIES everywhere** because the changed code is reached by every

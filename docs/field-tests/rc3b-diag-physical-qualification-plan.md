@@ -41,6 +41,15 @@ Tablet-02's answer after the USB was replugged. Expected: the next shot is
 scored from its real coordinates, or acquisition explicitly refuses. **A 10.8 is
 a failure**, whatever else the screen says.
 
+Four more scenarios cover the cases that are not about the boundary:
+
+| | |
+|---|---|
+| `--scenario H` | the counter leaps forward with no coordinates behind it — **real** lost shots. The guard must still fire; if it does not, the boundary fix was bought by going deaf. |
+| `--scenario J` | every coordinate read is refused while the counter advances. Expected: no shot accepted, no score, no feed, an explicit acquisition error. |
+| `--scenario K` | one coordinate read in three fails. Partial acquisition is worse than none — some shots look fine. |
+| `--scenario L` | the client is dropped mid-session and the counter is kept. Expected: resume, nothing replayed, nothing renumbered, and **no** "shots were missed" claim, because none were. |
+
 ## PHYSICAL TEST 1 — Training, 30–60 shots
 
 Must cross the 10, 20, 30 … boundaries several times.
