@@ -538,6 +538,110 @@ void run_acquisition_integrity_tests()
               "INV. the same numbers OUTSIDE a reset are still a fault - the guard is intact");
     }
 
+    // == TEST K - 50 m 3P FINAL: THE INCIDENT REPORT TOUCHES NO ACQUISITION ==
+    // The forensic reconstruction cleared the Incident Report: it journals
+    // events and pauses the competition clock, and the repeated 10.8 appeared
+    // in a plain 50 m Prone qualification with no incident anywhere near it.
+    // That conclusion is only worth keeping if it stays true, so it is asserted
+    // against the source rather than remembered.
+    {
+        QFile f(repoFile("src/incident/EstIncidentController.cpp"));
+        const bool opened = f.open(QIODevice::ReadOnly | QIODevice::Text);
+        check(opened, "K. the incident controller source is readable", f.fileName());
+        if (opened) {
+            const QString src = QString::fromUtf8(f.readAll());
+            for (const char* forbidden : { "modbus", "Modbus", "MODREADER", "TachusWidget",
+                                           "clearShootCount", "resetShootinCount",
+                                           "m_currentShootsCount", "getXCord", "getYCord" })
+                check(!src.contains(QLatin1String(forbidden)),
+                      "K. the incident controller does not reach acquisition",
+                      QLatin1String(forbidden));
+        }
+        // And a finals-shaped run across a boundary, with the clock paused and
+        // resumed in the middle, still numbers its shots correctly.
+        AcquisitionSequencer seq; FakeTarget t; AppState app;
+        long long now = 0;
+        settle(seq, t, app, now, 3);
+        for (int n = 1; n <= 8; ++n) fireAndSettle(seq, t, app, now, -3.0 + n * 0.4, 2.0 - n * 0.3);
+        now += 60000;                       // an incident: time passes, nothing polls
+        for (int n = 9; n <= 20; ++n) fireAndSettle(seq, t, app, now, 1.0 + n * 0.2, -1.0 - n * 0.2);
+        check(app.faults == 0 && static_cast<int>(app.xs.size()) == 20,
+              "K. a finals-shaped run with a 60 s incident pause crosses the boundary cleanly",
+              QStringLiteral("faults=%1 captured=%2").arg(app.faults).arg(app.xs.size()));
+        bool ordered = true;
+        for (int i = 0; i < 20; ++i) ordered = ordered && app.publishedShotNumbers[i] == i + 1;
+        check(ordered, "K. no shot repeats a number across the pause - no 10.8 sequence");
+    }
+
+    // == TEST M - MOTOR AND POLLING SHARE ONE SERIALIZED TRANSPORT ==========
+    // Three threads used to reach one libmodbus context: the poll, the paper
+    // feed's MotorThread and the flush WorkerThread. libmodbus interleaves
+    // frames if two threads are inside it, which corrupts a read that the
+    // coordinate path then decodes as a shot.
+    {
+        QFile f(repoFile("ModReader/src/mainwindow.cpp"));
+        const bool opened = f.open(QIODevice::ReadOnly | QIODevice::Text);
+        check(opened, "M. the transport source is readable", f.fileName());
+        if (opened) {
+            const QString src = QString::fromUtf8(f.readAll());
+            const int rd = src.indexOf(QLatin1String("int MainWindow::modbusReadRegistry"));
+            const int wr = src.indexOf(QLatin1String("int MainWindow::modbusWriteSingleRegister"));
+            check(rd > 0 && wr > 0, "M. both transaction entry points exist");
+            // Span the whole function body, not a fixed byte window: these
+            // functions carry the comment explaining WHY they exist, and a
+            // window short enough to miss the lock would pass by accident.
+            const auto bodyOf = [&src](int start) {
+                const int end = src.indexOf(QLatin1String("\n}"), start);
+                return end > start ? src.mid(start, end - start) : QString();
+            };
+            if (rd > 0 && wr > 0) {
+                check(bodyOf(rd).contains(QLatin1String("QMutexLocker")),
+                      "M. every read holds the transport lock");
+                check(bodyOf(wr).contains(QLatin1String("QMutexLocker")),
+                      "M. every write holds the transport lock");
+            }
+            // The lock must not be held across a wait: the motor sleeps for a
+            // second at a time and would stall acquisition behind it.
+            check(!src.contains(QLatin1String("QMutexLocker lock(&m_modbusTransport);\r\n    QThread::msleep"))
+                  && !src.contains(QLatin1String("QMutexLocker lock(&m_modbusTransport);\n    QThread::msleep")),
+                  "M. no sleep happens while the transport lock is held");
+        }
+        QFile h(repoFile("ModReader/forms/tachuswidget.h"));
+        if (h.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            const QString src = QString::fromUtf8(h.readAll());
+            check(!src.contains(QLatin1String("modbus_read_registers"))
+                  && !src.contains(QLatin1String("modbus_write_register")),
+                  "M. no thread reaches libmodbus directly, bypassing the lock");
+        }
+    }
+
+    // == TEST N - RESTART AND RECOVERY EMIT NO SHOT AND NO FEED =============
+    // A recovered session restores numbers; it must not re-emit the shots those
+    // numbers describe. A replayed shot would feed paper for a shot fired
+    // before the restart.
+    {
+        // A fresh sequencer that meets a target already reading 7 adopts it as
+        // a baseline and publishes nothing: those seven are not ours to emit.
+        AcquisitionSequencer seq; FakeTarget t; AppState app;
+        long long now = 0;
+        t.counter = 7;
+        settle(seq, t, app, now, 3);
+        check(app.xs.empty() && app.publishedShotNumbers.empty(),
+              "N. adopting a target that already counted 7 emits no shot",
+              QStringLiteral("captured=%1 published=%2")
+                  .arg(app.xs.size()).arg(app.publishedShotNumbers.size()));
+        check(app.faults == 0, "N. and it is not a fault either - it is a baseline");
+        // The next genuine shot is shot 1 of THIS session, with its own
+        // coordinates, and it is the first thing that may drive the motor.
+        fireAndSettle(seq, t, app, now, -2.5, 4.5);
+        check(app.xs.size() == 1 && app.publishedShotNumbers.size() == 1
+              && app.publishedShotNumbers[0] == 1,
+              "N. the first post-recovery shot is shot 1, from its own coordinates",
+              QStringLiteral("captured=%1").arg(app.xs.size()));
+        check(qFuzzyCompare(app.xs[0], -2.5) && qFuzzyCompare(app.ys[0], 4.5),
+              "N. and its coordinates are the ones the target measured");
+    }
+
     // ══ CALL-ORDER BINDING ═════════════════════════════════════════════════
     // The driver above mirrors the production call order. This asserts the
     // production source still calls the sequencer, in that order, so the test
