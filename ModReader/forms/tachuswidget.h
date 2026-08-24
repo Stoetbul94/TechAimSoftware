@@ -531,9 +531,16 @@ private:
     const char* acquisitionStateName() const;
 
     // A coordinate exists for this shot number. ACQ-SENTINEL-003: ask this, do
-    // not recognise a magic return value.
-    bool coordinateHasValue(int index) const;
-    void reportCoordinateIndexInvalid(const char* who, int index);
+    // not recognise a magic return value. Q_INVOKABLE because QML is the layer
+    // that turns a coordinate into a score, so QML is the layer that has to be
+    // able to ask BEFORE it does - a NaN it never fetches cannot be rendered,
+    // scored or journalled.
+    Q_INVOKABLE bool coordinateHasValue(int index) const;
+    // stopAcquisition=false for REPORT paths: the same full diagnostic is
+    // written, but nothing is being acquired there, so the operator must not
+    // be shown an acquisition fault for opening a result sheet.
+    void reportCoordinateIndexInvalid(const char* who, int index,
+                                      bool stopAcquisition = true);
 
     // Sequencer outcomes, each with the diagnostics the operator needs.
     void issueCounterReset(const ta::target::SeqStep& step);

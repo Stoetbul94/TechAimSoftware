@@ -808,7 +808,8 @@ bool TachusWidget::coordinateHasValue(int index) const
 // One diagnostic carrying every number needed to explain it, and it stops
 // acquisition: a shot whose coordinate cannot be found is not a shot that may
 // quietly receive a score.
-void TachusWidget::reportCoordinateIndexInvalid(const char* who, int index)
+void TachusWidget::reportCoordinateIndexInvalid(const char* who, int index,
+                                                bool stopAcquisition)
 {
     LogFile::instance().appendToLogFile(
         QStringLiteral("ACQ_COORD_INDEX_INVALID from=%1 requestedIndex=%2 xList=%3 "
@@ -825,6 +826,8 @@ void TachusWidget::reportCoordinateIndexInvalid(const char* who, int index)
             .arg(m_traceSessionTag.isEmpty() ? QStringLiteral("nosession")
                                              : m_traceSessionTag),
         LogType::BackendLevel);
+    if (!stopAcquisition)
+        return;
     setTargetStatus(QStringLiteral("ACQUISITION FAULT"), QString(), QString(),
                     QStringLiteral("A shot was requested for which no measured "
                                    "coordinate exists. Acquisition has stopped; "
@@ -1304,15 +1307,26 @@ bool TachusWidget::inBoundAllPoints(pair<double, double> center, double dia, int
 }
 ///////////////////////// https://www.geeksforgeeks.org/program-find-circumcenter-triangle-2/
 
+// ACQ-SENTINEL-003, second site. This fed the match report's per-shot X
+// column, and it returned -1 for a shot it could not find - so a coordinate the
+// application never measured was printed as "-1.00 mm" on an athlete's result.
+// -1.00/-1.00 is the pair that scored 10.8 through the whole 2026-08-23 defect.
+//
+// The bounds check was also wrong: it compared the LIST length against
+// shootNumber while indexing with ((series-1)*10 + shootNumber), so from series
+// 2 onward it could index past the end - QList::at() out of range is a native
+// crash, not a sentinel.
 double TachusWidget::getXMPIForShoot(int series, int shootNumber)
 {
-    if (shootNumber >= 0 && m_xCordList.count() > shootNumber && series >= 1)
-    {
-        int index = ((series - 1)*10) + shootNumber;
-        return m_xCordList.at(index);
+    if (series < 1 || shootNumber < 0)
+        return qQNaN();
+    const int index = ((series - 1) * 10) + shootNumber;
+    if (index < 0 || index >= m_xCordList.count()) {
+        reportCoordinateIndexInvalid("getXMPIForShoot", index + 1,
+                                     /*stopAcquisition=*/false);
+        return qQNaN();
     }
-
-    return -1;
+    return m_xCordList.at(index);
 }
 
 double TachusWidget::getYCord(int index)
@@ -1354,15 +1368,26 @@ double TachusWidget::getYMPI(int series)
     return mpiString.toDouble();
 }
 
+// ACQ-SENTINEL-003, second site. This fed the match report's per-shot Y
+// column, and it returned -1 for a shot it could not find - so a coordinate the
+// application never measured was printed as "-1.00 mm" on an athlete's result.
+// -1.00/-1.00 is the pair that scored 10.8 through the whole 2026-08-23 defect.
+//
+// The bounds check was also wrong: it compared the LIST length against
+// shootNumber while indexing with ((series-1)*10 + shootNumber), so from series
+// 2 onward it could index past the end - QList::at() out of range is a native
+// crash, not a sentinel.
 double TachusWidget::getYMPIForShoot(int series, int shootNumber)
 {
-    if (shootNumber >= 0 && m_yCordList.count() > shootNumber && series >= 1)
-    {
-        int index = ((series - 1)*10) + shootNumber;
-        return m_yCordList.at(index);
+    if (series < 1 || shootNumber < 0)
+        return qQNaN();
+    const int index = ((series - 1) * 10) + shootNumber;
+    if (index < 0 || index >= m_yCordList.count()) {
+        reportCoordinateIndexInvalid("getYMPIForShoot", index + 1,
+                                     /*stopAcquisition=*/false);
+        return qQNaN();
     }
-
-    return -1;
+    return m_yCordList.at(index);
 }
 
 double TachusWidget::getTeiler(int series)

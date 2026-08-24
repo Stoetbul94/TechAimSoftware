@@ -233,12 +233,31 @@ Item {
         return new Promise((resolve) >= setTimeout(resolve, time));
     }
 
+    // ACQ-SENTINEL-003. The last line of defence before a coordinate becomes a
+    // score. On 2026-08-23 the shot number ran past the coordinate arrays and
+    // getXCord()'s -1 sentinel scored 10.8 for the rest of three sessions; the
+    // arrays are now the definition of the shot count, so that arithmetic is
+    // gone, but this is the layer that renders and scores, so this is the layer
+    // that asks. A shot with no measured coordinate is refused here - it is
+    // never drawn, never scored and never reaches the journal.
+    function coordinatesUsable(index) {
+        if (MODREADER.coordinateHasValue(index))
+            return true
+        MODREADER.appendToLogFile("ACQ_COORD_REFUSED_BY_UI shot=" + index
+                                  + " backEndShootCount=" + backEndShootCount
+                                  + " getShootCount=" + MODREADER.getShootCount()
+                                  + " - no score produced")
+        return false
+    }
+
     function readDataFromBAckEnd() {
         var newShootCount = MODREADER.getShootCount()
         if (backEndShootCount < newShootCount)
         {
             for (var i = backEndShootCount+1; i<= newShootCount; i++)
             {
+                if (!coordinatesUsable(i))
+                    break
                 var xCor = MODREADER.getXCord(i)
                 var yCor = MODREADER.getYCord(i)
 
@@ -322,6 +341,8 @@ Item {
             {
                 //for (var i = backEndShootCount+1; i<= newShootCount; i++)
                 //{
+                if (!coordinatesUsable(shooutIndex))
+                    return
                 var xCor = MODREADER.getXCord(shooutIndex)
                 var yCor = MODREADER.getYCord(shooutIndex)
 

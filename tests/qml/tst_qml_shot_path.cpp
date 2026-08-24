@@ -870,6 +870,65 @@ int main(int argc, char* argv[])
               "CATALOGUE-001: the hardcoded programme literals are gone from main.qml");
     }
 
+    // -- ACQ-SENTINEL-003 - the UI must refuse a coordinate it does not have --
+    //
+    // The C++ side now derives the shot count from the coordinate arrays, so an
+    // index past the end cannot be constructed. That makes this layer a second
+    // line rather than the only one - and it is the layer that turns a
+    // coordinate into a score, a marker and a journalled result, so it is the
+    // layer that has to ask. On 2026-08-23 it did not ask: the -1 sentinel from
+    // getXCord() became -1.00/-1.00 mm and scored 10.8 for the rest of three
+    // sessions on Tablet-02.
+    {
+        const QString centre = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/CenterPane.qml"));
+        check(centre.contains(QStringLiteral("function coordinatesUsable(")),
+              "ACQ-SENTINEL-003: CenterPane has one place that refuses an unmeasured shot");
+        check(centre.contains(QStringLiteral("MODREADER.coordinateHasValue(")),
+              "ACQ-SENTINEL-003: the refusal ASKS the backend, it does not test a magic number");
+        check(centre.contains(QStringLiteral("if (!coordinatesUsable(i))")),
+              "ACQ-SENTINEL-003: the batch reader stops at the first unmeasured shot");
+        check(centre.contains(QStringLiteral("if (!coordinatesUsable(shooutIndex))")),
+              "ACQ-SENTINEL-003: the live-shot path refuses before it scores - the 2026-08-23 path");
+        const int guardAt = centre.indexOf(QStringLiteral("if (!coordinatesUsable(shooutIndex))"));
+        const int fetchAt = centre.indexOf(QStringLiteral("MODREADER.getXCord(shooutIndex)"));
+        check(guardAt > 0 && fetchAt > guardAt,
+              "ACQ-SENTINEL-003: the guard precedes the coordinate fetch",
+              QStringLiteral("guard=%1 fetch=%2").arg(guardAt).arg(fetchAt));
+
+        const QString info = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/MatchReportInfo.qml"));
+        check(info.contains(QStringLiteral("isFinite(v)")),
+              "ACQ-SENTINEL-003: the report prints a dash, not a number, for a missing coordinate");
+        check(!info.contains(QStringLiteral("(MODREADER.getXMPIForShoot(seriesIndex, index)*1).toFixed(2)")),
+              "ACQ-SENTINEL-003: the unguarded per-shot X cell is gone");
+        check(!info.contains(QStringLiteral("(MODREADER.getYMPIForShoot(seriesIndex, index)*1).toFixed(2)")),
+              "ACQ-SENTINEL-003: the unguarded per-shot Y cell is gone");
+
+        for (const char* fname : { "/SeriesComponent.qml", "/MatchReportView.qml" }) {
+            const QString body = readAll(QStringLiteral(TECHAIM_SOURCE_DIR) + QLatin1String(fname));
+            const int uses = body.count(QStringLiteral("MODREADER.getXCord(index+1)"));
+            const int asks = body.count(QStringLiteral("MODREADER.coordinateHasValue(index+1)"));
+            check(uses > 0 && asks == uses,
+                  "ACQ-SENTINEL-003: every marker view asks before it draws",
+                  QStringLiteral("%1 uses=%2 asks=%3").arg(QLatin1String(fname)).arg(uses).arg(asks));
+        }
+
+        const QString tw = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/ModReader/forms/tachuswidget.cpp"));
+        const int xAt = tw.indexOf(QStringLiteral("double TachusWidget::getXCord(int index)"));
+        check(xAt > 0 && tw.mid(xAt, 260).contains(QStringLiteral("qQNaN()"))
+              && !tw.mid(xAt, 260).contains(QStringLiteral("return -1")),
+              "ACQ-SENTINEL-003: getXCord returns no numeric sentinel");
+        const int mx = tw.indexOf(QStringLiteral("double TachusWidget::getXMPIForShoot"));
+        check(mx > 0 && tw.mid(mx, 520).contains(QStringLiteral("qQNaN()"))
+              && !tw.mid(mx, 520).contains(QStringLiteral("return -1;")),
+              "ACQ-SENTINEL-003: getXMPIForShoot returns no numeric sentinel - it fed the report");
+        const int my = tw.indexOf(QStringLiteral("double TachusWidget::getYMPIForShoot"));
+        check(my > 0 && tw.mid(my, 520).contains(QStringLiteral("qQNaN()"))
+              && !tw.mid(my, 520).contains(QStringLiteral("return -1;")),
+              "ACQ-SENTINEL-003: getYMPIForShoot returns no numeric sentinel either");
+        check(mx > 0 && tw.mid(mx, 520).contains(QStringLiteral("index >= m_xCordList.count()")),
+              "ACQ-SENTINEL-003: getXMPIForShoot bounds the index it indexes with, not shootNumber");
+    }
+
     printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
     fflush(stdout);
     return g_failures ? 1 : 0;

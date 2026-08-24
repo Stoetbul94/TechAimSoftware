@@ -707,13 +707,21 @@ Item {
 
                 Text {
                     width: parent.width*0.18; height: parent.height
-                    text: (MODREADER.getXMPIForShoot(seriesIndex, index)*1).toFixed(2)
+                    // ACQ-SENTINEL-003: a coordinate the application never
+                    // measured is printed as a dash, never as a number an
+                    // athlete could read as a real impact position.
+                    text: { var v = MODREADER.getXMPIForShoot(seriesIndex, index);
+                            return isFinite(v) ? (v*1).toFixed(2) : "—" }
                     color: "#33373d"; font.pixelSize: 11; font.family: "Segoe UI"
                     horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter
                 }
                 Text {
                     width: parent.width*0.18; height: parent.height
-                    text: (MODREADER.getYMPIForShoot(seriesIndex, index)*1).toFixed(2)
+                    // ACQ-SENTINEL-003: a coordinate the application never
+                    // measured is printed as a dash, never as a number an
+                    // athlete could read as a real impact position.
+                    text: { var v = MODREADER.getYMPIForShoot(seriesIndex, index);
+                            return isFinite(v) ? (v*1).toFixed(2) : "—" }
                     color: "#33373d"; font.pixelSize: 11; font.family: "Segoe UI"
                     horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter
                 }
