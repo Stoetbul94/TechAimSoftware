@@ -301,9 +301,25 @@ struct AdoptionPlan {
 
 // `capturedShots` is how many coordinate records the application actually
 // holds - the only count that can be proved from data rather than believed.
+// `expectedCounter` is what the application believed the target's counter was
+// when the link went down. It is the difference between the two cases the
+// hardware counter alone cannot distinguish:
+//
+//   the target KEPT counting across a cable wobble, so a counter equal to the
+//   expectation means nothing was missed, and a counter above it means exactly
+//   that many shots were;
+//
+//   the target POWER-CYCLED, so its counter restarted below the expectation
+//   and every shot it has counted since is one this application never saw.
+//
+// Reporting the raw counter for both over-reports the first case: a five-shot
+// baseline coming back at five would have told the operator that five shots
+// were missed when none were. An EST interruption raised for shots that were
+// never lost is its own result-integrity problem.
 inline AdoptionPlan planBaselineAdoption(int hardwareCounter,
                                          int capturedShots,
-                                         bool afterLinkLoss)
+                                         bool afterLinkLoss,
+                                         int expectedCounter)
 {
     AdoptionPlan p;
     p.newBaseline = hardwareCounter < 0 ? 0 : hardwareCounter;
@@ -311,15 +327,18 @@ inline AdoptionPlan planBaselineAdoption(int hardwareCounter,
     p.newPriorTotal = rebased > 0 ? rebased : 0;
     p.identityHolds = (p.newPriorTotal + p.newBaseline == capturedShots);
 
-    // A counter above zero when the link comes back means the target counted
-    // shots while this application was blind. They were never captured and
-    // cannot be reconstructed - the slots are overwritten once the counter
-    // recycles. That is an EST interruption for the operator to record, not a
-    // number for the software to invent.
-    if (afterLinkLoss && p.newBaseline > 0) {
-        p.shotsCountedWhileBlind = true;
-        p.uncapturedShots = p.newBaseline;
-        p.cause = FaultCause::AdoptionWouldDesync;
+    if (afterLinkLoss) {
+        const int expected = expectedCounter < 0 ? 0 : expectedCounter;
+        // Restarted below the expectation: everything it has counted since is
+        // uncaptured. Otherwise only the excess over the expectation is.
+        const int missed = (p.newBaseline < expected)
+                               ? p.newBaseline
+                               : p.newBaseline - expected;
+        if (missed > 0) {
+            p.shotsCountedWhileBlind = true;
+            p.uncapturedShots = missed;
+            p.cause = FaultCause::AdoptionWouldDesync;
+        }
     }
     return p;
 }

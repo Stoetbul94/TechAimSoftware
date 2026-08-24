@@ -164,7 +164,8 @@ public:
 
         case PollKind::Synchronized: {
             const AdoptionPlan p =
-                planBaselineAdoption(hardwareCounter, m_captured, m_afterLinkLoss);
+                planBaselineAdoption(hardwareCounter, m_captured, m_afterLinkLoss,
+                                     m_baseline);
             m_baseline = p.newBaseline;
             m_priorTotal = p.newPriorTotal;
             m_state = AcqState::Acquiring;

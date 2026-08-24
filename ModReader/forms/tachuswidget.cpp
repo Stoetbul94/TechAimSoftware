@@ -2127,6 +2127,14 @@ void TachusWidget::broadCastNewShoot(int count)
     if (count > getCurrentMatchTotalShotsCount())
         return;
 
+    // ACQ-SENTINEL-003, SCORING CRITICAL - this leaves the machine. It
+    // broadcasts a shot to the range network; publishing a coordinate the
+    // application never measured would put it in front of a scoreboard.
+    if (!coordinateHasValue(count)) {
+        reportCoordinateIndexInvalid("broadCastNewShoot", count);
+        return;
+    }
+
     QString data = QString("shootdata %1 %2 %3 %4 %5 %6")
             .arg(m_laneName)
             .arg(count)
@@ -2143,6 +2151,12 @@ void TachusWidget::updateShootData(int count)
 {
     if (!getIsServerNetworkEnabled())
         return;
+
+    // ACQ-SENTINEL-003, SCORING CRITICAL - this file is read by the range.
+    if (!coordinateHasValue(count)) {
+        reportCoordinateIndexInvalid("updateShootData", count);
+        return;
+    }
 
     QString data = QString("shootdata %1 %2 %3 %4 %5 %6 \n")
             .arg(m_laneName)
@@ -2171,6 +2185,12 @@ void TachusWidget::updateSetaShootData(int count)
 
     if (count > m_currentMatchTotalShotsCount)
         return;
+
+    // ACQ-SENTINEL-003, SCORING CRITICAL - this CSV is the lane's result feed.
+    if (!coordinateHasValue(count)) {
+        reportCoordinateIndexInvalid("updateSetaShootData", count);
+        return;
+    }
 
     QString data = QString("shootdata,%1,%2,%3,%4,%5 \n")
             .arg(count)
@@ -2469,9 +2489,17 @@ QStringList TachusWidget::getPDFString()
         //data.append(deliminater);
         data.append(QString("direction%1").arg(m_shotsRotation.at(i-1)));
         data.append(deliminater);
-        data.append(QString::number(getXCord(i)));
+        // ACQ-SENTINEL-003, REPORTING. m_scoreList_gameMode is a SEPARATE
+        // counter from the coordinate arrays - the class of divergence that
+        // caused the field defect - so this loop can outrun them. A shot with
+        // no measured coordinate prints a dash: never a number an athlete could
+        // read as an impact position, and never "nan" either.
+        const bool haveCoord = coordinateHasValue(i);
+        if (!haveCoord)
+            reportCoordinateIndexInvalid("getPDFString", i, /*stopAcquisition=*/false);
+        data.append(haveCoord ? QString::number(getXCord(i)) : QStringLiteral("-"));
         data.append(deliminater);
-        data.append(QString::number(getYCord(i)));
+        data.append(haveCoord ? QString::number(getYCord(i)) : QStringLiteral("-"));
         data.append(deliminater);
         data.append(QString::number(getTeilerForShoot(seriesIndex, (i-1)%m_shotPerSeries)));
         data.append(deliminater);
