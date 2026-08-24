@@ -44,7 +44,11 @@ ProductIdentity makeTechAim()
     // exists to observe the acquisition decision. What must NEVER change is
     // the invariant the harness enforces: an internal field-test channel that
     // makes no production, general-release or stable claim.
-    p.releaseChannel = QStringLiteral("SETA Evaluation");
+    // RC3B-DIAG is INTERNAL. It carries developer_mode=1 and exists to be
+    // diagnosed at the range; a banner and a report footer reading "SETA
+    // Evaluation" would tell an operator - and anyone reading a printed
+    // result - that this is the build that was handed over. It is not.
+    p.releaseChannel = QStringLiteral("Internal Diagnostic Field Test");
 
     // Shown wherever a result could be mistaken for an official one. Short
     // enough to sit in a status strip without covering scores or controls.
