@@ -81,10 +81,10 @@ if (-not $SkipRegression) {
     }
     foreach ($c in @('check_manuals','check_project_memory','check_training_lab_evidence')) {
         $out = & python (Join-Path $repo "tests\docs\$c.py") 2>&1 | Select-String '=== \d+ checks'
-        if (-not $out -or "$out" -notmatch '(\d+) checks, (\d+) failures') { Fail "$c: no result line" }
-        if ([int]$Matches[2] -ne 0) { Fail "$c: $($Matches[2]) failures" }
+        if (-not $out -or "$out" -notmatch '(\d+) checks, (\d+) failures') { Fail "${c}: no result line" }
+        if ([int]$Matches[2] -ne 0) { Fail "${c}: $($Matches[2]) failures" }
         $script:totals += "$c=$($Matches[1])/0"
-        Ok "$c: $($Matches[1]) checks, 0 failures"
+        Ok "${c}: $($Matches[1]) checks, 0 failures"
     }
 }
 
