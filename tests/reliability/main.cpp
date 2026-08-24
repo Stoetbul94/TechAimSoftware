@@ -61,6 +61,7 @@ int main(int argc, char** argv)
     run_windmap_verdict_tests();
     run_windmap_dispersion_tests();
     run_target_hardware_tests();
+    run_acquisition_integrity_tests();
     run_training_parity_tests();
     run_fixture_tests(writeFixtures);
 

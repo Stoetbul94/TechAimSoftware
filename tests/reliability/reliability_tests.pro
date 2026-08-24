@@ -54,6 +54,7 @@ SOURCES += \
     tst_windmap_verdict.cpp \
     tst_windmap_dispersion.cpp \
     tst_target_hardware.cpp \
+    tst_acquisition_integrity.cpp \
     ../../src/target/TargetDeviceFingerprint.cpp \
     ../../src/target/PaperFeedCoordinator.cpp \
     seed_windmap.cpp \
