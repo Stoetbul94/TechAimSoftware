@@ -926,6 +926,29 @@ int main(int argc, char* argv[])
               && !tw.mid(my, 520).contains(QStringLiteral("return -1;")),
               "ACQ-SENTINEL-003: getYMPIForShoot returns no numeric sentinel either");
 
+        // A Q_INVOKABLE that QML cannot actually call is worse than none: moc
+        // registers a private one, QML refuses it at runtime with "is not a
+        // function", and the TypeError aborts the handler that was trying to
+        // be careful. onShootCountChanged would have stopped before drawing or
+        // scoring anything. Caught by launching the binary, not by reading it -
+        // so the reading test now covers it too.
+        {
+            const QString h = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/ModReader/forms/tachuswidget.h"));
+            const int declAt = h.indexOf(QStringLiteral("Q_INVOKABLE bool coordinateHasValue"));
+            check(declAt > 0, "ACQ-SENTINEL-003: coordinateHasValue is declared Q_INVOKABLE");
+            if (declAt > 0) {
+                int lastPublic = -1, lastNonPublic = -1;
+                for (const char* spec : { "\npublic:", "\npublic slots:" })
+                    lastPublic = qMax(lastPublic, h.lastIndexOf(QLatin1String(spec), declAt));
+                for (const char* spec : { "\nprivate:", "\nprotected:",
+                                          "\nprivate slots:", "\nsignals:" })
+                    lastNonPublic = qMax(lastNonPublic, h.lastIndexOf(QLatin1String(spec), declAt));
+                check(lastPublic > lastNonPublic,
+                      "ACQ-SENTINEL-003: and it is PUBLIC - QML refuses a private invokable",
+                      QStringLiteral("public@%1 nonPublic@%2").arg(lastPublic).arg(lastNonPublic));
+            }
+        }
+
         // Every OTHER C++ consumer of a coordinate, categorised and guarded.
         // SCORING CRITICAL because each one publishes off the machine: the UDP
         // broadcast to the range network, the server lane file and the SETA

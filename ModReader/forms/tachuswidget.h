@@ -326,6 +326,17 @@ public slots:
 
     double getTime(int index);
     QString getTimeStamp(int index);
+    // A coordinate exists for this shot number. ACQ-SENTINEL-003: ask this, do
+    // not recognise a magic return value.
+    //
+    // PUBLIC and Q_INVOKABLE, and both matter. QML is the layer that turns a
+    // coordinate into a score, so it is the layer that has to be able to ask
+    // before it does. Declared private - which is where it started - moc still
+    // registers it and QML still refuses it at runtime with "is not a
+    // function", which aborts the calling handler. The guard would have been
+    // not merely inert but actively harmful: onShootCountChanged would have
+    // stopped before drawing or scoring any shot at all.
+    Q_INVOKABLE bool coordinateHasValue(int index) const;
     double getXCord(int index);
     double getXMPI(int series = -1);
     double getGroup(int pageIndex, bool withPalletOffset = true);
@@ -530,12 +541,6 @@ private:
     CounterRead readShotCounter();
     const char* acquisitionStateName() const;
 
-    // A coordinate exists for this shot number. ACQ-SENTINEL-003: ask this, do
-    // not recognise a magic return value. Q_INVOKABLE because QML is the layer
-    // that turns a coordinate into a score, so QML is the layer that has to be
-    // able to ask BEFORE it does - a NaN it never fetches cannot be rendered,
-    // scored or journalled.
-    Q_INVOKABLE bool coordinateHasValue(int index) const;
     // stopAcquisition=false for REPORT paths: the same full diagnostic is
     // written, but nothing is being acquired there, so the operator must not
     // be shown an acquisition fault for opening a result sheet.
