@@ -990,6 +990,112 @@ int main(int argc, char* argv[])
               "ACQ-SENTINEL-003: getXMPIForShoot bounds the index it indexes with, not shootNumber");
     }
 
+    // -- UI-STATUS-001 - ONE readiness authority, and QML is told when it moves --
+    //
+    // On 2026-08-25 the header read CONNECTING... and all four Training Lab
+    // panels read "Target: Not connected" while the log showed state=ACQUIRING,
+    // baseline 7, captured 7, polling every 100 ms. targetReady() tested a
+    // private m_acqState mirror that was initialised to Synchronizing, reset to
+    // Synchronizing, and never set to Acquiring by anything at all - so it
+    // could only ever answer false, in every discipline, forever.
+    {
+        const QString h  = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/ModReader/forms/tachuswidget.h"));
+        const QString cp = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/ModReader/forms/tachuswidget.cpp"));
+
+        check(!h.contains(QStringLiteral("AcquisitionState m_acqState")),
+              "UI-STATUS-001: the stale acquisition mirror is gone, not merely assigned");
+        check(!h.contains(QStringLiteral("enum class AcquisitionState")),
+              "UI-STATUS-001: and its enum with it - one state machine, not two");
+
+        const int rdy = h.indexOf(QStringLiteral("bool    targetReady()"));
+        check(rdy > 0, "UI-STATUS-001: targetReady exists");
+        if (rdy > 0) {
+            const QString body = h.mid(rdy, 700);
+            check(body.contains(QStringLiteral("m_seq.state()")),
+                  "UI-STATUS-001: readiness is derived from the sequencer, the one authority");
+            check(body.contains(QStringLiteral("AcqState::Acquiring")),
+                  "UI-STATUS-001: ACQUIRING counts as ready");
+            check(body.contains(QStringLiteral("AcqState::ResettingCounter")),
+                  "UI-STATUS-001: and so does OUR own counter reset - it must not flicker "
+                  "the indicator at every tenth shot");
+        }
+
+        // A derived property whose NOTIFY never fires is a stale binding.
+        check(cp.contains(QStringLiteral("void TachusWidget::publishReadinessIfChanged()")),
+              "UI-STATUS-001: readiness changes are published");
+        check(cp.contains(QStringLiteral("publishReadinessIfChanged();"))
+              && cp.indexOf(QStringLiteral("publishReadinessIfChanged();"))
+                 > cp.indexOf(QStringLiteral("m_seq.poll(read.counter")),
+              "UI-STATUS-001: published from the poll, where the state actually changes");
+        check(h.contains(QStringLiteral("publishReadinessIfChanged();")),
+              "UI-STATUS-001: and from the central session reset, which drops readiness "
+              "without going through setTargetStatus");
+
+        // The panel mapping must name every state; a default reachable by a
+        // normal state is a hole, not a default.
+        const QString panel = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/TargetStatusPanel.qml"));
+        check(panel.contains(QStringLiteral("case \"TARGET CONNECTED\":")),
+              "UI-STATUS-001: TARGET CONNECTED has its own case - it used to fall through");
+        for (const char* st : { "ACQUISITION FAULT", "TARGET DISCONNECTED", "TARGET NOT CONNECTED",
+                                "TARGET NOT DETECTED", "RECONNECTING", "SCANNING",
+                                "MANUAL SELECTION REQUIRED", "TARGET DETECTED", "SYNCHRONIZING" })
+            check(panel.contains(QStringLiteral("case \"") + QLatin1String(st) + QStringLiteral("\":")),
+                  "UI-STATUS-001: the mapping names every engine state", QLatin1String(st));
+
+        // Every Training Lab panel still reads the one shared property.
+        const QString sp = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/ShootingPage.qml"));
+        check(sp.contains(QStringLiteral("MODREADER.targetReady")),
+              "UI-STATUS-001: the Training Lab panels read the same authority as the header");
+        for (const char* f : { "/CallDiagnoseRightPanel.qml", "/TrainingRightPanel.qml",
+                               "/PositionTransitionRightPanel.qml", "/WindMapRightPanel.qml" }) {
+            const QString body = readAll(QStringLiteral(TECHAIM_SOURCE_DIR) + QLatin1String(f));
+            check(body.contains(QStringLiteral("panel.connected")),
+                  "UI-STATUS-001: this panel binds the shared connected flag", QLatin1String(f));
+        }
+    }
+
+    // -- FINALS-TIMER-001 - a Final has exactly one clock ---------------------
+    //
+    // onHardwareReconnected() called gameTimer.start() behind nothing but
+    // !sighter.visible. A USB reconnect during a Final therefore started the
+    // legacy match countdown, which ran at 1 Hz for the rest of the session
+    // accumulating gameTime that nothing owned, while the Finals controller
+    // held the real competition clock.
+    {
+        const QString c = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/CenterPane.qml"));
+        check(c.contains(QStringLiteral("readonly property bool legacyClockIsOurs")),
+              "FINALS-TIMER-001: one predicate decides whether the legacy clock is ours");
+        const int pred = c.indexOf(QStringLiteral("readonly property bool legacyClockIsOurs"));
+        if (pred > 0) {
+            const QString body = c.mid(pred, 260);
+            check(body.contains(QStringLiteral("!shootingPage.isFinalsMatch")),
+                  "FINALS-TIMER-001: 50 m 3P Finals excluded");
+            check(body.contains(QStringLiteral("!shootingPage.isFinals10mMatch")),
+                  "FINALS-TIMER-001: 10 m Finals excluded - not only the discipline that failed");
+            check(body.contains(QStringLiteral("!shootingPage.isTrainingModeAny")),
+                  "FINALS-TIMER-001: Training Lab excluded, matching its own display gate");
+        }
+        // EVERY live start site is guarded. A commented-out one does not count.
+        int live = 0, guarded = 0;
+        const QStringList ls = c.split(QLatin1Char('\n'));
+        for (int i = 0; i < ls.size(); ++i) {
+            const QString t = ls[i].trimmed();
+            if (!t.contains(QStringLiteral("gameTimer.start()")) || t.startsWith(QStringLiteral("//")))
+                continue;
+            ++live;
+            // the guard sits on this line or the one above it
+            const QString ctx = (i > 0 ? ls[i - 1] : QString()) + t;
+            if (ctx.contains(QStringLiteral("legacyClockIsOurs"))) ++guarded;
+        }
+        check(live > 0 && guarded == live,
+              "FINALS-TIMER-001: every live gameTimer.start() is behind the guard",
+              QStringLiteral("live=%1 guarded=%2").arg(live).arg(guarded));
+        // And the display gate and the timer gate agree, so the timer can never
+        // run where its own readout is hidden.
+        check(c.contains(QStringLiteral("!shootingPage.isFinalsMatch && !shootingPage.isFinals10mMatch && !shootingPage.isTrainingModeAny")),
+              "FINALS-TIMER-001: the legacy display is gated on the same three modes");
+    }
+
     printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
     fflush(stdout);
     return g_failures ? 1 : 0;

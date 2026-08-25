@@ -185,9 +185,26 @@ public:
     QString targetDetail() const { return m_targetDetail; }
     // READY is a strong claim: identified target, open transport, valid Modbus
     // AND a synchronized acquisition baseline. An open COM port is not enough.
+    //
+    // UI-STATUS-001. This used to test a private m_acqState mirror that was
+    // initialised to Synchronizing, reset to Synchronizing, and NEVER set to
+    // Acquiring by anything. targetReady() could therefore only ever answer
+    // false - so on 2026-08-25 the header read CONNECTING... and all four
+    // Training Lab panels read "Target: Not connected" while the log showed
+    // state=ACQUIRING, baseline 7, captured 7, polling every 100 ms. The mirror
+    // is gone; there is one acquisition state machine and this asks it.
+    //
+    // ResettingCounter counts as ready ON PURPOSE. It is a reset THIS
+    // application asked for, it is expected, it lasts a fraction of a second at
+    // every tenth shot, and the operator has nothing to do about it. Flicking
+    // the readiness indicator to SYNCHRONIZING every ten shots is how an
+    // indicator teaches people to stop reading it.
     bool    targetReady()  const {
-        return m_targetState == QLatin1String("TARGET CONNECTED")
-            && m_acqState == AcquisitionState::Acquiring;
+        if (m_targetState != QLatin1String("TARGET CONNECTED"))
+            return false;
+        const ta::target::AcqState s = m_seq.state();
+        return s == ta::target::AcqState::Acquiring
+            || s == ta::target::AcqState::ResettingCounter;
     }
 
 public:
@@ -477,12 +494,16 @@ public slots:
         // the real hardware value. This is the single place every numbering
         // reset passes through - startup, Home -> Practice, sighter/match swap,
         // new match and recovery - so no caller can forget it.
-        m_acqState = AcquisitionState::Synchronizing;
-
         // The sequencer holds the acquisition state machine; it must return to
         // a proved-empty state through the SAME central reset, or a later poll
-        // would judge a fresh session against a stale baseline.
+        // would judge a fresh session against a stale baseline. It is the ONLY
+        // place the state lives - UI-STATUS-001 removed the mirror that used to
+        // be reset alongside it and never advanced again.
         m_seq.resetAll();
+        // UI-STATUS-001: the reset drops readiness and this path does not go
+        // through setTargetStatus(), so the binding would otherwise keep
+        // showing READY for a session that has just been cleared.
+        publishReadinessIfChanged();
 
         m_xCordList.clear();
         m_yCordList.clear();
@@ -546,6 +567,14 @@ private:
     // be shown an acquisition fault for opening a result sheet.
     void reportCoordinateIndexInvalid(const char* who, int index,
                                       bool stopAcquisition = true);
+    // UI-STATUS-001. targetReady() is derived from the sequencer, and the
+    // sequencer changes state inside poll() without going through
+    // setTargetStatus() - session reset is the clearest case. A derived
+    // property whose NOTIFY never fires is a stale binding, so the value is
+    // compared against the last published one and the signal is emitted only
+    // when it actually changes. One comparison per tick, no polling of the
+    // hardware, and no second state machine.
+    void publishReadinessIfChanged();
 
     // Sequencer outcomes, each with the diagnostics the operator needs.
     void issueCounterReset(const ta::target::SeqStep& step);
@@ -696,8 +725,11 @@ private:
     // Fault:         an anomaly that cannot be resolved safely. Latched, and
     //   deliberately not self-clearing - the operator must be told rather than
     //   have the software quietly resume and hide a gap.
-    enum class AcquisitionState { Synchronizing, Acquiring, Fault };
-    AcquisitionState m_acqState = AcquisitionState::Synchronizing;
+    bool m_readyPublished = false;   // UI-STATUS-001, see publishReadinessIfChanged
+    // UI-STATUS-001. The AcquisitionState mirror that used to live here is
+    // gone. ta::target::AcquisitionSequencer owns the acquisition state; a
+    // second copy of a state machine is a second thing to forget to update,
+    // and this one was forgotten from the day it was written.
 
     // ACQ-FLUSH-001 / ACQ-DESYNC-002 / ACQ-SENTINEL-003. The acquisition
     // sequence - counter reset, shot numbering and reconnect reconciliation -

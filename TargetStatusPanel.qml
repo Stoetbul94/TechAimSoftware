@@ -69,16 +69,31 @@ Item {
 
     // Operator-facing wording. Deliberately plain: someone on a range at
     // distance reads a state, not a protocol term.
+    //
+    // UI-STATUS-001. ONE mapping, every engine state named, in a switch rather
+    // than a fall-through chain. "TARGET CONNECTED" had no case of its own and
+    // dropped through to a readiness test that could only ever be false, so a
+    // healthy acquiring target displayed the CONNECTING... fallback. A default
+    // that is reachable by a normal state is not a default; it is a hole.
     readonly property string headline: {
-        if (isFault)                       return qsTr("TARGET ACQUISITION ERROR")
-        if (state === "TARGET DISCONNECTED") return qsTr("TARGET DISCONNECTED")
-        if (state === "RECONNECTING")      return qsTr("RECONNECTING…")
-        if (state === "SYNCHRONIZING")     return qsTr("SYNCHRONIZING…")
-        if (state === "SCANNING")          return qsTr("SEARCHING FOR TARGET…")
-        if (state === "TARGET DETECTED")   return qsTr("TARGET FOUND")
-        if (state === "MANUAL SELECTION REQUIRED") return qsTr("SELECT TARGET PORT")
-        if (isDown)                        return qsTr("NO TARGET")
-        if (ready)                         return qsTr("READY")
+        switch (state) {
+        case "ACQUISITION FAULT":          return qsTr("TARGET ACQUISITION ERROR")
+        case "TARGET DISCONNECTED":        return qsTr("TARGET DISCONNECTED")
+        case "TARGET NOT CONNECTED":
+        case "TARGET NOT DETECTED":        return qsTr("NO TARGET")
+        case "RECONNECTING":               return qsTr("RECONNECTING…")
+        case "SCANNING":                   return qsTr("SEARCHING FOR TARGET…")
+        case "MANUAL SELECTION REQUIRED":  return qsTr("SELECT TARGET PORT")
+        case "TARGET DETECTED":            return qsTr("TARGET FOUND")
+        case "SYNCHRONIZING":              return qsTr("SYNCHRONIZING…")
+        case "TARGET CONNECTED":
+            // Connected is not the same as ready: the transport is open but the
+            // baseline may still be being adopted. READY is the strong claim
+            // and it comes from the acquisition engine, not from this panel.
+            return ready ? qsTr("READY") : qsTr("SYNCHRONIZING…")
+        }
+        // Reached only by a state this panel has not been taught. Say so
+        // plainly rather than guessing at READY or NO TARGET.
         return qsTr("CONNECTING…")
     }
 

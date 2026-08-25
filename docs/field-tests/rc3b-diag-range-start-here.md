@@ -53,12 +53,37 @@ newest `tachus_log*.log` in the bundle and confirm it contains **none** of:
 | Look for | Means |
 |---|---|
 | `ACQUISITION_FAULT` | acquisition stopped — the shot-10 defect, or a real lost shot |
-| `ACQ_COORD_INDEX_INVALID` | a shot was requested that had no measured coordinate |
+| `ACQ_COORD_INDEX_INVALID` **from `getXCord`/`getYCord`, or any of them after the first shot** | a shot was requested that had no measured coordinate — **a real failure** |
 | `ACQ_COORD_READ_FAILED` | the target was asked for a coordinate and did not give one |
 | `ACQ_COORD_REFUSED_BY_UI` | the display refused a shot the backend had accepted |
 | `COUNTER JUMPED` | the counter moved by more than one between polls |
 | `counter was N, target reports M` where N ≠ M | a reconnect adopted a mismatched counter |
 | repeated identical coordinates | the 2026-08-23 corruption returning |
 | more than a handful of `auto-connect` lines | the reconnect loop is back |
+
+### One benign exception, so it is not mistaken for a fault
+
+Two `ACQ_COORD_INDEX_INVALID` lines appear a few seconds after launch, **before
+any shot exists**, from `getXMPIForShoot` and `getYMPIForShoot` with
+`requestedIndex=1 xList=0 yList=0`. Those are match-report cells binding on an
+empty session. The guard did its job: it returned an invalid value, the cell
+printed a dash, and it deliberately raised **no** acquisition fault — nothing is
+being acquired when a report view lays itself out.
+
+The 2026-08-25 test produced exactly these two and nothing else.
+
+**The acceptance criterion is therefore:**
+
+| Must be zero | |
+|---|---|
+| `ACQ_COORD_READ_FAILED` | always |
+| `ACQ_COORD_REFUSED_BY_UI` | always |
+| `ACQ_COORD_INDEX_INVALID` from `getXCord` or `getYCord` | always — these are the scoring accessors |
+| `ACQ_COORD_INDEX_INVALID` of any kind **after the first accepted shot** | always |
+| rejected shots that were genuinely fired | always |
+
+| Expected, record it, do not treat it as a fault | |
+|---|---|
+| up to two `ACQ_COORD_INDEX_INVALID` from `get*MPIForShoot` **before the first shot** | empty-session report probe |
 
 Report what you find, including "nothing". A clean log is the result.

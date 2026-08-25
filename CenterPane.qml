@@ -224,7 +224,10 @@ Item {
 
     function unPauseGameTimer()
     {
-        if (gameTime > 0)
+        // FINALS-TIMER-001. No caller today, guarded anyway: an unguarded
+        // start() that only needs one new call site is how the reconnect
+        // defect arrived in the first place.
+        if (gameTime > 0 && legacyClockIsOurs)
             gameTimer.start()
     }
 
@@ -232,6 +235,21 @@ Item {
     function sleep (time) {
         return new Promise((resolve) >= setTimeout(resolve, time));
     }
+
+    // FINALS-TIMER-001. The legacy match/sighter countdown belongs to
+    // Qualification and free practice ONLY. In a Final the Finals controller
+    // owns the competition clock, and in Training Lab the programme does; both
+    // hide the legacy display for exactly that reason.
+    //
+    // The display was gated and the TIMER was not. onHardwareReconnected()
+    // called gameTimer.start() behind nothing but !sighter.visible, so a USB
+    // reconnect during a Final started a second, invisible clock that then ran
+    // at 1 Hz for the rest of the session accumulating gameTime nobody owned.
+    // The invariant is now one line: the legacy timer runs only where its own
+    // display is shown.
+    readonly property bool legacyClockIsOurs:
+        !shootingPage.isFinalsMatch && !shootingPage.isFinals10mMatch
+        && !shootingPage.isTrainingModeAny
 
     // ACQ-SENTINEL-003. The last line of defence before a coordinate becomes a
     // score. On 2026-08-23 the shot number ran past the coordinate arrays and
@@ -442,7 +460,8 @@ Item {
             //            hardwareDisconnected.text = "Reconnection successfully, Resuming the Game."
             //            hardwareDisconnected.inDisconnectedMode = false
             //            hardwareDisconnected.visible = true
-            if (!sighter.visible)
+            // FINALS-TIMER-001: restore acquisition, never clock ownership.
+            if (!sighter.visible && legacyClockIsOurs)
                 gameTimer.start()
             //            conError.visible = false
             conErrorDia.visible = false
@@ -1556,7 +1575,14 @@ Item {
                         var remainingTime = (totalGameTime - gameTime)*1
                         var formatedTime = minutesToseconds(remainingTime)
                         stopTimer.text = formatedTime
-                        gameTimer.start()
+                        // FINALS-TIMER-001. This branch is already unreachable
+                        // in a Final because the row's own `visible` is gated on
+                        // the same three modes - but that is a guard held by a
+                        // SIBLING property, and depending on one of those is
+                        // exactly how the reconnect path came to start this
+                        // timer in a Final. The condition is stated here too.
+                        if (legacyClockIsOurs)
+                            gameTimer.start()
                     }
                 }
             }

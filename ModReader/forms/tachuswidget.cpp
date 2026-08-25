@@ -541,6 +541,9 @@ void TachusWidget::on_pushButton_2_clicked() // read old data
         m_seq.setCapturedShots(m_xCordList.count());
         const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
         const ta::target::SeqStep step = m_seq.poll(read.counter, nowMs);
+        // The poll is where the acquisition state changes. Publish readiness
+        // here, before the branches below start returning early.
+        publishReadinessIfChanged();
 
         switch (step.action) {
         case ta::target::SeqAction::IssueCounterReset:
@@ -808,6 +811,24 @@ bool TachusWidget::coordinateHasValue(int index) const
 // One diagnostic carrying every number needed to explain it, and it stops
 // acquisition: a shot whose coordinate cannot be found is not a shot that may
 // quietly receive a score.
+// UI-STATUS-001. Emit the NOTIFY for the derived readiness property when, and
+// only when, effective readiness changes. Callers that already go through
+// setTargetStatus() are covered by its own emit; this covers the transitions
+// that do not - principally the poll and the central session reset.
+void TachusWidget::publishReadinessIfChanged()
+{
+    const bool now = targetReady();
+    if (now == m_readyPublished)
+        return;
+    m_readyPublished = now;
+    LogFile::instance().appendToLogFile(
+        QStringLiteral("target readiness -> %1 (state=%2 acq=%3)")
+            .arg(now ? QStringLiteral("READY") : QStringLiteral("NOT READY"))
+            .arg(m_targetState)
+            .arg(QLatin1String(acquisitionStateName())), LogType::BackendLevel);
+    emit targetStatusChanged();
+}
+
 void TachusWidget::reportCoordinateIndexInvalid(const char* who, int index,
                                                 bool stopAcquisition)
 {
