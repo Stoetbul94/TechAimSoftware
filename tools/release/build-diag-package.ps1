@@ -22,9 +22,18 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repo    = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-$version = '0.9.0-RC3B-DIAG'
+# The channel comes from the SOURCE, never from this script. Hard-coding it
+# is how a later candidate silently overwrites an earlier package: RC3B-DIAG
+# is the first acquisition-qualified physical baseline and must stay exactly
+# where it is. Deriving the output folder from the version makes overwriting
+# a previous candidate impossible rather than merely discouraged.
+$proFile = Get-Content (Join-Path $repo 'Seta.pro') -Raw
+if ($proFile -notmatch 'APP_VERSION_STR\s*=\s*(\S+)') { throw 'no APP_VERSION_STR in Seta.pro' }
+$version = $Matches[1]
+if ($version -notmatch 'DIAG$') { throw "$version is not an internal DIAG channel - refusing" }
 $name    = "TechAim-$version"
-$outRoot = Join-Path $repo 'dist\rc3b'
+$channelDir = if ($version -match '(rc[0-9]+[a-z]?)-diag') { $Matches[1].ToLower() } else { 'diag' }
+$outRoot = Join-Path $repo (Join-Path 'dist' $channelDir)
 $stage   = Join-Path $outRoot 'staging'
 
 function Fail($m) { Write-Host "FAIL  $m" -ForegroundColor Red; exit 1 }
