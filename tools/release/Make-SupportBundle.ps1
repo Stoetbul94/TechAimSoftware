@@ -114,12 +114,46 @@ Qt version are shown in the application under Settings > ABOUT / BUILD.
 [System.IO.File]::WriteAllText((Join-Path $work 'release-identity.txt'), $identity)
 
 # ---- logs ----------------------------------------------------------------
+# TWO locations, and the second one is the one that matters.
+#
+# This used to collect AppData\TechAim\Logs only. That folder is EMPTY on
+# every tablet in the 2026-08-23 evidence set - all four of them - because the
+# application writes its log through LogFile, which uses
+# QStandardPaths::TempLocation. So the bundle gathered configuration and
+# identity and no log at all, and the investigation into the repeated 10.8
+# had nothing to read for the window in which it happened.
+#
+# %TEMP% is also cleaned by Windows, so a log not collected soon is a log
+# gone. Collect after every test.
+$logOut = Join-Path $work 'Logs'
+New-Item -ItemType Directory -Force $logOut | Out-Null
+$collected = 0
+
 $logSrc = Join-Path $appData 'Logs'
 if (Test-Path $logSrc) {
-    $logOut = Join-Path $work 'Logs'
-    New-Item -ItemType Directory -Force $logOut | Out-Null
     Get-ChildItem $logSrc -File | Sort-Object LastWriteTime -Descending |
-        Select-Object -First $LogCount | ForEach-Object { Copy-Item $_.FullName $logOut }
+        Select-Object -First $LogCount |
+        ForEach-Object { Copy-Item $_.FullName $logOut; $collected++ }
+}
+
+# The application log itself.
+Get-ChildItem $env:TEMP -Filter 'tachus_log*.log' -File -ErrorAction SilentlyContinue |
+    Sort-Object LastWriteTime -Descending | Select-Object -First $LogCount |
+    ForEach-Object { Copy-Item $_.FullName $logOut; $collected++ }
+
+# The serial parameters the application actually used. SERIAL-DEFAULT-005 was
+# a wrong baud and parity for an hour on two tablets; this is how that is seen
+# afterwards. No secrets live in this file.
+$qmm = Join-Path $env:TEMP 'qModMaster.ini'
+if (Test-Path $qmm) { Copy-Item $qmm (Join-Path $work 'qModMaster.ini') }
+
+if ($collected -eq 0) {
+    [System.IO.File]::WriteAllText((Join-Path $logOut 'NO-LOGS-FOUND.txt'),
+        "No application log was found in either location:`n" +
+        "  $logSrc`n" +
+        "  $env:TEMP\tachus_log*.log`n`n" +
+        "If the application ran on this machine, %TEMP% may have been cleaned.`n" +
+        "Say so in the report - an empty Logs folder is a finding, not a blank.")
 }
 
 # ---- sanitized configuration ---------------------------------------------
