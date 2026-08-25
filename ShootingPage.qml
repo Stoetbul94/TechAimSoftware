@@ -712,6 +712,31 @@ Item {
         // warning is exactly what was on screen while acquisition was dead on
         // 2026-08-09. A positive READY is the thing worth showing.
         visible: true
+
+        // UI-LAYOUT-001 INSTRUMENTATION. Not a fix - a measurement.
+        //
+        // The RC3C screenshots show a full-width status bar covering the
+        // session identity row (FINAL 24 | 10m FINAL | Arnold), which is
+        // left-anchored at x=16 inside a 42 px strip. This panel reads as
+        // right-anchored and at most 380 wide, so the rendered geometry
+        // contradicts the source, and two explanations have already been
+        // falsified: the strip's binding is intact, and main.qml hides
+        // LoginPage entirely so its full-width panel cannot leak.
+        //
+        // Rather than guess at a layout change on the header every discipline
+        // uses, this prints what the panel ACTUALLY resolves to. One line, on
+        // the developer-mode build only, at startup. The next physical run
+        // settles it.
+        Component.onCompleted: {
+            if (APPSETTINGS.getDeveloperMode())
+                MODREADER.appendToLogFile(
+                    "UI-LAYOUT-001 panel geometry: x=" + x + " y=" + y
+                    + " w=" + width + " h=" + height
+                    + " compact=" + compact + " expanded=" + expanded
+                    + " parentW=" + (parent ? parent.width : -1)
+                    + " stripH=" + statusStrip.height
+                    + " reserve=" + shootingPage.headerStatusReserve)
+        }
     }
 
     LeftPanel {

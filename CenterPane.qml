@@ -2231,7 +2231,12 @@ Item {
     {
         //sighter.visible = false;
         sighterTimer.start()
-        stStopTimer.visible = true;
+        // FINALS-DISPLAY-TIMER-002. stRow's own gate already excludes every
+        // Final, so this Text cannot show there today. It is gated anyway: the
+        // defect this fix exists for was a container gate being trusted from a
+        // sibling, and a guard that depends on somebody else's property is the
+        // thing that failed.
+        stStopTimer.visible = legacyClockIsOurs;
         gameTimer.stop()
         countText.visible = false
         timerNotification.visible = false
@@ -2247,7 +2252,7 @@ Item {
         MODREADER.appendToLogFile("startPreparationCountdown: totalSighterTime=" + totalSighterTime)
         sighterTime = 0
         stStopTimer.text = minutesToseconds(totalSighterTime)
-        stStopTimer.visible = true
+        stStopTimer.visible = legacyClockIsOurs   // FINALS-DISPLAY-TIMER-002
         timerNotification.visible = false
         sighterTimer.restart()
     }

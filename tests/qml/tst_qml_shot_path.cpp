@@ -1124,6 +1124,22 @@ int main(int argc, char* argv[])
               QStringLiteral("enables=%1 gated=%2").arg(enables).arg(gated));
         check(!c.contains(QStringLiteral("timerNotification.visible = APPSETTINGS.timer()\n")),
               "FINALS-DISPLAY-TIMER-002: the unconditional APPSETTINGS.timer() enable is gone");
+        // EVERY legacy clock element, not only the one seen physically. A
+        // Final must not be able to set any of them visible.
+        int anyEnable = 0, anyGated = 0;
+        for (const QString& raw : ls) {
+            const QString t = raw.trimmed();
+            if (t.startsWith(QStringLiteral("//"))) continue;
+            const bool isClock = t.startsWith(QStringLiteral("stStopTimer.visible ="))
+                              || t.startsWith(QStringLiteral("stopTimer.visible ="))
+                              || t.startsWith(QStringLiteral("timerNotification.visible ="));
+            if (!isClock || t.contains(QStringLiteral("= false"))) continue;
+            ++anyEnable;
+            if (t.contains(QStringLiteral("legacyClockIsOurs"))) ++anyGated;
+        }
+        check(anyEnable > 0 && anyGated == anyEnable,
+              "FINALS-DISPLAY-TIMER-002: no Final can set ANY legacy clock element visible",
+              QStringLiteral("enables=%1 gated=%2").arg(anyEnable).arg(anyGated));
         // The declarative gates must still be there - the imperative fix is a
         // second line of defence, not a replacement for them.
         check(c.count(QStringLiteral("!shootingPage.isFinals10mMatch")) >= 4,
