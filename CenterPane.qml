@@ -543,7 +543,16 @@ Item {
                 // binding — do not assign imperatively (it would break the
                 // binding for the next session).
                 //gameTimer.start()
-                timerNotification.visible = true;
+                // FINALS-DISPLAY-TIMER-002. The comment three lines above says
+                // not to assign this imperatively because it breaks the
+                // binding - and then this line did exactly that, with no
+                // finals check. The binding it destroyed carried
+                // !isFinalsMatch && !isFinals10mMatch && !isTrainingModeAny,
+                // so from here on the qualification match clock was visible in
+                // a Final. The assignment stays (the binding is already gone by
+                // this point in the session) but it now honours the same
+                // condition the binding did.
+                timerNotification.visible = legacyClockIsOurs;
                 MODREADER.intiateAutoMovementSetup()
             }
             var formatedTime = minutesToseconds(remainingTime)
@@ -2248,7 +2257,16 @@ Item {
     function stopPreparationCountdown()
     {
         sighterTimer.stop()
-        timerNotification.visible = APPSETTINGS.timer()
+        // FINALS-DISPLAY-TIMER-002. This is the one that was seen physically.
+        // stopPreparationCountdown() runs when the match phase begins, and it
+        // set the qualification match clock visible from APPSETTINGS.timer()
+        // alone - true in the field config - with no finals check at all. In
+        // the RC3C 10 m Final that put a clock on the target face reading
+        // 35:00, the full discipline time, frozen: stopTimer.text is computed
+        // once in Component.onCompleted and gameTimer correctly never runs in a
+        // Final, so it never moved. It was still 35:00 fourteen minutes and one
+        // USB reconnect later.
+        timerNotification.visible = APPSETTINGS.timer() && legacyClockIsOurs
     }
 
 }

@@ -31,19 +31,40 @@ If you have a tablet free before the range slot, the plan also lists six
 hardware at all. Crossing a 10-shot boundary for the first time at the range is
 avoidable.
 
-## AFTER EVERY TEST — collect the evidence
+## AFTER THE TEST, BEFORE MOVING OR DELETING ANYTHING
 
-**Double-click `Collect-Logs.cmd`.** It writes a dated ZIP to the Desktop.
+# ▶ RUN `Collect-Logs.cmd` — DOUBLE-CLICK IT — AND COPY THE BUNDLE
+
+**This is the step that was missed on 2026-08-25, and it cost the whole
+qualification.** That test looked clean and was clean, but with no bundle
+NOT ONE acquisition diagnostic could be checked, and a question about a
+possible extra motor movement could not be answered at all. The range time was
+spent; the evidence was not kept.
+
+Do it after **every** test, pass or fail, **before** copying anything anywhere.
+
+It writes a dated ZIP to the Desktop. Copy that ZIP with the rest of the
+evidence.
 
 Do this after **every** test, pass or fail. The last field investigation could
 not explain part of what happened on one tablet because the logs for the
 failure window were never collected — they live in `%TEMP%`, and `%TEMP%` gets
 cleaned.
 
-The bundle contains the application logs, the configuration and the build
-manifest. It contains **no** passwords, no personal files and no other
-athlete's sessions. Session data is opt-in: to include one, run
-`powershell -File Make-SupportBundle.ps1 -SessionId <id>` instead.
+The bundle contains, and prints what it found so you can check before sending:
+
+| | |
+|---|---|
+| `Logs	achus_log*.log` | the application log — the acquisition record |
+| `Session\*.jsonl` | session journals from the last 12 hours |
+| `Session\Match_*.tch` | match records from the last 12 hours |
+| `Session\WHAT-WAS-COLLECTED.txt` | exactly what was and was not included |
+| `config.sanitized.ini`, `qModMaster.ini` | configuration and serial parameters |
+| `release-identity.txt`, `release-manifest.json` | which build produced it |
+
+No passwords, no personal files, nothing from outside this application.
+`-SessionId <id>` narrows it to one session; `-RecentHours 0` collects no
+session data at all.
 
 ## "It worked" is not a result
 

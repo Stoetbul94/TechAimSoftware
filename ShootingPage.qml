@@ -1222,6 +1222,25 @@ Item {
             rec.position = 2   // 10m final has no rifle position; standing face
             if (!(shootingPage.recoveryReplayInProgress && rec.isSighter))
                 globalModelOfData.append(rec)
+
+            // FINAL-TCH-TIME-001. The .tch serialiser reads getTime()/
+            // getTimeStamp(), which read m_timeConsumedList - a list only
+            // RightPanel.addToSeries() ever appended to. A 10m Final shows
+            // finals10mRightPanel instead, so that list stayed EMPTY for the
+            // whole course and getTime() returned its -1 fallback for every
+            // index: the RC3C Final record carried <time>-1</time> and an empty
+            // <time_stamp> for all 29 shots, while the HUD displayed real times
+            // (#24 - 14s, mean 12.9 s).
+            //
+            // The time is the one the controller already measured from splitMs;
+            // the timestamp is taken at acceptance, as it happens. Neither is
+            // reconstructed after the fact. A replayed recovery shot must NOT
+            // append again - its time is already in the record being restored.
+            if (!shootingPage.recoveryReplayInProgress) {
+                MODREADER.appendTimeConsumed("" + (rec.timeSec === undefined ? 0 : rec.timeSec))
+                MODREADER.appendTimeStamp(
+                    new Date().toLocaleTimeString(Qt.locale("en-US"), "HH:mm:ss"))
+            }
         }
 
         function onWindowStateChanged() {
