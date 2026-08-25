@@ -180,12 +180,51 @@ Ok "documents: $((Get-ChildItem $docsOut).Count)"
 $emu = Join-Path $repo 'tools\emulator\release\target_emulator.exe'
 if (Test-Path $emu) { Copy-Item $emu $stage -Force; Ok 'target_emulator.exe (bench rehearsal)' }
 
+# ---- 7b. THE EVIDENCE KIT -------------------------------------------------
+# The 2026-08-23 investigation could not explain part of Tablet-02 because the
+# logs for the failure window were never collected - they live in %TEMP% and
+# %TEMP% gets cleaned. A build whose whole purpose is to be diagnosed must
+# leave with the means to collect its own evidence, and a double-clickable
+# one: nobody at a firing point types a PowerShell command line.
+$startHere = Join-Path $repo 'docs\field-tests\rc3b-diag-range-start-here.md'
+if (-not (Test-Path $startHere)) { Fail 'the range start-here sheet is missing' }
+Copy-Item $startHere (Join-Path $stage 'START-HERE.md') -Force
+Ok 'START-HERE.md (at the root, where it will be seen)'
+
+foreach ($t in @('Make-SupportBundle.ps1', 'Collect-Logs.cmd')) {
+    $src = Join-Path $repo "tools\release\$t"
+    if (-not (Test-Path $src)) { Fail "the evidence kit is incomplete: $t is missing" }
+    Copy-Item $src $stage -Force
+}
+Ok 'Collect-Logs.cmd + Make-SupportBundle.ps1 (run after EVERY test)'
+
 # ---- 8. source-leak audit --------------------------------------------------
 $leaks = Get-ChildItem $stage -Recurse -File |
          Where-Object { $_.Extension -in '.cpp','.h','.pro','.pri','.o','.obj','.tch','.log' -and
                         $_.FullName -notmatch '\\QtQuick\\|\\QtQml\\|\\QtCharts\\' }
 if ($leaks) { Fail "source or build artefacts in the payload:`n$($leaks.Name -join "`n")" }
 Ok 'no source, object or session file in the payload'
+
+# ---- 8b. build identity, INSIDE the payload -------------------------------
+# Make-SupportBundle looks for a release manifest beside the application so a
+# collected bundle can say which build produced it. Without it a bundle is
+# evidence of something, and nobody can prove of what. The ZIP hash cannot be
+# in here - it is the hash of the file this is inside - so identity only.
+$idOut = Join-Path $stage 'docs'
+$identity = [ordered]@{
+    product       = 'Tech Aim Electronic Target Control'
+    version       = $version
+    channel       = 'INTERNAL PHYSICAL QUALIFICATION - not a SETA evaluation build'
+    branch        = $branch
+    commit        = $commit
+    builtUtc      = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+    exeSha256     = (Get-FileHash (Join-Path $stage 'TechAim.exe') -Algorithm SHA256).Hash
+    appMode       = 'Live'
+    developerMode = 1
+}
+$identity | ConvertTo-Json -Depth 3 |
+    Set-Content (Join-Path $idOut 'release-manifest.json') -Encoding utf8
+Ok 'docs/release-manifest.json (so a support bundle can name this build)'
 
 # ---- 9. zip + hashes -------------------------------------------------------
 Write-Host "== package =="
