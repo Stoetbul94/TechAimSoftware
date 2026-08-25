@@ -225,6 +225,16 @@ void AppSettings::saveMatch(bool createNew)
         {
             for (int i=0; i<tachusWidget->getShootCount(); ++i)
             {
+                // ACQ-SENTINEL-003. This is PERSISTENCE - the highest-
+                // consequence coordinate consumer there is, because a .tch is
+                // reopened, rescored, reported and fed to the coach engine
+                // long after the range has packed up. getShootCount() IS the
+                // coordinate count, so the index is in range by construction;
+                // this stops the save rather than writing "nan" if that
+                // construction is ever broken. A short session is recoverable.
+                // A session full of fabricated coordinates is not.
+                if (!tachusWidget->coordinateHasValue(i+1))
+                    break;
                 xmlWriter.writeStartElement(QString("data_%1").arg(i));
                 xmlWriter.writeTextElement("x_data", QString::number(tachusWidget->getXCord(i+1)));
                 xmlWriter.writeTextElement("y_data", QString::number(tachusWidget->getYCord(i+1)));
@@ -272,6 +282,16 @@ void AppSettings::autoSaveMatch()
         {
             for (int i=0; i<tachusWidget->getShootCount(); ++i)
             {
+                // ACQ-SENTINEL-003. This is PERSISTENCE - the highest-
+                // consequence coordinate consumer there is, because a .tch is
+                // reopened, rescored, reported and fed to the coach engine
+                // long after the range has packed up. getShootCount() IS the
+                // coordinate count, so the index is in range by construction;
+                // this stops the save rather than writing "nan" if that
+                // construction is ever broken. A short session is recoverable.
+                // A session full of fabricated coordinates is not.
+                if (!tachusWidget->coordinateHasValue(i+1))
+                    break;
                 xmlWriter.writeStartElement(QString("data_%1").arg(i));
                 xmlWriter.writeTextElement("x_data", QString::number(tachusWidget->getXCord(i+1)));
                 xmlWriter.writeTextElement("y_data", QString::number(tachusWidget->getYCord(i+1)));

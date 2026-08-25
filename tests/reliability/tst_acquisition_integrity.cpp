@@ -822,6 +822,91 @@ void run_acquisition_integrity_tests()
               "N. and its coordinates are the ones the target measured");
     }
 
+    // == CROSS-DISCIPLINE PROPAGATION (section 8) ==========================
+    //
+    // The sequencer takes no discipline argument, which is the whole point: one
+    // engine, and no discipline can have its own. This drives every implemented
+    // live-target family through the same shot ladder anyway, because "it is
+    // discipline-agnostic by construction" is an argument, and a table of
+    // results is evidence.
+    //
+    // Shot 1, 9, 10, 11, 19, 20 are named because 10 and 20 are the flush
+    // boundaries where the field defect fired, and 9/11/19 are their
+    // neighbours. Each family also gets a sighter run, a disconnect/reconnect,
+    // a failed coordinate read and an invalid-index probe.
+    {
+        struct Family { const char* name; int shots; };
+        const Family families[] = {
+            { "10m Air Rifle",        20 },   // AR10  - free, match10..40, qual60
+            { "10m Air Pistol",       20 },   // AP10
+            { "50m Rifle Prone",      20 },   // RIFLE50 / PRONE50
+            { "50m Free Pistol",      20 },   // FREEPISTOL50 - in the catalogue
+            { "50m Rifle 3P",         20 },   // 3P50, per position
+            { "50m 3P Final",         20 },   // FINAL3P
+            { "Training (blocks)",    20 },   // TRAINING / CALLDIAG / POSTRANS
+        };
+        for (const Family& f : families) {
+            AcquisitionSequencer seq; FakeTarget t; AppState app;
+            long long now = 0;
+            settle(seq, t, app, now, 3);
+
+            // Sighters first, then counted - the numbering restart the feed
+            // coordinator has to survive.
+            for (int n = 1; n <= 3; ++n) fireAndSettle(seq, t, app, now, -1.0 * n, 1.0 * n);
+            const int afterSighters = static_cast<int>(app.xs.size());
+
+            for (int n = 1; n <= f.shots; ++n) {
+                fireAndSettle(seq, t, app, now, 0.4 * n - 4.0, 4.0 - 0.4 * n);
+                const int total = afterSighters + n;
+                // The named shots, checked as they happen.
+                if (n == 1 || n == 9 || n == 10 || n == 11 || n == 19 || n == 20) {
+                    check(static_cast<int>(app.xs.size()) == total
+                          && app.publishedShotNumbers.back() == total,
+                          "XDISC. shot lands with its own number and coordinate",
+                          QStringLiteral("%1 shot %2: captured=%3 published=%4")
+                              .arg(QLatin1String(f.name)).arg(n)
+                              .arg(app.xs.size()).arg(app.publishedShotNumbers.back()));
+                }
+            }
+            check(app.faults == 0,
+                  "XDISC. no acquisition fault anywhere in the run",
+                  QStringLiteral("%1 faults=%2").arg(QLatin1String(f.name)).arg(app.faults));
+            check(app.tenPointEightFromSentinel == 0 && !app.everScoredWithoutCoordinate,
+                  "XDISC. nothing scored without a coordinate",
+                  QLatin1String(f.name));
+
+            // Disconnect / reconnect with the target one ahead - the Tablet-02
+            // condition, applied to this family.
+            const int held = static_cast<int>(app.xs.size());
+            seq.noteLinkLost();
+            t.counter = seq.hardwareBaseline() + 1;
+            for (int i = 1; i <= t.counter; ++i) t.slotData[i] = std::make_pair(0.0, 0.0);
+            seq.noteLinkRestored();
+            settle(seq, t, app, now, 4);
+            check(static_cast<int>(app.xs.size()) == held && app.uncapturedReported == 1,
+                  "XDISC. reconnect invents nothing and names the uncaptured shot",
+                  QStringLiteral("%1 held=%2 reported=%3")
+                      .arg(QLatin1String(f.name)).arg(app.xs.size()).arg(app.uncapturedReported));
+
+            // A failed coordinate read must not become a shot.
+            const int beforeFail = static_cast<int>(app.xs.size());
+            t.coordinateReadFails = true;
+            t.fire(9.9, 9.9);
+            settle(seq, t, app, now, 4);
+            check(static_cast<int>(app.xs.size()) == beforeFail && app.faults > 0,
+                  "XDISC. a failed coordinate read is a fault, not a shot",
+                  QStringLiteral("%1 captured=%2 faults=%3")
+                      .arg(QLatin1String(f.name)).arg(app.xs.size()).arg(app.faults));
+            t.coordinateReadFails = false;
+
+            // And the index one past the end is invalid for this family too.
+            check(!coordinateIndexValid(static_cast<int>(app.xs.size()) + 1,
+                                        static_cast<int>(app.xs.size()),
+                                        static_cast<int>(app.ys.size())),
+                  "XDISC. the index past the end is invalid", QLatin1String(f.name));
+        }
+    }
+
     // == PAPER-FEED INTEGRITY (section 8) ==================================
     // ONE ACCEPTED PHYSICAL SHOT -> AT MOST ONE AUTOMATIC FEED.
     // Rejected acquisition, replay and reconnect -> ZERO.

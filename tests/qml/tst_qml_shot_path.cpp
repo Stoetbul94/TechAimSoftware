@@ -955,6 +955,29 @@ int main(int argc, char* argv[])
         // lane CSV. REPORTING for the printed PDF table, whose loop is driven
         // by a SEPARATE counter (m_scoreList_gameMode) and can therefore
         // outrun the coordinate arrays.
+        // The cross-discipline propagation audit found two more, in other
+        // translation units, that no earlier sweep had reached.
+        {
+            const QString feeder = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/src/bridge/coachreportfeeder.cpp"));
+            check(feeder.contains(QStringLiteral("coordinateHasValue(1)")),
+                  "ACQ-SENTINEL-003: the coach feeder asks the authority, not a number");
+            // The old probe compared against -1. NaN == -1.0 is false, so once
+            // the accessors answered NaN that test said "we have coordinates"
+            // when there were none, and NaN went into MPI and group size.
+            check(!feeder.contains(QStringLiteral("== -1.0")),
+                  "ACQ-SENTINEL-003: and the dead -1 comparison is gone from it");
+            check(feeder.count(QStringLiteral("coordinateHasValue(")) >= 2,
+                  "ACQ-SENTINEL-003: it also checks per shot, not once per match",
+                  QStringLiteral("asks=%1").arg(feeder.count(QStringLiteral("coordinateHasValue("))));
+
+            const QString settings = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/appsettings.cpp"));
+            const int saves = settings.count(QStringLiteral("getXCord(i+1)"));
+            const int asks  = settings.count(QStringLiteral("coordinateHasValue(i+1)"));
+            check(saves > 0 && asks == saves,
+                  "ACQ-SENTINEL-003: every .tch persistence loop asks before it writes",
+                  QStringLiteral("writes=%1 asks=%2").arg(saves).arg(asks));
+        }
+
         for (const char* who : { "broadCastNewShoot", "updateShootData",
                                  "updateSetaShootData", "getPDFString" }) {
             const int at = tw.indexOf(QStringLiteral("TachusWidget::") + QLatin1String(who));
