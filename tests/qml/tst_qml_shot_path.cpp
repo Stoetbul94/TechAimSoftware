@@ -1096,6 +1096,70 @@ int main(int argc, char* argv[])
               "FINALS-TIMER-001: the legacy display is gated on the same three modes");
     }
 
+    // -- FINALS-DISPLAY-TIMER-002 - no qualification clock during a Final -----
+    //
+    // RC3C physical: a timer reading 35:00 sat on the target face for the whole
+    // 10 m Final, unchanged across fourteen minutes and one USB reconnect. The
+    // declarative gate on timerNotification already excluded finals; two
+    // imperative assignments destroyed the binding, and one of them set the row
+    // visible from APPSETTINGS.timer() alone.
+    {
+        const QString c = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/CenterPane.qml"));
+        int enables = 0, gated = 0;
+        const QStringList ls = c.split(QLatin1Char('\n'));
+        for (const QString& raw : ls) {
+            const QString t = raw.trimmed();
+            if (!t.startsWith(QStringLiteral("timerNotification.visible ="))
+                || t.startsWith(QStringLiteral("//")))
+                continue;
+            // Assignments that can make it VISIBLE are the ones that matter; an
+            // assignment to false cannot put a clock on a Final's face.
+            if (t.contains(QStringLiteral("= false"))) continue;
+            ++enables;
+            if (t.contains(QStringLiteral("legacyClockIsOurs"))) ++gated;
+        }
+        check(enables > 0 && gated == enables,
+              "FINALS-DISPLAY-TIMER-002: every assignment that can show the match clock "
+              "is gated on legacyClockIsOurs",
+              QStringLiteral("enables=%1 gated=%2").arg(enables).arg(gated));
+        check(!c.contains(QStringLiteral("timerNotification.visible = APPSETTINGS.timer()\n")),
+              "FINALS-DISPLAY-TIMER-002: the unconditional APPSETTINGS.timer() enable is gone");
+        // The declarative gates must still be there - the imperative fix is a
+        // second line of defence, not a replacement for them.
+        check(c.count(QStringLiteral("!shootingPage.isFinals10mMatch")) >= 4,
+              "FINALS-DISPLAY-TIMER-002: the declarative finals gates are intact");
+    }
+
+    // -- FINAL-TCH-TIME-001 - a Final's shot times reach its record -----------
+    //
+    // RC3C physical: the Final .tch carried <time>-1</time> and an empty
+    // <time_stamp> for all 29 shots while the HUD showed real times. getTime()
+    // reads m_timeConsumedList, which only RightPanel.addToSeries() appended
+    // to - and a 10 m Final shows finals10mRightPanel instead.
+    {
+        const QString sp = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/ShootingPage.qml"));
+        const int router = sp.indexOf(QStringLiteral("function onShotAccepted(shot)"),
+                                      sp.indexOf(QStringLiteral("target: FINALS10M")));
+        check(router > 0, "FINAL-TCH-TIME-001: the FINALS10M accepted-shot router exists");
+        if (router > 0) {
+            const QString body = sp.mid(router, 2600);
+            check(body.contains(QStringLiteral("MODREADER.appendTimeConsumed(")),
+                  "FINAL-TCH-TIME-001: it records the shot time the controller measured");
+            check(body.contains(QStringLiteral("MODREADER.appendTimeStamp(")),
+                  "FINAL-TCH-TIME-001: and the timestamp at acceptance");
+            check(body.contains(QStringLiteral("rec.timeSec")),
+                  "FINAL-TCH-TIME-001: the time comes from the record, not from a new clock");
+            check(body.contains(QStringLiteral("!shootingPage.recoveryReplayInProgress")),
+                  "FINAL-TCH-TIME-001: a replayed recovery shot does not append a second time");
+        }
+        // The accessor still refuses an index it does not hold - the fix feeds
+        // the list, it does not weaken the guard.
+        const QString tw = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/ModReader/forms/tachuswidget.cpp"));
+        const int gt = tw.indexOf(QStringLiteral("double TachusWidget::getTime(int index)"));
+        check(gt > 0 && tw.mid(gt, 300).contains(QStringLiteral("return -1")),
+              "FINAL-TCH-TIME-001: getTime still reports -1 for an index it does not hold");
+    }
+
     printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
     fflush(stdout);
     return g_failures ? 1 : 0;
