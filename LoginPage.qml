@@ -258,6 +258,32 @@ Item {
 
     // ─── JS Functions ─────────────────────────────────────────────────────────
 
+    // UI-THEME-001: appearance picker. Three choices, the current one carried
+    // as the accent button so the active setting is visible without a second
+    // control. Dismissing changes nothing.
+    function openAppearanceDialog() {
+        var current = APPSETTINGS.appearance
+        function opt(id, label) {
+            return { label: label + (current === id ? "  ✓" : ""),
+                     result: id, accent: current === id }
+        }
+        dialogManager.show({
+            type: "info",
+            title: qsTr("Appearance"),
+            message: qsTr("Choose how Tech Aim looks. This changes presentation only — it does not affect acquisition, scoring, timing or reports."),
+            details: qsTr("System follows the operating system's light/dark setting."),
+            buttons: [ opt("system", qsTr("System")),
+                       opt("light",  qsTr("Light")),
+                       opt("dark",   qsTr("Dark")) ],
+            defaultResult: current,
+            cancelResult: current,
+            onResult: function (r) {
+                if (r === "system" || r === "light" || r === "dark")
+                    APPSETTINGS.setAppearance(r)
+            }
+        })
+    }
+
     function validate() {
         if (username_loginPage === "" && !isSaveGame) {
             dialogManager.showWarning(qsTr("User Name Required"),
@@ -552,6 +578,70 @@ Item {
             // because mistaking a Demo session for a Live one is a
             // result-integrity risk, not a cosmetic one. Two indicators remain.
         }
+
+        // ── UI-THEME-001: Settings (appearance) ──────────────────────────────
+        // Reachable from the start page, BEFORE a session is entered, which is
+        // the one moment changing appearance can disturb nothing. It is
+        // presentation only: it does not touch acquisition, scoring, timers,
+        // competition rules, session state, COM settings or reports.
+        //
+        // Uses the one dialog framework (TechAimDialog via dialogManager) - no
+        // second dialog mechanism is introduced. See docs/techaim-dialogs.md.
+        Rectangle {
+            id: appearanceButton
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.right: parent.right
+            anchors.rightMargin: 20
+            width: appearanceRow.width + 28
+            height: 34
+            radius: 6
+            color: appearanceMouse.containsMouse ? _surfaceAlt : "transparent"
+            border.width: 1
+            border.color: appearanceMouse.containsMouse ? _borderStr : _borderSub
+
+            Row {
+                id: appearanceRow
+                anchors.centerIn: parent
+                spacing: 8
+
+                // Gear glyph, drawn rather than imported: the icon set in
+                // images/ has no light-theme variant, and a dark-only PNG
+                // would go invisible on the light canvas.
+                Item {
+                    width: 15; height: 15
+                    anchors.verticalCenter: parent.verticalCenter
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: 15; height: 15; radius: 7.5
+                        color: "transparent"
+                        border.width: 2
+                        border.color: appearanceMouse.containsMouse ? _txt : _txtSec
+                    }
+                    Rectangle {
+                        anchors.centerIn: parent
+                        width: 5; height: 5; radius: 2.5
+                        color: appearanceMouse.containsMouse ? _txt : _txtSec
+                    }
+                }
+
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: qsTr("Settings")
+                    color: appearanceMouse.containsMouse ? _txt : _txtSec
+                    font.family: theme.fontFamily
+                    font.pixelSize: 14
+                }
+            }
+
+            MouseArea {
+                id: appearanceMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: rootItem.openAppearanceDialog()
+            }
+        }
+
     }
 
     // ── Two-column content area ───────────────────────────────────────────────

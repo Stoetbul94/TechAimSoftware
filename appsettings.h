@@ -11,6 +11,10 @@
 class AppSettings : public QObject
 {
     Q_OBJECT
+    // UI-THEME-001: a NOTIFYing property, not just an invokable getter, so a
+    // QML binding on it re-evaluates the moment the preference changes. That
+    // is what makes the appearance switch live instead of needing a restart.
+    Q_PROPERTY(QString appearance READ getAppearance WRITE setAppearance NOTIFY appearanceChanged)
 
 public:
     AppSettings(QString fileName);
@@ -129,6 +133,21 @@ public:
     // Read-only developer/testing gate from config.ini (developer_mode=1).
     Q_INVOKABLE bool getDeveloperMode() const;
 
+    // UI-THEME-001: appearance preference - "system" | "light" | "dark".
+    // Presentation ONLY. It must never influence acquisition, scoring,
+    // timing, competition rules, session state or reports.
+    //
+    // Persisted per USER (QSettings organisation scope), deliberately NOT in
+    // the deployed config.ini: that file carries range/deployment
+    // configuration (app_mode, COM parameters, calibration) and is shipped
+    // inside the release package, where it may be read-only and where a
+    // per-operator preference does not belong.
+    //
+    // Default "dark": existing operators keep the appearance they have unless
+    // they have stored a preference.
+    Q_INVOKABLE QString getAppearance() const;
+    Q_INVOKABLE void setAppearance(const QString &appearance);
+
     Q_INVOKABLE bool getIsSingleDecimal() const;
     Q_INVOKABLE void setIsSingleDecimal(bool isSingleDecimal);
 
@@ -183,6 +202,7 @@ signals:
     void startMatch();
     void backHome();
     void printPDF();
+    void appearanceChanged();
 
 private:
     bool m_appMode = false; // false for demo, true for live
@@ -190,6 +210,8 @@ private:
     QString m_brandName = "tachus";
     QString m_iniFileName;   // config.ini path, for group-safe writes
     QSettings* m_settings = NULL;
+    QSettings* m_userPrefs = NULL;   // UI-THEME-001: per-user preferences
+    QString m_appearance = "dark";
     QString user_name = "";
     int game_mode = 0;
     int game_event = 0;

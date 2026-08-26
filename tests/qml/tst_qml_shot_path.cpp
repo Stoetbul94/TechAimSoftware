@@ -42,6 +42,8 @@
 #include <QTranslator>
 #include <QScopedPointer>
 #include <cstdio>
+#include <cmath>
+#include <algorithm>
 
 static int  g_checks = 0;
 static int  g_failures = 0;
@@ -1319,6 +1321,167 @@ int main(int argc, char* argv[])
         check(!sp.contains(QStringLiteral("demoMode ? FINALS10M"))
               && !sp.contains(QStringLiteral("demoMode ? FINALS3P")),
               "MIX-001: DEMO selects no substitute finals controller");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // UI-THEME-001 — System / Light / Dark appearance.
+    //
+    // The token layer is the ONLY theme authority. These checks assert that
+    // (a) it actually resolves per appearance, (b) the preference is a
+    // notifying property so the switch is live, (c) the setting is
+    // presentation-only, and (d) the LIGHT palette is legible - measured,
+    // not asserted, using WCAG relative luminance on the values in the real
+    // file.
+    // ─────────────────────────────────────────────────────────────────────
+    {
+        const QString tk = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/src/ui/theme/DesignTokens.qml"));
+        const QString th = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/Theme.qml"));
+        const QString lp = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/LoginPage.qml"));
+        const QString ah = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/appsettings.h"));
+        const QString ac = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/appsettings.cpp"));
+
+        check(tk.contains(QStringLiteral("property string appearance")),
+              "THEME: the token layer carries the appearance");
+        check(tk.contains(QStringLiteral("readonly property bool isLight")),
+              "THEME: it resolves to a single isLight decision");
+        check(tk.contains(QStringLiteral("Application.styleHints.colorScheme")),
+              "THEME: \"system\" reads the real OS colour scheme");
+        check(tk.contains(QStringLiteral("appearance === \"system\" && systemIsLight")),
+              "THEME: system only means light when the OS says light");
+
+        // The preference must be a NOTIFYing property, or a QML binding on it
+        // never re-evaluates and the switch needs a restart.
+        check(ah.contains(QStringLiteral("Q_PROPERTY(QString appearance READ getAppearance WRITE setAppearance NOTIFY appearanceChanged)")),
+              "THEME: appearance is a notifying property, so switching is live");
+        check(th.contains(QStringLiteral("appearance: APPSETTINGS.appearance")),
+              "THEME: Theme binds the token layer to the persisted preference");
+
+        // Persistence, and where it is NOT written.
+        check(ac.contains(QStringLiteral("ui/appearance")),
+              "THEME: the preference is persisted");
+        check(ac.contains(QStringLiteral("m_userPrefs->sync()")),
+              "THEME: it is flushed, so a kill does not lose it");
+        {
+            const int set = ac.indexOf(QStringLiteral("void AppSettings::setAppearance"));
+            check(set > 0, "THEME: setAppearance exists");
+            if (set > 0) {
+                const QString body = ac.mid(set, 900);
+                check(!body.contains(QStringLiteral("m_settings")),
+                      "THEME: it never writes the deployed config.ini");
+                check(body.contains(QStringLiteral("QStringLiteral(\"dark\")")),
+                      "THEME: an unrecognised value degrades to dark, not to undefined");
+            }
+        }
+
+        // Presentation only.
+        for (const QString& forbidden : QStringList{
+                 QStringLiteral("setAppearance"), QStringLiteral("getAppearance") }) {
+            for (const QString& domain : QStringList{
+                     QStringLiteral("/src/target/AcquisitionDecision.h"),
+                     QStringLiteral("/ModReader/forms/tachuswidget.cpp"),
+                     QStringLiteral("/src/finals/Finals3PController.cpp"),
+                     QStringLiteral("/src/finals10m/Finals10mController.cpp") }) {
+                const QString f = readAll(QStringLiteral(TECHAIM_SOURCE_DIR) + domain);
+                if (f.isEmpty()) continue;
+                check(!f.contains(forbidden),
+                      qPrintable(QStringLiteral("THEME: %1 is absent from %2")
+                                 .arg(forbidden, domain)));
+            }
+        }
+
+        // The Settings entry, on the start page, using the one dialog system.
+        check(lp.contains(QStringLiteral("function openAppearanceDialog()")),
+              "THEME: the start page offers an appearance setting");
+        check(lp.contains(QStringLiteral("dialogManager.show(")),
+              "THEME: it uses the TechAimDialog framework");
+        // The rule (docs/techaim-dialogs.md) bans a second MESSAGE dialog
+        // mechanism. It does not ban QtQuick.Dialogs outright: LoginPage
+        // legitimately uses FolderDialog for the network-share picker, which
+        // is a file-system chooser, not a message box. So assert on the
+        // instantiation, not on the import, and not on the word appearing in
+        // a comment that says the legacy dialogs are gone.
+        check(!lp.contains(QStringLiteral("MessageDialog {")),
+              "THEME: no second message-dialog mechanism was introduced");
+        for (const QString& opt : QStringList{ QStringLiteral("\"system\""),
+                                               QStringLiteral("\"light\""),
+                                               QStringLiteral("\"dark\"") }) {
+            const int at = lp.indexOf(QStringLiteral("function openAppearanceDialog()"));
+            check(at > 0 && lp.mid(at, 1400).contains(opt),
+                  qPrintable(QStringLiteral("THEME: the picker offers %1").arg(opt)));
+        }
+
+        // The header mark must not be the white asset on a light header.
+        const QString hd = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/Header.qml"));
+        check(hd.contains(QStringLiteral("theme.isLight ? theme.logoColor : theme.logoWhite")),
+              "THEME: the header logo follows the theme",
+              QStringLiteral("white-on-white is invisible - found by looking at "
+                             "the rendered light theme"));
+
+        // ── LIGHT PALETTE LEGIBILITY, MEASURED ────────────────────────────
+        // WCAG 2.1 relative luminance and contrast ratio, computed from the
+        // hex values actually present in DesignTokens.qml. If someone edits a
+        // light colour into something unreadable, this fails.
+        struct Lum {
+            static double chan(int v) {
+                const double s = v / 255.0;
+                return (s <= 0.03928) ? s / 12.92 : std::pow((s + 0.055) / 1.055, 2.4);
+            }
+            static double of(const QString& hex) {
+                bool ok = false;
+                const int r = hex.mid(1, 2).toInt(&ok, 16);
+                const int g = hex.mid(3, 2).toInt(&ok, 16);
+                const int b = hex.mid(5, 2).toInt(&ok, 16);
+                return 0.2126 * chan(r) + 0.7152 * chan(g) + 0.0722 * chan(b);
+            }
+            static double ratio(const QString& a, const QString& b) {
+                const double la = of(a), lb = of(b);
+                return (std::max(la, lb) + 0.05) / (std::min(la, lb) + 0.05);
+            }
+        };
+
+        // Pull the LIGHT branch of a token: `name: isLight ? "#LIGHT" : "#DARK"`
+        auto lightOf = [&tk](const char* name) -> QString {
+            const QRegularExpression re(
+                QStringLiteral("%1:\\s*isLight\\s*\\?\\s*\"(#[0-9A-Fa-f]{6})\"").arg(name));
+            const QRegularExpressionMatch m = re.match(tk);
+            return m.hasMatch() ? m.captured(1) : QString();
+        };
+
+        const QString lSurface = lightOf("surfacePrimary");
+        const QString lCanvas  = lightOf("backgroundPrimary");
+        const QString lTxt     = lightOf("textPrimary");
+        const QString lTxtSec  = lightOf("textSecondary");
+        const QString lTxtDis  = lightOf("textDisabled");
+        const QString lBorder  = lightOf("borderSubtle");
+
+        check(!lSurface.isEmpty() && !lTxt.isEmpty(),
+              "THEME: the light palette is readable from the token file");
+
+        struct Pair { const char* label; QString fg; QString bg; double min; };
+        const QList<Pair> pairs = {
+            { "light textPrimary on surface",   lTxt,    lSurface, 4.5 },
+            { "light textPrimary on canvas",    lTxt,    lCanvas,  4.5 },
+            { "light textSecondary on surface", lTxtSec, lSurface, 4.5 },
+            { "light textDisabled on surface",  lTxtDis, lSurface, 3.0 },
+            { "white on the brand accent",      QStringLiteral("#FFFFFF"),
+                                                QStringLiteral("#A80038"), 4.5 },
+        };
+        for (const Pair& p : pairs) {
+            if (p.fg.isEmpty() || p.bg.isEmpty()) { check(false, p.label, "token not found"); continue; }
+            const double r = Lum::ratio(p.fg, p.bg);
+            check(r >= p.min, p.label,
+                  QStringLiteral("%1 on %2 = %3:1, needs %4:1")
+                      .arg(p.fg, p.bg).arg(r, 0, 'f', 2).arg(p.min));
+        }
+        // A border that does not differ from its surface is not a border.
+        if (!lBorder.isEmpty() && !lSurface.isEmpty()) {
+            const double r = Lum::ratio(lBorder, lSurface);
+            check(r >= 1.25, "light border is visible against its surface",
+                  QStringLiteral("%1 on %2 = %3:1").arg(lBorder, lSurface).arg(r, 0, 'f', 2));
+        }
+        // Disabled must be dimmed, not erased.
+        check(tk.contains(QStringLiteral("disabledOpacity: isLight ? 0.55")),
+              "THEME: disabled controls are less faded on light than on dark");
     }
 
     printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);

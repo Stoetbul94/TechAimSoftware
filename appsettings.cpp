@@ -51,6 +51,17 @@ AppSettings::AppSettings(QString fileName)
     // config.ini [App_Settings] developer_mode=1 — default OFF in production.
     m_developerMode = m_settings->value("developer_mode", 0).toInt() != 0;
 
+    // UI-THEME-001: appearance preference, per user, separate store.
+    // Not config.ini - see the note on getAppearance() in the header.
+    m_userPrefs = new QSettings(QStringLiteral("TechAim"), QStringLiteral("TechAim"));
+    {
+        const QString stored = m_userPrefs->value(QStringLiteral("ui/appearance"),
+                                                  QStringLiteral("dark")).toString();
+        m_appearance = (stored == QLatin1String("light")
+                        || stored == QLatin1String("system")) ? stored
+                                                              : QStringLiteral("dark");
+    }
+
 #ifndef BRAND_TACHUS
     m_is15Shoot = m_settings->value("15_shoot_match", 0).toInt() == 0 ? false : true;
 #endif
@@ -987,6 +998,30 @@ bool AppSettings::getIs15Shoot() const
 bool AppSettings::getDeveloperMode() const
 {
     return m_developerMode;
+}
+
+// UI-THEME-001. Presentation only. An unrecognised stored value degrades to
+// "dark" rather than to an undefined appearance, so a hand-edited or
+// corrupted preference cannot leave the application unreadable.
+QString AppSettings::getAppearance() const
+{
+    return m_appearance;
+}
+
+void AppSettings::setAppearance(const QString &appearance)
+{
+    const QString next = (appearance == QLatin1String("light")
+                          || appearance == QLatin1String("system")
+                          || appearance == QLatin1String("dark"))
+                         ? appearance : QStringLiteral("dark");
+    if (next == m_appearance)
+        return;
+    m_appearance = next;
+    if (m_userPrefs) {
+        m_userPrefs->setValue(QStringLiteral("ui/appearance"), m_appearance);
+        m_userPrefs->sync();          // survive a kill, not just a clean exit
+    }
+    emit appearanceChanged();
 }
 
 QString AppSettings::getGame_mode_string() const
