@@ -494,6 +494,14 @@ and `tests/qml` enforces it file-wide rather than at the one site that failed.
 
 ## UI-DEC-016 — Appearance is a token-layer decision, never a per-screen one
 
+| | |
+|---|---|
+| **Date** | 2026-08-26 |
+| **Status** | ACCEPTED |
+| **Commit** | `9624eed` |
+| **Directed by** | the round brief of 2026-08-26, which required a shared theme authority and expressly ruled out editing colours screen by screen |
+| **Visual approval** | **NOT GIVEN.** The architecture was directed; the light appearance beyond the start page has not been seen by the operator. See `Homepage_Acceptance_Checklist.md` A12–A14. |
+
 **Decision.** Light/Dark/System is implemented by resolving every semantic
 token in `src/ui/theme/DesignTokens.qml` through a single `isLight`, and by
 nothing else. A screen never asks what theme is active in order to pick a
