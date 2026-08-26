@@ -783,3 +783,65 @@ having to be set by hand to avoid a segfault, and text rendering as empty boxes
 about the evidence status below:** the renderer still draws the same QML
 through the same Qt Quick scene graph without being the application, so its
 output remains automated evidence and not human visual approval.
+
+
+## FINALS-3P-MIX-001 — the 50 m 3P Final rendered the 10 m Final's right side (2026-08-26)
+
+**Status. RESOLVED — AUTOMATED EVIDENCE, HUMAN VISUAL CHECK REQUIRED.**
+Fixed in `d6644bb`, covered by 57 new checks in `tests/qml`, and the defect
+was reproduced against the test (removing the fix fails 2 checks). No
+screenshot of a corrected 3P Final has been taken, because reaching that
+screen needs a 50 m 3P Final session driven to its sighting phase. The
+operator's next demo run closes this.
+
+**Observed.** DEMO, RC3D, 2026-08-26. A 50 m 3P Final showed the 3P shell —
+`FINAL 35`, `PREP K P S S1 S2 SINGLES DONE` — with the 10 m Final's right
+panel on top of it: "10m Air Rifle Final", `0 / 24 shots`, and a
+Series 1 / Series 2 / Singles summary. Two clocks ran, 33 s apart. Six shots
+appeared on the target face while the panel still read `0 / 24` and its
+sighters list stayed empty.
+
+**Root cause.** `ShootingPage.qml::enterFinalsMode()` — the 3P Final entry —
+set `isFinalsMatch` and cleared `is3PMatch`, but never cleared
+`isFinals10mMatch`. Every other mode-entry function clears all three. The
+operator started a 10 m Final at 21:13:11 and a 3P Final at 21:13:44 in the
+same run, so the flag stayed true and every element bound to it stayed
+mounted: `Finals10mRightPanel`, `Finals10mHud` with its own clock, and the
+FINALS10M shot router — while the qualification `RightPanel`, which yields on
+`!isFinals10mMatch`, stayed hidden. The 33 s between the two clocks is exactly
+the gap between the two session starts.
+
+The exit paths that do clear the flag (`homeFromFinals10m`,
+`startNewFinals10m`) were not taken; the log shows the generic Home route.
+The entry side is therefore the authority and is where it is fixed.
+
+A second instance of the same defect was found and fixed in the same commit:
+`enterQualificationMode()`'s recovery branch had the same omission.
+
+**Rule now enforced.** A mode-entry function owns **every** discipline flag,
+not just its own. `tests/qml` checks all seven entry points, so adding a
+discipline fails the suite until its flag is added everywhere.
+
+**Not a scoring defect.** Acquisition, scoring, paper feed, counter
+reconciliation and persistence were not touched. DEMO was already using
+FINALS3P correctly — `uxShoot` re-enters the same `shootCountChanged` path —
+so live and demo share one competition-state authority.
+
+## UI-THEME-LOGO-001 — the header mark was invisible in the light theme (2026-08-26)
+
+**Status. RESOLVED — SCREENSHOT EVIDENCE.** Fixed in `9624eed`.
+
+**Observed.** With the light theme applied, `Header.qml` drew
+`theme.logoWhite` on `backgroundSecondary` (`#FFFFFF`) — a white mark on a
+white strip. Found by looking at the rendered light theme, not by reading the
+code: every automated check passed while it was wrong, because nothing
+automated knows what a logo is supposed to look like.
+
+**Fix.** `source: theme.isLight ? theme.logoColor : theme.logoWhite`. The
+colour mark is the approved light-background variant and is what the report
+and PDF system already uses on white paper.
+
+**Evidence.** Start-page header captured from the running release binary in
+both appearances: colour mark on light, white mark on dark. `tests/qml` now
+asserts the binding, which prevents the regression but would not have caught
+the original — that needed a human looking at a picture.

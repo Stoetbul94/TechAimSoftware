@@ -490,3 +490,46 @@ and `tests/qml` enforces it file-wide rather than at the one site that failed.
 **Affected decisions.** UI-DEC-001 through UI-DEC-014 are all **preserved**.
 
 **Supersedes.** Nothing.
+
+
+## UI-DEC-016 — Appearance is a token-layer decision, never a per-screen one
+
+**Decision.** Light/Dark/System is implemented by resolving every semantic
+token in `src/ui/theme/DesignTokens.qml` through a single `isLight`, and by
+nothing else. A screen never asks what theme is active in order to pick a
+colour; it reads a token by meaning and the token layer answers. The two
+permitted exceptions are non-colour choices that a token cannot express — the
+current one is the header logo asset, which must be the colour mark on light
+chrome and the white mark on dark.
+
+The preference is persisted **per user** (`QSettings` organisation scope,
+`ui/appearance`) and never written into the deployed `config.ini`, which
+carries range and deployment configuration and ships read-only inside the
+release package. Default is **dark** when nothing is stored, so existing
+operators keep the appearance they have.
+
+Appearance is **presentation only**. It may not influence acquisition,
+scoring, timing, competition rules, session state, COM settings, reports or
+paper feed. `tests/qml` asserts the appearance API is absent from the
+acquisition, 3P-finals and 10m-finals sources.
+
+**Reasoning.** The product previously carried 240 distinct colour literals
+across 66 QML files. The token layer (UI-1) exists precisely so a colour
+decision is made once; implementing a second theme by editing screens would
+have rebuilt the problem the token layer was created to remove, and would have
+left every unmigrated screen silently wrong. Resolving inside the tokens also
+makes the switch live for free, because consumers already read them as
+bindings.
+
+The dark palette is unchanged value-for-value. A theme feature that also
+restyles the existing product is two changes wearing one commit message.
+
+**Affected areas.** `src/ui/theme/DesignTokens.qml`, `Theme.qml`,
+`LoginPage.qml`, `Header.qml`, `appsettings.{h,cpp}`, `tests/qml`.
+
+**Affected decisions.** UI-DEC-001 through UI-DEC-015 are all **preserved**.
+UI-DEC-005 (one primary Tech Aim logo, in the application shell) is preserved
+and refined: it remains one logo in one place; only which variant of that one
+mark is drawn now depends on the chrome behind it.
+
+**Supersedes.** Nothing.

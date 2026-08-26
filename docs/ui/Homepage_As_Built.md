@@ -256,3 +256,24 @@ selected-programme summary, the network share state, typography and branding.
 
 Everything else in this document is derived from the source at `d4674d0` and
 from tests that read that source.
+
+
+## Header bar — Settings entry (2026-08-26)
+
+The start page's 56 px header carries the page title on the left and, since
+UI-THEME-001, a **Settings** control on the right: a bordered pill with a
+drawn gear glyph and the label `Settings`, hover-lit via `surfaceSecondary`
+and `borderStrong`.
+
+The glyph is drawn in QML rather than imported. The icon set in `images/` has
+no light-theme variant, and a dark-only PNG would go invisible on the light
+canvas — the same failure the header logo had (UI-THEME-LOGO-001).
+
+Clicking it opens `rootItem.openAppearanceDialog()`, which uses the one
+dialog framework (`dialogManager` / `TechAimDialog`) with three buttons —
+System, Light, Dark. The active choice is carried as the accent button and
+marked with a check, so the current setting is visible without a second
+control. Dismissing changes nothing; the cancel result is the current value.
+
+The setting is presentation only and is deliberately placed before session
+entry, which is the one moment changing appearance can disturb nothing.

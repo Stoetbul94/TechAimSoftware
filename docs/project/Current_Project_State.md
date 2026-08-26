@@ -325,3 +325,45 @@ appeared in `%LOCALAPPDATA%\TechAim\TechAim\cache\`: Qt QML and pipeline
 the capture profile. No session, athlete or result data was created or
 modified. Recorded for completeness so the earlier "123 files / 3,151,405
 bytes" figure is not treated as a discrepancy.
+
+
+## 2026-08-26 — 3P Final isolation, and appearance settings
+
+**FINALS-3P-MIX-001 fixed.** The 50 m 3P Final was rendering the 10 m Final's
+right panel, a second HUD with its own clock and a second enabled shot router,
+whenever a 10 m Final had run earlier in the same application run.
+`enterFinalsMode()` did not release `isFinals10mMatch`; every other mode-entry
+function released all three discipline flags. A second instance in
+`enterQualificationMode()`'s recovery branch was fixed with it. The rule — a
+mode-entry function owns every discipline flag — is now enforced across all
+seven entry points by `tests/qml`.
+
+This was found from the operator's DEMO run on RC3D, and the two session
+starts 33 s apart in the log match the 33 s gap between the two clocks on
+screen exactly.
+
+**UI-THEME-001 added.** System / Light / Dark, chosen from a Settings entry on
+the start page, persisted per user, defaulting to dark. Implemented entirely
+in the token layer: the dark palette is unchanged value-for-value, and
+switching is live because consumers already read tokens as bindings.
+
+**Where the product stands.** Acquisition is unchanged and remains at its RC3B
+/ RC3C physical baseline. The regression suite is at **6 344 checks, 0
+failures** across eight suites (reliability 2597, training 568, 10m finals 143,
+3P finals 235, QML 294, manuals 1388, project memory 216, training-lab evidence
+903). `check_generated_manuals.py` remains red on its HEAD-equality gate, which
+is pre-existing and independent of this work.
+
+**Not done, and deliberately.**
+- The 3P Final's right side, after isolation, falls back to the qualification
+  `RightPanel`. That satisfies "no 10 m content in a 3P Final" but not a
+  purpose-built 3P finals presentation (position, position subtotal, 35-shot
+  progress). There is no `Finals3PRightPanel.qml`; building one is its own
+  round.
+- The light theme is proven on the start page only. The shooting page, both
+  finals, dialogs and the report shell have not been rendered in light, and
+  screens still holding hex literals do not follow the theme.
+- Neither theme has a trustworthy capture at the operator's 1280x800.
+- 10 m Finals reporting (F6) and the Open Practice reporting checks remain
+  deferred, unchanged by this round. See
+  `docs/field-tests/reporting-architecture-audit.md`.

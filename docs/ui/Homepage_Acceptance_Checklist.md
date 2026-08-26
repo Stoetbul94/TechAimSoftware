@@ -227,3 +227,27 @@ quietly upgraded later without someone actually looking.
 
 No further homepage styling changes are to be made unless a new defect is
 found — see `UI-DEC-012`.
+
+
+## Appearance — System / Light / Dark (UI-THEME-001, 2026-08-26)
+
+| # | Line | Status | Evidence |
+|---|---|---|---|
+| A1 | A Settings entry is reachable on the start page, before a session | **PASS** | Start-page screenshot, running release binary |
+| A2 | It offers System, Light and Dark, showing which is active | **PASS** | `tests/qml` (picker offers all three; current is the accent button) |
+| A3 | Dark is the default when nothing is stored | **PASS** | `tests/qml` + `appsettings.cpp` default |
+| A4 | The existing dark appearance is unchanged, value for value | **PASS** | Dark palette literals untouched; legacy Theme properties gained a light branch only |
+| A5 | Dark -> restart -> Dark | **PASS** | Captured after restart |
+| A6 | Light -> restart -> Light | **PASS** | Captured after restart |
+| A7 | System follows the OS | **PASS** | Windows `AppsUseLightTheme=0`; app rendered dark |
+| A8 | Switching does not require a restart | **PASS (code)** | Notifying `Q_PROPERTY` + token bindings. **Not yet exercised by a human click** — see A12 |
+| A9 | Light: no white text on light, borders visible, disabled readable | **PASS** | Measured WCAG contrast in `tests/qml`: 17.0:1 / 8.2:1 / 4.6:1, white-on-accent 8.9:1, border distinct from surface |
+| A10 | Brand accent stays recognisable in light | **PASS** | `#A80038` unchanged in both themes; start-page screenshot |
+| A11 | Appearance changes nothing functional | **PASS** | `tests/qml` asserts the API is absent from acquisition, 3P finals and 10m finals sources |
+| A12 | The picker itself, clicked by a person, applies live | **NOT PROVEN** | The dialog was never clicked: appearance was set through the stored preference and verified across restarts. Needs one human click |
+| A13 | Both themes at 1280x800, the operator's tablet | **NOT PROVEN** | Captures were taken maximised at 1536x960. A scripted resize to 1280x800 left the window reporting a 65535 px height, so no trustworthy capture at that size was produced |
+| A14 | Light theme across shooting page, finals, dialogs, reports | **NOT PROVEN** | Only the start page was rendered and inspected. Screens still holding hex literals do not follow the theme |
+
+**A12, A13 and A14 are open and are the operator's next check.** The theme
+architecture and the start page are proven; the rest of the product's light
+appearance is not, and this checklist does not claim it.
