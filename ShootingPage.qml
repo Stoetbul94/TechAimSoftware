@@ -2004,6 +2004,16 @@ Item {
     {
         isFinalsMatch = true
         is3PMatch = false
+        // FINALS-3P-MIX-001: clear the 10m Final flag too. Every mode-entry
+        // function owns ALL of the discipline flags, not just its own - a flag
+        // left set by a previous session keeps that discipline's layer mounted.
+        // This one cleared only is3PMatch, so a 10m Final earlier in the same
+        // run left isFinals10mMatch true and the 3P Final rendered the 10m
+        // right panel ("10m Air Rifle Final", 0/24, Series 1/2/Singles), a
+        // second HUD with its own clock, and a second enabled shot router on
+        // top of the 3P shell. Enforced for every entry point by
+        // tests/qml/tst_mode_entry_exclusivity.
+        isFinals10mMatch = false
         // Fresh, start-from-zero session: the finals path returns before the
         // qualification clearing flows run, so clear the shot models here
         // (role locks survive clear()).
@@ -2163,6 +2173,11 @@ Item {
             // callers arrive with all of this already done.
             isFinalsMatch = false
             is3PMatch = false
+            // FINALS-3P-MIX-001 (second instance): a qualification session
+            // recovered after a 10m Final in the same run would otherwise keep
+            // the 10m right panel and HUD mounted. Same rule - an entry point
+            // owns every discipline flag.
+            isFinals10mMatch = false
             resetDataModels()                    // clear stale fresh models
             centerPanel.totalSighterTime = APPSETTINGS.getPrepTimeCount()
             changedToSigherMode()                // sighter routing + clean face

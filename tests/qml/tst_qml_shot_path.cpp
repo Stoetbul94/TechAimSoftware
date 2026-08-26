@@ -1176,6 +1176,151 @@ int main(int argc, char* argv[])
               "FINAL-TCH-TIME-001: getTime still reports -1 for an index it does not hold");
     }
 
+    // ─────────────────────────────────────────────────────────────────────
+    // FINALS-3P-MIX-001 — mode-entry exclusivity.
+    //
+    // Seen in DEMO on RC3D: a 50 m 3P Final rendered the 3P shell (FINAL 35,
+    // PREP/K/P/S/S1/S2/SINGLES/DONE) with the 10 m Final's right panel on top
+    // of it - "10m Air Rifle Final", 0 / 24 shots, Series 1 / Series 2 /
+    // Singles - plus a second HUD running its own clock 33 s out of step, and
+    // a second enabled shot router.
+    //
+    // Cause: enterFinalsMode() (the 3P Final entry) set isFinalsMatch and
+    // cleared is3PMatch, but never cleared isFinals10mMatch. Every OTHER entry
+    // function cleared all three. A 10 m Final earlier in the same run left
+    // the flag true, and every element bound to it stayed mounted. The generic
+    // Home route does not clear it either - only homeFromFinals10m() and
+    // startNewFinals10m() do - so the entry side is the authority.
+    //
+    // The rule this enforces: A MODE-ENTRY FUNCTION OWNS EVERY DISCIPLINE
+    // FLAG, NOT JUST ITS OWN. Adding a discipline means adding its flag to
+    // every entry point, and this test fails until that is done.
+    // ─────────────────────────────────────────────────────────────────────
+    {
+        const QString sp = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/ShootingPage.qml"));
+        check(!sp.isEmpty(), "MIX-001: ShootingPage.qml is readable");
+
+        // Every discipline flag, and every function that engages a mode.
+        const QStringList flags = { QStringLiteral("isFinalsMatch"),
+                                    QStringLiteral("isFinals10mMatch"),
+                                    QStringLiteral("is3PMatch") };
+        const QStringList entries = { QStringLiteral("enterFinalsMode"),
+                                      QStringLiteral("enterFinals10mMode"),
+                                      QStringLiteral("enterQualificationMode"),
+                                      QStringLiteral("enterTrainingMode"),
+                                      QStringLiteral("enterCallDiagnoseMode"),
+                                      QStringLiteral("enterPositionTransitionMode"),
+                                      QStringLiteral("enterWindMapMode") };
+
+        for (const QString& fn : entries) {
+            const QString body = extractFunction(sp, fn);
+            check(!body.isEmpty(),
+                  qPrintable(QStringLiteral("MIX-001: %1 exists").arg(fn)));
+            if (body.isEmpty())
+                continue;
+            for (const QString& flag : flags) {
+                // An assignment, not merely a mention: "<flag> =" but not "==".
+                const QRegularExpression assign(
+                    QStringLiteral("\\b%1\\s*=[^=]").arg(flag));
+                check(body.contains(assign),
+                      qPrintable(QStringLiteral("MIX-001: %1 assigns %2")
+                                 .arg(fn, flag)),
+                      QStringLiteral("a mode-entry function owns EVERY discipline "
+                                     "flag - an unowned flag keeps the previous "
+                                     "discipline's layer mounted"));
+            }
+        }
+
+        // The two finals entries are mutually exclusive, stated explicitly.
+        const QString f3p  = extractFunction(sp, QStringLiteral("enterFinalsMode"));
+        const QString f10m = extractFunction(sp, QStringLiteral("enterFinals10mMode"));
+        check(f3p.contains(QStringLiteral("isFinalsMatch = true")),
+              "MIX-001: the 3P Final entry claims isFinalsMatch");
+        check(f3p.contains(QStringLiteral("isFinals10mMatch = false")),
+              "MIX-001: the 3P Final entry RELEASES isFinals10mMatch",
+              QStringLiteral("this exact line is the defect fix"));
+        check(f3p.contains(QStringLiteral("is3PMatch = false")),
+              "MIX-001: the 3P Final entry releases is3PMatch");
+        check(f10m.contains(QStringLiteral("isFinals10mMatch = true")),
+              "MIX-001: the 10m Final entry claims isFinals10mMatch");
+        check(f10m.contains(QStringLiteral("isFinalsMatch = false")),
+              "MIX-001: the 10m Final entry releases isFinalsMatch");
+        check(f10m.contains(QStringLiteral("is3PMatch = false")),
+              "MIX-001: the 10m Final entry releases is3PMatch");
+
+        // ── the presentation matrix (brief section 11) ────────────────────
+        // Each discipline's layer is gated on ITS OWN flag and no other.
+        struct Layer { const char* what; const char* anchor; const char* gate; };
+        const Layer layers[] = {
+            { "10m Final right panel", "Finals10mRightPanel {", "visible: isFinals10mMatch" },
+            { "10m Final HUD",         "Finals10mHud {",        "visible: isFinals10mMatch" },
+            { "3P Final HUD",          "FinalsHud {",           "visible: isFinalsMatch"    },
+        };
+        for (const Layer& l : layers) {
+            const int at = sp.indexOf(QLatin1String(l.anchor));
+            check(at > 0, qPrintable(QStringLiteral("MIX-001: %1 is mounted").arg(l.what)));
+            if (at > 0)
+                check(sp.mid(at, 400).contains(QLatin1String(l.gate)),
+                      qPrintable(QStringLiteral("MIX-001: %1 is gated on %2")
+                                 .arg(l.what, l.gate)));
+        }
+
+        // The qualification right panel steps aside for the 10m Final only.
+        const int rp = sp.indexOf(QStringLiteral("RightPanel {\n        id: rightPanel"));
+        check(rp > 0, "MIX-001: the qualification right panel is mounted");
+        if (rp > 0)
+            check(sp.mid(rp, 900).contains(QStringLiteral("visible: !isFinals10mMatch")),
+                  "MIX-001: it yields to the 10m Final, and to nothing else");
+
+        // Each router is enabled by its own controller's flag.
+        const int r3p = sp.indexOf(QStringLiteral("target: FINALS3P"));
+        const int r10 = sp.indexOf(QStringLiteral("target: FINALS10M"));
+        check(r3p > 0 && sp.mid(r3p, 120).contains(QStringLiteral("enabled: isFinalsMatch")),
+              "MIX-001: the FINALS3P shot router is enabled by isFinalsMatch");
+        check(r10 > 0 && sp.mid(r10, 120).contains(QStringLiteral("enabled: isFinals10mMatch")),
+              "MIX-001: the FINALS10M shot router is enabled by isFinals10mMatch");
+
+        // ── discipline semantics stay in their own domain ─────────────────
+        // 10 m course wording must not be reachable from the 3P finals domain,
+        // and 3P position wording must not be reachable from the 10 m domain.
+        const QString cfg10 = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/src/finals10m/Finals10mConfig.h"));
+        check(cfg10.contains(QStringLiteral("10m Air Rifle Final")),
+              "MIX-001: \"10m Air Rifle Final\" is owned by the 10m config");
+
+        const QString hud3p = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/FinalsHud.qml"));
+        const QString strip = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/FinalsTopStrip.qml"));
+        for (const QString& f : QStringList{ hud3p, strip }) {
+            if (f.isEmpty())
+                continue;
+            check(!f.contains(QStringLiteral("10m Air Rifle Final")),
+                  "MIX-001: no 10m discipline name inside the 3P Final HUD");
+            check(!f.contains(QStringLiteral("FINALS10M")),
+                  "MIX-001: the 3P Final HUD never reads FINALS10M");
+            check(!f.contains(QStringLiteral("/ 24")),
+                  "MIX-001: no 24-shot course count inside the 3P Final HUD");
+        }
+
+        const QString rp10 = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/Finals10mRightPanel.qml"));
+        if (!rp10.isEmpty()) {
+            check(!rp10.contains(QStringLiteral("FINALS3P")),
+                  "MIX-001: the 10m right panel never reads FINALS3P");
+            for (const QString& w : QStringList{ QStringLiteral("KNEELING"),
+                                                 QStringLiteral("PRONE"),
+                                                 QStringLiteral("STANDING") })
+                check(!rp10.contains(w),
+                      qPrintable(QStringLiteral("MIX-001: no 3P position wording (%1) "
+                                                "in the 10m right panel").arg(w)));
+        }
+
+        // DEMO must not substitute a controller: the demo shot source is
+        // uxShoot, which re-enters the SAME shootCountChanged path, so both
+        // routers above serve live and demo alike. Assert there is no
+        // demo-specific finals branch choosing a different controller.
+        check(!sp.contains(QStringLiteral("demoMode ? FINALS10M"))
+              && !sp.contains(QStringLiteral("demoMode ? FINALS3P")),
+              "MIX-001: DEMO selects no substitute finals controller");
+    }
+
     printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
     fflush(stdout);
     return g_failures ? 1 : 0;
