@@ -1,0 +1,193 @@
+{
+  "$comment": "Machine-readable summary of the current governing rules per implemented discipline. null means NOT VERIFIED - never a guess. The Markdown audit is the authority.",
+  "generated": "2026-08-27",
+  "ruleSource": {
+    "document": "ISSF Rule Book 2026",
+    "edition": "Edition 2025 (Second Print 07/2026)",
+    "effectiveDate": "2026-07-01",
+    "url": "https://backoffice.issf-sports.org/getfile.aspx?mod=docf&pane=1&inst=455&file=ISSF-Rule-Book-2026-Edition-2025-Second-Print-07-2026-Effective-1-July-2026.pdf",
+    "retrieved": "2026-08-27"
+  },
+  "disciplines": [
+    {
+      "disciplineId": "FINAL3P",
+      "displayName": "50 m Rifle 3 Positions Final",
+      "governingBody": "ISSF",
+      "ruleDocument": "ISSF Rule Book 2026 Edition 2025 (Second Print 07/2026)",
+      "effectiveDate": "2026-07-01",
+      "ruleSection": "6.17.3",
+      "totalOfficialShots": 35,
+      "scoringMode": "decimal",
+      "preparationMs": 300000,
+      "matchDurationMs": 1320000,
+      "seriesStructure": [
+        {
+          "name": "Kneeling",
+          "shots": 10
+        },
+        {
+          "name": "Prone",
+          "shots": 10
+        },
+        {
+          "name": "Standing Series 1",
+          "shots": 5,
+          "timerMs": 250000
+        },
+        {
+          "name": "Standing Series 2",
+          "shots": 5,
+          "timerMs": 250000
+        },
+        {
+          "name": "Standing singles",
+          "shots": 5,
+          "timerMsEach": 50000
+        }
+      ],
+      "stateFlowDocument": "docs/rules/50M-3P-FINAL-STATE-FLOW-CURRENT.md",
+      "softwareAuditStatus": "PASS"
+    },
+    {
+      "disciplineId": "FINAL_AR10/FINAL_AP10",
+      "displayName": "10 m Air Rifle / Air Pistol Final",
+      "governingBody": "ISSF",
+      "ruleDocument": "ISSF Rule Book 2026 Edition 2025 (Second Print 07/2026)",
+      "effectiveDate": "2026-07-01",
+      "ruleSection": "6.17.2",
+      "totalOfficialShots": 24,
+      "scoringMode": "decimal",
+      "preparationMs": null,
+      "matchDurationMs": null,
+      "seriesStructure": [
+        {
+          "name": "Series 1",
+          "shots": 5,
+          "timerMs": 250000
+        },
+        {
+          "name": "Series 2",
+          "shots": 5,
+          "timerMs": 250000
+        },
+        {
+          "name": "Singles",
+          "shots": 14,
+          "timerMsEach": 50000
+        }
+      ],
+      "stateFlowDocument": null,
+      "softwareAuditStatus": "PASS",
+      "note": "Course, series and single times, elimination start at shot 12 and decimal scoring verified. Report/PDF missing (F6). Tie handling not implemented - cross-lane."
+    },
+    {
+      "disciplineId": "3P50",
+      "displayName": "50 m Rifle 3 Positions Qualification",
+      "governingBody": "ISSF",
+      "ruleDocument": "ISSF Rule Book 2026 Edition 2025 (Second Print 07/2026)",
+      "effectiveDate": "2026-07-01",
+      "ruleSection": "Events programme + 6.11.1.1",
+      "totalOfficialShots": 60,
+      "scoringMode": "decimal",
+      "preparationMs": 900000,
+      "matchDurationMs": null,
+      "seriesStructure": [
+        {
+          "name": "Kneeling",
+          "shots": 20
+        },
+        {
+          "name": "Prone",
+          "shots": 20
+        },
+        {
+          "name": "Standing",
+          "shots": 20
+        }
+      ],
+      "stateFlowDocument": null,
+      "softwareAuditStatus": "PARTIAL",
+      "note": "Course of fire 3x20=60 and 15 minute preparation and sighting verified. Per-position shooting time not extracted this round."
+    },
+    {
+      "disciplineId": "AR10",
+      "displayName": "10 m Air Rifle Qualification",
+      "governingBody": "ISSF",
+      "ruleDocument": "ISSF Rule Book 2026 Edition 2025 (Second Print 07/2026)",
+      "effectiveDate": "2026-07-01",
+      "ruleSection": "Events programme",
+      "totalOfficialShots": 60,
+      "scoringMode": "decimal",
+      "preparationMs": 900000,
+      "matchDurationMs": null,
+      "seriesStructure": null,
+      "stateFlowDocument": null,
+      "softwareAuditStatus": "PARTIAL",
+      "note": "Course of fire only."
+    },
+    {
+      "disciplineId": "AP10",
+      "displayName": "10 m Air Pistol Qualification",
+      "governingBody": "ISSF",
+      "ruleDocument": "ISSF Rule Book 2026 Edition 2025 (Second Print 07/2026)",
+      "effectiveDate": "2026-07-01",
+      "ruleSection": "Events programme",
+      "totalOfficialShots": 60,
+      "scoringMode": "integer",
+      "preparationMs": 900000,
+      "matchDurationMs": null,
+      "seriesStructure": null,
+      "stateFlowDocument": null,
+      "softwareAuditStatus": "PARTIAL",
+      "note": "Course of fire only."
+    },
+    {
+      "disciplineId": "PRONE50",
+      "displayName": "50 m Rifle Prone",
+      "governingBody": "ISSF",
+      "ruleDocument": "ISSF Rule Book 2026 Edition 2025 (Second Print 07/2026)",
+      "effectiveDate": "2026-07-01",
+      "ruleSection": "Events programme",
+      "totalOfficialShots": 60,
+      "scoringMode": "decimal",
+      "preparationMs": 900000,
+      "matchDurationMs": null,
+      "seriesStructure": null,
+      "stateFlowDocument": null,
+      "softwareAuditStatus": "PARTIAL",
+      "note": "Course of fire only."
+    },
+    {
+      "disciplineId": "FREEPISTOL50",
+      "displayName": "50 m Free Pistol",
+      "governingBody": "ISSF",
+      "ruleDocument": null,
+      "effectiveDate": null,
+      "ruleSection": null,
+      "totalOfficialShots": null,
+      "scoringMode": null,
+      "preparationMs": null,
+      "matchDurationMs": null,
+      "seriesStructure": null,
+      "stateFlowDocument": null,
+      "softwareAuditStatus": "AUTHORITY_NOT_VERIFIED",
+      "note": "Present in the catalogue with 12 programmes; not audited against any source."
+    },
+    {
+      "disciplineId": "TRAINING/CALLDIAG/WINDMAP/POSTRANS/OpenPractice",
+      "displayName": "Training Lab and Open Practice",
+      "governingBody": null,
+      "ruleDocument": null,
+      "effectiveDate": null,
+      "ruleSection": null,
+      "totalOfficialShots": null,
+      "scoringMode": null,
+      "preparationMs": null,
+      "matchDurationMs": null,
+      "seriesStructure": null,
+      "stateFlowDocument": null,
+      "softwareAuditStatus": "NOT_APPLICABLE",
+      "note": "Non-official training modes; they do not claim to be a match, qualification or final."
+    }
+  ]
+}

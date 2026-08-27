@@ -475,6 +475,22 @@ acquisition engine is now frozen.
 | **Must carry forward** | **YES.** The state flow AND its regressions must travel together; a port that takes the controller without the tests can reintroduce the old format silently |
 | **Notes** | Two source questions remain open: which print of Edition 2025 governs (this audit used First Print 12/2025; `Finals3PConfig.h` cites Second Print 07/2026 - the durations agree), and Rule 6.17.3's tie-breaking provisions, which were not supplied and are therefore not implemented or inferred |
 
+### Rule authority
+
+Windows, Android and SETA must use the SAME normative rules and state-flow
+documents. A platform branch may not retain an older competition format.
+
+Master index: [../rules/RULE-AUTHORITY-INDEX.md](../rules/RULE-AUTHORITY-INDEX.md)
+
+| Discipline | Authority | Windows | Android | SETA |
+|---|---|---|---|---|
+| 50 m 3P Final | ISSF 6.17.3, Second Print 07/2026 (verified 2026-08-27) | **PASS** | **NO** | **NO** |
+| 10 m AR/AP Final | ISSF 6.17.2, same print (verified) | **PASS** | PARTIAL | PARTIAL |
+| 50 m 3P Qualification | ISSF events programme + 6.11.1.1 | **PARTIAL** | unknown | unknown |
+| DSB 1.20 / 1.40 / 1.60 | DSB Sportordnung | not on this branch | — | **implemented on `product/seta`, NOT audited** |
+
+Nothing was ported in this round.
+
 ## Portability validation matrix
 
 `PASS` = code verified present. Physical status is the separate column in each

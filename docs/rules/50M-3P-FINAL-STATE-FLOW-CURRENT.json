@@ -1,0 +1,237 @@
+{
+  "$comment": "Machine-readable companion to 50M-3P-FINAL-STATE-FLOW-ISSF-2026.md. NOT a second implementation - a portability representation of the normative state table for Android/SETA. The Markdown file is the AUTHORITY; regenerate this rather than letting it diverge. THIS DESCRIBES COMPETITION LOGIC.",
+  "rulebook": "ISSF Rule Book 2026",
+  "edition": "Edition 2025",
+  "print": "Second Print 07/2026 (verified from the ISSF PDF, 2026-08-27)",
+  "effective": "2026-07-01",
+  "rule": "6.17.3",
+  "ruleStatus": "OFFICIAL_ISSF_RULE_VERIFIED",
+  "officialShotTotal": 35,
+  "positionShots": {
+    "KNEELING": 10,
+    "PRONE": 10,
+    "STANDING": 15
+  },
+  "sharedBlock": {
+    "name": "COMBINED_22_MIN",
+    "timerMs": 1320000,
+    "warnings": [
+      {
+        "atElapsedMs": 1020000,
+        "command": "FiveMinutes"
+      },
+      {
+        "atElapsedMs": 1290000,
+        "command": "ThirtySeconds"
+      }
+    ],
+    "endCommand": "Stop",
+    "containsStates": [
+      "KneelingMatch",
+      "ProneSighting",
+      "ProneMatch",
+      "StandingSighting"
+    ],
+    "rule": "ONE continuous countdown. Prone and Standing transitions are NOT independent clocks. Finishing the match shots early does not end it. No preparation or sighting period may follow its STOP."
+  },
+  "states": [
+    {
+      "state": "Ceremony",
+      "position": "KNEELING",
+      "targetMode": "SIGHTING",
+      "timerMs": 50000,
+      "commands": [
+        "ATHLETES TO THE LINE",
+        "INTRODUCING - <name>",
+        "TAKE YOUR POSITIONS"
+      ],
+      "nextState": "KneelingPrepSight"
+    },
+    {
+      "state": "KneelingPrepSight",
+      "position": "KNEELING",
+      "targetMode": "SIGHTING",
+      "timerMs": 300000,
+      "commands": [
+        "PREPARATION AND SIGHTING TIME STARTS NOW",
+        "30 SECONDS",
+        "STOP"
+      ],
+      "nextState": "KneelingMatch",
+      "note": "The ONLY preparation/sighting period in the Final. Unlimited kneeling sighters."
+    },
+    {
+      "state": "KneelingMatch",
+      "position": "KNEELING",
+      "targetMode": "MATCH",
+      "officialShotStart": 1,
+      "officialShotEnd": 10,
+      "timerMs": 1320000,
+      "commands": [
+        "FINALISTS HAVE TWENTY-TWO MINUTES...",
+        "MATCH FIRING START"
+      ],
+      "nextState": "ProneSighting",
+      "note": "Starts the shared 22:00 clock."
+    },
+    {
+      "state": "ProneSighting",
+      "position": "PRONE",
+      "targetMode": "SIGHTING",
+      "commands": [],
+      "nextState": "ProneMatch",
+      "note": "Shares the 22:00 clock. Unlimited prone sighters."
+    },
+    {
+      "state": "ProneMatch",
+      "position": "PRONE",
+      "targetMode": "MATCH",
+      "officialShotStart": 11,
+      "officialShotEnd": 20,
+      "commands": [],
+      "nextState": "StandingSighting",
+      "note": "Shares the 22:00 clock."
+    },
+    {
+      "state": "StandingSighting",
+      "position": "STANDING",
+      "targetMode": "SIGHTING",
+      "commands": [
+        "FIVE MINUTES",
+        "THIRTY SECONDS",
+        "STOP"
+      ],
+      "nextState": "StandingSeries1",
+      "note": "Shares the 22:00 clock. Exits ONLY when it expires."
+    },
+    {
+      "state": "StandingSeries1",
+      "position": "STANDING",
+      "targetMode": "MATCH",
+      "officialShotStart": 21,
+      "officialShotEnd": 25,
+      "timerMs": 250000,
+      "commands": [
+        "FOR THE NEXT COMPETITION SERIES...LOAD",
+        "START",
+        "STOP"
+      ],
+      "nextState": "StandingSeries2",
+      "note": "Preceded by a 30000 ms transition, then LOAD, then 5000 ms to START."
+    },
+    {
+      "state": "StandingSeries2",
+      "position": "STANDING",
+      "targetMode": "MATCH",
+      "officialShotStart": 26,
+      "officialShotEnd": 30,
+      "timerMs": 250000,
+      "commands": [
+        "FOR THE NEXT COMPETITION SERIES...LOAD",
+        "START",
+        "STOP",
+        "8th and 7th places would be eliminated here"
+      ],
+      "nextState": "StandingSingle1"
+    },
+    {
+      "state": "StandingSingle1",
+      "position": "STANDING",
+      "targetMode": "MATCH",
+      "officialShotStart": 31,
+      "officialShotEnd": 31,
+      "timerMs": 50000,
+      "commands": [
+        "FOR THE NEXT COMPETITION SHOT...LOAD",
+        "START",
+        "STOP",
+        "6th place would be eliminated here"
+      ],
+      "nextState": "StandingSingle2"
+    },
+    {
+      "state": "StandingSingle2",
+      "position": "STANDING",
+      "targetMode": "MATCH",
+      "officialShotStart": 32,
+      "officialShotEnd": 32,
+      "timerMs": 50000,
+      "commands": [
+        "FOR THE NEXT COMPETITION SHOT...LOAD",
+        "START",
+        "STOP",
+        "5th place would be eliminated here"
+      ],
+      "nextState": "StandingSingle3"
+    },
+    {
+      "state": "StandingSingle3",
+      "position": "STANDING",
+      "targetMode": "MATCH",
+      "officialShotStart": 33,
+      "officialShotEnd": 33,
+      "timerMs": 50000,
+      "commands": [
+        "FOR THE NEXT COMPETITION SHOT...LOAD",
+        "START",
+        "STOP",
+        "4th place would be eliminated here"
+      ],
+      "nextState": "StandingSingle4"
+    },
+    {
+      "state": "StandingSingle4",
+      "position": "STANDING",
+      "targetMode": "MATCH",
+      "officialShotStart": 34,
+      "officialShotEnd": 34,
+      "timerMs": 50000,
+      "commands": [
+        "FOR THE NEXT COMPETITION SHOT...LOAD",
+        "START",
+        "STOP",
+        "Bronze medal (3rd place) would be decided here"
+      ],
+      "nextState": "StandingSingle5"
+    },
+    {
+      "state": "StandingSingle5",
+      "position": "STANDING",
+      "targetMode": "MATCH",
+      "officialShotStart": 35,
+      "officialShotEnd": 35,
+      "timerMs": 50000,
+      "commands": [
+        "FOR THE NEXT COMPETITION SHOT...LOAD",
+        "START",
+        "STOP",
+        "Silver and gold would be decided here"
+      ],
+      "nextState": "Complete"
+    },
+    {
+      "state": "Complete",
+      "position": "STANDING",
+      "targetMode": "CLOSED",
+      "commands": [
+        "STOP...UNLOAD",
+        "RESULTS ARE FINAL"
+      ],
+      "note": "Single-target: shows the lane result. Official placing needs Range Management."
+    }
+  ],
+  "forbidden": [
+    "any preparation or sighting period after the 22:00 STOP",
+    "a second ~5:00 Standing sighting block",
+    "7-minute or 9-minute position-change timers",
+    "45-shot format or 15+15+15 position blocks",
+    "shot counts ending the 22:00 clock",
+    "compensation time for slow position changes"
+  ],
+  "tieBreaking": {
+    "status": "RULE_KNOWN_NOT_IMPLEMENTED",
+    "ruleSection": "6.17.3 i)",
+    "detail": "Tie-breaking shots for a tie at the elimination position; countback (2nd standing series, 1st standing series, highest final shot of the prone series, etc.) for two tied after the second standing series; tie-breaking shots if more than two. Every clause is cross-lane, so a single-target application cannot decide it. Requires Range Management."
+  },
+  "sourceUrl": "https://backoffice.issf-sports.org/getfile.aspx?mod=docf&pane=1&inst=455&file=ISSF-Rule-Book-2026-Edition-2025-Second-Print-07-2026-Effective-1-July-2026.pdf"
+}
