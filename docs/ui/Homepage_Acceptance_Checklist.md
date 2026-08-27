@@ -251,3 +251,38 @@ found — see `UI-DEC-012`.
 **A12, A13 and A14 are open and are the operator's next check.** The theme
 architecture and the start page are proven; the rest of the product's light
 appearance is not, and this checklist does not claim it.
+
+
+## 50 m 3P Final operator panel (FINALS-3P-PANEL-001, 2026-08-26)
+
+| # | Line | Status | Evidence |
+|---|---|---|---|
+| P1 | The 3P Final has its own right-hand column, not the qualification panel | **PASS** | `tests/qml` — the qualification panel yields to both finals |
+| P2 | Every value comes from FINALS3P | **PASS** | `tests/finals` — 71 checks, real panel bound to a real controller |
+| P3 | Course progress reads *n* / 35, never 24 | **PASS** | driven through the full course |
+| P4 | No 10 m course wording anywhere in the panel | **PASS** | contamination sweep at the end of a real run |
+| P5 | Position, stage, command, clock, last official shot, subtotals, total | **PASS** | asserted at every phase |
+| P6 | One clock, and it is the controller's | **PASS** | displayed clock == `remainingFormatted` |
+| P7 | A sighter never becomes the last official shot or advances the count | **PASS** | asserted at both sighting transitions |
+| P8 | Position subtotals sum to the overall total | **PASS** | at completion |
+| P9 | Pause/resume (the incident mechanism) changes no course state | **PASS** | phase, position, count and total unchanged |
+| P10 | Renders correctly in dark and light | **PASS (component render)** | `uirender` at 420×800, real component + real DesignTokens |
+| P11 | The panel in the running application | **NOT PROVEN** | never seen in the app: reaching it needs a 3P Final driven through the UI |
+| P12 | The panel at 1280×800 | **NOT PROVEN** | rendered at 420×800, the panel's own width; the full screen at 1280×800 was not captured |
+| P13 | Range Incident end to end through INCIDENTS | **NOT PROVEN** | pause/resume is driven; the incident controller itself was not |
+| P14 | Report / PDF / reload for a completed 3P Final | **NOT PROVEN** | `buildReport()` is covered by `tests/finals`; the report view, PDF and reload were not exercised this round |
+
+## Open observation — the Settings control at 1536 px (2026-08-26)
+
+A screen capture of the maximised start page at 1536×960 did **not** show the
+Settings control, although it renders correctly at ~805 px and ~1100 px window
+widths and the source is correct and unobstructed (`anchors.right: parent.right`,
+sole right-anchored child of `headerBar`, no binding-loop warning at runtime).
+
+**Status: UNRESOLVED — not confirmed as a defect and not cleared.** The screen
+capture subsystem began failing (`CopyFromScreen: the handle is invalid`)
+immediately afterwards and no further capture was possible, so the one
+observation could not be repeated. It is recorded rather than explained away.
+
+**This is the first thing to look at in the operator DEMO review:** maximise
+the start page and confirm the Settings control is present at the top right.

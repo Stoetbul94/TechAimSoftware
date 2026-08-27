@@ -1270,9 +1270,21 @@ int main(int argc, char* argv[])
         // The qualification right panel steps aside for the 10m Final only.
         const int rp = sp.indexOf(QStringLiteral("RightPanel {\n        id: rightPanel"));
         check(rp > 0, "MIX-001: the qualification right panel is mounted");
-        if (rp > 0)
-            check(sp.mid(rp, 900).contains(QStringLiteral("visible: !isFinals10mMatch")),
-                  "MIX-001: it yields to the 10m Final, and to nothing else");
+        if (rp > 0) {
+            // Span to the end of the block, not a byte count: a comment added
+            // above the binding pushed it outside a fixed 900-char window and
+            // failed this check for a reason that had nothing to do with the
+            // gate. Windows sized by guesswork pass and fail by accident.
+            const int end = sp.indexOf(QStringLiteral("\n    }"), rp);
+            const QString block = sp.mid(rp, (end > rp ? end - rp : 1500));
+            check(block.contains(QStringLiteral("!isFinals10mMatch")),
+                  "MIX-001: the qualification panel yields to the 10m Final");
+            // FINALS-3P-PANEL-001: it now yields to the 3P Final too, because
+            // the 3P Final has its own column. Before that it stayed mounted
+            // through a 3P Final showing a 60-shot qualification structure.
+            check(block.contains(QStringLiteral("!isFinalsMatch")),
+                  "MIX-001: and to the 3P Final, which now has its own panel");
+        }
 
         // Each router is enabled by its own controller's flag.
         const int r3p = sp.indexOf(QStringLiteral("target: FINALS3P"));
