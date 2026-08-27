@@ -1,0 +1,232 @@
+{
+  "$comment": "Machine-readable companion to CROSS-PLATFORM-FIX-REGISTER.md. The Markdown document is the human-readable AUTHORITY; regenerate this file rather than letting it diverge. Statuses: PASS = code verified present; NO = verified absent; OPEN = not fixed; PARTIAL; N/A. physicalStatus is NEVER implied by windowsStatus.",
+  "generated": "2026-08-26",
+  "branches": {
+    "windows": {
+      "branch": "feature/rc2e-latency-and-reset",
+      "head": "current"
+    },
+    "android": {
+      "branch": "feature/android-tablet",
+      "head": "b60867c",
+      "commitsBehindWindows": 33
+    },
+    "seta": {
+      "branch": "product/seta",
+      "head": "f22637f",
+      "commitsBehindWindows": 34
+    }
+  },
+  "method": "each status probed with: git show <branch>:<file> | grep <marker>",
+  "fixes": [
+    {
+      "id": "ACQ-FLUSH-001",
+      "title": "10-shot counter reset race",
+      "sharedCore": "SHARED_CPP",
+      "windowsStatus": "PASS",
+      "androidStatus": "NO",
+      "setaStatus": "NO",
+      "regression": "tests/reliability",
+      "physicalStatus": "PASS (RC3B, RC3C)",
+      "mustCarryForward": true
+    },
+    {
+      "id": "ACQ-DESYNC-002",
+      "title": "reconnect adopted a mismatched counter",
+      "sharedCore": "SHARED_CPP",
+      "windowsStatus": "PASS",
+      "androidStatus": "NO",
+      "setaStatus": "NO",
+      "regression": "tests/reliability",
+      "physicalStatus": "PASS (RC3B 4, RC3C 5 reconnects)",
+      "mustCarryForward": true
+    },
+    {
+      "id": "ACQ-SENTINEL-003",
+      "title": "-1/-1 sentinel scored as a plausible 10.8",
+      "sharedCore": "SHARED_CPP+SHARED_QML",
+      "windowsStatus": "PASS",
+      "androidStatus": "NO",
+      "setaStatus": "NO",
+      "regression": "tests/reliability, tests/qml",
+      "physicalStatus": "PASS (RC3B, RC3C)",
+      "mustCarryForward": true
+    },
+    {
+      "id": "ACQ-READ-004",
+      "title": "coordinate Modbus read result ignored",
+      "sharedCore": "SHARED_CPP",
+      "windowsStatus": "PASS",
+      "androidStatus": "NO",
+      "setaStatus": "NO",
+      "regression": "tests/reliability",
+      "physicalStatus": "PASS (RC3B, RC3C)",
+      "mustCarryForward": true
+    },
+    {
+      "id": "SERIAL-DEFAULT-005",
+      "title": "serial defaults 19200/Even/8/1 and scan policy",
+      "sharedCore": "WINDOWS_SERIAL_SPECIFIC",
+      "windowsStatus": "PASS",
+      "androidStatus": "NO",
+      "setaStatus": "NO",
+      "regression": "tests/reliability",
+      "physicalStatus": "PASS (RC3B, RC3C)",
+      "mustCarryForward": true
+    },
+    {
+      "id": "THREAD-MODBUS-006",
+      "title": "Modbus transport serialization",
+      "sharedCore": "SHARED_CPP",
+      "windowsStatus": "PASS",
+      "androidStatus": "NO",
+      "setaStatus": "NO",
+      "regression": "tests/reliability",
+      "physicalStatus": "PASS",
+      "mustCarryForward": true
+    },
+    {
+      "id": "LOG-DEFECT-007",
+      "title": "log corruption and dropped entries",
+      "sharedCore": "SHARED_CPP",
+      "windowsStatus": "PASS",
+      "androidStatus": "NO",
+      "setaStatus": "NO",
+      "regression": "tests/reliability/tst_logging_integrity.cpp",
+      "physicalStatus": "PASS (RC3C log parsed in full)",
+      "mustCarryForward": true
+    },
+    {
+      "id": "QML-SHOT-001",
+      "title": "ReferenceError aborted the shot handler",
+      "sharedCore": "SHARED_QML",
+      "windowsStatus": "PASS",
+      "androidStatus": "NO",
+      "setaStatus": "NO",
+      "regression": "tests/qml",
+      "physicalStatus": "PASS (RC3B, RC3C)",
+      "mustCarryForward": true
+    },
+    {
+      "id": "PAPER-FEED-002",
+      "title": "single feed authority and numbering reset",
+      "sharedCore": "SHARED_CPP",
+      "windowsStatus": "PASS",
+      "androidStatus": "PASS",
+      "setaStatus": "PASS",
+      "regression": "tests/reliability",
+      "physicalStatus": "PASS (RC3C 43:43)",
+      "mustCarryForward": true
+    },
+    {
+      "id": "UI-STATUS-001",
+      "title": "false Target Not Connected while connected",
+      "sharedCore": "SHARED_CPP+SHARED_QML",
+      "windowsStatus": "PASS",
+      "androidStatus": "NO",
+      "setaStatus": "NO",
+      "regression": "tests/qml, tests/reliability",
+      "physicalStatus": "PASS (RC3D)",
+      "mustCarryForward": true
+    },
+    {
+      "id": "FINALS-TIMER-001",
+      "title": "legacy timer started during a Final",
+      "sharedCore": "SHARED_QML",
+      "windowsStatus": "PASS",
+      "androidStatus": "NO",
+      "setaStatus": "NO",
+      "regression": "tests/qml",
+      "physicalStatus": "PASS (RC3D)",
+      "mustCarryForward": true
+    },
+    {
+      "id": "FINALS-DISPLAY-TIMER-002",
+      "title": "frozen 35:00 legacy clock displayed",
+      "sharedCore": "SHARED_QML",
+      "windowsStatus": "PASS",
+      "androidStatus": "NO",
+      "setaStatus": "NO",
+      "regression": "tests/qml",
+      "physicalStatus": "PASS (RC3D)",
+      "mustCarryForward": true
+    },
+    {
+      "id": "FINAL-TCH-TIME-001",
+      "title": "Final shot times not persisted",
+      "sharedCore": "SHARED_QML",
+      "windowsStatus": "PASS",
+      "androidStatus": "PASS",
+      "setaStatus": "PASS",
+      "regression": "tests/qml",
+      "physicalStatus": "PHYSICAL PENDING",
+      "mustCarryForward": true
+    },
+    {
+      "id": "FINALS-TCH-SIGHTER-001",
+      "title": "10m Final .tch mixes sighters and official shots",
+      "sharedCore": "SHARED_QML+PERSISTENCE",
+      "windowsStatus": "OPEN",
+      "androidStatus": "OPEN",
+      "setaStatus": "OPEN",
+      "regression": "none",
+      "physicalStatus": "N/A (persistence format)",
+      "mustCarryForward": true
+    },
+    {
+      "id": "UI-LAYOUT-001",
+      "title": "status/header collision",
+      "sharedCore": "SHARED_QML",
+      "windowsStatus": "OPEN",
+      "androidStatus": "OPEN",
+      "setaStatus": "OPEN",
+      "regression": "none (instrumented only)",
+      "physicalStatus": "OPEN",
+      "mustCarryForward": true
+    },
+    {
+      "id": "FINALS-3P-MIX-001",
+      "title": "stale 10m Finals state leaked into the 3P Final",
+      "sharedCore": "SHARED_QML",
+      "windowsStatus": "PASS",
+      "androidStatus": "NO",
+      "setaStatus": "NO",
+      "regression": "tests/qml (7 entry points)",
+      "physicalStatus": "PHYSICAL PENDING",
+      "mustCarryForward": true
+    },
+    {
+      "id": "FINALS-3P-PANEL-001",
+      "title": "3P Final had no dedicated operator panel",
+      "sharedCore": "SHARED_QML",
+      "windowsStatus": "PASS",
+      "androidStatus": "NO",
+      "setaStatus": "NO",
+      "regression": "tests/finals (full course through the real panel)",
+      "physicalStatus": "PHYSICAL PENDING",
+      "mustCarryForward": true
+    },
+    {
+      "id": "UI-THEME-001",
+      "title": "System/Light/Dark appearance",
+      "sharedCore": "SHARED_QML+SHARED_CPP",
+      "windowsStatus": "PASS",
+      "androidStatus": "NO",
+      "setaStatus": "NO",
+      "regression": "tests/qml (measured WCAG contrast)",
+      "physicalStatus": "N/A",
+      "mustCarryForward": true
+    },
+    {
+      "id": "UI-THEME-LOGO-001",
+      "title": "white logo invisible on the light header",
+      "sharedCore": "SHARED_QML+BRAND_ASSETS",
+      "windowsStatus": "PASS",
+      "androidStatus": "NO",
+      "setaStatus": "NO",
+      "regression": "tests/qml",
+      "physicalStatus": "N/A",
+      "mustCarryForward": true
+    }
+  ]
+}
