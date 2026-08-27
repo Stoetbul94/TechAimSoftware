@@ -214,7 +214,10 @@ Item {
                 objectName: "advanceLabel"
                 visible: rp.ctl && rp.ctl.primaryActionVisible
                          && rp.ctl.primaryActionLabel !== ""
-                text: rp.ctl ? ("▸ " + rp.ctl.primaryActionLabel) : ""
+                // No leading glyph: U+25B8 rendered as a missing-character box
+                // in the offline render, and a decorative character that can
+                // tofu is a liability in a competition readout.
+                text: rp.ctl ? rp.ctl.primaryActionLabel : ""
                 color: rp.ctl && rp.ctl.primaryActionEnabled ? rp._accent : rp._txtMut
                 font.pixelSize: 11; font.bold: true
                 elide: Text.ElideRight

@@ -316,8 +316,22 @@ void run_windmap_qml_tests()
         check(shoot.contains(QStringLiteral("visible: isFinalsMatch"))
               && shoot.contains(QStringLiteral("visible: isFinals10mMatch")),
               "10. FinalsHud / Finals10mHud keep their original gates");
-        check(shoot.contains(QStringLiteral("!isFinals10mMatch && !isTrainingMatch")),
-              "10. the existing Finals/Training gates are preserved, not replaced");
+        // The qualification panel must still yield to the 10 m Final and to
+        // Training. Asserted as two independent conditions rather than as one
+        // adjacent literal: FINALS-3P-PANEL-001 inserted !isFinalsMatch
+        // between them, which STRENGTHENS this gate (the panel now yields to
+        // the 3P Final too) while breaking a text match that only ever tested
+        // formatting. The intent - gates preserved, not weakened - is what is
+        // checked here.
+        {
+            const int rp = shoot.indexOf(QStringLiteral("id: rightPanel"));
+            const QString gate = rp > 0 ? shoot.mid(rp, 700) : QString();
+            check(gate.contains(QStringLiteral("!isFinals10mMatch"))
+                  && gate.contains(QStringLiteral("!isTrainingMatch")),
+                  "10. the existing Finals/Training gates are preserved, not replaced");
+            check(gate.contains(QStringLiteral("!isFinalsMatch")),
+                  "10. and the qualification panel now yields to the 3P Final as well");
+        }
         bool okF3 = false, okF10 = false;
         const QString f3  = stripComments(qmlSource("FinalsHud.qml", &okF3));
         const QString f10 = stripComments(qmlSource("Finals10mHud.qml", &okF10));
