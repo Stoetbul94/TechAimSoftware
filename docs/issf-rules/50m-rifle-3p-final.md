@@ -18,7 +18,16 @@ this file is the *rules* view.
 - **Rules verification status:** 📋 User-supplied + 🔧 existing behaviour. The
   **Finals-specific EST malfunction allowance** is ⏳ awaiting an official rule.
 - **Last reviewed:** 2026-07-19
-- **Applicable ISSF rulebook edition:** ⏳ not supplied
+- **Applicable ISSF rulebook edition:** 📋 ISSF Rule Book 2026, Edition 2025,
+  First Print 12/2025, effective 1 January 2026, **Rule 6.17.3** - supplied by the
+  project owner 2026-08-27. ⚠ `src/finals/Finals3PConfig.h` cites the *Second
+  Print 07/2026* instead; the durations agree but which print governs is ⏳
+  unresolved.
+- **Normative state flow:** [../rules/50M-3P-FINAL-STATE-FLOW-ISSF-2026.md](../rules/50M-3P-FINAL-STATE-FLOW-ISSF-2026.md)
+  is now the authority for states, timers and CRO commands. It supersedes the
+  🔧 *existing behaviour* descriptions in this file wherever they differ.
+- **Tie-breaking:** ⏳ Rule 6.17.3's provisions were not supplied. Nothing is
+  implemented or inferred.
 - **Supported by TechAim:** ✅ Yes (single-athlete training mode).
 
 ## Event overview

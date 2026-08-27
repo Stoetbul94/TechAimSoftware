@@ -227,6 +227,17 @@
       "regression": "tests/qml",
       "physicalStatus": "N/A",
       "mustCarryForward": true
+    },
+    {
+      "id": "FINALS3P-FLOW-001",
+      "title": "ISSF 2026 22-minute state-flow (audited, no defect found)",
+      "sharedCore": "SHARED_CPP",
+      "windowsStatus": "AUDITED_NO_DEFECT",
+      "androidStatus": "NO",
+      "setaStatus": "NO",
+      "regression": "tests/finals runFlow001Regressions (43 checks)",
+      "physicalStatus": "PHYSICAL PENDING",
+      "mustCarryForward": true
     }
   ]
 }

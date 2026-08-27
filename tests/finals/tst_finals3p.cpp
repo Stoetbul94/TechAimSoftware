@@ -156,6 +156,357 @@ static QString textOf(QQuickItem* root, const QString& name)
     return it ? it->property("text").toString() : QStringLiteral("<missing:") + name + ">";
 }
 
+// ── FINALS3P-FLOW-001 — reproduce the operator's scenario and TRACE it ──────
+//
+// The operator reported that after the 22-minute block expired the software
+// entered "another approximately 5-minute Standing sighting/preparation
+// block, followed by additional states".
+//
+// This does not fix anything. It drives the exact scenario against the real
+// controller and prints every state transition with its timer, so the cause is
+// established from behaviour rather than from a description. Run with
+// TECHAIM_FINALS_TRACE=1.
+// ── FINALS3P-FLOW-001 — the 22-minute block is ONE clock ────────────────────
+//
+// The operator reported that after the 22-minute block expired the software
+// entered "another approximately 5-minute Standing sighting/preparation block".
+// The audit of 2026-08-27 could not reproduce that: the controller already
+// shares one clock across KneelingMatch / ProneSighting / ProneMatch /
+// StandingSighting and goes straight from its STOP to Standing Series 1.
+//
+// These tests exist so it STAYS that way. They are written against the rule
+// (docs/rules/50M-3P-FINAL-STATE-FLOW-ISSF-2026.md), not against the current
+// implementation, so they would fail on any build that inserts a second
+// sighting period, restarts the clock on a position change, or lets the shot
+// count end the block early.
+//
+// Time is accelerated by TECHAIM_FINALS_TIMESCALE; no state is assigned
+// directly and no timer expiry is bypassed — the real state machine runs.
+static void runFlow001Regressions()
+{
+    const char* SEC = "FLOW-001";
+
+    // ── §23 EARLY COMPLETION — the block must run its full 22 minutes ──────
+    {
+        Finals3PController c;
+        Recorder r; r.attach(&c);
+        const double ts = c.timeScale();
+        auto pump = [] { QCoreApplication::processEvents(QEventLoop::AllEvents, 5); };
+        auto fire = [&] { c.registerShot(0, 0, 10.5); pump(); };
+
+        c.startFinal(); pump();
+        check(waitUntil([&]{ return inStage(c, Stage::KneelingMatch) && c.windowState() == 2; }, 40000),
+              "FLOW-001 §23: kneeling firing window opens");
+
+        // Everything below happens as fast as the athlete can shoot.
+        QElapsedTimer sinceStart; sinceStart.start();
+        for (int i = 0; i < 10; ++i) fire();
+        c.advanceStage1(); pump();                 // -> ProneSighting
+        fire();                                    // prone sighter
+        c.advanceStage1(); pump();                 // -> ProneMatch
+        for (int i = 0; i < 10; ++i) fire();
+        c.advanceStage1(); pump();                 // -> StandingSighting
+
+        check(inStage(c, Stage::StandingSighting),
+              "FLOW-001 §23: reaches Standing sighting with the match shots done");
+        check(c.officialShotCount() == 20,
+              "FLOW-001 §23: 20 official shots, sighters excluded",
+              QString::number(c.officialShotCount()));
+
+        // SUBSTANTIAL time must remain. If the implementation had ended the
+        // block when the shots were done, or restarted a 5:00 timer, this is
+        // where it shows.
+        const qint64 remain = c.remainingMs();
+        check(remain > 1200000,
+              "FLOW-001 §23: the shared clock still has most of its 22:00 left",
+              QStringLiteral("%1 ms remaining").arg(remain));
+        check(remain <= 1320000,
+              "FLOW-001 §23: and it is the SAME clock, not a new one",
+              QStringLiteral("%1 ms > 22:00").arg(remain));
+
+        // A standing sighter is legal for the whole of that time.
+        const int before = c.officialShotCount();
+        fire(); pump();
+        check(c.officialShotCount() == before,
+              "FLOW-001 §23: standing sighters are legal and stay unofficial");
+        check(c.windowState() == 1, "FLOW-001 §23: the sighting window is open");
+
+        // Nothing may start Standing MATCH before the clock expires.
+        QElapsedTimer hold; hold.start();
+        const int holdMs = int(600000.0 / ts);     // 10 scaled minutes
+        bool leftEarly = false;
+        while (hold.elapsed() < holdMs) {
+            pump();
+            if (!inStage(c, Stage::StandingSighting)) { leftEarly = true; break; }
+        }
+        check(!leftEarly,
+              "FLOW-001 §23: NO Standing MATCH starts before the 22:00 STOP",
+              QStringLiteral("left early into stage %1").arg(c.stageId()));
+        check(c.targetMode() == 0,
+              "FLOW-001 §23: the target is still SIGHTING during that time");
+
+        // Now let it expire naturally.
+        check(waitUntil([&]{ return inStage(c, Stage::StandingSeries1); }, 60000),
+              "FLOW-001 §23: the block ends on its own clock");
+
+        // The whole block was 22:00 measured from MATCH FIRING START to STOP.
+        const qint64 tStart = r.issuedAt("MatchFiringStart");
+        const qint64 tStop  = r.issuedAt("Stop", 2);      // 1 = prep stop, 2 = block stop
+        check(tStop - tStart >= 1320000 - 15000 && tStop - tStart < 1320000 + 20000,
+              "FLOW-001 §23: MATCH FIRING START -> STOP is 22:00",
+              QStringLiteral("%1 ms").arg(tStop - tStart));
+
+        // §5 THE CORE PROHIBITION: no second preparation/sighting period.
+        check(r.countOf("PreparationSightingStart") == 1,
+              "FLOW-001 §5: exactly ONE preparation/sighting period in the Final",
+              QStringLiteral("%1 issued").arg(r.countOf("PreparationSightingStart")));
+
+        // And what follows the STOP is the series sequence, nothing else.
+        check(waitUntil([&]{ return c.windowState() == 2; }, 30000),
+              "FLOW-001 §10: Series 1 window opens after the STOP");
+        const qint64 tLoad = r.issuedAt("LoadSeries", 1);
+        check(tLoad - tStop >= 30000 - 8000 && tLoad - tStop < 30000 + 15000,
+              "FLOW-001 §10: a ~30 s transition, not another sighting timer",
+              QStringLiteral("%1 ms").arg(tLoad - tStop));
+        const qint64 tSeriesStart = r.issuedAt("StartSeries", 1);
+        check(tSeriesStart - tLoad >= 5000 - 3000 && tSeriesStart - tLoad < 5000 + 8000,
+              "FLOW-001 §10: LOAD -> START is 5 s");
+        check(c.remainingMs() > 200000 && c.remainingMs() <= 250000,
+              "FLOW-001 §11: Series 1 is 250 s (4:10), not 5:00",
+              QStringLiteral("%1 ms").arg(c.remainingMs()));
+
+        // Between the STOP and Series 1 nothing sighting-shaped was issued.
+        const int stopIdx  = r.commands.lastIndexOf(QStringLiteral("Stop"));
+        const int loadIdx  = r.commands.indexOf(QStringLiteral("LoadSeries"));
+        bool sightingBetween = false;
+        if (stopIdx >= 0 && loadIdx > stopIdx)
+            for (int i = stopIdx + 1; i < loadIdx; ++i)
+                if (r.commands.at(i).contains(QStringLiteral("Sighting"))
+                    || r.commands.at(i).contains(QStringLiteral("Preparation")))
+                    sightingBetween = true;
+        check(!sightingBetween,
+              "FLOW-001 §5: no sighting or preparation command between STOP and LOAD");
+    }
+
+    // ── §24 LATE TRANSITION — whatever remains is the sighting time ────────
+    // Reaching Standing with very little left must not add time, and must not
+    // extend the block. The clock ends at 22:00 regardless.
+    for (const int holdScaledMs : { 300000, 60000 }) {         // 5:00 and 1:00 left
+        Finals3PController c;
+        Recorder r; r.attach(&c);
+        const double ts = c.timeScale();
+        auto pump = [] { QCoreApplication::processEvents(QEventLoop::AllEvents, 5); };
+        auto fire = [&] { c.registerShot(0, 0, 10.4); pump(); };
+
+        c.startFinal(); pump();
+        if (!waitUntil([&]{ return inStage(c, Stage::KneelingMatch) && c.windowState() == 2; }, 40000))
+        { check(false, "FLOW-001 §24: kneeling window"); continue; }
+
+        for (int i = 0; i < 10; ++i) fire();
+        c.advanceStage1(); pump();
+        c.advanceStage1(); pump();
+        for (int i = 0; i < 10; ++i) fire();
+
+        // Burn the block down until only `holdScaledMs` remains, THEN change
+        // to Standing - the athlete who is slow through Prone.
+        const qint64 target = holdScaledMs;
+        QElapsedTimer guard; guard.start();
+        while (c.remainingMs() > target && guard.elapsed() < int(1400000.0 / ts)) pump();
+        c.advanceStage1(); pump();
+
+        const bool inStanding = inStage(c, Stage::StandingSighting);
+        check(inStanding,
+              qPrintable(QStringLiteral("FLOW-001 S24: reaches Standing sighting with ~%1 s left")
+                         .arg(target / 1000)));
+        if (!inStanding) continue;
+
+        const qint64 rem = c.remainingMs();
+        check(rem <= target + 20000,
+              "FLOW-001 §24: no time was ADDED for the late change",
+              QStringLiteral("%1 ms remaining, expected <= ~%2").arg(rem).arg(target));
+
+        check(waitUntil([&]{ return inStage(c, Stage::StandingSeries1); }, 60000),
+              "FLOW-001 §24: STOP still arrives on the original 22:00");
+        const qint64 tStart = r.issuedAt("MatchFiringStart");
+        const qint64 tStop  = r.issuedAt("Stop", 2);
+        check(tStop - tStart < 1320000 + 25000,
+              "FLOW-001 §24: the block was NOT extended",
+              QStringLiteral("%1 ms").arg(tStop - tStart));
+        check(r.countOf("PreparationSightingStart") == 1,
+              "FLOW-001 §24: still exactly one preparation/sighting period");
+    }
+
+    // ── §26/§28 target-mode sequence and the 35-shot invariant ─────────────
+    {
+        Finals3PController c;
+        Recorder r; r.attach(&c);
+        auto pump = [] { QCoreApplication::processEvents(QEventLoop::AllEvents, 5); };
+        auto fire = [&] { c.registerShot(0, 0, 10.6); pump(); };
+
+        struct Seen { int stage; int mode; };
+        QList<Seen> seen;
+        auto note = [&] {
+            if (seen.isEmpty() || seen.last().stage != c.stageId())
+                seen.append({ c.stageId(), c.targetMode() });
+        };
+
+        c.startFinal(); pump(); note();
+        if (waitUntil([&]{ return inStage(c, Stage::KneelingMatch) && c.windowState() == 2; }, 40000)) {
+            note();
+            for (int i = 0; i < 10; ++i) { fire(); }
+            c.advanceStage1(); pump(); note();
+            fire();
+            c.advanceStage1(); pump(); note();
+            for (int i = 0; i < 10; ++i) { fire(); }
+            c.advanceStage1(); pump(); note();
+            fire();
+            if (waitUntil([&]{ return inStage(c, Stage::StandingSeries1); }, 60000)) {
+                note();
+                for (int s = 0; s < 2; ++s) {
+                    if (!waitUntil([&]{ return c.windowState() == 2; }, 30000)) break;
+                    note();
+                    for (int i = 0; i < 5; ++i) fire();
+                }
+                for (int k = 0; k < 5; ++k) {
+                    if (!waitUntil([&]{ return c.windowState() == 2; }, 30000)) break;
+                    note();
+                    fire();
+                }
+                waitUntil([&]{ return inStage(c, Stage::Complete); }, 30000);
+                note();
+            }
+        }
+
+        // Every SIGHTING stage must be a sighting target; every MATCH stage a
+        // match target. Stated per stage so a future stage cannot slip through.
+        for (const Seen& s : seen) {
+            const Stage st = static_cast<Stage>(s.stage);
+            const bool wantSighting = (st == Stage::KneelingPrepSight
+                                       || st == Stage::ProneSighting
+                                       || st == Stage::StandingSighting);
+            const bool wantMatch = (st == Stage::KneelingMatch || st == Stage::ProneMatch
+                                    || st == Stage::StandingSeries1 || st == Stage::StandingSeries2
+                                    || st == Stage::StandingSingle1 || st == Stage::StandingSingle2
+                                    || st == Stage::StandingSingle3 || st == Stage::StandingSingle4
+                                    || st == Stage::StandingSingle5);
+            if (wantSighting)
+                check(s.mode == 0,
+                      qPrintable(QStringLiteral("FLOW-001 S26: %1 is a SIGHTING target")
+                                 .arg(stageName(st))));
+            else if (wantMatch)
+                check(s.mode == 1,
+                      qPrintable(QStringLiteral("FLOW-001 S26: %1 is a MATCH target")
+                                 .arg(stageName(st))));
+        }
+
+        check(c.officialShotCount() == 35,
+              "FLOW-001 §28: exactly 35 official shots",
+              QString::number(c.officialShotCount()));
+        check(inStage(c, Stage::Complete),
+              "FLOW-001 §28: completion only after official shot 35");
+        check(r.countOf("PreparationSightingStart") == 1,
+              "FLOW-001 §28: one preparation/sighting period across the whole Final");
+
+        // Three sighters were fired above and none may have counted.
+        const QVariantList off = c.officialShotRecords();
+        int sightersInOfficial = 0;
+        for (const QVariant& v : off)
+            if (v.toMap().value(QStringLiteral("isSighter")).toBool()) ++sightersInOfficial;
+        check(sightersInOfficial == 0,
+              "FLOW-001 §26: no sighting shot reached the official record",
+              QString::number(sightersInOfficial));
+        // Two sighters are fired above: one in Prone sighting, one in
+        // Standing sighting. (Kneeling's preparation period is waited through,
+        // not shot in.) They must be recorded - separately from the officials.
+        check(c.sighterCount() == 2,
+              "FLOW-001 §26: both sighters recorded, separately from officials",
+              QString::number(c.sighterCount()));
+    }
+    (void)SEC;
+}
+
+static void runFlow001Trace()
+{
+    if (qEnvironmentVariableIsEmpty("TECHAIM_FINALS_TRACE"))
+        return;
+
+    Finals3PController c;
+    Recorder r; r.attach(&c);
+
+    const double ts = c.timeScale();
+    printf("\n=== FINALS3P-FLOW-001 TRACE  (timeScale %.0f) ===\n", ts);
+    printf("%-9s %-22s %-9s %-9s %-6s %-8s %s\n",
+           "wallMs", "stage", "position", "target", "off", "remain", "window");
+    fflush(stdout);
+
+    QElapsedTimer wall; wall.start();
+    int lastStage = -99;
+    auto emit_row = [&](const char* why) {
+        printf("%-9lld %-22s %-9s %-9s %-6d %-8s %-8s  %s\n",
+               (long long)wall.elapsed(),
+               qPrintable(stageName(static_cast<Stage>(c.stageId()))),
+               qPrintable(c.positionLabel()),
+               c.targetMode() == 0 ? "SIGHTING" : "MATCH",
+               c.officialShotCount(),
+               qPrintable(c.remainingFormatted()),
+               c.windowState() == 0 ? "closed" : (c.windowState() == 1 ? "sighting" : "match"),
+               why);
+        fflush(stdout);
+    };
+    auto pump = [&] {
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 5);
+        if (c.stageId() != lastStage) { lastStage = c.stageId(); emit_row("<- STAGE CHANGE"); }
+    };
+    auto spin = [&](int ms) { QElapsedTimer t; t.start(); while (t.elapsed() < ms) pump(); };
+
+    c.startFinal();
+    pump();
+
+    // Kneeling: wait for the firing window, then finish all ten EARLY.
+    while (!(inStage(c, Stage::KneelingMatch) && c.windowState() == 2) && wall.elapsed() < 60000)
+        pump();
+    emit_row("kneeling window open");
+    for (int i = 0; i < 10; ++i) { c.registerShot(0, 0, 10.5); pump(); }
+    emit_row("kneeling 10 fired EARLY");
+
+    c.advanceStage1(); pump();                    // -> ProneSighting
+    c.registerShot(0, 0, 10.4); pump();           // one prone sighter
+    emit_row("prone sighter");
+    c.advanceStage1(); pump();                    // -> ProneMatch
+    for (int i = 0; i < 10; ++i) { c.registerShot(0, 0, 10.5); pump(); }
+    emit_row("prone 10 fired EARLY");
+
+    c.advanceStage1(); pump();                    // -> StandingSighting
+    emit_row("entered STANDING SIGHTING");
+    printf("   >> remaining on the shared clock at this point: %s\n",
+           qPrintable(c.remainingFormatted()));
+    fflush(stdout);
+
+    c.registerShot(0, 0, 9.9); pump();
+    emit_row("standing sighter");
+
+    // Now let the shared clock run out WITHOUT doing anything else. This is
+    // the window in which the operator reported an extra block appearing.
+    const int guardMs = int(1500000.0 / ts) + 20000;
+    QElapsedTimer guard; guard.start();
+    while (!inStage(c, Stage::StandingSeries1) && guard.elapsed() < guardMs)
+        pump();
+    emit_row("after the shared clock expired");
+
+    // Series 1 through to the first shot, so the post-STOP states are visible.
+    while (!(inStage(c, Stage::StandingSeries1) && c.windowState() == 2)
+           && guard.elapsed() < guardMs + 60000)
+        pump();
+    emit_row("SERIES 1 firing window open");
+    printf("   >> series 1 window duration shown: %s\n", qPrintable(c.remainingFormatted()));
+
+    printf("\n--- command sequence as issued ---\n");
+    for (const QString& cmd : r.commands) printf("   %s\n", qPrintable(cmd));
+    printf("=== END TRACE ===\n\n");
+    fflush(stdout);
+    (void)spin;
+}
+
 static void runPanelUiFinal()
 {
     Finals3PController c;
@@ -1618,6 +1969,8 @@ int main(int argc, char** argv)
     runLocalisationChecks();
     runFullFinal();
     runPanelUiFinal();
+    runFlow001Regressions();
+    runFlow001Trace();
     runSecondaryChecks();
     runTimeoutFinal();
     runD4Checks();

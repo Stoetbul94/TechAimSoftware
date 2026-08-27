@@ -454,6 +454,27 @@ acquisition engine is now frozen.
 
 ---
 
+---
+
+#### FINALS3P-FLOW-001 — ISSF 2026 22-minute state-flow (audited, no defect found)
+
+| | |
+|---|---|
+| **First observed** | Reported from operator DEMO, 2026-08-27 |
+| **Symptom (reported)** | After the 22-minute block expired, "another approximately 5-minute Standing sighting/preparation block, followed by additional states" |
+| **Root cause** | **None found in the state flow.** The audit drove the exact scenario against the real controller: one continuous 22:00 clock already spans KneelingMatch, ProneSighting, ProneMatch and StandingSighting, and its STOP is followed by a 30 s transition and a 250 s (4:10) Standing Series 1 - not a sighting period. Exactly one preparation/sighting period exists in the whole Final. The 4:10 series window immediately after the STOP, with the position still STANDING, is the closest match to what was described |
+| **Authoritative behaviour** | `docs/rules/50M-3P-FINAL-STATE-FLOW-ISSF-2026.md` - Rule 6.17.3, 35 shots, one 22:00 block, warnings at 17:00 and 21:30, STOP, 30 s, 250 s + 250 s + 5 x 50 s |
+| **Fix** | **No competition logic changed.** Added the normative specification (which did not exist) and 43 regression checks that fail on any build inserting a second sighting period, restarting the clock on a position change, letting the shot count end the block, or adding compensation time |
+| **Source** | `docs/rules/50M-3P-FINAL-STATE-FLOW-ISSF-2026.{md,json}`, `tests/finals/tst_finals3p.cpp` |
+| **Test** | `runFlow001Regressions` - early completion, two late-transition cases, target-mode sequence, 35-shot invariant |
+| **Physical** | **PHYSICAL PENDING** - DEMO/controller-driven only |
+| **Windows** | AUDITED - no defect |
+| **Android** | **NO** - the branch predates the whole 3P Final work |
+| **SETA** | **NO** - same |
+| **Shared?** | SHARED C++ (controller + config) |
+| **Must carry forward** | **YES.** The state flow AND its regressions must travel together; a port that takes the controller without the tests can reintroduce the old format silently |
+| **Notes** | Two source questions remain open: which print of Edition 2025 governs (this audit used First Print 12/2025; `Finals3PConfig.h` cites Second Print 07/2026 - the durations agree), and Rule 6.17.3's tie-breaking provisions, which were not supplied and are therefore not implemented or inferred |
+
 ## Portability validation matrix
 
 `PASS` = code verified present. Physical status is the separate column in each
@@ -480,6 +501,7 @@ entry above and is **never** implied by this table.
 | FINALS-3P-PANEL-001 | PASS | **NO — must carry** | **NO — must carry** |
 | UI-THEME-001 | PASS | **NO — must carry** | **NO — must carry** |
 | UI-THEME-LOGO-001 | PASS | **NO — must carry** | **NO — must carry** |
+| FINALS3P-FLOW-001 | AUDITED — no defect | **NO — must carry** | **NO — must carry** |
 | 3P Finals UI | PASS (DEMO) | **NO** | **NO** |
 | 10 m Finals | PASS | PARTIAL | PARTIAL |
 | Reports | PASS (3P) · **10 m MISSING (F6)** | inherits | inherits |
