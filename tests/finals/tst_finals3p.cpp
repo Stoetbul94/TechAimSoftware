@@ -17,6 +17,7 @@
 #include <QQmlError>
 #include <QQuickItem>
 #include <QScopedPointer>
+#include <functional>
 #include <QElapsedTimer>
 #include <QVariantList>
 #include <QDebug>
@@ -182,6 +183,151 @@ static QString textOf(QQuickItem* root, const QString& name)
 //
 // Time is accelerated by TECHAIM_FINALS_TIMESCALE; no state is assigned
 // directly and no timer expiry is bypassed — the real state machine runs.
+// ── finals3p_standing_series_must_not_look_like_sighting ────────────────────
+//
+// The rule engine was verified correct against ISSF Rule Book 2026, Edition
+// 2025 (Second Print 07/2026), Rule 6.17.3. The operator nevertheless read the
+// state after the 22:00 STOP as "another approximately 5-minute sighting
+// block". This drives the REAL panel against the REAL controller through that
+// exact transition and asserts the operator cannot read it that way.
+//
+// It also prints the operator state-flow table captured for
+// docs/field-tests/2026-08-27-3p-finals-operator-state-flow-review.md.
+static void runStandingTransitionUi()
+{
+    Finals3PController c;
+    Recorder r; r.attach(&c);
+
+    QQmlEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("CTL"), &c);
+    QQmlComponent comp(&engine, QUrl::fromLocalFile(
+        QStringLiteral(TECHAIM_SOURCE_DIR "/tests/finals/panel_harness.qml")));
+    if (comp.isError()) {
+        QStringList errs; for (const QQmlError& e : comp.errors()) errs << e.toString();
+        check(false, "UI-FLOW: harness loads", errs.join(QStringLiteral(" | ")));
+        return;
+    }
+    QScopedPointer<QObject> obj(comp.create());
+    QQuickItem* root = qobject_cast<QQuickItem*>(obj.data());
+    check(root != nullptr, "UI-FLOW: real panel mounted");
+    if (!root) return;
+
+    auto pump = [] { QCoreApplication::processEvents(QEventLoop::AllEvents, 5); };
+    auto fire = [&] { c.registerShot(0, 0, 10.5); pump(); };
+    auto T = [&](const char* n) { return textOf(root, QString::fromLatin1(n)); };
+
+    const bool wantTable = !qEnvironmentVariableIsEmpty("TECHAIM_FINALS_TRACE");
+    if (wantTable) {
+        printf("\n=== 3P FINAL — OPERATOR STATE-FLOW REVIEW ===\n");
+        printf("| POINT | CONTROLLER STATE | UI POSITION | UI PHASE | UI COMMAND | UI TIMER | TARGET | UI SERIES/RANGE |\n");
+        printf("|---|---|---|---|---|---|---|---|\n");
+        fflush(stdout);
+    }
+    auto row = [&](const char* point) {
+        if (!wantTable) return;
+        printf("| %s | `%s` | %s | %s | %s | **%s** | %s | %s |\n",
+               point, qPrintable(stageName(static_cast<Stage>(c.stageId()))),
+               qPrintable(T("positionLabel")), qPrintable(T("stageLabel")),
+               qPrintable(T("commandText")), qPrintable(T("finalsClock")),
+               c.targetMode() == 0 ? "SIGHTING" : "MATCH",
+               qPrintable(T("historyHeading")));
+        fflush(stdout);
+    };
+
+    c.startFinal(); pump();
+    if (!waitUntil([&]{ return inStage(c, Stage::KneelingMatch) && c.windowState() == 2; }, 40000)) {
+        check(false, "UI-FLOW: kneeling window"); return;
+    }
+    for (int i = 0; i < 10; ++i) fire();
+    c.advanceStage1(); pump(); fire();          // prone sighting + sighter
+    c.advanceStage1(); pump();
+    for (int i = 0; i < 10; ++i) fire();
+    c.advanceStage1(); pump();                  // -> StandingSighting
+    fire();                                     // standing sighter
+    row("A. Standing sighting (time remaining)");
+
+    check(T("stageLabel").contains(QStringLiteral("SIGHTING")),
+          "UI-FLOW A: standing sighting IS labelled sighting", T("stageLabel"));
+    check(T("finalsClock") != QStringLiteral("05:00"),
+          "UI-FLOW A: the clock is the shared 22:00, never a fresh 05:00",
+          T("finalsClock"));
+
+    // Ride the shared clock down to the warnings, then to the STOP.
+    const double ts = c.timeScale();
+    auto until = [&](std::function<bool()> f, int scaledMs) {
+        QElapsedTimer t; t.start();
+        const int budget = int(scaledMs / ts) + 8000;
+        while (!f() && t.elapsed() < budget) pump();
+        return f();
+    };
+    if (until([&]{ return r.countOf("FiveMinutes") >= 1; }, 1100000)) row("B. FIVE MINUTES warning");
+    if (until([&]{ return r.countOf("ThirtySeconds") >= 2; }, 400000)) row("D. THIRTY SECONDS warning");
+
+    check(inStage(c, Stage::StandingSighting),
+          "UI-FLOW: still Standing sighting at the THIRTY SECONDS warning");
+
+    // ── the moment under investigation ────────────────────────────────────
+    check(until([&]{ return inStage(c, Stage::StandingSeries1); }, 120000),
+          "UI-FLOW E: the 22:00 STOP arrives");
+    row("E/F. 22:00 STOP -> 30-second interval");
+
+    // THE KEY ASSERTIONS: during the interval the operator must be told what
+    // the new countdown is, and must not be able to read it as sighting.
+    const QString phaseAtGap = T("stageLabel");
+    check(!phaseAtGap.contains(QStringLiteral("SIGHTING"), Qt::CaseInsensitive),
+          "UI-FLOW F: the phase after the STOP is NOT sighting", phaseAtGap);
+    check(!phaseAtGap.contains(QStringLiteral("PREPARATION"), Qt::CaseInsensitive),
+          "UI-FLOW F: nor preparation", phaseAtGap);
+    check(phaseAtGap.contains(QStringLiteral("SERIES 1")),
+          "UI-FLOW F: it names STANDING SERIES 1", phaseAtGap);
+    check(T("nextUpLabel").contains(QStringLiteral("SERIES 1"))
+              && T("nextUpLabel").contains(QStringLiteral("WAIT FOR LOAD")),
+          "UI-FLOW F: the interval countdown is labelled with what it is for",
+          T("nextUpLabel"));
+    check(T("nextUpLabel").contains(QStringLiteral("MATCH")),
+          "UI-FLOW F: and says the next shots are MATCH shots", T("nextUpLabel"));
+    check(c.targetMode() == 1,
+          "UI-FLOW F: the target is already MATCH during the interval");
+
+    if (until([&]{ return r.countOf("LoadSeries") >= 1; }, 40000)) row("G. LOAD");
+    check(until([&]{ return c.windowState() == 2; }, 20000),
+          "UI-FLOW I: Series 1 firing window opens");
+    row("I. STANDING SERIES 1 firing");
+
+    // ── Series 1 must read as a scoring series, unmistakably ──────────────
+    check(T("finalsClock") == QStringLiteral("04:10"),
+          "UI-FLOW I: Series 1 shows 04:10, not 05:00", T("finalsClock"));
+    check(T("stageLabel").contains(QStringLiteral("SERIES 1")),
+          "UI-FLOW I: phase is STANDING SERIES 1", T("stageLabel"));
+    check(T("historyHeading").contains(QStringLiteral("21"))
+              && T("historyHeading").contains(QStringLiteral("25")),
+          "UI-FLOW I: the shot range 21-25 is shown", T("historyHeading"));
+    check(T("commandText") == QStringLiteral("START"),
+          "UI-FLOW I: the CRO command is START", T("commandText"));
+    check(T("nextUpLabel").isEmpty(),
+          "UI-FLOW I: the WAIT FOR LOAD line clears once firing starts",
+          T("nextUpLabel"));
+
+    // No sighting wording anywhere on the panel once Series 1 is firing.
+    for (const char* n : { "positionLabel", "stageLabel", "commandText",
+                           "historyHeading", "nextUpLabel", "courseProgress" }) {
+        const QString t = T(n);
+        check(!t.contains(QStringLiteral("SIGHT"), Qt::CaseInsensitive),
+              qPrintable(QStringLiteral("UI-FLOW I: no sighting wording in %1")
+                         .arg(QString::fromLatin1(n))), t);
+        check(!t.contains(QStringLiteral("PREPARATION"), Qt::CaseInsensitive),
+              qPrintable(QStringLiteral("UI-FLOW I: no preparation wording in %1")
+                         .arg(QString::fromLatin1(n))), t);
+    }
+
+    for (int i = 0; i < 5; ++i) fire();
+    row("J. after Series 1 complete");
+    check(T("courseProgress") == QStringLiteral("25 / 35 shots"),
+          "UI-FLOW J: 25 of 35 after Series 1", T("courseProgress"));
+
+    if (wantTable) { printf("=== END OPERATOR REVIEW ===\n\n"); fflush(stdout); }
+}
+
 static void runFlow001Regressions()
 {
     const char* SEC = "FLOW-001";
@@ -1970,6 +2116,7 @@ int main(int argc, char** argv)
     runFullFinal();
     runPanelUiFinal();
     runFlow001Regressions();
+    runStandingTransitionUi();
     runFlow001Trace();
     runSecondaryChecks();
     runTimeoutFinal();

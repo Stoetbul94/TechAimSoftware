@@ -89,6 +89,30 @@ Item {
         }
     }
 
+    // FINALS3P-FLOW-001 (presentation). At the 22:00 STOP the stage flips
+    // straight to StandingSeries1 and a fresh 00:30 countdown appears while the
+    // command still reads STOP. The countdown is the rule's 30-second interval
+    // before "FOR THE NEXT COMPETITION SERIES...LOAD" (6.17.3 g) - but nothing
+    // on screen said so, and an operator watching a new countdown start
+    // immediately after a sighting period can read it as another preparation
+    // block. This line names what the countdown belongs to.
+    //
+    // It decides no competition rule: it reads the stage and window the
+    // controller already publishes, exactly as historyHeading does.
+    readonly property string nextUpLabel: {
+        if (!ctl || ctl.isFiringWindowOpen) return ""
+        switch (ctl.stageId) {
+        case 7:  return qsTr("NEXT · STANDING SERIES 1 — 5 MATCH SHOTS — WAIT FOR LOAD")
+        case 8:  return qsTr("NEXT · STANDING SERIES 2 — 5 MATCH SHOTS — WAIT FOR LOAD")
+        case 9:  return qsTr("NEXT · SINGLE SHOT 31 — WAIT FOR LOAD")
+        case 10: return qsTr("NEXT · SINGLE SHOT 32 — WAIT FOR LOAD")
+        case 11: return qsTr("NEXT · SINGLE SHOT 33 — WAIT FOR LOAD")
+        case 12: return qsTr("NEXT · SINGLE SHOT 34 — WAIT FOR LOAD")
+        case 13: return qsTr("NEXT · SINGLE SHOT 35 — WAIT FOR LOAD")
+        default: return ""
+        }
+    }
+
     // Position subtotals are held as STATE refreshed on totalsChanged, not as
     // a binding that calls stageSubtotals(). stageSubtotals() is a Q_INVOKABLE,
     // not a NOTIFYing property, so a binding on it evaluates once when the
@@ -205,6 +229,18 @@ Item {
                     color: rp._txtSec
                     font.pixelSize: 12; font.bold: true
                 }
+            }
+
+            // What the current countdown belongs to, whenever the firing
+            // window is shut. Never blank-and-ambiguous during an interval.
+            Text {
+                objectName: "nextUpLabel"
+                visible: rp.nextUpLabel !== ""
+                text: rp.nextUpLabel
+                color: rp._warn
+                font.pixelSize: 11; font.bold: true
+                wrapMode: Text.WordWrap
+                width: parent.width
             }
 
             // Position-change / primary action state, when the controller
