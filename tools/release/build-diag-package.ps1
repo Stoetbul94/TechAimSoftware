@@ -178,6 +178,12 @@ New-Item -ItemType Directory -Force $docsOut | Out-Null
 foreach ($d in @('docs\field-tests\rc3b-diag-physical-qualification-plan.md',
                  'docs\field-tests\rc3b-diag-cross-discipline-audit.md',
                  'docs\field-tests\2026-08-23-tablet02-score-invalidation.md',
+                 # The portability record travels WITH the build. A package
+                 # that can be handed to whoever ports it to Android or SETA
+                 # should carry the list of correctness fixes they must not
+                 # lose.
+                 'docs\architecture\CROSS-PLATFORM-FIX-REGISTER.md',
+                 'docs\architecture\cross-platform-fix-register.json',
                  'docs\legal\THIRD-PARTY-NOTICES.md')) {
     $s = Join-Path $repo $d
     if (Test-Path $s) { Copy-Item $s (Join-Path $docsOut (Split-Path $d -Leaf)) }
@@ -275,5 +281,5 @@ Ok "exe  SHA-256  $exeHash"
 Ok "commit        $commit ($branch)"
 Ok "files         $($files.Count)"
 Write-Host ""
-Write-Host "RC3B-DIAG is INTERNAL. Do not send it to SETA." -ForegroundColor Yellow
+Write-Host "$version is INTERNAL. Do not send it to SETA." -ForegroundColor Yellow
 Write-Host "Physical qualification: docs\field-tests\rc3b-diag-physical-qualification-plan.md"
