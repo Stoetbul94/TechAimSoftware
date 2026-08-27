@@ -510,6 +510,88 @@ Item {
         }
     }
 
+    // ── CRO ANNOUNCEMENTS — 50 m 3P INDOOR QUALIFICATION ────────────────────
+    // ISSF Rule Book 2026, Edition 2025 (Second Print 07/2026):
+    //   6.11.1.1 g) "PREPARATION AND SIGHTING TIME...START"
+    //   6.11.1.1 i) after 14:30 elapsed, announce "30 SECONDS"
+    //   6.11.1.1 j) "END OF PREPARATION AND SIGHTING...STOP"
+    //   6.11.1.2 a) "MATCH FIRING...START"
+    //   6.11.1.2 e) the CRO MUST inform athletes of the time remaining at BOTH
+    //               ten (10) minutes and five (5) minutes before the end
+    //   6.11.1.3    "STOP"
+    //
+    // These are announcements ONLY. They are derived from the existing
+    // qualification clocks - no new timer is created, no clock is started,
+    // stopped, paused or extended, and no shot, position or target state is
+    // touched. Gated on legacyClockIsOurs so they can never fire in a Final,
+    // which owns its own commands through FINALS3P / FINALS10M.
+    property string croAnnouncement: ""
+    property bool croWarned10: false
+    property bool croWarned5:  false
+    property bool croWarnedPrep30: false
+    property bool croAnnouncedStop: false
+
+    function croAnnounce(text) {
+        if (!legacyClockIsOurs)
+            return
+        paneItem.croAnnouncement = text
+        croBannerTimer.restart()
+        MODREADER.appendToLogFile("CRO: " + text)
+    }
+
+    function croResetAnnouncements() {
+        paneItem.croWarned10 = false
+        paneItem.croWarned5 = false
+        paneItem.croWarnedPrep30 = false
+        paneItem.croAnnouncedStop = false
+        paneItem.croAnnouncement = ""
+    }
+
+    // Fires once when the remaining MATCH time crosses each threshold.
+    function croCheckMatchTime(remainingSecs) {
+        if (remainingSecs <= 600 && !paneItem.croWarned10) {
+            paneItem.croWarned10 = true
+            croAnnounce(qsTr("10 MINUTES"))
+        }
+        if (remainingSecs <= 300 && !paneItem.croWarned5) {
+            paneItem.croWarned5 = true
+            croAnnounce(qsTr("5 MINUTES"))
+        }
+    }
+
+    // The announcement, shown where a range officer will see it. Additive and
+    // self-contained: it anchors to this pane and changes no existing layout.
+    Rectangle {
+        id: croBanner
+        objectName: "croBanner"
+        visible: paneItem.croAnnouncement !== ""
+        z: 60
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.top: parent.top
+        anchors.topMargin: 8
+        width: croBannerText.width + 36
+        height: 38
+        radius: 6
+        color: "#A80038"
+        Text {
+            id: croBannerText
+            objectName: "croBannerText"
+            anchors.centerIn: parent
+            text: paneItem.croAnnouncement
+            color: "#FFFFFF"
+            font.pixelSize: 18
+            font.bold: true
+            font.letterSpacing: 1
+        }
+    }
+
+    Timer {
+        id: croBannerTimer
+        interval: 8000
+        repeat: false
+        onTriggered: paneItem.croAnnouncement = ""
+    }
+
     Timer {
         id:gameTimer
         interval: 1000
@@ -521,6 +603,20 @@ Item {
             //            console.log("Formated Time is .......", formatedTime,remainingTime,
             //                        gameTime,totalGameTime)
             stopTimer.text = formatedTime
+            // 6.11.1.2 e) / 6.11.1.3. Announcements only - the clock above is
+            // untouched by them.
+            paneItem.croCheckMatchTime(remainingTime)
+            // UI-DEC-015 / QML-LANG-001: never branch on a translated string.
+            // This first compared croAnnouncement against a translated
+            // literal, which is the exact defect class that once moved a
+            // session into the wrong scoring branch when the language changed.
+            // A flag decides instead. (The QML-LANG-001 guard is text-based
+            // and scans comments too, so this note must not quote the pattern
+            // it forbids.)
+            if (remainingTime <= 0 && !paneItem.croAnnouncedStop) {
+                paneItem.croAnnouncedStop = true
+                croAnnounce(qsTr("STOP"))
+            }
         }
     }
 
@@ -553,7 +649,14 @@ Item {
                 // this point in the session) but it now honours the same
                 // condition the binding did.
                 timerNotification.visible = legacyClockIsOurs;
+                // 6.11.1.1 j)
+                croAnnounce(qsTr("END OF PREPARATION AND SIGHTING...STOP"))
                 MODREADER.intiateAutoMovementSetup()
+            }
+            // 6.11.1.1 i) - after 14:30 elapsed, i.e. 30 s remaining.
+            if (remainingTime <= 30 && remainingTime > 0 && !paneItem.croWarnedPrep30) {
+                paneItem.croWarnedPrep30 = true
+                croAnnounce(qsTr("30 SECONDS"))
             }
             var formatedTime = minutesToseconds(remainingTime)
             stStopTimer.text = formatedTime
@@ -2250,6 +2353,8 @@ Item {
     function startPreparationCountdown()
     {
         MODREADER.appendToLogFile("startPreparationCountdown: totalSighterTime=" + totalSighterTime)
+        croResetAnnouncements()
+        croAnnounce(qsTr("PREPARATION AND SIGHTING TIME...START"))   // 6.11.1.1 g)
         sighterTime = 0
         stStopTimer.text = minutesToseconds(totalSighterTime)
         stStopTimer.visible = legacyClockIsOurs   // FINALS-DISPLAY-TIMER-002
@@ -2272,6 +2377,7 @@ Item {
         // Final, so it never moved. It was still 35:00 fourteen minutes and one
         // USB reconnect later.
         timerNotification.visible = APPSETTINGS.timer() && legacyClockIsOurs
+        croAnnounce(qsTr("MATCH FIRING...START"))                     // 6.11.1.2 a)
     }
 
 }

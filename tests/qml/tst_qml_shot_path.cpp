@@ -1622,6 +1622,156 @@ int main(int argc, char* argv[])
         }
     }
 
+    // ─────────────────────────────────────────────────────────────────────
+    // qualification3p_indoor_cro_time_warnings
+    //
+    // ISSF Rule Book 2026, Edition 2025 (Second Print 07/2026):
+    //   6.11.1.2 e) "The CRO must inform athletes by loudspeaker of the time
+    //                remaining at both ten (10) minutes and five (5) minutes
+    //                before the end of the competition time"
+    //   6.11.1.1 g) "PREPARATION AND SIGHTING TIME...START"
+    //   6.11.1.1 i) after 14:30 elapsed, announce "30 SECONDS"
+    //   6.11.1.1 j) "END OF PREPARATION AND SIGHTING...STOP"
+    //   6.11.1.2 a) "MATCH FIRING...START"
+    //   6.11.1.3    "STOP"
+    //
+    // These were MISSING entirely - the qualification path had no CRO command
+    // text of any kind, only countdown displays. This EXECUTES the real
+    // threshold logic extracted from CenterPane.qml rather than matching
+    // strings, because a string match would not catch a warning that fires
+    // twice, fires at the wrong boundary, or never fires at all.
+    // ─────────────────────────────────────────────────────────────────────
+    {
+        const QString cp = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/CenterPane.qml"));
+
+        // Every command the rule names must exist on the qualification path.
+        struct Cmd { const char* text; const char* rule; };
+        const Cmd cmds[] = {
+            { "PREPARATION AND SIGHTING TIME...START", "6.11.1.1 g" },
+            { "30 SECONDS",                            "6.11.1.1 i" },
+            { "END OF PREPARATION AND SIGHTING...STOP","6.11.1.1 j" },
+            { "MATCH FIRING...START",                  "6.11.1.2 a" },
+            { "10 MINUTES",                            "6.11.1.2 e" },
+            { "5 MINUTES",                             "6.11.1.2 e" },
+            { "STOP",                                  "6.11.1.3"   },
+        };
+        for (const Cmd& c : cmds)
+            check(cp.contains(QString::fromLatin1(c.text)),
+                  qPrintable(QStringLiteral("CRO-QUAL: %1 is announced (%2)")
+                             .arg(QString::fromLatin1(c.text),
+                                  QString::fromLatin1(c.rule))));
+
+        // ── EXECUTE the threshold logic ───────────────────────────────────
+        const QString fnCheck = extractFunction(cp, QStringLiteral("croCheckMatchTime"));
+        const QString fnAnn   = extractFunction(cp, QStringLiteral("croAnnounce"));
+        const QString fnReset = extractFunction(cp, QStringLiteral("croResetAnnouncements"));
+        check(!fnCheck.isEmpty() && !fnAnn.isEmpty() && !fnReset.isEmpty(),
+              "CRO-QUAL: the announcement functions are extractable");
+
+        if (!fnCheck.isEmpty() && !fnAnn.isEmpty() && !fnReset.isEmpty()) {
+            QQmlEngine eng;
+            QString qml =
+                QStringLiteral("import QtQuick 2.15\n"
+                               "Item {\n"
+                               "  id: paneItem\n"
+                               "  property string croAnnouncement: \"\"\n"
+                               "  property bool croWarned10: false\n"
+                               "  property bool croWarned5: false\n"
+                               "  property bool croWarnedPrep30: false\n"
+                               "  property bool legacyClockIsOurs: true\n"
+                               "  property var fired: []\n"
+                               "  property var log: []\n"
+                               "  QtObject { id: croBannerTimer; function restart() {} }\n")
+                + fnAnn + QStringLiteral("\n") + fnReset + QStringLiteral("\n")
+                + fnCheck + QStringLiteral("\n}\n");
+            // capture what was announced
+            // Replace the log call with the capture: the extracted function
+            // is the REAL one, so its MODREADER dependency is stripped here
+            // rather than stubbed - a stub QObject has no appendToLogFile.
+            qml.replace(QStringLiteral("MODREADER.appendToLogFile(\"CRO: \" + text)"),
+                        QStringLiteral("paneItem.fired.push(text)"));
+
+            QQmlComponent comp(&eng);
+            comp.setData(qml.toUtf8(), QUrl());
+            if (comp.isError()) {
+                QStringList e; for (const QQmlError& x : comp.errors()) e << x.toString();
+                check(false, "CRO-QUAL: the extracted logic mounts", e.join(QStringLiteral(" | ")));
+            } else {
+                QScopedPointer<QObject> o(comp.create());
+                check(!o.isNull(), "CRO-QUAL: the extracted logic mounts");
+                if (o) {
+                    auto fired = [&] { return o->property("fired").toStringList(); };
+                    auto call  = [&](int secs) {
+                        QMetaObject::invokeMethod(o.data(), "croCheckMatchTime",
+                                                  Q_ARG(QVariant, QVariant(secs)));
+                    };
+                    // 90:00 down to just above ten minutes: silence.
+                    call(5400); call(1200); call(601);
+                    check(fired().isEmpty(),
+                          "CRO-QUAL: nothing is announced before ten minutes remain",
+                          fired().join(QStringLiteral(",")));
+
+                    call(600);
+                    check(fired().size() == 1 && fired().last() == QStringLiteral("10 MINUTES"),
+                          "CRO-QUAL: 10 MINUTES announced at exactly 10:00 remaining",
+                          fired().join(QStringLiteral(",")));
+
+                    call(599); call(400); call(301);
+                    check(fired().size() == 1,
+                          "CRO-QUAL: 10 MINUTES is announced ONCE, not every tick",
+                          fired().join(QStringLiteral(",")));
+
+                    call(300);
+                    check(fired().size() == 2 && fired().last() == QStringLiteral("5 MINUTES"),
+                          "CRO-QUAL: 5 MINUTES announced at exactly 5:00 remaining",
+                          fired().join(QStringLiteral(",")));
+
+                    call(299); call(1); call(0);
+                    check(fired().size() == 2,
+                          "CRO-QUAL: 5 MINUTES is announced ONCE",
+                          fired().join(QStringLiteral(",")));
+
+                    // A new session must announce them again.
+                    QMetaObject::invokeMethod(o.data(), "croResetAnnouncements");
+                    call(600);
+                    check(fired().size() == 3 && fired().last() == QStringLiteral("10 MINUTES"),
+                          "CRO-QUAL: a new session re-arms the warnings",
+                          fired().join(QStringLiteral(",")));
+
+                    // In a Final the legacy clock is not ours - silence.
+                    o->setProperty("legacyClockIsOurs", false);
+                    QMetaObject::invokeMethod(o.data(), "croResetAnnouncements");
+                    const int before = fired().size();
+                    call(600); call(300);
+                    check(fired().size() == before,
+                          "CRO-QUAL: nothing is announced when the legacy clock is not ours",
+                          QStringLiteral("a Final owns its own commands"));
+                }
+            }
+        }
+
+        // ── ANNOUNCEMENTS ONLY ────────────────────────────────────────────
+        // The rule makes these announcements. They must not touch the clock,
+        // the shot count, the position or the target mode.
+        for (const QString& fn : QStringList{ QStringLiteral("croAnnounce"),
+                                              QStringLiteral("croCheckMatchTime"),
+                                              QStringLiteral("croResetAnnouncements") }) {
+            const QString body = extractFunction(cp, fn);
+            if (body.isEmpty()) continue;
+            for (const QString& sym : QStringList{
+                     QStringLiteral("gameTimer"), QStringLiteral("gameTime"),
+                     QStringLiteral("totalGameTime"), QStringLiteral("sighterTimer"),
+                     QStringLiteral("sighterTime"), QStringLiteral("shootCount"),
+                     QStringLiteral("changeSighterMode"), QStringLiteral("p3Position"),
+                     QStringLiteral("sligterMode") })
+                check(!body.contains(sym),
+                      qPrintable(QStringLiteral("CRO-QUAL: %1 does not touch %2")
+                                 .arg(fn, sym)),
+                      QStringLiteral("announcements only - no clock, shot, position "
+                                     "or target-mode effect"));
+        }
+    }
+
     printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
     fflush(stdout);
     return g_failures ? 1 : 0;

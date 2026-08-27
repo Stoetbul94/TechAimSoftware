@@ -15,11 +15,12 @@ Rule authority for both: **ISSF Rule Book 2026, Edition 2025 (Second Print
 | | |
 |---|---|
 | **VENUE MODE** | **INDOOR** |
-| **PREPARATION / SIGHTING** | **15:00** |
+| **PREPARATION / SIGHTING** | **15:00**, with the `30 SECONDS` warning — **VERIFIED** |
 | **MATCH** | **1:30:00 (90 minutes)** |
 | **COURSE** | **3 × 20** — Kneeling 1–20, Prone 21–40, Standing 41–60 |
 | **SCORING** | **INTEGER** (full ring) |
 | **MATCH CLOCK** | **CONTINUOUS** — one clock for the whole course |
+| **MATCH WARNINGS** | **10 minutes — VERIFIED**, **5 minutes — VERIFIED** (6.11.1.2 e) |
 | **POSITION-CHANGE SIGHTERS** | inside the remaining 1:30:00 |
 | **OUTDOOR 1:45:00** | **NOT USED FOR THIS COMPETITION** |
 
@@ -53,7 +54,13 @@ per-position clock in the rule and there must be none in the software.
 | Sighters excluded from the official count | prone/standing sighters are not official | sighters routed to `globalSlighterModel`, official count from `globalMatchModel` | **PASS** |
 | Completion | at 60 official shots | `globalMatchModel.count >= matchShootCount` | **PASS** |
 | Scoring | integer | discipline-configured | **PASS** |
-| Match-time warnings (10 min / 5 min remaining) | **not located in the rulebook text** | not asserted | ⏳ **AUTHORITY NOT VERIFIED** |
+| Preparation start | `PREPARATION AND SIGHTING TIME...START` (6.11.1.1 g) | announced | **PASS** |
+| Preparation 30 s warning | `30 SECONDS` after 14:30 elapsed (6.11.1.1 i) | announced at 30 s remaining | **PASS** |
+| Preparation end | `END OF PREPARATION AND SIGHTING...STOP` (6.11.1.1 j) | announced | **PASS** |
+| Match start | `MATCH FIRING...START` (6.11.1.2 a) | announced | **PASS** |
+| **Match warning 10 min** | **6.11.1.2 e) — required** | announced once at 10:00 remaining | **PASS** |
+| **Match warning 5 min** | **6.11.1.2 e) — required** | announced once at 5:00 remaining | **PASS** |
+| Match end | `STOP` (6.11.1.3) | announced at 0:00 | **PASS** |
 
 **Regressions added:** `qualification3p_indoor_must_use_90_minute_continuous_clock`
 and `qualification3p_indoor_must_never_start_105_minute_clock` — 28 checks in
@@ -72,12 +79,28 @@ visibility gate depends on nothing a position change moves.
 | **Saturday risk** | **LOW–MEDIUM** — the configuration is verified correct; the risk that remains is that the discipline has no physical record at 50 m |
 | **Code change required before Saturday?** | **NO** |
 
-**One caveat, stated plainly:** the tests prove the configured value and that
-nothing on the transition path touches the clock. They do **not** drive a real
-90-minute clock through two position changes — that needs either a long run or
-a timescale hook the qualification path does not have. The 10-minute and
-5-minute match warnings could not be located in the rulebook and are therefore
-unverified either way.
+### CRO announcements — were MISSING, now implemented
+
+The qualification path had **no CRO command text of any kind** — only countdown
+displays. All seven announcements required by 6.11.1.1 and 6.11.1.2 were
+absent. Classified **SEV-2 RULES / RANGE-OFFICER COMMAND GAP** (no competition
+state was wrong; the range officer simply was not prompted).
+
+They are now derived from the **existing** clocks: no new timer, and nothing
+that starts, stops, pauses or extends a clock, or touches a shot, position or
+target mode. Gated so they can never fire in a Final, which owns its own
+commands.
+
+`qualification3p_indoor_cro_time_warnings` **executes** the real threshold
+logic extracted from `CenterPane.qml`: silence above 10:00, `10 MINUTES` at
+exactly 10:00 and once only, `5 MINUTES` at exactly 5:00 and once only, re-armed
+for a new session, and silent when the legacy clock is not ours.
+
+**One caveat, stated plainly:** the tests prove the configured value, the
+announcement thresholds, and that nothing on the transition or announcement
+path touches the clock. They do **not** drive a real 90-minute clock through
+two position changes — that needs a long run or a timescale hook the
+qualification path does not have.
 
 ---
 
