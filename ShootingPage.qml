@@ -822,7 +822,12 @@ Item {
         // Final-specific Finals10mRightPanel occupies the same slot. Its width
         // is preserved (visible:false keeps the layout) so the target keeps its
         // size. Qualification/3P use this panel unchanged.
-        visible: !isFinals10mMatch && !isTrainingMatch && !isCallDiagnoseMatch
+        // FINALS-3P-PANEL-001: the 3P Final now has its own column too, so
+        // the qualification panel yields to BOTH finals. Before this it stayed
+        // mounted through a 3P Final and showed a qualification series
+        // structure (S1-S6) that a 35-shot Final does not have.
+        visible: !isFinals10mMatch && !isFinalsMatch
+                 && !isTrainingMatch && !isCallDiagnoseMatch
                  && !isPositionTransitionMatch && !isWindMapMatch
         onSwitchToSighter:
         {
@@ -856,6 +861,21 @@ Item {
         // F9: the reopener shows once the completion card is dismissed.
         summaryDismissed: finals10mHud.dismissed
         onReopenSummaryRequested: finals10mHud.dismissed = false
+    }
+
+    // 50 m 3P FINAL right-hand information column. Same slot and width as the
+    // qualification panel and the 10 m Final panel; every value from FINALS3P.
+    // The visual architecture is deliberately shared with the 10 m Final - the
+    // competition model deliberately is not.
+    Finals3PRightPanel {
+        id: finals3pRightPanel
+        visible: isFinalsMatch
+        width: rightPanel.width
+        height: rightPanel.height
+        anchors.right: parent.right
+        anchors.top: statusStrip.bottom
+        z: 11
+        ctl: FINALS3P
     }
 
     // TRAINING LAB (T1.4): the persistent Training control + information column.

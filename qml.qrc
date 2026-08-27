@@ -62,6 +62,7 @@
         <file>PdfBrandingMetrics.js</file>
         <file>Finals10mCommandPanel.qml</file>
         <file>Finals10mRightPanel.qml</file>
+        <file>Finals3PRightPanel.qml</file>
         <file>FinalsTopStrip.qml</file>
         <file>FinalsProgressIndicator.qml</file>
         <file>FinalsCommandOverlay.qml</file>
