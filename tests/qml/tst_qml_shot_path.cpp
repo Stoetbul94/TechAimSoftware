@@ -1496,6 +1496,132 @@ int main(int argc, char* argv[])
               "THEME: disabled controls are less faded on light than on dark");
     }
 
+    // ─────────────────────────────────────────────────────────────────────
+    // 50 m 3P INDOOR QUALIFICATION — the 90-minute continuous match clock.
+    //
+    // ISSF Rule Book 2026, Edition 2025 (Second Print 07/2026), effective
+    // 1 July 2026, Rule 6.11.9.2:
+    //
+    //   "Twenty (20) shots in each position, in the sequence Kneeling, Prone,
+    //    Standing, in a total time limit of 1hr 45 minutes (105 minutes) if
+    //    outdoor range is used. 1 hr 30 minutes (90 minutes) if indoor range
+    //    is used."
+    //   "Preparation and Sighting time. Fifteen (15) minutes to fire an
+    //    unlimited number of sighting shots."
+    //   "Full ring (integer) scoring."
+    //
+    // The 90 minutes is ONE TOTAL LIMIT for the whole 3 x 20 course. Position
+    // changes and the unlimited prone/standing sighters are spent out of it.
+    // There is no per-position clock and no transition extension.
+    //
+    // These are characterization + rule tests over the real sources. They
+    // cannot drive a 90-minute clock, so they assert the two things that would
+    // break it: the configured value, and that nothing on the position-change
+    // path touches the clock.
+    // ─────────────────────────────────────────────────────────────────────
+    {
+        const QString as  = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/appsettings.cpp"));
+        const QString ash = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/appsettings.h"));
+        const QString lp  = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/LoginPage.qml"));
+        const QString sp  = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/ShootingPage.qml"));
+        const QString cp  = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/CenterPane.qml"));
+
+        // ── qualification3p_indoor_must_use_90_minute_continuous_clock ────
+        {
+            const int gt = as.indexOf(QStringLiteral("int AppSettings::getTimeCount"));
+            check(gt > 0, "QUAL3P: getTimeCount exists");
+            // Span to the function's closing brace, not a byte count. A comment
+            // added above the branch pushed it outside a 900-char window and
+            // failed this check for a reason unrelated to what it tests - the
+            // third time that mistake has been made in this file.
+            const int gtEnd = as.indexOf(QStringLiteral("\n}"), gt);
+            const QString body = (gt > 0)
+                ? as.mid(gt, (gtEnd > gt ? gtEnd - gt : 2000)) : QString();
+
+            // The 3P branch (game_sub_mode == 1) must return 90 minutes.
+            const int sub = body.indexOf(QStringLiteral("game_sub_mode == 1"));
+            check(sub > 0, "QUAL3P: the 60-shot path branches on 50m 3 Positions");
+            check(sub > 0 && body.mid(sub, 120).contains(QStringLiteral("90 * 60")),
+                  "QUAL3P indoor: the match clock is 90 minutes",
+                  body.mid(sub, 120).simplified());
+
+            check(lp.contains(QStringLiteral("return \"90 min\"")),
+                  "QUAL3P indoor: the start page states 90 min for 50m 3 Positions");
+
+            // The preparation and sighting time is 15 minutes (6.11.9.2).
+            // The member default lives in the header, not the .cpp.
+            check(ash.contains(QStringLiteral("m_prepTimeMinutes = 15")),
+                  "QUAL3P: preparation and sighting is 15 minutes");
+
+            // CONTINUITY. The position transition must not touch the clock.
+            // NOTE the parenthesis: enterPositionTransition is a PREFIX of
+            // enterPositionTransitionMode (a Training Lab programme), and
+            // without it this matched the wrong function entirely.
+            const int ept = sp.indexOf(QStringLiteral("function enterPositionTransition()"));
+            check(ept > 0, "QUAL3P: the 3P position transition exists");
+            if (ept > 0) {
+                // Span to the NEXT function: the first close-brace belongs to
+                // this function's try/catch and cut the body before its log line.
+                const int nextFn = sp.indexOf(QStringLiteral("\n    function "), ept + 10);
+                const QString t = sp.mid(ept, (nextFn > ept ? nextFn - ept : 4000));
+                for (const QString& sym : QStringList{
+                         QStringLiteral("gameTimer"), QStringLiteral("gameTime"),
+                         QStringLiteral("totalGameTime"),
+                         QStringLiteral("startPreparationCountdown"),
+                         QStringLiteral("refreshMatchTime") })
+                    check(!t.contains(sym),
+                          qPrintable(QStringLiteral("QUAL3P continuity: the position "
+                                                    "transition does not touch %1").arg(sym)),
+                          QStringLiteral("a position change must not restart or extend "
+                                         "the 90-minute total"));
+                check(t.contains(QStringLiteral("match clock keeps running")),
+                      "QUAL3P continuity: and says so, in the session log");
+            }
+
+            // The one place that zeroes elapsed time is the clock row going
+            // invisible. Its gate must not depend on anything a position
+            // change moves - sighter mode, position or break count - or the
+            // 90 minutes would restart at every transition.
+            const int vis = cp.indexOf(QStringLiteral("visible: APPSETTINGS.timer() && !shootingPage.isFinalsMatch"));
+            check(vis > 0, "QUAL3P: the qualification clock row gate is present");
+            if (vis > 0) {
+                const QString gate = cp.mid(vis, 200);
+                for (const QString& sym : QStringList{
+                         QStringLiteral("sligterMode"), QStringLiteral("p3Position"),
+                         QStringLiteral("p3BreaksDone"), QStringLiteral("is3PMatch") })
+                    check(!gate.contains(sym),
+                          qPrintable(QStringLiteral("QUAL3P continuity: the clock row is "
+                                                    "not gated on %1").arg(sym)),
+                          gate.simplified());
+            }
+
+            // 60 official shots, three positions of 20, and completion only at 60.
+            check(sp.contains(QStringLiteral("count === 20 || count === 40")),
+                  "QUAL3P: position breaks at 20 and 40, i.e. 3 x 20");
+            check(sp.contains(QStringLiteral("globalMatchModel.count >= matchShootCount")),
+                  "QUAL3P: the match completes on the official shot count, not on a clock");
+        }
+
+        // ── qualification3p_indoor_must_never_start_105_minute_clock ──────
+        {
+            // 105 minutes is the OUTDOOR course (6.11.9.2). Saturday is
+            // indoor. The value must not exist anywhere in the product.
+            for (const QString& f : QStringList{ as, lp, sp, cp }) {
+                check(!f.contains(QStringLiteral("105 * 60"))
+                          && !f.contains(QStringLiteral("105*60"))
+                          && !f.contains(QStringLiteral("6300")),
+                      "QUAL3P indoor: no 105-minute (outdoor) match clock exists");
+                check(!f.contains(QStringLiteral("\"105 min\"")),
+                      "QUAL3P indoor: no 105 min is displayed");
+            }
+            // And no indoor/outdoor selector was introduced this round: the
+            // Saturday configuration is frozen on indoor.
+            check(!as.contains(QStringLiteral("outdoorRange"))
+                      && !lp.contains(QStringLiteral("outdoorRange")),
+                  "QUAL3P: no venue selector was introduced - indoor is fixed");
+        }
+    }
+
     printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
     fflush(stdout);
     return g_failures ? 1 : 0;
