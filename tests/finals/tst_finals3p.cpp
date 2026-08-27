@@ -11,6 +11,12 @@
 // of a few ticks; ordering assertions are exact.
 
 #include <QApplication>
+#include <QQmlEngine>
+#include <QQmlComponent>
+#include <QQmlContext>
+#include <QQmlError>
+#include <QQuickItem>
+#include <QScopedPointer>
 #include <QElapsedTimer>
 #include <QVariantList>
 #include <QDebug>
@@ -122,6 +128,263 @@ struct Recorder {
 static bool inStage(Finals3PController& c, Stage s)
 {
     return c.stageId() == static_cast<int>(s);
+}
+
+// ── 3P FINAL RIGHT PANEL — driven through the full course by the REAL
+//    controller (FINALS-3P-PANEL-001) ─────────────────────────────────────
+//
+// The panel is mounted against a live Finals3PController and the whole 35-shot
+// Final is driven through it. Every assertion reads text that Qt Quick actually
+// rendered, found by objectName — not a string in a source file.
+//
+// This exists because FINALS-3P-MIX-001 shipped: a 3P Final displayed the 10 m
+// Final's course model, and nothing automated noticed, because nothing
+// automated had ever looked at what the 3P Final renders.
+static QQuickItem* findByName(QQuickItem* root, const QString& name)
+{
+    if (!root) return nullptr;
+    if (root->objectName() == name) return root;
+    const auto kids = root->childItems();
+    for (QQuickItem* k : kids)
+        if (QQuickItem* hit = findByName(k, name)) return hit;
+    return nullptr;
+}
+
+static QString textOf(QQuickItem* root, const QString& name)
+{
+    QQuickItem* it = findByName(root, name);
+    return it ? it->property("text").toString() : QStringLiteral("<missing:") + name + ">";
+}
+
+static void runPanelUiFinal()
+{
+    Finals3PController c;
+    Recorder r; r.attach(&c);
+
+    QQmlEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("CTL"), &c);
+
+    const QString harness = QStringLiteral(TECHAIM_SOURCE_DIR "/tests/finals/panel_harness.qml");
+    QQmlComponent comp(&engine, QUrl::fromLocalFile(harness));
+    if (comp.isError()) {
+        QStringList errs;
+        for (const QQmlError& e : comp.errors()) errs << e.toString();
+        check(false, "PANEL: harness loads", errs.join(QStringLiteral(" | ")));
+        return;
+    }
+    QScopedPointer<QObject> obj(comp.create());
+    QQuickItem* root = qobject_cast<QQuickItem*>(obj.data());
+    check(root != nullptr, "PANEL: harness mounts the real Finals3PRightPanel");
+    if (!root) return;
+
+    auto pump = [] { QCoreApplication::processEvents(QEventLoop::AllEvents, 10); };
+    // simulateShot() deliberately scores 0.0 (it is a dry-run control), which
+    // would make every subtotal assertion below vacuous. Fire real values
+    // through the same acceptance path instead.
+    auto fire = [&c, &pump] { c.registerShot(0.0, 0.0, 10.5); pump(); };
+    pump();
+
+    // ── A. session creation / Idle ───────────────────────────────────────
+    check(textOf(root, "courseProgress") == QStringLiteral("0 / 35 shots"),
+          "PANEL A: course progress starts at 0 / 35",
+          textOf(root, "courseProgress"));
+    check(!textOf(root, "courseProgress").contains(QStringLiteral("24")),
+          "PANEL A: the panel never states a 24-shot course");
+
+    // ── B/C. Ceremony -> preparation and sighting ────────────────────────
+    c.startFinal();
+    pump();
+    check(textOf(root, "positionLabel") == QStringLiteral("KNEELING"),
+          "PANEL B: position reads KNEELING from the ceremony onward",
+          textOf(root, "positionLabel"));
+    check(!textOf(root, "stageLabel").isEmpty(), "PANEL B: a phase label is shown");
+    check(textOf(root, "finalsClock").contains(QLatin1Char(':')),
+          "PANEL C: the authoritative clock renders", textOf(root, "finalsClock"));
+
+    // The clock is the CONTROLLER's, not a second one: it must equal
+    // remainingFormatted at an arbitrary moment.
+    check(textOf(root, "finalsClock") == c.remainingFormatted(),
+          "PANEL C: the displayed clock IS Finals3PController.remainingFormatted",
+          textOf(root, "finalsClock") + " vs " + c.remainingFormatted());
+
+    check(waitUntil([&]{ return inStage(c, Stage::KneelingMatch); }, 40000),
+          "PANEL D: reaches KneelingMatch");
+    // An athlete cannot fire before MATCH FIRING START, and neither can this
+    // harness: reaching the stage is not the same as the window being open.
+    check(waitUntil([&]{ return c.windowState() == 2; }, 20000),
+          "PANEL D: kneeling firing window opens");
+    pump();
+    check(textOf(root, "historyHeading").contains(QStringLiteral("KNEELING")),
+          "PANEL E: history heading names the KNEELING stage",
+          textOf(root, "historyHeading"));
+    check(textOf(root, "historyHeading").contains(QStringLiteral("1")),
+          "PANEL E: and its shot range, not a 10 m series number");
+
+    // ── F. Kneeling series progression ───────────────────────────────────
+    for (int i = 0; i < 10; ++i) fire();
+    check(textOf(root, "courseProgress") == QStringLiteral("10 / 35 shots"),
+          "PANEL F: 10 official shots counted", textOf(root, "courseProgress"));
+    check(textOf(root, "lastShotValue").startsWith(QStringLiteral("Shot 10")),
+          "PANEL F: last official shot is shot 10", textOf(root, "lastShotValue"));
+    check(textOf(root, "lastShotValue").contains(QStringLiteral("KNEELING")),
+          "PANEL F: and it is owned by the KNEELING position",
+          textOf(root, "lastShotValue"));
+    const QString kneelSub = textOf(root, "subtotal_KNEELING");
+    check(kneelSub.toDouble() > 0.0, "PANEL F: kneeling subtotal is populated", kneelSub);
+    check(textOf(root, "subtotal_PRONE").toDouble() == 0.0,
+          "PANEL F: prone subtotal is still zero", textOf(root, "subtotal_PRONE"));
+    check(qAbs(textOf(root, "overallTotal").toDouble() - c.cumulativeTotal()) < 0.05,
+          "PANEL F: overall total matches the controller",
+          textOf(root, "overallTotal"));
+
+    // ── G. Kneeling -> Prone transition ──────────────────────────────────
+    check(textOf(root, "advanceLabel").contains(QStringLiteral("PRONE")),
+          "PANEL G: the transition action names the next position",
+          textOf(root, "advanceLabel"));
+    c.advanceStage1(); pump();
+    check(textOf(root, "positionLabel") == QStringLiteral("PRONE"),
+          "PANEL H: position becomes PRONE", textOf(root, "positionLabel"));
+    check(textOf(root, "courseProgress") == QStringLiteral("10 / 35 shots"),
+          "PANEL G: the transition neither added nor dropped a shot",
+          textOf(root, "courseProgress"));
+
+    // A prone SIGHTER must not become the last OFFICIAL shot.
+    fire();
+    check(textOf(root, "lastShotValue").startsWith(QStringLiteral("Shot 10")),
+          "PANEL H: a sighter does not overwrite the last official shot",
+          textOf(root, "lastShotValue"));
+    check(textOf(root, "courseProgress") == QStringLiteral("10 / 35 shots"),
+          "PANEL H: a sighter does not advance the official course count");
+
+    // ── I. Prone series progression ──────────────────────────────────────
+    c.advanceStage1(); pump();
+    check(inStage(c, Stage::ProneMatch), "PANEL I: prone match open");
+    for (int i = 0; i < 10; ++i) fire();
+    check(textOf(root, "courseProgress") == QStringLiteral("20 / 35 shots"),
+          "PANEL I: 20 official shots counted", textOf(root, "courseProgress"));
+    check(textOf(root, "lastShotValue").contains(QStringLiteral("PRONE")),
+          "PANEL I: shot 20 is owned by PRONE", textOf(root, "lastShotValue"));
+    check(textOf(root, "subtotal_PRONE").toDouble() > 0.0,
+          "PANEL I: prone subtotal populated", textOf(root, "subtotal_PRONE"));
+    check(textOf(root, "subtotal_KNEELING") == kneelSub,
+          "PANEL I: the kneeling subtotal did not move when prone scored",
+          textOf(root, "subtotal_KNEELING"));
+
+    // ── PAUSE / RESUME (the mechanism an incident uses) ─────────────
+    // Range Incident handling pauses the competition clock. What the panel
+    // must guarantee is that a pause changes NOTHING about the course: same
+    // phase, same position, same official count, same total - and that the
+    // clock the operator sees is the one that actually stopped.
+    {
+        const int    stageBefore = c.stageId();
+        const QString posBefore  = textOf(root, "positionLabel");
+        const QString cntBefore  = textOf(root, "courseProgress");
+        const double totBefore   = textOf(root, "overallTotal").toDouble();
+
+        c.pauseTrainingSimulation(); pump();
+        check(c.paused(), "PANEL-INC: the controller reports paused");
+        check(textOf(root, "commandText") == QStringLiteral("PAUSED"),
+              "PANEL-INC: the panel says PAUSED", textOf(root, "commandText"));
+        const QString clockAtPause = textOf(root, "finalsClock");
+        QElapsedTimer hold; hold.start();
+        while (hold.elapsed() < 300) QCoreApplication::processEvents(QEventLoop::AllEvents, 10);
+        check(textOf(root, "finalsClock") == clockAtPause,
+              "PANEL-INC: the displayed clock is frozen while paused",
+              clockAtPause + " -> " + textOf(root, "finalsClock"));
+
+        c.resumeTrainingSimulation(); pump();
+        check(!c.paused(), "PANEL-INC: resumed");
+        check(c.stageId() == stageBefore,
+              "PANEL-INC: resume returns to the SAME phase, no restart");
+        check(textOf(root, "positionLabel") == posBefore,
+              "PANEL-INC: position unchanged across pause/resume");
+        check(textOf(root, "courseProgress") == cntBefore,
+              "PANEL-INC: no shot gained or lost across pause/resume",
+              textOf(root, "courseProgress"));
+        check(qAbs(textOf(root, "overallTotal").toDouble() - totBefore) < 0.001,
+              "PANEL-INC: total unchanged across pause/resume");
+        check(textOf(root, "commandText") != QStringLiteral("PAUSED"),
+              "PANEL-INC: the PAUSED state clears on resume");
+    }
+
+    // ── J/K. Prone -> Standing ───────────────────────────────────────────
+    c.advanceStage1(); pump();
+    check(textOf(root, "positionLabel") == QStringLiteral("STANDING"),
+          "PANEL K: position becomes STANDING", textOf(root, "positionLabel"));
+    fire();          // standing sighter
+    check(textOf(root, "courseProgress") == QStringLiteral("20 / 35 shots"),
+          "PANEL K: standing sighter does not count officially");
+
+    // ── L. Standing series ───────────────────────────────────────────────
+    check(waitUntil([&]{ return inStage(c, Stage::StandingSeries1); }, 40000),
+          "PANEL L: stage-1 STOP -> Standing Series 1");
+    pump();
+    check(textOf(root, "historyHeading").contains(QStringLiteral("SERIES 1"))
+              && textOf(root, "historyHeading").contains(QStringLiteral("21")),
+          "PANEL L: heading is STANDING SERIES 1 (21-25), a 3P range",
+          textOf(root, "historyHeading"));
+    check(waitUntil([&]{ return c.windowState() == 2; }, 10000), "PANEL L: series 1 window open");
+    for (int i = 0; i < 5; ++i) fire();
+    check(textOf(root, "courseProgress") == QStringLiteral("25 / 35 shots"),
+          "PANEL L: 25 after series 1", textOf(root, "courseProgress"));
+
+    check(waitUntil([&]{ return c.windowState() == 2; }, 10000), "PANEL L: series 2 window open");
+    pump();
+    check(textOf(root, "historyHeading").contains(QStringLiteral("SERIES 2")),
+          "PANEL L: heading is STANDING SERIES 2", textOf(root, "historyHeading"));
+    for (int i = 0; i < 5; ++i) fire();
+    check(textOf(root, "courseProgress") == QStringLiteral("30 / 35 shots"),
+          "PANEL L: 30 after series 2", textOf(root, "courseProgress"));
+
+    // ── M. singles / elimination ─────────────────────────────────────────
+    for (int k = 0; k < 5; ++k) {
+        check(waitUntil([&]{ return c.windowState() == 2; }, 10000),
+              QString("PANEL M: single %1 window open").arg(k + 1).toUtf8().constData());
+        pump();
+        check(textOf(root, "historyHeading").contains(QStringLiteral("SINGLE")),
+              "PANEL M: heading names the single-shot phase",
+              textOf(root, "historyHeading"));
+        fire();
+        const QString want = QStringLiteral("%1 / 35 shots").arg(31 + k);
+        check(textOf(root, "courseProgress") == want,
+              QString("PANEL M: %1 official after single %2").arg(31 + k).arg(k + 1).toUtf8().constData(),
+              textOf(root, "courseProgress"));
+    }
+
+    // ── N/O. completion ──────────────────────────────────────────────────
+    check(waitUntil([&]{ return inStage(c, Stage::Complete); }, 20000),
+          "PANEL N: the Final completes");
+    pump();
+    check(textOf(root, "courseProgress") == QStringLiteral("35 / 35 shots"),
+          "PANEL N: 35 of 35 at completion", textOf(root, "courseProgress"));
+    check(textOf(root, "historyHeading").contains(QStringLiteral("35")),
+          "PANEL O: completion heading states the 35-shot course",
+          textOf(root, "historyHeading"));
+    check(qAbs(textOf(root, "overallTotal").toDouble() - c.cumulativeTotal()) < 0.05,
+          "PANEL O: final total matches the controller", textOf(root, "overallTotal"));
+    {
+        const double k = textOf(root, "subtotal_KNEELING").toDouble();
+        const double p = textOf(root, "subtotal_PRONE").toDouble();
+        const double s = textOf(root, "subtotal_STANDING").toDouble();
+        check(qAbs((k + p + s) - c.cumulativeTotal()) < 0.15,
+              "PANEL O: the three position subtotals sum to the overall total",
+              QString("%1 + %2 + %3 vs %4").arg(k).arg(p).arg(s).arg(c.cumulativeTotal()));
+    }
+
+    // ── contamination sweep, at the end of a real run ────────────────────
+    for (const QString& name : QStringList{ QStringLiteral("courseProgress"),
+                                            QStringLiteral("historyHeading"),
+                                            QStringLiteral("lastShotValue"),
+                                            QStringLiteral("stageLabel"),
+                                            QStringLiteral("positionLabel") }) {
+        const QString t = textOf(root, name);
+        check(!t.contains(QStringLiteral("10m"), Qt::CaseInsensitive)
+                  && !t.contains(QStringLiteral("Air Rifle"), Qt::CaseInsensitive)
+                  && !t.contains(QStringLiteral("/ 24")),
+              qPrintable(QStringLiteral("PANEL: %1 carries no 10 m course wording").arg(name)), t);
+    }
+    check(r.finalCompletedCount == 1,
+          "PANEL: the driven course completed exactly once");
 }
 
 // ── The main end-to-end run: Full ceremony, athlete completes all 35 ────────
@@ -1354,6 +1617,7 @@ int main(int argc, char** argv)
     runWindowTitleChecks();
     runLocalisationChecks();
     runFullFinal();
+    runPanelUiFinal();
     runSecondaryChecks();
     runTimeoutFinal();
     runD4Checks();

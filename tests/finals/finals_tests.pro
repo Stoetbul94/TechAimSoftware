@@ -1,8 +1,11 @@
 # Phase A acceptance tests for the 3P FINAL controller (standalone console app).
 # qml: LanguageService uses QQmlEngine::retranslate() for live switching.
-QT += core gui widgets multimedia qml
+QT += core gui widgets multimedia qml quick
 CONFIG += console c++17
 CONFIG -= app_bundle
+
+# The panel harness mounts the real QML from the repository root.
+DEFINES += TECHAIM_SOURCE_DIR=\\\"$$PWD/../..\\\"
 TARGET = finals_tests
 
 INCLUDEPATH += ../../src/finals
