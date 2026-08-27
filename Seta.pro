@@ -44,7 +44,7 @@ for(legacy, LEGACY_EXES) {
 # it is - it is tagged, hashed and handed over, and nothing here overwrites
 # it. The next external build gets its own number, decided after the
 # physical qualification passes, not before.
-APP_VERSION_STR = 0.9.0-RC3D-DIAG
+APP_VERSION_STR = 0.9.0-RC3E-DIAG
 GIT_SHA = $$system(git -C \"$$PWD\" rev-parse --short HEAD)
 isEmpty(GIT_SHA): GIT_SHA = unknown
 DEFINES += APP_VERSION_STR=\\\"$$APP_VERSION_STR\\\"
