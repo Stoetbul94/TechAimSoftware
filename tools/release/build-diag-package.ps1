@@ -184,6 +184,16 @@ foreach ($d in @('docs\field-tests\rc3b-diag-physical-qualification-plan.md',
                  # lose.
                  'docs\architecture\CROSS-PLATFORM-FIX-REGISTER.md',
                  'docs\architecture\cross-platform-fix-register.json',
+                 # The rules this build was verified against travel with it.
+                 # A competition candidate should be able to answer 'which rule?'
+                 # without the repository.
+                 'docs\rules\RULE-AUTHORITY-INDEX.md',
+                 'docs\rules\ISSF-50M-3P-FINAL-SOURCE-MANIFEST.md',
+                 'docs\rules\ISSF-50M-3P-FINAL-CURRENT-RULE-DECISION.md',
+                 'docs\rules\50M-3P-FINAL-STATE-FLOW-CURRENT.md',
+                 'docs\rules\50M-3P-FINAL-STATE-FLOW-CURRENT.json',
+                 'docs\rules\ALL-DISCIPLINES-CURRENT-RULE-AUDIT.md',
+                 'docs\rules\2026-08-29-SATURDAY-3P-READINESS.md',
                  'docs\legal\THIRD-PARTY-NOTICES.md')) {
     $s = Join-Path $repo $d
     if (Test-Path $s) { Copy-Item $s (Join-Path $docsOut (Split-Path $d -Leaf)) }
