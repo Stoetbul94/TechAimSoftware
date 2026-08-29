@@ -238,6 +238,47 @@
       "regression": "tests/finals runFlow001Regressions (43 checks)",
       "physicalStatus": "PHYSICAL PENDING",
       "mustCarryForward": true
+    },
+    {
+      "id": "UI-LASTSHOT-DWELL-001",
+      "title": "last shot of a position clears too fast",
+      "sharedCore": "SHARED_QML",
+      "windowsStatus": "OPEN",
+      "androidStatus": "NO",
+      "setaStatus": "NO",
+      "regression": null,
+      "physicalStatus": "OBSERVED on 3 tablets (RC3F, 2026-08-29)",
+      "mustCarryForward": true,
+      "severity": "SEV-3",
+      "measuredDwellSeconds": {
+        "min": 1.63,
+        "max": 2.03,
+        "mean": 1.84
+      }
+    },
+    {
+      "id": "CRO-ORDER-001",
+      "title": "preparation STOP announced after MATCH FIRING",
+      "sharedCore": "SHARED_QML",
+      "windowsStatus": "OPEN",
+      "androidStatus": "NO",
+      "setaStatus": "NO",
+      "regression": null,
+      "physicalStatus": "OBSERVED on 3 tablets (RC3F, 2026-08-29)",
+      "mustCarryForward": true,
+      "severity": "SEV-3"
+    },
+    {
+      "id": "CRO-REPEAT-002",
+      "title": "MATCH FIRING announced again at each position change",
+      "sharedCore": "SHARED_QML",
+      "windowsStatus": "OPEN",
+      "androidStatus": "NO",
+      "setaStatus": "NO",
+      "regression": null,
+      "physicalStatus": "OBSERVED on 3 tablets (RC3F, 2026-08-29)",
+      "mustCarryForward": true,
+      "severity": "SEV-3"
     }
   ]
 }

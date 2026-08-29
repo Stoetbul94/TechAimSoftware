@@ -1,0 +1,270 @@
+{
+  "$comment": "Machine-readable summary of the RC3F three-tablet live 50 m 3P field audit, 2026-08-29. null means the evidence does not support a number - never a guess. The Markdown audit is the authority.",
+  "date": "2026-08-29",
+  "build": {
+    "version": "0.9.0-RC3F-DIAG",
+    "commit": "39df782",
+    "branch": "feature/rc2e-latency-and-reset",
+    "exeSha256": "F27A6743F9114B60B6BAD8B919A995E51E47A7DC86F726B4CDA2BBFB82796856",
+    "zipSha256": "864A5F5711C1365D64CDB3C269BCD7F92CCFF2327244539F7611A0FB948617B3",
+    "verifiedOnAllTablets": true
+  },
+  "aggregate": {
+    "acceptedShots": 385,
+    "distinctCoordinates": 385,
+    "feeds": 385,
+    "motorCommands": 385,
+    "manualFeeds": 0,
+    "acquisitionFaults": 0,
+    "qualificationOfficialShotsPerTablet": 60,
+    "unexplainedShots": 0
+  },
+  "tablets": [
+    {
+      "tablet": 1,
+      "athlete": "Arnold",
+      "comPort": "COM3",
+      "buildVerified": true,
+      "buildEvidence": "exe and zip SHA-256 match RC3F byte-for-byte; manifest commit 39df782",
+      "qualificationStatus": "PASS",
+      "finalStatus": "COMPLETED_STATE_FLOW_NOT_PROVEN",
+      "finalStatusReason": "finals session journals were not collected; the 3P Final journals its stage transitions rather than writing them to the tachus log",
+      "acceptedShots": 123,
+      "distinctCoordinates": 123,
+      "officialShots": {
+        "qualification": 60,
+        "final": null
+      },
+      "officialFinalNote": "35 expected; not provable without the finals journal",
+      "sighters": {
+        "preMatch": 10,
+        "positionChange": 7,
+        "final": 11
+      },
+      "persistedTch": {
+        "qualification": 67,
+        "final": 46
+      },
+      "feedRequests": 123,
+      "feedCompletions": 123,
+      "manualFeeds": 0,
+      "motorCommands": 123,
+      "reconnects": 1,
+      "acquisitionFaults": 0,
+      "coordReadFailures": 0,
+      "uiRefusals": 0,
+      "counterJumps": 0,
+      "desyncs": 0,
+      "coordIndexInvalid": 2,
+      "coordIndexInvalidNote": "two per application launch - the documented benign pre-shot report probe",
+      "historicalDefectObservations": {
+        "ACQ-FLUSH-001": "NOT OBSERVED",
+        "ACQ-DESYNC-002": "NOT EXERCISED",
+        "ACQ-SENTINEL-003": "NOT OBSERVED",
+        "ACQ-READ-004": "NOT OBSERVED",
+        "SERIAL-DEFAULT-005": "NOT OBSERVED",
+        "THREAD-MODBUS-006": "NOT OBSERVED",
+        "QML-SHOT-001": "NOT OBSERVED",
+        "PAPER-FEED-002": "NOT OBSERVED",
+        "UI-STATUS-001": "NOT OBSERVED",
+        "FINALS-3P-MIX-001": "NOT OBSERVED",
+        "FINALS-TCH-SIGHTER-001": "OBSERVED",
+        "FINALS-TIMER-001": "NOT PROVABLE",
+        "FINALS-DISPLAY-TIMER-002": "NOT PROVABLE",
+        "FINALS3P-FLOW-001": "NOT PROVABLE",
+        "UI-LAYOUT-001": "NOT PROVABLE",
+        "FINAL-TCH-TIME-001": "NOT PROVABLE"
+      },
+      "lastShotDwellObservation": {
+        "kneelingToProneSeconds": 1.92,
+        "proneToStandingSeconds": 2.03,
+        "method": "qml-marker-added timestamp to the 3P position-change timestamp"
+      }
+    },
+    {
+      "tablet": 2,
+      "athlete": "Bernard",
+      "comPort": "COM5",
+      "buildVerified": true,
+      "buildEvidence": "exe and zip SHA-256 match RC3F byte-for-byte; manifest commit 39df782",
+      "qualificationStatus": "PASS",
+      "finalStatus": "COMPLETED_STATE_FLOW_NOT_PROVEN",
+      "finalStatusReason": "finals session journals were not collected; the 3P Final journals its stage transitions rather than writing them to the tachus log",
+      "acceptedShots": 131,
+      "distinctCoordinates": 131,
+      "officialShots": {
+        "qualification": 60,
+        "final": null
+      },
+      "officialFinalNote": "35 expected; not provable without the finals journal",
+      "sighters": {
+        "preMatch": 10,
+        "positionChange": 12,
+        "final": 14
+      },
+      "persistedTch": {
+        "qualification": 72,
+        "final": 49
+      },
+      "feedRequests": 131,
+      "feedCompletions": 131,
+      "manualFeeds": 0,
+      "motorCommands": 131,
+      "reconnects": 1,
+      "acquisitionFaults": 0,
+      "coordReadFailures": 0,
+      "uiRefusals": 0,
+      "counterJumps": 0,
+      "desyncs": 0,
+      "coordIndexInvalid": 6,
+      "coordIndexInvalidNote": "two per application launch - the documented benign pre-shot report probe",
+      "historicalDefectObservations": {
+        "ACQ-FLUSH-001": "NOT OBSERVED",
+        "ACQ-DESYNC-002": "NOT EXERCISED",
+        "ACQ-SENTINEL-003": "NOT OBSERVED",
+        "ACQ-READ-004": "NOT OBSERVED",
+        "SERIAL-DEFAULT-005": "NOT OBSERVED",
+        "THREAD-MODBUS-006": "NOT OBSERVED",
+        "QML-SHOT-001": "NOT OBSERVED",
+        "PAPER-FEED-002": "NOT OBSERVED",
+        "UI-STATUS-001": "NOT OBSERVED",
+        "FINALS-3P-MIX-001": "NOT OBSERVED",
+        "FINALS-TCH-SIGHTER-001": "OBSERVED",
+        "FINALS-TIMER-001": "NOT PROVABLE",
+        "FINALS-DISPLAY-TIMER-002": "NOT PROVABLE",
+        "FINALS3P-FLOW-001": "NOT PROVABLE",
+        "UI-LAYOUT-001": "NOT PROVABLE",
+        "FINAL-TCH-TIME-001": "NOT PROVABLE"
+      },
+      "lastShotDwellObservation": {
+        "kneelingToProneSeconds": 1.63,
+        "proneToStandingSeconds": 1.82,
+        "method": "qml-marker-added timestamp to the 3P position-change timestamp"
+      }
+    },
+    {
+      "tablet": 3,
+      "athlete": "Chantelle",
+      "comPort": "COM7",
+      "buildVerified": true,
+      "buildEvidence": "exe and zip SHA-256 match RC3F byte-for-byte; manifest commit 39df782",
+      "qualificationStatus": "PASS",
+      "finalStatus": "COMPLETED_STATE_FLOW_NOT_PROVEN",
+      "finalStatusReason": "finals session journals were not collected; the 3P Final journals its stage transitions rather than writing them to the tachus log",
+      "acceptedShots": 131,
+      "distinctCoordinates": 131,
+      "officialShots": {
+        "qualification": 60,
+        "final": null
+      },
+      "officialFinalNote": "35 expected; not provable without the finals journal",
+      "sighters": {
+        "preMatch": 10,
+        "positionChange": 14,
+        "final": 12
+      },
+      "persistedTch": {
+        "qualification": 74,
+        "final": 47
+      },
+      "feedRequests": 131,
+      "feedCompletions": 131,
+      "manualFeeds": 0,
+      "motorCommands": 131,
+      "reconnects": 3,
+      "acquisitionFaults": 0,
+      "coordReadFailures": 0,
+      "uiRefusals": 0,
+      "counterJumps": 0,
+      "desyncs": 0,
+      "coordIndexInvalid": 2,
+      "coordIndexInvalidNote": "two per application launch - the documented benign pre-shot report probe",
+      "historicalDefectObservations": {
+        "ACQ-FLUSH-001": "NOT OBSERVED",
+        "ACQ-DESYNC-002": "NOT OBSERVED",
+        "ACQ-SENTINEL-003": "NOT OBSERVED",
+        "ACQ-READ-004": "NOT OBSERVED",
+        "SERIAL-DEFAULT-005": "NOT OBSERVED",
+        "THREAD-MODBUS-006": "NOT OBSERVED",
+        "QML-SHOT-001": "NOT OBSERVED",
+        "PAPER-FEED-002": "NOT OBSERVED",
+        "UI-STATUS-001": "NOT OBSERVED",
+        "FINALS-3P-MIX-001": "NOT OBSERVED",
+        "FINALS-TCH-SIGHTER-001": "OBSERVED",
+        "FINALS-TIMER-001": "NOT PROVABLE",
+        "FINALS-DISPLAY-TIMER-002": "NOT PROVABLE",
+        "FINALS3P-FLOW-001": "NOT PROVABLE",
+        "UI-LAYOUT-001": "NOT PROVABLE",
+        "FINAL-TCH-TIME-001": "NOT PROVABLE"
+      },
+      "lastShotDwellObservation": {
+        "kneelingToProneSeconds": 1.9,
+        "proneToStandingSeconds": 1.73,
+        "method": "qml-marker-added timestamp to the 3P position-change timestamp"
+      }
+    }
+  ],
+  "newFindings": [
+    {
+      "id": "UI-LASTSHOT-DWELL-001",
+      "severity": "SEV-3",
+      "status": "CONFIRMED",
+      "symptom": "the last shot of a qualification position is cleared from the target face too quickly to inspect",
+      "measuredDwellSeconds": {
+        "min": 1.63,
+        "max": 2.03,
+        "mean": 1.84
+      },
+      "rootCause": "ShootingPage.qml enterPositionTransition() clears globalModelOfData and repopulates it with only the new position's sighters; triggered by the positionWatch 500 ms poll at official shot 20 and 40. The ~1.8 s observed is paper-feed duration plus one poll interval - incidental, not designed.",
+      "competitionImpact": "NONE - state, clock, target mode, persistence and feed all correct",
+      "recommendation": "2.5 s presentation-only hold of the last marker and score, with a POSITION COMPLETE caption",
+      "windowsStatus": "OPEN",
+      "androidCarryForward": "YES",
+      "setaCarryForward": "YES"
+    },
+    {
+      "id": "CRO-ORDER-001",
+      "severity": "SEV-3",
+      "status": "CONFIRMED",
+      "symptom": "END OF PREPARATION AND SIGHTING...STOP is announced ~138 ms AFTER MATCH FIRING...START",
+      "rule": "6.11.1.1 j then 6.11.1.2 a - STOP, ~30 s pause, then MATCH FIRING",
+      "observedOnTablets": [
+        1,
+        2,
+        3
+      ],
+      "competitionImpact": "NONE - announcements only",
+      "windowsStatus": "OPEN",
+      "androidCarryForward": "YES",
+      "setaCarryForward": "YES"
+    },
+    {
+      "id": "CRO-REPEAT-002",
+      "severity": "SEV-3",
+      "status": "CONFIRMED",
+      "symptom": "MATCH FIRING...START is announced again at each position change (3 times per session)",
+      "rule": "6.11.1.2 a - one MATCH FIRING...START per match",
+      "observedOnTablets": [
+        1,
+        2,
+        3
+      ],
+      "competitionImpact": "NONE - announcements only",
+      "windowsStatus": "OPEN",
+      "androidCarryForward": "YES",
+      "setaCarryForward": "YES"
+    }
+  ],
+  "notExercised": {
+    "croTenAndFiveMinuteWarnings": "all three athletes completed the course before the 10-minute mark (T1 by 3:17, T2 by 10:30, T3 by 44 s), so the warnings were never reachable. Recorded as NOT EXERCISED, not as evidence of correctness."
+  },
+  "physicalQualification": {
+    "50m3PIndoorQualification": "PHYSICALLY PASSED ON 3 TABLETS",
+    "50m3PFinal": "COMPLETED ON 3 TABLETS - INTERNAL STATE FLOW NOT PROVEN",
+    "acquisitionEngine": "PHYSICALLY PASSED - 385 shots, 0 faults",
+    "android": "NOT PHYSICALLY TESTED",
+    "seta": "NOT PHYSICALLY TESTED"
+  },
+  "freezeDecision": "KEEP RC3F FROZEN - no competition defect found",
+  "largestEvidenceGap": "the finals session journals were not collected"
+}

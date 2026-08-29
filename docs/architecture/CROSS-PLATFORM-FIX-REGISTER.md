@@ -491,6 +491,49 @@ Master index: [../rules/RULE-AUTHORITY-INDEX.md](../rules/RULE-AUTHORITY-INDEX.m
 
 Nothing was ported in this round.
 
+---
+
+#### UI-LASTSHOT-DWELL-001 — the last shot of a position clears too fast
+
+| | |
+|---|---|
+| **First observed** | Live 50 m 3P Qualification, three tablets, 2026-08-29 |
+| **Symptom** | At the last official shot of a position (qualification shots 20 and 40) the target face clears before the athlete or operator can inspect the shot |
+| **Measured** | **1.63-2.03 s**, mean 1.84 s, from `qml-marker-added` to `3P: position change` - consistent across all three tablets and both boundaries |
+| **Root cause** | `ShootingPage.qml::enterPositionTransition()` clears `globalModelOfData` and repopulates it with only the new position's sighters. Triggered by the `positionWatch` 500 ms poll at official shot 20/40. The ~1.8 s is paper-feed duration plus one poll interval - **incidental, not a designed dwell**. Nothing currently holds the last shot on purpose |
+| **Competition impact** | **NONE.** State, target mode, clock, persistence and paper feed are all correct and complete before the face clears. Presentation only |
+| **Fix** | **NOT FIXED - RC3F is frozen.** Recommended: a 2.5 s presentation-only hold of the last marker and score with a POSITION COMPLETE caption. Must hold a snapshot, never the live model; a shot arriving during the hold is routed by the NEW state; the CRO command area must update immediately |
+| **Source** | `ShootingPage.qml`, `CenterPane.qml` |
+| **Test** | none yet |
+| **Physical** | **OBSERVED on 3 tablets** |
+| **Windows** | **OPEN** |
+| **Android** | **NO** - branch predates the 3P work |
+| **SETA** | **NO** |
+| **Shared?** | SHARED QML |
+| **Must carry forward** | **YES** |
+| **Notes** | Qualification shot 60 and the Final's position boundaries are NOT affected: completion does not clear the face, and the Final waits for the athlete to advance |
+
+---
+
+#### CRO-ORDER-001 / CRO-REPEAT-002 — qualification announcement order and repetition
+
+| | |
+|---|---|
+| **First observed** | Live 50 m 3P Qualification, all three tablets, 2026-08-29 |
+| **Symptom** | (001) `END OF PREPARATION AND SIGHTING...STOP` is announced ~138 ms **after** `MATCH FIRING...START`. (002) `MATCH FIRING...START` is announced again at each position change - three times per session |
+| **Rule** | 6.11.1.1 j) then 6.11.1.2 a): STOP, a ~30 s pause for the target reset, **then** MATCH FIRING. One MATCH FIRING per match |
+| **Root cause** | The sighting timer's expiry path calls the transition - which announces MATCH FIRING - before the line that announces the end of preparation; and `changedToMatchMode()` announces MATCH FIRING whenever the athlete resumes after a position change |
+| **Competition impact** | **NONE** - announcements only. No state, clock, shot or target-mode effect |
+| **Fix** | **NOT FIXED - RC3F is frozen.** Batch with UI-LASTSHOT-DWELL-001 |
+| **Source** | `CenterPane.qml` |
+| **Physical** | **OBSERVED on 3 tablets** |
+| **Windows** | **OPEN** |
+| **Android** | **NO** |
+| **SETA** | **NO** |
+| **Shared?** | SHARED QML |
+| **Must carry forward** | **YES** |
+| **Notes** | Introduced by RC3F's own CRO announcement work. The 10- and 5-minute warnings were **NOT EXERCISED** - all three athletes finished before the 10-minute mark (T3 by 44 s) |
+
 ## Portability validation matrix
 
 `PASS` = code verified present. Physical status is the separate column in each
@@ -498,15 +541,15 @@ entry above and is **never** implied by this table.
 
 | Fix / feature | Windows | Android | SETA |
 |---|---|---|---|
-| ACQ-FLUSH-001 | PASS | **NO — must carry** | **NO — must carry** |
+| ACQ-FLUSH-001 | PASS + **PHYSICAL PASS (RC3F, 3 tablets, 385 shots)** | **NO — must carry** | **NO — must carry** |
 | ACQ-DESYNC-002 | PASS | **NO — must carry** | **NO — must carry** |
-| ACQ-SENTINEL-003 | PASS | **NO — must carry** | **NO — must carry** |
+| ACQ-SENTINEL-003 | PASS + **PHYSICAL PASS (RC3F, 385/385 distinct)** | **NO — must carry** | **NO — must carry** |
 | ACQ-READ-004 | PASS | **NO — must carry** | **NO — must carry** |
-| SERIAL-DEFAULT-005 | PASS | **NO — needs USB equivalent** | **NO — must carry** |
+| SERIAL-DEFAULT-005 | PASS + **PHYSICAL PASS (RC3F, 3 COM ports)** | **NO — needs USB equivalent** | **NO — must carry** |
 | THREAD-MODBUS-006 | PASS | **NO — must carry** | **NO — must carry** |
 | LOG-DEFECT-007 | PASS | **NO — must carry** | **NO — must carry** |
 | QML-SHOT-001 | PASS | **NO — must carry** | **NO — must carry** |
-| PAPER-FEED-002 | PASS | PASS | PASS |
+| PAPER-FEED-002 | PASS + **PHYSICAL PASS (RC3F, 385 feeds 1:1)** | PASS | PASS |
 | UI-STATUS-001 | PASS | **NO — must carry** | **NO — must carry** |
 | FINALS-TIMER-001 | PASS | **NO — must carry** | **NO — must carry** |
 | FINALS-DISPLAY-TIMER-002 | PASS | **NO — must carry** | **NO — must carry** |
@@ -518,6 +561,8 @@ entry above and is **never** implied by this table.
 | UI-THEME-001 | PASS | **NO — must carry** | **NO — must carry** |
 | UI-THEME-LOGO-001 | PASS | **NO — must carry** | **NO — must carry** |
 | FINALS3P-FLOW-001 | AUDITED — no defect | **NO — must carry** | **NO — must carry** |
+| UI-LASTSHOT-DWELL-001 | **OPEN** — observed on 3 tablets | **NO — must carry** | **NO — must carry** |
+| CRO-ORDER-001 / CRO-REPEAT-002 | **OPEN** — observed on 3 tablets | **NO — must carry** | **NO — must carry** |
 | 3P Finals UI | PASS (DEMO) | **NO** | **NO** |
 | 10 m Finals | PASS | PARTIAL | PARTIAL |
 | Reports | PASS (3P) · **10 m MISSING (F6)** | inherits | inherits |
