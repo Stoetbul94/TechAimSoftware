@@ -127,7 +127,7 @@ acquisition freeze — documented rather than edited.
 
 ## 6. Automated regression
 
-**TOTAL: 6 909 checks, 0 failures.**
+**TOTAL: 6 941 checks, 0 failures.**
 
 | Suite | Checks | Failures | Was |
 |---|---|---|---|
@@ -136,8 +136,8 @@ acquisition freeze — documented rather than edited.
 | 50 m 3P Finals | **379** | 0 | 379 |
 | **10 m Finals** | **229** | 0 | **193** |
 | **QML** | **440** | 0 | **398** |
-| Manuals | **1 486** | 0 | 1 479 |
-| Project memory | **220** | 0 | 220 |
+| Manuals | **1 507** | 0 | 1 479 |
+| Project memory | **228** | 0 | 220 |
 | Training Lab evidence | **903** | 0 | 903 |
 | Deployment package | **85** | 0 | 85 |
 
@@ -229,7 +229,11 @@ Each is recorded, bounded, and none meets the blocker standard.
 
 ## 11. Verdict
 
-**BLOCKERS: 0. GATE: GREEN. Windows v1.0 release candidate may be built.**
+**BLOCKERS: 0. GATE: GREEN.**
+
+Windows **1.0.0-RC1** was built, packaged and portably validated against this
+gate. Its identity and hashes are frozen in
+[`TECH-AIM-SINGLE-TARGET-V1.0-FREEZE.md`](TECH-AIM-SINGLE-TARGET-V1.0-FREEZE.md).
 
 Scope of this release line is Windows, single target. SETA, Android and the RMS
 interface are **not** started and are not covered by any statement above.
