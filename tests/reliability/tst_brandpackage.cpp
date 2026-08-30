@@ -286,9 +286,16 @@ void run_brand_package_tests()
         // The status block still carries its own literals...
         QString flat = tokens;
         flat.remove(QLatin1Char(' '));
-        check(flat.contains(QStringLiteral("errorText:\"#D0392B\""))
-              && flat.contains(QStringLiteral("successText:\"#20C997\""))
-              && flat.contains(QStringLiteral("warningText:\"#E8A13D\"")),
+        // These stay SEMANTIC: an error is red because it is an error, not
+        // because of the brand. They now carry a light variant as well as a
+        // dark one, so the assertion is that they are LITERAL and not routed
+        // through the brand - which is the actual requirement.
+        check(flat.contains(QStringLiteral("\"#D0392B\""))
+              && flat.contains(QStringLiteral("\"#20C997\""))
+              && flat.contains(QStringLiteral("\"#E8A13D\""))
+              && !flat.contains(QStringLiteral("errorText:PRODUCT"))
+              && !flat.contains(QStringLiteral("successText:PRODUCT"))
+              && !flat.contains(QStringLiteral("warningText:PRODUCT")),
               "tokens: error / success / warning stay semantic literals");
         check(!flat.contains(QStringLiteral("errorText:PRODUCT."))
               && !flat.contains(QStringLiteral("successText:PRODUCT.")),

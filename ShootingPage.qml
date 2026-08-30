@@ -1470,6 +1470,12 @@ Item {
         loginPage.visible = true
         loginPage.practiceView = 1        // back to the Training Lab catalogue
     }
+    // The export file prefix is the PRODUCT name with spaces removed, so a
+    // SETA operator is never handed a file called TechAim_*.
+    function productFilePrefix() {
+        return PRODUCT.displayName.replace(/\s+/g, "")
+    }
+
     function exportCallDiagnosePdf() {
         var m = CALLDIAG.reportModel()
         var base = APPSETTINGS.getPrintPDFFilePath()
@@ -1482,7 +1488,7 @@ Item {
         var now = new Date()
         var date = "" + now.getFullYear() + ("0" + (now.getMonth() + 1)).slice(-2) + ("0" + now.getDate()).slice(-2)
         var sid = (m.sessionId || "").substring(0, 8)
-        var path = (dir && dir.length ? dir + "/" : "") + "TechAim_CallAndDiagnose_" + athlete + "_" + date + "_" + sid + ".pdf"
+        var path = (dir && dir.length ? dir + "/" : "") + productFilePrefix() + "_CallAndDiagnose_" + athlete + "_" + date + "_" + sid + ".pdf"
         callDiagReportView.exportPdf(path)
     }
     function restoreCallDiagnoseSession(sessionId) {
@@ -1582,7 +1588,7 @@ Item {
         var now = new Date()
         var date = "" + now.getFullYear() + ("0" + (now.getMonth() + 1)).slice(-2) + ("0" + now.getDate()).slice(-2)
         var sid = (m.sessionId || "").substring(0, 8)
-        var path = (dir && dir.length ? dir + "/" : "") + "TechAim_PositionTransition_" + athlete + "_" + date + "_" + sid + ".pdf"
+        var path = (dir && dir.length ? dir + "/" : "") + productFilePrefix() + "_PositionTransition_" + athlete + "_" + date + "_" + sid + ".pdf"
         posTransReportView.exportPdf(path)
     }
     // ── WIND MAP (Release 2) ─────────────────────────────────────────────
@@ -1705,7 +1711,7 @@ Item {
         var now = new Date()
         var date = "" + now.getFullYear() + ("0" + (now.getMonth() + 1)).slice(-2) + ("0" + now.getDate()).slice(-2)
         var sid = (m.sessionId || "").substring(0, 8)
-        var fname = "TechAim_TechnicalBlocks_" + athlete + "_" + date + "_" + sid + ".pdf"
+        var fname = productFilePrefix() + "_TechnicalBlocks_" + athlete + "_" + date + "_" + sid + ".pdf"
         var path = (dir && dir.length ? dir + "/" : "") + fname
         trainingReportView.exportPdf(path)
     }
@@ -2234,10 +2240,22 @@ Item {
         // getTimeCount/getPrepTimeCount return seconds.
         var matchMs = APPSETTINGS.getTimeCount(matchShootCount) * 1000
         var prepMs = APPSETTINGS.getPrepTimeCount() * 1000
+        // ADOPT the competition definition BEFORE the session exists, with the
+        // durations this session is actually anchored to. From here the journal
+        // owns the rules; a programme with no rule authority adopts nothing and
+        // the session is recorded as legacy, exactly as it always was.
+        QUAL.adoptRuleAuthority(
+            window.activeProgrammeId !== ""
+                ? competitionCatalogue.ruleAuthorityFor(window.activeProgrammeId,
+                                                        prepMs, matchMs)
+                : ({}))
         var started = QUAL.startSession(disciplineId, String(matchShootCount),
                                         athlete, matchShootCount, matchMs,
                                         prepMs, -1, "", "")
         if (started) {
+            // The session records the rules that governed it before any clock is
+            // read from them; recovery then reads the SNAPSHOT, never the catalogue.
+            window.adoptSessionAuthority(QUAL.sessionRuleAuthority())
             QUAL.beginPreparation()
             QUAL.beginSighting()   // combined ISSF prep+sighting phase
             MODREADER.appendToLogFile("QUAL: " + disciplineId
@@ -2267,6 +2285,7 @@ Item {
             qualDisciplineId = ""
             return false
         }
+        window.adoptSessionAuthority(QUAL.sessionRuleAuthority())
         qualRecoveryInProgress = true
         var shots = QUAL.recoveredShots()
         var i, s, p
@@ -2492,6 +2511,7 @@ Item {
         if (qualDisciplineId !== "") {
             QUAL.completeMatch()
             QUAL.closeSession()
+            window.sessionCompetition = null   // no session, no session rules
         }
         MODREADER.appendToLogFile("Match finished: " + globalMatchModel.count
                                   + "/" + matchShootCount + " match shots")

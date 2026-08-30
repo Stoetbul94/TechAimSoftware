@@ -881,7 +881,7 @@ ApplicationWindow {
         radius: 11
         color: opLive ? "#14361f" : "#3a0d12"
         border.width: 1
-        border.color: opLive ? "#2f7d4f" : PRODUCT.accentBright
+        border.color: opLive ? "#2f7d4f" : "#e8003d"
         opacity: opLive ? 0.82 : 0.96
         Row {
             anchors.centerIn: parent

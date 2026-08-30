@@ -190,7 +190,7 @@ Item {
                                 Rectangle {
                                     width: 34; height: 24; radius: 5
                                     color: modelData.warm
-                                           ? (gameRange === 10 ? "#f2c200" : PRODUCT.accentBright)
+                                           ? (gameRange === 10 ? "#f2c200" : "#e8003d")
                                            : "#2fa84f"
                                     border.width: name.isPalletRedColor === modelData.warm ? 2 : 1
                                     border.color: name.isPalletRedColor === modelData.warm

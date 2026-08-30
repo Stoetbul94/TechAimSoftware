@@ -42,6 +42,117 @@ Item {
 
     property color licColor: theme.brandPrimary
 
+    // ── SETA hierarchical selection (product/seta) ───────────────────────────
+    // setaSelection === true replaces the weapon / distance / event controls
+    // with RULE SET → DISCIPLINE → PROGRAMME. The legacy controls are NOT
+    // deleted: they are gated on !setaSelection and remain the rollback and
+    // reference path until this has been through an integrated approval, after
+    // which a separate cleanup can remove them. Only ONE of the two is ever
+    // on screen — two live selectors would be worse than either alone.
+    //
+    // What the hierarchy does NOT own: the 3 Positions sub-discipline and the
+    // two Finals are separate domains with no catalogue entry, so they stay on
+    // their existing controls. Inventing catalogue entries for them would put
+    // programmes in the hierarchy that the qualification engine cannot run.
+    property bool setaSelection: PRODUCT.brandKey === "SETA"
+    // Resolved once here, in top-level scope: an unqualified lookup of a
+    // main.qml id from inside a nested handler resolves silently to undefined.
+    property var setaCatalogue: competitionCatalogue
+    property string setaProgrammeId: ""
+    property bool setaBrowsing: false
+
+    // The ONE place a hierarchy choice becomes machine state. Everything it
+    // sets already existed; the catalogue supplies the mapping so there is no
+    // second set of match-configuration rules. Nothing here runs while the
+    // operator is browsing — back and forth through the levels cannot touch
+    // the live configuration, because only a commit reaches this function.
+    function applySetaProgramme(programmeId) {
+        var cfg = setaCatalogue ? setaCatalogue.runtimeConfig(programmeId) : null
+        if (cfg === null) return
+        // A programme carrying its own timing/scoring authority becomes the
+        // ACTIVE COMPETITION. Everything downstream then asks the definition
+        // instead of re-deriving a duration from shot count and weapon.
+        //
+        // The test is "does this programme declare TIMING AUTHORITY of its own".
+        // Not "does it have a match duration" - a course with independent
+        // position clocks has no master duration at all, and gating on one
+        // would drop exactly that course back onto the legacy single-clock
+        // path. And not "does it declare a timing model" either: every entry
+        // does, because ISSF and the practice presets are single-clock too;
+        // that predicate would pull ISSF into the profile path it must stay out
+        // of. matchTimeAuthority is the field that says a RULE fixes this
+        // programme's time, and only the federation programmes declare it.
+        var def = setaCatalogue.competitionDefinition(programmeId)
+        window.activeProgrammeId =
+            (def !== null && def.matchTimeAuthority !== "") ? programmeId : ""
+        trainingConfirmed = false; cdConfirmed = false
+        ptConfirmed = false;       wmConfirmed = false
+        papermode = 0
+        // Selecting a legacy programme CLEARS the profile authority, so a DSB
+        // duration can never linger into an ISSF session.
+        if (gameRange !== cfg.gameRange) rangeSelected(cfg.gameRange)
+        gameMode    = cfg.gameMode
+        // POSITION MODE comes from the definition too. gameSubMode is the
+        // legacy 50 m Prone / 3 Positions switch, and leaving it at 0 for a
+        // course the rule declares as three positions would conduct a prone
+        // match under a three-position name. Programmes whose declared shape
+        // has no engine are refused at the start gate, not quietly reshaped.
+        gameSubMode = (def !== null && def.positions !== undefined
+                       && def.positions.length > 1) ? 1 : 0
+        // gameEvent is the LEGACY event index and is -1 for a profile-driven
+        // programme. Writing -1 would drive the legacy "free practice" branch,
+        // so the profile case sets the official-match slot instead: it clears
+        // any Finals or Training Lab card that was still selected, and
+        // updateGameType() short-circuits on the definition anyway.
+        gameEvent = cfg.gameEvent >= 0 ? cfg.gameEvent : 4
+        // gameMode/gameEvent normally drive updateGameType(); calling it
+        // explicitly covers the case where only the RANGE changed, in which
+        // case neither property emits and ShootingPage would keep the previous
+        // range's shot count.
+        if (typeof rootItem.updateGameType === "function") rootItem.updateGameType()
+        setaProgrammeId = programmeId
+        setaBrowsing = false
+    }
+
+    // The summary reads the LIVE configuration, not the last committed id, so
+    // it can never disagree with what would actually be shot — including after
+    // the 3 Positions or Finals controls change the event underneath it. There
+    // is no separate "displayed programme" state to fall out of step.
+    function setaProgrammeLabel() {
+        if (window.activeCompetition !== null)
+            return qsTr(window.activeCompetition.nameKey)
+        if (gameEvent === 6 || gameEvent === 7) return qsTr("ISSF FINAL")
+        var id = setaResolveCurrentProgrammeId()
+        var p = (setaCatalogue && id !== "") ? setaCatalogue.profile(id) : null
+        if (p === null) return qsTr("No programme selected")
+        var label = qsTr(p.gameDisplay1Key) + " " + qsTr(p.gameDisplay2Key)
+                    + "  ·  " + qsTr(p.matchDisplayKey)
+        // 3 Positions is a position variant of the same 60-shot course, not a
+        // different programme; say so rather than hiding it.
+        if (gameMode === 1 && gameRange === 50 && gameSubMode === 1)
+            label += "  ·  " + qsTr("3 POSITIONS")
+        return label
+    }
+    function setaProgrammeIsOfficial() {
+        if (window.activeCompetition !== null)
+            return window.activeCompetition.programmeType === "OFFICIAL"
+        if (gameEvent === 6 || gameEvent === 7) return true
+        var id = setaResolveCurrentProgrammeId()
+        var p = (setaCatalogue && id !== "") ? setaCatalogue.profile(id) : null
+        return p !== null && p.programmeType === "OFFICIAL"
+    }
+    // Identity of the CURRENT configuration, recomputed from stable numbers
+    // only — never from a display string, which may have been translated.
+    // Returns "" for the two finals events: they are a separate domain with no
+    // catalogue entry, and mapping them onto one would be a lie.
+    function setaResolveCurrentProgrammeId() {
+        if (!setaCatalogue || gameEvent === 6 || gameEvent === 7) return ""
+        var fifteen = APPSETTINGS.getIs15Shoot()
+        var counts  = fifteen ? [10, 15, 20, 30, 40] : [10, 20, 30, 40, 60]
+        var shots   = (gameEvent >= 0 && gameEvent <= 4) ? counts[gameEvent] : -1
+        return setaCatalogue.legacyProgrammeId(gameRange, gameMode === 0, shots, fifteen)
+    }
+
     // ── Design-system bindings (UI-1) ─────────────────────────────────────────
     // This page owned a private 13-colour palette — a local copy of values that
     // belong to the product, which is exactly why three competing brand reds
@@ -243,7 +354,7 @@ Item {
 
     FolderDialog {
         id: networkFolderDialog
-        title: "Select Network Share Folder"
+        title: qsTr("Select Network Share Folder")
         onAccepted: {
             var p = selectedFolder.toString().replace(/^file:\/\/\//, "").replace(/\//g, "\\")
             netowrk_path_text.text = p
@@ -257,32 +368,6 @@ Item {
     MouseArea { id: resetMouse;     width: 0; height: 0; onClicked: rootItem.reset() }
 
     // ─── JS Functions ─────────────────────────────────────────────────────────
-
-    // UI-THEME-001: appearance picker. Three choices, the current one carried
-    // as the accent button so the active setting is visible without a second
-    // control. Dismissing changes nothing.
-    function openAppearanceDialog() {
-        var current = APPSETTINGS.appearance
-        function opt(id, label) {
-            return { label: label + (current === id ? "  ✓" : ""),
-                     result: id, accent: current === id }
-        }
-        dialogManager.show({
-            type: "info",
-            title: qsTr("Appearance"),
-            message: qsTr("Choose how Tech Aim looks. This changes presentation only — it does not affect acquisition, scoring, timing or reports."),
-            details: qsTr("System follows the operating system's light/dark setting."),
-            buttons: [ opt("system", qsTr("System")),
-                       opt("light",  qsTr("Light")),
-                       opt("dark",   qsTr("Dark")) ],
-            defaultResult: current,
-            cancelResult: current,
-            onResult: function (r) {
-                if (r === "system" || r === "light" || r === "dark")
-                    APPSETTINGS.setAppearance(r)
-            }
-        })
-    }
 
     function validate() {
         if (username_loginPage === "" && !isSaveGame) {
@@ -301,22 +386,22 @@ Item {
     }
 
     function getGameEventText(index) {
-        if (index === 6) return qsTr("FINAL")   // 3P FINAL (35) — isFinalsMatch domain
-        if (index === 7) return qsTr("FINAL")   // 10m FINAL (24) — isFinals10mMatch domain
+        if (index === 6) return "FINAL"   // 3P FINAL (35) — isFinalsMatch domain
+        if (index === 7) return "FINAL"   // 10m FINAL (24) — isFinals10mMatch domain
         if (APPSETTINGS.getIs15Shoot()) {
-            if (index === 0) return qsTr("10")
-            else if (index === 1) return qsTr("15")
-            else if (index === 2) return qsTr("20")
-            else if (index === 3) return qsTr("30")
-            else if (index === 4) return qsTr("40")
-            else return qsTr("Free Practice")
+            if (index === 0) return "10"
+            else if (index === 1) return "15"
+            else if (index === 2) return "20"
+            else if (index === 3) return "30"
+            else if (index === 4) return "40"
+            else return "Free Practice"
         } else {
-            if (index === 0) return qsTr("10")
-            else if (index === 1) return qsTr("20")
-            else if (index === 2) return qsTr("30")
-            else if (index === 3) return qsTr("40")
-            else if (index === 4) return qsTr("60")
-            else return qsTr("Free Practice")
+            if (index === 0) return "10"
+            else if (index === 1) return "20"
+            else if (index === 2) return "30"
+            else if (index === 3) return "40"
+            else if (index === 4) return "60"
+            else return "Free Practice"
         }
     }
 
@@ -325,25 +410,25 @@ Item {
     }
 
     function getDisciplineName() {
-        if (gameMode === 0) return "10m Air Pistol"
-        if (gameRange === 10) return "10m Air Rifle"
+        if (gameMode === 0) return qsTr("10m Air Pistol")
+        if (gameRange === 10) return qsTr("10m Air Rifle")
         return gameSubMode === 0 ? "50m Rifle Prone" : "50m Rifle 3 Pos"
     }
 
     function getEventCardTitle(index) {
-        if (index === 7) return getDisciplineName() + " — FINAL (24)"
+        if (index === 7) return getDisciplineName() + qsTr(" — FINAL (24)")
         var shots = getGameEventText(index)
-        if (shots === "FINAL") return getDisciplineName() + " — FINAL (35)"
-        if (shots === "Free Practice") return getDisciplineName() + " — Free Practice"
-        return getDisciplineName() + " — " + shots + " Shots"
+        if (shots === "FINAL") return getDisciplineName() + qsTr(" — FINAL (35)")
+        if (shots === "Free Practice") return getDisciplineName() + qsTr(" — Free Practice")
+        return getDisciplineName() + " — " + shots + qsTr(" Shots")
     }
 
     function getEventCardSubtitle(index) {
-        if (index === 7) return "ISSF 10m Final · 24 shots · decimal · on command"
+        if (index === 7) return qsTr("ISSF 10m Final · 24 shots · decimal · on command")
         var shots = getGameEventText(index)
-        if (shots === "FINAL") return "ISSF Final · 35 shots · decimal · on command"
-        if (shots === "Free Practice") return "Flexible training · no time limit"
-        return "ISSF 2026 · " + shots + " shots"
+        if (shots === "FINAL") return qsTr("ISSF Final · 35 shots · decimal · on command")
+        if (shots === "Free Practice") return qsTr("Flexible training · no time limit")
+        return qsTr("ISSF 2026 · ") + shots + qsTr(" shots")
     }
 
     function getEventCardBadge(index) {
@@ -354,18 +439,29 @@ Item {
     }
 
     function getMatchTime() {
+        // PROFILE FIRST. The preview and the engine must never disagree; both
+        // read the same authoritative value.
+        if (window.profileMatchSeconds > 0)
+            return qsTr("%1 min").arg(Math.round(window.profileMatchSeconds / 60))
+        // A programme with independent position clocks has NO master duration.
+        // Show the position clocks themselves; presenting a total would be
+        // inventing a number the rule does not contain.
+        var ac = window.activeCompetition
+        if (ac !== null && ac.positionMinutes !== undefined
+            && ac.positionMinutes.length > 0)
+            return qsTr("%1 min per position").arg(ac.positionMinutes.join(" / "))
         var shots = getGameEventText(gameEvent)
         if (shots === "Free Practice") return "—"
-        if (shots === "10") return "10 min"
-        if (shots === "15") return "15 min"
-        if (shots === "20") return "20 min"
-        if (shots === "30") return "30 min"
-        if (shots === "40") return "40 min"
+        if (shots === "10") return qsTr("10 min")
+        if (shots === "15") return qsTr("15 min")
+        if (shots === "20") return qsTr("20 min")
+        if (shots === "30") return qsTr("30 min")
+        if (shots === "40") return qsTr("40 min")
         if (shots === "60") {
-            if (gameMode === 0)      return "75 min"   // 10m Air Pistol  (ISSF 2026)
-            if (gameRange === 10)    return "75 min"   // 10m Air Rifle   (ISSF 2026)
-            if (gameSubMode === 1)   return "90 min"   // 50m Rifle 3 Pos on EST (ISSF 2026)
-            return "50 min"                            // 50m Rifle Prone (ISSF 2026)
+            if (gameMode === 0)      return qsTr("75 min")   // 10m Air Pistol  (ISSF 2026)
+            if (gameRange === 10)    return qsTr("75 min")   // 10m Air Rifle   (ISSF 2026)
+            if (gameSubMode === 1)   return qsTr("90 min")   // 50m Rifle 3 Pos on EST (ISSF 2026)
+            return qsTr("50 min")                            // 50m Rifle Prone (ISSF 2026)
         }
         return "—"
     }
@@ -400,6 +496,10 @@ Item {
         if (k === "CALLDIAG") return qsTr("Call & Diagnose")
         if (k === "TRAINING") return qsTr("Technical Blocks")
         if (k === "FINAL")    return getEventCardTitle(gameEvent)
+        // A profile-driven course names its OWN rule set. Saying "ISSF" for a
+        // DSB programme is a false claim about which rules govern the session.
+        if (window.activeCompetition !== null)
+            return qsTr(window.activeCompetition.nameKey)
         if (k === "OFFICIAL") return getDisciplineName() + qsTr(" — ISSF")
         // Practice is NOT an ISSF programme and must not claim to be.
         return getDisciplineName() + qsTr(" — Open Practice")
@@ -463,6 +563,11 @@ Item {
 
     function startButtonClickedOnLoadGame() {
         if (APPSETTINGS.getDeveloperMode()) console.log("app mode " + appMode)
+        // A RESUMED session carries the configuration that was saved with it,
+        // and saved sessions predate profile authority. Clearing the active
+        // programme keeps a browsed-but-unstarted selection from imposing its
+        // rules - or its start block - on a session it has nothing to do with.
+        window.activeProgrammeId = ""
         if (!appMode) {
             rootItem.visible = false
         } else {
@@ -474,7 +579,28 @@ Item {
         }
     }
 
+    // THE start gate. A competition whose timing model the engine cannot
+    // conduct must not begin - falling back to a single clock would run the
+    // wrong competition and record the result as if it were right. Both start
+    // paths (the SETA landing button and the legacy grid) ask this one
+    // function, so neither can be given the guard while the other keeps it.
+    // Returns true when the start was refused.
+    function profileStartBlocked() {
+        if (!window.profileNeedsUnbuiltEngine) return false
+        dialogManager.showError(
+            qsTr("Competition not yet available"),
+            qsTr("%1 %2, which this build cannot conduct yet."
+                 + "\n\nThe programme can be selected and reviewed, but "
+                 + "starting it is blocked so a session is never run as a "
+                 + "different competition.")
+                .arg(window.activeCompetition
+                     ? qsTr(window.activeCompetition.nameKey) : qsTr("This programme"))
+                .arg(window.profileUnbuiltEngineReason))
+        return true
+    }
+
     function perfromStart() {
+        if (profileStartBlocked()) return
         if (!appMode) {
             MODREADER.appendToLogFile("Application running in demo mode")
             if (connectToMaster && !MODREADER.isMasterSystemConnected()) {
@@ -526,6 +652,15 @@ Item {
                              ? qsTr(" (%1)").arg(MODREADER.targetPort) : ""))
             }
         }
+        // The SAVED FILE records which competition produced it - the same
+        // adopted definition the journal gets. A programme with no rule
+        // authority records nothing, and the file loads as legacy.
+        APPSETTINGS.setSessionRuleAuthority(
+            window.activeProgrammeId !== ""
+                ? setaCatalogue.ruleAuthorityFor(window.activeProgrammeId,
+                                                 window.profilePrepSeconds * 1000,
+                                                 window.profileMatchSeconds * 1000)
+                : ({}))
         APPSETTINGS.saveMatch(true)
     }
 
@@ -565,7 +700,7 @@ Item {
             height: 30; spacing: 12
 
             Text {
-                text: "Start session"; color: _txt
+                text: qsTr("Start session"); color: _txt
                 font.family: theme.fontFamily; font.pixelSize: 22; font.bold: true
                 anchors.verticalCenter: parent.verticalCenter
             }
@@ -578,70 +713,6 @@ Item {
             // because mistaking a Demo session for a Live one is a
             // result-integrity risk, not a cosmetic one. Two indicators remain.
         }
-
-        // ── UI-THEME-001: Settings (appearance) ──────────────────────────────
-        // Reachable from the start page, BEFORE a session is entered, which is
-        // the one moment changing appearance can disturb nothing. It is
-        // presentation only: it does not touch acquisition, scoring, timers,
-        // competition rules, session state, COM settings or reports.
-        //
-        // Uses the one dialog framework (TechAimDialog via dialogManager) - no
-        // second dialog mechanism is introduced. See docs/techaim-dialogs.md.
-        Rectangle {
-            id: appearanceButton
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.right: parent.right
-            anchors.rightMargin: 20
-            width: appearanceRow.width + 28
-            height: 34
-            radius: 6
-            color: appearanceMouse.containsMouse ? _surfaceAlt : "transparent"
-            border.width: 1
-            border.color: appearanceMouse.containsMouse ? _borderStr : _borderSub
-
-            Row {
-                id: appearanceRow
-                anchors.centerIn: parent
-                spacing: 8
-
-                // Gear glyph, drawn rather than imported: the icon set in
-                // images/ has no light-theme variant, and a dark-only PNG
-                // would go invisible on the light canvas.
-                Item {
-                    width: 15; height: 15
-                    anchors.verticalCenter: parent.verticalCenter
-                    Rectangle {
-                        anchors.centerIn: parent
-                        width: 15; height: 15; radius: 7.5
-                        color: "transparent"
-                        border.width: 2
-                        border.color: appearanceMouse.containsMouse ? _txt : _txtSec
-                    }
-                    Rectangle {
-                        anchors.centerIn: parent
-                        width: 5; height: 5; radius: 2.5
-                        color: appearanceMouse.containsMouse ? _txt : _txtSec
-                    }
-                }
-
-                Text {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: qsTr("Settings")
-                    color: appearanceMouse.containsMouse ? _txt : _txtSec
-                    font.family: theme.fontFamily
-                    font.pixelSize: 14
-                }
-            }
-
-            MouseArea {
-                id: appearanceMouse
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: rootItem.openAppearanceDialog()
-            }
-        }
-
     }
 
     // ── Two-column content area ───────────────────────────────────────────────
@@ -667,7 +738,7 @@ Item {
                 id: panelTitle
                 anchors.top: parent.top; anchors.topMargin: 18
                 anchors.left: parent.left; anchors.leftMargin: 22
-                text: "Session setup"
+                text: qsTr("Session setup")
                 color: _txt; font.family: theme.fontFamily; font.pixelSize: 16; font.bold: true
             }
 
@@ -704,7 +775,7 @@ Item {
                 id: athleteLabel
                 anchors.top: parent.top; anchors.topMargin: 0
                 anchors.left: parent.left; anchors.leftMargin: 22
-                text: "ATHLETE"
+                text: qsTr("ATHLETE")
                 color: _txtMut; font.family: theme.fontFamily
                 font.pixelSize: 10; font.bold: true; font.letterSpacing: 2
             }
@@ -781,7 +852,7 @@ Item {
                 // value and showed "COM7" on a machine with no COM7 - reading
                 // like an active connection when the target was absent. The
                 // authoritative state is the panel underneath.
-                text: "TARGET CONNECTION — MANUAL PORT FALLBACK"
+                text: qsTr("TARGET CONNECTION — MANUAL PORT FALLBACK")
                 color: _txtMut; font.family: theme.fontFamily
                 font.pixelSize: 10; font.bold: true; font.letterSpacing: 2
                 visible: showComportConnector
@@ -824,7 +895,9 @@ Item {
                             // F11: this button is the target CONNECTION toggle, not the
                             // operating-mode switch (that is the OPERATING MODE control
                             // below). Label reflects connection state only.
-                            text: mod_connected ? "Connected" : (appMode ? "Not connected" : "Demo \u00b7 not needed")
+                            text: mod_connected ? qsTr("Connected")
+                                                : (appMode ? qsTr("Not connected")
+                                                           : qsTr("Demo \u00b7 not needed"))
                             color: mod_connected ? _green : _txtMut
                             font.family: theme.fontFamily; font.pixelSize: 11; font.bold: true
                             anchors.verticalCenter: parent.verticalCenter
@@ -881,7 +954,7 @@ Item {
                 anchors.top: showComportConnector ? loginTargetStatus.bottom : athleteBox.bottom
                 anchors.topMargin: 16
                 anchors.left: parent.left; anchors.leftMargin: 22
-                text: "OPERATING MODE"
+                text: qsTr("OPERATING MODE")
                 color: _txtMut; font.family: theme.fontFamily
                 font.pixelSize: 10; font.bold: true; font.letterSpacing: 2
             }
@@ -899,12 +972,21 @@ Item {
                     color: opModeRow.opLive ? _okBg : _input
                     border.color: opModeRow.opLive ? _green : _borderSub
                     border.width: opModeRow.opLive ? 2 : 1
+                    // The SAME selection cue as the Demo pill, so "selected"
+                    // reads identically whichever mode is active.
+                    Rectangle {
+                        anchors.left: parent.left; anchors.top: parent.top
+                        anchors.bottom: parent.bottom; anchors.margins: 2
+                        width: 4; radius: 2
+                        color: _red                      // the brand accent
+                        visible: opModeRow.opLive
+                    }
                     Column {
                         anchors.centerIn: parent; spacing: 1
-                        Text { text: "LIVE TARGET"; color: opModeRow.opLive ? _green : _txt
+                        Text { text: qsTr("LIVE TARGET"); color: opModeRow.opLive ? _green : _txt
                                font.family: theme.fontFamily; font.pixelSize: 12; font.bold: true
                                anchors.horizontalCenter: parent.horizontalCenter }
-                        Text { text: "Physical target"; color: _txtMut
+                        Text { text: qsTr("Physical target"); color: _txtMut
                                font.family: theme.fontFamily; font.pixelSize: theme.type.helperText.size
                                anchors.horizontalCenter: parent.horizontalCenter }
                     }
@@ -915,17 +997,34 @@ Item {
                     }
                 }
                 // Demo pill
+                //
+                // TWO DIFFERENT THINGS, TWO DIFFERENT CUES. The colour of this
+                // pill states WHAT MODE IT IS - Demo is a result-integrity
+                // warning and stays red - while the brand accent states only
+                // WHICH ONE IS SELECTED. Previously the accent was doing both:
+                // a blue border and blue label sat on the red Demo fill and the
+                // two read as competing signals. The selection cue is now a
+                // single restrained edge strip, identical on both pills, so the
+                // semantic colour is never overpainted.
                 Rectangle {
                     width: (parent.width - parent.spacing) / 2; height: 52; radius: 6
                     color: !opModeRow.opLive ? _errBg : _input
-                    border.color: !opModeRow.opLive ? _red : _borderSub
+                    border.color: !opModeRow.opLive ? theme.tokens.errorText : _borderSub
                     border.width: !opModeRow.opLive ? 2 : 1
+                    Rectangle {
+                        anchors.left: parent.left; anchors.top: parent.top
+                        anchors.bottom: parent.bottom; anchors.margins: 2
+                        width: 4; radius: 2
+                        color: _red                      // the brand accent
+                        visible: !opModeRow.opLive
+                    }
                     Column {
                         anchors.centerIn: parent; spacing: 1
-                        Text { text: "DEMO / SIMULATION"; color: !opModeRow.opLive ? _red : _txt
+                        Text { text: qsTr("DEMO / SIMULATION")
+                               color: !opModeRow.opLive ? theme.tokens.errorText : _txt
                                font.family: theme.fontFamily; font.pixelSize: 12; font.bold: true
                                anchors.horizontalCenter: parent.horizontalCenter }
-                        Text { text: "Simulated clicks"; color: _txtMut
+                        Text { text: qsTr("Simulated clicks"); color: _txtMut
                                font.family: theme.fontFamily; font.pixelSize: theme.type.helperText.size
                                anchors.horizontalCenter: parent.horizontalCenter }
                     }
@@ -946,8 +1045,8 @@ Item {
                 font.pixelSize: theme.type.helperText.size
                 color: (typeof OPMODE !== "undefined" && OPMODE.restartRequired) ? _warnTxt : _txtSec
                 text: (typeof OPMODE !== "undefined" && OPMODE.restartRequired)
-                      ? "Restart required — the selected mode takes effect on next launch."
-                      : "Switch the target source. Changing mode requires an application restart."
+                      ? qsTr("Restart required — the selected mode takes effect on next launch.")
+                      : qsTr("Switch the target source. Changing mode requires an application restart.")
             }
 
             // Confirm dialog (Restart Now / Later / Cancel) — mirrors Settings.
@@ -965,15 +1064,15 @@ Item {
                     spacing: 12; padding: 22; width: opModeConfirm.width
                     Text {
                         width: parent.width - 44
-                        text: opModeConfirm.targetMode === 1 ? "Switch to Demo mode?" : "Switch to Live target mode?"
+                        text: opModeConfirm.targetMode === 1 ? qsTr("Switch to Demo mode?") : qsTr("Switch to Live target mode?")
                         color: _txt; font.family: theme.fontFamily; font.pixelSize: 16; font.bold: true
                         wrapMode: Text.WordWrap
                     }
                     Text {
                         width: parent.width - 44
                         text: opModeConfirm.targetMode === 1
-                              ? "Simulated shots will be enabled. Demo sessions are intended for testing and cannot be treated as Live target results.\n\nThe application must restart before the change takes effect."
-                              : "Simulated shot input will be disabled. The application will expect the physical TechAim target connection.\n\nThe application must restart before the change takes effect."
+                              ? qsTr("Simulated shots will be enabled. Demo sessions are intended for testing and cannot be treated as Live target results.\n\nThe application must restart before the change takes effect.")
+                              : qsTr("Simulated shot input will be disabled. The application will expect the physical %1 target connection.\n\nThe application must restart before the change takes effect.").arg(PRODUCT.displayName)
                         color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 11; wrapMode: Text.WordWrap
                     }
                     Item {
@@ -983,7 +1082,7 @@ Item {
                             Rectangle {
                                 width: 74; height: 32; radius: 8; color: "transparent"
                                 border.color: _borderSub; border.width: 1
-                                Text { anchors.centerIn: parent; text: "Cancel"; color: _txt
+                                Text { anchors.centerIn: parent; text: qsTr("Cancel"); color: _txt
                                        font.family: theme.fontFamily; font.pixelSize: 11 }
                                 MouseArea { anchors.fill: parent
                                     onClicked: { if (typeof OPMODE !== "undefined") OPMODE.selectMode(opModeRow.opLive ? 0 : 1); opModeConfirm.close() } }
@@ -991,14 +1090,14 @@ Item {
                             Rectangle {
                                 width: 104; height: 32; radius: 8; color: _surfaceAlt
                                 border.color: _borderSub; border.width: 1
-                                Text { anchors.centerIn: parent; text: "Restart Later"; color: _txt
+                                Text { anchors.centerIn: parent; text: qsTr("Restart Later"); color: _txt
                                        font.family: theme.fontFamily; font.pixelSize: 11 }
                                 MouseArea { anchors.fill: parent
                                     onClicked: { OPMODE.applyModeChange(false); opModeConfirm.close() } }
                             }
                             Rectangle {
                                 width: 104; height: 32; radius: 8; color: _red
-                                Text { anchors.centerIn: parent; text: "Restart Now"; color: "white"
+                                Text { anchors.centerIn: parent; text: qsTr("Restart Now"); color: "white"
                                        font.family: theme.fontFamily; font.pixelSize: 11; font.bold: true }
                                 MouseArea { anchors.fill: parent
                                     onClicked: { if (OPMODE.applyModeChange(false)) OPMODE.requestRestart(); opModeConfirm.close() } }
@@ -1014,7 +1113,7 @@ Item {
                 anchors.top: opModeHint.bottom
                 anchors.topMargin: 14
                 anchors.left: parent.left; anchors.leftMargin: 22
-                text: "NETWORK SHARE"
+                text: qsTr("NETWORK SHARE")
                 color: _txtMut; font.family: theme.fontFamily
                 font.pixelSize: 10; font.bold: true; font.letterSpacing: 2
             }
@@ -1137,7 +1236,7 @@ Item {
                     }
                     Text {
                         visible: trainingConfirmed && trainingDisciplineId() === "3P50"
-                        text: "POSITION FLOW   Kneeling → Prone → Standing"
+                        text: qsTr("POSITION FLOW   Kneeling → Prone → Standing")
                         color: _txtSec; font.family: theme.fontFamily; font.pixelSize: theme.type.helperText.size; font.letterSpacing: 1
                     }
                     Item { width: 1; height: 6 }
@@ -1151,40 +1250,54 @@ Item {
                 columns: 3; rowSpacing: 12; columnSpacing: 10
                 Repeater {
                     model: wmConfirmed ? [
-                        { lbl: "DISCIPLINE", val: WINDMAP.threePositions ? "50m 3 Pos" : "50m Prone" },
-                        { lbl: "SHOT PLAN",  val: "" + WINDMAP.shotPlan + " shots" },
-                        { lbl: "SIGHTERS",   val: WINDMAP.sightersEnabled ? "Yes" : "No" },
-                        { lbl: "WIND",       val: "Manual entry" },
-                        { lbl: "POSITIONS",  val: WINDMAP.threePositions ? "K · P · S separate" : "Single" },
-                        { lbl: "MODE",       val: appMode ? "Live" : "Demo" }
+                        { lbl: qsTr("DISCIPLINE"), val: WINDMAP.threePositions ? qsTr("50m 3 Pos") : qsTr("50m Prone") },
+                        { lbl: qsTr("SHOT PLAN"),  val: "" + WINDMAP.shotPlan + qsTr(" shots") },
+                        { lbl: qsTr("SIGHTERS"),   val: WINDMAP.sightersEnabled ? qsTr("Yes") : qsTr("No") },
+                        { lbl: qsTr("WIND"),       val: qsTr("Manual entry") },
+                        { lbl: qsTr("POSITIONS"),  val: WINDMAP.threePositions ? qsTr("K · P · S separate") : qsTr("Single") },
+                        { lbl: qsTr("MODE"),       val: appMode ? qsTr("Live") : qsTr("Demo") }
                     ] : ptConfirmed ? [
-                        { lbl: "SEQUENCE",  val: POSTRANS.sequenceString() },
-                        { lbl: "VERIFY",    val: "" + POSTRANS.verificationShots + " / pos" },
-                        { lbl: "REPEATS",   val: "" + POSTRANS.totalRepeats },
-                        { lbl: "FOCUS",     val: POSTRANS.technicalFocus },
-                        { lbl: "CHECKLIST", val: ["Self", "Coach", "Off"][POSTRANS.checklistMode] },
-                        { lbl: "MODE",      val: appMode ? "Live" : "Demo" }
+                        { lbl: qsTr("SEQUENCE"),  val: POSTRANS.sequenceString() },
+                        { lbl: qsTr("VERIFY"),    val: "" + POSTRANS.verificationShots + qsTr(" / pos") },
+                        { lbl: qsTr("REPEATS"),   val: "" + POSTRANS.totalRepeats },
+                        { lbl: qsTr("FOCUS"),     val: POSTRANS.technicalFocus },
+                        { lbl: qsTr("CHECKLIST"), val: [qsTr("Self"), qsTr("Coach"), qsTr("Off")][POSTRANS.checklistMode] },
+                        { lbl: qsTr("MODE"),      val: appMode ? qsTr("Live") : qsTr("Demo") }
                     ] : cdConfirmed ? [
-                        { lbl: "CALLED",    val: "" + CALLDIAG.shotCount + (trainingDisciplineId() === "3P50" ? " / pos" : "") },
-                        { lbl: "TOTAL",     val: "" + (trainingDisciplineId() === "3P50" ? CALLDIAG.shotCount * 3 : CALLDIAG.shotCount) },
-                        { lbl: "FOCUS",     val: CALLDIAG.technicalFocus },
-                        { lbl: "REVEAL",    val: "After each call" },
-                        { lbl: "EST. TIME", val: CALLDIAG.estimatedTime },
-                        { lbl: "MODE",      val: appMode ? "Live" : "Demo" }
+                        { lbl: qsTr("CALLED"),    val: "" + CALLDIAG.shotCount + (trainingDisciplineId() === "3P50" ? qsTr(" / pos") : "") },
+                        { lbl: qsTr("TOTAL"),     val: "" + (trainingDisciplineId() === "3P50" ? CALLDIAG.shotCount * 3 : CALLDIAG.shotCount) },
+                        { lbl: qsTr("FOCUS"),     val: CALLDIAG.technicalFocus },
+                        { lbl: "REVEAL",    val: qsTr("After each call") },
+                        { lbl: qsTr("EST. TIME"), val: CALLDIAG.estimatedTime },
+                        { lbl: qsTr("MODE"),      val: appMode ? qsTr("Live") : qsTr("Demo") }
                     ] : trainingConfirmed ? [
-                        { lbl: "BLOCKS",     val: "" + TRAINING.blockCount },
-                        { lbl: "SHOTS/BLOCK", val: "" + TRAINING.shotsPerBlock },
-                        { lbl: "TOTAL",      val: "" + (TRAINING.blockCount * TRAINING.shotsPerBlock) },
-                        { lbl: "FOCUS",      val: TRAINING.technicalFocus },
-                        { lbl: "VISIBILITY", val: ["Full hidden", "Group only", "Impact only"][TRAINING.visibilityMode] },
-                        { lbl: "EST. TIME",  val: TRAINING.estimatedTime }
+                        { lbl: qsTr("BLOCKS"),     val: "" + TRAINING.blockCount },
+                        { lbl: qsTr("SHOTS/BLOCK"), val: "" + TRAINING.shotsPerBlock },
+                        { lbl: qsTr("TOTAL"),      val: "" + (TRAINING.blockCount * TRAINING.shotsPerBlock) },
+                        { lbl: qsTr("FOCUS"),      val: TRAINING.technicalFocus },
+                        { lbl: qsTr("VISIBILITY"), val: [qsTr("Full hidden"), qsTr("Group only"), qsTr("Impact only")][TRAINING.visibilityMode] },
+                        { lbl: qsTr("EST. TIME"),  val: TRAINING.estimatedTime }
                     ] : [
-                        { lbl: "SHOT PLAN", val: getGameEventText(gameEvent) === "Free Practice" ? "Free" : getGameEventText(gameEvent) + " shots" },
-                        { lbl: "SCORING",   val: (gameMode === 0 || (gameMode === 1 && gameRange === 50 && gameSubMode === 1)) ? "Integer" : "Decimal" },
-                        { lbl: "PREP",      val: "15 min" },
-                        { lbl: "MATCH",     val: getMatchTime() },
-                        { lbl: "DISTANCE",  val: gameRange + " m" },
-                        { lbl: "RULES",     val: "ISSF 2026" }
+                        // Every value here is read from the ACTIVE COMPETITION
+                        // when one governs the session. These tiles are the
+                        // legacy grid's summary, and a hardcoded "ISSF 2026" on
+                        // a DSB course would be a false rule-authority claim on
+                        // a surface an operator can still reach.
+                        { lbl: qsTr("SHOT PLAN"), val: window.activeCompetition !== null
+                              ? window.activeCompetition.shotCount + qsTr(" shots")
+                              : (getGameEventText(gameEvent) === "Free Practice" ? qsTr("Free") : getGameEventText(gameEvent) + qsTr(" shots")) },
+                        { lbl: qsTr("SCORING"),   val: window.activeCompetition !== null
+                              ? (window.activeCompetition.scoringMode === "INTEGER" ? qsTr("Integer") : qsTr("Decimal"))
+                              : ((gameMode === 0 || (gameMode === 1 && gameRange === 50 && gameSubMode === 1)) ? qsTr("Integer") : qsTr("Decimal")) },
+                        { lbl: qsTr("PREP"),      val: window.profilePrepSeconds > 0
+                              ? qsTr("%1 min").arg(Math.round(window.profilePrepSeconds / 60))
+                              : qsTr("15 min") },
+                        { lbl: qsTr("MATCH"),     val: getMatchTime() },
+                        { lbl: qsTr("DISTANCE"),  val: gameRange + " m" },
+                        { lbl: qsTr("RULES"),     val: window.activeCompetition !== null
+                              ? window.activeCompetition.federation + " "
+                                + window.activeCompetition.rulesetVersion.substring(0, 4)
+                              : "ISSF 2026" }
                     ]
                     delegate: Column {
                         width: (infoTiles.width - infoTiles.columnSpacing * 2) / 3
@@ -1223,24 +1336,115 @@ Item {
                 id: rightTitle
                 anchors.top: parent.top; anchors.topMargin: 20
                 anchors.left: parent.left; anchors.leftMargin: 22
-                text: "Choose an event"
+                text: qsTr("Choose an event")
                 color: _txt; font.family: theme.fontFamily; font.pixelSize: 16; font.bold: true
             }
             Text {
                 id: rightSubtitle
                 anchors.top: rightTitle.bottom; anchors.topMargin: 3
                 anchors.left: parent.left; anchors.leftMargin: 22
-                text: "Match settings are applied automatically."
+                text: qsTr("Match settings are applied automatically.")
                 color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 11
             }
 
-            // Weapon selector (PISTOL | RIFLE)
-            Row {
-                id: weaponRow
-                anchors.top: rightSubtitle.bottom; anchors.topMargin: 14
+            // ── SETA: RULE SET → DISCIPLINE → PROGRAMME ──────────────────────
+            // Collapses to zero height on the legacy path, so the layout below
+            // is untouched when setaSelection is false.
+            Item {
+                id: setaBlock
+                anchors.top: rightSubtitle.bottom
+                anchors.topMargin: setaSelection ? 14 : 0
                 anchors.left: parent.left;   anchors.leftMargin: 22
                 anchors.right: parent.right; anchors.rightMargin: 22
-                height: 58; spacing: 8
+                // While browsing, take the whole panel below the heading: the
+                // selector scrolls internally, so more height means fewer
+                // scrolls, and a short panel can no longer hide a discipline.
+                // setaBlock.y is ~92 from the panel top; 18 keeps the bottom
+                // margin the rest of the panel uses.
+                height: (!setaSelection || practiceView !== 0) ? 0
+                        : (setaBrowsing ? Math.max(200, rightPanel.height - 110) : 68)
+                visible: height > 0
+                clip: true
+
+                // Committed state: what is selected, and one way to change it.
+                Rectangle {
+                    anchors.fill: parent
+                    visible: !setaBrowsing
+                    radius: 8
+                    color: _surfaceAlt
+                    border.color: setaProgrammeIsOfficial() ? _red : _borderSub
+                    border.width: setaProgrammeIsOfficial() ? 2 : 1
+                    Column {
+                        anchors.left: parent.left; anchors.leftMargin: 14
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: 3
+                        Text {
+                            text: setaProgrammeLabel()
+                            color: _txt; font.family: theme.fontFamily
+                            font.pixelSize: 13; font.bold: true
+                        }
+                        Text {
+                            // Rule authority is stated, never implied.
+                            // Name the FEDERATION that makes it official. The
+                            // label was hardcoded to ISSF, which is a false
+                            // claim on a DSB course.
+                            text: !setaProgrammeIsOfficial()
+                                  ? qsTr("Practice - no rule authority")
+                                  : window.activeCompetition
+                                    ? qsTr("Official %1 course · %2")
+                                        .arg(window.activeCompetition.federation)
+                                        .arg(window.activeCompetition.ruleNumber)
+                                    : qsTr("Official ISSF course")
+                            color: setaProgrammeIsOfficial() ? _green : _txtMut
+                            font.family: theme.fontFamily; font.pixelSize: 10
+                        }
+                    }
+                    Rectangle {
+                        id: setaChangeBtn
+                        anchors.right: parent.right; anchors.rightMargin: 12
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 92; height: 32; radius: 6
+                        color: setaChangeMouse.pressed ? _redPressed : _input
+                        border.color: _borderSub; border.width: 1
+                        Text {
+                            anchors.centerIn: parent; text: qsTr("CHANGE")
+                            color: _txtSec; font.family: theme.fontFamily
+                            font.pixelSize: 11; font.bold: true; font.letterSpacing: 1
+                        }
+                        MouseArea {
+                            id: setaChangeMouse
+                            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                            onClicked: { setaSelector.reset(); setaBrowsing = true }
+                        }
+                    }
+                }
+
+                // Browsing state. Nothing here writes to the shooting
+                // configuration; only programmeCommitted does.
+                SetaCompetitionSelector {
+                    id: setaSelector
+                    anchors.fill: parent
+                    visible: setaBrowsing
+                    catalogue: setaCatalogue
+                    fifteenShotMode: APPSETTINGS.getIs15Shoot()
+                    bg: _surface; card: _surfaceAlt; cardSel: _input
+                    accent: _red;  line: _borderSub
+                    textPrimary: _txt; textSecondary: _txtSec
+                    textMuted: _txtMut; textOfficial: _green
+                    onProgrammeCommitted: function (programmeId) {
+                        applySetaProgramme(programmeId)
+                    }
+                }
+            }
+
+            // Weapon selector (PISTOL | RIFLE) — LEGACY PATH, kept for rollback
+            Row {
+                id: weaponRow
+                visible: !setaSelection
+                anchors.top: setaBlock.bottom; anchors.topMargin: setaSelection ? 0 : 14
+                anchors.left: parent.left;   anchors.leftMargin: 22
+                anchors.right: parent.right; anchors.rightMargin: 22
+                height: setaSelection ? 0 : 58; spacing: 8
 
                 Rectangle {
                     width: (parent.width - 8) / 2; height: 58; radius: 8
@@ -1303,14 +1507,20 @@ Item {
             Column {
                 id: subDisciplineRow
                 anchors.top: weaponRow.bottom
-                anchors.topMargin: gameMode === 1 ? 8 : 0
+                anchors.topMargin: (setaSelection ? (gameMode === 1 && gameRange === 50)
+                                                  : (gameMode === 1)) ? 8 : 0
                 anchors.left: parent.left;   anchors.leftMargin: 22
                 anchors.right: parent.right; anchors.rightMargin: 22
-                height: gameMode === 1 ? (gameRange === 50 ? 96 : 44) : 0
+                // On the SETA path the hierarchy owns weapon + distance, so only
+                // the position row (50 m Rifle) survives here: 3 Positions is a
+                // position variant, not a catalogue programme.
+                height: setaSelection ? ((gameMode === 1 && gameRange === 50) ? 44 : 0)
+                                      : (gameMode === 1 ? (gameRange === 50 ? 96 : 44) : 0)
                 spacing: 8; clip: true
 
-                // Distance row: 10m | 50m
+                // Distance row: 10m | 50m — LEGACY PATH
                 Row {
+                    visible: !setaSelection
                     width: parent.width; height: 44; spacing: 8
                     Rectangle {
                         width: (parent.width - 8) / 2; height: 44; radius: 6
@@ -1369,7 +1579,7 @@ Item {
                         color: gameSubMode === 1 ? _redDark : _input
                         border.color: gameSubMode === 1 ? _red : _borderSub
                         Text {
-                            anchors.centerIn: parent; text: "3 POSITIONS"
+                            anchors.centerIn: parent; text: qsTr("3 POSITIONS")
                             font.family: theme.fontFamily; font.pixelSize: 11; font.letterSpacing: 1
                             font.bold: gameSubMode === 1
                             color: gameSubMode === 1 ? _red : _txtSec
@@ -1395,7 +1605,7 @@ Item {
             // a Flickable natively.
             Flickable {
                 id: eventScroll
-                visible: practiceView === 0
+                visible: practiceView === 0 && !(setaSelection && setaBrowsing)
                 anchors.top: subDisciplineRow.bottom; anchors.topMargin: 12
                 anchors.left: parent.left;   anchors.leftMargin: 22
                 anchors.right: parent.right; anchors.rightMargin: 22
@@ -1468,16 +1678,16 @@ Item {
                                         visible: getGameEventText(eventIndex) !== "Free Practice"
                                         text: {
                                             var s = getGameEventText(eventIndex)
-                                            if (s === "10") return "·  10 min"
-                                            if (s === "15") return "·  15 min"
-                                            if (s === "20") return "·  20 min"
-                                            if (s === "30") return "·  30 min"
-                                            if (s === "40") return "·  40 min"
+                                            if (s === "10") return qsTr("·  10 min")
+                                            if (s === "15") return qsTr("·  15 min")
+                                            if (s === "20") return qsTr("·  20 min")
+                                            if (s === "30") return qsTr("·  30 min")
+                                            if (s === "40") return qsTr("·  40 min")
                                             if (s === "60") {
-                                                if (gameMode === 0)    return "·  75 min"
-                                                if (gameRange === 10)  return "·  75 min"
-                                                if (gameSubMode === 1) return "·  90 min"
-                                                return "·  50 min"
+                                                if (gameMode === 0)    return qsTr("·  75 min")
+                                                if (gameRange === 10)  return qsTr("·  75 min")
+                                                if (gameSubMode === 1) return qsTr("·  90 min")
+                                                return qsTr("·  50 min")
                                             }
                                             return ""
                                         }
@@ -1508,14 +1718,18 @@ Item {
                     }
 
                     // ── OFFICIAL ISSF MATCH ────────────────────────────────────
+                    // LEGACY PATH: on the SETA path the 60-shot course is a
+                    // catalogue programme reached through the hierarchy, so
+                    // offering it here as well would be a second selector.
                     Text {
-                        text: "OFFICIAL ISSF MATCH"
+                        text: qsTr("OFFICIAL ISSF MATCH")
+                        visible: !setaSelection
                         color: _txtMut; font.family: theme.fontFamily
                         font.pixelSize: theme.type.label.size; font.bold: true; font.letterSpacing: theme.type.label.spacing
                         topPadding: 4; bottomPadding: 8
                     }
                     // Official: 60 shots — Pistol, 10m Rifle, 50m Prone, 50m 3 Pos (20+20+20)
-                    EventCard { eventIndex: 4 }
+                    EventCard { eventIndex: 4; visible: !setaSelection }
 
                     Text {
                         text: "FINALS"
@@ -1544,7 +1758,7 @@ Item {
                     // compact presets; Training Lab opens the programme
                     // catalogue in this panel.
                     Text {
-                        text: "TRAINING LAB"
+                        text: qsTr("TRAINING LAB")
                         color: _txtMut; font.family: theme.fontFamily
                         font.pixelSize: theme.type.label.size; font.bold: true; font.letterSpacing: theme.type.label.spacing
                         topPadding: 16; bottomPadding: 8
@@ -1570,10 +1784,10 @@ Item {
                             Column {
                                 anchors.verticalCenter: parent.verticalCenter; spacing: 3
                                 width: parent.width - 38 - 30 - 24
-                                Text { text: "TRAINING LAB"
+                                Text { text: qsTr("TRAINING LAB")
                                        color: _txt; font.family: theme.fontFamily
                                        font.pixelSize: 13; font.bold: true }
-                                Text { text: "Structured technical practice and athlete feedback.\nTechnical Blocks · Shot calling · Group analysis"
+                                Text { text: qsTr("Structured technical practice and athlete feedback.\nTechnical Blocks · Shot calling · Group analysis")
                                        color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 10 }
                             }
                             Text { text: "→"; color: _red; font.pixelSize: 20; font.bold: true
@@ -1582,15 +1796,19 @@ Item {
                         MouseArea { anchors.fill: parent; onClicked: practiceView = 1 }
                     }
                     Text {
-                        text: "PRACTICE"
+                        text: qsTr("PRACTICE")
+                        visible: !setaSelection
                         color: _txtMut; font.family: theme.fontFamily
                         font.pixelSize: theme.type.label.size; font.bold: true; font.letterSpacing: theme.type.label.spacing
                         topPadding: 16; bottomPadding: 8
                     }
                     // OPEN PRACTICE — one card; presets select the existing
                     // practice events (identical behaviour to the old rows).
+                    // LEGACY PATH: on the SETA path these same events are the
+                    // practice-preset programmes in the hierarchy.
                     Rectangle {
                         id: openPracticeCard
+                        visible: !setaSelection
                         readonly property bool selected: gameEvent >= 0 && gameEvent <= 3 && !trainingConfirmed
                         width: eventColumn.width
                         // UI-HOME-009: the collapsed card now matches every other
@@ -1618,7 +1836,7 @@ Item {
                                 Column {
                                     spacing: 3
                                     anchors.verticalCenter: parent.verticalCenter
-                                    Text { text: "OPEN PRACTICE"
+                                    Text { text: qsTr("OPEN PRACTICE")
                                            color: openPracticeCard.selected ? _txt : _txtSec
                                            font.family: theme.fontFamily
                                            font.pixelSize: theme.type.cardTitle.size
@@ -1675,7 +1893,7 @@ Item {
                             onClicked: { trainingConfirmed = false; cdConfirmed = false; ptConfirmed = false; wmConfirmed = false; gameEvent = 1 }
                         }
                     }
-                    Item { width: 1; height: 8 }
+                    Item { width: 1; height: 8; visible: !setaSelection }
                     // T1.1: the separate FREE PRACTICE section is gone — one
                     // practice concept only. Unlimited practice (gameEvent 5)
                     // lives inside the Open Practice card as the "No limit"
@@ -1702,7 +1920,7 @@ Item {
                     bottomPadding: 12
 
                     Text {
-                        text: "← Back to events"
+                        text: qsTr("← Back to events")
                         color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 12
                         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                                     onClicked: practiceView = 0 }
@@ -1710,7 +1928,7 @@ Item {
                     }
                     Row {
                         spacing: 10
-                        Text { text: "TRAINING LAB"; color: _txt
+                        Text { text: qsTr("TRAINING LAB"); color: _txt
                                font.family: theme.fontFamily; font.pixelSize: 18; font.bold: true
                                anchors.verticalCenter: parent.verticalCenter }
                         // T1.1: in-app help — no GitHub docs needed to understand it.
@@ -1718,16 +1936,16 @@ Item {
                             width: 88; height: 30; radius: 15
                             color: _input; border.color: _borderSub; border.width: 1
                             anchors.verticalCenter: parent.verticalCenter
-                            Text { anchors.centerIn: parent; text: "ⓘ  Help"
+                            Text { anchors.centerIn: parent; text: qsTr("ⓘ  Help")
                                    color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 11 }
                             MouseArea {
                                 anchors.fill: parent
                                 onClicked: dialogManager.showInformation(qsTr("Training Lab"),
-                                    qsTr("TECHNICAL BLOCKS\nShoot several short groups while concentrating on one technical part of your process. After each block, TechAim reveals the measured group and lets you record a note before continuing.\n\nVISIBILITY MODES\nFull hidden — nothing shown until review. Group only — positions without numbers. Impact only — impacts without scores.\n\nTHREE POSITIONS\nKneeling, Prone and Standing stay separate: K1 → K2 → P1 → P2 → S1 → S2.\n\nTraining results are for development only — never an official competition result. In Demo mode no physical target is required."))
+                                    qsTr("TECHNICAL BLOCKS\nShoot several short groups while concentrating on one technical part of your process. After each block, %1 reveals the measured group and lets you record a note before continuing.\n\nVISIBILITY MODES\nFull hidden — nothing shown until review. Group only — positions without numbers. Impact only — impacts without scores.\n\nTHREE POSITIONS\nKneeling, Prone and Standing stay separate: K1 → K2 → P1 → P2 → S1 → S2.\n\nTraining results are for development only — never an official competition result. In Demo mode no physical target is required.").arg(PRODUCT.displayName))
                             }
                         }
                     }
-                    Text { text: "Structured technical practice and athlete feedback."
+                    Text { text: qsTr("Structured technical practice and athlete feedback.")
                            color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 11 }
                     Text { text: getDisciplineName(); color: _red
                            font.family: theme.fontFamily; font.pixelSize: 13; font.bold: true
@@ -1744,21 +1962,21 @@ Item {
                             Row {
                                 spacing: 8
                                 Text { text: gameMode === 1 && gameRange === 50 && gameSubMode === 1
-                                             ? "TECHNICAL BLOCKS · BY POSITION" : "TECHNICAL BLOCKS"
+                                             ? qsTr("TECHNICAL BLOCKS · BY POSITION") : qsTr("TECHNICAL BLOCKS")
                                        color: _txt; font.family: theme.fontFamily; font.pixelSize: 14; font.bold: true }
                                 Rectangle {
                                     width: 74; height: 18; radius: 9; color: _okBg
                                     border.color: _green; border.width: 1
                                     anchors.verticalCenter: parent.verticalCenter
-                                    Text { anchors.centerIn: parent; text: "AVAILABLE"
+                                    Text { anchors.centerIn: parent; text: qsTr("AVAILABLE")
                                            color: _green; font.pixelSize: theme.type.label.size; font.bold: true }
                                 }
                             }
-                            Text { text: "Shoot several short groups while concentrating on one technical part of your process.\nAfter each block, TechAim reveals the measured group and lets you record a note."
+                            Text { text: qsTr("Shoot several short groups while concentrating on one technical part of your process.\nAfter each block, %1 reveals the measured group and lets you record a note.").arg(PRODUCT.displayName)
                                    color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 10 }
                             Text { text: (gameMode === 1 && gameRange === 50 && gameSubMode === 1)
-                                         ? "Default: 36 shots · Kneeling → Prone → Standing · Configurable"
-                                         : "Default: 30 shots · Configurable"
+                                         ? qsTr("Default: 36 shots · Kneeling → Prone → Standing · Configurable")
+                                         : qsTr("Default: 30 shots · Configurable")
                                    color: _txtSec; font.family: "Consolas"; font.pixelSize: 10 }
                         }
                         MouseArea {
@@ -1804,21 +2022,21 @@ Item {
                             Row {
                                 spacing: 8
                                 Text { text: (gameMode === 1 && gameRange === 50 && gameSubMode === 1)
-                                             ? "CALL & DIAGNOSE · BY POSITION" : "CALL & DIAGNOSE"
+                                             ? qsTr("CALL & DIAGNOSE · BY POSITION") : qsTr("CALL & DIAGNOSE")
                                        color: _txt; font.family: theme.fontFamily; font.pixelSize: 14; font.bold: true }
                                 Rectangle {
                                     width: 74; height: 18; radius: 9; color: _okBg
                                     border.color: _green; border.width: 1
                                     anchors.verticalCenter: parent.verticalCenter
-                                    Text { anchors.centerIn: parent; text: "AVAILABLE"
+                                    Text { anchors.centerIn: parent; text: qsTr("AVAILABLE")
                                            color: _green; font.pixelSize: theme.type.label.size; font.bold: true }
                                 }
                             }
-                            Text { text: "Call each shot before the actual impact is revealed.\nCompare where you believed the shot landed with where it actually landed."
+                            Text { text: qsTr("Call each shot before the actual impact is revealed.\nCompare where you believed the shot landed with where it actually landed.")
                                    color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 10 }
                             Text { text: (gameMode === 1 && gameRange === 50 && gameSubMode === 1)
-                                         ? "Default: 10 called shots per position · Configurable"
-                                         : "Default: 20 called shots · Configurable"
+                                         ? qsTr("Default: 10 called shots per position · Configurable")
+                                         : qsTr("Default: 20 called shots · Configurable")
                                    color: _txtSec; font.family: "Consolas"; font.pixelSize: 10 }
                         }
                         MouseArea {
@@ -1840,15 +2058,15 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter; spacing: 3
                             Row {
                                 spacing: 8
-                                Text { text: "POSITION TRANSITION"; color: _txt; font.family: theme.fontFamily; font.pixelSize: 14; font.bold: true }
+                                Text { text: qsTr("POSITION TRANSITION"); color: _txt; font.family: theme.fontFamily; font.pixelSize: 14; font.bold: true }
                                 Rectangle {
                                     width: 74; height: 18; radius: 9; color: _okBg; border.color: _green; border.width: 1
                                     anchors.verticalCenter: parent.verticalCenter
-                                    Text { anchors.centerIn: parent; text: "AVAILABLE"; color: _green; font.pixelSize: theme.type.label.size; font.bold: true } }
+                                    Text { anchors.centerIn: parent; text: qsTr("AVAILABLE"); color: _green; font.pixelSize: theme.type.label.size; font.bold: true } }
                             }
-                            Text { text: "Practise changing between Kneeling, Prone and Standing.\nMeasure setup time, sighters, first-shot timing and early group repeatability after each transition."
+                            Text { text: qsTr("Practise changing between Kneeling, Prone and Standing.\nMeasure setup time, sighters, first-shot timing and early group repeatability after each transition.")
                                    color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 10 }
-                            Text { text: "Default: Kneeling → Prone → Standing · 5 verification shots"
+                            Text { text: qsTr("Default: Kneeling → Prone → Standing · 5 verification shots")
                                    color: _txtSec; font.family: "Consolas"; font.pixelSize: 10 }
                         }
                         MouseArea {
@@ -1869,19 +2087,19 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter; spacing: 3
                             Row {
                                 spacing: 8
-                                Text { text: gameSubMode === 1 ? "WIND MAP · BY POSITION" : "WIND MAP"
+                                Text { text: gameSubMode === 1 ? qsTr("WIND MAP · BY POSITION") : qsTr("WIND MAP")
                                        color: _txt; font.family: theme.fontFamily; font.pixelSize: 14; font.bold: true }
                                 Rectangle {
                                     width: 74; height: 18; radius: 9; color: _okBg; border.color: _green; border.width: 1
                                     anchors.verticalCenter: parent.verticalCenter
-                                    Text { anchors.centerIn: parent; text: "AVAILABLE"; color: _green
+                                    Text { anchors.centerIn: parent; text: qsTr("AVAILABLE"); color: _green
                                            font.pixelSize: theme.type.label.size; font.bold: true } }
                             }
-                            Text { text: "Record the wind you observe while you shoot.\nEach shot keeps the condition that was standing when it was fired, for review afterwards."
+                            Text { text: qsTr("Record the wind you observe while you shoot.\nEach shot keeps the condition that was standing when it was fired, for review afterwards.")
                                    color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 10 }
                             Text { text: gameSubMode === 1
-                                         ? "Manual entry · Kneeling, Prone and Standing kept separate"
-                                         : "Manual entry · Direction in degrees, speed in m/s, or Calm"
+                                         ? qsTr("Manual entry · Kneeling, Prone and Standing kept separate")
+                                         : qsTr("Manual entry · Direction in degrees, speed in m/s, or Calm")
                                    color: _txtSec; font.family: "Consolas"; font.pixelSize: 10 }
                         }
                         MouseArea {
@@ -1899,15 +2117,15 @@ Item {
                         }
                     }
 
-                    Text { text: "INCLUDED INSIGHTS"; color: _txtMut
+                    Text { text: qsTr("INCLUDED INSIGHTS"); color: _txtMut
                            font.family: theme.fontFamily; font.pixelSize: theme.type.label.size; font.bold: true
                            font.letterSpacing: 2; topPadding: 10 }
                     Text {
                         text: {
-                            if (gameMode === 0) return "· Group Pattern Coach\n· Air Pistol technical checklist"
-                            if (gameRange === 10) return "· Group Pattern Coach\n· Air Rifle technical checklist"
-                            if (gameSubMode === 1) return "· Position-specific Group Pattern Coach\n· Kneeling checklist · Prone checklist · Standing checklist"
-                            return "· Group Pattern Coach\n· Prone technical checklist"
+                            if (gameMode === 0) return qsTr("· Group Pattern Coach\n· Air Pistol technical checklist")
+                            if (gameRange === 10) return qsTr("· Group Pattern Coach\n· Air Rifle technical checklist")
+                            if (gameSubMode === 1) return qsTr("· Position-specific Group Pattern Coach\n· Kneeling checklist · Prone checklist · Standing checklist")
+                            return qsTr("· Group Pattern Coach\n· Prone technical checklist")
                         }
                         color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 11
                     }
@@ -1939,19 +2157,19 @@ Item {
                     bottomPadding: 12
 
                     Text {
-                        text: "← Back"
+                        text: qsTr("← Back")
                         color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 12
                         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                                     onClicked: practiceView = 1 }
                     }
-                    Text { text: "TECHNICAL BLOCKS SETUP"; color: _txt
+                    Text { text: qsTr("TECHNICAL BLOCKS SETUP"); color: _txt
                            font.family: theme.fontFamily; font.pixelSize: 17; font.bold: true }
                     Text {
                         width: parent.width; wrapMode: Text.WordWrap
                         color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 11
                         text: trainingDisciplineId() === "3P50"
-                              ? "The programme keeps Kneeling, Prone and Standing separate. Each position gets its own blocks, measurements, notes and comparison \u2014 results are never combined into one generic 3P analysis."
-                              : "You shoot each block while focusing on one selected area. The block then stops and opens a measured review; after adding a note you continue to the next block. Hidden modes reveal scores and impacts only at the review."
+                              ? qsTr("The programme keeps Kneeling, Prone and Standing separate. Each position gets its own blocks, measurements, notes and comparison \u2014 results are never combined into one generic 3P analysis.")
+                              : qsTr("You shoot each block while focusing on one selected area. The block then stops and opens a measured review; after adding a note you continue to the next block. Hidden modes reveal scores and impacts only at the review.")
                     }
                     Text {
                         visible: trainingDisciplineId() === "3P50"
@@ -2000,7 +2218,7 @@ Item {
                     }
 
                     Stepper {
-                        label: trainingDisciplineId() === "3P50" ? "Blocks per position" : "Blocks"
+                        label: trainingDisciplineId() === "3P50" ? qsTr("Blocks per position") : qsTr("Blocks")
                         value: trainingDisciplineId() === "3P50" ? TRAINING.blockCount / 3 : TRAINING.blockCount
                         onMinus: TRAINING.setBlockCount(TRAINING.blockCount
                                      - (trainingDisciplineId() === "3P50" ? 3 : 1))
@@ -2008,16 +2226,16 @@ Item {
                                      + (trainingDisciplineId() === "3P50" ? 3 : 1))
                     }
                     Stepper {
-                        label: "Shots per block"
+                        label: qsTr("Shots per block")
                         value: TRAINING.shotsPerBlock
                         onMinus: TRAINING.setShotsPerBlock(TRAINING.shotsPerBlock - 1)
                         onPlus:  TRAINING.setShotsPerBlock(TRAINING.shotsPerBlock + 1)
                     }
-                    Text { text: "Total: " + (TRAINING.blockCount * TRAINING.shotsPerBlock) + " shots"
+                    Text { text: qsTr("Total: ") + (TRAINING.blockCount * TRAINING.shotsPerBlock) + qsTr(" shots")
                                  + (trainingDisciplineId() === "3P50" ? "  ·  Kneeling → Prone → Standing" : "")
                            color: _txtSec; font.family: "Consolas"; font.pixelSize: 11 }
 
-                    Text { text: "Technical focus"; color: _txtSec
+                    Text { text: qsTr("Technical focus"); color: _txtSec
                            font.family: theme.fontFamily; font.pixelSize: 12; topPadding: 4 }
                     Flow {
                         width: parent.width; spacing: 6
@@ -2055,7 +2273,7 @@ Item {
                             return d[TRAINING.technicalFocus] || ""
                         }
                     }
-                    Text { text: "Visibility"; color: _txtSec
+                    Text { text: qsTr("Visibility"); color: _txtSec
                            font.family: theme.fontFamily; font.pixelSize: 12; topPadding: 4 }
                     Column {
                         spacing: 5
@@ -2075,7 +2293,7 @@ Item {
                                         Text { text: modelData; color: _txt
                                                font.family: theme.fontFamily; font.pixelSize: 12; font.bold: true }
                                         Text {
-                                            text: ["No score or impact is shown until block review.",
+                                            text: [qsTr("No score or impact is shown until block review."),
                                                    "Shot positions form a group; numerical scores stay hidden.",
                                                    "Shot positions are visible; scores stay hidden."][index]
                                             color: _txtMut; font.family: theme.fontFamily; font.pixelSize: theme.type.helperText.size
@@ -2089,7 +2307,7 @@ Item {
                             }
                         }
                     }
-                    Text { text: "Optional shot calling — coming with Call & Diagnose"
+                    Text { text: qsTr("Optional shot calling — coming with Call & Diagnose")
                            color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 10 }
 
                     // Validation (controller-owned — no duplicate rules here).
@@ -2105,13 +2323,13 @@ Item {
                         Rectangle {
                             width: 110; height: 52; radius: 8
                             color: "transparent"; border.color: _borderStr; border.width: 1
-                            Text { anchors.centerIn: parent; text: "Back"; color: _txtSec
+                            Text { anchors.centerIn: parent; text: qsTr("Back"); color: _txtSec
                                    font.family: theme.fontFamily; font.pixelSize: 12 }
                             MouseArea { anchors.fill: parent; onClicked: practiceView = 1 }
                         }
                         Rectangle {
                             width: 180; height: 52; radius: 8; color: _red
-                            Text { anchors.centerIn: parent; text: "Confirm setup"; color: "white"
+                            Text { anchors.centerIn: parent; text: qsTr("Confirm setup"); color: "white"
                                    font.family: theme.fontFamily; font.pixelSize: 13; font.bold: true }
                             MouseArea {
                                 anchors.fill: parent
@@ -2151,25 +2369,25 @@ Item {
                     spacing: 10; bottomPadding: 12
 
                     Text {
-                        text: "← Back"; color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 12
+                        text: qsTr("← Back"); color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 12
                         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                                     onClicked: practiceView = 1 }
                     }
-                    Text { text: "CALL & DIAGNOSE SETUP"; color: _txt
+                    Text { text: qsTr("CALL & DIAGNOSE SETUP"); color: _txt
                            font.family: theme.fontFamily; font.pixelSize: 17; font.bold: true }
                     Text {
                         width: parent.width; wrapMode: Text.WordWrap
                         color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 11
-                        text: "After every shot the actual impact stays hidden. Tap the target where you believe the shot landed, confirm your call, then compare it with the measured result. This assesses how accurately you recognise your own shot."
+                        text: qsTr("After every shot the actual impact stays hidden. Tap the target where you believe the shot landed, confirm your call, then compare it with the measured result. This assesses how accurately you recognise your own shot.")
                             + (trainingDisciplineId() === "3P50"
-                               ? " Kneeling, Prone and Standing are kept separate." : "")
+                               ? qsTr(" Kneeling, Prone and Standing are kept separate.") : "")
                     }
                     Text { text: getDisciplineName() + "  ·  " + username_loginPage + "  ·  " + CALLDIAG.estimatedTime
                            color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 11 }
 
                     Row {
                         spacing: 10
-                        Text { text: trainingDisciplineId() === "3P50" ? "Called shots / position" : "Called shots"
+                        Text { text: trainingDisciplineId() === "3P50" ? qsTr("Called shots / position") : qsTr("Called shots")
                                color: _txtSec; width: 150; font.family: theme.fontFamily; font.pixelSize: 12
                                anchors.verticalCenter: parent.verticalCenter }
                         Rectangle { width: 52; height: 48; radius: 8; color: _input; border.color: _borderSub
@@ -2182,12 +2400,12 @@ Item {
                             Text { anchors.centerIn: parent; text: "+"; color: _txt; font.pixelSize: 16 }
                             MouseArea { anchors.fill: parent; onClicked: CALLDIAG.setShotCount(CALLDIAG.shotCount + 1) } }
                     }
-                    Text { text: "Total: " + (trainingDisciplineId() === "3P50" ? CALLDIAG.shotCount * 3 : CALLDIAG.shotCount)
+                    Text { text: qsTr("Total: ") + (trainingDisciplineId() === "3P50" ? CALLDIAG.shotCount * 3 : CALLDIAG.shotCount)
                                  + " called shots"
                                  + (trainingDisciplineId() === "3P50" ? "  ·  Kneeling → Prone → Standing" : "")
                            color: _txtSec; font.family: "Consolas"; font.pixelSize: 11 }
 
-                    Text { text: "Technical focus"; color: _txtSec
+                    Text { text: qsTr("Technical focus"); color: _txtSec
                            font.family: theme.fontFamily; font.pixelSize: 12; topPadding: 4 }
                     Flow {
                         width: parent.width; spacing: 6
@@ -2205,7 +2423,7 @@ Item {
                             }
                         }
                     }
-                    Text { text: "Reveal happens immediately after each call is confirmed."
+                    Text { text: qsTr("Reveal happens immediately after each call is confirmed.")
                            color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 10 }
 
                     Text {
@@ -2219,13 +2437,13 @@ Item {
                         Rectangle {
                             width: 110; height: 52; radius: 8
                             color: "transparent"; border.color: _borderStr; border.width: 1
-                            Text { anchors.centerIn: parent; text: "Back"; color: _txtSec
+                            Text { anchors.centerIn: parent; text: qsTr("Back"); color: _txtSec
                                    font.family: theme.fontFamily; font.pixelSize: 12 }
                             MouseArea { anchors.fill: parent; onClicked: practiceView = 1 }
                         }
                         Rectangle {
                             width: 180; height: 52; radius: 8; color: _red
-                            Text { anchors.centerIn: parent; text: "Confirm setup"; color: "white"
+                            Text { anchors.centerIn: parent; text: qsTr("Confirm setup"); color: "white"
                                    font.family: theme.fontFamily; font.pixelSize: 13; font.bold: true }
                             MouseArea {
                                 anchors.fill: parent
@@ -2259,16 +2477,16 @@ Item {
                     id: ptSetupCol
                     width: ptSetupFlick.width; spacing: 10; bottomPadding: 12
 
-                    Text { text: "← Back"; color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 12
+                    Text { text: qsTr("← Back"); color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 12
                         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: practiceView = 1 } }
-                    Text { text: "POSITION TRANSITION SETUP"; color: _txt; font.family: theme.fontFamily; font.pixelSize: 17; font.bold: true }
+                    Text { text: qsTr("POSITION TRANSITION SETUP"); color: _txt; font.family: theme.fontFamily; font.pixelSize: 17; font.bold: true }
                     Text {
                         width: parent.width; wrapMode: Text.WordWrap; color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 11
-                        text: "This programme measures how consistently you rebuild each Three-Position shooting position. You begin a position setup, confirm when the position is ready, fire optional sighters, then a short counted verification block. Tech Aim compares the timing and measured result of each position. This is a Training session and not an official competition result."
+                        text: qsTr("This programme measures how consistently you rebuild each Three-Position shooting position. You begin a position setup, confirm when the position is ready, fire optional sighters, then a short counted verification block. %1 compares the timing and measured result of each position. This is a Training session and not an official competition result.").arg(PRODUCT.displayName)
                     }
                     Text { text: POSTRANS.sequenceArrow; color: _green; font.family: "Consolas"; font.pixelSize: 13; font.bold: true }
 
-                    Text { text: "Positions"; color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 12; topPadding: 4 }
+                    Text { text: qsTr("Positions"); color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 12; topPadding: 4 }
                     Flow { width: parent.width; spacing: 6
                         Repeater {
                             model: [ { l: "Full 3P", p: 0 }, { l: "Kneeling → Prone", p: 1 }, { l: "Prone → Standing", p: 2 },
@@ -2286,7 +2504,7 @@ Item {
                     }
 
                     Row { spacing: 10
-                        Text { text: "Verification shots"; color: _txtSec; width: 150; font.family: theme.fontFamily; font.pixelSize: 12
+                        Text { text: qsTr("Verification shots"); color: _txtSec; width: 150; font.family: theme.fontFamily; font.pixelSize: 12
                                anchors.verticalCenter: parent.verticalCenter }
                         Rectangle { width: 52; height: 48; radius: 8; color: _input; border.color: _borderSub
                             Text { anchors.centerIn: parent; text: "−"; color: _txt; font.pixelSize: 16 }
@@ -2298,7 +2516,7 @@ Item {
                             MouseArea { anchors.fill: parent; onClicked: POSTRANS.setVerificationShots(POSTRANS.verificationShots + 1) } }
                     }
                     Row { spacing: 10
-                        Text { text: "Repeats"; color: _txtSec; width: 150; font.family: theme.fontFamily; font.pixelSize: 12
+                        Text { text: qsTr("Repeats"); color: _txtSec; width: 150; font.family: theme.fontFamily; font.pixelSize: 12
                                anchors.verticalCenter: parent.verticalCenter }
                         Rectangle { width: 52; height: 48; radius: 8; color: _input; border.color: _borderSub
                             Text { anchors.centerIn: parent; text: "−"; color: _txt; font.pixelSize: 16 }
@@ -2310,7 +2528,7 @@ Item {
                             MouseArea { anchors.fill: parent; onClicked: POSTRANS.setRepeats(POSTRANS.totalRepeats + 1) } }
                     }
 
-                    Text { text: "Checklist"; color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 12; topPadding: 4 }
+                    Text { text: qsTr("Checklist"); color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 12; topPadding: 4 }
                     Row { spacing: 6
                         Repeater {
                             model: [ "Athlete self-check", "Coach-assisted", "Disabled" ]
@@ -2325,7 +2543,7 @@ Item {
                         }
                     }
 
-                    Text { text: "Technical focus"; color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 12; topPadding: 4 }
+                    Text { text: qsTr("Technical focus"); color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 12; topPadding: 4 }
                     Flow { width: parent.width; spacing: 6
                         Repeater {
                             model: POSTRANS.focusOptionsForDiscipline()
@@ -2344,10 +2562,10 @@ Item {
                            color: theme.tokens.errorText; font.family: theme.fontFamily; font.pixelSize: 11 }
                     Row { spacing: 10; topPadding: 6
                         Rectangle { width: 110; height: 52; radius: 8; color: "transparent"; border.color: _borderStr; border.width: 1
-                            Text { anchors.centerIn: parent; text: "Back"; color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 12 }
+                            Text { anchors.centerIn: parent; text: qsTr("Back"); color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 12 }
                             MouseArea { anchors.fill: parent; onClicked: practiceView = 1 } }
                         Rectangle { width: 180; height: 52; radius: 8; color: _red
-                            Text { anchors.centerIn: parent; text: "Confirm setup"; color: "white"; font.family: theme.fontFamily; font.pixelSize: 13; font.bold: true }
+                            Text { anchors.centerIn: parent; text: qsTr("Confirm setup"); color: "white"; font.family: theme.fontFamily; font.pixelSize: 13; font.bold: true }
                             MouseArea { anchors.fill: parent
                                 onClicked: {
                                     if (POSTRANS.technicalFocus === "") { ptSetupError.text = "Select a technical focus."; return }
@@ -2382,20 +2600,20 @@ Item {
                     id: wmSetupCol
                     width: wmSetupFlick.width; spacing: 10; bottomPadding: 12
 
-                    Text { text: "← Back to Training Lab"; color: _txtSec
+                    Text { text: qsTr("← Back to Training Lab"); color: _txtSec
                            font.family: theme.fontFamily; font.pixelSize: 12; bottomPadding: 4
                         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                                     onClicked: practiceView = 1 } }
-                    Text { text: "WIND MAP"; color: _txt
+                    Text { text: qsTr("WIND MAP"); color: _txt
                            font.family: theme.fontFamily; font.pixelSize: 18; font.bold: true }
-                    Text { text: WINDMAP.threePositions ? "50 m Rifle 3 Positions · Kneeling, Prone and Standing kept separate"
-                                                        : "50 m Rifle Prone"
+                    Text { text: WINDMAP.threePositions ? qsTr("50 m Rifle 3 Positions · Kneeling, Prone and Standing kept separate")
+                                                        : qsTr("50 m Rifle Prone")
                            color: _red; font.family: theme.fontFamily; font.pixelSize: 13; font.bold: true }
                     Text { width: parent.width; wrapMode: Text.WordWrap
-                           text: "You record the wind you observe. Every shot keeps the condition that was standing when it was fired, so the two can be reviewed together afterwards. Nothing here is scored or corrected."
+                           text: qsTr("You record the wind you observe. Every shot keeps the condition that was standing when it was fired, so the two can be reviewed together afterwards. Nothing here is scored or corrected.")
                            color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 11 }
 
-                    Text { text: "Planned shots"; color: _txtSec
+                    Text { text: qsTr("Planned shots"); color: _txtSec
                            font.family: theme.fontFamily; font.pixelSize: 12; topPadding: 6 }
                     Row { spacing: 6
                         Repeater {
@@ -2416,7 +2634,7 @@ Item {
                     property int plan: 40
                     property bool sighters: true
 
-                    Text { text: "Sighters"; color: _txtSec
+                    Text { text: qsTr("Sighters"); color: _txtSec
                            font.family: theme.fontFamily; font.pixelSize: 12; topPadding: 6 }
                     Row { spacing: 6
                         Repeater {
@@ -2434,7 +2652,7 @@ Item {
                         }
                     }
                     Text { width: parent.width; wrapMode: Text.WordWrap
-                           text: "Sighters are recorded with their conditions but are never counted in the session statistics."
+                           text: qsTr("Sighters are recorded with their conditions but are never counted in the session statistics.")
                            color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 10 }
 
                     Text { id: wmSetupError; visible: text !== ""; text: ""; width: parent.width
@@ -2443,11 +2661,11 @@ Item {
                     Row { spacing: 10; topPadding: 6
                         Rectangle { width: 110; height: 52; radius: 8; color: "transparent"
                             border.color: _borderStr; border.width: 1
-                            Text { anchors.centerIn: parent; text: "Back"; color: _txtSec
+                            Text { anchors.centerIn: parent; text: qsTr("Back"); color: _txtSec
                                    font.family: theme.fontFamily; font.pixelSize: 12 }
                             MouseArea { anchors.fill: parent; onClicked: practiceView = 1 } }
                         Rectangle { width: 180; height: 52; radius: 8; color: _red
-                            Text { anchors.centerIn: parent; text: "Confirm setup"; color: "white"
+                            Text { anchors.centerIn: parent; text: qsTr("Confirm setup"); color: "white"
                                    font.family: theme.fontFamily; font.pixelSize: 13; font.bold: true }
                             MouseArea { anchors.fill: parent
                                 onClicked: {
@@ -2534,7 +2752,7 @@ Item {
                     width: 210; height: 56
                     color: "transparent"; radius: 8; border.color: _borderStr; border.width: 1
                     Text {
-                        text: "Load saved session"
+                        text: qsTr("Load saved session")
                         color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 14; anchors.centerIn: parent
                     }
                     MouseArea {
@@ -2571,6 +2789,11 @@ Item {
                         onEntered: startSessionRect._startHov = true
                         onExited:  startSessionRect._startHov = false
                         onClicked: {
+                            // The start gate comes FIRST: this handler is the
+                            // SETA landing page's own start path and does not
+                            // go through perfromStart(), so the guard has to be
+                            // asked here too or the block is one path wide.
+                            if (profileStartBlocked()) return
                             // TRAINING LAB (R2): Wind Map — new Training session
                             // (kind=Training, wind_map; 50m Prone and 50m 3P only).
                             // Opens in Setup so a condition can be recorded before
@@ -2661,6 +2884,15 @@ Item {
                                     MODREADER.appendToLogFile("Validation was successful"); rootItem.visible = false
                                 } else { MODREADER.appendToLogFile("Com-port connected but validation failed") }
                             }
+                            // The SAVED FILE records which competition produced it - the same
+                            // adopted definition the journal gets. A programme with no rule
+                            // authority records nothing, and the file loads as legacy.
+                            APPSETTINGS.setSessionRuleAuthority(
+                                window.activeProgrammeId !== ""
+                                    ? setaCatalogue.ruleAuthorityFor(window.activeProgrammeId,
+                                                                     window.profilePrepSeconds * 1000,
+                                                                     window.profileMatchSeconds * 1000)
+                                    : ({}))
                             APPSETTINGS.saveMatch(true)
                             APPSETTINGS.updateUserHistoryData(name_text_field.text)
                             MODREADER.saveNameAndPort(name_text_field.text, port_name_text_field.text, netowrk_path_text.text)
@@ -2689,21 +2921,22 @@ Item {
             Text {
                 anchors.left: parent.left; anchors.leftMargin: 16
                 anchors.verticalCenter: parent.verticalCenter
-                text: "TechAim  ·  Electronic target control"
+                // Product identity comes from the build, never a literal.
+                text: PRODUCT.displayName + "  ·  " + qsTr("Electronic target control")
                 color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 11
             }
             Row {
                 anchors.right: parent.right; anchors.rightMargin: 16
                 anchors.verticalCenter: parent.verticalCenter; spacing: 12
                 Text {
-                    text: "Contact us"
+                    text: qsTr("Contact us")
                     color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 11
                     anchors.verticalCenter: parent.verticalCenter
                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: { contactUsDia.visible = true } }
                 }
                 Rectangle { width: 1; height: 12; color: _borderStr; anchors.verticalCenter: parent.verticalCenter }
                 Text {
-                    text: mod_connected ? "● Connected" : "● Offline"
+                    text: mod_connected ? qsTr("● Connected") : qsTr("● Offline")
                     color: mod_connected ? _green : _txtMut
                     font.family: theme.fontFamily; font.pixelSize: 11
                     anchors.verticalCenter: parent.verticalCenter
@@ -2835,7 +3068,7 @@ Item {
                 anchors.top: licHeaderRect.bottom
                 anchors.topMargin: emailLabelRect.anchors.topMargin
                 anchors.left: emailLabelRect.right; anchors.leftMargin: 10
-                placeholderText: "Please enter Licenced user id"
+                placeholderText: qsTr("Please enter Licenced user id")
             }
             Rectangle {
                 id: cancelButton

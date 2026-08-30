@@ -1128,7 +1128,14 @@ static void runProductIdentityChecks()
     // Shared in BOTH products, deliberately: the executable base name also
     // names the single-instance lock, and one machine drives one target, so a
     // SETA build and a Tech Aim build must still refuse to run together.
-    check(p.executableBaseName == QLatin1String("TechAim"),
+    // The lock is no longer derived from the executable name: SETA ships
+    // SETA.exe, and one machine still drives one target, so the interlock moved
+    // to its own field and is SHARED by every flavour. That is the property
+    // this check exists to protect.
+    check(p.instanceLockName == QLatin1String("TechAim"),
+          "identity: the single-instance lock is shared across flavours",
+          p.instanceLockName);
+    check(!p.executableBaseName.contains(QLatin1Char(' ')),
           "identity: executable base name is unspaced 'TechAim' (shared lock)");
     // BRAND/PRODUCT NAME and LEGAL PUBLISHER are different facts. Re-branding
     // the product must never silently re-attribute who publishes the software.

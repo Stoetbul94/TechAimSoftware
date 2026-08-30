@@ -42,6 +42,7 @@
         <file>ShotTargetCanvas.qml</file>
         <file>HeatMapCanvas.qml</file>
         <file>LoginPage.qml</file>
+        <file>SetaCompetitionSelector.qml</file>
         <file>ShootingPage.qml</file>
         <file>FinalsHud.qml</file>
         <file>Finals10mHud.qml</file>

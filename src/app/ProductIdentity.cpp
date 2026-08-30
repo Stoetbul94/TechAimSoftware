@@ -19,15 +19,7 @@ ProductIdentity makeTechAim()
     // vendor, the legal publisher, the instance lock - is set unconditionally
     // below, because those are facts about the vendor and the machine rather
     // than about the brand.
-#ifdef BRAND_SETA
-    p.displayName        = QStringLiteral("SETA");
-    p.fullProductName    = QStringLiteral("SETA Electronic Target Control");
-    p.releaseDescription = QStringLiteral("SETA Electronic Target Control\n"
-                                          "Windows Evaluation Build");
-    // The shipped file is SETA.exe. A build sent to SETA must not put another
-    // company's name on the icon the operator double-clicks.
-    p.executableBaseName = QStringLiteral("SETA");
-#else
+#ifndef BRAND_SETA
     p.displayName        = QStringLiteral("Tech Aim");
     p.fullProductName    = QStringLiteral("Tech Aim Electronic Target Control");
     p.releaseDescription = QStringLiteral("Tech Aim Electronic Target Control\n"
@@ -79,6 +71,13 @@ ProductIdentity makeTechAim()
     p.brandLogoOnDarkPath = QStringLiteral("qrc:/images/logo/techaim_white.png");
 
 #ifdef BRAND_SETA
+    p.displayName        = QStringLiteral("SETA");
+    p.fullProductName    = QStringLiteral("SETA Electronic Target Control");
+    p.releaseDescription = QStringLiteral("SETA Electronic Target Control\n"
+                                          "Windows Evaluation Build");
+    // The shipped file is SETA.exe. A build sent to SETA must not put another
+    // company's name on the icon the operator double-clicks.
+    p.executableBaseName = QStringLiteral("SETA");
     // ── SETA product line ────────────────────────────────────────────────
     // PRESENTATION + USER-DATA NAMESPACE. The engine is untouched: scoring,
     // acquisition, Modbus, SessionStore, recovery, the paper feed and the
