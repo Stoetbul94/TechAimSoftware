@@ -328,20 +328,19 @@ SOURCES = CallDiagnoseHud.qml
 
 
 
-# -- DSB 2026 - DEFERRED FOR 1.0.0-EVAL1 (SETA-DSB-PORT-001) ---------------
-# The DSB sources are PRESENT and unmodified - src/dsb/Dsb120Controller.{h,cpp},
-# Dsb120Hud.qml, SetaCompetitionSelector.qml, the rule documents and
-# tst_dsb120.cpp. They are excluded from the BUILD, not deleted.
+# -- DSB 2026 - the 1.20 independent-position-clock sequencer ---------------
+# SETA-DSB-PORT-001 is CLOSED. These sources were excluded from the build while
+# the shell had nothing to mount them into: the v1.0 carry-forward removed the
+# ShootingPage hooks DSB relied on, and compiling a controller that nothing
+# mounts would have put half-wired competition code in an evaluation binary.
 #
-# The reason is honesty, not tidiness: the shared screens they hooked into
-# came forward from the Tech Aim v1.0 baseline, so the integration points DSB
-# relied on are no longer in ShootingPage/LoginPage. Compiling a controller
-# that nothing mounts would put half-wired competition code in an evaluation
-# binary. The complete pre-port integration is recoverable from f22637f.
+# The shell now mounts it - main.cpp registers DSB120, qml.qrc packages the HUD
+# and ShootingPage routes accepted shots to it - so the exclusion has become the
+# opposite of honest: it would ship a product whose recovery path calls into a
+# controller the binary does not contain.
 #
-# CONFIG+=dsb re-enables the sources for the eventual controlled port. It is
-# NOT a supported configuration and EVAL1 must not be built with it.
-dsb {
-    SOURCES += src/dsb/Dsb120Controller.cpp
-    HEADERS += src/dsb/Dsb120Controller.h
-}
+# The controller itself needed NO adaptation. It depends only on QObject,
+# SessionStore and RecoveryCoordinator, and the reliability harness has been
+# building and passing it against the current core all along (DSB-120-001).
+SOURCES += src/dsb/Dsb120Controller.cpp
+HEADERS += src/dsb/Dsb120Controller.h

@@ -35,6 +35,7 @@
 #include "src/finals/FinalsAudioService.h"
 #include "src/mode/OperatingMode.h"
 #include "src/mode/OperatingModeService.h"
+#include "src/dsb/Dsb120Controller.h"
 #include "src/training/TrainingProgramController.h"
 #include "src/training/CallDiagnoseController.h"
 #include "src/training/PositionTransitionController.h"
@@ -479,6 +480,20 @@ int main(int argc, char *argv[])
     QualificationController qualController;
     qualController.setOperatingMode(runningModeInt);   // F10 input-source gate
     engine.rootContext()->setContextProperty("QUAL", &qualController);
+    // DSB 1.20 - the gated independent-position-clock sequencer (DSB120).
+    //
+    // It is a COMPETITION controller, not a variant of the 3P one: DSB 1.20 is
+    // one 15-minute preparation before kneeling and then three INDEPENDENT
+    // position clocks, each already containing that position's own sighting.
+    // ISSF 3P is one preparation and one continuous match clock. The sequencer
+    // refuses a SINGLE_MATCH_CLOCK course outright rather than trying to serve
+    // both, which is why 1.40 and 1.60 stay on the 50 m three-position engine.
+    //
+    // Like every other controller here it takes the operating mode, so a Demo
+    // session cannot be journalled as a physical one.
+    Dsb120Controller dsb120Controller;
+    dsb120Controller.setOperatingMode(runningModeInt);
+    engine.rootContext()->setContextProperty("DSB120", &dsb120Controller);
     // Training Lab (T1) — Technical Blocks domain controller. Separate from
     // every competition controller; owns ALL Training state and journals
     // Training-specific events (sessionKind=Training). Same F10 source gate.
