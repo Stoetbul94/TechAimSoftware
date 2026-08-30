@@ -217,3 +217,41 @@ Everything else — rules, profiles, controller, journal events, recovery mappin
 Rules, scoring geometry, the Teiler calculation, the acquisition path, the ISSF
 disciplines, EVAL2's package, and Tech Aim. 2.16, 2.17 and 2.18 stay
 unimplemented for stated hardware reasons.
+
+---
+
+## 11. Correction — what the audit got wrong
+
+§5 of this document concluded: *"No `STALE API` or `STALE BEHAVIOUR` row was
+found. The port is shell wiring, not adaptation."* **That was wrong**, and
+running the test suite with the DSB deferral removed proved it.
+
+The conclusion was drawn from the controller, which was sound. But the audit
+inferred from a healthy controller that the *page* was healthy too, and it was
+not. The v1.0 carry-forward had removed three things from `ShootingPage.qml`
+that DSB depends on, and the deferral was reporting all three as DEFERRED
+rather than FAILED because their assertion ids begin with `DSB-`:
+
+| Finding | Class | Consequence had it shipped |
+|---|---|---|
+| `authoritativeMatchSeconds()` / `authoritativePrepSeconds()` removed; **seven** sites reading the legacy shot-count table directly | **STALE BEHAVIOUR** | every federation programme would have run on a legacy duration while claiming its own — DSB 1.10 60-shot on the ISSF time instead of its 75-minute EST time, silently |
+| `p3Course` removed; the 20/40 position boundaries hardcoded again | **STALE BEHAVIOUR** | DSB 1.60 3×40 would have transitioned after 20 kneeling shots and then never transitioned again |
+| the engine-boundary gate on `profileNeedsUnbuiltEngine` removed from `beginPreparationPhase()` | **MISSING INTEGRATION** | a server start command could begin a programme the engine cannot conduct; only the operator path was blocked |
+
+And one **STALE API** the port had to navigate rather than restore:
+`centerPanel.suppressLegacyClock`, an imperative flag the entering mode pushed,
+no longer exists. The current core derives `legacyClockIsOurs` inside
+`CenterPane` instead, because a pushed flag can be left stale by a mode that
+forgets to clear it. Restoring the old flag would have reintroduced exactly what
+was fixed, so DSB joined the derived property.
+
+**The lesson for the deferral mechanism.** The deferral was honest in intent —
+it never silently passed anything, it printed `DEFER` and counted separately.
+But it matched on the `DSB-` id prefix, so it swallowed assertions about
+*shared* code that DSB merely happens to exercise. A deferral scoped to
+"assertions about DSB availability" would have caught this; one scoped to
+"assertions whose id starts with DSB" did not. That is why it was **deleted**
+rather than narrowed.
+
+All five are fixed, and the suite that found them now reports **299 checks, 0
+failures, 0 deferred**.
