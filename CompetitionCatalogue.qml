@@ -1077,11 +1077,20 @@ QtObject {
     // Distinct rule sets present in the catalogue, in a stable order.
     // "techaim" is not a federation - it is the practice-preset set - so it is
     // labelled as such rather than pretending to carry rule authority.
+    // SETA-DSB-PORT-001. The DSB 2026 competition engine is DEFERRED for this
+    // evaluation release and excluded from the build, so the catalogue must not
+    // OFFER it: a rule set an operator can select but the application cannot run
+    // is worse than one that is absent. The catalogue DATA is untouched - every
+    // DSB programme, its timing and its rule references remain, and clearing
+    // this one flag brings them back when the engine is ported.
+    readonly property bool dsbAvailable: false
+
     function ruleSets(fifteen) {
         var seen = {}, out = []
         var all = entriesIn(fifteen)
         for (var i = 0; i < all.length; ++i) {
             var r = all[i].rulesetId
+            if (r === "dsb" && !catalogue.dsbAvailable) continue
             if (seen[r]) continue
             seen[r] = true
             out.push({ "rulesetId": r,
