@@ -1,5 +1,8 @@
 @echo off
-REM Tech Aim RC3B-DIAG - collect the range evidence.
+REM Collect the range evidence. Shipped by BOTH products, so the operator-
+REM visible text names neither: a SETA operator must not be told the tool is
+REM collecting Tech Aim logs. Make-SupportBundle.ps1 reads the product name
+REM from the executable beside it and names the bundle accordingly.
 REM
 REM Double-clickable on purpose. The 2026-08-23 investigation could not explain
 REM part of what happened on one tablet because the logs for the failure window
@@ -27,7 +30,7 @@ if not exist "Make-SupportBundle.ps1" (
 )
 
 echo.
-echo   Collecting Tech Aim logs and configuration...
+echo   Collecting logs and configuration...
 echo.
 powershell -ExecutionPolicy Bypass -NoProfile -File "Make-SupportBundle.ps1" %*
 set RC=%ERRORLEVEL%
