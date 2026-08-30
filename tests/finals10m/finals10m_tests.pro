@@ -7,6 +7,11 @@ TARGET = finals10m_tests
 
 include(../../Reliability.pri)
 
+# 23: legacy-session evidence. The golden journals in the reliability
+# suite predate shotRole, which is exactly what makes them the right
+# evidence that role is derived from the EVENT TYPE and needs no migration.
+DEFINES += RELIABILITY_FIXTURES_DIR=\\\"$$PWD/../reliability/fixtures\\\"
+
 INCLUDEPATH += $$PWD/../../src
 INCLUDEPATH += $$PWD/../../src/finals10m
 INCLUDEPATH += $$PWD/../../src/incident

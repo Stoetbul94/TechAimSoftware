@@ -271,10 +271,14 @@ private:
     void submitEvent(const ta::rel::DomainEvent& event);
     void submitStagePhase(Stage s);
     void restoreStageFiringState(qint64 elapsedScaledMs);
+    // splitMs is the shot time the caller already measured. It is passed in
+    // rather than measured again here: the caller updates m_lastAcceptScaled
+    // before this runs, so a second measurement is the time between building
+    // two structs - near zero - and that is what used to reach the journal.
     ta::rel::ShotCore buildShotCore(double xMm, double yMm, double score,
                                     int finalNumber, int withinStage,
                                     qint64 externalShotId, double direction,
-                                    bool simulated) const;
+                                    bool simulated, qint64 splitMs) const;
     QVariantMap makeShotRecord(bool sighter, double xMm, double yMm,
                                double score, int finalNumber, int withinStage,
                                qint64 externalShotId, double direction,

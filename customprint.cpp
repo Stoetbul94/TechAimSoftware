@@ -74,10 +74,14 @@ void CustomPrint::createPdf()
 // createSummryPdf — each grabbed A4 page image fitted within the printable
 // page, aspect preserved, centred, one image per PDF page — with a finals
 // default filename. No qualification path is touched.
-void CustomPrint::createFinalsPdf()
+void CustomPrint::createFinalsPdf(const QString& docTitle,
+                                  const QString& defaultFileName)
 {
+    const QString suggested = defaultFileName.isEmpty()
+                            ? QStringLiteral("finals_report.pdf")
+                            : defaultFileName;
     QString fileName = QFileDialog::getSaveFileName(0, tr("Save File"),
-                                                    "finals_report.pdf",
+                                                    suggested,
                                                     tr("*.pdf"));
     qDebug() << __FUNCTION__ << fileName;
     if (fileName.isEmpty())
@@ -85,8 +89,12 @@ void CustomPrint::createFinalsPdf()
     QPdfWriter pdfWriter(fileName);
     pdfWriter.setPageSize(QPageSize(QPageSize::A4));
     pdfWriter.setPageMargins(QMargins(30, 30, 30, 30));
-    // T3.1: standardised Tech Aim metadata (no dev/Demo paths).
-    pdfWriter.setTitle(QStringLiteral("Tech Aim 3P Final Report"));
+    // T3.1: standardised Tech Aim metadata (no dev/Demo paths). The caller
+    // names the document; only the 3P call sites, which pass nothing, get the
+    // 3P title.
+    pdfWriter.setTitle(docTitle.isEmpty()
+                       ? QStringLiteral("Tech Aim 3P Final Report")
+                       : (QStringLiteral("Tech Aim ") + docTitle));
     pdfWriter.setCreator(QStringLiteral("Tech Aim Electronic Target Control"));
     QPainter painter(&pdfWriter);
     quint32 iWidth = pdfWriter.width();

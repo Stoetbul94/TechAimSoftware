@@ -26,6 +26,34 @@
 #include <QVariantMap>
 #include <utility>
 #include <cstdio>
+#include <QJsonDocument>
+#include <QJsonObject>
+
+// Serves a report DTO to a report view, so a report page can be rendered
+// offline. The map is NOT written here: it is loaded from a JSON file produced
+// by the real controller (finals10m_tests --emit-report), because a rendered
+// page is only evidence if what it renders is the product's own report.
+//
+// This is a proper QObject on purpose. The local Stub below gets away without
+// a metaobject because nothing depends on its return values; a report view
+// that received `undefined` here would render an empty page and prove nothing.
+class ReportStub : public QObject
+{
+    Q_OBJECT
+public:
+    QVariantMap data;
+
+    Q_INVOKABLE QVariantMap buildReport(const QVariantMap& meta = QVariantMap()) const
+    {
+        QVariantMap r = data;
+        // The caller's meta fills only what the report did not already carry -
+        // the same precedence the real controller applies.
+        for (auto it = meta.constBegin(); it != meta.constEnd(); ++it)
+            if (!r.contains(it.key()) || r.value(it.key()).toString().isEmpty())
+                r.insert(it.key(), it.value());
+        return r;
+    }
+};
 
 // The offscreen platform plugin carries no font database of its own — Qt no
 // longer ships fonts, so QFontDatabase::families() comes back EMPTY and every
@@ -117,6 +145,8 @@ int main(int argc, char** argv)
     product.setProperty("architecture", "x86_64");
     product.setProperty("windowsVersion", "Windows 11 Home Single Language 10.0.26200");
     product.setProperty("analyticsVersion", "13");
+    product.setProperty("gitCommit", "0000000");
+    product.setProperty("softwareVersionLabel", "Tech Aim 0.9.0");
     product.setProperty("isFieldTest", false);
     product.setProperty("fieldTestNotice", "");
     buildInfo.setProperty("config", "Release");
@@ -144,6 +174,25 @@ int main(int argc, char** argv)
     view.rootContext()->setContextProperty("LANGUAGE", &language);
     view.rootContext()->setContextProperty("OPMODE", &opMode);
     view.rootContext()->setContextProperty("gameRange", 10);
+
+    // A report scene names its DTO through TECHAIM_REPORT_JSON. Absent, the
+    // stub serves an empty map and the page renders its own "no data" state -
+    // which is honest, and immediately visible in the PNG.
+    ReportStub finals10m;
+    const QByteArray reportPath = qgetenv("TECHAIM_REPORT_JSON");
+    if (!reportPath.isEmpty()) {
+        QFile rf(QString::fromLocal8Bit(reportPath));
+        if (rf.open(QIODevice::ReadOnly)) {
+            const QJsonDocument doc = QJsonDocument::fromJson(rf.readAll());
+            rf.close();
+            finals10m.data = doc.object().toVariantMap();
+            std::printf("report DTO: %s (%d keys)\n", reportPath.constData(),
+                        int(finals10m.data.size()));
+        } else {
+            std::printf("WARN  could not read %s\n", reportPath.constData());
+        }
+    }
+    view.rootContext()->setContextProperty("FINALS10M", &finals10m);
     view.setSource(QUrl::fromLocalFile(scene));
     if (view.status() != QQuickView::Ready) {
         for (const QQmlError& e : view.errors())
@@ -168,3 +217,5 @@ int main(int argc, char** argv)
     }
     return 0;
 }
+
+#include "main.moc"

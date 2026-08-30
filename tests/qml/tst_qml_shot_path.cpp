@@ -96,6 +96,36 @@ static QString readAll(const QString& path)
     return QString::fromUtf8(f.readAll());
 }
 
+// A single-line or wrapped `readonly property ...: <expr>` declaration, so a
+// routing rule can be asserted as the construct it is rather than as a phrase
+// that happens to appear somewhere in the file.
+// The part of a QML file that can reach a screen. A rule about operator-facing
+// wording has to be judged on this, not on the comments that explain the rule.
+// A "//" preceded by a colon belongs to a URL, not to a comment.
+static QString renderable(const QString& src)
+{
+    QString out;
+    const QStringList lines = src.split(QLatin1Char('\n'));
+    for (const QString& line : lines) {
+        int cut = -1;
+        for (int i = 0; i + 1 < line.size(); ++i)
+            if (line.at(i) == QLatin1Char('/') && line.at(i + 1) == QLatin1Char('/')
+                && (i == 0 || line.at(i - 1) != QLatin1Char(':'))) { cut = i; break; }
+        out += (cut >= 0 ? line.left(cut) : line) + QLatin1Char('\n');
+    }
+    return out;
+}
+
+static QString extractProperty(const QString& source, const QString& name)
+{
+    const int at = source.indexOf(QRegularExpression(
+        QStringLiteral("property\\s+\\w+\\s+%1\\s*:").arg(name)));
+    if (at < 0)
+        return QString();
+    const int nl = source.indexOf(QLatin1Char('\n'), at);
+    return nl < 0 ? source.mid(at) : source.mid(at, nl - at);
+}
+
 static QString extractFunction(const QString& source, const QString& name)
 {
     const int start = source.indexOf(QRegularExpression(
@@ -1922,6 +1952,211 @@ int main(int argc, char* argv[])
             check(!sp.contains(QStringLiteral("FINALS3P.lastShotHold"))
                       && !cp.contains(QStringLiteral("lastShotHoldTimer")),
                   "DWELL-001 §5: the hold is scoped to the qualification transition only");
+        }
+    }
+
+
+    // ══ BLOCKER G — report routing, the 10m Final report, and no Teiler ══
+    //
+    // There are FOUR report destinations and they are not interchangeable:
+    // Qualification/Practice (Summary + Match), the 50m 3P Final, and the 10m
+    // AR/AP Final. Routing is what this section pins down: a Final must never
+    // reach a qualification tab, and neither Final may reach the other's view.
+    {
+        const QString rw  = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/ReportWindow.qml"));
+        const QString f10 = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/Finals10mReportView.qml"));
+        const QString wm  = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/WindowManager.qml"));
+        const QString sp2 = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/ShootingPage.qml"));
+        const QString qrc = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/qml.qrc"));
+
+        check(!rw.isEmpty() && !f10.isEmpty() && !wm.isEmpty(),
+              "G: ReportWindow, Finals10mReportView and WindowManager are all readable");
+
+        // ── the view exists and actually ships ───────────────────────────
+        check(qrc.contains(QStringLiteral("<file>Finals10mReportView.qml</file>")),
+              "G: the 10m Final report view is in the resource bundle",
+              QStringLiteral("a view outside qml.qrc does not exist at runtime"));
+
+        // ── two named families, not one generic boolean ──────────────────
+        check(rw.contains(QStringLiteral("isFinals3PReport"))
+                  && rw.contains(QStringLiteral("isFinals10mReport")),
+              "G: ReportWindow names BOTH finals families explicitly");
+        check(rw.contains(QStringLiteral("shootingPage.isFinals10mMatch")),
+              "G: the 10m family is recognised from isFinals10mMatch",
+              QStringLiteral("previously only isFinalsMatch (3P) was tested"));
+        check(rw.contains(QStringLiteral("isFinals3PReport || isFinals10mReport")),
+              "G: finalsMode is EITHER family, so neither falls through to qualification");
+
+        // ── each family selects its own view ─────────────────────────────
+        {
+            const QString finalsTab = extractProperty(rw, QStringLiteral("finalsTab"));
+            check(finalsTab.contains(QStringLiteral("isFinals10mReport ? 3 : 2")),
+                  "G: 10m -> its own tab, 3P -> the 3P tab",
+                  finalsTab);
+            const QString prep = extractFunction(rw, QStringLiteral("prepare"));
+            check(prep.contains(QStringLiteral("finalsTab")),
+                  "G: prepare() pins a finals session to ITS OWN family's report",
+                  QStringLiteral("no entry point may reach the wrong report"));
+            check(!prep.contains(QStringLiteral("? 2 :")),
+                  "G: prepare() no longer hard-codes the 3P tab for every Final");
+        }
+
+        // ── the views are mounted on distinct tabs ───────────────────────
+        check(rw.contains(QStringLiteral("Finals10mReportView {")),
+              "G: the 10m report view is instantiated in the Report window");
+        {
+            const int at = rw.indexOf(QStringLiteral("Finals10mReportView {"));
+            const QString decl = at < 0 ? QString() : rw.mid(at, 260);
+            check(decl.contains(QStringLiteral("reportWin.tab === 3")),
+                  "G: the 10m report is the tab-3 content", decl.left(120));
+        }
+        {
+            const int at = rw.indexOf(QStringLiteral("FinalsReportView {"));
+            const QString decl = at < 0 ? QString() : rw.mid(at, 260);
+            check(decl.contains(QStringLiteral("reportWin.tab === 2")),
+                  "G: the 3P report keeps tab 2 - no 10m component leaks into it");
+        }
+
+        // ── Save PDF follows the same routing as the screen ──────────────
+        check(rw.contains(QStringLiteral("finals10mView.exportPdf()")),
+              "G: Save PDF on the 10m Final exports the 10m report");
+        {
+            const int at = rw.indexOf(QStringLiteral("finals10mView.exportPdf()"));
+            const QString around = at < 0 ? QString() : rw.mid(qMax(0, at - 120), 300);
+            check(around.contains(QStringLiteral("tab === 3")),
+                  "G: and only when the 10m report is the tab being shown");
+        }
+
+        // ── entry points ─────────────────────────────────────────────────
+        check(wm.contains(QStringLiteral("function openFinals10mReport()")),
+              "G: the 10m Final report has a named entry point");
+        check(wm.contains(QStringLiteral("openFinals10mReport(){ manager.open(\"report\", 3) }"))
+                  || wm.contains(QStringLiteral("openFinals10mReport(){ manager.open('report', 3) }")),
+              "G: it asks for the 10m tab, not the 3P one");
+        {
+            // The completion card's View Report must open a report. Before
+            // BLOCKER G it only re-showed the card itself.
+            const int at = sp2.indexOf(QStringLiteral("onViewReportRequested"));
+            const QString around = at < 0 ? QString() : sp2.mid(at, 400);
+            check(around.contains(QStringLiteral("windowManager.openFinals10mReport()")),
+                  "G: View Report after a 10m Final opens the 10m Final report",
+                  QStringLiteral("it used to only redisplay the completion card"));
+        }
+        check(!sp2.contains(QStringLiteral("F6 pending")),
+              "G: the 'report pending' placeholder is gone from the 10m path");
+
+        // ── the kiosk auto-export must not swallow a Final ───────────────
+        {
+            const QString fn = extractFunction(sp2, QStringLiteral("onPrintPDF"));
+            check(!fn.isEmpty(), "G: the auto-export handler is addressable");
+            const int guard10 = fn.indexOf(QStringLiteral("isFinals10mMatch"));
+            const int fallthrough = fn.indexOf(QStringLiteral("startMatchAutoExport"));
+            check(guard10 >= 0 && fallthrough >= 0 && guard10 < fallthrough,
+                  "G: a 10m Final is diverted BEFORE the qualification auto-export",
+                  QStringLiteral("guard at %1, qualification export at %2")
+                      .arg(guard10).arg(fallthrough));
+        }
+
+        // ── the view is presentation only ────────────────────────────────
+        check(f10.contains(QStringLiteral("FINALS10M.buildReport(")),
+              "G: every value in the 10m report comes from buildReport()");
+        check(!f10.contains(QStringLiteral("globalMatchModel"))
+                  && !f10.contains(QStringLiteral("globalModelOfData"))
+                  && !f10.contains(QStringLiteral("MODREADER.")),
+              "G: the 10m report reads NO shot model and no backend score",
+              QStringLiteral("QML formats the report; it never rebuilds it"));
+        check(f10.contains(QStringLiteral("courseSections")),
+              "G: series membership comes from the report, not from the view");
+        check(!f10.contains(QStringLiteral("calculateShootingSocre")),
+              "G: the report view does no scoring");
+
+        // ── the wording a 10m Final may not use ──────────────────────────
+        const QString f10Shown = renderable(f10);
+        for (const QString& banned : QStringList{ QStringLiteral("Kneeling"),
+                                                  QStringLiteral("Prone"),
+                                                  QStringLiteral("3P"),
+                                                  QStringLiteral("Qualification"),
+                                                  QStringLiteral("FINALS3P") }) {
+            check(!f10Shown.contains(banned),
+                  qPrintable(QStringLiteral("G: the 10m Final report never says \"%1\"")
+                                 .arg(banned)));
+        }
+        // ...and the identity it must carry.
+        check(f10.contains(QStringLiteral("FINAL REPORT"))
+                  && f10.contains(QStringLiteral("displayName")),
+              "G: the report titles itself and names its discipline");
+        check(f10.contains(QStringLiteral("SIGHTERS")),
+              "G: sighters get their own named section");
+        check(f10.contains(QStringLiteral("rankingNote")),
+              "G: a single lane states that it cannot rank");
+        check(!f10.contains(QStringLiteral("rank:"))
+                  && !f10.contains(QStringLiteral("Medal"))
+                  && !f10.contains(QStringLiteral("Elimination")),
+              "G: no placing, medal or elimination is claimed");
+        check(f10.contains(QStringLiteral("COURSE INCOMPLETE")),
+              "G: an incomplete Final says so rather than reading as a result");
+        check(f10.contains(QStringLiteral("createFinalsPdf(")),
+              "G: the PDF goes through the established finals export path");
+        check(f10.contains(QStringLiteral("grabToImage"))
+                  && f10.contains(QStringLiteral("result.image")),
+              "G: pages are harvested inside the grab callback");
+
+        // ══ TEILER — absent from everything an operator or athlete sees ══
+        //
+        // The measurement itself is untouched in TachusWidget; this is about
+        // presentation. Two things together prove absence in RENDERED output:
+        // no view contains the word, and no view calls the accessor that would
+        // produce the number.
+        {
+            QDir root(QStringLiteral(TECHAIM_SOURCE_DIR));
+            const QStringList views = root.entryList(QStringList{ QStringLiteral("*.qml") },
+                                                     QDir::Files, QDir::Name);
+            check(views.size() > 40, "TEILER: the QML surface was enumerated",
+                  QString::number(views.size()));
+            QStringList withWord, withAccessor;
+            for (const QString& v : views) {
+                const QString src = readAll(root.filePath(v));
+                if (src.isEmpty()) continue;
+                // Strip comments before judging. A "//" that follows a colon is
+                // part of a URL, not a comment.
+                const QString visible = renderable(src);
+                if (visible.contains(QStringLiteral("eiler"), Qt::CaseInsensitive))
+                    withWord << v;
+                if (visible.contains(QStringLiteral("getTeiler"), Qt::CaseInsensitive))
+                    withAccessor << v;
+            }
+            check(withWord.isEmpty(),
+                  "TEILER: no Tech Aim view renders the word anywhere",
+                  withWord.join(QStringLiteral(", ")));
+            check(withAccessor.isEmpty(),
+                  "TEILER: no Tech Aim view even fetches the figure",
+                  withAccessor.join(QStringLiteral(", ")));
+        }
+        // The columns that carried it must have closed up, not been blanked.
+        {
+            const QString mri = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/MatchReportInfo.qml"));
+            check(!mri.contains(QStringLiteral("teilerLabel")),
+                  "TEILER: no orphan label is left behind in the match report");
+            // Header and rows must still describe the same five columns.
+            const QRegularExpression widths(QStringLiteral("parent\\.width\\*0\\.(\\d\\d)"));
+            QList<int> found;
+            auto it = widths.globalMatch(mri);
+            while (it.hasNext()) found << it.next().captured(1).toInt();
+            check(found.size() >= 10, "TEILER: the shot table widths are addressable",
+                  QString::number(found.size()));
+            if (found.size() >= 10) {
+                int header = 0, rows = 0;
+                for (int i = 0; i < 5; ++i) header += found.at(i);
+                for (int i = 5; i < 10; ++i) rows += found.at(i);
+                check(header == 100 && rows == 100,
+                      "TEILER: the table still fills its width - no gap where the column was",
+                      QStringLiteral("header %1%, rows %2%").arg(header).arg(rows));
+                bool aligned = true;
+                for (int i = 0; i < 5; ++i)
+                    if (found.at(i) != found.at(i + 5)) aligned = false;
+                check(aligned,
+                      "TEILER: header and data columns still line up after the removal");
+            }
         }
     }
 

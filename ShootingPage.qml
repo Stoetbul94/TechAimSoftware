@@ -1307,10 +1307,9 @@ Item {
             }
         }
 
+        // RESULTS ARE FINAL -> the 10m Final's own report window (BLOCKER G).
         function onReportRequested() {
-            // Full 10m finals report is F6; F2 shows the in-HUD completion
-            // panel. Keep the intent observable for the later report window.
-            MODREADER.appendToLogFile("FINALS10M: report requested (F6 pending)")
+            windowManager.openFinals10mReport()
         }
     }
 
@@ -1952,7 +1951,13 @@ Item {
         ctl: FINALS10M
         developerMode: APPSETTINGS.getDeveloperMode()
         // F9 exit workflow (durable session close before leaving).
-        onViewReportRequested: finals10mHud.dismissed = false   // keep/show summary
+        // BLOCKER G: View Report opens the 10m Final report. The completion
+        // card stays behind it - dismissing the report must not lose the
+        // result summary the operator was looking at.
+        onViewReportRequested: {
+            finals10mHud.dismissed = false
+            windowManager.openFinals10mReport()
+        }
         onNewFinalRequested: shootingPage.startNewFinals10m()
         onHomeRequested: shootingPage.homeFromFinals10m()
     }
@@ -1966,10 +1971,17 @@ Item {
             if (leftPanel.playVisible)
                 return;
 
-            // 3P FINAL: the qualification Match auto-export must never be fed
-            // finals data — open the finals report instead (manual Save PDF).
+            // FINALS: the qualification Match auto-export must never be fed
+            // finals data — open that family's own finals report instead
+            // (manual Save PDF). BLOCKER G: the 10m Final needs this guard as
+            // much as the 3P one, and previously fell straight through to the
+            // qualification Match auto-export.
             if (isFinalsMatch) {
                 windowManager.openFinalsReport()
+                return;
+            }
+            if (isFinals10mMatch) {
+                windowManager.openFinals10mReport()
                 return;
             }
 

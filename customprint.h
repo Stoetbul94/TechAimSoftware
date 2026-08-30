@@ -17,7 +17,12 @@ public:
     Q_INVOKABLE void addImage(QVariant data);
     Q_INVOKABLE void createPdf();
     Q_INVOKABLE void createSummryPdf();
-    Q_INVOKABLE void createFinalsPdf();
+    // Both Finals families export through here: same page-grab pipeline, same
+    // A4 fit. The document title and the suggested file name are passed in so
+    // a 10m Final never inherits the 3P wording. Defaults keep the 3P call
+    // sites unchanged.
+    Q_INVOKABLE void createFinalsPdf(const QString& docTitle = QString(),
+                                     const QString& defaultFileName = QString());
     // T1.4: Training-specific PDF. Writes the accumulated A4 page images to
     // `filePath` directly (no blocking file dialog), one image per page fitted
     // KeepAspectRatio. Emits printingNotice with the saved path on success, or
