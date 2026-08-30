@@ -49,7 +49,14 @@ for(legacy, LEGACY_EXES) {
 # 1.0.0-EVAL1: the SETA product carrying the Tech Aim v1.0 proven core. It is
 # an EVALUATION build - no SETA-branded binary has ever been fired at a target -
 # and the release channel and field-test notice say so on screen.
-APP_VERSION_STR = 1.0.0-EVAL1
+# 1.0.0-EVAL2. EVAL1 was built, packaged and inspected but never released: the
+# packaged build had no support collector, and the collector itself searched one
+# directory level above the data root and returned 0 journals every time. Both
+# are fixed. No product source changed between the two - the difference is the
+# support tooling and the commit baked into the binary - but a package that goes
+# out must have ONE identity, so this is a new one rather than EVAL1's hashes
+# quietly replaced.
+APP_VERSION_STR = 1.0.0-EVAL2
 GIT_SHA = $$system(git -C \"$$PWD\" rev-parse --short HEAD)
 isEmpty(GIT_SHA): GIT_SHA = unknown
 DEFINES += APP_VERSION_STR=\\\"$$APP_VERSION_STR\\\"
