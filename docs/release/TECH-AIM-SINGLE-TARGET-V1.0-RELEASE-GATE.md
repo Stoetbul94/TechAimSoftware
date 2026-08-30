@@ -127,7 +127,7 @@ acquisition freeze — documented rather than edited.
 
 ## 6. Automated regression
 
-**TOTAL: 6 941 checks, 0 failures.**
+**TOTAL: 6 948 checks, 0 failures.**
 
 | Suite | Checks | Failures | Was |
 |---|---|---|---|
@@ -136,7 +136,7 @@ acquisition freeze — documented rather than edited.
 | 50 m 3P Finals | **379** | 0 | 379 |
 | **10 m Finals** | **229** | 0 | **193** |
 | **QML** | **440** | 0 | **398** |
-| Manuals | **1 507** | 0 | 1 479 |
+| Manuals | **1 514** | 0 | 1 479 |
 | Project memory | **228** | 0 | 220 |
 | Training Lab evidence | **903** | 0 | 903 |
 | Deployment package | **85** | 0 | 85 |

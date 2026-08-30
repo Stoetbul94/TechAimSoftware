@@ -44,7 +44,7 @@ Competition Results* — on screen and in report footers.
 | | |
 |---|---|
 | Open blockers | **0** |
-| Automated checks | **6 941, 0 failures** across nine suites |
+| Automated checks | **6 948, 0 failures** across nine suites |
 | TypeError / ReferenceError | **0 / 0** |
 | New acquisition warnings | **0** |
 | Pre-existing binding warnings | **7, unchanged since RC3B** |
