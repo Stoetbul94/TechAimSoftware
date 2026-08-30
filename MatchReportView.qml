@@ -174,8 +174,6 @@ Item {
                         value: MODREADER.getGroup(-1).toFixed(1) }
                     MetricCard { width: execGrid.cw; label: qsTr("Total Time"); unit: "min"; valueSize: 20
                         value: screenPresence.converSecondToMins(totalTime) }
-                    MetricCard { width: execGrid.cw; label: qsTr("Teiler"); valueSize: 20
-                        value: MODREADER.getTeiler(-1).toFixed(1) }
                 }
 
                 SectionTitle { width: parent.width; title: qsTr("Overall Target") }

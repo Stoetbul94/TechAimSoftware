@@ -69,6 +69,22 @@ struct BrandPackage {
     // empty and the user's choice wins. Never a silent language override.
     QString defaultLanguage;
 
+    // ── report presentation ──────────────────────────────────────────────
+    // "Teiler" is the German shooting figure for a shot's radial distance from
+    // centre. The measurement is a property of the coordinates, so it stays in
+    // TachusWidget and nothing about scoring, coordinates, MPI or grouping
+    // depends on this flag - it decides only whether a report PRINTS the
+    // figure.
+    //
+    // Tech Aim: false. The product decision is that Tech Aim shows no Teiler
+    // anywhere an operator or athlete can see, so the field is not hidden with
+    // an empty column - it is absent from the views.
+    //
+    // SETA / a German-market edition: UNDECIDED, and deliberately not set to
+    // true here. Enabling it is a brand decision plus the report layout to
+    // carry it; see docs/design/Teiler_Presentation_Decision.md.
+    bool showTeilerMetric = false;
+
     // ── validation ───────────────────────────────────────────────────────
     // Assets this package declares but does not supply. A non-empty list is
     // not a failure at runtime — it is the honest answer to "is this brand

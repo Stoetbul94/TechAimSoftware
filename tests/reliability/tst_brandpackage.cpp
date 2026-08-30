@@ -329,4 +329,30 @@ void run_brand_package_tests()
         check(art.isEmpty(),
               "assets: no OEM artwork has been invented or copied in");
     }
+
+    // -- Teiler is a presentation decision, recorded where decisions live -----
+    //
+    // "Teiler" is the German figure for a shot's radial distance from centre.
+    // Tech Aim does not print it. The measurement itself stays in TachusWidget,
+    // untouched, because removing a label must never move a number: the flag
+    // below decides only whether a report SHOWS the figure.
+    {
+        check(ta::app::brandFor(ta::app::BuildFlavour::TechAim).showTeilerMetric == false,
+              "teiler: Tech Aim prints no Teiler - the decision is in the brand package");
+        // Not enabled for the reserved OEM package either. Turning it on is a
+        // brand decision plus a report layout, and neither has been made.
+        check(ta::app::brandFor(ta::app::BuildFlavour::SetaOem).showTeilerMetric == false,
+              "teiler: the OEM package does not silently enable it");
+        // The boundary: a brand flag may not reach the scoring path.
+        const QString root = repoRoot();
+        QFile tw(root + QStringLiteral("/ModReader/forms/tachuswidget.cpp"));
+        if (tw.open(QIODevice::ReadOnly)) {
+            const QString src = QString::fromUtf8(tw.readAll());
+            tw.close();
+            check(src.contains(QStringLiteral("double TachusWidget::getTeiler(")),
+                  "teiler: the measurement is RETAINED, not deleted with the label");
+            check(!src.contains(QStringLiteral("showTeilerMetric")),
+                  "teiler: no brand flag reaches the measurement");
+        }
+    }
 }

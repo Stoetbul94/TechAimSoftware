@@ -88,8 +88,6 @@ Item {
                                 value: (screenPresence.tick, MODREADER.getXMPI().toFixed(1) + " / " + MODREADER.getYMPI().toFixed(1)) }
                             MetricCard { width: metricGrid.cw; label: "Group"; unit: "mm²"; valueSize: 20
                                 value: (screenPresence.tick, "" + MODREADER.getGroup(-1).toFixed(1)) }
-                            MetricCard { width: metricGrid.cw; label: "Teiler"; valueSize: 20
-                                value: (screenPresence.tick, MODREADER.getTeiler(-1).toFixed(1)) }
                             MetricCard { width: metricGrid.cw; label: "Total Time"; unit: "min"; valueSize: 20
                                 value: converSecondToMins(totalTime) }
                             MetricCard { width: metricGrid.cw; label: "Avg Time / Shot"; unit: "min"; valueSize: 20

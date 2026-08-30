@@ -259,26 +259,6 @@ Item {
                     visible: isMatchSummary
                     spacing: 2
                     Text {
-                        id: teilerLabel
-                        text:"Teiler"
-                        font.bold: true
-                    }
-                    Text {
-                        id: teiler
-                        text:": " + 0.0 //+ " mm"
-                        font.bold: true
-                        wrapMode: Text.WordWrap
-                    }
-                }
-                Rectangle {
-                    width: 2
-                    height: 5
-                    color: "transparent"
-                }
-                Row {
-                    visible: isMatchSummary
-                    spacing: 2
-                    Text {
                         id: startTotal
                         text:"Inner 10 Count"
                         font.bold: true
@@ -448,7 +428,7 @@ Item {
 
     // Modern shot table: light header rule, alternating rows, right-aligned
     // decimals, gentle highlight for inner-10s and low shots. Same data
-    // (score + direction arrow, X/Y mm, Teiler, time) as before.
+    // (score + direction arrow, X/Y mm, time) as before.
     Column {
         id: tableCol
         anchors.top: parent.top
@@ -465,11 +445,10 @@ Item {
             Row {
                 anchors.fill: parent
                 Text { width: parent.width*0.12; height: parent.height; text: qsTr("Sr");     color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                Text { width: parent.width*0.22; height: parent.height; text: qsTr("Score");  color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; leftPadding: 10; verticalAlignment: Text.AlignVCenter }
-                Text { width: parent.width*0.18; height: parent.height; text: qsTr("X (mm)"); color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
-                Text { width: parent.width*0.18; height: parent.height; text: qsTr("Y (mm)"); color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
-                Text { width: parent.width*0.15; height: parent.height; text: qsTr("Teiler"); color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
-                Text { width: parent.width*0.15; height: parent.height; text: qsTr("Time");   color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
+                Text { width: parent.width*0.24; height: parent.height; text: qsTr("Score");  color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; leftPadding: 10; verticalAlignment: Text.AlignVCenter }
+                Text { width: parent.width*0.21; height: parent.height; text: qsTr("X (mm)"); color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
+                Text { width: parent.width*0.21; height: parent.height; text: qsTr("Y (mm)"); color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
+                Text { width: parent.width*0.22; height: parent.height; text: qsTr("Time");   color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
             }
             Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 2; color: "#a80038" }
         }
@@ -486,7 +465,6 @@ Item {
     function update()
     {
         mpi.text = ":  X: " + MODREADER.getXMPI(seriesIndex).toFixed(1)+" mm; Y: "+MODREADER.getYMPI(seriesIndex).toFixed(1)+" mm"
-        teiler.text = ": "+MODREADER.getTeiler(seriesIndex).toFixed(1)//+" mm"
 
         //var org_palletSize = gameRange == 10 ? 4.5 : 5.6
         var group_distance_text = MODREADER.getGroup(-1) //+ org_palletSize
@@ -683,7 +661,7 @@ Item {
                 }
 
                 Item {
-                    width: parent.width*0.22; height: parent.height
+                    width: parent.width*0.24; height: parent.height
                     Row {
                         anchors.left: parent.left; anchors.leftMargin: 10
                         anchors.verticalCenter: parent.verticalCenter
@@ -706,7 +684,7 @@ Item {
                 }
 
                 Text {
-                    width: parent.width*0.18; height: parent.height
+                    width: parent.width*0.21; height: parent.height
                     // ACQ-SENTINEL-003: a coordinate the application never
                     // measured is printed as a dash, never as a number an
                     // athlete could read as a real impact position.
@@ -716,7 +694,7 @@ Item {
                     horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter
                 }
                 Text {
-                    width: parent.width*0.18; height: parent.height
+                    width: parent.width*0.21; height: parent.height
                     // ACQ-SENTINEL-003: a coordinate the application never
                     // measured is printed as a dash, never as a number an
                     // athlete could read as a real impact position.
@@ -726,13 +704,7 @@ Item {
                     horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter
                 }
                 Text {
-                    width: parent.width*0.15; height: parent.height
-                    text: (MODREADER.getTeilerForShoot(seriesIndex, index)*1).toFixed(2)
-                    color: "#33373d"; font.pixelSize: 11; font.family: "Segoe UI"
-                    horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter
-                }
-                Text {
-                    width: parent.width*0.15; height: parent.height
+                    width: parent.width*0.22; height: parent.height
                     text: getTimeStamp(index)
                     color: "#33373d"; font.pixelSize: 11; font.family: "Segoe UI"
                     horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter

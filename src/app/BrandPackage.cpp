@@ -50,6 +50,9 @@ BrandPackage makeTechAim()
     b.pdfAttribution    = QStringLiteral("Tech Aim Electronic Target Control");
     b.manualBrandName   = QStringLiteral("Tech Aim");
     b.defaultLanguage   = QString();   // the operator's choice wins
+    // Tech Aim prints no Teiler. See the field's declaration for why this is a
+    // presentation decision and not a scoring one.
+    b.showTeilerMetric  = false;
     return b;
 }
 
