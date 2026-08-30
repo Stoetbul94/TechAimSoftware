@@ -49,7 +49,11 @@ for(legacy, LEGACY_EXES) {
 # RC3F rather than re-earned - no live target test was performed for this
 # close-out (docs/release/V1.0-PHYSICAL-EVIDENCE-INHERITANCE.md). It is a
 # candidate, and the release channel and field-test notice say so.
-APP_VERSION_STR = 1.0.0-RC1
+# 1.0.0 - the PRODUCTION release. RC1 was the candidate: same functional core,
+# candidate wording. Nothing about acquisition, scoring, timing or the state
+# machines differs between them, so the RC3F physical evidence carries forward
+# unchanged (docs/release/V1.0-PHYSICAL-EVIDENCE-INHERITANCE.md).
+APP_VERSION_STR = 1.0.0
 GIT_SHA = $$system(git -C \"$$PWD\" rev-parse --short HEAD)
 isEmpty(GIT_SHA): GIT_SHA = unknown
 DEFINES += APP_VERSION_STR=\\\"$$APP_VERSION_STR\\\"

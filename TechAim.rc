@@ -6,8 +6,9 @@
 // the future signing pipeline, so every field is stated.
 //
 // Keep in step with src/app/ProductIdentity.cpp and APP_VERSION_STR in
-// Seta.pro. Deliberately makes NO certification claim: this is a pre-beta
-// validation build, not certified, not ISSF-approved, not SETA-approved.
+// Seta.pro. Deliberately makes NO certification claim: this is the
+// production release of the software, not a certification - not certified,
+// not ISSF-approved, not SETA-approved.
 
 #include <windows.h>
 
@@ -44,7 +45,7 @@ BEGIN
             VALUE "OriginalFilename", "TechAim.exe\0"
             VALUE "ProductName",      "Tech Aim Electronic Target Control\0"
             VALUE "ProductVersion",   "1.0.0.0\0"
-            VALUE "Comments",         "Windows Pre-Beta Validation Build\0"
+            VALUE "Comments",         "Windows\0"
         END
     END
     BLOCK "VarFileInfo"

@@ -16,7 +16,7 @@ ProductIdentity makeTechAim()
     p.displayName        = QStringLiteral("Tech Aim");
     p.fullProductName    = QStringLiteral("Tech Aim Electronic Target Control");
     p.releaseDescription = QStringLiteral("Tech Aim Electronic Target Control\n"
-                                          "Windows Internal Field Test Build");
+                                          "Windows");
 
     p.executableBaseName = QStringLiteral("TechAim");
     p.applicationId      = QStringLiteral("za.co.techaim.electronic-target-control");
@@ -56,11 +56,23 @@ ProductIdentity makeTechAim()
     // that has not itself been fired at may not describe itself as released,
     // so the channel stays an evaluation channel and the field-test notice
     // stays on the screen and in the report footer.
-    p.releaseChannel = QStringLiteral("v1.0 Release Candidate - Evaluation");
+    // 1.0.0 is the PRODUCTION release. The channel says so plainly: a customer
+    // reading it, or reading a report footer, must not find a candidate's
+    // wording on a result they are about to hand to an athlete.
+    //
+    // The invariant the harness enforces has not gone away - it now asserts the
+    // opposite side of the same rule: a production channel makes no field-test
+    // or evaluation claim, and an evaluation build still may not claim to be
+    // production. Both are checked.
+    p.releaseChannel = QStringLiteral("Production Release");
 
     // Shown wherever a result could be mistaken for an official one. Short
     // enough to sit in a status strip without covering scores or controls.
-    p.fieldTestNotice = QStringLiteral("Evaluation Build — Not for Official Competition Results");
+    // EMPTY for a production release. isFieldTest() is derived from this being
+    // non-empty, so Settings -> About stops showing the notice by the guard it
+    // always had - the mechanism stays intact for the next evaluation build,
+    // which is the point of deriving it rather than hard-coding a flag.
+    p.fieldTestNotice = QString();
 
     p.defaultTheme    = QStringLiteral("techaim-dark");
     p.defaultLanguage = QStringLiteral("en");

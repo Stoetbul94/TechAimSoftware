@@ -25,16 +25,49 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $stamp = Get-Date -Format 'yyyy-MM-dd-HHmmss'
-$name  = "TechAim-Support-$stamp"
+# Named after the product it came from, so two products' bundles are not
+# indistinguishable in an inbox. Resolved after the manifest is read.
+$name  = "Support-$stamp"
 $work  = Join-Path $env:TEMP $name
 $zip   = Join-Path $OutDir "$name.zip"
 if (Test-Path $work) { Remove-Item $work -Recurse -Force }
 New-Item -ItemType Directory -Force $work | Out-Null
 
-$appData = Join-Path $env:LOCALAPPDATA 'TechAim'
+# THE DATA ROOT IS TWO LEVELS DEEP, NOT ONE.
+#
+# Qt resolves AppLocalDataLocation as
+#     %LOCALAPPDATA%\<organisationName>\<applicationName>
+# so the sessions and journals live in
+#     %LOCALAPPDATA%\TechAim\TechAim        (this product)
+# and one folder per product line beside it, for any other edition installed.
+# and NOT in %LOCALAPPDATA%\TechAim, which is only the vendor folder.
+#
+# This script looked in the vendor folder. %LOCALAPPDATA%\TechAim\Sessions
+# does not exist for either product, so the -RecentHours and -SessionId
+# searches walked an absent directory and reported 0 journals every time -
+# silently, because -ErrorAction SilentlyContinue turns a missing path into an
+# empty result. That is why the RC3F bundles carried no journals, and it would
+# have taken the next field test down with it.
+#
+# EVERY product folder under the vendor root is searched now, so the bundle is
+# correct whichever brand produced the data and whichever brand collects it.
+$vendorRoot = Join-Path $env:LOCALAPPDATA 'TechAim'
+$productRoots = @()
+if (Test-Path $vendorRoot) {
+    $productRoots = @(Get-ChildItem $vendorRoot -Directory -ErrorAction SilentlyContinue |
+                      Where-Object { (Test-Path (Join-Path $_.FullName 'Sessions')) -or
+                                     (Test-Path (Join-Path $_.FullName 'Logs')) } |
+                      ForEach-Object { $_.FullName })
+}
+# The vendor root stays in the list so anything written directly there - by an
+# older build, or by a future one - is still collected rather than missed.
+if (Test-Path $vendorRoot) { $productRoots += $vendorRoot }
+# $appData remains the vendor root for the paths that were always correct
+# (SupportBundles, config); the per-product roots are used for the data.
+$appData = $vendorRoot
 $here    = Split-Path -Parent $MyInvocation.MyCommand.Path
 
-Write-Host "== Tech Aim support bundle =="
+Write-Host "== support bundle =="
 
 # ---- release manifest (SUP-001) ------------------------------------------
 $manifest = $null
@@ -45,6 +78,11 @@ foreach ($dir in @($here, (Split-Path $here -Parent))) {
     if (-not $dir) { continue }
     $candidates += (Join-Path $dir '0.9.0-rc1-release-manifest.json')
     $candidates += (Join-Path $dir 'release-manifest.json')
+    # The deployment writes deployment-manifest.json beside the executable.
+    # Not looking for it is why a bundle taken from a deployed package reported
+    # 'UNKNOWN - no manifest' for the version and the commit - the two things
+    # the bundle exists to establish.
+    $candidates += (Join-Path $dir 'deployment-manifest.json')
     foreach ($sub in @('manifest', 'documents', 'docs')) {
         $candidates += (Join-Path (Join-Path $dir $sub) '0.9.0-rc1-release-manifest.json')
         $candidates += (Join-Path (Join-Path $dir $sub) 'release-manifest.json')
@@ -61,21 +99,52 @@ if (-not $manifest) {
 }
 
 # ---- release + machine identity ------------------------------------------
-$exe = Join-Path $here 'TechAim.exe'
+# The product executable is named by the BRAND, and a manifest may name a
+# different one again. Discovered, never assumed: a bundle that cannot find the
+# binary reports 'not found' for the version, which is the one field an
+# investigation starts from.
+$exeName = if ($manifest -and $manifest.executable) { $manifest.executable }
+           elseif (Test-Path (Join-Path $here 'TechAim.exe')) { 'TechAim.exe' }
+           elseif (Test-Path (Join-Path $here 'SETA.exe'))    { 'SETA.exe' }
+           else { 'TechAim.exe' }
+$exe = Join-Path $here $exeName
 $ver = if (Test-Path $exe) { (Get-Item $exe).VersionInfo.FileVersion } else { 'not found' }
 $exeSha = if (Test-Path $exe) { (Get-FileHash $exe -Algorithm SHA256).Hash } else { '' }
 
 # VERIFY, do not assert. If the running binary is not the one the manifest
 # describes, the bundle says so - that is exactly when it matters most.
-$mProduct   = if ($manifest) { $manifest.product }          else { 'Tech Aim Electronic Target Control' }
-$mVersion   = if ($manifest) { $manifest.version }          else { 'UNKNOWN - no manifest' }
+# Read the PRODUCT from the manifest, then from the executable's own version
+# resource. Falling back to a hardcoded 'Tech Aim' put another company's product
+# name in an operator's support bundle.
+$mProduct   = if ($manifest -and $manifest.product) { $manifest.product }
+              elseif (Test-Path $exe) { (Get-Item $exe).VersionInfo.ProductName }
+              else { 'UNKNOWN - no manifest and no executable' }
+$mVersion   = if ($manifest -and $manifest.version) { $manifest.version }
+              elseif ($ver -ne 'not found') { "$ver (from the executable)" }
+              else { 'UNKNOWN - no manifest' }
 $mChannel   = if ($manifest) { $manifest.releaseChannel }   else { 'UNKNOWN - no manifest' }
 $mCommit    = if ($manifest) { $manifest.gitCommit }        else { 'UNKNOWN - no manifest' }
-$mLimit     = if ($manifest) { $manifest.limitation }       else { 'FIELD TEST - NOT FOR OFFICIAL COMPETITION RESULTS' }
+$mLimit     = if ($manifest) { $manifest.limitation }       else { 'NOT RECORDED - no manifest' }
 $mAnalytics = if ($manifest) { $manifest.analyticsVersion } else { 'UNKNOWN - no manifest' }
 $mExeSha    = if ($manifest) { $manifest.executableSha256 } else { '' }
+# Now that the product is known, name the bundle after it.
+# A product that could not be identified must not become a filename. Run from a
+# deployed package the manifest names it; run from anywhere else the bundle is
+# still valid - it just says so instead of inventing a name from an error string.
+$brandLeaf = if ($mProduct -like 'UNKNOWN*') { 'UnidentifiedBuild' }
+             else { ($mProduct -replace '[^A-Za-z0-9]', '') }
+if (-not $brandLeaf) { $brandLeaf = 'Support' }
+$name = "$brandLeaf-Support-$stamp"
+$zip  = Join-Path $OutDir "$name.zip"
+$newWork = Join-Path $env:TEMP $name
+if ($work -ne $newWork) {
+    if (Test-Path $newWork) { Remove-Item $newWork -Recurse -Force }
+    Rename-Item $work $newWork
+    $work = $newWork
+}
+
 $shaVerdict =
-    if (-not $exeSha)      { 'NOT CHECKED - TechAim.exe not found beside this script' }
+    if (-not $exeSha)      { "NOT CHECKED - $exeName not found beside this script" }
     elseif (-not $mExeSha) { 'NOT CHECKED - no manifest hash to compare against' }
     elseif ($exeSha -eq $mExeSha) { 'MATCH - the running binary is the one the manifest describes' }
     else { 'MISMATCH - the binary beside this script is NOT the manifest build; the Git commit above may be wrong' }
@@ -87,7 +156,7 @@ if (Test-Path $cfgProbe) {
     if ($mm) { $modeLine = $mm.Matches[0].Groups[1].Value.Trim() }
 }
 $identity = @"
-Tech Aim support bundle
+$mProduct support bundle
 Generated            : $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
 Product              : $mProduct
 Version              : $mVersion
@@ -131,11 +200,13 @@ $logOut = Join-Path $work 'Logs'
 New-Item -ItemType Directory -Force $logOut | Out-Null
 $collected = 0
 
-$logSrc = Join-Path $appData 'Logs'
-if (Test-Path $logSrc) {
-    Get-ChildItem $logSrc -File | Sort-Object LastWriteTime -Descending |
-        Select-Object -First $LogCount |
-        ForEach-Object { Copy-Item $_.FullName $logOut; $collected++ }
+foreach ($pr in $productRoots) {
+    $logSrc = Join-Path $pr 'Logs'
+    if (Test-Path $logSrc) {
+        Get-ChildItem $logSrc -File | Sort-Object LastWriteTime -Descending |
+            Select-Object -First $LogCount |
+            ForEach-Object { Copy-Item $_.FullName $logOut -Force; $collected++ }
+    }
 }
 
 # The application log itself.
@@ -200,8 +271,10 @@ if ($SessionId) {
     # Journals are FILES named session_<stamp>_<id>.jsonl, not directories.
     # Searching only for directories is why -SessionId could still come back
     # empty.
-    $hits = @(Get-ChildItem (Join-Path $appData 'Sessions') -Recurse -ErrorAction SilentlyContinue |
-              Where-Object { $_.Name -like "*$SessionId*" })
+    $hits = @(foreach ($pr in $productRoots) {
+                  Get-ChildItem (Join-Path $pr 'Sessions') -Recurse -ErrorAction SilentlyContinue |
+                      Where-Object { $_.Name -like "*$SessionId*" }
+              })
     foreach ($h in $hits) {
         if ($h.PSIsContainer) { Copy-Item $h.FullName (Join-Path $sesOut $h.Name) -Recurse }
         else                  { Copy-Item $h.FullName $sesOut }
@@ -214,9 +287,16 @@ if ($SessionId) {
 }
 elseif ($RecentHours -gt 0) {
     $cut = (Get-Date).AddHours(-$RecentHours)
-    $j = @(Get-ChildItem (Join-Path $appData 'Sessions') -Recurse -File -Filter '*.jsonl' -ErrorAction SilentlyContinue |
-          Where-Object { $_.LastWriteTime -ge $cut })
-    foreach ($f in $j) { Copy-Item $f.FullName $sesOut }
+    $j = @(foreach ($pr in $productRoots) {
+               Get-ChildItem (Join-Path $pr 'Sessions') -Recurse -File -Filter '*.jsonl' -ErrorAction SilentlyContinue |
+                   Where-Object { $_.LastWriteTime -ge $cut }
+           })
+    # Two products can hold a journal of the same name; prefix with the
+    # product folder so neither silently overwrites the other.
+    foreach ($f in $j) {
+        $leaf = Split-Path (Split-Path (Split-Path $f.FullName -Parent) -Parent) -Leaf
+        Copy-Item $f.FullName (Join-Path $sesOut "$leaf-$($f.Name)") -Force
+    }
     $sesNotes += "journals modified in the last $RecentHours h: $($j.Count)"
 
     # Match records sit beside the executable, not in AppData.
@@ -226,6 +306,10 @@ elseif ($RecentHours -gt 0) {
     $sesNotes += "match records (.tch) in the last $RecentHours h: $($t.Count)"
 }
 else { $sesNotes += 'session data: not collected (-RecentHours 0)' }
+$sesNotes += ''
+$sesNotes += 'product data roots searched:'
+if ($productRoots) { foreach ($pr in $productRoots) { $sesNotes += "  $pr" } }
+else               { $sesNotes += '  NONE FOUND - the application has not run on this machine yet' }
 [System.IO.File]::WriteAllText((Join-Path $sesOut 'WHAT-WAS-COLLECTED.txt'),
     ($sesNotes -join [Environment]::NewLine))
 
@@ -259,5 +343,5 @@ Write-Host "Support bundle : $zip"
 Write-Host "SHA-256        : $((Get-FileHash $zip -Algorithm SHA256).Hash)"
 Write-Host ""
 Write-Host "It contains logs, release identity, a sanitized configuration and a"
-Write-Host "target-communication summary. Session data is included ONLY when you"
-Write-Host "pass -SessionId. Please check the contents before sending it on."
+Write-Host "target-communication summary, and the session journals from the last"
+Write-Host "$RecentHours hours. Please check the contents before sending it on."

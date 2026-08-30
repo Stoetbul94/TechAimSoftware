@@ -7,10 +7,12 @@ REM were never collected: they live in %TEMP%, and %TEMP% gets cleaned. An
 REM operator at a range with a rifle in one hand will not type a PowerShell
 REM command line, so this is the command line.
 REM
-REM Writes TechAim-Support-<date>.zip to the Desktop. No passwords, no personal
-REM files, no other athlete's sessions - session data is opt-in and is NOT
-REM included here. To include one, run instead:
+REM Writes a support zip to the Desktop. No passwords and no personal files.
+REM It DOES include the session journals from the last 12 hours - that is the
+REM evidence an investigation actually needs. For one specific session, or a
+REM longer window, run instead:
 REM     powershell -ExecutionPolicy Bypass -File Make-SupportBundle.ps1 -SessionId <id>
+REM     powershell -ExecutionPolicy Bypass -File Make-SupportBundle.ps1 -RecentHours 48
 
 setlocal
 cd /d "%~dp0"

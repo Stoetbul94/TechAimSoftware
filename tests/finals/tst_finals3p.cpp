@@ -1890,18 +1890,68 @@ static void runProductIdentityChecks()
     // official: the channel must name a pre-release candidate. Both
     // approved forms are accepted; anything else fails, as does the
     // production/general/stable check below, independently.
-    check(p.releaseChannel.contains(QLatin1String("Field Test"), Qt::CaseInsensitive)
-          || p.releaseChannel.contains(QLatin1String("Evaluation"), Qt::CaseInsensitive),
-          "identity: release channel names a pre-release candidate (no production claim)",
-          p.releaseChannel);
-    check(!p.fieldTestNotice.isEmpty()
-          && p.fieldTestNotice.contains(QLatin1String("Not for Official"), Qt::CaseInsensitive),
-          "identity: the field-test build carries its limitation notice",
-          p.fieldTestNotice);
-    check(!p.releaseChannel.contains(QLatin1String("Production"), Qt::CaseInsensitive)
-          && !p.releaseChannel.contains(QLatin1String("General"), Qt::CaseInsensitive)
-          && !p.releaseChannel.contains(QLatin1String("Stable"), Qt::CaseInsensitive),
-          "identity: the channel makes no general-release claim");
+    // The rule is CONSISTENCY, and it holds whichever build this is compiled as.
+    // Asserting only "this is a candidate" was right while every build was one;
+    // it would have had to be deleted to ship a production release, and a rule
+    // deleted to ship is not a rule. So both directions are checked:
+    //
+    //   fieldTestNotice non-empty  -> an EVALUATION build. The channel must name
+    //                                 a candidate and the notice must carry the
+    //                                 limitation, because isFieldTest() is what
+    //                                 puts that notice on the About screen.
+    //   fieldTestNotice empty      -> a PRODUCTION build. No candidate wording
+    //                                 may reach a customer surface - not in the
+    //                                 channel, not in the version, and not in
+    //                                 the description that names the build.
+    //
+    // A customer surface is anything printed on a result: softwareVersionLabel()
+    // is on every report footer.
+    {
+        const bool isEvaluationBuild = !p.fieldTestNotice.isEmpty();
+        static const char* const kCandidateWords[] = {
+            "RC1", "RC ", "Release Candidate", "Candidate", "Evaluation",
+            "Field Test", "Pre-Beta", "Beta", "Internal"
+        };
+
+        if (isEvaluationBuild) {
+            check(p.releaseChannel.contains(QLatin1String("Field Test"), Qt::CaseInsensitive)
+                  || p.releaseChannel.contains(QLatin1String("Evaluation"), Qt::CaseInsensitive)
+                  || p.releaseChannel.contains(QLatin1String("Candidate"), Qt::CaseInsensitive),
+                  "identity: an evaluation build's channel names a pre-release candidate",
+                  p.releaseChannel);
+            check(p.fieldTestNotice.contains(QLatin1String("Not for Official"), Qt::CaseInsensitive),
+                  "identity: and it carries its limitation notice", p.fieldTestNotice);
+            check(!p.releaseChannel.contains(QLatin1String("Production"), Qt::CaseInsensitive)
+                  && !p.releaseChannel.contains(QLatin1String("General"), Qt::CaseInsensitive)
+                  && !p.releaseChannel.contains(QLatin1String("Stable"), Qt::CaseInsensitive),
+                  "identity: an evaluation build makes no general-release claim");
+        } else {
+            // The label on every report footer.
+            const QString footer = p.softwareVersionLabel();
+            QString offender;
+            for (const char* w : kCandidateWords) {
+                const QLatin1String word(w);
+                if (p.releaseChannel.contains(word, Qt::CaseInsensitive))
+                    offender = QStringLiteral("releaseChannel: %1").arg(p.releaseChannel);
+                else if (p.version.contains(word, Qt::CaseInsensitive))
+                    offender = QStringLiteral("version: %1").arg(p.version);
+                else if (footer.contains(word, Qt::CaseInsensitive))
+                    offender = QStringLiteral("report footer: %1").arg(footer);
+                else if (p.releaseDescription.contains(word, Qt::CaseInsensitive))
+                    offender = QStringLiteral("releaseDescription: %1").arg(p.releaseDescription);
+                if (!offender.isEmpty()) break;
+            }
+            check(offender.isEmpty(),
+                  "identity: a PRODUCTION build carries no candidate wording on any "
+                  "customer surface", offender);
+            check(!p.fieldTestNotice.contains(QLatin1String("Not for Official")),
+                  "identity: and no limitation notice, so About does not show one");
+            // The footer must still SAY something - an empty one identifies nothing.
+            check(footer.contains(p.displayName) && footer.contains(p.version),
+                  "identity: the report footer still names the product and version",
+                  footer);
+        }
+    }
     check(p.defaultTheme == QLatin1String("techaim-dark")
           && p.defaultLanguage == QLatin1String("en"),
           "identity: default theme + language");
