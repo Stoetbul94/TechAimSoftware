@@ -247,9 +247,18 @@ Item {
     // at 1 Hz for the rest of the session accumulating gameTime nobody owned.
     // The invariant is now one line: the legacy timer runs only where its own
     // display is shown.
+    //
+    // DSB 1.20 joins them, and for the identical reason. The DSB HUD shows the
+    // position clock the sequencer owns; if the legacy timer ran underneath it,
+    // a reconnect mid-position would start exactly the second invisible clock
+    // described above - during a competition whose per-position times are the
+    // rule. The pre-port code pushed a flag at CenterPane instead
+    // (suppressLegacyClock); this derives it, so a mode cannot forget to clear
+    // it on the way out.
     readonly property bool legacyClockIsOurs:
         !shootingPage.isFinalsMatch && !shootingPage.isFinals10mMatch
         && !shootingPage.isTrainingModeAny
+        && !shootingPage.isDsb120Match
 
     // ACQ-SENTINEL-003. The last line of defence before a coordinate becomes a
     // score. On 2026-08-23 the shot number ran past the coordinate arrays and
