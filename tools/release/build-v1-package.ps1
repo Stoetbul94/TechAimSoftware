@@ -24,9 +24,11 @@ $exe  = Join-Path $repo 'release\TechAim.exe'
 if (-not (Test-Path $exe)) { throw "Not built: $exe. Run qmake + mingw32-make -f Makefile.Release first." }
 if (-not (Test-Path (Join-Path $QtBin 'windeployqt.exe'))) { throw "windeployqt not found in $QtBin" }
 
-$version = '1.0.0-RC1'
+$version = '1.0.0'
 $name    = "TechAim-$version-Windows-x64"
-if ([string]::IsNullOrWhiteSpace($OutRoot)) { $OutRoot = Join-Path $repo 'dist\v1.0.0-rc1' }
+# A NEW folder. dist\v1.0.0-rc1 is preserved as historical evidence and is
+# never overwritten by this script.
+if ([string]::IsNullOrWhiteSpace($OutRoot)) { $OutRoot = Join-Path $repo 'dist\v1.0.0' }
 $pkg = Join-Path $OutRoot $name
 $zip = Join-Path $OutRoot "$name.zip"
 
@@ -105,7 +107,7 @@ foreach ($l in @('LICENSE', 'LICENSE.txt', 'docs\legal\THIRD-PARTY-NOTICES.md'))
 }
 
 # ---- 5. the support tools the operator runs ------------------------------
-foreach ($t in @('tools\deployment\Make-SupportBundle.ps1', 'tools\release\Collect-Logs.cmd')) {
+foreach ($t in @('tools\release\Make-SupportBundle.ps1', 'tools\release\Collect-Logs.cmd')) {
     $src = Join-Path $repo $t
     if (Test-Path $src) { Copy-Item $src $pkg }
 }
