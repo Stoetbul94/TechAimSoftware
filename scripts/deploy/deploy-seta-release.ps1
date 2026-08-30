@@ -7,7 +7,7 @@
 
         powershell -ExecutionPolicy Bypass -File scripts\deploy\deploy-seta-release.ps1
 
-    The result runs by double-clicking TechAim.exe on a machine with no Qt, no
+    The result runs by double-clicking the product executable on a machine with
     MinGW and no developer environment. It is the INPUT to a future installer,
     not an installer itself.
 
@@ -61,7 +61,11 @@ function Say($m) { Write-Host "[deploy] $m" }
 function Die($m) { Write-Host "[deploy] ERROR: $m" -ForegroundColor Red; exit 1 }
 
 # ── 1. validate the input build ───────────────────────────────────────────
-$exe = Join-Path $BuildDir 'TechAim.exe'
+# The shipped executable is named by the BRAND: SETA.exe for the SETA
+# product line, TechAim.exe for Tech Aim. Discovered rather than assumed,
+# so a rename cannot silently produce an empty package.
+$exeName = if (Test-Path (Join-Path $BuildDir 'SETA.exe')) { 'SETA.exe' } else { 'TechAim.exe' }
+$exe = Join-Path $BuildDir $exeName
 if (-not (Test-Path $exe))   { Die "no build at $exe - build Release first" }
 if (-not (Test-Path $QtBin)) { Die "Qt bin not found: $QtBin" }
 $windeployqt = Join-Path $QtBin 'windeployqt.exe'
@@ -105,7 +109,7 @@ Say "output: $OutDir"
 # --no-translations: the .qm catalogues are in the qrc too.
 $env:PATH = "$QtBin;$MingwBin;$env:PATH"
 Say 'running windeployqt (see the note at the top of this script for the mode)'
-& $windeployqt --debug --no-translations --qmldir $repo (Join-Path $OutDir 'TechAim.exe') 2>&1 |
+& $windeployqt --debug --no-translations --qmldir $repo (Join-Path $OutDir $exeName) 2>&1 |
     Select-Object -Last 2 | ForEach-Object { Say "  $_" }
 if (-not (Test-Path (Join-Path $OutDir 'platforms\qwindows.dll'))) {
     Die 'windeployqt did not deploy the platform plugin'
@@ -134,6 +138,27 @@ $PRUNE_QML_MODULES = @(
     'QtQuick\Scene2D',       # Qt 3D bridge - its plugin imports Qt63DCore
     'QtQuick\Scene3D'        # Qt 3D bridge - its plugin imports Qt63DAnimation
 )
+
+# Finals audio loads Qt Multimedia at RUNTIME, so windeployqt does not see the
+# import and does not deploy the QML module - only the DLL and the plugins. The
+# module is what the QML engine actually resolves `import QtMultimedia` against,
+# so without it the command cues are silent on a machine with no Qt installed.
+# Added explicitly, and check_deployment.py fails the package if it is missing.
+$mmQml = Join-Path (Split-Path $QtBin -Parent) 'qml\QtMultimedia'
+$mmOut = Join-Path $OutDir 'qml\QtMultimedia'
+if ((Test-Path $mmQml) -and -not (Test-Path $mmOut)) {
+    New-Item -ItemType Directory -Force (Split-Path $mmOut -Parent) | Out-Null
+    Copy-Item $mmQml $mmOut -Recurse -Force
+    Say 'added qml\QtMultimedia (runtime import, invisible to windeployqt)'
+    # The module's plugin imports Qt6MultimediaQuick, which windeployqt also
+    # never saw. Deployed with it: a QML module whose plugin cannot load is a
+    # folder that passes inspection and fails at runtime.
+    $mmq = Join-Path $QtBin 'Qt6MultimediaQuick.dll'
+    if ((Test-Path $mmq) -and -not (Test-Path (Join-Path $OutDir 'Qt6MultimediaQuick.dll'))) {
+        Copy-Item $mmq $OutDir -Force
+        Say 'added Qt6MultimediaQuick.dll (imported by the QtMultimedia QML plugin)'
+    }
+}
 
 foreach ($d in $PRUNE_DIRS) {
     $p = Join-Path $OutDir $d
@@ -168,7 +193,7 @@ foreach ($rt in @('libgcc_s_seh-1.dll', 'libstdc++-6.dll', 'libwinpthread-1.dll'
 #      run must create its own, in the SETA data namespace.
 
 # ── 7. manifest + checksums ───────────────────────────────────────────────
-$sha = (Get-FileHash (Join-Path $OutDir 'TechAim.exe') -Algorithm SHA256).Hash.ToLower()
+$sha = (Get-FileHash (Join-Path $OutDir $exeName) -Algorithm SHA256).Hash.ToLower()
 # Verified above to be the commit compiled INTO the binary, not merely today's HEAD.
 $commit = $headSha
 $dirty  = $treeDirty
@@ -187,7 +212,7 @@ $allFiles = @(Get-ChildItem $OutDir -Recurse -File)
 $manifest = [ordered]@{
     product           = 'SETA Electronic Target Control'
     buildFlavour      = 'SETA_OEM'
-    executable        = 'TechAim.exe'
+    executable        = $exeName
     executableSha256  = $sha
     qtVersion         = $qtVersion
     toolchain         = 'MinGW 11.2.0 64-bit'

@@ -143,8 +143,12 @@ def main():
     if not os.path.isdir(root):
         return finish()
 
-    exe = os.path.join(root, 'TechAim.exe')
-    check(os.path.isfile(exe), 'TechAim.exe is present')
+    # The product executable is named by the brand - SETA.exe or TechAim.exe.
+    # Discovered, not assumed: a package with neither is the failure worth
+    # reporting, and a package with the wrong one would pass a hardcoded check.
+    exe = next((os.path.join(root, n) for n in ('SETA.exe', 'TechAim.exe')
+                if os.path.isfile(os.path.join(root, n))), os.path.join(root, 'SETA.exe'))
+    check(os.path.isfile(exe), '%s is present' % os.path.basename(exe))
     if not os.path.isfile(exe):
         return finish()
 

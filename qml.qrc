@@ -71,6 +71,8 @@
         <file>FinalsIncidentToast.qml</file>
         <file>FinalsDeveloperDrawer.qml</file>
         <file>FinalsReportView.qml</file>
+        <file>Finals10mReportView.qml</file>
+        <file>Finals3PRightPanel.qml</file>
         <file>FinalsReportTarget.qml</file>
         <file>MatchReportView.qml</file>
         <file>Report3P.qml</file>
