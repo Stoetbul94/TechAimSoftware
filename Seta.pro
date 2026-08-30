@@ -56,7 +56,10 @@ for(legacy, LEGACY_EXES) {
 # support tooling and the commit baked into the binary - but a package that goes
 # out must have ONE identity, so this is a new one rather than EVAL1's hashes
 # quietly replaced.
-APP_VERSION_STR = 1.0.0-EVAL2
+# EVAL3 - the DSB 2026 German programmes are built, mounted and offered.
+# EVAL2 remains the frozen non-DSB fallback and its package is untouched.
+# DSB software qualification: AUTOMATED. DSB physical: PENDING.
+APP_VERSION_STR = 1.0.0-EVAL3
 GIT_SHA = $$system(git -C \"$$PWD\" rev-parse --short HEAD)
 isEmpty(GIT_SHA): GIT_SHA = unknown
 DEFINES += APP_VERSION_STR=\\\"$$APP_VERSION_STR\\\"

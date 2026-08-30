@@ -73,8 +73,14 @@ ProductIdentity makeTechAim()
 #ifdef BRAND_SETA
     p.displayName        = QStringLiteral("SETA");
     p.fullProductName    = QStringLiteral("SETA Electronic Target Control");
+    // EVAL3 states the DSB status in the identity itself, so an operator
+    // reading About cannot mistake automated qualification for a physical
+    // one. No DSB programme has been fired on a physical target; Tech Aim
+    // field evidence is Tech Aim's and is not claimed here.
     p.releaseDescription = QStringLiteral("SETA Electronic Target Control\n"
-                                          "Windows Evaluation Build");
+                                          "Windows Evaluation Build\n"
+                                          "DSB 2026: software qualification "
+                                          "automated, physical pending");
     // The shipped file is SETA.exe. A build sent to SETA must not put another
     // company's name on the icon the operator double-clicks.
     p.executableBaseName = QStringLiteral("SETA");
