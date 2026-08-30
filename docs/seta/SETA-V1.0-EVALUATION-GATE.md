@@ -107,7 +107,7 @@ drives one target — even though the file was renamed. Asserted by
 | Training Lab evidence | **903 / 0** |
 | SETA deployment audit | **31 / 0** |
 | SETA Windows icon | **7 / 0** |
-| **TOTAL** | **6 858 / 0** |
+| **TOTAL** | **6 389 / 0** |
 
 **Runtime, from the packaged copy with no Qt on `PATH`:** 0 missing DLL,
 0 TypeError, 0 ReferenceError, 0 QML type failures, 0 acquisition warnings,

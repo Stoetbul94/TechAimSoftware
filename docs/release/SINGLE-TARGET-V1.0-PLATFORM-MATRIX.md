@@ -5,7 +5,7 @@ Updated 2026-08-30, at the close of Phase B.
 | Platform | Status | Version | Automated | Physical |
 |---|---|---|---|---|
 | **Windows — Tech Aim** | **FROZEN RC** | 1.0.0-RC1 (`da03984`) | 6 948 / 0 | **PASS** — RC3F: 385 live shots, 0 faults |
-| **Windows — SETA** | **AUTOMATED PARITY / PHYSICAL PENDING** | 1.0.0-EVAL1 (`47c5645`) | 6 878 / 0 (+8 DSB deferred) | **PENDING** |
+| **Windows — SETA** | **AUTOMATED PARITY / PHYSICAL PENDING** | 1.0.0-EVAL2 (`26a3b11`) | 6 389 / 0 (+13 DSB deferred) | **PENDING** |
 | **Android** | **NOT STARTED** | — | — | — |
 | **RMS** | **NOT STARTED** | — | — | — |
 
