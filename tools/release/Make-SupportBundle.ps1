@@ -31,7 +31,38 @@ $zip   = Join-Path $OutDir "$name.zip"
 if (Test-Path $work) { Remove-Item $work -Recurse -Force }
 New-Item -ItemType Directory -Force $work | Out-Null
 
-$appData = Join-Path $env:LOCALAPPDATA 'TechAim'
+# THE DATA ROOT IS TWO LEVELS DEEP, NOT ONE.
+#
+# Qt resolves AppLocalDataLocation as
+#     %LOCALAPPDATA%\<organisationName>\<applicationName>
+# so the sessions and journals live in
+#     %LOCALAPPDATA%\TechAim\TechAim        (Tech Aim)
+#     %LOCALAPPDATA%\TechAim\TechAimSETA    (SETA)
+# and NOT in %LOCALAPPDATA%\TechAim, which is only the vendor folder.
+#
+# This script looked in the vendor folder. %LOCALAPPDATA%\TechAim\Sessions
+# does not exist for either product, so the -RecentHours and -SessionId
+# searches walked an absent directory and reported 0 journals every time -
+# silently, because -ErrorAction SilentlyContinue turns a missing path into an
+# empty result. That is why the RC3F bundles carried no journals, and it would
+# have taken SETA's physical test down with it.
+#
+# EVERY product folder under the vendor root is searched now, so the bundle is
+# correct whichever brand produced the data and whichever brand collects it.
+$vendorRoot = Join-Path $env:LOCALAPPDATA 'TechAim'
+$productRoots = @()
+if (Test-Path $vendorRoot) {
+    $productRoots = @(Get-ChildItem $vendorRoot -Directory -ErrorAction SilentlyContinue |
+                      Where-Object { (Test-Path (Join-Path $_.FullName 'Sessions')) -or
+                                     (Test-Path (Join-Path $_.FullName 'Logs')) } |
+                      ForEach-Object { $_.FullName })
+}
+# The vendor root stays in the list so anything written directly there - by an
+# older build, or by a future one - is still collected rather than missed.
+if (Test-Path $vendorRoot) { $productRoots += $vendorRoot }
+# $appData remains the vendor root for the paths that were always correct
+# (SupportBundles, config); the per-product roots are used for the data.
+$appData = $vendorRoot
 $here    = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 Write-Host "== Tech Aim support bundle =="
@@ -131,11 +162,13 @@ $logOut = Join-Path $work 'Logs'
 New-Item -ItemType Directory -Force $logOut | Out-Null
 $collected = 0
 
-$logSrc = Join-Path $appData 'Logs'
-if (Test-Path $logSrc) {
-    Get-ChildItem $logSrc -File | Sort-Object LastWriteTime -Descending |
-        Select-Object -First $LogCount |
-        ForEach-Object { Copy-Item $_.FullName $logOut; $collected++ }
+foreach ($pr in $productRoots) {
+    $logSrc = Join-Path $pr 'Logs'
+    if (Test-Path $logSrc) {
+        Get-ChildItem $logSrc -File | Sort-Object LastWriteTime -Descending |
+            Select-Object -First $LogCount |
+            ForEach-Object { Copy-Item $_.FullName $logOut -Force; $collected++ }
+    }
 }
 
 # The application log itself.
@@ -200,8 +233,10 @@ if ($SessionId) {
     # Journals are FILES named session_<stamp>_<id>.jsonl, not directories.
     # Searching only for directories is why -SessionId could still come back
     # empty.
-    $hits = @(Get-ChildItem (Join-Path $appData 'Sessions') -Recurse -ErrorAction SilentlyContinue |
-              Where-Object { $_.Name -like "*$SessionId*" })
+    $hits = @(foreach ($pr in $productRoots) {
+                  Get-ChildItem (Join-Path $pr 'Sessions') -Recurse -ErrorAction SilentlyContinue |
+                      Where-Object { $_.Name -like "*$SessionId*" }
+              })
     foreach ($h in $hits) {
         if ($h.PSIsContainer) { Copy-Item $h.FullName (Join-Path $sesOut $h.Name) -Recurse }
         else                  { Copy-Item $h.FullName $sesOut }
@@ -214,9 +249,16 @@ if ($SessionId) {
 }
 elseif ($RecentHours -gt 0) {
     $cut = (Get-Date).AddHours(-$RecentHours)
-    $j = @(Get-ChildItem (Join-Path $appData 'Sessions') -Recurse -File -Filter '*.jsonl' -ErrorAction SilentlyContinue |
-          Where-Object { $_.LastWriteTime -ge $cut })
-    foreach ($f in $j) { Copy-Item $f.FullName $sesOut }
+    $j = @(foreach ($pr in $productRoots) {
+               Get-ChildItem (Join-Path $pr 'Sessions') -Recurse -File -Filter '*.jsonl' -ErrorAction SilentlyContinue |
+                   Where-Object { $_.LastWriteTime -ge $cut }
+           })
+    # Two products can hold a journal of the same name; prefix with the
+    # product folder so neither silently overwrites the other.
+    foreach ($f in $j) {
+        $leaf = Split-Path (Split-Path (Split-Path $f.FullName -Parent) -Parent) -Leaf
+        Copy-Item $f.FullName (Join-Path $sesOut "$leaf-$($f.Name)") -Force
+    }
     $sesNotes += "journals modified in the last $RecentHours h: $($j.Count)"
 
     # Match records sit beside the executable, not in AppData.
@@ -226,6 +268,10 @@ elseif ($RecentHours -gt 0) {
     $sesNotes += "match records (.tch) in the last $RecentHours h: $($t.Count)"
 }
 else { $sesNotes += 'session data: not collected (-RecentHours 0)' }
+$sesNotes += ''
+$sesNotes += 'product data roots searched:'
+if ($productRoots) { foreach ($pr in $productRoots) { $sesNotes += "  $pr" } }
+else               { $sesNotes += '  NONE FOUND - the application has not run on this machine yet' }
 [System.IO.File]::WriteAllText((Join-Path $sesOut 'WHAT-WAS-COLLECTED.txt'),
     ($sesNotes -join [Environment]::NewLine))
 
@@ -259,5 +305,5 @@ Write-Host "Support bundle : $zip"
 Write-Host "SHA-256        : $((Get-FileHash $zip -Algorithm SHA256).Hash)"
 Write-Host ""
 Write-Host "It contains logs, release identity, a sanitized configuration and a"
-Write-Host "target-communication summary. Session data is included ONLY when you"
-Write-Host "pass -SessionId. Please check the contents before sending it on."
+Write-Host "target-communication summary, and the session journals from the last"
+Write-Host "$RecentHours hours. Please check the contents before sending it on."

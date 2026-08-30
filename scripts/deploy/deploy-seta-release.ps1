@@ -160,6 +160,16 @@ if ((Test-Path $mmQml) -and -not (Test-Path $mmOut)) {
     }
 }
 
+# The support collector ships WITH the product. SETA's physical test is the next
+# and most important evidence gate, and a bundle that cannot be produced after
+# it is a test that cannot be investigated. Collect-Logs.cmd is double-clickable
+# on purpose: an operator at a range does not type PowerShell.
+foreach ($t in @('tools\release\Collect-Logs.cmd', 'tools\release\Make-SupportBundle.ps1')) {
+    $src = Join-Path $repo $t
+    if (Test-Path $src) { Copy-Item $src $OutDir -Force; Say "added $(Split-Path $t -Leaf)" }
+    else { throw "support tooling missing from the repository: $t" }
+}
+
 foreach ($d in $PRUNE_DIRS) {
     $p = Join-Path $OutDir $d
     if (Test-Path $p) { Remove-Item $p -Recurse -Force; Say "pruned $d\" }

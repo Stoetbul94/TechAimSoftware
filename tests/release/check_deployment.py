@@ -149,6 +149,13 @@ def main():
     exe = next((os.path.join(root, n) for n in ('SETA.exe', 'TechAim.exe')
                 if os.path.isfile(os.path.join(root, n))), os.path.join(root, 'SETA.exe'))
     check(os.path.isfile(exe), '%s is present' % os.path.basename(exe))
+
+    # The support collector is part of the product, not an optional extra. A
+    # package shipped without it produces no evidence after a field test, which
+    # is exactly how the RC3F bundles came back empty.
+    for tool in ('Collect-Logs.cmd', 'Make-SupportBundle.ps1'):
+        check(os.path.isfile(os.path.join(root, tool)),
+              '%s ships with the product - evidence can be collected after a test' % tool)
     if not os.path.isfile(exe):
         return finish()
 
