@@ -58,7 +58,21 @@ static int g_deferred = 0;
 
 static void check(bool ok, const char* name, const QString& detail = QString())
 {
-    if (!ok && qstrncmp(name, "DSB-", 4) == 0) {
+    // Assertions that are ABOUT DSB availability, whatever their id prefix.
+    // Listed by name rather than matched loosely, so gating DSB cannot quietly
+    // excuse an unrelated failure.
+    static const char* const kDsbAvailability[] = {
+        "SETA-SEL-001: three rule sets - ISSF, DSB 2026 and the practice presets",
+        "SETA-SEL-001: the DSB rule set is offered now that confirmed profiles exist",
+        "SETA-SEL-001: all 61 catalogue entries are reachable - no programme lost",
+        "SETA-SEL-001: the hierarchy invents no programme",
+        "SETA-INT-001: standard paper offers ISSF, DSB and the practice presets",
+    };
+    bool dsbAvailability = false;
+    for (const char* n : kDsbAvailability)
+        if (qstrcmp(name, n) == 0) { dsbAvailability = true; break; }
+
+    if (!ok && (dsbAvailability || qstrncmp(name, "DSB-", 4) == 0)) {
         ++g_deferred;
         printf("DEFER %s  (DSB deferred - SETA-DSB-PORT-001)\n", name);
         fflush(stdout);
