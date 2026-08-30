@@ -83,6 +83,14 @@ Item {
                             id: mainItemRect
                             Component.onCompleted:
                             {
+                                // ACQ-SENTINEL-003. A report view must not manufacture a
+                                // position for a shot whose coordinate was never captured, and
+                                // must not raise an acquisition fault either - nothing is being
+                                // acquired here. Draw nothing and say so.
+                                if (!MODREADER.coordinateHasValue(index+1)) {
+                                    visible = false
+                                    return
+                                }
                                 var xCor = MODREADER.getXCord(index+1)
                                 var yCor = MODREADER.getYCord(index+1)
 
@@ -104,6 +112,14 @@ Item {
                             }
 
                             onVisibleChanged: {
+                                // ACQ-SENTINEL-003. A report view must not manufacture a
+                                // position for a shot whose coordinate was never captured, and
+                                // must not raise an acquisition fault either - nothing is being
+                                // acquired here. Draw nothing and say so.
+                                if (!MODREADER.coordinateHasValue(index+1)) {
+                                    visible = false
+                                    return
+                                }
                                 var xCor = MODREADER.getXCord(index+1)
                                 var yCor = MODREADER.getYCord(index+1)
 
@@ -136,6 +152,14 @@ Item {
 
                             function refreshPelletItem()
                             {
+                                // ACQ-SENTINEL-003. A report view must not manufacture a
+                                // position for a shot whose coordinate was never captured, and
+                                // must not raise an acquisition fault either - nothing is being
+                                // acquired here. Draw nothing and say so.
+                                if (!MODREADER.coordinateHasValue(index+1)) {
+                                    visible = false
+                                    return
+                                }
                                 var xCor = MODREADER.getXCord(index+1)
                                 var yCor = MODREADER.getYCord(index+1)
 

@@ -11,7 +11,6 @@
         <file>DisciplineArt.qml</file>
         <file>main.qml</file>
         <file>CompetitionCatalogue.qml</file>
-        <file>SetaCompetitionSelector.qml</file>
         <file>Header.qml</file>
         <file>LeftPanel.qml</file>
         <file>RightPanel.qml</file>
@@ -27,7 +26,6 @@
         <file>TechAimDialogManager.qml</file>
         <file>PersistenceBanner.qml</file>
         <file>RecoveryDialog.qml</file>
-        <file>Dsb120Hud.qml</file>
         <file>IncidentWindow.qml</file>
         <file>FloatingWindow.qml</file>
         <file>FloatingWindowGrip.qml</file>

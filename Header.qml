@@ -35,7 +35,12 @@ Item {
 
         Image {
             id: logo
-            source: theme.logoWhite
+            // UI-THEME-001: the white mark is for dark chrome only. On the
+            // light header it is white-on-near-white and all but disappears -
+            // found by looking at the rendered light theme, not by reading
+            // the code. The colour mark is the approved light-background
+            // variant and is what the reports already use on white paper.
+            source: theme.isLight ? theme.logoColor : theme.logoWhite
             anchors.verticalCenter: parent.verticalCenter
             height: parent.parent.height * 0.6
             fillMode: Image.PreserveAspectFit

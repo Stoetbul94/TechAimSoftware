@@ -59,7 +59,12 @@ Item {
 
     function openReport()      { manager.open("report", 0) }   // Summary tab
     function openMatchReport() { manager.open("report", 1) }   // Match tab
-    function openFinalsReport(){ manager.open("report", 2) }   // Finals tab (3P FINAL)
+    function openFinalsReport(){ manager.open("report", 2) }   // 50m 3P FINAL report
+    // BLOCKER G. The 10m AR/AP Final has its own report; asking for it by name
+    // is what keeps a 24-shot Final off the 3P report model. prepare() pins the
+    // window to the running family's tab anyway, so a wrong call here cannot
+    // show the wrong report - it just would not say what it meant.
+    function openFinals10mReport(){ manager.open("report", 3) }
     function openCoach()       { manager.open("coach") }
     function openIncidents()   { manager.open("incidents") }   // EST incident workflow (Phase E)
     // Reserved for upcoming tools — register the window, then these just work:

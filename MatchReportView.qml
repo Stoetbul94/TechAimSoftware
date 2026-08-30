@@ -174,8 +174,6 @@ Item {
                         value: MODREADER.getGroup(-1).toFixed(1) }
                     MetricCard { width: execGrid.cw; label: qsTr("Total Time"); unit: "min"; valueSize: 20
                         value: screenPresence.converSecondToMins(totalTime) }
-                    MetricCard { width: execGrid.cw; label: qsTr("Teiler"); valueSize: 20
-                        value: MODREADER.getTeiler(-1).toFixed(1) }
                 }
 
                 SectionTitle { width: parent.width; title: qsTr("Overall Target") }
@@ -232,6 +230,14 @@ Item {
                                 {
                                     Component.onCompleted:
                                     {
+                                        // ACQ-SENTINEL-003. A report view must not manufacture a
+                                        // position for a shot whose coordinate was never captured, and
+                                        // must not raise an acquisition fault either - nothing is being
+                                        // acquired here. Draw nothing and say so.
+                                        if (!MODREADER.coordinateHasValue(index+1)) {
+                                            visible = false
+                                            return
+                                        }
                                         var xCor = MODREADER.getXCord(index+1)
                                         var yCor = MODREADER.getYCord(index+1)
 

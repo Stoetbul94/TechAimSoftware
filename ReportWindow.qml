@@ -9,29 +9,42 @@ import QtQuick 2.15
 // No report calculations, values or the PDF grab paths are changed.
 FloatingWindow {
     id: reportWin
-    title: qsTr("Report")
+    title: "Report"
     subtitle: (typeof userName !== "undefined" && userName) ? userName : ""
     minW: 900; minH: 620
 
-    property int tab: 0                 // 0 = Summary · 1 = Match · 2 = Finals
+    // 0 = Summary · 1 = Match · 2 = 3P Final · 3 = 10m Final
+    property int tab: 0
 
-    // 3P FINAL: the finals report replaces the qualification tabs entirely —
-    // Summary/Match carry qualification assumptions that must never be fed
-    // finals data, so in finals mode the window shows only the Finals tab.
-    readonly property bool finalsMode: (typeof shootingPage !== "undefined")
-                                       && shootingPage.isFinalsMatch
+    // BLOCKER G. There are TWO finals families and they are NOT interchangeable:
+    // a 50m 3P Final (35 shots, K/P/S, FINALS3P) and a 10m AR/AP Final (24
+    // shots, two series then singles, FINALS10M). One generic "finals" boolean
+    // would hand a 10m Final to the 3P report model, so each family names
+    // itself and selects its own view.
+    readonly property bool isFinals3PReport: (typeof shootingPage !== "undefined")
+                                             && shootingPage.isFinalsMatch
+    readonly property bool isFinals10mReport: (typeof shootingPage !== "undefined")
+                                              && shootingPage.isFinals10mMatch
+    // Either family replaces the qualification tabs entirely — Summary/Match
+    // carry qualification assumptions that must never be fed finals data.
+    readonly property bool finalsMode: isFinals3PReport || isFinals10mReport
+    // The one tab a finals session is allowed to show.
+    readonly property int finalsTab: isFinals10mReport ? 3 : 2
 
     signal coachRequestedFromReport()
 
     // The window owns the scrolling; each view exposes its natural height.
     scrollableContent: true
-    contentNaturalHeight: tab === 2 ? finalsView.implicitHeight
+    contentNaturalHeight: tab === 3 ? finals10mView.implicitHeight
+                        : tab === 2 ? finalsView.implicitHeight
                         : tab === 0 ? summaryView.implicitHeight : matchView.implicitHeight
 
     // Set the tab before the manager presents the window (works whether opening
     // fresh or re-focusing an already-open window). Called via WindowManager.
-    // Finals mode pins the window to the Finals tab whatever was requested.
-    function prepare(t) { reportWin.tab = reportWin.finalsMode ? 2 : t }
+    // Finals mode pins the window to ITS OWN family's tab whatever was
+    // requested, so no route into this window can reach a qualification tab
+    // with finals data, or the wrong finals report.
+    function prepare(t) { reportWin.tab = reportWin.finalsMode ? reportWin.finalsTab : t }
 
     // Kiosk auto-export: open on the Match tab and write the PDF to the network
     // path, then close on save. Driven by ShootingPage's onPrintPDF handler.
@@ -43,6 +56,7 @@ FloatingWindow {
     onTabChanged: {
         if (tab === 1) matchView.refresh3P()
         if (tab === 2) finalsView.refresh()
+        if (tab === 3) finals10mView.refresh()
     }
     // Runs after prepare() has set the tab, so reopening straight onto Match
     // (no tab change) still refreshes the 3P report tables — and the finals
@@ -50,6 +64,7 @@ FloatingWindow {
     onAboutToOpen: {
         if (tab === 1) matchView.refresh3P()
         if (tab === 2) finalsView.refresh()
+        if (tab === 3) finals10mView.refresh()
     }
 
     // ── Toolbar: Summary / Match tabs ───────────────────────────────────
@@ -62,7 +77,9 @@ FloatingWindow {
             anchors.verticalCenter: parent.verticalCenter
             spacing: 2
             Repeater {
-                model: reportWin.finalsMode
+                model: reportWin.isFinals10mReport
+                       ? [{ l: "Final", t: 3 }]
+                       : reportWin.isFinals3PReport
                        ? [{ l: "Finals", t: 2 }]
                        : [{ l: "Summary", t: 0 }, { l: "Match", t: 1 }]
                 delegate: Rectangle {
@@ -76,7 +93,7 @@ FloatingWindow {
                     Rectangle {
                         visible: reportWin.tab === modelData.t
                         anchors.bottom: parent.bottom; anchors.horizontalCenter: parent.horizontalCenter
-                        width: parent.width * 0.6; height: 2; radius: 1; color: theme.tokens.accentPrimary
+                        width: parent.width * 0.6; height: 2; radius: 1; color: "#a80038"
                     }
                     MouseArea { id: ma; anchors.fill: parent; hoverEnabled: true; onClicked: reportWin.tab = modelData.t }
                 }
@@ -103,6 +120,12 @@ FloatingWindow {
         visible: reportWin.tab === 2
         onRequestClose: reportWin.close()
     }
+    Finals10mReportView {
+        id: finals10mView
+        anchors.fill: parent
+        visible: reportWin.tab === 3
+        onRequestClose: reportWin.close()
+    }
 
     // ── Footer: Coach Report + Save PDF ─────────────────────────────────
     footerItem: Rectangle {
@@ -117,19 +140,20 @@ FloatingWindow {
             Rectangle {
                 // Coach analytics consume the qualification pipeline — hidden
                 // on the finals report (no qualification-report assumptions).
-                visible: reportWin.tab !== 2
+                visible: !reportWin.finalsMode
                 width: crTxt.implicitWidth + 26; height: 28; radius: 6
                 color: crMA.pressed ? "#2a2b30" : "#26272c"; border.color: "#3a3b42"; border.width: 1
-                Text { id: crTxt; anchors.centerIn: parent; text: qsTr("Coach Report"); color: "#d7d8dd"; font.family: "Segoe UI"; font.pixelSize: 12 }
+                Text { id: crTxt; anchors.centerIn: parent; text: "Coach Report"; color: "#d7d8dd"; font.family: "Segoe UI"; font.pixelSize: 12 }
                 MouseArea { id: crMA; anchors.fill: parent; onClicked: reportWin.coachRequestedFromReport() }
             }
             Rectangle {
                 width: spTxt.implicitWidth + 26; height: 28; radius: 6
-                color: spMA.pressed ? theme.tokens.accentPressed : theme.tokens.accentPrimary
-                Text { id: spTxt; anchors.centerIn: parent; text: qsTr("⤓  Save PDF"); color: "white"; font.family: "Segoe UI"; font.pixelSize: 12; font.bold: true }
+                color: spMA.pressed ? "#8a002f" : "#a80038"
+                Text { id: spTxt; anchors.centerIn: parent; text: "⤓  Save PDF"; color: "white"; font.family: "Segoe UI"; font.pixelSize: 12; font.bold: true }
                 MouseArea {
                     id: spMA; anchors.fill: parent
-                    onClicked: reportWin.tab === 2 ? finalsView.exportPdf()
+                    onClicked: reportWin.tab === 3 ? finals10mView.exportPdf()
+                             : reportWin.tab === 2 ? finalsView.exportPdf()
                              : reportWin.tab === 0 ? summaryView.exportPdf() : matchView.exportPdf()
                 }
             }

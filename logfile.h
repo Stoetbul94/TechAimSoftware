@@ -40,7 +40,6 @@ public:
 
 private:
     explicit LogFile(QObject *parent = nullptr);
-    QString m_previousData;
 };
 
 #endif // LOGFILE_H

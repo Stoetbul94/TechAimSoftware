@@ -31,7 +31,6 @@
 #include "src/finals/Finals3PController.h"
 #include "src/finals10m/Finals10mController.h"
 #include "src/qualification/QualificationController.h"
-#include "src/dsb/Dsb120Controller.h"
 #include "src/incident/EstIncidentController.h"
 #include "src/finals/FinalsAudioService.h"
 #include "src/mode/OperatingMode.h"
@@ -148,19 +147,18 @@ int main(int argc, char *argv[])
     // where they are — the rename must not move anyone's session data.
     const ta::app::ProductIdentity& product = ta::app::identity();
     QCoreApplication::setOrganizationName(product.organisationName);
-    // <LOCALAPPDATA>/<organisation>/<application>. applicationStorageName is
-    // the PRODUCT leaf and defaults to the organisation, so Tech Aim's root is
-    // unchanged; a SETA build sets it and therefore never shares athletes,
-    // sessions, recovery journals, reports or logs with a Tech Aim install.
+    // The PRODUCT leaf inside the vendor folder. Qt resolves
+    // AppLocalDataLocation as <LOCALAPPDATA>/<organisation>/<application>, so
+    // this is what keeps a SETA install's athletes, sessions, journals,
+    // reports and logs apart from a Tech Aim install's on one machine.
     QCoreApplication::setApplicationName(product.applicationStorageName);
     QCoreApplication::setOrganizationDomain(product.organisationDomain);
     QGuiApplication::setApplicationDisplayName(product.fullProductName);
-    // The WINDOW icon, which is not the executable icon: Explorer reads the
-    // PE resource, but Alt+Tab and the taskbar read what the window itself
-    // carries. With none set, Windows drew its generic placeholder next to a
-    // correct SETA title. Same product-scoped asset as the executable, taken
-    // from the product identity rather than named here.
-    app.setWindowIcon(QIcon(product.appIconPath));
+    // The WINDOW icon. Windows draws two different icons - one for the file,
+    // from the PE resource, and one for the window, from here - and a product
+    // that supplies an .ico must own both.
+    if (!product.appIconPath.isEmpty())
+        app.setWindowIcon(QIcon(product.appIconPath));
 
     // F9B: build identity embedded at COMPILE time (Seta.pro DEFINES + the
     // compiler's __DATE__/__TIME__). The app never runs git; the customer
@@ -182,13 +180,7 @@ int main(int argc, char *argv[])
                       << APP_BUILD_CONFIG << "build · commit" << APP_GIT_SHA
                       << "· built" << kBuildTimestamp
                       << "·" << product.releaseChannel
-                      // brand = the shipped product skin (TECH_AIM / SETA);
-                      // flavour = the colour/asset package edition. They are
-                      // different questions, so the log answers both.
-                      << "· brand" << product.brandKey
-                      << "· flavour" << ta::app::flavourName(ta::app::currentFlavour())
-                      << "· data" << QStandardPaths::writableLocation(
-                             QStandardPaths::AppLocalDataLocation);
+                      << "· flavour" << ta::app::flavourName(ta::app::currentFlavour());
 
     ///////////////////////////////////////////////////////////
     /// single instance app
@@ -487,12 +479,6 @@ int main(int argc, char *argv[])
     QualificationController qualController;
     qualController.setOperatingMode(runningModeInt);   // F10 input-source gate
     engine.rootContext()->setContextProperty("QUAL", &qualController);
-    // DSB 1.20 — the gated independent-position-clock sequencer (DSB120). Its
-    // own controller and its own SessionStore, because the rule is a different
-    // competition shape, not a parameter of the qualification seam.
-    Dsb120Controller dsb120Controller;
-    dsb120Controller.setOperatingMode(runningModeInt);
-    engine.rootContext()->setContextProperty("DSB120", &dsb120Controller);
     // Training Lab (T1) — Technical Blocks domain controller. Separate from
     // every competition controller; owns ALL Training state and journals
     // Training-specific events (sessionKind=Training). Same F10 source gate.

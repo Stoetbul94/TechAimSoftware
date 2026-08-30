@@ -82,7 +82,6 @@ SOURCES += main.cpp \
     src/finals/FinalsAudioService.cpp \
     src/finals10m/Finals10mController.cpp \
     src/qualification/QualificationController.cpp \
-    src/dsb/Dsb120Controller.cpp \
     src/incident/EstIncidentController.cpp \
     src/app/ProductIdentity.cpp \
     src/app/BrandPackage.cpp \
@@ -130,7 +129,6 @@ HEADERS += \
     src/finals/FinalsReportBuilder.h \
     src/finals/FinalsAudioService.h \
     src/qualification/QualificationController.h \
-    src/dsb/Dsb120Controller.h \
     src/incident/EstIncidentController.h \
     src/app/ProductIdentity.h \
     src/app/BrandPackage.h \
@@ -310,3 +308,22 @@ SOURCES = CallDiagnoseHud.qml
 ##LIBS += -L"C:/Program Files (x86)/Windows Kits/10/Lib/10.0.17763.0/ucrt/x64"
 #LIBS += -L"C:/Program Files (x86)/Windows Kits/10/Lib/10.0.17763.0/ucrt/x86"
 
+
+
+# -- DSB 2026 - DEFERRED FOR 1.0.0-EVAL1 (SETA-DSB-PORT-001) ---------------
+# The DSB sources are PRESENT and unmodified - src/dsb/Dsb120Controller.{h,cpp},
+# Dsb120Hud.qml, SetaCompetitionSelector.qml, the rule documents and
+# tst_dsb120.cpp. They are excluded from the BUILD, not deleted.
+#
+# The reason is honesty, not tidiness: the shared screens they hooked into
+# came forward from the Tech Aim v1.0 baseline, so the integration points DSB
+# relied on are no longer in ShootingPage/LoginPage. Compiling a controller
+# that nothing mounts would put half-wired competition code in an evaluation
+# binary. The complete pre-port integration is recoverable from f22637f.
+#
+# CONFIG+=dsb re-enables the sources for the eventual controlled port. It is
+# NOT a supported configuration and EVAL1 must not be built with it.
+dsb {
+    SOURCES += src/dsb/Dsb120Controller.cpp
+    HEADERS += src/dsb/Dsb120Controller.h
+}

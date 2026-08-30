@@ -54,10 +54,6 @@ Item {
     // prone, 40-59 standing. The overall 105-min match clock runs through
     // position changes; only shot tagging switches to sighter during them.
     property bool is3PMatch: false
-    // DSB 1.20 runs its own competition engine (DSB120). None of the legacy
-    // qualification timing applies to it, which is exactly why it is a separate
-    // flag rather than a variant of is3PMatch.
-    property bool isDsb120Match: false
     // 3P FINAL (35) — separate finals domain; FINALS3P owns all finals timing.
     property bool isFinalsMatch: false
     // 10m Air Rifle / Air Pistol FINAL (24) — single-athlete training course,
@@ -125,24 +121,8 @@ Item {
     // exactly at the boundary, bouncing them straight back into sighting.
     property int p3BreaksDone: 0
     readonly property var p3Names: [qsTr("KNEELING"), qsTr("PRONE"), qsTr("STANDING")]
-    // THE COURSE. 20/20/20 is the ISSF 3x20 course and stays the default; a
-    // competition profile that declares its own (DSB 1.40 is also 3x20, DSB
-    // 1.60 is 3x40) replaces it. Nothing here reads a ruleset name or a total.
-    readonly property var p3Course: (window.profileShotsPerPosition
-                                     && window.profileShotsPerPosition.length === 3)
-                                    ? window.profileShotsPerPosition : [20, 20, 20]
-    // Where one position ends and the next begins, in OVERALL match shots.
-    // Derived, so 3x40 boundaries (40, 80) are a consequence of the course
-    // rather than a second place to keep the same fact.
-    readonly property int p3FirstBreak: p3Course[0]
-    readonly property int p3SecondBreak: p3Course[0] + p3Course[1]
-    readonly property int p3Position: globalMatchModel.count < p3FirstBreak ? 0
-                                    : (globalMatchModel.count < p3SecondBreak ? 1 : 2)
-    // Match shots fired in the CURRENT position, and what that position needs.
-    readonly property int p3ShotsInPosition:
-        globalMatchModel.count - (p3Position === 0 ? 0
-                                  : (p3Position === 1 ? p3FirstBreak : p3SecondBreak))
-    readonly property int p3PositionShotCount: p3Course[p3Position]
+    readonly property int p3Position: globalMatchModel.count < 20 ? 0
+                                    : (globalMatchModel.count < 40 ? 1 : 2)
 
     property string phaseDebug: ""
 
@@ -293,35 +273,6 @@ Item {
         currentmatchDisplay = "10m FINAL"
     }
 
-    // Exported PDF file names are USER-VISIBLE product identity. Derived from
-    // the build's display name (spaces removed) so a SETA export is not named
-    // after Tech Aim; executableBaseName is deliberately NOT used, because it
-    // is shared between the products on purpose.
-    function productFilePrefix() {
-        return PRODUCT.displayName.replace(/\s+/g, "")
-    }
-
-    // A competition profile sets the course DIRECTLY: shot count and display
-    // come from the definition, not from a ListModel row. That is what lets a
-    // programme exist whose shot count has no legacy row at all - DSB 1.60 is
-    // 120 shots, and no legacy event card carries that.
-    function applyCompetitionProfile(def) {
-        if (!def) return false
-        matchShootCount = def.shotCount
-        applyCompetitionDisplay(def)
-        return true
-    }
-
-    // DISPLAY ONLY. A recovered session takes its labels from the catalogue so
-    // it does not read as a generic course, while its RULES stay the ones it
-    // adopted - which is why the shot count is deliberately not touched here.
-    function applyCompetitionDisplay(def) {
-        if (!def) return
-        currentGameDisplay1 = qsTr(def.gameDisplay1Key)
-        currentGameDisplay2 = qsTr(def.gameDisplay2Key)
-        currentmatchDisplay = qsTr(def.matchDisplayKey)
-    }
-
     function setCurrentGameType(index)
     {
         if (APPSETTINGS.getDeveloperMode()) console.log("setCurrentGameType  ", index)
@@ -377,26 +328,10 @@ Item {
             MODREADER.removeSetaLaneShootDataFile()
     }
 
-    // THE one place a match duration is resolved. Profile authority when the
-    // active competition declares a duration; the legacy shot-count-keyed
-    // lookup otherwise, byte-for-byte as before for ISSF and the presets.
-    function authoritativeMatchSeconds() {
-        if (window.profileMatchSeconds > 0) return window.profileMatchSeconds
-        // A profile that declares independent position clocks has no master
-        // duration, and must NOT borrow one from the shot-count table: a
-        // 60-shot 1.20 course would otherwise pick up the ISSF 75-minute clock.
-        // 0 cannot run a wrong match, and the phase is blocked before it starts.
-        if (window.profileNeedsUnbuiltEngine) return 0
-        return APPSETTINGS.getTimeCount(matchShootCount)
-    }
-    function authoritativePrepSeconds() {
-        return window.profilePrepSeconds > 0 ? window.profilePrepSeconds
-                                             : APPSETTINGS.getPrepTimeCount()
-    }
-
     onMatchShootCountChanged: {
         centerPanel.shotCount = matchShootCount
-        centerPanel.totalGameTime = authoritativeMatchSeconds()
+//        console.log(APPSETTINGS.getTimeCount(matchShootCount)," Match Shoot count is ",matchShootCount)
+        centerPanel.totalGameTime = APPSETTINGS.getTimeCount(matchShootCount)
         MODREADER.setCurrentMatchTotalShotsCount(matchShootCount)
     }
 
@@ -404,7 +339,7 @@ Item {
     // unchanged (e.g. Prone <-> 3 Positions both = 60 shots) so the countdown
     // reflects the current discipline's official time.
     function refreshMatchTime() {
-        centerPanel.totalGameTime = authoritativeMatchSeconds()
+        centerPanel.totalGameTime = APPSETTINGS.getTimeCount(matchShootCount)
         centerPanel.shotCount = matchShootCount
         MODREADER.setCurrentMatchTotalShotsCount(matchShootCount)
     }
@@ -459,10 +394,8 @@ Item {
             spacing: 6
             // UI-TRAIN-001..003: every Training programme owns its own phase
             // model. The competition stepper would read a Final/qualification
-            // phase none of them has. DSB 1.20 is excluded for the same reason
-            // as the 10 m Final: its phase is position-scoped (kneeling MATCH,
-            // prone SIGHTING …) and this two-step chip cannot express it.
-            visible: !isFinals10mMatch && !isTrainingModeAny && !isDsb120Match
+            // phase none of them has.
+            visible: !isFinals10mMatch && !isTrainingModeAny
             Repeater {
                 model: is3PMatch ? [qsTr("SIGHT"), qsTr("KNEEL"), qsTr("PRONE"), qsTr("STAND")]
                                  : [qsTr("SIGHTING"), qsTr("MATCH")]
@@ -479,7 +412,7 @@ Item {
                     radius: 10; height: 20
                     width: stepText.implicitWidth + 18
                     color: isCurrent ? "#3a0d16" : "#26262c"
-                    border.color: isCurrent ? theme.tokens.accentBright : "transparent"
+                    border.color: isCurrent ? "#e8003d" : "transparent"
                     border.width: 1
                     Text {
                         id: stepText
@@ -510,17 +443,14 @@ Item {
             // count would read 0 here (10m shots never populate it) and contradict
             // FINALS10M — so hide the legacy top counter for the Final.
             Text {
-                // DSB 1.20 counts per position and keeps its record in the
-                // sequencer, not globalMatchModel - this would read 0 / 30
-                // beside a HUD saying 1 / 10.
-                visible: !isFinals10mMatch && !isTrainingModeAny && !isDsb120Match
+                visible: !isFinals10mMatch && !isTrainingModeAny
                 text: globalMatchModel.count + " / " + (matchShootCount > 0 ? matchShootCount : "—")
                 color: "white"; font.family: theme.fontFamily
                 font.pixelSize: 14; font.bold: true
                 anchors.verticalCenter: parent.verticalCenter
             }
             Text {
-                visible: !isFinals10mMatch && !isTrainingModeAny && !isDsb120Match
+                visible: !isFinals10mMatch && !isTrainingModeAny
                 text: qsTr("SHOTS")
                 color: "#9a9ba0"; font.family: theme.fontFamily
                 font.pixelSize: 9; font.letterSpacing: 1.5
@@ -531,12 +461,8 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 // 3P FINAL: the HUD strip owns phase display; the qualification
                 // phase chip (SIGHTING/MATCH from sligterMode) would conflict.
-                // sligterMode is the legacy sighter flag and is not the DSB
-                // 1.20 phase: the sequencer can be in prone MATCH while it is
-                // still true.
                 visible: !isFinalsMatch && !isFinals10mMatch && !isTrainingModeAny
-                         && !isDsb120Match
-                color: matchFinished ? "#1d7a2f" : (sligterMode ? "#8a6d00" : theme.tokens.accentBright)
+                color: matchFinished ? "#1d7a2f" : (sligterMode ? "#8a6d00" : "#e8003d")
                 Text {
                     id: phaseChipText
                     anchors.centerIn: parent
@@ -549,12 +475,12 @@ Item {
                 visible: !appMode
                 radius: 4; height: 24; width: demoChipText.implicitWidth + 16
                 anchors.verticalCenter: parent.verticalCenter
-                color: "transparent"; border.color: theme.tokens.accentBright; border.width: 1
+                color: "transparent"; border.color: "#e8003d"; border.width: 1
                 Text {
                     id: demoChipText
                     anchors.centerIn: parent
                     text: qsTr("DEMO")
-                    color: theme.tokens.accentBright; font.family: theme.fontFamily
+                    color: "#e8003d"; font.family: theme.fontFamily
                     font.pixelSize: 10; font.bold: true; font.letterSpacing: 1
                 }
             }
@@ -679,24 +605,14 @@ Item {
             // qualification START MATCH bar must not appear and must never
             // trigger a phase transition. (Completion "VIEW REPORT" is handled by
             // the Finals10m completion panel, not this bar.)
-            //
-            // DSB 1.20 is hidden for the same reason and it matters more here:
-            // this button says START MATCH while the sequencer is at a gate
-            // waiting for an authorised position start, which reads as if the
-            // legacy qualification engine owned the competition. Competition
-            // control for 1.20 lives in ONE place, the DSB HUD, and pressing
-            // this could never have started a position anyway - the engine
-            // refuses it - so what is removed is the contradiction, not a
-            // capability.
-            visible: (shootingPage.isFinals10mMatch || shootingPage.isDsb120Match)
-                     ? false
+            visible: shootingPage.isFinals10mMatch ? false
                      : (finalsMode ? FINALS3P.primaryActionVisible : true)
             color: finalsMode
-                   ? (finalsEnabled ? (primaryMouse.containsMouse ? theme.tokens.accentHover : theme.tokens.accentBright)
+                   ? (finalsEnabled ? (primaryMouse.containsMouse ? "#c40034" : "#e8003d")
                                     : "transparent")
                    : (actionBar.barMode === 1
                       ? "transparent"
-                      : (primaryMouse.containsMouse ? theme.tokens.accentHover : theme.tokens.accentBright))
+                      : (primaryMouse.containsMouse ? "#c40034" : "#e8003d"))
             border.color: (finalsMode ? !finalsEnabled : actionBar.barMode === 1)
                           ? "#3a3b40" : "transparent"
             border.width: 1
@@ -796,6 +712,31 @@ Item {
         // warning is exactly what was on screen while acquisition was dead on
         // 2026-08-09. A positive READY is the thing worth showing.
         visible: true
+
+        // UI-LAYOUT-001 INSTRUMENTATION. Not a fix - a measurement.
+        //
+        // The RC3C screenshots show a full-width status bar covering the
+        // session identity row (FINAL 24 | 10m FINAL | Arnold), which is
+        // left-anchored at x=16 inside a 42 px strip. This panel reads as
+        // right-anchored and at most 380 wide, so the rendered geometry
+        // contradicts the source, and two explanations have already been
+        // falsified: the strip's binding is intact, and main.qml hides
+        // LoginPage entirely so its full-width panel cannot leak.
+        //
+        // Rather than guess at a layout change on the header every discipline
+        // uses, this prints what the panel ACTUALLY resolves to. One line, on
+        // the developer-mode build only, at startup. The next physical run
+        // settles it.
+        Component.onCompleted: {
+            if (APPSETTINGS.getDeveloperMode())
+                MODREADER.appendToLogFile(
+                    "UI-LAYOUT-001 panel geometry: x=" + x + " y=" + y
+                    + " w=" + width + " h=" + height
+                    + " compact=" + compact + " expanded=" + expanded
+                    + " parentW=" + (parent ? parent.width : -1)
+                    + " stripH=" + statusStrip.height
+                    + " reserve=" + shootingPage.headerStatusReserve)
+        }
     }
 
     LeftPanel {
@@ -881,7 +822,12 @@ Item {
         // Final-specific Finals10mRightPanel occupies the same slot. Its width
         // is preserved (visible:false keeps the layout) so the target keeps its
         // size. Qualification/3P use this panel unchanged.
-        visible: !isFinals10mMatch && !isTrainingMatch && !isCallDiagnoseMatch
+        // FINALS-3P-PANEL-001: the 3P Final now has its own column too, so
+        // the qualification panel yields to BOTH finals. Before this it stayed
+        // mounted through a 3P Final and showed a qualification series
+        // structure (S1-S6) that a 35-shot Final does not have.
+        visible: !isFinals10mMatch && !isFinalsMatch
+                 && !isTrainingMatch && !isCallDiagnoseMatch
                  && !isPositionTransitionMatch && !isWindMapMatch
         onSwitchToSighter:
         {
@@ -915,6 +861,21 @@ Item {
         // F9: the reopener shows once the completion card is dismissed.
         summaryDismissed: finals10mHud.dismissed
         onReopenSummaryRequested: finals10mHud.dismissed = false
+    }
+
+    // 50 m 3P FINAL right-hand information column. Same slot and width as the
+    // qualification panel and the 10 m Final panel; every value from FINALS3P.
+    // The visual architecture is deliberately shared with the 10 m Final - the
+    // competition model deliberately is not.
+    Finals3PRightPanel {
+        id: finals3pRightPanel
+        visible: isFinalsMatch
+        width: rightPanel.width
+        height: rightPanel.height
+        anchors.right: parent.right
+        anchors.top: statusStrip.bottom
+        z: 11
+        ctl: FINALS3P
     }
 
     // TRAINING LAB (T1.4): the persistent Training control + information column.
@@ -1019,28 +980,6 @@ Item {
                                        centerPanel.lastShotSource)   // F10 input-source gate
                 return
             }
-            // DSB 1.20: the competition state decides whether this shot is a
-            // sighter or a match shot - never the sighter button, and never the
-            // phase this page happens to be displaying.
-            if (isDsb120Match) {
-                shootingPage.qualPendingAngle = xPosition
-                shootingPage.qualPendingRadius = yPosition
-                // 1.20 is INTEGER scoring in the DM 2026 context: the ring is
-                // floored before it is journalled, exactly as AP10 is.
-                var dsbScore = Math.floor(currentCalculatedScore)
-                var dsbId = ++shootingPage.qualShotSeq
-                var dsbSimulated = (centerPanel.lastShotSource === 1)
-                // A refusal is logged rather than swallowed: "the shot did
-                // not appear" is the hardest kind of report to answer.
-                if (!DSB120.submitShot(centerPanel.lastShotXmm, centerPanel.lastShotYmm,
-                                       dsbScore, dsbId, xPosition, dsbSimulated))
-                    MODREADER.appendToLogFile(
-                        "DSB120: shot REFUSED - phase " + DSB120.phaseId
-                        + " position " + DSB120.positionIndex
-                        + " matchShots " + DSB120.matchShotsInPosition
-                        + " simulated " + dsbSimulated)
-                return
-            }
             // B1/B2: 10m Air Rifle (AR10, decimal) and 10m Air Pistol (AP10,
             // integer) — the DURABLE acceptance route. No UI append happens
             // here; the shot is submitted to QUAL first and the QUAL.onShotAccepted
@@ -1081,6 +1020,15 @@ Item {
                                           + globalMatchModel.count + "/" + matchShootCount + ")")
                 return
             }
+            // UI-LASTSHOT-DWELL-001 safety. If a shot arrives while the last
+            // shot of the previous position is still being held on the face,
+            // collapse the hold FIRST. The authoritative state already moved on
+            // (sligterMode was set the moment the transition ran, so this shot
+            // is routed by the NEW state either way) - this only makes sure the
+            // deferred buffer swap cannot wipe the marker of a shot that has
+            // just been fired. The held display must never become authority.
+            if (lastShotHoldTimer.running)
+                shootingPage.applyPositionTransitionDisplay()
             rightPanel.addToSeries(xPosition,yPosition,currentCalculatedScore,
                                    centerPanel.lastShotXmm, centerPanel.lastShotYmm)
             if (APPSETTINGS.getDeveloperMode()) console.log("x ", xPosition, " y ", yPosition, " score ", currentCalculatedScore, " matchShootCount ", matchShootCount)
@@ -1328,6 +1276,25 @@ Item {
             rec.position = 2   // 10m final has no rifle position; standing face
             if (!(shootingPage.recoveryReplayInProgress && rec.isSighter))
                 globalModelOfData.append(rec)
+
+            // FINAL-TCH-TIME-001. The .tch serialiser reads getTime()/
+            // getTimeStamp(), which read m_timeConsumedList - a list only
+            // RightPanel.addToSeries() ever appended to. A 10m Final shows
+            // finals10mRightPanel instead, so that list stayed EMPTY for the
+            // whole course and getTime() returned its -1 fallback for every
+            // index: the RC3C Final record carried <time>-1</time> and an empty
+            // <time_stamp> for all 29 shots, while the HUD displayed real times
+            // (#24 - 14s, mean 12.9 s).
+            //
+            // The time is the one the controller already measured from splitMs;
+            // the timestamp is taken at acceptance, as it happens. Neither is
+            // reconstructed after the fact. A replayed recovery shot must NOT
+            // append again - its time is already in the record being restored.
+            if (!shootingPage.recoveryReplayInProgress) {
+                MODREADER.appendTimeConsumed("" + (rec.timeSec === undefined ? 0 : rec.timeSec))
+                MODREADER.appendTimeStamp(
+                    new Date().toLocaleTimeString(Qt.locale("en-US"), "HH:mm:ss"))
+            }
         }
 
         function onWindowStateChanged() {
@@ -1340,10 +1307,9 @@ Item {
             }
         }
 
+        // RESULTS ARE FINAL -> the 10m Final's own report window (BLOCKER G).
         function onReportRequested() {
-            // Full 10m finals report is F6; F2 shows the in-HUD completion
-            // panel. Keep the intent observable for the later report window.
-            MODREADER.appendToLogFile("FINALS10M: report requested (F6 pending)")
+            windowManager.openFinals10mReport()
         }
     }
 
@@ -1516,7 +1482,7 @@ Item {
         var now = new Date()
         var date = "" + now.getFullYear() + ("0" + (now.getMonth() + 1)).slice(-2) + ("0" + now.getDate()).slice(-2)
         var sid = (m.sessionId || "").substring(0, 8)
-        var path = (dir && dir.length ? dir + "/" : "") + productFilePrefix() + "_CallAndDiagnose_" + athlete + "_" + date + "_" + sid + ".pdf"
+        var path = (dir && dir.length ? dir + "/" : "") + "TechAim_CallAndDiagnose_" + athlete + "_" + date + "_" + sid + ".pdf"
         callDiagReportView.exportPdf(path)
     }
     function restoreCallDiagnoseSession(sessionId) {
@@ -1616,7 +1582,7 @@ Item {
         var now = new Date()
         var date = "" + now.getFullYear() + ("0" + (now.getMonth() + 1)).slice(-2) + ("0" + now.getDate()).slice(-2)
         var sid = (m.sessionId || "").substring(0, 8)
-        var path = (dir && dir.length ? dir + "/" : "") + productFilePrefix() + "_PositionTransition_" + athlete + "_" + date + "_" + sid + ".pdf"
+        var path = (dir && dir.length ? dir + "/" : "") + "TechAim_PositionTransition_" + athlete + "_" + date + "_" + sid + ".pdf"
         posTransReportView.exportPdf(path)
     }
     // ── WIND MAP (Release 2) ─────────────────────────────────────────────
@@ -1739,7 +1705,7 @@ Item {
         var now = new Date()
         var date = "" + now.getFullYear() + ("0" + (now.getMonth() + 1)).slice(-2) + ("0" + now.getDate()).slice(-2)
         var sid = (m.sessionId || "").substring(0, 8)
-        var fname = productFilePrefix() + "_TechnicalBlocks_" + athlete + "_" + date + "_" + sid + ".pdf"
+        var fname = "TechAim_TechnicalBlocks_" + athlete + "_" + date + "_" + sid + ".pdf"
         var path = (dir && dir.length ? dir + "/" : "") + fname
         trainingReportView.exportPdf(path)
     }
@@ -1890,71 +1856,7 @@ Item {
         loginPage.practiceView = 2           // back to Technical Blocks setup
     }
 
-    // The DSB 1.20 competition surface. Present only while the sequencer is
-    // conducting; nothing else on this page changes for it.
-    Dsb120Hud {
-        id: dsb120Hud
-        visible: shootingPage.isDsb120Match
-        // Above the target-connection toast: competition control must never be
-        // covered by a status message.
-        z: 60
-        // Sits across the top of the target area: the competition state is
-        // the first thing to read, and the right-hand shot counter stays
-        // visible beside it.
-        anchors.left: centerPanel.left
-        anchors.top: parent.top
-        anchors.topMargin: 4
-    }
-
-    // ── DSB 1.20: durable-shot projection ────────────────────────────────
-    // Same contract as the qualification router below: the shot becomes
-    // visible only after the sequencer has durably accepted it, and it is the
-    // ENGINE's classification (sighter vs match, and which position) that the
-    // projection follows.
-    Connections {
-        target: DSB120
-        enabled: shootingPage.isDsb120Match
-        function onShotAccepted(record) {
-            rightPanel.addToSeries(shootingPage.qualPendingAngle,
-                                   shootingPage.qualPendingRadius,
-                                   record.calculatedscore * 1,
-                                   record.xmm * 1, record.ymm * 1)
-        }
-    }
-
-    // Restore a crashed DSB 1.20 session. The engine rebuilds position, phase,
-    // gate and clock from its own journal; this page only re-projects the shots
-    // and re-enters the mode. Nothing here recomputes a duration.
-    function restoreDsb120Session(sessionId) {
-        if (!DSB120.resumeFromRecovery(sessionId))
-            return false
-        // Reveal the competition surface, as every other restorer does. The
-        // session is already conducting; leaving the login page in front of it
-        // would hide a running position clock.
-        loginPage.gameMode = 1
-        gameRange = 10
-        loginPage.visible = false
-        isDsb120Match = true
-        isFinalsMatch = false; isFinals10mMatch = false; is3PMatch = false
-        qualDisciplineId = ""
-        matchShootCount = DSB120.totalShotsRequired
-        resetDataModels()
-        changedToSigherMode()
-        centerPanel.suppressLegacyClock = true
-        var shots = DSB120.recoveredShots()
-        for (var i = 0; i < shots.length; ++i) {
-            var s = shots[i]
-            if (s.isSighter === true) continue
-            var p = centerPanel.polarForMm(s.xmm * 1, s.ymm * 1)
-            rightPanel.addToSeries(p.x, p.y, s.calculatedscore * 1,
-                                   s.xmm * 1, s.ymm * 1)
-        }
-        MODREADER.appendToLogFile("DSB120: resumed position " + DSB120.positionIndex
-                                  + " phase " + DSB120.phaseId
-                                  + " matchShots " + DSB120.totalMatchShots)
-        return true
-    }
-
+    // ── B1/B2: qualification durable-shot projection router ──────────────
     // The ONLY route that appends an AR10/AP10 shot to the visible models. It
     // fires (synchronously) after QUAL has durably submitted the SighterAccepted
     // / ShotAccepted event, so the journal — not the UI — is authoritative. It
@@ -2049,7 +1951,13 @@ Item {
         ctl: FINALS10M
         developerMode: APPSETTINGS.getDeveloperMode()
         // F9 exit workflow (durable session close before leaving).
-        onViewReportRequested: finals10mHud.dismissed = false   // keep/show summary
+        // BLOCKER G: View Report opens the 10m Final report. The completion
+        // card stays behind it - dismissing the report must not lose the
+        // result summary the operator was looking at.
+        onViewReportRequested: {
+            finals10mHud.dismissed = false
+            windowManager.openFinals10mReport()
+        }
         onNewFinalRequested: shootingPage.startNewFinals10m()
         onHomeRequested: shootingPage.homeFromFinals10m()
     }
@@ -2063,10 +1971,17 @@ Item {
             if (leftPanel.playVisible)
                 return;
 
-            // 3P FINAL: the qualification Match auto-export must never be fed
-            // finals data — open the finals report instead (manual Save PDF).
+            // FINALS: the qualification Match auto-export must never be fed
+            // finals data — open that family's own finals report instead
+            // (manual Save PDF). BLOCKER G: the 10m Final needs this guard as
+            // much as the 3P one, and previously fell straight through to the
+            // qualification Match auto-export.
             if (isFinalsMatch) {
                 windowManager.openFinalsReport()
+                return;
+            }
+            if (isFinals10mMatch) {
+                windowManager.openFinals10mReport()
                 return;
             }
 
@@ -2130,6 +2045,16 @@ Item {
     {
         isFinalsMatch = true
         is3PMatch = false
+        // FINALS-3P-MIX-001: clear the 10m Final flag too. Every mode-entry
+        // function owns ALL of the discipline flags, not just its own - a flag
+        // left set by a previous session keeps that discipline's layer mounted.
+        // This one cleared only is3PMatch, so a 10m Final earlier in the same
+        // run left isFinals10mMatch true and the 3P Final rendered the 10m
+        // right panel ("10m Air Rifle Final", 0/24, Series 1/2/Singles), a
+        // second HUD with its own clock, and a second enabled shot router on
+        // top of the 3P shell. Enforced for every entry point by
+        // tests/qml/tst_mode_entry_exclusivity.
+        isFinals10mMatch = false
         // Fresh, start-from-zero session: the finals path returns before the
         // qualification clearing flows run, so clear the shot models here
         // (role locks survive clear()).
@@ -2209,55 +2134,8 @@ Item {
         resetDataModels()             // operator clicks Start → new session id
     }
 
-    // DSB 1.20 mode. The engine is started with the ADOPTED definition and
-    // then asked to begin preparation; from that point every phase, clock and
-    // shot classification is the controller's, and this page only projects it.
-    function enterDsb120Mode() {
-        var authority = window.dsb120Authority()
-        if (!DSB120.startSession(authority, window.userName, "", ""))
-            return false
-        isDsb120Match = true
-        isFinalsMatch = false; isFinals10mMatch = false; is3PMatch = false
-        qualDisciplineId = ""
-        matchShootCount = DSB120.totalShotsRequired
-        window.adoptSessionAuthority(DSB120.sessionRuleAuthority())
-        // Applied again after the page is shown: making it visible runs the
-        // legacy updateGameType(), which would otherwise write the last
-        // committed programme back over the recovered one.
-        Qt.callLater(function() {
-            window.adoptSessionAuthority(DSB120.sessionRuleAuthority())
-        })
-        resetDataModels()
-        changedToSigherMode()
-        centerPanel.suppressLegacyClock = true   // the position clock is the HUD's
-        DSB120.startPreparation()
-        MODREADER.appendToLogFile("DSB120: " + authority.programmeId
-                                  + " started (" + DSB120.journalPath + ")")
-        return true
-    }
-
     function beginPreparationPhase()
     {
-        // Second gate, at the engine boundary. perfromStart() blocks the UI
-        // path; this blocks every other caller (server start commands) so a
-        // programme the engine cannot conduct can never begin a session.
-        if (window.profileNeedsUnbuiltEngine) {
-            MODREADER.appendToLogFile(
-                "beginPreparationPhase: BLOCKED - " + window.activeProgrammeId
-                + " " + window.profileUnbuiltEngineReason + " (no engine)")
-            return
-        }
-        // DSB 1.20: the gated independent-position-clock sequencer owns this
-        // competition end to end - preparation, three clocks, the gates between
-        // them and shot classification. None of the qualification machinery
-        // below runs for it.
-        if (window.activeCompetition !== null
-                && window.activeCompetition.timingModel === "INDEPENDENT_POSITION_CLOCKS") {
-            if (enterDsb120Mode())
-                return
-            MODREADER.appendToLogFile("DSB120: session could not be started")
-            return
-        }
         // 10m FINAL (AR/AP): a separate single-athlete finals domain owned by
         // FINALS10M. Selected via the "10m Final" event card (gameEvent 7) at
         // the 10m range; rifle → FINAL_AR10, pistol → FINAL_AP10. Checked first
@@ -2278,22 +2156,13 @@ Item {
             enterFinalsMode(true)            // canonical fresh finals start
             return
         }
-        MODREADER.appendToLogFile("beginPreparationPhase: prep seconds = " + authoritativePrepSeconds())
-        // 50 m three positions on one clock. The shot count is no longer part
-        // of the test: a declared three-position course (DSB 1.40's 60, DSB
-        // 1.60's 120) is the same competition shape as ISSF's 60, and the
-        // course itself says how it divides. Without a profile the engine still
-        // only recognises the 60-shot ISSF course, exactly as before.
+        MODREADER.appendToLogFile("beginPreparationPhase: prep seconds = " + APPSETTINGS.getPrepTimeCount())
         is3PMatch = APPSETTINGS.getGameMode() === 1
                  && APPSETTINGS.get10or50mRange() === 50
                  && APPSETTINGS.getGameSubMode() === 1
-                 && (matchShootCount === 60
-                     || (window.profileShotsPerPosition.length === 3
-                         && matchShootCount === window.profileShotsPerPosition[0]
-                                              + window.profileShotsPerPosition[1]
-                                              + window.profileShotsPerPosition[2]))
+                 && matchShootCount === 60
         p3BreaksDone = 0
-        centerPanel.totalSighterTime = authoritativePrepSeconds()
+        centerPanel.totalSighterTime = APPSETTINGS.getPrepTimeCount()
         changedToSigherMode()
         centerPanel.startPreparationCountdown()
 
@@ -2319,15 +2188,6 @@ Item {
             if (APPSETTINGS.getGameMode() === 1
                     && APPSETTINGS.getGameSubMode() === 0 && !is3PMatch)
                 freshQualId = "PRONE50"          // 50m Rifle Prone (decimal)
-            // 50 m THREE POSITIONS: one master clock, three position groups.
-            // Journalled through the SAME seam - it is a qualification course
-            // with an extra axis, not a different kind of competition - and
-            // that is what gives DSB 1.40 and 1.60 their recovery. The course
-            // comes from the adopted definition; ISSF's 3x20 declares nothing
-            // and is conducted exactly as before.
-            else if (APPSETTINGS.getGameMode() === 1
-                    && APPSETTINGS.getGameSubMode() === 1 && is3PMatch)
-                freshQualId = "3P50"
         }
         if (freshQualId !== "")
             enterQualificationMode(freshQualId, true)   // canonical fresh start
@@ -2353,12 +2213,14 @@ Item {
             // path runs (mode flags → models → sighter routing). Fresh-path
             // callers arrive with all of this already done.
             isFinalsMatch = false
-            // A three-position session stays one: the discipline comes from the
-            // JOURNAL, so recovery cannot demote a recovered 3x40 course into a
-            // single-position match.
-            is3PMatch = (disciplineId === "3P50")
+            is3PMatch = false
+            // FINALS-3P-MIX-001 (second instance): a qualification session
+            // recovered after a 10m Final in the same run would otherwise keep
+            // the 10m right panel and HUD mounted. Same rule - an entry point
+            // owns every discipline flag.
+            isFinals10mMatch = false
             resetDataModels()                    // clear stale fresh models
-            centerPanel.totalSighterTime = authoritativePrepSeconds()
+            centerPanel.totalSighterTime = APPSETTINGS.getPrepTimeCount()
             changedToSigherMode()                // sighter routing + clean face
         }
         qualDisciplineId = disciplineId
@@ -2370,22 +2232,12 @@ Item {
         // the engine): official count + match/prep clocks as timer anchors.
         // matchShootCount = the selected count (60 for the full event);
         // getTimeCount/getPrepTimeCount return seconds.
-        var matchMs = authoritativeMatchSeconds() * 1000
-        var prepMs = authoritativePrepSeconds() * 1000
-        // ADOPT the competition definition BEFORE the session exists, with the
-        // durations this session is actually anchored to. From here the journal
-        // owns the rules; a programme with no rule authority adopts nothing and
-        // the session is recorded as legacy, exactly as it always was.
-        QUAL.adoptRuleAuthority(
-            window.activeProgrammeId !== ""
-                ? competitionCatalogue.ruleAuthorityFor(window.activeProgrammeId,
-                                                        prepMs, matchMs)
-                : ({}))
+        var matchMs = APPSETTINGS.getTimeCount(matchShootCount) * 1000
+        var prepMs = APPSETTINGS.getPrepTimeCount() * 1000
         var started = QUAL.startSession(disciplineId, String(matchShootCount),
                                         athlete, matchShootCount, matchMs,
                                         prepMs, -1, "", "")
         if (started) {
-            window.adoptSessionAuthority(QUAL.sessionRuleAuthority())
             QUAL.beginPreparation()
             QUAL.beginSighting()   // combined ISSF prep+sighting phase
             MODREADER.appendToLogFile("QUAL: " + disciplineId
@@ -2410,24 +2262,10 @@ Item {
     // is refused by the reducer's externalId guard.
     function restoreQualificationSession(sessionId, disciplineId)
     {
-        // The journal is reopened FIRST so the session's own rules are in force
-        // before anything reads a clock. enterQualificationMode() sets the
-        // sighter clock from the authoritative preparation time, and for a
-        // recovered DSB session that time must come from the session - not from
-        // whichever programme happens to be selected on LoginPage.
+        enterQualificationMode(disciplineId, false)
         if (!QUAL.resumeFromRecovery(sessionId)) {
             qualDisciplineId = ""
             return false
-        }
-        window.adoptSessionAuthority(QUAL.sessionRuleAuthority())
-        enterQualificationMode(disciplineId, false)
-        // 3P: the boundaries already crossed before the crash. Without this the
-        // position watcher sees the count still sitting on a boundary and
-        // replays a transition the athlete already made.
-        if (disciplineId === "3P50") {
-            var recPos = QUAL.currentPositionIndex()
-            p3BreaksDone = recPos <= 0 ? 0
-                         : (recPos === 1 ? p3FirstBreak : p3SecondBreak)
         }
         qualRecoveryInProgress = true
         var shots = QUAL.recoveredShots()
@@ -2516,8 +2354,7 @@ Item {
         running: is3PMatch && !sligterMode && shootingPage.visible
         onTriggered: {
             var count = globalMatchModel.count
-            if ((count === p3FirstBreak || count === p3SecondBreak)
-                    && count > p3BreaksDone) {
+            if ((count === 20 || count === 40) && count > p3BreaksDone) {
                 shootingPage.p3BreaksDone = count
                 shootingPage.enterPositionTransition()
             }
@@ -2547,35 +2384,27 @@ Item {
             centerPanel.disableMotorMovement = true
             centerPanel.setSighterIndicator(true)
             leftPanel.enableSighterMode(true)
-            globalModelOfData.clear()
-            for(var index = 0; index <globalSlighterModel.count; ++index )
-            {
-                // Only sighters fired for the position being entered.
-                if (globalSlighterModel.get(index).position !== p3Position)
-                    continue
-                globalModelOfData.append(globalSlighterModel.get(index))
-            }
             sligterMode = true
-            // The position change is a fact of the competition, so it is
-            // journalled. The master clock is untouched: this is a change of
-            // position INSIDE the running match time, which is what separates
-            // 1.40 / 1.60 (and ISSF) from the DSB 1.20 gate.
-            if (qualDisciplineId === "3P50") {
-                QUAL.changePosition(p3Position)
-                // Sighting for the NEW position. Journalled so a crash here
-                // recovers into sighting, not into record fire - and the
-                // master clock is not touched by either event.
-                QUAL.beginSighting()
-            }
             // Deliberately NOT calling MODREADER.changeSighterMode() here: its
             // QList swaps race against the 100ms polling worker that reads the
             // same lists and crash the app once shots exist (heap corruption).
             // Shot routing to sighter/match models is handled QML-side by
             // sligterMode in addToSeries, which is all the 3P transition needs.
             rightPanel.updateTotal()
-            centerPanel.currentPageIndexChanged()
             centerPanel.disableMotorMovement = false
             leftPanel.playVisible = true
+            // UI-LASTSHOT-DWELL-001. Everything above is authoritative and has
+            // already happened: sligterMode (so the NEXT shot routes as a
+            // sighter), the target indicator, the panel totals. The match clock
+            // was never touched here and still is not.
+            //
+            // The only thing deferred is the DISPLAY BUFFER swap - the line
+            // that wipes the completed position's markers off the face. Measured
+            // on three tablets at the live event, the last shot of a position was
+            // visible for 1.63-2.03 s (mean 1.84), which the operator reported as
+            // too short to read. That dwell was incidental: paper-feed duration
+            // plus one 500 ms positionWatch tick. This makes it deliberate.
+            lastShotHoldTimer.restart()
             MODREADER.appendToLogFile("3P: position change -> " + p3Names[p3Position]
                                       + " (sighting, match clock keeps running)")
         } catch (e) {
@@ -2583,8 +2412,35 @@ Item {
         }
     }
 
+    // The deferred half of enterPositionTransition(). Presentation only.
+    // Idempotent, so the timer and an early collapse cannot double-apply it.
+    function applyPositionTransitionDisplay()
+    {
+        lastShotHoldTimer.stop()
+        globalModelOfData.clear()
+        for (var index = 0; index < globalSlighterModel.count; ++index) {
+            // Only sighters fired for the position being entered.
+            if (globalSlighterModel.get(index).position !== p3Position)
+                continue
+            globalModelOfData.append(globalSlighterModel.get(index))
+        }
+        centerPanel.currentPageIndexChanged()
+    }
+
+    // UI-LASTSHOT-DWELL-001: how long the completed position's last shot stays
+    // on the face after the transition. 2.5 s was chosen against the measured
+    // 1.84 s: enough to be a real improvement, short enough not to read as a
+    // frozen screen, and far shorter than any observed shot-to-shot interval.
+    Timer {
+        id: lastShotHoldTimer
+        interval: 2500
+        repeat: false
+        onTriggered: shootingPage.applyPositionTransitionDisplay()
+    }
+
     function changedToMatchMode()
     {
+        lastShotHoldTimer.stop()   // UI-LASTSHOT-DWELL-001: never outlive the transition
         centerPanel.stopPreparationCountdown()
         centerPanel.disableMotorMovement = true
         centerPanel.showSlighter(false)
@@ -2627,6 +2483,7 @@ Item {
 
     function changedToMatchFinish()
     {
+        lastShotHoldTimer.stop()   // UI-LASTSHOT-DWELL-001: never outlive the transition
         matchFinished = true
         centerPanel.stopMatchClock()
 
@@ -2635,7 +2492,6 @@ Item {
         if (qualDisciplineId !== "") {
             QUAL.completeMatch()
             QUAL.closeSession()
-            window.sessionCompetition = null   // no session, no session rules
         }
         MODREADER.appendToLogFile("Match finished: " + globalMatchModel.count
                                   + "/" + matchShootCount + " match shots")
