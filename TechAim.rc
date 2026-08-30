@@ -32,8 +32,8 @@ IDI_TECHAIM ICON "images/logo/techaim.ico"
 #define IDI_TECHAIM 101
 
 VS_VERSION_INFO VERSIONINFO
-    FILEVERSION    0,9,0,0
-    PRODUCTVERSION 0,9,0,0
+    FILEVERSION    1,0,0,0
+    PRODUCTVERSION 1,0,0,0
     FILEFLAGSMASK  VS_FFI_FILEFLAGSMASK
 #ifdef _DEBUG
     FILEFLAGS      VS_FF_DEBUG | VS_FF_PRERELEASE
@@ -54,16 +54,24 @@ BEGIN
 #else
             VALUE "FileDescription",  "Tech Aim Electronic Target Control\0"
 #endif
-            VALUE "FileVersion",      "0.9.0.0\0"
+            VALUE "FileVersion",      "1.0.0.0\0"
+#ifdef BRAND_SETA
+            VALUE "InternalName",     "SETA\0"
+#else
             VALUE "InternalName",     "TechAim\0"
+#endif
             VALUE "LegalCopyright",   "Copyright (C) JAC SHOOTING SOLUTIONS (PTY) LTD\0"
+#ifdef BRAND_SETA
+            VALUE "OriginalFilename", "SETA.exe\0"
+#else
             VALUE "OriginalFilename", "TechAim.exe\0"
+#endif
 #ifdef BRAND_SETA
             VALUE "ProductName",      "SETA Electronic Target Control\0"
 #else
             VALUE "ProductName",      "Tech Aim Electronic Target Control\0"
 #endif
-            VALUE "ProductVersion",   "0.9.0.0\0"
+            VALUE "ProductVersion",   "1.0.0.0\0"
             VALUE "Comments",         "Windows Pre-Beta Validation Build\0"
         END
     END

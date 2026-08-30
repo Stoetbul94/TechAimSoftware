@@ -55,6 +55,12 @@ class ProductIdentityBridge : public QObject
     Q_PROPERTY(QString accentBright READ accentBright CONSTANT)
     Q_PROPERTY(QString textOnAccent READ textOnAccent CONSTANT)
     Q_PROPERTY(QString focusOutline READ focusOutline CONSTANT)
+    // accentSubtle's counterpart on a light canvas.
+    Q_PROPERTY(QString accentSubtleLight READ accentSubtleLight CONSTANT)
+    // Whether THIS product prints the Teiler figure. The measurement is shared
+    // and unconditional; only its presentation is a brand decision. SETA shows
+    // it, Tech Aim does not. See docs/design/Teiler_Presentation_Decision.md.
+    Q_PROPERTY(bool showTeilerMetric READ showTeilerMetric CONSTANT)
     Q_PROPERTY(QString brandLogoSecondary READ brandLogoSecondary CONSTANT)
     Q_PROPERTY(QString tagline READ tagline CONSTANT)
     Q_PROPERTY(QString brandKey READ brandKey CONSTANT)
@@ -97,6 +103,8 @@ public:
     QString accentBright() const       { return ta::app::brand().accentBright; }
     QString textOnAccent() const       { return ta::app::brand().textOnAccent; }
     QString focusOutline() const       { return ta::app::brand().focusOutline; }
+    QString accentSubtleLight() const  { return ta::app::brand().accentSubtleLight; }
+    bool    showTeilerMetric() const   { return ta::app::brand().showTeilerMetric; }
     QString brandLogoSecondary() const { return ta::app::brand().logoIntrinsicColour; }
     QString tagline() const            { return ta::app::brand().tagline; }
     QString brandKey() const           { return ta::app::identity().brandKey; }

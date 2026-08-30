@@ -8,8 +8,12 @@ CONFIG += c++17
 # filename. Keep these in step with src/app/ProductIdentity.cpp — that is the
 # authoritative source; these are the values qmake bakes into the PE
 # VERSIONINFO block, which qmake cannot read from C++.
-TARGET = TechAim
-VERSION = 0.9.0
+# The SETA product line builds SETA.exe. BRAND_SETA (below) is the one
+# compile-time authority: it selects the identity, the BrandPackage and the
+# version resource. There is no runtime brand switch and no Tech Aim product
+# identity compiled into a SETA binary.
+TARGET = SETA
+VERSION = 1.0.0
 # The version resource is hand-authored (TechAim.rc) rather than generated
 # from QMAKE_TARGET_*: qmake leaves InternalName empty and marks the binary
 # VFT_DLL. RC_FILE takes precedence over the QMAKE_TARGET_* variables.
@@ -26,7 +30,11 @@ win32: RC_FILE = TechAim.rc
 # exit 0 when the legacy file is already absent.
 CONFIG(release, debug|release): LEGACY_OUT_DIR = $$OUT_PWD/release
 else:                           LEGACY_OUT_DIR = $$OUT_PWD/debug
-LEGACY_EXES = Seta.exe Seeds.exe
+# "Seta.exe" is NO LONGER a legacy name: this product links SETA.exe and
+# NTFS is case-insensitive, so deleting "Seta.exe" after a link deletes the
+# binary that was just built. A name belonging to a CURRENT product cannot
+# also be treated as stale.
+LEGACY_EXES = Seeds.exe
 for(legacy, LEGACY_EXES) {
     QMAKE_POST_LINK += $$quote($(DEL_FILE) $$shell_quote($$shell_path($$LEGACY_OUT_DIR/$$legacy)))$$escape_expand(\\n\\t)
 }
@@ -38,7 +46,10 @@ for(legacy, LEGACY_EXES) {
 # 0.9.0-RC2 — INTERNAL FIELD TEST. This is a release candidate for controlled
 # live-range testing, not the public 1.0. The channel travels with the version
 # so a binary can never be mistaken for a general release.
-APP_VERSION_STR = 0.9.0-RC3a-SETA
+# 1.0.0-EVAL1: the SETA product carrying the Tech Aim v1.0 proven core. It is
+# an EVALUATION build - no SETA-branded binary has ever been fired at a target -
+# and the release channel and field-test notice say so on screen.
+APP_VERSION_STR = 1.0.0-EVAL1
 GIT_SHA = $$system(git -C \"$$PWD\" rev-parse --short HEAD)
 isEmpty(GIT_SHA): GIT_SHA = unknown
 DEFINES += APP_VERSION_STR=\\\"$$APP_VERSION_STR\\\"

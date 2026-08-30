@@ -7,6 +7,20 @@ Item {
     property int seriesIndex: 0 // 0 is invalid series start with 1
     property alias itemCount: repeater.count
 
+    // The per-shot table has six columns where the brand presents Teiler and
+    // five where it does not. Stating the proportions ONCE is what keeps the
+    // header and the rows aligned: they were two independent lists of literals,
+    // and a column changed in one had to be remembered in the other. Both sets
+    // sum to 1.0, so neither brand leaves a gap.
+    readonly property bool showTeiler: PRODUCT.showTeilerMetric
+    readonly property real wSr:     0.12
+    readonly property real wScore:  showTeiler ? 0.22 : 0.24
+    readonly property real wX:      showTeiler ? 0.18 : 0.21
+    readonly property real wY:      showTeiler ? 0.18 : 0.21
+    readonly property real wTeiler: showTeiler ? 0.15 : 0.00
+    readonly property real wTime:   showTeiler ? 0.15 : 0.22
+
+
     Rectangle {
         anchors.fill: parent
         color: "transparent"
@@ -256,7 +270,7 @@ Item {
                 }
 
                 Row {
-                    visible: isMatchSummary
+                    visible: isMatchSummary && matchInfo.showTeiler
                     spacing: 2
                     Text {
                         id: teilerLabel
@@ -464,12 +478,12 @@ Item {
             color: "#f1f3f5"
             Row {
                 anchors.fill: parent
-                Text { width: parent.width*0.12; height: parent.height; text: qsTr("Sr");     color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
-                Text { width: parent.width*0.22; height: parent.height; text: qsTr("Score");  color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; leftPadding: 10; verticalAlignment: Text.AlignVCenter }
-                Text { width: parent.width*0.18; height: parent.height; text: qsTr("X (mm)"); color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
-                Text { width: parent.width*0.18; height: parent.height; text: qsTr("Y (mm)"); color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
-                Text { width: parent.width*0.15; height: parent.height; text: qsTr("Teiler"); color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
-                Text { width: parent.width*0.15; height: parent.height; text: qsTr("Time");   color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
+                Text { width: parent.width*matchInfo.wSr; height: parent.height; text: qsTr("Sr");     color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                Text { width: parent.width*matchInfo.wScore; height: parent.height; text: qsTr("Score");  color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; leftPadding: 10; verticalAlignment: Text.AlignVCenter }
+                Text { width: parent.width*matchInfo.wX; height: parent.height; text: qsTr("X (mm)"); color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
+                Text { width: parent.width*matchInfo.wY; height: parent.height; text: qsTr("Y (mm)"); color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
+                Text { visible: matchInfo.showTeiler; width: parent.width*matchInfo.wTeiler; height: parent.height; text: qsTr("Teiler"); color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
+                Text { width: parent.width*matchInfo.wTime; height: parent.height; text: qsTr("Time");   color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
             }
             Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 2; color: theme.tokens.accentPrimary }
         }
@@ -486,7 +500,8 @@ Item {
     function update()
     {
         mpi.text = ":  X: " + MODREADER.getXMPI(seriesIndex).toFixed(1)+" mm; Y: "+MODREADER.getYMPI(seriesIndex).toFixed(1)+" mm"
-        teiler.text = ": "+MODREADER.getTeiler(seriesIndex).toFixed(1)//+" mm"
+        if (matchInfo.showTeiler)
+            teiler.text = ": " + MODREADER.getTeiler(seriesIndex).toFixed(1)
 
         //var org_palletSize = gameRange == 10 ? 4.5 : 5.6
         var group_distance_text = MODREADER.getGroup(-1) //+ org_palletSize
@@ -676,14 +691,14 @@ Item {
                 anchors.fill: parent
 
                 Text {
-                    width: parent.width*0.12; height: parent.height
+                    width: parent.width*matchInfo.wSr; height: parent.height
                     text: index+1
                     color: "#8a8f98"; font.pixelSize: 11; font.family: "Segoe UI"
                     horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
                 }
 
                 Item {
-                    width: parent.width*0.22; height: parent.height
+                    width: parent.width*matchInfo.wScore; height: parent.height
                     Row {
                         anchors.left: parent.left; anchors.leftMargin: 10
                         anchors.verticalCenter: parent.verticalCenter
@@ -692,7 +707,7 @@ Item {
                             id: scoreText
                             text: getScoreOfShoot(index)
                             font.pixelSize: 12; font.bold: true; font.family: "Segoe UI"
-                            color: low ? "#bf1919" : (inner ? "#a80038" : "#191b1f")
+                            color: low ? "#bf1919" : (inner ? PRODUCT.accentPrimary : "#191b1f")
                             anchors.verticalCenter: parent.verticalCenter
                         }
                         Image {
@@ -706,25 +721,26 @@ Item {
                 }
 
                 Text {
-                    width: parent.width*0.18; height: parent.height
+                    width: parent.width*matchInfo.wX; height: parent.height
                     text: (MODREADER.getXMPIForShoot(seriesIndex, index)*1).toFixed(2)
                     color: "#33373d"; font.pixelSize: 11; font.family: "Segoe UI"
                     horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter
                 }
                 Text {
-                    width: parent.width*0.18; height: parent.height
+                    width: parent.width*matchInfo.wY; height: parent.height
                     text: (MODREADER.getYMPIForShoot(seriesIndex, index)*1).toFixed(2)
                     color: "#33373d"; font.pixelSize: 11; font.family: "Segoe UI"
                     horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter
                 }
                 Text {
-                    width: parent.width*0.15; height: parent.height
+                    visible: matchInfo.showTeiler
+                    width: parent.width*matchInfo.wTeiler; height: parent.height
                     text: (MODREADER.getTeilerForShoot(seriesIndex, index)*1).toFixed(2)
                     color: "#33373d"; font.pixelSize: 11; font.family: "Segoe UI"
                     horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter
                 }
                 Text {
-                    width: parent.width*0.15; height: parent.height
+                    width: parent.width*matchInfo.wTime; height: parent.height
                     text: getTimeStamp(index)
                     color: "#33373d"; font.pixelSize: 11; font.family: "Segoe UI"
                     horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter

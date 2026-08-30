@@ -47,8 +47,17 @@ struct ProductIdentity {
     QString releaseDescription;
 
     // ── machine-facing, no spaces ────────────────────────────────────────
-    // executableBaseName produces TechAim.exe; also used for file prefixes.
+    // executableBaseName produces TechAim.exe / SETA.exe; also used for file
+    // prefixes. It is the SHIPPED FILE NAME and nothing more.
     QString executableBaseName;
+    // The single-instance lock, which is a SAFETY property and not a brand one:
+    // one machine drives one target, so a SETA build and a Tech Aim build must
+    // refuse to run together even though they are different products with
+    // different names and different data. Every flavour therefore shares ONE
+    // lock name, and it must never be derived from the executable name - doing
+    // so is exactly what would let two brands of the same application drive one
+    // target at once. Empty falls back to executableBaseName.
+    QString instanceLockName;
     QString applicationId;          // reverse-DNS, for future packaging
     QString organisationName;       // VENDOR. QSettings + AppLocalDataLocation root
     QString organisationDomain;

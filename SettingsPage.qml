@@ -190,7 +190,7 @@ Item {
                                 Rectangle {
                                     width: 34; height: 24; radius: 5
                                     color: modelData.warm
-                                           ? (gameRange === 10 ? "#f2c200" : "#e8003d")
+                                           ? (gameRange === 10 ? "#f2c200" : PRODUCT.accentBright)
                                            : "#2fa84f"
                                     border.width: name.isPalletRedColor === modelData.warm ? 2 : 1
                                     border.color: name.isPalletRedColor === modelData.warm
@@ -350,7 +350,7 @@ Item {
                                 { mode: 0, dot: "#37c76a",
                                   title: qsTr("Live target"),
                                   desc: qsTr("Receives shots from the physical %1 target.").arg(PRODUCT.displayName) },
-                                { mode: 1, dot: "#e8003d",
+                                { mode: 1, dot: PRODUCT.accentBright,
                                   title: qsTr("Demo / simulation"),
                                   desc: qsTr("Allows simulated target shots for testing and demonstration.") }
                             ]

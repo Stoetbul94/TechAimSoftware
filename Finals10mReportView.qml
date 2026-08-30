@@ -198,7 +198,7 @@ Item {
                                 Text { width: parent.width * 0.18; height: parent.height; text: "Count"; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
                                 Text { width: parent.width * 0.22; height: parent.height; text: "Subtotal"; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter }
                             }
-                            Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 2; color: "#a80038" }
+                            Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 2; color: PRODUCT.accentPrimary }
                         }
                         Repeater {
                             model: finals10mReport.sectionList()
@@ -219,7 +219,7 @@ Item {
                             Row {
                                 anchors.fill: parent
                                 Text { width: parent.width * 0.78; height: parent.height; text: "FINAL TOTAL"; color: "#191b1f"; font.pixelSize: 12; font.bold: true; font.family: "Segoe UI"; leftPadding: 10; verticalAlignment: Text.AlignVCenter }
-                                Text { width: parent.width * 0.22; height: parent.height; text: finals10mReport.num("total", 1); color: "#a80038"; font.pixelSize: 14; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter }
+                                Text { width: parent.width * 0.22; height: parent.height; text: finals10mReport.num("total", 1); color: PRODUCT.accentPrimary; font.pixelSize: 14; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter }
                             }
                         }
                     }
@@ -339,7 +339,7 @@ Item {
                                 Text { width: parent.width * 0.20; height: parent.height; text: "Y (mm)"; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
                                 Text { width: parent.width * 0.26; height: parent.height; text: "Time"; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter }
                             }
-                            Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 2; color: "#a80038" }
+                            Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 2; color: PRODUCT.accentPrimary }
                         }
                         // One block per rule section, in course order. The
                         // grouping is the report's, not this view's.
@@ -352,7 +352,7 @@ Item {
                                     width: parent.width; height: 20; color: "#f7f8fa"
                                     Row {
                                         anchors.fill: parent
-                                        Text { width: parent.width * 0.60; height: parent.height; text: section.label + "  ·  " + section.range; color: "#a80038"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; leftPadding: 10; verticalAlignment: Text.AlignVCenter }
+                                        Text { width: parent.width * 0.60; height: parent.height; text: section.label + "  ·  " + section.range; color: PRODUCT.accentPrimary; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; leftPadding: 10; verticalAlignment: Text.AlignVCenter }
                                         Text { width: parent.width * 0.40; height: parent.height; text: "Subtotal " + Number(section.subtotal).toFixed(1); color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter }
                                     }
                                 }
@@ -378,7 +378,7 @@ Item {
                             Row {
                                 anchors.fill: parent
                                 Text { width: parent.width * 0.60; height: parent.height; text: "FINAL TOTAL  ·  " + finals10mReport.val("acceptedOfShots", ""); color: "#191b1f"; font.pixelSize: 12; font.bold: true; font.family: "Segoe UI"; leftPadding: 10; verticalAlignment: Text.AlignVCenter }
-                                Text { width: parent.width * 0.40; height: parent.height; text: finals10mReport.num("total", 1); color: "#a80038"; font.pixelSize: 14; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter }
+                                Text { width: parent.width * 0.40; height: parent.height; text: finals10mReport.num("total", 1); color: PRODUCT.accentPrimary; font.pixelSize: 14; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter }
                             }
                         }
                     }
@@ -390,7 +390,7 @@ Item {
                         text: "COURSE INCOMPLETE — "
                               + finals10mReport.val("acceptedOfShots", "")
                               + " official shots recorded. This is not a completed Final result."
-                        color: "#a80038"; font.pixelSize: 11; font.bold: true; font.family: "Segoe UI"
+                        color: PRODUCT.accentPrimary; font.pixelSize: 11; font.bold: true; font.family: "Segoe UI"
                     }
                 }
 

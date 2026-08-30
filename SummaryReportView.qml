@@ -88,7 +88,11 @@ Item {
                                 value: (screenPresence.tick, MODREADER.getXMPI().toFixed(1) + " / " + MODREADER.getYMPI().toFixed(1)) }
                             MetricCard { width: metricGrid.cw; label: "Group"; unit: "mm²"; valueSize: 20
                                 value: (screenPresence.tick, "" + MODREADER.getGroup(-1).toFixed(1)) }
+                            // Teiler: a BRAND decision, not a report decision. A Grid
+                            // skips an invisible child, so a brand that omits it
+                            // loses no space to it.
                             MetricCard { width: metricGrid.cw; label: "Teiler"; valueSize: 20
+                                visible: PRODUCT.showTeilerMetric
                                 value: (screenPresence.tick, MODREADER.getTeiler(-1).toFixed(1)) }
                             MetricCard { width: metricGrid.cw; label: "Total Time"; unit: "min"; valueSize: 20
                                 value: converSecondToMins(totalTime) }

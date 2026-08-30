@@ -174,6 +174,11 @@ Item {
                         value: MODREADER.getGroup(-1).toFixed(1) }
                     MetricCard { width: execGrid.cw; label: qsTr("Total Time"); unit: "min"; valueSize: 20
                         value: screenPresence.converSecondToMins(totalTime) }
+                    // Teiler: a BRAND decision. Tech Aim omits it; the SETA
+                    // product presents it, as it always has.
+                    MetricCard { width: execGrid.cw; label: qsTr("Teiler"); valueSize: 20
+                        visible: PRODUCT.showTeilerMetric
+                        value: MODREADER.getTeiler(-1).toFixed(1) }
                 }
 
                 SectionTitle { width: parent.width; title: qsTr("Overall Target") }

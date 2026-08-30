@@ -13,12 +13,29 @@ namespace {
 ProductIdentity makeTechAim()
 {
     ProductIdentity p;
+    // PRODUCT NAME. Compiled per flavour, not assigned and then overwritten:
+    // a SETA binary must not carry the Tech Aim product name as dormant text
+    // that a `strings` dump would find. Everything genuinely SHARED - the
+    // vendor, the legal publisher, the instance lock - is set unconditionally
+    // below, because those are facts about the vendor and the machine rather
+    // than about the brand.
+#ifdef BRAND_SETA
+    p.displayName        = QStringLiteral("SETA");
+    p.fullProductName    = QStringLiteral("SETA Electronic Target Control");
+    p.releaseDescription = QStringLiteral("SETA Electronic Target Control\n"
+                                          "Windows Evaluation Build");
+    // The shipped file is SETA.exe. A build sent to SETA must not put another
+    // company's name on the icon the operator double-clicks.
+    p.executableBaseName = QStringLiteral("SETA");
+#else
     p.displayName        = QStringLiteral("Tech Aim");
     p.fullProductName    = QStringLiteral("Tech Aim Electronic Target Control");
     p.releaseDescription = QStringLiteral("Tech Aim Electronic Target Control\n"
                                           "Windows Internal Field Test Build");
-
     p.executableBaseName = QStringLiteral("TechAim");
+#endif
+    // Shared by EVERY flavour, deliberately. See the field's declaration.
+    p.instanceLockName   = QStringLiteral("TechAim");
     p.applicationId      = QStringLiteral("za.co.techaim.electronic-target-control");
     p.organisationName   = QStringLiteral("TechAim");
     p.organisationDomain = QStringLiteral("techaim.co.za");
@@ -72,8 +89,6 @@ ProductIdentity makeTechAim()
     // seta.png is an existing approved asset - it already brands the printed
     // report - so no logo was invented here.
     p.brandKey         = QStringLiteral("SETA");
-    p.displayName      = QStringLiteral("SETA");
-    p.fullProductName  = QStringLiteral("SETA Electronic Target Control");
     p.brandLogoPath    = QStringLiteral("qrc:/images/logo/seta.png");
     p.appIconPath      = QStringLiteral(":/images/logo/seta.ico");
     // SETA supplied ONE mark. There is no white-on-dark variant, so the header
@@ -100,7 +115,16 @@ ProductIdentity makeTechAim()
 
     // NOT overridden, on purpose:
     //   organisationName / organisationDomain - the vendor, unchanged.
-    //   executableBaseName - names the binary AND the single-instance lock.
+    // The shipped file is SETA.exe. A build sent to SETA must not put another
+    // company's name on the icon the operator double-clicks.
+    //
+    // instanceLockName is deliberately NOT changed with it, and that is the
+    // whole point of separating the two fields: one machine drives one target,
+    // so this build and a Tech Aim build must still refuse to run together.
+    // They share the lock; they share nothing else.
+    p.executableBaseName = QStringLiteral("SETA");
+
+    //   instanceLockName - the safety interlock above.
     //     Sharing the lock is deliberate: one machine drives one target, so a
     //     SETA build and a Tech Aim build must still refuse to run together.
     //   legalPublisher - the publishing entity is a legal fact, not a skin.

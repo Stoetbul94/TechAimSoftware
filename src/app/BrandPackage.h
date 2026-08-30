@@ -60,6 +60,10 @@ struct BrandPackage {
     // alongside accentPrimary; naming it here is what lets a package recolour
     // those screens without every HUD carrying its own literal.
     QString accentBright;
+    // accentSubtle's counterpart on a LIGHT canvas. A tint over white is not
+    // the same colour as a tint over near-black, so it is a stated brand value
+    // rather than something a screen derives at runtime.
+    QString accentSubtleLight;
     // The only text colour permitted on an accent fill. A package must set it
     // because it depends on how dark that package's accent is.
     QString textOnAccent;
@@ -79,6 +83,21 @@ struct BrandPackage {
     // means NOT SUPPLIED: the footer then shows the product name alone rather
     // than borrowing another brand's slogan.
     QString tagline;
+
+    // ── report presentation ──────────────────────────────────────────────
+    // "Teiler" is the German shooting figure for a shot's radial distance from
+    // centre. The measurement is a property of the coordinates, so it stays in
+    // TachusWidget and nothing about scoring, coordinates, MPI or grouping
+    // depends on this flag - it decides only whether a report PRINTS it.
+    //
+    // SETA: true. The SETA product presents it and a version update must not
+    // silently remove a figure the German product already shows.
+    // Tech Aim: false, by its own product decision, which does NOT travel with
+    // the shared core. See docs/design/Teiler_Presentation_Decision.md.
+    //
+    // The views that carry it re-proportion their columns from this flag, so
+    // neither brand is left with a blank heading or a column-shaped gap.
+    bool showTeilerMetric = false;
 
     // Only authorised where a package is genuinely region-locked; otherwise
     // empty and the user's choice wins. Never a silent language override.

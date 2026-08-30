@@ -6,6 +6,19 @@
 namespace ta {
 namespace app {
 
+// Which brand packages this translation unit compiles.
+//
+// The PRODUCT build compiles ONLY its own, so a SETA binary contains no Tech
+// Aim product name and a Tech Aim binary contains no SETA one. TECHAIM_ALL_BRANDS
+// re-enables every package for the brand TEST, which has to compare them - a
+// test binary is not shipped to anybody.
+#if !defined(BRAND_SETA) || defined(TECHAIM_ALL_BRANDS)
+#  define TECHAIM_COMPILE_TECHAIM_BRAND 1
+#endif
+#if defined(BRAND_SETA) || defined(TECHAIM_ALL_BRANDS)
+#  define TECHAIM_COMPILE_SETA_BRAND 1
+#endif
+
 namespace {
 
 // ── Tech Aim ────────────────────────────────────────────────────────────────
@@ -18,6 +31,7 @@ namespace {
 // shooting UI, #C40046 in Training Lab and the homepage); #C40046 and #80032A
 // are now the interaction states of the one approved accent rather than
 // separate brands. See docs/design/current-design-audit.md §2.
+#ifdef TECHAIM_COMPILE_TECHAIM_BRAND
 BrandPackage makeTechAim()
 {
     BrandPackage b;
@@ -43,7 +57,8 @@ BrandPackage makeTechAim()
     b.accentPrimary       = QStringLiteral("#A80038");
     b.accentHover         = QStringLiteral("#C40046");
     b.accentPressed       = QStringLiteral("#80032A");
-    b.accentSubtle        = QStringLiteral("#2D0A18");
+    b.accentSubtle        = QStringLiteral("#2D0A18");   // 28% over #15171C
+    b.accentSubtleLight   = QStringLiteral("#FBE9EF");   // 8% over white
     b.logoIntrinsicColour = QStringLiteral("#BF1919");   // logo tagline only
     // The lighter brand tone the live shooting UI and the HUDs already used.
     b.accentBright        = QStringLiteral("#E8003D");
@@ -55,6 +70,7 @@ BrandPackage makeTechAim()
     b.manualBrandName   = QStringLiteral("Tech Aim");
     b.tagline           = QStringLiteral("WE AIM TO PLEASE");
     b.defaultLanguage   = QString();   // the operator's choice wins
+    b.showTeilerMetric  = false;   // Tech Aim's own product decision
     return b;
 }
 
@@ -86,6 +102,14 @@ BrandPackage makeTechAim()
 //
 // NOTHING HERE IS INVENTED: every hue comes from the supplied artwork, and the
 // two derived values are stated with their derivation.
+// SETA PRESENTS TEILER. Not a new decision: the SETA product already displays
+// it in the summary metrics, the match metrics and the per-shot table, and
+// carrying the shared Tech Aim core forward must not silently remove a figure
+// the German product shows. Tech Aim's removal is a TECH AIM decision and does
+// not travel with the core.
+#endif // TECHAIM_COMPILE_TECHAIM_BRAND
+
+#ifdef TECHAIM_COMPILE_SETA_BRAND
 BrandPackage makeSeta()
 {
     BrandPackage b;
@@ -110,6 +134,7 @@ BrandPackage makeSeta()
     b.accentHover         = QStringLiteral("#25B0E6");   // logo, dominant tone
     b.accentPressed       = QStringLiteral("#003A6E");   // accentPrimary x 0.70
     b.accentSubtle        = QStringLiteral("#0F2740");   // 28% over #15171C
+    b.accentSubtleLight   = QStringLiteral("#E9F1F8");   // 8% #00539E over white
     b.accentBright        = QStringLiteral("#25B0E6");
     b.textOnAccent        = QStringLiteral("#FFFFFF");
     b.focusOutline        = b.accentHover;
@@ -123,8 +148,11 @@ BrandPackage makeSeta()
     // SETA report would attribute another company's line to SETA.
     b.tagline           = QString();
     b.defaultLanguage   = QString();   // the operator's choice wins
+    b.showTeilerMetric  = true;    // the SETA product shows it
     return b;
 }
+
+#endif // TECHAIM_COMPILE_SETA_BRAND
 
 } // namespace
 
@@ -169,9 +197,23 @@ bool BrandPackage::isComplete() const
 
 const BrandPackage& brandFor(BuildFlavour f)
 {
+#if defined(TECHAIM_COMPILE_TECHAIM_BRAND) && defined(TECHAIM_COMPILE_SETA_BRAND)
     static const BrandPackage techAim = makeTechAim();
     static const BrandPackage setaOem = makeSeta();
     return (f == BuildFlavour::SetaOem) ? setaOem : techAim;
+#elif defined(TECHAIM_COMPILE_SETA_BRAND)
+    // SETA product build: the only package compiled is this one. Asking for
+    // another flavour is a programming error, not a runtime fallback, so it
+    // returns THIS package rather than an empty one - a nameless brand is
+    // worse than an unexpected one, and the tests cover the real question.
+    Q_UNUSED(f);
+    static const BrandPackage setaOem = makeSeta();
+    return setaOem;
+#else
+    Q_UNUSED(f);
+    static const BrandPackage techAim = makeTechAim();
+    return techAim;
+#endif
 }
 
 const BrandPackage& brand()

@@ -300,7 +300,7 @@ Item {
                                             y: parent.height/2 - (r.mpiY/parent.rangeMm)*parent.plotR - 5 }
                                         Repeater { model: parent.shots
                                             Rectangle { width: 8; height: 8; radius: 4
-                                                color: modelData.first ? "#3DA9FC" : "#e8003d"; border.color: "white"; border.width: 1
+                                                color: modelData.first ? "#3DA9FC" : PRODUCT.accentBright; border.color: "white"; border.width: 1
                                                 x: parent.width/2 + (modelData.xMm/parent.rangeMm)*parent.plotR - width/2
                                                 y: parent.height/2 - (modelData.yMm/parent.rangeMm)*parent.plotR - height/2 } }
                                     }

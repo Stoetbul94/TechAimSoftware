@@ -191,7 +191,7 @@ int main(int argc, char *argv[])
     // run concurrently against the same config.ini and session store. Taking
     // both locks makes either one block the other in both directions.
     QLockFile lockFile(QDir::temp().absoluteFilePath(
-        product.executableBaseName + QStringLiteral(".lock")));
+        product.instanceLockName + QStringLiteral(".lock")));
     std::unique_ptr<QLockFile> legacyLock;
     bool blockedByLegacy = false;
     for (const QString& legacyName : product.legacyLockFileNames) {

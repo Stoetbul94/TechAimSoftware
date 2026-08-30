@@ -93,7 +93,7 @@ FloatingWindow {
                     Rectangle {
                         visible: reportWin.tab === modelData.t
                         anchors.bottom: parent.bottom; anchors.horizontalCenter: parent.horizontalCenter
-                        width: parent.width * 0.6; height: 2; radius: 1; color: "#a80038"
+                        width: parent.width * 0.6; height: 2; radius: 1; color: PRODUCT.accentPrimary
                     }
                     MouseArea { id: ma; anchors.fill: parent; hoverEnabled: true; onClicked: reportWin.tab = modelData.t }
                 }
@@ -148,7 +148,7 @@ FloatingWindow {
             }
             Rectangle {
                 width: spTxt.implicitWidth + 26; height: 28; radius: 6
-                color: spMA.pressed ? "#8a002f" : "#a80038"
+                color: spMA.pressed ? PRODUCT.accentPressed : PRODUCT.accentPrimary
                 Text { id: spTxt; anchors.centerIn: parent; text: "⤓  Save PDF"; color: "white"; font.family: "Segoe UI"; font.pixelSize: 12; font.bold: true }
                 MouseArea {
                     id: spMA; anchors.fill: parent

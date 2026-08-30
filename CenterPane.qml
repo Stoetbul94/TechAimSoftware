@@ -579,7 +579,7 @@ Item {
         width: croBannerText.width + 36
         height: 38
         radius: 6
-        color: "#A80038"
+        color: PRODUCT.accentPrimary
         Text {
             id: croBannerText
             objectName: "croBannerText"
@@ -1618,7 +1618,7 @@ Item {
         width: resumeText.implicitWidth + 40
         height: 44
         radius: 8
-        color: "#e8003d"
+        color: PRODUCT.accentBright
         Text {
             id: resumeText
             anchors.centerIn: parent

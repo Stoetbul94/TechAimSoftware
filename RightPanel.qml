@@ -1656,7 +1656,7 @@ Item {
                 model: [{ lbl: "10", b: 10, c: "#2ecc71" },
                         { lbl: "9",  b: 9,  c: "#3aa0ff" },
                         { lbl: "8",  b: 8,  c: "#ffb020" },
-                        { lbl: "≤7", b: 7,  c: "#e8003d" }]
+                        { lbl: "≤7", b: 7,  c: PRODUCT.accentBright }]
                 delegate: Item {
                     width: parent.width
                     height: (parent.height - 9) / 4

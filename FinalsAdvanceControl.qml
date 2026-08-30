@@ -29,7 +29,7 @@ Item {
         visible: adv.ctl && adv.ctl.advanceLabel !== "" && !adv.confirming
         width: visible ? pillTxt.implicitWidth + 30 : 0
         height: 30; radius: 15
-        color: pillMA.pressed ? theme.tokens.accentPressed : "#cca80038"
+        color: pillMA.pressed ? theme.tokens.accentPressed : Qt.alpha(PRODUCT.accentPrimary, 0.8)
         border.color: "#d44a6a"
         border.width: 1
         opacity: visible ? 1 : 0

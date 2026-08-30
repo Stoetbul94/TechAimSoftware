@@ -81,3 +81,7 @@ SOURCES += \
 
 # product/seta: measure the SETA build, not the Tech Aim one.
 DEFINES += BRAND_SETA
+
+# The brand test compares the product lines, so it needs every package compiled
+# even though a shipped binary carries only its own. See BrandPackage.cpp.
+DEFINES += TECHAIM_ALL_BRANDS
