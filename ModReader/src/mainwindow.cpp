@@ -486,22 +486,23 @@ QStringList MainWindow::getData()
 
 int MainWindow::modbusWriteSingleRegister(int startAdd, int value)
 {
-    if (m_modbus)
-    {
-        return m_modbus->directModbusWriteSingleRegister(startAdd, value);
-    }
+    // No adapter is a FAILED write, not a successful one. This returned 0, and
+    // every caller tests `!= -1` for success - so a missing adapter reported
+    // that the hardware counter had been reset when nothing had been sent.
+    if (!m_modbus)
+        return -1;
 
-    return 0;
+    QMutexLocker lock(&m_modbusTransport);
+    return m_modbus->directModbusWriteSingleRegister(startAdd, value);
 }
 
 int MainWindow::modbusReadRegistry(int startAdd, int noOfItem, uint16_t *dest)
 {
-    if (m_modbus)
-    {
-        return m_modbus->directModbusReadRegistry(startAdd, noOfItem, dest);
-    }
+    if (!m_modbus)
+        return -1;
 
-    return -1;
+    QMutexLocker lock(&m_modbusTransport);
+    return m_modbus->directModbusReadRegistry(startAdd, noOfItem, dest);
 }
 
 void MainWindow::changedNoOfRegs(int value)

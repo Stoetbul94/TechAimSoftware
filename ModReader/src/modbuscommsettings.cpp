@@ -279,8 +279,18 @@ void ModbusCommSettings::load(QSettings *s)
         m_serialPortName = s->value("RTU/SerialPortName").toString();
     }
 
+    // SERIAL-DEFAULT-005. THE DEFAULT IS THE TECH AIM TARGET, NOT A GENERIC ONE.
+    //
+    // These were QModMaster's generic defaults, 9600/None. A tablet whose
+    // qModMaster.ini had never been written therefore opened the port at
+    // 9600/None and every register read timed out. On 2026-08-23 that left
+    // Tablet-01 reconnecting every two seconds for 63 minutes and Tablet-04 for
+    // 59, until an operator connected by hand at 19200/Even and the settings
+    // were saved. A stored value still wins; this is only what "nothing stored"
+    // means. The field profile is 19200 / Even / 8 / 1, confirmed by the
+    // qModMaster.ini collected from Tablet-02 (COM5) and Tablet-04 (COM3).
     if (s->value("RTU/Baud").isNull())
-        m_baud = "9600";
+        m_baud = "19200";
     else
         m_baud = s->value("RTU/Baud").toString();
 
@@ -295,7 +305,7 @@ void ModbusCommSettings::load(QSettings *s)
         m_stopBits = s->value("RTU/StopBits").toString();
 
     if (s->value("RTU/Parity").isNull())
-        m_parity = "None";
+        m_parity = "Even";          // SERIAL-DEFAULT-005, see the note above
     else
         m_parity = s->value("RTU/Parity").toString();
 

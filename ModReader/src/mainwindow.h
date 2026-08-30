@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QMutex>
 #include <QSettings>
 #include <QLabel>
 #include <QString>
@@ -37,6 +38,9 @@ public:
     void tachusReconfigurePortNumber();
 
 private:
+    // Serializes every libmodbus transaction; see modbusReadRegistry().
+    QMutex m_modbusTransport;
+
     Ui::MainWindow *ui;
     //UI - Dialogs
     About *m_dlgAbout;
@@ -96,6 +100,17 @@ public slots:
     void changedStartAddress(int value);
     void setSBStartAddValue(int value, int type);
     QStringList getData();
+    // ── THE MODBUS TRANSPORT AUTHORITY (THREAD-MODBUS-006) ───────────────
+    // Every direct register access in the product goes through these two
+    // functions, and they are the ONLY place a libmodbus transaction is
+    // started. Acquisition polls from the GUI thread; MotorThread drives the
+    // paper feed from its own; a WorkerThread used to write the counter reset
+    // from a third. One libmodbus context cannot serve two frames at once - a
+    // reply read by the wrong caller is a corrupted coordinate, which is
+    // indistinguishable from a real one.
+    //
+    // The lock is held for ONE transaction and released; callers that wait
+    // (motor status polling) wait outside it.
     int modbusWriteSingleRegister(int startAdd, int value);
     int modbusReadRegistry(int startAdd, int noOfItem, uint16_t* dest);
 

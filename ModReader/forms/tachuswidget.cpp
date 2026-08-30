@@ -45,7 +45,6 @@ TachusWidget::TachusWidget(MainWindow *mainwindow, QWidget *parent) :
     connect(m_timer, SIGNAL(timeout()), this, SLOT(on_pushButton_2_clicked()));
     m_timer->start(100);
     m_motorThread = new MotorThread(m_mainWindow, this);
-    m_flushCount = new WorkerThread(m_mainWindow, this);
     changeSighterMode(true); // as the app start with sighter mode
 
     //connect(this, SIGNAL(shootCountChanged(int)), this, SLOT(broadCastNewShoot(int)));
@@ -91,7 +90,15 @@ bool TachusWidget::isHardwareConnected()
     uint16_t * dest16 = (uint16_t *) dest;
     memset(dest, 0, 1024);
 
-    m_mainWindow->modbusReadRegistry(4096, 2, dest16);
+    // A failed read is not evidence of a healthy target. The result used to be
+    // discarded, leaving the zeroed buffer to answer the question - which gives
+    // the right answer by accident here, but only by accident.
+    if (m_mainWindow->modbusReadRegistry(4096, 2, dest16) < 0) {
+        LogFile::instance().appendToLogFile(
+            QStringLiteral("isHardwareConnected: register read FAILED - reporting "
+                           "NOT connected"), LogType::BackendLevel);
+        return false;
+    }
     int data_1 = dest16[1];
     int data_0 = dest16[0];
     LogFile::instance().appendToLogFile(QString("isHardwareConnected data[0] = %1, data[1] = %2").arg(data_0).arg(data_1), LogType::interfaceLevel);
@@ -517,43 +524,85 @@ void TachusWidget::on_pushButton_2_clicked() // read old data
 
     if (m_mainWindow && m_mainWindow->isModBusConnected())
     {
-        // SYNC-001. This used to read:
+        // SYNC-001 / ACQ-FLUSH-001 / ACQ-DESYNC-002 / ACQ-SENTINEL-003.
         //
-        //     int from = m_currentShootsCount;
-        //     checkForNewShots();
-        //     int to = m_currentShootsCount;
-        //     if (from < to && to-from != 10) { ...fetch from+1..to... }
-        //
-        // It inferred "new shots arrived" from the baseline having MOVED. Once
-        // synchronization could legitimately move the baseline, that inference
-        // replayed stale target slots as real shots - two phantom shots, two
-        // scores and two paper feeds on 2026-08-09 in 10 m Air Pistol.
-        //
-        // The poll now STATES what happened. Only NewShots may fetch
-        // coordinates; Synchronized, NoChange, Fault and ReadError may not.
-        const PollResult poll = checkForNewShots();
-        const int from = poll.firstNewShot - 1;
-        const int to   = poll.lastNewShot;
+        // Every decision in this tick belongs to ta::target::AcquisitionSequencer,
+        // which the reliability harness drives directly. Nothing here decides
+        // what a counter reading means, which shot number a coordinate belongs
+        // to, or when the counter may be recycled - those were exactly the
+        // judgements that lived here as loose members and failed in the field.
+        const CounterRead read = readShotCounter();
+        if (!read.ok)
+            return;                 // the link layer has already handled it
 
-        if (poll.kind == PollKind::NewShots && to - from != 10)
+        // INVARIANT A is re-anchored to real data on every tick: the sequencer
+        // is told how many coordinates actually exist and is never left to
+        // believe its own arithmetic.
+        m_seq.setCapturedShots(m_xCordList.count());
+        const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+        const ta::target::SeqStep step = m_seq.poll(read.counter, nowMs);
+        // The poll is where the acquisition state changes. Publish readiness
+        // here, before the branches below start returning early.
+        publishReadinessIfChanged();
+
+        switch (step.action) {
+        case ta::target::SeqAction::IssueCounterReset:
+            issueCounterReset(step);
+            return;
+        case ta::target::SeqAction::RaiseFault:
+            reportAcquisitionFault(step);
+            return;
+        case ta::target::SeqAction::ReportSynchronized:
+            reportSynchronized(step);
+            return;
+        case ta::target::SeqAction::AwaitResetProof:
+            // OUR reset is outstanding. Judge nothing this tick: the deliberate
+            // disagreement between baseline and target inside this window is
+            // exactly what the old code mistook for ten lost shots.
+            return;
+        case ta::target::SeqAction::FetchCoordinates:
+            break;
+        case ta::target::SeqAction::Idle:
+        default:
+            return;
+        }
+
         {
-            LogFile::instance().appendToLogFile(QString("Collecting data for shoots from %1 to %2").arg(from).arg(to), LogType::interfaceLevel);
-            int baseNumber = 16376;
-            for (int i=from+1; i<=to; ++i)
+            LogFile::instance().appendToLogFile(
+                QStringLiteral("Collecting data for shoots from %1 to %2")
+                    .arg(step.firstSlot - 1).arg(step.lastSlot), LogType::interfaceLevel);
+            const int baseNumber = 16376;
+            for (int i = step.firstSlot; i <= step.lastSlot; ++i)
             {
                 uint8_t dest[1024]; //setup memory for data
                 uint16_t * dest16 = (uint16_t *) dest;
                 memset(dest, 0, 1024);
 
-                int newAddress = baseNumber +(8*i);
-                m_mainWindow->modbusReadRegistry(newAddress, 2, dest16);
+                const int newAddress = baseNumber + (8*i);
+                // ACQ-READ-004. THE COORDINATE READ RESULT IS THE AUTHORITY.
+                //
+                // This return value was discarded. A failed read leaves the
+                // buffer as memset left it, so a dead or noisy link decoded
+                // 0,0 - dead centre - as a real shot, and a partial frame
+                // decoded whatever residue survived. RECONNECT-001 fixed
+                // precisely this for the COUNTER read and never reached the
+                // coordinate read three lines away.
+                const int coordRc = m_mainWindow->modbusReadRegistry(newAddress, 2, dest16);
+                if (coordRc < 0) {
+                    LogFile::instance().appendToLogFile(
+                        QStringLiteral("ACQ_COORD_READ_FAILED slot=%1 address=%2 rc=%3 - "
+                                       "shot NOT accepted, NOT scored, NOT fed")
+                            .arg(i).arg(newAddress).arg(coordRc), LogType::BackendLevel);
+                    const ta::target::SeqStep f = m_seq.noteCoordinateReadFailed(i);
+                    reportAcquisitionFault(f);
+                    return;
+                }
                 int x = dest16[1];
                 int y = dest16[0];
                 double decimalDevider = m_isSingleDecimal ? 10.0 : 100.0;
                 double xReal = x < 255 ? x/decimalDevider : getRealValue(x)/decimalDevider;
                 double yReal = y < 255 ? y/decimalDevider : getRealValue(y)/decimalDevider;
                 if (getGame_range() == 10) {
-//                    double ratio = (double (getGame_distance()))/getGame_range();
                     double ratio = (double (getMatch_distance_new()))/getGame_range();
                     double modifiedX = xReal/ratio;
                     double modifiedY = yReal/ratio;
@@ -562,8 +611,6 @@ void TachusWidget::on_pushButton_2_clicked() // read old data
 
                     LogFile::instance().appendToLogFile(QString("Hardware value X %1 and computed %2").arg(x).arg(x < 255 ? x : getRealValue(x)), LogType::interfaceLevel);
                     LogFile::instance().appendToLogFile(QString("Hardware value Y %1 and computed %2").arg(y).arg(y < 255 ? y : getRealValue(y)), LogType::interfaceLevel);
-                    LogFile::instance().appendToLogFile(QString("original X %1 and modified X %2 for shoot %3").arg(xReal).arg(modifiedX).arg(getShootCount() - to + i), LogType::interfaceLevel);
-                    LogFile::instance().appendToLogFile(QString("original Y %1 and modified Y %2 for shoot %3").arg(yReal).arg(modifiedY).arg(getShootCount() - to + i), LogType::interfaceLevel);
                 } else {
                     m_xCordList.append(xReal);
                     m_yCordList.append(yReal);
@@ -575,54 +622,47 @@ void TachusWidget::on_pushButton_2_clicked() // read old data
                     m_xCordList_gameMode.append(xReal);
                     m_yCordList_gameMode.append(yReal);
                 }
-                LogFile::instance().appendToLogFile(QString("check x cor %1 and y cor %2 for shoot %3").arg(xReal).arg(yReal).arg(getShootCount() - to + i), LogType::interfaceLevel);
-                const int acceptedShotNo = getShootCount() - to + i;
-                // 5. coordinates and score decoded (they are in scope here).
+
+                // ACQ-DESYNC-002. THE SHOT NUMBER IS THE COORDINATE COUNT.
+                //
+                // It used to be getShootCount() - to + i, an arithmetic a
+                // reconnect could put one index ahead of the arrays for the rest
+                // of the session. The coordinate is stored FIRST and the number
+                // is what the sequencer counts, so a shot number for which no
+                // coordinate exists cannot be constructed at all.
+                const int acceptedShotNo = m_seq.noteCoordinateCaptured();
+
+                // The gate. If this ever fails something above is wrong, and no
+                // athlete-visible number may be produced from it.
+                if (!coordinateHasValue(acceptedShotNo)) {
+                    reportCoordinateIndexInvalid("acquire", acceptedShotNo);
+                    const ta::target::SeqStep f = m_seq.noteCoordinateReadFailed(i);
+                    reportAcquisitionFault(f);
+                    return;
+                }
+
+                LogFile::instance().appendToLogFile(QString("check x cor %1 and y cor %2 for shoot %3").arg(xReal).arg(yReal).arg(acceptedShotNo), LogType::interfaceLevel);
                 traceShotStage("decoded", acceptedShotNo,
                                QStringLiteral("x=%1 y=%2").arg(xReal).arg(yReal));
-                // 6. shootCountChanged emitted - the QML model update and the
-                //    marker render both hang off this signal, so the gap
-                //    between this line and the QML-side stamp IS the display
-                //    latency Arnold saw.
                 traceShotStage("emit-shootCountChanged", acceptedShotNo);
                 emit shootCountChanged(acceptedShotNo);
                 traceShotStage("emit-returned", acceptedShotNo);
-                // RC2 AUTOMATIC PAPER FEED. This is the PHYSICAL acceptance
-                // path: the shot has passed protocol validation and the
-                // duplicate guard above, its coordinates are stored, and the
-                // UI has been told. Demo/UI shots go through uxShoot() and
-                // never reach here, which is a second layer of protection on
-                // top of the coordinator's own Live-mode gate.
-                //
-                // The old delegate-based call in CenterPane.qml is gone: a
-                // ListView delegate is created and destroyed by the view, so a
-                // motor command attached to one fired late, twice or never.
                 LogFile::instance().appendToLogFile(
                     QString("physical shot accepted: seq %1 (%2)")
                         .arg(acceptedShotNo)
                         .arg(isSighterMode ? "sighter" : "counted"),
                     LogType::BackendLevel);
-                // 14-16. feed request, motor start and motor completion are
-                //     logged inside PaperFeedCoordinator against the same
-                //     sequence number.
                 traceShotStage("feed-hook-enter", acceptedShotNo);
                 onPhysicalShotAccepted(acceptedShotNo, isSighterMode);
                 traceShotStage("feed-hook-exit", acceptedShotNo);
             }
 
-            if (m_flushCount && m_currentShootsCount == FLUSH_SHOOT_COUNT) {
-//                QThread::msleep(2600);
-//                clearShootCount();
-                LogFile::instance().appendToLogFile(QString("Reset shoot is called, old totol shoot count %1").arg(m_oldResetCount), LogType::interfaceLevel);
-                m_oldResetCount = m_oldResetCount + m_currentShootsCount;
-                LogFile::instance().appendToLogFile(QString("Reset shoot is called, Current shoot count %1").arg(m_currentShootsCount), LogType::interfaceLevel);
-
-                m_flushStarted = true;
-                m_flushCount->start();
-
-                m_currentShootsCount = 0;
-                LogFile::instance().appendToLogFile(QString("Reset done, Current shoot count %1").arg(m_currentShootsCount), LogType::interfaceLevel);
-            }
+            // ACQ-FLUSH-001. The counter is recycled because the target slots
+            // are indexed by it - a deliberate act, decided in one place, and
+            // the application baseline does NOT move until the target confirms.
+            const ta::target::SeqStep reset = m_seq.maybeStartCounterReset(nowMs);
+            if (reset.action == ta::target::SeqAction::IssueCounterReset)
+                issueCounterReset(reset);
         }
     }
 }
@@ -705,9 +745,10 @@ void TachusWidget::uxShoot(double xCor, double yCor)
         m_xCordList_gameMode.append(xCor);
         m_yCordList_gameMode.append(yCor);
     }
-    LogFile::instance().appendToLogFile(QString("ux shoot count %1").arg(m_oldResetCount), LogType::interfaceLevel);
-    m_oldResetCount++;
-    emit shootCountChanged(m_oldResetCount);
+    // Demo shots publish the SAME number the live path does - the count of
+    // coordinates held - so the two paths cannot disagree about what shot 11 is.
+    LogFile::instance().appendToLogFile(QString("ux shoot count %1").arg(m_xCordList.count()), LogType::interfaceLevel);
+    emit shootCountChanged(m_xCordList.count());
     //    emit hardwareDisconnected();
 }
 
@@ -737,18 +778,81 @@ QString TachusWidget::getTimeStamp(int index)
     return QString();
 }
 
+// ACQ-SENTINEL-003. AN INVALID INDEX IS NOT A COORDINATE.
+//
+// These accessors used to answer -1 for an index they did not hold. -1 is a
+// perfectly legal coordinate: -1.00 mm on both axes is 1.41 mm from centre,
+// which on a 50 m rifle target scores 10.8. An internal indexing error
+// therefore left the application holding a plausible competition score with no
+// error reported anywhere - which is precisely what fourteen Tablet-02 records
+// contain.
+//
+// The answer is now a NaN AND a loud acquisition fault. NaN because it cannot
+// be mistaken for a position: arithmetic on it stays NaN and comparisons
+// against it are false. The fault is what the operator sees; the NaN is what
+// makes a missed guard harmless instead of a 10.8.
 double TachusWidget::getXCord(int index)
 {
-    //qDebug() << __FUNCTION__ << index << m_xCordList.count();
-    if (m_xCordList.isEmpty() || index == 0)
-        return -1;
-
-    if (m_xCordList.count()>= index) {
-        return m_xCordList.at(index-1);
+    if (!coordinateHasValue(index)) {
+        reportCoordinateIndexInvalid("getXCord", index);
+        return qQNaN();
     }
+    return m_xCordList.at(index-1);
+}
 
-    qDebug() << __FUNCTION__ << index;
-    return -1;
+// Ask this before using a coordinate for anything an athlete will see. It is a
+// bool, not a number that has to be recognised as special.
+bool TachusWidget::coordinateHasValue(int index) const
+{
+    return ta::target::coordinateIndexValid(index, m_xCordList.count(),
+                                            m_yCordList.count());
+}
+
+// One diagnostic carrying every number needed to explain it, and it stops
+// acquisition: a shot whose coordinate cannot be found is not a shot that may
+// quietly receive a score.
+// UI-STATUS-001. Emit the NOTIFY for the derived readiness property when, and
+// only when, effective readiness changes. Callers that already go through
+// setTargetStatus() are covered by its own emit; this covers the transitions
+// that do not - principally the poll and the central session reset.
+void TachusWidget::publishReadinessIfChanged()
+{
+    const bool now = targetReady();
+    if (now == m_readyPublished)
+        return;
+    m_readyPublished = now;
+    LogFile::instance().appendToLogFile(
+        QStringLiteral("target readiness -> %1 (state=%2 acq=%3)")
+            .arg(now ? QStringLiteral("READY") : QStringLiteral("NOT READY"))
+            .arg(m_targetState)
+            .arg(QLatin1String(acquisitionStateName())), LogType::BackendLevel);
+    emit targetStatusChanged();
+}
+
+void TachusWidget::reportCoordinateIndexInvalid(const char* who, int index,
+                                                bool stopAcquisition)
+{
+    LogFile::instance().appendToLogFile(
+        QStringLiteral("ACQ_COORD_INDEX_INVALID from=%1 requestedIndex=%2 xList=%3 "
+                       "yList=%4 logicalShotCount=%5 hardwareBaseline=%6 "
+                       "priorTotal=%7 sequencerCaptured=%8 session=%9")
+            .arg(QLatin1String(who))
+            .arg(index)
+            .arg(m_xCordList.count())
+            .arg(m_yCordList.count())
+            .arg(getShootCount())
+            .arg(m_seq.hardwareBaseline())
+            .arg(m_seq.priorTotal())
+            .arg(m_seq.capturedShots())
+            .arg(m_traceSessionTag.isEmpty() ? QStringLiteral("nosession")
+                                             : m_traceSessionTag),
+        LogType::BackendLevel);
+    if (!stopAcquisition)
+        return;
+    setTargetStatus(QStringLiteral("ACQUISITION FAULT"), QString(), QString(),
+                    QStringLiteral("A shot was requested for which no measured "
+                                   "coordinate exists. Acquisition has stopped; "
+                                   "no score was produced."));
 }
 
 double TachusWidget:: getXMPI(int series)
@@ -1224,32 +1328,35 @@ bool TachusWidget::inBoundAllPoints(pair<double, double> center, double dia, int
 }
 ///////////////////////// https://www.geeksforgeeks.org/program-find-circumcenter-triangle-2/
 
+// ACQ-SENTINEL-003, second site. This fed the match report's per-shot X
+// column, and it returned -1 for a shot it could not find - so a coordinate the
+// application never measured was printed as "-1.00 mm" on an athlete's result.
+// -1.00/-1.00 is the pair that scored 10.8 through the whole 2026-08-23 defect.
+//
+// The bounds check was also wrong: it compared the LIST length against
+// shootNumber while indexing with ((series-1)*10 + shootNumber), so from series
+// 2 onward it could index past the end - QList::at() out of range is a native
+// crash, not a sentinel.
 double TachusWidget::getXMPIForShoot(int series, int shootNumber)
 {
-    if (shootNumber >= 0 && m_xCordList.count() > shootNumber && series >= 1)
-    {
-        int index = ((series - 1)*10) + shootNumber;
-        return m_xCordList.at(index);
+    if (series < 1 || shootNumber < 0)
+        return qQNaN();
+    const int index = ((series - 1) * 10) + shootNumber;
+    if (index < 0 || index >= m_xCordList.count()) {
+        reportCoordinateIndexInvalid("getXMPIForShoot", index + 1,
+                                     /*stopAcquisition=*/false);
+        return qQNaN();
     }
-
-    return -1;
+    return m_xCordList.at(index);
 }
 
 double TachusWidget::getYCord(int index)
 {
-    qDebug() << __FUNCTION__ << index;
-    if (m_yCordList.isEmpty() || index == 0)
-        return -1;
-
-
-    ui->listWidget_2->addItem(QString("get y cord %1 index count %2").arg(index).arg(m_yCordList.count()));
-    if (m_yCordList.count()>= index) {
-        ui->listWidget_2->addItem(QString("get y cord value %1").arg(m_yCordList.at(index-1)));
-        return m_yCordList.at(index-1);
+    if (!coordinateHasValue(index)) {
+        reportCoordinateIndexInvalid("getYCord", index);
+        return qQNaN();
     }
-
-    qDebug() << __FUNCTION__ << index;
-    return -1;
+    return m_yCordList.at(index-1);
 }
 
 double TachusWidget::getYMPI(int series)
@@ -1282,15 +1389,26 @@ double TachusWidget::getYMPI(int series)
     return mpiString.toDouble();
 }
 
+// ACQ-SENTINEL-003, second site. This fed the match report's per-shot Y
+// column, and it returned -1 for a shot it could not find - so a coordinate the
+// application never measured was printed as "-1.00 mm" on an athlete's result.
+// -1.00/-1.00 is the pair that scored 10.8 through the whole 2026-08-23 defect.
+//
+// The bounds check was also wrong: it compared the LIST length against
+// shootNumber while indexing with ((series-1)*10 + shootNumber), so from series
+// 2 onward it could index past the end - QList::at() out of range is a native
+// crash, not a sentinel.
 double TachusWidget::getYMPIForShoot(int series, int shootNumber)
 {
-    if (shootNumber >= 0 && m_yCordList.count() > shootNumber && series >= 1)
-    {
-        int index = ((series - 1)*10) + shootNumber;
-        return m_yCordList.at(index);
+    if (series < 1 || shootNumber < 0)
+        return qQNaN();
+    const int index = ((series - 1) * 10) + shootNumber;
+    if (index < 0 || index >= m_yCordList.count()) {
+        reportCoordinateIndexInvalid("getYMPIForShoot", index + 1,
+                                     /*stopAcquisition=*/false);
+        return qQNaN();
     }
-
-    return -1;
+    return m_yCordList.at(index);
 }
 
 double TachusWidget::getTeiler(int series)
@@ -1363,17 +1481,24 @@ double TachusWidget::getTeilerForShootOfMatch(int shootNumber)
 
 double TachusWidget::getScore(int index)
 {
-    double value = 0;
-    qDebug() <<__LINE__<< "index "<<index << " value " <<value;
+    // The guard used to be `index <= count`, which index 0 satisfies - and the
+    // body then called QList::at(-1). Both bounds are checked now. The returned
+    // value for an unknown index is unchanged (0, "not scored yet"), because
+    // several network and file paths already depend on it; what is new is that
+    // the request is reported instead of passing without trace.
+    const QList<double>& list = isSighterMode ? m_scoreList_sighterMode
+                                              : m_scoreList_gameMode;
+    if (index >= 1 && index <= list.count())
+        return list.at(index - 1);
 
-    if (isSighterMode && index <= m_scoreList_sighterMode.count()) {
-        value = m_scoreList_sighterMode.at(index-1);
-    } else if (index <= m_scoreList_gameMode.count()){
-        value = m_scoreList_gameMode.at(index-1);
-    }
-
-    qDebug() << "index "<<index << " value " <<value;
-    return value;
+    if (index != 0)
+        LogFile::instance().appendToLogFile(
+            QStringLiteral("ACQ_SCORE_INDEX_INVALID requestedIndex=%1 sighter=%2 "
+                           "sighterScores=%3 matchScores=%4 - no score returned")
+                .arg(index).arg(isSighterMode ? 1 : 0)
+                .arg(m_scoreList_sighterMode.count())
+                .arg(m_scoreList_gameMode.count()), LogType::BackendLevel);
+    return 0;
 }
 
 void TachusWidget::setScore(double value)
@@ -1503,7 +1628,7 @@ bool TachusWidget::checkAutoFeedMode(bool showPopup)
     int data_1 = dest16[1];
     int data_0 = dest16[0];
     LogFile::instance().appendToLogFile(QString("checkAutoFeedMode data[0] = %1, data[1] = %2").arg(data_0).arg(data_1), LogType::interfaceLevel);
-    if (data_1 == 0 && data_0 == 0 && m_currentShootsCount <= 1 && showPopup) {
+    if (data_1 == 0 && data_0 == 0 && m_xCordList.count() <= 1 && showPopup) {
         showMessage("The connection to the target hardware was lost.\n\nPlease reconnect and try again.");
     }
 
@@ -1538,20 +1663,18 @@ void TachusWidget::changeSighterMode(bool flag)
     removeSetaLaneShootDataFile();
 
     if (flag) {
+        // Only the DATA is swapped. The shot count follows the data by
+        // definition now (INVARIANT A), and the hardware counter belongs to the
+        // target, which does not care which mode the operator is in - so there
+        // is no longer a second set of counters to keep in step.
         QList<double> temp_XCorList = m_xCordList;
         QList<double> temp_YCorList = m_yCordList;
-        int m_currentShootsCount_temp = m_currentShootsCount;
-        int m_oldResetCount_temp = m_oldResetCount;
 
         m_xCordList = m_xCordList_sighterMode;
         m_yCordList = m_yCordList_sighterMode;
-        m_currentShootsCount = m_currentShootsCount_sighter;
-        m_oldResetCount = m_oldResetCount_sighter;
 
         m_xCordList_gameMode = temp_XCorList;
         m_yCordList_gameMode = temp_YCorList;
-        m_currentShootsCount_game = m_currentShootsCount_temp;
-        m_oldResetCount_game = m_oldResetCount_temp;
 
         //time stamp
         m_timeConsumedList = m_timeConsumedList_sighterMode;
@@ -1560,18 +1683,12 @@ void TachusWidget::changeSighterMode(bool flag)
     } else {
         QList<double> temp_XCorList = m_xCordList;
         QList<double> temp_YCorList = m_yCordList;
-        int m_currentShootsCount_temp = m_currentShootsCount;
-        int m_oldResetCount_temp = m_oldResetCount;
 
         m_xCordList = m_xCordList_gameMode;
         m_yCordList = m_yCordList_gameMode;
-        m_currentShootsCount = m_currentShootsCount_game;
-        m_oldResetCount = m_oldResetCount_game;
 
         m_xCordList_sighterMode = temp_XCorList;
         m_yCordList_sighterMode = temp_YCorList;
-        m_currentShootsCount_sighter = m_currentShootsCount_temp;
-        m_oldResetCount_sighter = m_oldResetCount_temp;
 
         //time stamp
         m_timeConsumedList = m_timeConsumedList_gameMode;
@@ -1702,6 +1819,7 @@ void TachusWidget::onTargetLinkLost()
         return;                     // already handled - never spam the state
 
     m_linkState = TargetLinkState::Reconnecting;
+    m_seq.noteLinkLost();
     m_reconnectAttempts = 0;
     m_lastReconnectAttemptMs = 0;   // let the first retry run immediately
 
@@ -1759,30 +1877,35 @@ void TachusWidget::attemptTargetReconnect()
     if (m_mainWindow->modbusReadRegistry(8192, 2, probe16) < 0)
         return;                     // not really back - stay reconnecting
 
-    // ADOPT the counter, exactly as FALSE-SHOT-001 requires. Anything the
-    // target counted while we were offline is residue from our point of view:
-    // it must not be replayed as new shots and must not drive the motor.
+    // ACQ-DESYNC-002. THE COUNTER IS NOT ADOPTED HERE.
+    //
+    // This is where the field defect was born. The line was:
+    //
+    //     m_currentShootsCount = actual;
+    //
+    // On 2026-08-23 that assigned "target reports 1" while ten coordinates were
+    // held. getShootCount() answered 11 against ten stored coordinates, and
+    // every later shot read one index past the end of the arrays; the -1
+    // sentinel scored 10.8 for the rest of three sessions.
+    //
+    // The link is proved here and NOTHING else. The sequencer is put back into
+    // SYNCHRONIZING and the next poll adopts the counter through
+    // planBaselineAdoption(), which re-establishes the relationship between the
+    // counter, the retired total and the coordinates actually captured, and
+    // says out loud when the target counted shots we never saw.
     const int actual = probe16[1];
-    const int previous = m_currentShootsCount;
-    m_currentShootsCount = actual;
+    const int previous = m_seq.hardwareBaseline();
     m_consecutiveReadFailures = 0;
     m_linkState = TargetLinkState::Connected;
-    // The link is back but the counter may have moved while we were blind.
-    // Re-synchronise before accepting anything rather than assuming continuity.
-    m_acqState = AcquisitionState::Synchronizing;
+    m_seq.noteLinkRestored();
 
     LogFile::instance().appendToLogFile(
-        QStringLiteral("target link RESTORED on %1 after %2 attempt(s); counter was %3, "
-                       "target reports %4 - adopted as baseline, not replayed")
-            .arg(port).arg(m_reconnectAttempts).arg(previous).arg(actual),
+        QStringLiteral("target link RESTORED on %1 after %2 attempt(s); baseline was %3, "
+                       "target reports %4, coordinates held %5 - reconciliation happens "
+                       "on the next poll, nothing is replayed")
+            .arg(port).arg(m_reconnectAttempts).arg(previous).arg(actual)
+            .arg(m_xCordList.count()),
         LogType::BackendLevel);
-
-    if (actual != previous)
-        LogFile::instance().appendToLogFile(
-            QStringLiteral("COMMUNICATION INTERRUPTION: the target counter moved from %1 "
-                           "to %2 while the application was offline. Those shots were NOT "
-                           "captured and are NOT recoverable by this session.")
-                .arg(previous).arg(actual), LogType::BackendLevel);
 
     m_activePortName = port;
     setTargetStatus(QStringLiteral("SYNCHRONIZING"), port,
@@ -1790,11 +1913,17 @@ void TachusWidget::attemptTargetReconnect()
                     QStringLiteral("Target found. Checking shot counter before shooting."));
 }
 
-TachusWidget::PollResult TachusWidget::checkForNewShots(bool motorAutoMode)
+// ONE COUNTER READ. NO JUDGEMENT.
+//
+// This used to read the counter AND decide what the reading meant AND move the
+// baseline, all inside a QWidget slot that no test could reach. The decision
+// now belongs to ta::target::AcquisitionSequencer; what remains here is the
+// transport: read the register, keep the link state honest, and report the
+// number.
+TachusWidget::CounterRead TachusWidget::readShotCounter()
 {
-    PollResult result;
-//    LogFile::instance().appendToLogFile("Checking for new shoots", LogType::BackendLevel);
-    uint8_t dest[1024]; //setup memory for data
+    CounterRead out;
+    uint8_t dest[1024];
     uint16_t * dest16 = (uint16_t *) dest;
     memset(dest, 0, 1024);
 
@@ -1802,43 +1931,39 @@ TachusWidget::PollResult TachusWidget::checkForNewShots(bool motorAutoMode)
     //
     // This return value used to be discarded. A failed read leaves dest16
     // zeroed, so a dead link produced newShotsCount == 0 - indistinguishable
-    // from "no new shots". The only disconnect check below is additionally
-    // gated on m_hardwareCheckDisabled, which DEFAULTS TO TRUE, so it never
-    // ran. And m_connected in ModbusAdapter is a cached bool that survives USB
-    // removal, so isModBusConnected() kept answering true.
-    //
-    // Net effect on 2026-08-09: the cable was unplugged, the application
-    // noticed nothing, the operator's next shot was lost, and the log went
-    // silent for four and a half minutes with the shooting screen still
-    // looking healthy. A shot lost without warning is worse than a shot
-    // reported wrongly, because nobody knows when acquisition stopped.
+    // from "no new shots". And m_connected in ModbusAdapter is a cached bool
+    // that survives USB removal, so isModBusConnected() kept answering true.
+    // On 2026-08-09 the cable was out, the application noticed nothing and the
+    // log went silent for four and a half minutes with the shooting screen
+    // still looking healthy.
     const int rc = m_mainWindow->modbusReadRegistry(8192, 2, dest16);
 
-    // ── RC2g-DIAG: make the acquisition decision observable ──────────────
-    // OBSERVABILITY ONLY - no branch below is altered. Three separate root
-    // cause theories were disproved by physical measurement because the log
-    // records only ACCEPTED shots; every rejection was invisible. This prints
-    // the raw counter, the baseline and the branch actually taken.
-    //
+    // ── acquisition diagnostics ──────────────────────────────────────────
     // Rate limited so the 100 ms poll is not materially slowed: every state
-    // change is logged immediately, and an unchanged idle poll only produces a
+    // change is logged immediately, and an unchanged idle poll produces a
     // heartbeat about once per second - enough to prove polling is alive when
-    // nothing is being accepted.
+    // nothing is being accepted. Three separate root-cause theories survived as
+    // long as they did because the log recorded only ACCEPTED shots and every
+    // rejection was invisible.
     ++m_diagPollSeq;
     {
         const int rawCounter = (rc < 0) ? -1 : int(dest16[1]);
         const bool changed   = (rawCounter != m_diagLastRawCounter)
-                            || (m_currentShootsCount != m_diagLastBaseline);
+                            || (m_seq.hardwareBaseline() != m_diagLastBaseline);
         const bool heartbeat = (m_diagPollSeq % 10) == 0;      // ~1 s at 100 ms
         if (changed || heartbeat) {
             LogFile::instance().appendToLogFile(
                 QStringLiteral("ACQDIAG poll=%1 rc=%2 rawCounter=%3 baseline=%4 delta=%5 "
-                               "modbusConnected=%6 linkState=%7 onLoginPage=%8 liveFlag=%9 %10")
+                               "state=%6 captured=%7 priorTotal=%8 modbusConnected=%9 "
+                               "linkState=%10 onLoginPage=%11 liveFlag=%12 %13")
                     .arg(m_diagPollSeq)
                     .arg(rc)
                     .arg(rawCounter)
-                    .arg(m_currentShootsCount)
-                    .arg(rc < 0 ? 0 : rawCounter - m_currentShootsCount)
+                    .arg(m_seq.hardwareBaseline())
+                    .arg(rc < 0 ? 0 : rawCounter - m_seq.hardwareBaseline())
+                    .arg(acquisitionStateName())
+                    .arg(m_xCordList.count())
+                    .arg(m_seq.priorTotal())
                     .arg(m_mainWindow && m_mainWindow->isModBusConnected() ? 1 : 0)
                     .arg(int(m_linkState))
                     .arg(m_onLoginPage ? 1 : 0)
@@ -1847,7 +1972,7 @@ TachusWidget::PollResult TachusWidget::checkForNewShots(bool motorAutoMode)
                 LogType::BackendLevel);
         }
         m_diagLastRawCounter = rawCounter;
-        m_diagLastBaseline   = m_currentShootsCount;
+        m_diagLastBaseline   = m_seq.hardwareBaseline();
     }
 
     if (rc < 0) {
@@ -1855,103 +1980,139 @@ TachusWidget::PollResult TachusWidget::checkForNewShots(bool motorAutoMode)
         // genuinely removed device fails every time.
         if (++m_consecutiveReadFailures >= kReadFailuresBeforeLinkLost)
             onTargetLinkLost();
-        result.kind = PollKind::ReadError;
-        return result;
+        return out;                     // ok stays false
     }
     m_consecutiveReadFailures = 0;
 
-    int newShotsCount = dest16[1];
-    //motorAutoMode = false;
-    //LogFile::instance().appendToLogFile(QString("Current shoot count %1 while old shoot count was %2").arg(newShotsCount).arg(m_currentShootsCount), LogType::BackendLevel);
-    if (newShotsCount == 0 && !m_hardwareCheckDisabled) {
+    const int counter = dest16[1];
+    if (counter == 0 && !m_hardwareCheckDisabled) {
         // check for hardware disconnection
         if (!isHardwareConnected()) {
             emit hardwareDisconnected();
             m_hardwareDisconnected = true;
-            result.kind = PollKind::ReadError;
-            return result;
+            return out;                 // ok stays false
         }
     }
-    // ── THE DECISION ─────────────────────────────────────────────────────
-    // Delegated to ta::target::decidePoll so the harness exercises the SAME
-    // implementation this line calls, rather than a copy that can drift.
-    using ta::target::AcqState;
-    using ta::target::FaultCause;
-    const AcqState before =
-        (m_acqState == AcquisitionState::Synchronizing) ? AcqState::Synchronizing
-      : (m_acqState == AcquisitionState::Fault)         ? AcqState::Fault
-                                                        : AcqState::Acquiring;
-    const ta::target::PollDecision d =
-        ta::target::decidePoll(before, m_currentShootsCount, newShotsCount);
 
-    m_acqState = (d.nextState == AcqState::Synchronizing) ? AcquisitionState::Synchronizing
-               : (d.nextState == AcqState::Fault)         ? AcquisitionState::Fault
-                                                          : AcquisitionState::Acquiring;
+    out.ok = true;
+    out.counter = counter;
+    return out;
+}
 
-    switch (d.kind) {
-    case ta::target::PollKind::Synchronized:
-        if (d.delta != 0)
-            LogFile::instance().appendToLogFile(
-                QStringLiteral("ACQDIAG branch=SYNCHRONIZED baseline %1 -> %2 "
-                               "(adopted from target; %3 pre-existing count(s) ignored, "
-                               "NOT replayed as shots)")
-                    .arg(m_currentShootsCount).arg(d.newBaseline).arg(d.delta),
-                LogType::BackendLevel);
-        else
-            LogFile::instance().appendToLogFile(
-                QStringLiteral("ACQDIAG branch=SYNCHRONIZED baseline=%1 (already in agreement)")
-                    .arg(d.newBaseline), LogType::BackendLevel);
-        m_currentShootsCount = d.newBaseline;
-        setTargetStatus(QStringLiteral("TARGET CONNECTED"), m_activePortName);
-        result.kind = PollKind::Synchronized;
-        result.newHardwareCounter = d.newBaseline;
-        return result;
+const char* TachusWidget::acquisitionStateName() const
+{
+    switch (m_seq.state()) {
+    case ta::target::AcqState::Synchronizing:    return "SYNCHRONIZING";
+    case ta::target::AcqState::Acquiring:        return "ACQUIRING";
+    case ta::target::AcqState::ResettingCounter: return "RESETTING_COUNTER";
+    case ta::target::AcqState::Fault:            return "FAULT";
+    }
+    return "?";
+}
 
-    case ta::target::PollKind::NoChange:
-        return result;                  // NoChange
+// ACQ-FLUSH-001. The counter reset, issued and PROVED.
+//
+// The write goes out on the poll thread through the one serialized transport;
+// the confirmation arrives on a later poll, where decidePoll() reports
+// ResetComplete. The application baseline does not move until then, so the
+// window in which the two could disagree by accident does not exist.
+void TachusWidget::issueCounterReset(const ta::target::SeqStep& step)
+{
+    LogFile::instance().appendToLogFile(
+        QStringLiteral("ACQ_RESET issue register=8193 value=%1 baseline=%2 "
+                       "captured=%3 priorTotal=%4 - baseline will NOT move until "
+                       "the target confirms")
+            .arg(step.resetRegisterValue)
+            .arg(m_seq.hardwareBaseline())
+            .arg(m_xCordList.count())
+            .arg(m_seq.priorTotal()), LogType::BackendLevel);
 
-    case ta::target::PollKind::NewShots:
-        LogFile::instance().appendToLogFile(QString("Current shoot count %1 while old shoot count was %2").arg(newShotsCount).arg(m_currentShootsCount), LogType::BackendLevel);
+    const int rc = m_mainWindow
+        ? m_mainWindow->modbusWriteSingleRegister(8193, step.resetRegisterValue)
+        : -1;
+    if (rc < 0) {
+        // Only a write the transport REPORTED as failed is repeated. Writing
+        // again after a delivered write merely restarts whatever the target had
+        // already begun.
+        m_seq.noteResetWriteFailed();
         LogFile::instance().appendToLogFile(
-            QStringLiteral("ACQDIAG branch=ACCEPT raw=%1 baseline=%2 delta=1")
-                .arg(newShotsCount).arg(m_currentShootsCount), LogType::BackendLevel);
-        result.kind = PollKind::NewShots;
-        result.firstNewShot = d.firstNewShot;
-        result.lastNewShot  = d.lastNewShot;
-        result.newHardwareCounter = d.newBaseline;
-        m_currentShootsCount = d.newBaseline;
-        return result;
+            QStringLiteral("ACQ_RESET write FAILED rc=%1 - will be re-issued").arg(rc),
+            LogType::BackendLevel);
+    }
+}
 
-    case ta::target::PollKind::Fault:
+void TachusWidget::reportAcquisitionFault(const ta::target::SeqStep& step)
+{
+    QString detail;
+    switch (step.cause) {
+    case ta::target::FaultCause::CounterWentBackwards:
+        detail = QStringLiteral("the target counter went BACKWARDS (target %1 is "
+                                "below baseline %2)")
+                     .arg(step.hardwareCounter).arg(step.baseline);
+        break;
+    case ta::target::FaultCause::CounterJumped:
+        detail = QStringLiteral("the target counter JUMPED by %1 (target %2, "
+                                "baseline %3) - shots may have been missed")
+                     .arg(step.hardwareCounter - step.baseline)
+                     .arg(step.hardwareCounter).arg(step.baseline);
+        break;
+    case ta::target::FaultCause::ResetNotConfirmed:
+        detail = QStringLiteral("the target did not confirm the shot-counter "
+                                "reset (target still reads %1)")
+                     .arg(step.hardwareCounter);
+        break;
+    case ta::target::FaultCause::ShotDuringReset:
+        detail = QStringLiteral("the target counter moved to %1 while the "
+                                "shot-counter reset was in progress")
+                     .arg(step.hardwareCounter);
+        break;
     default:
+        detail = QStringLiteral("a shot could not be read or placed safely "
+                                "(slot %1)").arg(step.firstSlot);
         break;
     }
 
-    // Already-latched fault: reported once, then silent. Not spam, not cleared.
-    if (d.cause == FaultCause::None) {
-        result.kind = PollKind::Fault;
-        return result;
-    }
-
     // Recovering the missing shots is NOT attempted: the read-only probe on
-    // 2026-08-09 established that the target's coordinate slots are indexed by
-    // the counter and are overwritten once it is reset, so a gap cannot be
-    // reconstructed safely. Guessing would invent scores.
-    const QString detail = (d.cause == FaultCause::CounterWentBackwards)
-        ? QStringLiteral("counter went BACKWARDS (target %1 is below baseline %2)")
-              .arg(newShotsCount).arg(m_currentShootsCount)
-        : QStringLiteral("counter JUMPED by %1 (target %2, baseline %3) - shots may "
-                         "have been missed").arg(d.delta).arg(newShotsCount).arg(m_currentShootsCount);
-
+    // 2026-08-09 established that the coordinate slots are indexed by the
+    // counter and are overwritten once it is recycled, so a gap cannot be
+    // reconstructed. Guessing would invent scores.
     LogFile::instance().appendToLogFile(
         QStringLiteral("ACQDIAG branch=ACQUISITION_FAULT %1 - acquisition STOPPED, "
                        "operator warned, session preserved").arg(detail),
         LogType::BackendLevel);
-
     setTargetStatus(QStringLiteral("ACQUISITION FAULT"), QString(), QString(), detail);
-    result.kind = PollKind::Fault;
-    return result;
 }
+
+void TachusWidget::reportSynchronized(const ta::target::SeqStep& step)
+{
+    LogFile::instance().appendToLogFile(
+        QStringLiteral("ACQDIAG branch=SYNCHRONIZED baseline=%1 captured=%2 "
+                       "priorTotal=%3")
+            .arg(step.baseline).arg(m_xCordList.count()).arg(m_seq.priorTotal()),
+        LogType::BackendLevel);
+
+    // ACQ-DESYNC-002. A counter above zero when the link comes back means the
+    // target counted shots this application never captured. They cannot be
+    // reconstructed - the slots are overwritten once the counter recycles - so
+    // they are REPORTED. Inventing coordinates for them is what produced 10.8.
+    if (step.shotsCountedWhileBlind) {
+        LogFile::instance().appendToLogFile(
+            QStringLiteral("COMMUNICATION INTERRUPTION: the target counted %1 shot(s) "
+                           "while the application was offline. They were NOT captured, "
+                           "are NOT recoverable by this session, and NO coordinate or "
+                           "score has been invented for them. Shot numbering continues "
+                           "from the %2 shot(s) actually captured.")
+                .arg(step.uncapturedShots).arg(m_xCordList.count()),
+            LogType::BackendLevel);
+        setTargetStatus(QStringLiteral("TARGET CONNECTED"), m_activePortName, QString(),
+                        QStringLiteral("Shots were fired while the target was "
+                                       "disconnected. They were not recorded - raise "
+                                       "an incident before continuing."));
+        return;
+    }
+    setTargetStatus(QStringLiteral("TARGET CONNECTED"), m_activePortName);
+}
+
 
 int TachusWidget::getRealValue(int value)
 {
@@ -1987,6 +2148,14 @@ void TachusWidget::broadCastNewShoot(int count)
     if (count > getCurrentMatchTotalShotsCount())
         return;
 
+    // ACQ-SENTINEL-003, SCORING CRITICAL - this leaves the machine. It
+    // broadcasts a shot to the range network; publishing a coordinate the
+    // application never measured would put it in front of a scoreboard.
+    if (!coordinateHasValue(count)) {
+        reportCoordinateIndexInvalid("broadCastNewShoot", count);
+        return;
+    }
+
     QString data = QString("shootdata %1 %2 %3 %4 %5 %6")
             .arg(m_laneName)
             .arg(count)
@@ -2003,6 +2172,12 @@ void TachusWidget::updateShootData(int count)
 {
     if (!getIsServerNetworkEnabled())
         return;
+
+    // ACQ-SENTINEL-003, SCORING CRITICAL - this file is read by the range.
+    if (!coordinateHasValue(count)) {
+        reportCoordinateIndexInvalid("updateShootData", count);
+        return;
+    }
 
     QString data = QString("shootdata %1 %2 %3 %4 %5 %6 \n")
             .arg(m_laneName)
@@ -2031,6 +2206,12 @@ void TachusWidget::updateSetaShootData(int count)
 
     if (count > m_currentMatchTotalShotsCount)
         return;
+
+    // ACQ-SENTINEL-003, SCORING CRITICAL - this CSV is the lane's result feed.
+    if (!coordinateHasValue(count)) {
+        reportCoordinateIndexInvalid("updateSetaShootData", count);
+        return;
+    }
 
     QString data = QString("shootdata,%1,%2,%3,%4,%5 \n")
             .arg(count)
@@ -2095,11 +2276,16 @@ void TachusWidget::appendShotDirection(int direction)
     }
 }
 
+// Clear the target's own counter at connect time. It does NOT write an
+// application baseline: resetAll() leaves the sequencer SYNCHRONIZING and the
+// next poll adopts whatever the target really reports, so a reset that the
+// target quietly ignored cannot leave the two believing different numbers.
 void TachusWidget::clearShootCount()
 {
-    LogFile::instance().appendToLogFile(QString("Reset shoot is called, old totol shoot count %1").arg(m_oldResetCount), LogType::interfaceLevel);
-    m_oldResetCount = m_oldResetCount + m_currentShootsCount;
-    LogFile::instance().appendToLogFile(QString("Reset shoot is called, Current shoot count %1").arg(m_currentShootsCount), LogType::interfaceLevel);
+    LogFile::instance().appendToLogFile(
+        QStringLiteral("ACQ_RESET clearShootCount baselineBefore=%1 captured=%2")
+            .arg(m_seq.hardwareBaseline()).arg(m_xCordList.count()),
+        LogType::BackendLevel);
     // reset the hardware counter register (2001 Hex = 8193 decimal)
     // skip if hardware check is disabled (no physical target attached)
     if (!m_hardwareCheckDisabled) {
@@ -2111,9 +2297,10 @@ void TachusWidget::clearShootCount()
                 LogType::BackendLevel);
         }
     }
-    //checkForNewShots();
-    m_currentShootsCount = 0;
-    LogFile::instance().appendToLogFile(QString("Reset done, Current shoot count %1").arg(m_currentShootsCount), LogType::interfaceLevel);
+    m_seq.resetAll();
+    LogFile::instance().appendToLogFile(
+        QStringLiteral("ACQ_RESET clearShootCount done - awaiting synchronization"),
+        LogType::BackendLevel);
 }
 
 QString TachusWidget::getEncryptedText(QString data, bool onlyDefault)
@@ -2323,9 +2510,17 @@ QStringList TachusWidget::getPDFString()
         //data.append(deliminater);
         data.append(QString("direction%1").arg(m_shotsRotation.at(i-1)));
         data.append(deliminater);
-        data.append(QString::number(getXCord(i)));
+        // ACQ-SENTINEL-003, REPORTING. m_scoreList_gameMode is a SEPARATE
+        // counter from the coordinate arrays - the class of divergence that
+        // caused the field defect - so this loop can outrun them. A shot with
+        // no measured coordinate prints a dash: never a number an athlete could
+        // read as an impact position, and never "nan" either.
+        const bool haveCoord = coordinateHasValue(i);
+        if (!haveCoord)
+            reportCoordinateIndexInvalid("getPDFString", i, /*stopAcquisition=*/false);
+        data.append(haveCoord ? QString::number(getXCord(i)) : QStringLiteral("-"));
         data.append(deliminater);
-        data.append(QString::number(getYCord(i)));
+        data.append(haveCoord ? QString::number(getYCord(i)) : QStringLiteral("-"));
         data.append(deliminater);
         data.append(QString::number(getTeilerForShoot(seriesIndex, (i-1)%m_shotPerSeries)));
         data.append(deliminater);

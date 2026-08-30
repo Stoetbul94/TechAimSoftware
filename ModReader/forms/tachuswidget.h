@@ -8,6 +8,7 @@
 #include "target/TargetDeviceFingerprint.h"
 #include "target/PaperFeedCoordinator.h"
 #include "target/SerialDeviceProvider.h"
+#include "target/AcquisitionSequencer.h"
 #include <QDebug>
 #include <QTcpServer>
 #include <QElapsedTimer>
@@ -126,36 +127,29 @@ private:
 //    TachusWidget* tachusWidget = NULL;
 };
 
-// flush hardware shoot wount
-//////////////////////////////////////
-/// \brief The FlushShootCountThread class
-//////////////////////////////////////
+// ACQ-FLUSH-001. THE DEFERRED HARDWARE RESET IS GONE.
+//
+// A WorkerThread used to live here. Its entire body was:
+//
+//     QThread::msleep(2600);
+//     m_mainWindow->modbusWriteSingleRegister(8193, 0);
+//
+// The flush zeroed the APPLICATION baseline at once and started that thread to
+// zero the HARDWARE counter 2.6 seconds later. The 100 ms acquisition poll ran
+// about 26 times in between, read baseline 0 against target 10, and correctly
+// concluded that ten shots had been missed - so it stopped acquisition. The
+// four-tablet evidence of 2026-08-23 shows that firing 12 times out of 12,
+// always 57-156 ms after the reset and always ~2.70 s before the hardware
+// caught up. It also wrote Modbus from a second thread while the poll thread
+// was reading it (THREAD-MODBUS-006).
+//
+// The reset is now issued on the poll thread and CONFIRMED by reading the
+// counter back; the application baseline moves only on that proof, so no
+// interval exists in which the two disagree by accident. See
+// src/target/AcquisitionSequencer.h.
 
 class TachusWidget;
-class WorkerThread : public QThread
-{
-public:
-    explicit WorkerThread(MainWindow* mainWindow, QObject* parent = 0)
-        : m_mainWindow(mainWindow), QThread(parent)
-    {
-    }
-    ~WorkerThread() {
-    }
 
-protected:
-    void run() override {
-        QThread::msleep(2600);
-        //m_tachusWidget->clearShootCount();
-
-        //
-        // reset the hardware
-        // register 2001 Hex = 8193 decimal
-        m_mainWindow->modbusWriteSingleRegister(8193, 0);
-    }
-
-private:
-    MainWindow* m_mainWindow;
-};
 
 ////////////////////////////////
 /// \brief The TachusWidget class
@@ -191,9 +185,26 @@ public:
     QString targetDetail() const { return m_targetDetail; }
     // READY is a strong claim: identified target, open transport, valid Modbus
     // AND a synchronized acquisition baseline. An open COM port is not enough.
+    //
+    // UI-STATUS-001. This used to test a private m_acqState mirror that was
+    // initialised to Synchronizing, reset to Synchronizing, and NEVER set to
+    // Acquiring by anything. targetReady() could therefore only ever answer
+    // false - so on 2026-08-25 the header read CONNECTING... and all four
+    // Training Lab panels read "Target: Not connected" while the log showed
+    // state=ACQUIRING, baseline 7, captured 7, polling every 100 ms. The mirror
+    // is gone; there is one acquisition state machine and this asks it.
+    //
+    // ResettingCounter counts as ready ON PURPOSE. It is a reset THIS
+    // application asked for, it is expected, it lasts a fraction of a second at
+    // every tenth shot, and the operator has nothing to do about it. Flicking
+    // the readiness indicator to SYNCHRONIZING every ten shots is how an
+    // indicator teaches people to stop reading it.
     bool    targetReady()  const {
-        return m_targetState == QLatin1String("TARGET CONNECTED")
-            && m_acqState == AcquisitionState::Acquiring;
+        if (m_targetState != QLatin1String("TARGET CONNECTED"))
+            return false;
+        const ta::target::AcqState s = m_seq.state();
+        return s == ta::target::AcqState::Acquiring
+            || s == ta::target::AcqState::ResettingCounter;
     }
 
 public:
@@ -316,12 +327,33 @@ public slots:
     void on_pushButton_2_clicked();
     bool isValidLicence();
     void uxShoot(double xCor, double yCor);
+    // INVARIANT A (ACQ-DESYNC-002). The logical shot count is the number of
+    // coordinates actually captured - the only count that can be PROVED from
+    // data rather than believed from bookkeeping.
+    //
+    // It used to be m_oldResetCount + m_currentShootsCount. On 2026-08-23 a
+    // reconnect adopted "target reports 1" while ten coordinates were held;
+    // that sum then answered 11, 12, 13 while the arrays held 10, 11, 12, and
+    // every later shot read one index past the end. getXCord() returned its -1
+    // sentinel and -1.00/-1.00 mm scored 10.8 for the rest of three sessions.
+    // Deriving the count from the data makes that arithmetic impossible.
     int getShootCount() {
-        return m_oldResetCount + m_currentShootsCount;
+        return m_xCordList.count();
     }
 
     double getTime(int index);
     QString getTimeStamp(int index);
+    // A coordinate exists for this shot number. ACQ-SENTINEL-003: ask this, do
+    // not recognise a magic return value.
+    //
+    // PUBLIC and Q_INVOKABLE, and both matter. QML is the layer that turns a
+    // coordinate into a score, so it is the layer that has to be able to ask
+    // before it does. Declared private - which is where it started - moc still
+    // registers it and QML still refuses it at runtime with "is not a
+    // function", which aborts the calling handler. The guard would have been
+    // not merely inert but actively harmful: onShootCountChanged would have
+    // stopped before drawing or scoring any shot at all.
+    Q_INVOKABLE bool coordinateHasValue(int index) const;
     double getXCord(int index);
     double getXMPI(int series = -1);
     double getGroup(int pageIndex, bool withPalletOffset = true);
@@ -371,8 +403,6 @@ public slots:
     { traceShotStage(stage.toLatin1().constData(), seq); }
     Q_INVOKABLE void setTraceSessionTag(QString tag) { m_traceSessionTag = tag; }
     void resetShootinCount() {
-        m_currentShootsCount = 0;
-        m_oldResetCount = 0;
         // Only touch the hardware shot counter in LIVE mode. In demo mode a COM
         // port may be open with no target answering (e.g. a spare/virtual port);
         // the blocking retries below would then freeze the GUI on the demo path
@@ -412,7 +442,7 @@ public slots:
         LogFile::instance().appendToLogFile(
             QStringLiteral("ACQDIAG resetShootinCount ENTER baselineBefore=%1 "
                            "liveFlag=%2 modbusConnected=%3 onLoginPage=%4")
-                .arg(m_currentShootsCount)
+                .arg(m_seq.hardwareBaseline())
                 .arg(isAppDemoMode ? 1 : 0)     // NOTE: this flag means "is LIVE"
                 .arg(m_mainWindow && m_mainWindow->isModBusConnected() ? 1 : 0)
                 .arg(m_onLoginPage ? 1 : 0), LogType::BackendLevel);
@@ -429,16 +459,23 @@ public slots:
             if (probeRc != -1) {
                 const int actual = probe16[1];
                 if (actual != 0) {
+                    // FALSE-SHOT-001. Do NOT assume the hardware counter is now
+                    // zero. On 2026-08-08 the reset reported success, yet 25 s
+                    // later the target still answered 1 and the application
+                    // decoded the PREVIOUS session's shot as a brand-new one.
+                    // The baseline is not written here: resetAll() below leaves
+                    // the sequencer SYNCHRONIZING, and the next poll adopts
+                    // whatever the target really reports. One adoption path,
+                    // not two.
                     LogFile::instance().appendToLogFile(
                         QString("resetShootinCount: hw counter still reads %1 after reset - "
-                                "adopting it as the baseline so residue is not decoded as a shot")
+                                "the next poll will adopt it, so residue is not decoded as a shot")
                             .arg(actual), LogType::BackendLevel);
                 }
-                m_currentShootsCount = actual;
             } else {
                 LogFile::instance().appendToLogFile(
                     QString("resetShootinCount: could not read back the hw counter; "
-                            "baseline stays 0"), LogType::BackendLevel);
+                            "the next poll will synchronize"), LogType::BackendLevel);
             }
         }
 
@@ -457,7 +494,16 @@ public slots:
         // the real hardware value. This is the single place every numbering
         // reset passes through - startup, Home -> Practice, sighter/match swap,
         // new match and recovery - so no caller can forget it.
-        m_acqState = AcquisitionState::Synchronizing;
+        // The sequencer holds the acquisition state machine; it must return to
+        // a proved-empty state through the SAME central reset, or a later poll
+        // would judge a fresh session against a stale baseline. It is the ONLY
+        // place the state lives - UI-STATUS-001 removed the mirror that used to
+        // be reset alongside it and never advanced again.
+        m_seq.resetAll();
+        // UI-STATUS-001: the reset drops readiness and this path does not go
+        // through setTargetStatus(), so the binding would otherwise keep
+        // showing READY for a session that has just been cleared.
+        publishReadinessIfChanged();
 
         m_xCordList.clear();
         m_yCordList.clear();
@@ -505,20 +551,43 @@ private:
     //
     // The poll now states WHAT happened instead of leaving the caller to guess
     // from a side effect. Only NewShots may enter the coordinate-fetch loop.
-    enum class PollKind { NoChange, Synchronized, NewShots, Fault, ReadError };
-    struct PollResult {
-        PollKind kind = PollKind::NoChange;
-        int firstNewShot = 0;      // valid only when kind == NewShots
-        int lastNewShot  = 0;      // valid only when kind == NewShots
-        int newHardwareCounter = 0;
+    // What ONE counter read produced. It carries no judgement: the meaning of
+    // the number belongs to ta::target::AcquisitionSequencer, which the harness
+    // drives directly. Splitting the read from the decision is what let the
+    // 10-shot flush race and the reconnect desynchronisation be tested at all.
+    struct CounterRead {
+        bool ok = false;        // false => transport failure, already handled
+        int  counter = 0;       // the target shot counter, when ok
     };
+    CounterRead readShotCounter();
+    const char* acquisitionStateName() const;
+
+    // stopAcquisition=false for REPORT paths: the same full diagnostic is
+    // written, but nothing is being acquired there, so the operator must not
+    // be shown an acquisition fault for opening a result sheet.
+    void reportCoordinateIndexInvalid(const char* who, int index,
+                                      bool stopAcquisition = true);
+    // UI-STATUS-001. targetReady() is derived from the sequencer, and the
+    // sequencer changes state inside poll() without going through
+    // setTargetStatus() - session reset is the clearest case. A derived
+    // property whose NOTIFY never fires is a stale binding, so the value is
+    // compared against the last published one and the signal is emitted only
+    // when it actually changes. One comparison per tick, no polling of the
+    // hardware, and no second state machine.
+    void publishReadinessIfChanged();
+
+    // Sequencer outcomes, each with the diagnostics the operator needs.
+    void issueCounterReset(const ta::target::SeqStep& step);
+    void reportAcquisitionFault(const ta::target::SeqStep& step);
+    void reportSynchronized(const ta::target::SeqStep& step);
+
+    // checkForNewShots() is gone. It read the counter AND decided what the
+    // reading meant AND moved the baseline, inside a QWidget slot no test
+    // could reach. readShotCounter() above does the read;
+    // ta::target::AcquisitionSequencer makes every decision.
 
 private slots:
     void on_pushButton_3_clicked();
-
-    // Returns what the poll DECIDED. See PollResult - only NewShots authorises
-    // the caller to read coordinates.
-    PollResult checkForNewShots(bool motorAutoMode = true);
     int getRealValue(int value);
     void broadCastNewShoot(int count);
     void updateShootData(int count);
@@ -554,8 +623,14 @@ signals:
 private:
     Ui::TachusWidget *ui;
     MainWindow* m_mainWindow;
-    int m_currentShootsCount = 0;
-    int m_oldResetCount = 0;
+    // ACQ-DESYNC-002. m_currentShootsCount and m_oldResetCount used to live
+     // here as a SECOND accounting of the same thing, and getShootCount()
+     // returned their sum. A reconnect moved one of them without the other and
+     // the sum ran ahead of the coordinate arrays for the rest of the session.
+     // The hardware counter now has exactly one owner - m_seq - and the logical
+     // shot count is the coordinate count. The per-mode copies below are kept
+     // only because changeSighterMode() swaps whole data sets.
+
     QTimer* m_timer = NULL;
     bool autoModeOn = false;
     bool isSighterMode = false; // as in contructor we would initialise with true
@@ -577,10 +652,7 @@ private:
     QStringList m_timeConsumedList_sighterMode;
     QStringList m_timeStampList_sighterMode;
     QList<int> m_shotsRotation_sighterMode;
-    int m_currentShootsCount_game = 0;
-    int m_oldResetCount_game = 0;
-    int m_currentShootsCount_sighter = 0;
-    int m_oldResetCount_sighter = 0;
+
     MotorThread* m_motorThread = nullptr;
     // RC2: one scan at a time, and one central feed authority.
     bool m_scanActive = false;
@@ -596,13 +668,11 @@ private:
     QString m_traceSessionTag;
     ta::target::PaperFeedCoordinator m_feed;
     bool m_feedBound = false;
-    WorkerThread* m_flushCount = nullptr;
 
     QTcpServer* m_tcpServer = nullptr;
     double m_motor_movement_duration = 2.5;
     double m_motor_movement_duration_sighter = 2.5;
     QString m_laneName = "lane_NA";
-    bool m_flushStarted = false;
     QString m_ipAddress;
     bool m_isMasterConnected = false;
     bool m_hardwareDisconnected = false;
@@ -655,8 +725,17 @@ private:
     // Fault:         an anomaly that cannot be resolved safely. Latched, and
     //   deliberately not self-clearing - the operator must be told rather than
     //   have the software quietly resume and hide a gap.
-    enum class AcquisitionState { Synchronizing, Acquiring, Fault };
-    AcquisitionState m_acqState = AcquisitionState::Synchronizing;
+    bool m_readyPublished = false;   // UI-STATUS-001, see publishReadinessIfChanged
+    // UI-STATUS-001. The AcquisitionState mirror that used to live here is
+    // gone. ta::target::AcquisitionSequencer owns the acquisition state; a
+    // second copy of a state machine is a second thing to forget to update,
+    // and this one was forgotten from the day it was written.
+
+    // ACQ-FLUSH-001 / ACQ-DESYNC-002 / ACQ-SENTINEL-003. The acquisition
+    // sequence - counter reset, shot numbering and reconnect reconciliation -
+    // lives in ta::target so the harness exercises this exact code and not a
+    // copy of it. See src/target/AcquisitionSequencer.h.
+    ta::target::AcquisitionSequencer m_seq{FLUSH_SHOOT_COUNT};
 
 
     // ── RC2g-DIAG: acquisition observability. Reporting only. ────────────
