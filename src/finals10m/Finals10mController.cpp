@@ -1,4 +1,5 @@
 #include "Finals10mController.h"
+#include <cmath>
 #include "../reliability/storage/StoragePaths.h"
 #include "../reliability/core/FixedPoint.h"
 #include "../incident/EstIncidentController.h"
@@ -158,6 +159,7 @@ void Finals10mController::startFinal()
     m_journalFailureNotified = false;
     m_missingShots.clear();
     m_officialShotRecords.clear();
+    m_sighterRecords.clear();
     m_rejectionRecords.clear();
     m_sighterCount = 0;
     m_cumulativeTotal = 0.0;
@@ -359,6 +361,14 @@ QVariantMap Finals10mController::makeShotRecord(bool sighter, double xMm, double
     m[QStringLiteral("calculatedscore")] = QString::number(score, 'f', 1);
     m[QStringLiteral("score")] = score;
     m[QStringLiteral("sighter")] = sighter;
+    // FINALS-TCH-SIGHTER-001: state the role explicitly. A reader must never
+    // have to infer "the first five were sighters" from ordering. `isSighter`
+    // matches the 3P record's spelling so both disciplines read the same way.
+    m[QStringLiteral("isSighter")] = sighter;
+    m[QStringLiteral("shotRole")] = sighter ? QStringLiteral("SIGHTER")
+                                            : QStringLiteral("OFFICIAL");
+    m[QStringLiteral("officialShotNumber")] = sighter ? 0 : finalNumber;
+    m[QStringLiteral("discipline")] = disciplineId();
     m[QStringLiteral("finalShotNumber")] = finalNumber;
     m[QStringLiteral("withinStage")] = withinStage;
     m[QStringLiteral("seriesIndex")] = seriesIndexFor(m_stage, m_singleIndex);
@@ -409,10 +419,12 @@ void Finals10mController::acceptShot(bool sighter, double xMm, double yMm,
         m_lastShotTimeSec = splitSec;
         emit lastShotChanged();
     }
-    if (sighter)
+    if (sighter) {
         ++m_sighterCount;
-    else
+        m_sighterRecords.append(shot);
+    } else {
         m_officialShotRecords.append(shot);
+    }
 
     const ta::rel::ShotCore core = buildShotCore(xMm, yMm, score, finalNumber,
                                                  withinStage, externalShotId,
@@ -978,6 +990,101 @@ void Finals10mController::submitStagePhase(Stage s)
     }
 }
 
+// ── F6 / BLOCKER G: the 10 m Final report ───────────────────────────────────
+// Assembled from this controller's own records. It does not re-score, does not
+// consult a display model, and does not infer a shot's role from its position
+// in a list - `shotRole` is carried on the record itself (FINALS-TCH-SIGHTER-001).
+//
+// It deliberately reports NO ranking, medal or elimination placement: this is
+// one lane, and placing is a cross-lane decision that belongs to Range
+// Management.
+QVariantMap Finals10mController::buildReport(const QVariantMap& meta) const
+{
+    QVariantMap r = meta;
+
+    // ── identity ────────────────────────────────────────────────────────
+    r[QStringLiteral("discipline")]     = disciplineId();
+    r[QStringLiteral("displayName")]    = m_cfg.displayName;
+    r[QStringLiteral("courseShots")]    = m_cfg.maximumMatchShots;
+    r[QStringLiteral("scoringMode")]    = QStringLiteral("decimal");
+    if (!r.contains(QStringLiteral("athlete")))
+        r[QStringLiteral("athlete")] = m_athleteName;
+    r[QStringLiteral("sessionJournal")] = sessionJournalPath();
+    r[QStringLiteral("operatingMode")]  = m_operatingMode == 0
+                                        ? QStringLiteral("LIVE TARGET")
+                                        : QStringLiteral("DEMO / SIMULATION");
+
+    // ── sighters, as their own section ──────────────────────────────────
+    r[QStringLiteral("sighterCount")]   = m_sighterCount;
+    r[QStringLiteral("sighters")]       = m_sighterRecords;
+
+    // ── official shots ──────────────────────────────────────────────────
+    r[QStringLiteral("officialShots")]      = m_officialShotRecords;
+    r[QStringLiteral("officialShotCount")]  = m_officialShotCount;
+    r[QStringLiteral("missingShots")]       = m_missingShots;
+    r[QStringLiteral("missingShotCount")]   = m_missingShots.size();
+    r[QStringLiteral("rejections")]         = m_rejectionRecords;
+    r[QStringLiteral("acceptedOfShots")]    =
+        QStringLiteral("%1 / %2").arg(m_officialShotCount).arg(m_cfg.maximumMatchShots);
+    r[QStringLiteral("complete")]           = m_officialShotCount >= m_cfg.maximumMatchShots;
+
+    // ── series structure ────────────────────────────────────────────────
+    r[QStringLiteral("series1Subtotal")] = series1Subtotal();
+    r[QStringLiteral("series2Subtotal")] = series2Subtotal();
+    r[QStringLiteral("singlesSubtotal")] = singlesSubtotal();
+    r[QStringLiteral("seriesSubtotals")] = seriesSubtotals();
+    r[QStringLiteral("total")]           = m_cumulativeTotal;
+
+    // ── derived statistics over the OFFICIAL shots only ─────────────────
+    double sx = 0.0, sy = 0.0, tSum = 0.0;
+    int n = 0, tN = 0;
+    for (const QVariant& v : m_officialShotRecords) {
+        const QVariantMap s = v.toMap();
+        sx += s.value(QStringLiteral("xmm")).toDouble();
+        sy += s.value(QStringLiteral("ymm")).toDouble();
+        ++n;
+        if (s.contains(QStringLiteral("timeSec"))) {
+            tSum += s.value(QStringLiteral("timeSec")).toDouble();
+            ++tN;
+        }
+    }
+    if (n > 0) {
+        const double mx = sx / n, my = sy / n;
+        r[QStringLiteral("mpiXmm")] = mx;
+        r[QStringLiteral("mpiYmm")] = my;
+        r[QStringLiteral("mpiRadiusMm")] = std::sqrt(mx * mx + my * my);
+        // Group extent: the largest separation between any two official shots.
+        double worst = 0.0;
+        for (int i = 0; i < m_officialShotRecords.size(); ++i) {
+            const QVariantMap a = m_officialShotRecords.at(i).toMap();
+            for (int j = i + 1; j < m_officialShotRecords.size(); ++j) {
+                const QVariantMap b = m_officialShotRecords.at(j).toMap();
+                const double dx = a.value(QStringLiteral("xmm")).toDouble()
+                                - b.value(QStringLiteral("xmm")).toDouble();
+                const double dy = a.value(QStringLiteral("ymm")).toDouble()
+                                - b.value(QStringLiteral("ymm")).toDouble();
+                worst = qMax(worst, std::sqrt(dx * dx + dy * dy));
+            }
+        }
+        r[QStringLiteral("groupExtentMm")] = worst;
+    } else {
+        r[QStringLiteral("mpiXmm")] = 0.0;
+        r[QStringLiteral("mpiYmm")] = 0.0;
+        r[QStringLiteral("mpiRadiusMm")] = 0.0;
+        r[QStringLiteral("groupExtentMm")] = 0.0;
+    }
+    r[QStringLiteral("meanShotTimeSec")] = tN > 0 ? (tSum / tN) : 0.0;
+
+    // ── provenance ──────────────────────────────────────────────────────
+    r[QStringLiteral("commandEvents")] = m_events;
+    // One lane. Placing is not ours to state.
+    r[QStringLiteral("rankingAvailable")] = false;
+    r[QStringLiteral("rankingNote")] =
+        QStringLiteral("Single-lane result. Official placing requires Range "
+                       "Management coordination across lanes.");
+    return r;
+}
+
 void Finals10mController::setStageStatus(int fineId, StageStatus status)
 {
     const int cur = m_stageStatus.value(fineId, 0);
@@ -1098,16 +1205,21 @@ void Finals10mController::loadRecoveredState(const ta::rel::RecoveredMatchState&
 
     // Refill display sources (signals only — no re-journaling).
     m_officialShotRecords.clear();
+    m_sighterRecords.clear();
     m_rejectionRecords.clear();
     m_missingShots.clear();
     m_events.clear();
     for (const StateShotRecord& r : s.sighters) {
         const double xMm = r.shot.xHundredthMm / 100.0;
         const double yMm = r.shot.yHundredthMm / 100.0;
-        emit shotAccepted(makeShotRecord(true, xMm, yMm, r.effectiveTenths() / 10.0,
-                                         0, 0, r.shot.externalId,
-                                         r.shot.directionCentiDeg / 100.0,
-                                         r.shot.simulated, r.seq));
+        QVariantMap srec = makeShotRecord(true, xMm, yMm, r.effectiveTenths() / 10.0,
+                                          0, 0, r.shot.externalId,
+                                          r.shot.directionCentiDeg / 100.0,
+                                          r.shot.simulated, r.seq);
+        srec[QStringLiteral("timeSec")] =
+            static_cast<int>((qMax<qint32>(0, r.shot.splitMs) + 999) / 1000);
+        m_sighterRecords.append(srec);
+        emit shotAccepted(srec);
     }
     for (const StateShotRecord& r : s.officials) {
         const double xMm = r.shot.xHundredthMm / 100.0;

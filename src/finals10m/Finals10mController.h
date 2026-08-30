@@ -122,10 +122,20 @@ public:
     Q_INVOKABLE QVariantList officialShotRecords() const { return m_officialShotRecords; }
     Q_INVOKABLE QVariantList rejectionRecords() const { return m_rejectionRecords; }
     Q_INVOKABLE int sighterCount() const { return m_sighterCount; }
+    // FINALS-TCH-SIGHTER-001. The reduced state has always kept sighters and
+    // officials in separate lists, so the ROLE survives persist -> reload.
+    // What was missing is the sighters' own records: only the count was kept,
+    // so a report could not show a SIGHTERS section with scores and times.
+    Q_INVOKABLE QVariantList sighterRecords() const { return m_sighterRecords; }
     // Per-checkpoint cumulative totals (decimal) — {12: 123.4, ...}. Course
     // checkpoints only; never a placement (single-athlete training).
     Q_INVOKABLE QVariantMap checkpointTotals() const;
     Q_INVOKABLE QVariantList seriesSubtotals() const;
+    // F6 / BLOCKER G. The 10 m Final's report authority. Every reported value
+    // is DERIVED HERE from the controller's own accepted-shot records; QML
+    // only formats. Nothing is re-scored, and nothing is inferred from shot
+    // order - the role comes from the record's own shotRole.
+    Q_INVOKABLE QVariantMap buildReport(const QVariantMap& meta = QVariantMap()) const;
 
     // ── property getters ─────────────────────────────────────────────────
     int stageId() const { return static_cast<int>(m_stage); }
@@ -300,6 +310,7 @@ private:
 
     QVariantList m_missingShots;
     QVariantList m_officialShotRecords;
+    QVariantList m_sighterRecords;
     QVariantList m_rejectionRecords;
     int m_sighterCount = 0;
     double m_cumulativeTotal = 0.0;
