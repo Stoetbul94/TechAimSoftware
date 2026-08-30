@@ -1,6 +1,12 @@
-# SETA Single Target 1.0.0-EVAL1 — evaluation gate
+# SETA Single Target 1.0.0-EVAL2 — evaluation gate
 
-**Verdict: READY FOR SETA EXTERNAL EVALUATION. Physical SETA test PENDING.**
+**Verdict: READY FOR SETA EXTERNAL EVALUATION.**
+
+| | |
+|---|---|
+| **AUTOMATED ACCEPTANCE** | **PASS** |
+| **VISUAL PRODUCT ACCEPTANCE** | **PASS** |
+| **PHYSICAL SETA ACCEPTANCE** | **PENDING** |
 
 Assembled 2026-08-30 at the close of Phase B.
 
@@ -18,7 +24,7 @@ scratch.
 | Branch | `product/seta` |
 | Starting HEAD | `f22637f` — 0.9.0-RC3a-SETA |
 | Tech Aim reference | `da03984` — 1.0.0-RC1, 6 948 checks / 0 failures, RC3F physical |
-| Version | **1.0.0-EVAL1** |
+| Version | **1.0.0-EVAL2** |
 
 ---
 
@@ -95,26 +101,28 @@ drives one target — even though the file was renamed. Asserted by
 | Training Lab | **568 / 0** |
 | 50 m 3P Finals | **240 / 0** |
 | 10 m Finals | **229 / 0** |
-| QML | **291 / 0** (+ **8 DSB assertions DEFERRED**) |
-| Manuals | **1 388 / 0** |
+| QML | **286 / 0** (+ **13 DSB assertions DEFERRED**) |
+| Manuals | **1 402 / 0** |
 | Project memory | **216 / 0** |
 | Training Lab evidence | **903 / 0** |
-| SETA deployment audit | **29 / 0** |
+| SETA deployment audit | **31 / 0** |
 | SETA Windows icon | **7 / 0** |
-| **TOTAL** | **6 878 / 0** |
+| **TOTAL** | **6 858 / 0** |
 
 **Runtime, from the packaged copy with no Qt on `PATH`:** 0 missing DLL,
 0 TypeError, 0 ReferenceError, 0 QML type failures, 0 acquisition warnings,
 7 pre-existing binding warnings (the same seven Tech Aim carries).
 
-### The 8 deferred assertions
+### The 13 deferred assertions
 
-They test the DSB engine's integration into the shared screens. DSB is deferred
+Eight test the DSB engine's integration into the shared screens; five assert
+that DSB is OFFERED in the selector and that every catalogue entry is reachable
+through it. DSB is deferred
 and excluded from the build, so they describe a configuration this binary
 deliberately is not. They are printed as `DEFER`, counted separately, and
 **neither passed nor deleted**.
 
-### Two defects the portable launch found
+### Two further defects the portable launch found
 
 1. `Finals10mReportView` and `Finals3PRightPanel` were carried across as files
    but never registered in `qml.qrc` — the application failed at ShootingPage.
@@ -167,7 +175,60 @@ Must not be written anywhere:
 | German coverage | 892 translated, 239 unfinished. Newer screens carried from Tech Aim v1.0 introduce English strings with no German yet. **No German was invented.** |
 | 7 binding warnings | pre-existing in coach/incident views, unchanged since RC3B, in no acquisition, scoring, timing or competition path |
 | SETA hardware assumptions | the build assumes the same electronics, Modbus protocol, feed mechanism and serial device RC3F proved. **An assumption, not a verified fact** — the evaluation settles it |
-| Rendered SETA screens | not produced this round. Branding is verified by the deployment auditor (version resource, embedded icon, product name) and by `tests/qml`, not by screenshots |
+| Rendered SETA screens | produced offline for the selector, discipline list, left panel, settings and operating-mode pills. They show component layout and palette, **not the running application** — no screenshot of a live session exists |
+
+---
+
+## 8a. Visual product acceptance — and what it found
+
+The packaged build was extracted and run with no Qt on `PATH`, and
+representative screens were rendered offline (no synthetic input, no screen
+capture).
+
+| Check | Result |
+|---|---|
+| Packaged `SETA.exe` launches | **PASS** |
+| SETA icon, product title, application identity | **PASS** |
+| Version and commit correct | **PASS** |
+| Missing DLL · TypeError · ReferenceError · QML type failure | **0 / 0 / 0 / 0** |
+| Unexpected Tech Aim branding | **NONE** |
+| SETA blue palette, no Tech Aim maroon in product components | **PASS** |
+| Clipping, missing components, broken alignment | **NONE SEEN** |
+| Teiler visible where SETA shows it | **PASS** (brand-gated, asserted in `tests/qml`) |
+
+### Four defects this round found — none in the functional core
+
+1. **The support collector searched one directory level too high.** It looked in
+   `%LOCALAPPDATA%\TechAim` — the vendor folder — while Qt puts the data in
+   `<organisation>\<application>`. The vendor folder has no `Sessions`
+   directory, and `-ErrorAction SilentlyContinue` turned that into an empty
+   result, so **every bundle reported 0 journals without saying it had looked in
+   the wrong place**. Measured here: **0 journals before, 41 after.**
+   *This corrects the Phase A blocker inventory*, which recorded the collector as
+   working and blamed the empty RC3F bundles on it never being run. It was also
+   broken.
+2. **The collector did not ship in the package at all.** `check_deployment.py`
+   now fails a package without it.
+3. **The bundle named the wrong product.** Run from the deployed package it
+   reported `Product: Tech Aim Electronic Target Control` to a SETA operator,
+   and `UNKNOWN` for the version and commit — it looked for a manifest filename
+   and an executable name that the SETA deployment does not use.
+4. **The selector still offered DSB 2026.** Found by the visual check, not by a
+   test. An operator could have chosen a rule set the build cannot run. The rule
+   set is gated; the catalogue data is untouched.
+
+None of these is in acquisition, scoring, Modbus, reconnect, paper feed,
+qualification, 3P, finals, persistence, reports, CRO or last-shot dwell. No
+functional core file changed between the tested binary and this one.
+
+### Why EVAL1 is not the shipped package
+
+EVAL1 was built, packaged and inspected but **never released**: it had no
+support collector, and the collector itself was broken. SETA's physical test is
+the next evidence gate and would have produced a bundle worth nothing.
+
+Rather than replace EVAL1's hashes underneath the same name, this is a new
+identity. **EVAL1 is superseded and must not be distributed.**
 
 ---
 
@@ -175,13 +236,22 @@ Must not be written anywhere:
 
 | | |
 |---|---|
-| Version | **1.0.0-EVAL1** |
+| Version | **1.0.0-EVAL2** |
 | Branch | `product/seta` |
-| Commit | **`47c5645`** |
-| Path | `dist/v1.0.0-eval1/SETA-Single-Target-1.0.0-EVAL1-Windows-x64.zip` |
-| Size | 45.52 MB |
-| **ZIP SHA-256** | `5F609940F15D13C0455926C73496A5CD5AC0EAAC9325E442B26371C719789089` |
-| **EXE SHA-256** | `16D0C029EB26DAF6EA666B109B01870C81B3D4351C757374EDE3C28CFECB7636` |
+| Commit | **`26a3b11`** |
+| Path | `dist/v1.0.0-eval2/SETA-Single-Target-1.0.0-EVAL2-Windows-x64.zip` |
+| Size | 45.53 MB |
+| **ZIP SHA-256** | `2B55E4F16EA7A2B6525CE2B872CBA665D65027AAB7323AE26035BF93BC184C96` |
+| **EXE SHA-256** | `5573E86E5F1718CD554FF76120FD58082C7BADE12693669B296EBDE411D0C420` |
+
+**Superseded, do not distribute:** 1.0.0-EVAL1, ZIP
+`5F609940F15D13C0455926C73496A5CD5AC0EAAC9325E442B26371C719789089`.
+
+Built clean: `release/` deleted, fresh `qmake`, full recompile. The binary was
+verified to contain `1.0.0-EVAL2` and commit `26a3b11` before packaging.
+
+Ships with `Collect-Logs.cmd`, `Make-SupportBundle.ps1`, the evaluation
+checklist, the DSB deferral record, the carryover manifest and this gate.
 
 Built clean: `release/` deleted, fresh `qmake`, full recompile. The binary was
 verified to contain `1.0.0-EVAL1` and commit `47c5645` before packaging.
