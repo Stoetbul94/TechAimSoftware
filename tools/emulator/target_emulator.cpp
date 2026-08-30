@@ -86,6 +86,30 @@ struct Emu {
     // cycle). Both must produce ACQUISITION FAULT, never a silent rejection.
     int  fireDelta = 1;
     double fireX = 0.3, fireY = 6.4;
+
+    // ── ACQ-FLUSH-001 bench target ────────────────────────────────────────
+    // The defect fired at every 10th shot, so a scenario that fires ONCE can
+    // never reach it. This fires on a repeating interval, hands-free, for as
+    // long as the operator leaves it running: 25 shots crosses two boundaries
+    // and 60 crosses six.
+    int  fireEverySec = 0;
+    int  shotsFired   = 0;
+    int  fireLimit    = 0;          // 0 = no limit
+    // How long the TARGET takes to honour a counter reset. The RC2g build
+    // assumed 2 600 ms and raced it; the point of this knob is that the
+    // application must not care what the number is.
+    int  resetLatencyMs = 0;
+    bool resetPending   = false;
+    time_t resetAskedAt = 0;
+
+    // -- the remaining release-blocking scenarios (section 13) -------------
+    int  jumpEverySec  = 0;        // H: counter leaps forward, no coordinates
+    int  jumpBy        = 0;
+    time_t lastJump    = 0;
+    bool failCoordReads = false;   // J: the coordinate region answers an error
+    int  flakyCoordOneIn = 0;      // K: every Nth coordinate read fails
+    long coordReadSeq  = 0;
+    int  dropAfterSec  = 0;        // L: drop the client, keep the counter
 };
 
 static void setShot(modbus_mapping_t* m, int index, double xMm, double yMm)
@@ -160,6 +184,58 @@ static void applyScenario(Emu& e, modbus_mapping_t* m)
         if (e.delayMs == 0) e.delayMs = 200;
         break;
 
+    case 'F':   // ACQ-FLUSH-001. The 10-shot boundary, hands-free.
+        // Fires every 6 s from a clean counter and honours the reset after a
+        // deliberate delay, so the application crosses a real series boundary
+        // repeatedly with the target lagging. The RC2g build stopped
+        // acquisition at the first one, 12 times out of 12.
+        e.hwCount = 0; e.honourReset = true;
+        if (e.fireEverySec == 0) e.fireEverySec = 6;
+        if (e.resetLatencyMs == 0) e.resetLatencyMs = 500;
+        break;
+
+    case 'G':   // ACQ-DESYNC-002. The reconnect that produced repeated 10.8.
+        // Ten shots are already in the slots and the counter reads 1: exactly
+        // what Tablet-02 answered after the operator replugged the USB. The
+        // application must reconcile or refuse - never number the next shot
+        // past the end of its own arrays.
+        e.hwCount = 1; e.honourReset = true;
+        for (int i = 1; i <= 10; ++i) setShot(m, i, -0.5 + i * 0.3, 1.0 - i * 0.2);
+        setShot(m, 1, -3.9, 1.0);      // the genuine next shot, as logged
+        if (e.fireEverySec == 0) e.fireEverySec = 8;
+        break;
+
+    case 'H':   // Counter JUMPS forward with no coordinates behind it. A real
+        // lost-shot condition - the guard must still fire. This is the case the
+        // ACQ-FLUSH-001 fix must NOT have weakened.
+        e.hwCount = 0; e.honourReset = true;
+        if (e.jumpEverySec == 0) e.jumpEverySec = 12;
+        if (e.jumpBy == 0) e.jumpBy = 4;
+        break;
+
+    case 'J':   // Every coordinate read fails. The counter still advances, so
+        // the application sees a genuine shot and cannot read where it landed.
+        // It must accept nothing rather than decode the buffer it was given.
+        e.hwCount = 0; e.honourReset = true;
+        e.failCoordReads = true;
+        if (e.fireEverySec == 0) e.fireEverySec = 8;
+        break;
+
+    case 'K':   // A flaky link: one coordinate read in three fails. Partial
+        // acquisition is worse than none, because some shots look fine.
+        e.hwCount = 0; e.honourReset = true;
+        e.flakyCoordOneIn = 3;
+        if (e.fireEverySec == 0) e.fireEverySec = 8;
+        break;
+
+    case 'L':   // Disconnect mid-session and keep the counter. On reconnect the
+        // target reports the SAME count it had - nothing was missed, and the
+        // application must resume without inventing or replaying anything.
+        e.hwCount = 0; e.honourReset = true;
+        if (e.fireEverySec == 0) e.fireEverySec = 6;
+        if (e.dropAfterSec == 0) e.dropAfterSec = 40;
+        break;
+
     default:
         e.hwCount = 0; e.honourReset = true;
         break;
@@ -193,8 +269,22 @@ int main(int argc, char* argv[])
         else if (a == "--delay-ms" && i + 1 < argc) e.delayMs = atoi(argv[++i]);
         else if (a == "--fire-after" && i + 1 < argc) e.fireAfterSec = atoi(argv[++i]);
         else if (a == "--fire-delta" && i + 1 < argc) e.fireDelta = atoi(argv[++i]);
+        else if (a == "--fire-every" && i + 1 < argc) e.fireEverySec = atoi(argv[++i]);
+        else if (a == "--fire-limit" && i + 1 < argc) e.fireLimit = atoi(argv[++i]);
+        else if (a == "--reset-latency-ms" && i + 1 < argc) e.resetLatencyMs = atoi(argv[++i]);
+        else if (a == "--jump-every" && i + 1 < argc) e.jumpEverySec = atoi(argv[++i]);
+        else if (a == "--jump-by" && i + 1 < argc) e.jumpBy = atoi(argv[++i]);
+        else if (a == "--drop-after" && i + 1 < argc) e.dropAfterSec = atoi(argv[++i]);
         else if (a == "--help") {
-            printf("target_emulator --scenario <A-N> [--port 1502] [--delay-ms 0]\n");
+            printf("target_emulator --scenario <A-N> [--port 1502] [--delay-ms 0]\n"
+                   "                [--fire-after SEC] [--fire-every SEC] [--fire-limit N]\n"
+                   "                [--fire-delta N] [--reset-latency-ms MS]\n"
+                   "  F  10-shot flush boundary, hands-free (ACQ-FLUSH-001)\n"
+                   "  G  reconnect with a mismatched counter (ACQ-DESYNC-002)\n"
+                   "  H  counter jumps forward with no coordinates (real lost shots)\n"
+                   "  J  every coordinate read fails (ACQ-READ-004)\n"
+                   "  K  one coordinate read in three fails - a flaky link\n"
+                   "  L  disconnect mid-session, reconnect with the SAME counter\n");
             return 0;
         }
     }
@@ -223,6 +313,10 @@ int main(int argc, char* argv[])
     printf("hardware counter: %d\n", e.hwCount);
     printf("honours reset   : %s\n", e.honourReset ? "yes" : "NO - acknowledges and ignores");
     printf("response delay  : %d ms\n", e.delayMs);
+    printf("reset latency   : %d ms\n", e.resetLatencyMs);
+    if (e.fireEverySec > 0)
+        printf("auto fire       : every %d s%s\n", e.fireEverySec,
+               e.fireLimit > 0 ? " (limited)" : "");
     printf("\nPoint Tech Aim at Modbus TCP 127.0.0.1:%d.\n", e.port);
     printf("Type 'f' + Enter to fire a shot, 'q' + Enter to quit.\n\n");
     fflush(stdout);
@@ -245,6 +339,7 @@ int main(int argc, char* argv[])
           printf("[emu] will fire ONE shot %d s from now\n", e.fireAfterSec);
       fflush(stdout);
       const time_t connectedAt = time(NULL);
+      time_t lastAutoFire = connectedAt;
 
       for (;;) {
         const int rc = modbus_receive(ctx, query);
@@ -262,6 +357,54 @@ int main(int argc, char* argv[])
             && difftime(time(NULL), connectedAt) >= e.fireAfterSec) {
             e.fired = true;
             fireShot(e, map, e.fireX, e.fireY);
+        }
+
+        // Repeating hands-free fire. Coordinates walk so no two shots share
+        // one - a frozen coordinate is then obvious in the application.
+        if (e.fireEverySec > 0
+            && (e.fireLimit == 0 || e.shotsFired < e.fireLimit)
+            && difftime(time(NULL), lastAutoFire) >= e.fireEverySec) {
+            lastAutoFire = time(NULL);
+            ++e.shotsFired;
+            fireShot(e, map,
+                     -8.0 + (e.shotsFired % 17) * 1.0,
+                      7.0 - (e.shotsFired % 13) * 1.1);
+        }
+
+        // H. A counter that leaps forward with NOTHING written behind it -
+        // shots the target counted and the application never got. This is a
+        // real lost-shot condition and the guard must still catch it: the
+        // ACQ-FLUSH-001 work must not have bought its boundary by going deaf.
+        if (e.jumpEverySec > 0
+            && difftime(time(NULL), e.lastJump) >= e.jumpEverySec) {
+            e.lastJump = time(NULL);
+            e.hwCount += e.jumpBy;
+            publishCount(map, e.hwCount);
+            printf("[emu] COUNTER JUMPED by %d with no coordinates -> now %d\n",
+                   e.jumpBy, e.hwCount);
+            fflush(stdout);
+        }
+
+        // L. Drop the client mid-session and keep the counter. The application
+        // must come back, see the SAME count, and resume without replaying.
+        if (e.dropAfterSec > 0
+            && difftime(time(NULL), connectedAt) >= e.dropAfterSec) {
+            e.dropAfterSec = 0;                  // once per run
+            printf("[emu] DROPPING THE CLIENT - counter stays %d\n", e.hwCount);
+            fflush(stdout);
+            break;
+        }
+
+        // A reset the target honours only after resetLatencyMs. The
+        // application must judge nothing while its own reset is outstanding.
+        if (e.resetPending && difftime(time(NULL), e.resetAskedAt) * 1000.0
+                                  >= e.resetLatencyMs) {
+            e.resetPending = false;
+            e.hwCount = 0;
+            publishCount(map, e.hwCount);
+            printf("[emu] reset honoured after %d ms - counter now 0\n",
+                   e.resetLatencyMs);
+            fflush(stdout);
         }
 
         // Inspect the request BEFORE replying so writes can be intercepted.
@@ -294,6 +437,27 @@ int main(int argc, char* argv[])
             }
         }
 
+        // J / K. ACQ-READ-004 at the wire. A read of the coordinate region is
+        // answered with a server failure instead of data, so the application
+        // gets a negative return code and a buffer it did not fill. It must
+        // decode nothing, accept nothing, score nothing and feed nothing.
+        if (rc >= 6 && (query[7] == 0x03 || query[7] == 0x04)) {
+            const int raddr = (query[8] << 8) | query[9];
+            if (raddr > kRegShotBase) {
+                ++e.coordReadSeq;
+                const bool fail = e.failCoordReads
+                    || (e.flakyCoordOneIn > 0 && (e.coordReadSeq % e.flakyCoordOneIn) == 0);
+                if (fail) {
+                    printf("[emu] COORDINATE READ REFUSED addr=%d (seq %ld)\n",
+                           raddr, e.coordReadSeq);
+                    fflush(stdout);
+                    modbus_reply_exception(ctx, query,
+                                           MODBUS_EXCEPTION_SLAVE_OR_SERVER_FAILURE);
+                    continue;
+                }
+            }
+        }
+
         modbus_reply(ctx, query, rc, map);
 
         // modbus_reply() APPLIES write requests to the mapping itself, so
@@ -306,15 +470,26 @@ int main(int argc, char* argv[])
         // Scenario B/R must hold a NON-ZERO counter across an acknowledged
         // reset, so the value is restored AFTER the reply. The application
         // still sees a successful write; the counter simply does not move.
-        if (!e.honourReset && rc >= 6 && query[7] == 0x06) {
+        if (rc >= 6 && query[7] == 0x06) {
             const int addr = (query[8] << 8) | query[9];
             if (addr == kRegReset || addr == kRegCount8192 + 1) {
-                publishCount(map, e.hwCount);
-                printf("[emu] RESET REQUEST RECEIVED (fc=6 addr=%d)\n"
-                       "[emu] RESET ACKNOWLEDGED\n"
-                       "[emu] RESET INTENTIONALLY IGNORED\n"
-                       "[emu] COUNTER REMAINS %d\n", addr, e.hwCount);
-                fflush(stdout);
+                if (!e.honourReset) {
+                    publishCount(map, e.hwCount);
+                    printf("[emu] RESET REQUEST RECEIVED (fc=6 addr=%d)\n"
+                           "[emu] RESET ACKNOWLEDGED\n"
+                           "[emu] RESET INTENTIONALLY IGNORED\n"
+                           "[emu] COUNTER REMAINS %d\n", addr, e.hwCount);
+                    fflush(stdout);
+                } else if (e.resetLatencyMs > 0 && !e.resetPending) {
+                    // Acknowledged now, honoured later - the condition the
+                    // application used to race against and lose.
+                    e.resetPending = true;
+                    e.resetAskedAt = time(NULL);
+                    publishCount(map, e.hwCount);
+                    printf("[emu] RESET REQUEST RECEIVED - will honour it in %d ms; "
+                           "counter stays %d until then\n", e.resetLatencyMs, e.hwCount);
+                    fflush(stdout);
+                }
             }
         }
       }

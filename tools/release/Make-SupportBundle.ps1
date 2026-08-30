@@ -14,6 +14,8 @@ param(
     [string]$SessionId = '',
     [string]$OutDir    = "$env:USERPROFILE\Desktop",
     [int]$LogCount     = 5,
+    # Session journals and match records from the test window. 0 = none.
+    [int]$RecentHours  = 12,
     # SUP-001. The Git commit is baked into the binary at build time and is not
     # reliably readable from outside, so it comes from the field-kit release
     # manifest rather than being scraped. Auto-discovered beside this script,
@@ -114,12 +116,46 @@ Qt version are shown in the application under Settings > ABOUT / BUILD.
 [System.IO.File]::WriteAllText((Join-Path $work 'release-identity.txt'), $identity)
 
 # ---- logs ----------------------------------------------------------------
+# TWO locations, and the second one is the one that matters.
+#
+# This used to collect AppData\TechAim\Logs only. That folder is EMPTY on
+# every tablet in the 2026-08-23 evidence set - all four of them - because the
+# application writes its log through LogFile, which uses
+# QStandardPaths::TempLocation. So the bundle gathered configuration and
+# identity and no log at all, and the investigation into the repeated 10.8
+# had nothing to read for the window in which it happened.
+#
+# %TEMP% is also cleaned by Windows, so a log not collected soon is a log
+# gone. Collect after every test.
+$logOut = Join-Path $work 'Logs'
+New-Item -ItemType Directory -Force $logOut | Out-Null
+$collected = 0
+
 $logSrc = Join-Path $appData 'Logs'
 if (Test-Path $logSrc) {
-    $logOut = Join-Path $work 'Logs'
-    New-Item -ItemType Directory -Force $logOut | Out-Null
     Get-ChildItem $logSrc -File | Sort-Object LastWriteTime -Descending |
-        Select-Object -First $LogCount | ForEach-Object { Copy-Item $_.FullName $logOut }
+        Select-Object -First $LogCount |
+        ForEach-Object { Copy-Item $_.FullName $logOut; $collected++ }
+}
+
+# The application log itself.
+Get-ChildItem $env:TEMP -Filter 'tachus_log*.log' -File -ErrorAction SilentlyContinue |
+    Sort-Object LastWriteTime -Descending | Select-Object -First $LogCount |
+    ForEach-Object { Copy-Item $_.FullName $logOut; $collected++ }
+
+# The serial parameters the application actually used. SERIAL-DEFAULT-005 was
+# a wrong baud and parity for an hour on two tablets; this is how that is seen
+# afterwards. No secrets live in this file.
+$qmm = Join-Path $env:TEMP 'qModMaster.ini'
+if (Test-Path $qmm) { Copy-Item $qmm (Join-Path $work 'qModMaster.ini') }
+
+if ($collected -eq 0) {
+    [System.IO.File]::WriteAllText((Join-Path $logOut 'NO-LOGS-FOUND.txt'),
+        "No application log was found in either location:`n" +
+        "  $logSrc`n" +
+        "  $env:TEMP\tachus_log*.log`n`n" +
+        "If the application ran on this machine, %TEMP% may have been cleaned.`n" +
+        "Say so in the report - an empty Logs folder is a finding, not a blank.")
 }
 
 # ---- sanitized configuration ---------------------------------------------
@@ -147,18 +183,51 @@ if (Test-Path $logSrc) {
 $commText = if ($commLines.Count) { $commLines -join "`n" } else { 'No target communication lines found in the collected logs.' }
 [System.IO.File]::WriteAllText((Join-Path $work 'target-communication.txt'), $commText)
 
-# ---- ONE session journal, only when explicitly asked for -----------------
+# ---- session records ------------------------------------------------------
+# The RC3C physical audit could not check a single acquisition diagnostic, and
+# could not answer whether a second motor command occurred, because the bundle
+# carried no journal and no match record. Both are THIS application`s own
+# competition records - not unrelated user files - so recent ones are now
+# collected by default, scoped to the test window and listed in the summary so
+# the operator can see exactly what is going out before sending it.
+#
+# -SessionId still narrows it to one session. -RecentHours 0 collects none.
+$sesOut = Join-Path $work 'Session'
+New-Item -ItemType Directory -Force $sesOut | Out-Null
+$sesNotes = @()
+
 if ($SessionId) {
-    $sesOut = Join-Path $work 'Session'
-    New-Item -ItemType Directory -Force $sesOut | Out-Null
-    $hits = Get-ChildItem (Join-Path $appData 'Sessions') -Recurse -Directory -ErrorAction SilentlyContinue |
-            Where-Object { $_.Name -like "*$SessionId*" }
-    foreach ($h in $hits) { Copy-Item $h.FullName (Join-Path $sesOut $h.Name) -Recurse }
+    # Journals are FILES named session_<stamp>_<id>.jsonl, not directories.
+    # Searching only for directories is why -SessionId could still come back
+    # empty.
+    $hits = @(Get-ChildItem (Join-Path $appData 'Sessions') -Recurse -ErrorAction SilentlyContinue |
+              Where-Object { $_.Name -like "*$SessionId*" })
+    foreach ($h in $hits) {
+        if ($h.PSIsContainer) { Copy-Item $h.FullName (Join-Path $sesOut $h.Name) -Recurse }
+        else                  { Copy-Item $h.FullName $sesOut }
+    }
+    $sesNotes += "SessionId '$SessionId': $($hits.Count) item(s)"
     if (-not $hits) {
         [System.IO.File]::WriteAllText((Join-Path $sesOut 'NOT-FOUND.txt'),
-            "No session directory matched '$SessionId'.")
+            "Nothing under Sessions matched '$SessionId'.")
     }
 }
+elseif ($RecentHours -gt 0) {
+    $cut = (Get-Date).AddHours(-$RecentHours)
+    $j = @(Get-ChildItem (Join-Path $appData 'Sessions') -Recurse -File -Filter '*.jsonl' -ErrorAction SilentlyContinue |
+          Where-Object { $_.LastWriteTime -ge $cut })
+    foreach ($f in $j) { Copy-Item $f.FullName $sesOut }
+    $sesNotes += "journals modified in the last $RecentHours h: $($j.Count)"
+
+    # Match records sit beside the executable, not in AppData.
+    $t = @(Get-ChildItem $here -File -Filter 'Match_*.tch' -ErrorAction SilentlyContinue |
+          Where-Object { $_.LastWriteTime -ge $cut })
+    foreach ($f in $t) { Copy-Item $f.FullName $sesOut }
+    $sesNotes += "match records (.tch) in the last $RecentHours h: $($t.Count)"
+}
+else { $sesNotes += 'session data: not collected (-RecentHours 0)' }
+[System.IO.File]::WriteAllText((Join-Path $sesOut 'WHAT-WAS-COLLECTED.txt'),
+    ($sesNotes -join [Environment]::NewLine))
 
 # ---- crash information ---------------------------------------------------
 $crashSrc = Join-Path $appData 'SupportBundles'

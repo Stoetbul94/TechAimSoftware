@@ -13,6 +13,7 @@
 #include <QDebug>
 #include <functional>
 #include <cstdio>
+#include <cmath>
 
 #include "Finals10mController.h"
 #include "Finals10mConfig.h"
@@ -22,10 +23,14 @@
 #include "reliability/journal/JournalValidator.h"
 #include "reliability/reducer/SessionReducer.h"
 #include "reliability/reducer/SessionState.h"
+#include "reliability/replay/ReplayEngine.h"
 #include "reliability/recovery/RecoveryCoordinator.h"
 #include "reliability/recovery/RecoveryTypes.h"
 
 #include <QDir>
+#include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 using techaim::finals10m::Stage;
 
@@ -127,6 +132,394 @@ static bool driveToCompletion(Finals10mController& c, int timeoutMs, int sighter
     }
     return true;
 }
+
+// ── BLOCKER F + G: explicit shot roles, the report, and the round trip ──────
+//
+// F  FINALS-TCH-SIGHTER-001. A reader must never have to infer "the first five
+//    were sighters". The role is carried on the record and survives reload.
+// G  F6. The 10 m Final must produce its own report; it previously fell through
+//    to the qualification tabs, whose own comment forbids feeding them finals
+//    data.
+//
+// This is the acceptance test for both. No physical target is involved and none
+// is required: the acquisition engine is unchanged and its physical evidence is
+// inherited from RC3F (see docs/release/V1.0-PHYSICAL-EVIDENCE-INHERITANCE.md).
+static void testFinalReportRoundTrip(const QString& disciplineId, const char* who)
+{
+    using namespace ta::rel;
+    auto tag = [&](const char* s) {
+        return QStringLiteral("%1 %2").arg(QString::fromLatin1(who),
+                                           QString::fromLatin1(s)).toUtf8();
+    };
+
+    using techaim::finals10m::Finals10mConfig;
+    const Finals10mConfig cfg = (disciplineId == QLatin1String("FINAL_AP10"))
+                              ? Finals10mConfig::airPistol()
+                              : Finals10mConfig::airRifle();
+    Finals10mController c;
+    c.configureDiscipline(disciplineId);
+    c.setAthleteName(QStringLiteral("Round Trip"));
+    // A 24-shot Final is ~35 minutes of competition time. Accelerate it the way
+    // the rest of this harness does - the state machine still runs, no expiry
+    // is bypassed and no state is assigned directly.
+    c.setTimeScale(300.0);
+    c.startFinal();
+    const int sighters = 4;
+    const bool done = driveToCompletion(c, 240000, sighters,
+                                        [](int n){ return 9.0 + (n % 10) * 0.1; });
+    check(done, tag("F/G: the course completes"));
+    if (!done) return;
+
+    // ── F: the role is explicit on every record ──────────────────────────
+    const QVariantList off = c.officialShotRecords();
+    const QVariantList sig = c.sighterRecords();
+    check(off.size() == cfg.maximumMatchShots,
+          tag("F: 24 official records"), QString::number(off.size()));
+    check(sig.size() == sighters,
+          tag("F: sighter records are RETAINED, not just counted"),
+          QString::number(sig.size()));
+    check(c.sighterCount() == sighters, tag("F: sighter count agrees"));
+
+    bool rolesOk = true, numbersOk = true;
+    for (int i = 0; i < off.size(); ++i) {
+        const QVariantMap m = off.at(i).toMap();
+        if (m.value(QStringLiteral("shotRole")).toString() != QLatin1String("OFFICIAL")
+            || m.value(QStringLiteral("isSighter")).toBool())
+            rolesOk = false;
+        if (m.value(QStringLiteral("officialShotNumber")).toInt() != i + 1)
+            numbersOk = false;
+    }
+    check(rolesOk, tag("F: every official record says OFFICIAL"));
+    check(numbersOk, tag("F: the official sequence is 1..24, from the record"));
+    bool sigRoles = true;
+    for (const QVariant& v : sig)
+        if (v.toMap().value(QStringLiteral("shotRole")).toString() != QLatin1String("SIGHTER")
+            || !v.toMap().value(QStringLiteral("isSighter")).toBool())
+            sigRoles = false;
+    check(sigRoles, tag("F: every sighter record says SIGHTER"));
+
+    // ── G: the report ────────────────────────────────────────────────────
+    const QVariantMap rep = c.buildReport();
+    check(rep.value(QStringLiteral("displayName")).toString() == cfg.displayName,
+          tag("G: the report names the discipline"),
+          rep.value(QStringLiteral("displayName")).toString());
+    check(rep.value(QStringLiteral("courseShots")).toInt() == 24,
+          tag("G: the course is 24 shots"));
+    check(rep.value(QStringLiteral("officialShotCount")).toInt() == 24,
+          tag("G: 24 official shots reported"));
+    check(rep.value(QStringLiteral("sighterCount")).toInt() == sighters,
+          tag("G: sighters counted separately"));
+    check(rep.value(QStringLiteral("sighters")).toList().size() == sighters,
+          tag("G: sighters are their own section"));
+    check(rep.value(QStringLiteral("complete")).toBool(),
+          tag("G: the Final is reported complete"));
+    check(rep.value(QStringLiteral("scoringMode")).toString() == QLatin1String("decimal"),
+          tag("G: decimal scoring"));
+    check(!rep.value(QStringLiteral("rankingAvailable")).toBool(),
+          tag("G: NO ranking is claimed for one lane"));
+    check(rep.contains(QStringLiteral("mpiRadiusMm"))
+              && rep.contains(QStringLiteral("groupExtentMm"))
+              && rep.contains(QStringLiteral("meanShotTimeSec")),
+          tag("G: MPI, group extent and mean shot time are derived"));
+
+    // -- G: the course sections, stated by the report, not guessed by a view --
+    // 6.17.2 splits the Final into two 5-shot series and then single shots. A
+    // report that made a view work that out would eventually have a view work
+    // it out differently.
+    const QVariantList secs = rep.value(QStringLiteral("courseSections")).toList();
+    check(secs.size() == 3, tag("G: three course sections"),
+          QString::number(secs.size()));
+    if (secs.size() == 3) {
+        const QVariantMap sec1 = secs.at(0).toMap();
+        const QVariantMap sec2 = secs.at(1).toMap();
+        const QVariantMap sec3 = secs.at(2).toMap();
+        check(sec1.value(QStringLiteral("shotCount")).toInt() == cfg.shotsPerSeries
+                  && sec2.value(QStringLiteral("shotCount")).toInt() == cfg.shotsPerSeries
+                  && sec3.value(QStringLiteral("shotCount")).toInt() == cfg.singleShotCount,
+              tag("G: 5 + 5 + 14 shots across the sections"),
+              QStringLiteral("%1/%2/%3")
+                  .arg(sec1.value(QStringLiteral("shotCount")).toInt())
+                  .arg(sec2.value(QStringLiteral("shotCount")).toInt())
+                  .arg(sec3.value(QStringLiteral("shotCount")).toInt()));
+        // Section membership comes from the record's own official number.
+        bool numbering = true;
+        QString badNum;
+        const auto spanOk = [&](const QVariantMap& sec, int lo, int hi) {
+            for (const QVariant& v : sec.value(QStringLiteral("shots")).toList()) {
+                const int n = v.toMap().value(QStringLiteral("officialShotNumber")).toInt();
+                if (n < lo || n > hi) {
+                    numbering = false;
+                    badNum = QStringLiteral("%1 not in %2..%3").arg(n).arg(lo).arg(hi);
+                    return;
+                }
+            }
+        };
+        spanOk(sec1, 1, cfg.shotsPerSeries);
+        spanOk(sec2, cfg.shotsPerSeries + 1, 2 * cfg.shotsPerSeries);
+        spanOk(sec3, 2 * cfg.shotsPerSeries + 1, cfg.maximumMatchShots);
+        check(numbering, tag("G: every shot sits in the section its NUMBER puts it in"),
+              badNum);
+        // No sighter may appear anywhere in the official course.
+        bool noSighters = true;
+        for (const QVariant& sv : secs)
+            for (const QVariant& v : sv.toMap().value(QStringLiteral("shots")).toList())
+                if (v.toMap().value(QStringLiteral("isSighter")).toBool()
+                    || v.toMap().value(QStringLiteral("shotRole")).toString()
+                           != QLatin1String("OFFICIAL"))
+                    noSighters = false;
+        check(noSighters, tag("G: NO sighter appears in any course section"));
+        // The grouped records and the journalled per-stage running totals are
+        // independent paths to the same subtotals. They must agree.
+        check(qAbs(sec1.value(QStringLiteral("subtotal")).toDouble()
+                   - rep.value(QStringLiteral("series1Subtotal")).toDouble()) < 0.05
+                  && qAbs(sec2.value(QStringLiteral("subtotal")).toDouble()
+                          - rep.value(QStringLiteral("series2Subtotal")).toDouble()) < 0.05
+                  && qAbs(sec3.value(QStringLiteral("subtotal")).toDouble()
+                          - rep.value(QStringLiteral("singlesSubtotal")).toDouble()) < 0.05,
+              tag("G: section subtotals agree with the journalled stage totals"));
+    }
+    // Every official row names its section, so the view never has to decide.
+    bool sectioned = true;
+    for (const QVariant& v : rep.value(QStringLiteral("officialShots")).toList())
+        if (v.toMap().value(QStringLiteral("courseSection")).toString().isEmpty())
+            sectioned = false;
+    check(sectioned, tag("G: every official row carries its courseSection"));
+    check(!rep.value(QStringLiteral("sessionId")).toString().isEmpty(),
+          tag("G: the report identifies its session"));
+
+    // sighters must not reach any official total
+    const double s1 = rep.value(QStringLiteral("series1Subtotal")).toDouble();
+    const double s2 = rep.value(QStringLiteral("series2Subtotal")).toDouble();
+    const double sg = rep.value(QStringLiteral("singlesSubtotal")).toDouble();
+    const double tot = rep.value(QStringLiteral("total")).toDouble();
+    check(qAbs((s1 + s2 + sg) - tot) < 0.05,
+          tag("G: series + series + singles == the Final total"),
+          QStringLiteral("%1 + %2 + %3 vs %4").arg(s1).arg(s2).arg(sg).arg(tot));
+    double sumOff = 0.0;
+    for (const QVariant& v : off) sumOff += v.toMap().value(QStringLiteral("score")).toDouble();
+    check(qAbs(sumOff - tot) < 0.05,
+          tag("G: the total is exactly the official shots, sighters excluded"),
+          QStringLiteral("%1 vs %2").arg(sumOff).arg(tot));
+
+    // ── the round trip: persist -> reload -> report again ────────────────
+    const QString sid = c.sessionId();
+    const double beforeTotal = c.cumulativeTotal();
+    const int beforeOff = c.officialShotCount();
+    // Reduce the journal while it is still in Sessions/Current. A CLEAN close
+    // archives it to Sessions/Archive on purpose, so that a completed course is
+    // never offered as an unfinished recovery candidate - which means the
+    // recovery scan cannot see it afterwards, by design. The close is asserted
+    // separately below.
+
+    // Reduce the journal the controller itself names - no directory scan, no
+    // assumption about where sessions live. This is the persistence contract:
+    // what reaches disk must reconstruct the session exactly.
+    const QString jpath = c.sessionJournalPath();
+    check(!jpath.isEmpty(), tag("F: the session names its journal"));
+    const ValidationReport vrep = JournalValidator::validateFile(jpath);
+    const ReplayResult replay = ReplayEngine::replay(vrep.validEnvelopes);
+    check(replay.ok, tag("F: the journal replays cleanly through the reducer"),
+          vrep.error.technicalDetail);
+    if (!replay.ok) return;
+    const SessionState& rs = replay.state;
+
+    check(rs.officials.size() == beforeOff,
+          tag("F: OFFICIAL shots survive the round trip, as officials"),
+          QStringLiteral("%1 vs %2").arg(rs.officials.size()).arg(beforeOff));
+    check(rs.sighters.size() == sighters,
+          tag("F: SIGHTERS survive as sighters - never merged into officials"),
+          QStringLiteral("%1 vs %2").arg(rs.sighters.size()).arg(sighters));
+    check(qAbs(rs.totalTenths / 10.0 - beforeTotal) < 0.001,
+          tag("F: the total is unchanged after the round trip"),
+          QStringLiteral("%1 vs %2").arg(rs.totalTenths / 10.0).arg(beforeTotal));
+    {
+        // sighters must contribute nothing to the official total
+        double offSum = 0.0;
+        for (const StateShotRecord& sc : rs.officials) offSum += sc.effectiveTenths() / 10.0;
+        check(qAbs(offSum - beforeTotal) < 0.05,
+              tag("F: the persisted total is the officials alone"),
+              QStringLiteral("%1 vs %2").arg(offSum).arg(beforeTotal));
+    }
+
+    // -- 22: the SAME report, rebuilt from the reconstructed state ---------
+    // Not "the numbers still add up" - the actual report DTO, built by a fresh
+    // controller that has seen nothing but the reduced journal, compared field
+    // by field against the one built from the live session.
+    {
+        // Resume a COPY. The live session is still open on the original file,
+        // and two writers on one journal is not a thing this test is allowed to
+        // create just to make an assertion convenient.
+        QTemporaryDir tmp;
+        const QString copyPath = tmp.path() + QStringLiteral("/resumed.jsonl");
+        check(QFile::copy(jpath, copyPath), tag("22: the journal can be copied"));
+
+        RecoveredMatchState reduced;
+        reduced.state = rs;
+        reduced.sessionId = sid;
+        reduced.journalPath = copyPath;
+        reduced.lastValidSeq = vrep.lastValidSeq;
+        if (!vrep.validEnvelopes.isEmpty()) {
+            reduced.lastEventWallIso = vrep.validEnvelopes.last().wallTimestampIso;
+            reduced.lastLineHash = vrep.validEnvelopes.last().currentHash;
+            reduced.lastEventMonoMs = vrep.validEnvelopes.last().monotonicMs;
+        }
+
+        Finals10mController rebuilt;
+        rebuilt.configureDiscipline(disciplineId);
+        rebuilt.loadRecoveredState(reduced);
+        const QVariantMap repR = rebuilt.buildReport();
+
+        QString diff;
+        for (const char* k : { "officialShotCount", "sighterCount", "total",
+                               "series1Subtotal", "series2Subtotal", "singlesSubtotal",
+                               "series1ShotsSubtotal", "series2ShotsSubtotal",
+                               "singleShotsSubtotal", "complete", "courseShots" }) {
+            if (rep.value(QLatin1String(k)).toString() != repR.value(QLatin1String(k)).toString()) {
+                diff = QStringLiteral("%1: %2 vs %3").arg(QLatin1String(k))
+                       .arg(rep.value(QLatin1String(k)).toString(),
+                            repR.value(QLatin1String(k)).toString());
+                break;
+            }
+        }
+        check(diff.isEmpty(),
+              tag("22: the report DTO is identical before and after reduction"), diff);
+
+        // Row by row: role, official number, section, score, time, coordinates.
+        const QVariantList rowsA = rep.value(QStringLiteral("officialShots")).toList();
+        const QVariantList rowsB = repR.value(QStringLiteral("officialShots")).toList();
+        bool rowsSame = (rowsA.size() == rowsB.size());
+        QString rowDiff = rowsSame
+                        ? QString()
+                        : QStringLiteral("%1 vs %2").arg(rowsA.size()).arg(rowsB.size());
+        for (int i = 0; rowsSame && i < rowsA.size(); ++i) {
+            const QVariantMap x = rowsA.at(i).toMap(), y = rowsB.at(i).toMap();
+            for (const char* k : { "shotRole", "officialShotNumber", "courseSection",
+                                   "score", "timeSec", "xmm", "ymm" }) {
+                if (x.value(QLatin1String(k)).toString() != y.value(QLatin1String(k)).toString()) {
+                    rowsSame = false;
+                    rowDiff = QStringLiteral("row %1 %2: %3 vs %4").arg(i + 1)
+                              .arg(QLatin1String(k))
+                              .arg(x.value(QLatin1String(k)).toString(),
+                                   y.value(QLatin1String(k)).toString());
+                    break;
+                }
+            }
+        }
+        check(rowsSame,
+              tag("22: every official row survives reduction unchanged"), rowDiff);
+
+        const QVariantList sigA = rep.value(QStringLiteral("sighters")).toList();
+        const QVariantList sigB = repR.value(QStringLiteral("sighters")).toList();
+        bool sigSame = (sigA.size() == sigB.size() && sigA.size() == sighters);
+        for (int i = 0; sigSame && i < sigA.size(); ++i)
+            if (sigA.at(i).toMap().value(QStringLiteral("shotRole")).toString()
+                    != QLatin1String("SIGHTER")
+                || sigB.at(i).toMap().value(QStringLiteral("shotRole")).toString()
+                    != QLatin1String("SIGHTER")
+                || qAbs(sigA.at(i).toMap().value(QStringLiteral("score")).toDouble()
+                        - sigB.at(i).toMap().value(QStringLiteral("score")).toDouble()) > 0.05)
+                sigSame = false;
+        check(sigSame, tag("22: the SIGHTERS section survives reduction as sighters"));
+
+        // And the sighters still reach no total.
+        double offOnly = 0.0;
+        for (const QVariant& v : rowsB)
+            offOnly += v.toMap().value(QStringLiteral("score")).toDouble();
+        check(qAbs(offOnly - repR.value(QStringLiteral("total")).toDouble()) < 0.05,
+              tag("22: after reduction the total is STILL the officials alone"));
+    }
+
+
+    // Reloading a COMPLETED Final into a fresh controller is deliberately not
+    // exercised here: closeSession(Clean) archives the journal so a finished
+    // course is never offered as an unfinished recovery candidate, and
+    // loadRecoveredState is the crash path. The persistence contract above is
+    // what the report depends on, and it is proven. The completed-session
+    // reopen path is recorded as an accepted limitation in the release gate.
+
+    // A clean close archives the journal, which is why the reduction above
+    // happens first. Assert the close itself is clean and idempotent.
+    c.closeFinalSession();
+    c.closeFinalSession();   // no-op, must not append a second shutdown
+
+    // ── G: the report is identical after reload ──────────────────────────
+    // buildReport must be a pure derivation: same state, same report.
+    const QVariantMap rep2 = c.buildReport();
+    QString repDiff;
+    for (const char* k : { "officialShotCount", "sighterCount", "total",
+                           "series1Subtotal", "series2Subtotal", "singlesSubtotal",
+                           "courseShots", "displayName", "complete" }) {
+        if (rep.value(QLatin1String(k)).toString() != rep2.value(QLatin1String(k)).toString()) {
+            repDiff = QStringLiteral("%1: %2 vs %3").arg(QLatin1String(k))
+                .arg(rep.value(QLatin1String(k)).toString(),
+                     rep2.value(QLatin1String(k)).toString());
+            break;
+        }
+    }
+    check(repDiff.isEmpty(),
+          tag("G: buildReport is a pure derivation - same state, same report"), repDiff);
+}
+
+
+// -- 23. LEGACY SESSIONS: role without a shotRole field ---------------------
+//
+// The golden journals were written before shotRole existed. They must still
+// load, and they must still say which shots were sighters - because the role
+// was never a field to begin with: SighterAccepted and ShotAccepted are
+// different events, and the reducer has always kept them in different lists.
+//
+// That is the whole backward-compatibility story, and this test is what stops
+// anyone "helpfully" adding a migration that invents a role for a shot whose
+// role was never recorded.
+static void testLegacySessionRoles()
+{
+    using namespace ta::rel;
+    const QString dir = QStringLiteral(RELIABILITY_FIXTURES_DIR);
+
+    struct Case { const char* file; int sighters; int officials; };
+    const Case cases[] = {
+        { "fixture_sighter_official.jsonl", 1, 1 },
+        { "fixture_finals_clean.jsonl",     1, 3 },
+    };
+
+    for (const Case& cs : cases) {
+        const QString path = dir + QLatin1Char('/') + QLatin1String(cs.file);
+        const QByteArray name = QByteArrayLiteral("23: ") + cs.file;
+
+        QFile f(path);
+        const bool opened = f.open(QIODevice::ReadOnly);
+        check(opened, (name + " exists").constData(), path);
+        if (!opened) continue;
+        const QByteArray raw = f.readAll();
+        f.close();
+
+        // The evidence is only legacy evidence if it really predates the field.
+        check(!raw.contains("shotRole"),
+              (name + " predates shotRole - genuine legacy evidence").constData());
+
+        const ValidationReport vrep = JournalValidator::validateFile(path);
+        const ReplayResult rr = ReplayEngine::replay(vrep.validEnvelopes);
+        check(rr.ok, (name + " still loads - no migration, no repair").constData(),
+              vrep.error.technicalDetail);
+        if (!rr.ok) continue;
+
+        check(rr.state.sighters.size() == cs.sighters,
+              (name + " sighters recovered by EVENT TYPE").constData(),
+              QStringLiteral("%1 vs %2").arg(rr.state.sighters.size()).arg(cs.sighters));
+        check(rr.state.officials.size() == cs.officials,
+              (name + " officials recovered by EVENT TYPE").constData(),
+              QStringLiteral("%1 vs %2").arg(rr.state.officials.size()).arg(cs.officials));
+
+        // Nothing is fabricated: the total is the officials, never the sighters.
+        double offSum = 0.0;
+        for (const StateShotRecord& r : rr.state.officials)
+            offSum += r.effectiveTenths() / 10.0;
+        check(qAbs(offSum - rr.state.totalTenths / 10.0) < 0.05,
+              (name + " the recovered total is the officials alone").constData(),
+              QStringLiteral("%1 vs %2").arg(offSum).arg(rr.state.totalTenths / 10.0));
+    }
+}
+
 
 // ── 1. Config: Rifle vs Pistol ────────────────────────────────────────────
 static void testConfigs()
@@ -734,6 +1127,64 @@ static void testCompletion()
     clearCurrentSessions();
 }
 
+// -- report evidence: a REAL report DTO, written out for the renderer --------
+//
+// The report view is rendered offline (tools/uirender) so its layout can be
+// SHOWN rather than asserted. What it renders must be a real report, not a
+// hand-written specimen, or the picture proves nothing about the product - so
+// the DTO comes from a full 24-shot Final driven through the real controller,
+// exactly as the acceptance tests drive it.
+static bool emitReportJson(const QString& disciplineId, const QString& outPath)
+{
+    Finals10mController c;
+    c.configureDiscipline(disciplineId);
+    c.setAthleteName(QStringLiteral("A. Bailie"));
+    c.setTimeScale(300.0);
+    c.startFinal();
+
+    // Drive it here rather than through driveToCompletion: that helper fires
+    // every shot at the same coordinate, which would render an MPI of one point
+    // and a group extent of zero - a picture that says nothing about the layout
+    // it is meant to be evidence for.
+    {
+        QElapsedTimer t; t.start();
+        int extId = 0, sighters = 0;
+        while (c.running()) {
+            if (c.windowState() == WMatch
+                    && c.shotsInStage() < c.property("stageShotCapacity").toInt()) {
+                const int n = c.nextShotNumber();
+                const double ang = n * 0.7;
+                const double rad = 0.4 + (n % 5) * 0.35;
+                c.registerShot(rad * std::cos(ang), rad * std::sin(ang),
+                               9.4 + ((n * 7) % 11) * 0.1, ++extId,
+                               (ang * 180.0 / 3.14159265) - 180.0);
+            } else if (c.windowState() == WSighting && sighters < 3) {
+                c.registerShot(1.2 - sighters * 0.5, -0.9 + sighters * 0.6,
+                               8.7 + sighters * 0.4, ++extId, 30.0 * sighters);
+                ++sighters;
+            }
+            if (t.elapsed() > 240000)
+                return false;
+            QCoreApplication::processEvents(QEventLoop::AllEvents, 5);
+        }
+    }
+
+    QVariantMap meta;
+    meta[QStringLiteral("athlete")] = QStringLiteral("A. Bailie");
+    meta[QStringLiteral("dateText")] = QStringLiteral("Sat 2026-08-30");
+    meta[QStringLiteral("timeText")] = QStringLiteral("14:05");
+    const QVariantMap rep = c.buildReport(meta);
+    c.closeFinalSession();
+
+    QFile f(outPath);
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate))
+        return false;
+    f.write(QJsonDocument(QJsonObject::fromVariantMap(rep)).toJson(QJsonDocument::Indented));
+    f.close();
+    std::printf("wrote %s\n", qUtf8Printable(outPath));
+    return true;
+}
+
 int main(int argc, char** argv)
 {
     QCoreApplication app(argc, argv);
@@ -751,8 +1202,27 @@ int main(int argc, char** argv)
         return 2;
     }
 
+    // --emit-report <dir>: write real AR and AP report DTOs and exit. Used to
+    // feed the offline renderer; it runs no assertions and reports no totals.
+    {
+        const QStringList args = QCoreApplication::arguments();
+        const int at = args.indexOf(QStringLiteral("--emit-report"));
+        if (at >= 0 && at + 1 < args.size()) {
+            const QString dir = args.at(at + 1);
+            QDir().mkpath(dir);
+            const bool ar = emitReportJson(QStringLiteral("FINAL_AR10"),
+                                           dir + QStringLiteral("/report_ar.json"));
+            const bool ap = emitReportJson(QStringLiteral("FINAL_AP10"),
+                                           dir + QStringLiteral("/report_ap.json"));
+            return (ar && ap) ? 0 : 1;
+        }
+    }
+
     std::printf("=== Finals10m F1 acceptance ===\n");
     testConfigs();
+    testFinalReportRoundTrip(QStringLiteral("FINAL_AR10"), "AR");
+    testFinalReportRoundTrip(QStringLiteral("FINAL_AP10"), "AP");
+    testLegacySessionRoles();
     testPositioningDelay(QStringLiteral("FINAL_AR10"), 30000, "AR");
     testPositioningDelay(QStringLiteral("FINAL_AP10"), 10000, "AP");
     testFullRifleFinal();

@@ -39,9 +39,19 @@ MatchArrays CoachReportFeeder::readGameMode(int gameSubMode) const
     a.singlePosition = d.singlePosition;
     a.flipY          = m_flipY;
 
-    // Coordinates carry a -1 sentinel when the target never reported them; only
-    // include them when the first shot has a genuine coordinate.
-    const bool haveCoords = !(m_widget->getXCord(1) == -1.0 && m_widget->getYCord(1) == -1.0);
+    // ACQ-SENTINEL-003. This used to compare the first shot's coordinates
+    // against minus one, which was correct while minus one was the "no
+    // coordinate" marker and became silently WRONG the moment the accessors
+    // started answering NaN. A NaN compares equal to nothing, including that
+    // marker, so haveCoords was true even when the application held no
+    // coordinates at all, and the loop below pushed NaN into the analytics
+    // engine - MPI, group size and every derived figure on the Coach Report.
+    //
+    // Ask the authority instead of recognising a number. The first shot is the
+    // cheap probe, and each shot is checked again below, because a match whose
+    // capture stopped part-way must contribute the shots it has and nothing it
+    // does not.
+    const bool haveCoords = m_widget->coordinateHasValue(1);
 
     a.scores.reserve(static_cast<size_t>(n));
     if (haveCoords) { a.xs.reserve(static_cast<size_t>(n)); a.ys.reserve(static_cast<size_t>(n)); }
@@ -50,6 +60,11 @@ MatchArrays CoachReportFeeder::readGameMode(int gameSubMode) const
     for (int i = 1; i <= n; ++i) {
         a.scores.push_back(m_widget->getScore(i));
         if (haveCoords) {
+            // Per shot, not once for the match: capture can stop part-way, and
+            // a NaN reaching the analytics engine would poison every aggregate
+            // computed from it.
+            if (!m_widget->coordinateHasValue(i))
+                break;
             a.xs.push_back(m_widget->getXCord(i));
             a.ys.push_back(m_widget->getYCord(i));
         }
