@@ -1020,6 +1020,15 @@ Item {
                                           + globalMatchModel.count + "/" + matchShootCount + ")")
                 return
             }
+            // UI-LASTSHOT-DWELL-001 safety. If a shot arrives while the last
+            // shot of the previous position is still being held on the face,
+            // collapse the hold FIRST. The authoritative state already moved on
+            // (sligterMode was set the moment the transition ran, so this shot
+            // is routed by the NEW state either way) - this only makes sure the
+            // deferred buffer swap cannot wipe the marker of a shot that has
+            // just been fired. The held display must never become authority.
+            if (lastShotHoldTimer.running)
+                shootingPage.applyPositionTransitionDisplay()
             rightPanel.addToSeries(xPosition,yPosition,currentCalculatedScore,
                                    centerPanel.lastShotXmm, centerPanel.lastShotYmm)
             if (APPSETTINGS.getDeveloperMode()) console.log("x ", xPosition, " y ", yPosition, " score ", currentCalculatedScore, " matchShootCount ", matchShootCount)
@@ -2363,14 +2372,6 @@ Item {
             centerPanel.disableMotorMovement = true
             centerPanel.setSighterIndicator(true)
             leftPanel.enableSighterMode(true)
-            globalModelOfData.clear()
-            for(var index = 0; index <globalSlighterModel.count; ++index )
-            {
-                // Only sighters fired for the position being entered.
-                if (globalSlighterModel.get(index).position !== p3Position)
-                    continue
-                globalModelOfData.append(globalSlighterModel.get(index))
-            }
             sligterMode = true
             // Deliberately NOT calling MODREADER.changeSighterMode() here: its
             // QList swaps race against the 100ms polling worker that reads the
@@ -2378,9 +2379,20 @@ Item {
             // Shot routing to sighter/match models is handled QML-side by
             // sligterMode in addToSeries, which is all the 3P transition needs.
             rightPanel.updateTotal()
-            centerPanel.currentPageIndexChanged()
             centerPanel.disableMotorMovement = false
             leftPanel.playVisible = true
+            // UI-LASTSHOT-DWELL-001. Everything above is authoritative and has
+            // already happened: sligterMode (so the NEXT shot routes as a
+            // sighter), the target indicator, the panel totals. The match clock
+            // was never touched here and still is not.
+            //
+            // The only thing deferred is the DISPLAY BUFFER swap - the line
+            // that wipes the completed position's markers off the face. Measured
+            // on three tablets at the live event, the last shot of a position was
+            // visible for 1.63-2.03 s (mean 1.84), which the operator reported as
+            // too short to read. That dwell was incidental: paper-feed duration
+            // plus one 500 ms positionWatch tick. This makes it deliberate.
+            lastShotHoldTimer.restart()
             MODREADER.appendToLogFile("3P: position change -> " + p3Names[p3Position]
                                       + " (sighting, match clock keeps running)")
         } catch (e) {
@@ -2388,8 +2400,35 @@ Item {
         }
     }
 
+    // The deferred half of enterPositionTransition(). Presentation only.
+    // Idempotent, so the timer and an early collapse cannot double-apply it.
+    function applyPositionTransitionDisplay()
+    {
+        lastShotHoldTimer.stop()
+        globalModelOfData.clear()
+        for (var index = 0; index < globalSlighterModel.count; ++index) {
+            // Only sighters fired for the position being entered.
+            if (globalSlighterModel.get(index).position !== p3Position)
+                continue
+            globalModelOfData.append(globalSlighterModel.get(index))
+        }
+        centerPanel.currentPageIndexChanged()
+    }
+
+    // UI-LASTSHOT-DWELL-001: how long the completed position's last shot stays
+    // on the face after the transition. 2.5 s was chosen against the measured
+    // 1.84 s: enough to be a real improvement, short enough not to read as a
+    // frozen screen, and far shorter than any observed shot-to-shot interval.
+    Timer {
+        id: lastShotHoldTimer
+        interval: 2500
+        repeat: false
+        onTriggered: shootingPage.applyPositionTransitionDisplay()
+    }
+
     function changedToMatchMode()
     {
+        lastShotHoldTimer.stop()   // UI-LASTSHOT-DWELL-001: never outlive the transition
         centerPanel.stopPreparationCountdown()
         centerPanel.disableMotorMovement = true
         centerPanel.showSlighter(false)
@@ -2432,6 +2471,7 @@ Item {
 
     function changedToMatchFinish()
     {
+        lastShotHoldTimer.stop()   // UI-LASTSHOT-DWELL-001: never outlive the transition
         matchFinished = true
         centerPanel.stopMatchClock()
 
