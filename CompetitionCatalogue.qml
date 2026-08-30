@@ -1077,13 +1077,53 @@ QtObject {
     // Distinct rule sets present in the catalogue, in a stable order.
     // "techaim" is not a federation - it is the practice-preset set - so it is
     // labelled as such rather than pretending to carry rule authority.
-    // SETA-DSB-PORT-001. The DSB 2026 competition engine is DEFERRED for this
-    // evaluation release and excluded from the build, so the catalogue must not
-    // OFFER it: a rule set an operator can select but the application cannot run
-    // is worse than one that is absent. The catalogue DATA is untouched - every
-    // DSB programme, its timing and its rule references remain, and clearing
-    // this one flag brings them back when the engine is ported.
-    readonly property bool dsbAvailable: false
+    // SETA-DSB-PORT-001 is CLOSED. The DSB engine is built, mounted and under
+    // test, so the catalogue offers it again.
+    //
+    // The gate that replaced the deferral is deliberately PER PROGRAMME, not
+    // per rule set. All-or-nothing was right while nothing ran; it is wrong
+    // now, because it can only answer a question about thirteen programmes at
+    // once. A programme is withheld by NAME, with its reason recorded here,
+    // and withholding one says nothing about the other twelve.
+    //
+    // Empty is the honest value today. Every DSB programme in this catalogue
+    // is conductable: 1.10, 1.80, 2.10 and 2.20 on the journalled
+    // qualification seam, 1.20 on the DSB120 sequencer, and 1.40 and 1.60 on
+    // the 50 m three-position engine.
+    //
+    // 1.40 and 1.60 are NOT withheld for the missing journal recovery, and the
+    // reason matters: that gap belongs to the 50 m three-position engine, not
+    // to DSB. ISSF 3x20 runs on the same engine, has the same gap, and is
+    // offered. Hiding the DSB programmes for a limitation their ISSF twin
+    // ships with would misreport where the limitation lives. It is recorded as
+    // an engine limitation in the test matrix instead, where it applies to
+    // both. Their adopted rule authority does persist, in the saved .tch, and
+    // RULE-AUTH-001 asserts a recovered 1.40 is still DSB 1.40.
+    //
+    // What is NOT here is equally deliberate: 2.16, 2.17 and 2.18 have no
+    // catalogue entry at all. They need falling / turning targets and a
+    // second target face. A programme that needs hardware the product does not
+    // have is absent, not withheld.
+    readonly property var dsbWithheldProgrammeIds: []
+
+    // True when a programme may be offered to an operator. Non-DSB programmes
+    // are never gated by this.
+    function programmeAvailable(programmeId) {
+        for (var i = 0; i < dsbWithheldProgrammeIds.length; ++i)
+            if (dsbWithheldProgrammeIds[i] === programmeId) return false
+        return true
+    }
+
+    // A rule set is offered when at least one of its programmes is. This is
+    // what stops a withheld programme emptying an entire federation out of the
+    // selector, and what stops an empty federation being offered.
+    readonly property bool dsbAvailable: {
+        var all = allEntries()
+        for (var i = 0; i < all.length; ++i)
+            if (all[i].rulesetId === "dsb" && programmeAvailable(all[i].programmeId))
+                return true
+        return false
+    }
 
     function ruleSets(fifteen) {
         var seen = {}, out = []
@@ -1139,12 +1179,16 @@ QtObject {
 
     // Programmes within a rule set + discipline. Step 3 of the selector is
     // shown only when this returns more than one.
+    // Withheld DSB programmes are filtered HERE as well as at the rule-set
+    // level: offering the rule set must not smuggle in a programme that was
+    // withheld by name.
     function programmes(rulesetId, disciplineId, fifteen) {
         var out = []
         var all = entriesIn(fifteen)
         for (var i = 0; i < all.length; ++i) {
             var e = all[i]
-            if (e.rulesetId === rulesetId && e.disciplineId === disciplineId)
+            if (e.rulesetId === rulesetId && e.disciplineId === disciplineId
+                    && programmeAvailable(e.programmeId))
                 out.push(e)
         }
         return out
