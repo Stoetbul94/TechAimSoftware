@@ -25,7 +25,9 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $stamp = Get-Date -Format 'yyyy-MM-dd-HHmmss'
-$name  = "TechAim-Support-$stamp"
+# Named after the product it came from, so two products' bundles are not
+# indistinguishable in an inbox. Resolved after the manifest is read.
+$name  = "Support-$stamp"
 $work  = Join-Path $env:TEMP $name
 $zip   = Join-Path $OutDir "$name.zip"
 if (Test-Path $work) { Remove-Item $work -Recurse -Force }
@@ -65,7 +67,7 @@ if (Test-Path $vendorRoot) { $productRoots += $vendorRoot }
 $appData = $vendorRoot
 $here    = Split-Path -Parent $MyInvocation.MyCommand.Path
 
-Write-Host "== Tech Aim support bundle =="
+Write-Host "== support bundle =="
 
 # ---- release manifest (SUP-001) ------------------------------------------
 $manifest = $null
@@ -76,6 +78,11 @@ foreach ($dir in @($here, (Split-Path $here -Parent))) {
     if (-not $dir) { continue }
     $candidates += (Join-Path $dir '0.9.0-rc1-release-manifest.json')
     $candidates += (Join-Path $dir 'release-manifest.json')
+    # The deployment writes deployment-manifest.json beside the executable.
+    # Not looking for it is why a bundle taken from a deployed package reported
+    # 'UNKNOWN - no manifest' for the version and the commit - the two things
+    # the bundle exists to establish.
+    $candidates += (Join-Path $dir 'deployment-manifest.json')
     foreach ($sub in @('manifest', 'documents', 'docs')) {
         $candidates += (Join-Path (Join-Path $dir $sub) '0.9.0-rc1-release-manifest.json')
         $candidates += (Join-Path (Join-Path $dir $sub) 'release-manifest.json')
@@ -92,21 +99,47 @@ if (-not $manifest) {
 }
 
 # ---- release + machine identity ------------------------------------------
-$exe = Join-Path $here 'TechAim.exe'
+# The product executable is named by the BRAND - SETA.exe or TechAim.exe - and
+# a manifest may name a third. Discovered, never assumed: a bundle that cannot
+# find the binary reports 'not found' for the version, which is the one field an
+# investigation starts from.
+$exeName = if ($manifest -and $manifest.executable) { $manifest.executable }
+           elseif (Test-Path (Join-Path $here 'SETA.exe')) { 'SETA.exe' }
+           else { 'TechAim.exe' }
+$exe = Join-Path $here $exeName
 $ver = if (Test-Path $exe) { (Get-Item $exe).VersionInfo.FileVersion } else { 'not found' }
 $exeSha = if (Test-Path $exe) { (Get-FileHash $exe -Algorithm SHA256).Hash } else { '' }
 
 # VERIFY, do not assert. If the running binary is not the one the manifest
 # describes, the bundle says so - that is exactly when it matters most.
-$mProduct   = if ($manifest) { $manifest.product }          else { 'Tech Aim Electronic Target Control' }
-$mVersion   = if ($manifest) { $manifest.version }          else { 'UNKNOWN - no manifest' }
+# Read the PRODUCT from the manifest, then from the executable's own version
+# resource. Falling back to a hardcoded 'Tech Aim' put another company's product
+# name in a SETA operator's support bundle.
+$mProduct   = if ($manifest -and $manifest.product) { $manifest.product }
+              elseif (Test-Path $exe) { (Get-Item $exe).VersionInfo.ProductName }
+              else { 'UNKNOWN - no manifest and no executable' }
+$mVersion   = if ($manifest -and $manifest.version) { $manifest.version }
+              elseif ($ver -ne 'not found') { "$ver (from the executable)" }
+              else { 'UNKNOWN - no manifest' }
 $mChannel   = if ($manifest) { $manifest.releaseChannel }   else { 'UNKNOWN - no manifest' }
 $mCommit    = if ($manifest) { $manifest.gitCommit }        else { 'UNKNOWN - no manifest' }
 $mLimit     = if ($manifest) { $manifest.limitation }       else { 'FIELD TEST - NOT FOR OFFICIAL COMPETITION RESULTS' }
 $mAnalytics = if ($manifest) { $manifest.analyticsVersion } else { 'UNKNOWN - no manifest' }
 $mExeSha    = if ($manifest) { $manifest.executableSha256 } else { '' }
+# Now that the product is known, name the bundle after it.
+$brandLeaf = ($mProduct -replace '[^A-Za-z0-9]', '')
+if (-not $brandLeaf) { $brandLeaf = 'Support' }
+$name = "$brandLeaf-Support-$stamp"
+$zip  = Join-Path $OutDir "$name.zip"
+$newWork = Join-Path $env:TEMP $name
+if ($work -ne $newWork) {
+    if (Test-Path $newWork) { Remove-Item $newWork -Recurse -Force }
+    Rename-Item $work $newWork
+    $work = $newWork
+}
+
 $shaVerdict =
-    if (-not $exeSha)      { 'NOT CHECKED - TechAim.exe not found beside this script' }
+    if (-not $exeSha)      { "NOT CHECKED - $exeName not found beside this script" }
     elseif (-not $mExeSha) { 'NOT CHECKED - no manifest hash to compare against' }
     elseif ($exeSha -eq $mExeSha) { 'MATCH - the running binary is the one the manifest describes' }
     else { 'MISMATCH - the binary beside this script is NOT the manifest build; the Git commit above may be wrong' }
@@ -118,7 +151,7 @@ if (Test-Path $cfgProbe) {
     if ($mm) { $modeLine = $mm.Matches[0].Groups[1].Value.Trim() }
 }
 $identity = @"
-Tech Aim support bundle
+$mProduct support bundle
 Generated            : $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
 Product              : $mProduct
 Version              : $mVersion

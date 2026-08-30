@@ -221,6 +221,12 @@ $allFiles = @(Get-ChildItem $OutDir -Recurse -File)
 
 $manifest = [ordered]@{
     product           = 'SETA Electronic Target Control'
+    # The support bundle reads these to say WHICH build produced an evidence
+    # set. Without them it reported the version and channel as blank, which is
+    # the first thing an investigation asks for.
+    version           = (Get-Item $exe).VersionInfo.FileVersion
+    releaseChannel    = 'SETA v1.0 Evaluation'
+    limitation        = 'EVALUATION BUILD - NOT FOR OFFICIAL COMPETITION RESULTS'
     buildFlavour      = 'SETA_OEM'
     executable        = $exeName
     executableSha256  = $sha
