@@ -541,3 +541,92 @@ and refined: it remains one logo in one place; only which variant of that one
 mark is drawn now depends on the chrome behind it.
 
 **Supersedes.** Nothing.
+
+
+---
+
+## UI-DEC-017 — A report destination is chosen by named discipline family, never by one "finals" flag
+
+| | |
+|---|---|
+| **Date** | 2026-08-30 |
+| **Status** | ACCEPTED |
+| **Directed by** | the Phase A final reporting round of 2026-08-30, §2 and §3 |
+| **Visual approval** | **NOT GIVEN.** The rendered report pages are filed as automated evidence; an operator has not seen them on the machine. |
+
+**Decision.** `ReportWindow` names each report family and selects the view from
+the family, not from a generic boolean:
+
+| Session | Report |
+|---|---|
+| 10 m AR / AP Final (`isFinals10mMatch`) | `Finals10mReportView` — tab 3 |
+| 50 m 3P Final (`isFinalsMatch`) | `FinalsReportView` — tab 2 |
+| Qualification / Open Practice | Summary + Match — tabs 0 and 1 |
+| Training Lab programmes | their own off-screen report renderers, never this window |
+
+`finalsMode` is the union of the two finals families and exists only to hide
+the qualification tabs. Which report is shown is decided by `finalsTab`, and
+`prepare()` pins the window to that tab whatever the caller asked for — so no
+entry point, present or future, can put a Final in front of the wrong model.
+
+**Reasoning.** There are two finals families and they share nothing: a 50 m 3P
+Final is 35 shots across kneeling, prone and standing; a 10 m Final is 24 shots
+as two 5-shot series and then singles. Before this round `finalsMode` tested
+only `isFinalsMatch`, so a 10 m Final fell through to the Summary and Match
+tabs — whose own comment says they "carry qualification assumptions that must
+never be fed finals data". One generic flag is what made that possible, and
+adding a third value to it would have made it possible again.
+
+**Affected areas.** `ReportWindow.qml`, `WindowManager.qml`, `ShootingPage.qml`,
+`Finals10mReportView.qml`, `tests/qml`.
+
+**Affected decisions.** UI-DEC-001 through UI-DEC-016 are all **preserved.**
+
+**Supersedes.** Nothing.
+
+---
+
+## UI-DEC-018 — Tech Aim does not present Teiler; the measurement stays
+
+| | |
+|---|---|
+| **Date** | 2026-08-30 |
+| **Status** | ACCEPTED |
+| **Directed by** | the Phase A final reporting round of 2026-08-30, §13–§17 |
+| **Visual approval** | **NOT GIVEN.** Automated evidence only; see the acceptance checklist. |
+
+**Decision.** No Tech Aim output an operator or athlete can see shows "Teiler".
+It was removed outright from the four places that displayed it — the Summary
+report metrics, the Match report metrics, the match-report series header, and
+the per-shot column of the match shot table — and the shot table's remaining
+five columns were re-proportioned to fill the width, so nothing is left blank,
+renamed or spaced for an absent value.
+
+`TachusWidget::getTeiler()`, `getTeilerForShoot()` and
+`getTeilerForShootOfMatch()` are **unchanged**. Teiler is the mean radial
+distance of a shot from centre — a property of the coordinates. Deleting the
+measurement because the label is German would have moved a number, which this
+decision explicitly does not do.
+
+The decision itself lives in the brand package as
+`BrandPackage::showTeilerMetric`, false for Tech Aim. See
+`docs/design/Teiler_Presentation_Decision.md` for what a future German-market
+edition would have to decide before it could be true.
+
+**Reasoning.** "Teiler" is a German-market figure carried over from the origin
+of this codebase. It is not an ISSF concept, it appears in no ISSF result, and
+Tech Aim's reports are ISSF-shaped. Hiding it behind a runtime flag would have
+left the column widths, the grid cell and the accessor call in place for a
+value nobody would ever see; removing it and recording the decision where brand
+decisions live keeps the report honest and the re-enablement path explicit.
+
+**Affected areas.** `SummaryReportView.qml`, `MatchReportView.qml`,
+`MatchReportInfo.qml`, `src/app/BrandPackage.{h,cpp}`, `tests/qml`,
+`tests/reliability/tst_brandpackage.cpp`.
+
+**Affected decisions.** UI-DEC-010 (OEM branding via BrandPackage, one
+codebase) is **preserved and applied** — this is the first product decision
+recorded in a brand package rather than in a screen. All others preserved.
+
+**Supersedes.** Nothing. No previous entry accepted Teiler as a Tech Aim
+metric; it was inherited, never decided.

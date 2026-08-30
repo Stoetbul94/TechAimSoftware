@@ -48,7 +48,15 @@ ProductIdentity makeTechAim()
     // diagnosed at the range; a banner and a report footer reading "SETA
     // Evaluation" would tell an operator - and anyone reading a printed
     // result - that this is the build that was handed over. It is not.
-    p.releaseChannel = QStringLiteral("Internal Diagnostic Field Test");
+    //
+    // 1.0.0-RC1 opens the v1.0 line. It is a CANDIDATE: every blocker is
+    // closed and the full regression is green, but no live target test was
+    // performed for the close-out - the acquisition evidence is inherited from
+    // RC3F (docs/release/V1.0-PHYSICAL-EVIDENCE-INHERITANCE.md). A candidate
+    // that has not itself been fired at may not describe itself as released,
+    // so the channel stays an evaluation channel and the field-test notice
+    // stays on the screen and in the report footer.
+    p.releaseChannel = QStringLiteral("v1.0 Release Candidate - Evaluation");
 
     // Shown wherever a result could be mistaken for an official one. Short
     // enough to sit in a status strip without covering scores or controls.

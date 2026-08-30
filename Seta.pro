@@ -9,7 +9,7 @@ CONFIG += c++17
 # authoritative source; these are the values qmake bakes into the PE
 # VERSIONINFO block, which qmake cannot read from C++.
 TARGET = TechAim
-VERSION = 0.9.0
+VERSION = 1.0.0
 # The version resource is hand-authored (TechAim.rc) rather than generated
 # from QMAKE_TARGET_*: qmake leaves InternalName empty and marks the binary
 # VFT_DLL. RC_FILE takes precedence over the QMAKE_TARGET_* variables.
@@ -44,7 +44,12 @@ for(legacy, LEGACY_EXES) {
 # it is - it is tagged, hashed and handed over, and nothing here overwrites
 # it. The next external build gets its own number, decided after the
 # physical qualification passes, not before.
-APP_VERSION_STR = 0.9.0-RC3F-DIAG
+# 1.0.0-RC1 opens the v1.0 release line. Every release blocker is closed and
+# the full regression is green, but the acquisition evidence is INHERITED from
+# RC3F rather than re-earned - no live target test was performed for this
+# close-out (docs/release/V1.0-PHYSICAL-EVIDENCE-INHERITANCE.md). It is a
+# candidate, and the release channel and field-test notice say so.
+APP_VERSION_STR = 1.0.0-RC1
 GIT_SHA = $$system(git -C \"$$PWD\" rev-parse --short HEAD)
 isEmpty(GIT_SHA): GIT_SHA = unknown
 DEFINES += APP_VERSION_STR=\\\"$$APP_VERSION_STR\\\"
