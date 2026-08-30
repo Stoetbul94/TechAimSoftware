@@ -530,6 +530,12 @@ Item {
     property bool croWarned5:  false
     property bool croWarnedPrep30: false
     property bool croAnnouncedStop: false
+    // CRO-REPEAT-002: 6.11.1.2 a) has ONE MATCH FIRING...START per match.
+    // stopPreparationCountdown() runs again every time the athlete resumes
+    // after a 3P position change, so the RC3F field logs show it announced
+    // three times per session. The qualification match period is continuous;
+    // it starts once.
+    property bool croMatchStarted: false
 
     function croAnnounce(text) {
         if (!legacyClockIsOurs)
@@ -544,6 +550,7 @@ Item {
         paneItem.croWarned5 = false
         paneItem.croWarnedPrep30 = false
         paneItem.croAnnouncedStop = false
+        paneItem.croMatchStarted = false
         paneItem.croAnnouncement = ""
     }
 
@@ -632,6 +639,17 @@ Item {
             var remainingTime = (totalSighterTime - sighterTime)*1
             if(remainingTime <= 0 )
             {
+                // CRO-ORDER-001. 6.11.1.1 j) then 6.11.1.2 a): the CRO commands
+                // END OF PREPARATION AND SIGHTING...STOP, there is a pause while
+                // the targets are reset, and only THEN MATCH FIRING...START.
+                // This announcement used to sit AFTER the expiry transition
+                // below, which reaches changedToMatchMode() ->
+                // stopPreparationCountdown() and announces MATCH FIRING - so the
+                // field logs on all three RC3F tablets show MATCH FIRING...START
+                // 138 ms BEFORE the STOP it is supposed to follow. Announcing
+                // first fixes the order.
+                // No timer is created, started, stopped or extended by this.
+                croAnnounce(qsTr("END OF PREPARATION AND SIGHTING...STOP"))
                 sighterModeTimerEnds()
                 sighterTimer.stop()
                 //sighter.visible = false;
@@ -649,8 +667,6 @@ Item {
                 // this point in the session) but it now honours the same
                 // condition the binding did.
                 timerNotification.visible = legacyClockIsOurs;
-                // 6.11.1.1 j)
-                croAnnounce(qsTr("END OF PREPARATION AND SIGHTING...STOP"))
                 MODREADER.intiateAutoMovementSetup()
             }
             // 6.11.1.1 i) - after 14:30 elapsed, i.e. 30 s remaining.
@@ -2377,7 +2393,10 @@ Item {
         // Final, so it never moved. It was still 35:00 fourteen minutes and one
         // USB reconnect later.
         timerNotification.visible = APPSETTINGS.timer() && legacyClockIsOurs
-        croAnnounce(qsTr("MATCH FIRING...START"))                     // 6.11.1.2 a)
+        if (!paneItem.croMatchStarted) {                              // CRO-REPEAT-002
+            paneItem.croMatchStarted = true
+            croAnnounce(qsTr("MATCH FIRING...START"))                 // 6.11.1.2 a)
+        }
     }
 
 }

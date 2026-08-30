@@ -1772,6 +1772,159 @@ int main(int argc, char* argv[])
         }
     }
 
+    // ─────────────────────────────────────────────────────────────────────
+    // V1.0 CLOSE-OUT — the three defects the RC3F live event exposed.
+    //
+    // All three were found in the field on 2026-08-29 across three tablets.
+    // All three are presentation / command-text only; none touches a clock, a
+    // shot count, a target mode or acquisition.
+    // ─────────────────────────────────────────────────────────────────────
+    {
+        const QString cp = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/CenterPane.qml"));
+        const QString sp = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/ShootingPage.qml"));
+
+        // ── CRO-ORDER-001 ────────────────────────────────────────────────
+        // 6.11.1.1 j) then 6.11.1.2 a): END OF PREPARATION AND SIGHTING...STOP,
+        // a pause, THEN MATCH FIRING...START. The field logs showed MATCH
+        // FIRING announced 138 ms BEFORE the STOP, because the announcement sat
+        // after sighterModeTimerEnds() - which reaches the code that announces
+        // MATCH FIRING. Order is asserted by POSITION IN THE SOURCE, because
+        // that is exactly what went wrong.
+        {
+            // Anchor inside the sighting-expiry block. Searching the whole
+            // file found the SIGNAL DECLARATION of sighterModeTimerEnds at
+            // line 119, not the call - which made the order look inverted when
+            // it was not. Match the construct, not the first occurrence.
+            const int blk = cp.indexOf(QStringLiteral("if(remainingTime <= 0 )"));
+            const QString expiry = blk > 0 ? cp.mid(blk, 2000) : QString();
+            const int stopIdx = expiry.indexOf(QStringLiteral("END OF PREPARATION AND SIGHTING...STOP\")"));
+            // The STATEMENT, not the name: my own explanatory comment above
+            // the fix mentions sighterModeTimerEnds() in prose, and matching
+            // the bare name found the comment and reported the order inverted
+            // when the code was correct. Anchor on the indented call.
+            const int endsIdx = expiry.indexOf(QStringLiteral("\n                sighterModeTimerEnds()"));
+            check(blk > 0, "CRO-ORDER-001: the sighting-expiry block was located");
+            check(stopIdx > 0, "CRO-ORDER-001: the preparation STOP is announced");
+            check(endsIdx > 0, "CRO-ORDER-001: the sighting-expiry transition exists");
+            check(stopIdx > 0 && endsIdx > 0 && stopIdx < endsIdx,
+                  "CRO-ORDER-001: STOP is announced BEFORE the transition that "
+                  "announces MATCH FIRING",
+                  QStringLiteral("within the expiry block: stop at %1, transition at %2")
+                      .arg(stopIdx).arg(endsIdx));
+            // and it is announced exactly once
+            check(cp.count(QStringLiteral("END OF PREPARATION AND SIGHTING...STOP\")")) == 1,
+                  "CRO-ORDER-001: announced from exactly one place");
+        }
+
+        // ── qualification3p_match_start_must_emit_once_per_session ────────
+        // 6.11.1.2 a) has ONE MATCH FIRING...START per match. The field logs
+        // showed three per session, because stopPreparationCountdown() runs
+        // again whenever the athlete resumes after a 3P position change.
+        {
+            check(cp.contains(QStringLiteral("property bool croMatchStarted")),
+                  "CRO-REPEAT-002: a once-per-session latch exists");
+            const int at = cp.indexOf(QStringLiteral("MATCH FIRING...START\")"));
+            check(at > 0, "CRO-REPEAT-002: MATCH FIRING...START is announced");
+            if (at > 0) {
+                // the announcement must be inside the latch
+                const QString before = cp.mid(qMax(0, at - 300), 300);
+                check(before.contains(QStringLiteral("!paneItem.croMatchStarted")),
+                      "qualification3p_match_start_must_emit_once_per_session: "
+                      "the announcement is guarded by the latch",
+                      before.simplified().right(120));
+            }
+            // the latch is re-armed only by a new session, never by a transition
+            const QString reset = extractFunction(cp, QStringLiteral("croResetAnnouncements"));
+            check(!reset.isEmpty() && reset.contains(QStringLiteral("croMatchStarted = false")),
+                  "CRO-REPEAT-002: a NEW session re-arms it");
+            const QString ept = extractFunction(sp, QStringLiteral("enterPositionTransition()"));
+            check(!ept.isEmpty() && !ept.contains(QStringLiteral("croMatchStarted")),
+                  "CRO-REPEAT-002: a position change does NOT re-arm it");
+        }
+
+        // ── UI-LASTSHOT-DWELL-001 ────────────────────────────────────────
+        // Measured live at 1.63-2.03 s (mean 1.84) and reported as too short.
+        // The hold is PRESENTATION ONLY: the authoritative half of the
+        // transition must still run immediately.
+        {
+            check(sp.contains(QStringLiteral("id: lastShotHoldTimer")),
+                  "DWELL-001: a deliberate hold timer exists");
+            const int t = sp.indexOf(QStringLiteral("id: lastShotHoldTimer"));
+            check(t > 0 && sp.mid(t, 200).contains(QStringLiteral("interval: 2500")),
+                  "DWELL-001: the hold is 2.5 s",
+                  t > 0 ? sp.mid(t, 200).simplified() : QString());
+
+            const QString ept = extractFunction(sp, QStringLiteral("enterPositionTransition()"));
+            check(!ept.isEmpty(), "DWELL-001: the transition exists");
+            if (!ept.isEmpty()) {
+                // AUTHORITATIVE half - must still be immediate
+                check(ept.contains(QStringLiteral("sligterMode = true")),
+                      "DWELL-001: sighter routing is set IMMEDIATELY, not after the hold",
+                      QStringLiteral("a shot during the hold must be routed by the NEW state"));
+                check(ept.contains(QStringLiteral("setSighterIndicator(true)")),
+                      "DWELL-001: the target indicator changes immediately");
+                check(ept.contains(QStringLiteral("rightPanel.updateTotal()")),
+                      "DWELL-001: the panel totals update immediately");
+                // PRESENTATION half - must be the deferred part
+                check(!ept.contains(QStringLiteral("globalModelOfData.clear()")),
+                      "DWELL-001: the display-buffer wipe is NOT immediate");
+                check(ept.contains(QStringLiteral("lastShotHoldTimer.restart()")),
+                      "DWELL-001: it is deferred by the hold timer");
+                // and the clock is still never touched here
+                for (const QString& sym : QStringList{ QStringLiteral("gameTimer"),
+                                                       QStringLiteral("gameTime"),
+                                                       QStringLiteral("totalGameTime") })
+                    check(!ept.contains(sym),
+                          qPrintable(QStringLiteral("DWELL-001: the transition still does not "
+                                                    "touch %1").arg(sym)),
+                          QStringLiteral("the 90-minute clock is untouched by the hold"));
+            }
+
+            const QString apply = extractFunction(sp, QStringLiteral("applyPositionTransitionDisplay"));
+            check(!apply.isEmpty(), "DWELL-001: the deferred display swap exists");
+            if (!apply.isEmpty()) {
+                check(apply.contains(QStringLiteral("globalModelOfData.clear()")),
+                      "DWELL-001: it performs the buffer swap");
+                check(apply.contains(QStringLiteral("lastShotHoldTimer.stop()")),
+                      "DWELL-001: it is idempotent - the timer cannot double-apply it");
+                for (const QString& sym : QStringList{ QStringLiteral("sligterMode"),
+                                                       QStringLiteral("gameTimer"),
+                                                       QStringLiteral("gameTime") })
+                    check(!apply.contains(sym),
+                          qPrintable(QStringLiteral("DWELL-001: the deferred half does not "
+                                                    "touch %1").arg(sym)),
+                          QStringLiteral("presentation only"));
+            }
+
+            // §24 THE CRITICAL ONE: a shot during the hold collapses it before
+            // being displayed, so the deferred wipe cannot erase it.
+            const int add = sp.indexOf(QStringLiteral("rightPanel.addToSeries(xPosition"));
+            check(add > 0, "DWELL-001: the shot dispatch site exists");
+            if (add > 0) {
+                const QString before = sp.mid(qMax(0, add - 700), 700);
+                check(before.contains(QStringLiteral("lastShotHoldTimer.running"))
+                          && before.contains(QStringLiteral("applyPositionTransitionDisplay()")),
+                      "DWELL-001 §24: a shot arriving during the hold collapses it FIRST",
+                      QStringLiteral("the held display must never become competition authority"));
+            }
+
+            // The hold must not survive into another mode.
+            for (const QString& fn : QStringList{ QStringLiteral("changedToMatchMode"),
+                                                  QStringLiteral("changedToMatchFinish") }) {
+                const QString body = extractFunction(sp, fn);
+                if (body.isEmpty()) continue;
+                check(body.contains(QStringLiteral("lastShotHoldTimer.stop()")),
+                      qPrintable(QStringLiteral("DWELL-001: %1 cancels any pending hold").arg(fn)));
+            }
+
+            // Scope: the Final must NOT have inherited this. Its boundaries wait
+            // for the athlete, so the defect does not exist there (§5).
+            check(!sp.contains(QStringLiteral("FINALS3P.lastShotHold"))
+                      && !cp.contains(QStringLiteral("lastShotHoldTimer")),
+                  "DWELL-001 §5: the hold is scoped to the qualification transition only");
+        }
+    }
+
     printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
     fflush(stdout);
     return g_failures ? 1 : 0;
