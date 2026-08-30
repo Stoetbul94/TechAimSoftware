@@ -49,35 +49,15 @@ static int  g_checks = 0;
 static int  g_failures = 0;
 static QStringList g_qmlMessages;
 
-// SETA-DSB-PORT-001. DSB 2026 is DEFERRED for 1.0.0-EVAL1 and excluded from the
-// build, so its assertions describe a configuration this binary deliberately is
-// not. A failing DSB assertion is reported as DEFERRED and counted separately:
-// never silently passed, never deleted, and stated in the summary. When DSB is
-// ported, deleting the branch below is all it takes to hold it to account again.
-static int g_deferred = 0;
+// SETA-DSB-PORT-001 is CLOSED. The deferral branch that used to live here
+// reported a failing DSB assertion as DEFERRED, because the engine was excluded
+// from the build and those assertions described a configuration the binary
+// deliberately was not. The engine is now built, mounted and offered, so the
+// deferral has been DELETED rather than widened - exactly as its own comment
+// said it should be. Every DSB assertion is a pass or a failure again.
 
 static void check(bool ok, const char* name, const QString& detail = QString())
 {
-    // Assertions that are ABOUT DSB availability, whatever their id prefix.
-    // Listed by name rather than matched loosely, so gating DSB cannot quietly
-    // excuse an unrelated failure.
-    static const char* const kDsbAvailability[] = {
-        "SETA-SEL-001: three rule sets - ISSF, DSB 2026 and the practice presets",
-        "SETA-SEL-001: the DSB rule set is offered now that confirmed profiles exist",
-        "SETA-SEL-001: all 61 catalogue entries are reachable - no programme lost",
-        "SETA-SEL-001: the hierarchy invents no programme",
-        "SETA-INT-001: standard paper offers ISSF, DSB and the practice presets",
-    };
-    bool dsbAvailability = false;
-    for (const char* n : kDsbAvailability)
-        if (qstrcmp(name, n) == 0) { dsbAvailability = true; break; }
-
-    if (!ok && (dsbAvailability || qstrncmp(name, "DSB-", 4) == 0)) {
-        ++g_deferred;
-        printf("DEFER %s  (DSB deferred - SETA-DSB-PORT-001)\n", name);
-        fflush(stdout);
-        return;
-    }
     ++g_checks;
     if (ok) {
         printf("PASS  %s\n", name);
@@ -4330,9 +4310,6 @@ int main(int argc, char* argv[])
               "standard all reach the sheet");
     }
 
-    if (g_deferred)
-        printf("\n%d DSB assertions DEFERRED (SETA-DSB-PORT-001) - neither passes"
-               " nor failures.\n", g_deferred);
     printf("\n=== %d checks, %d failures ===\n", g_checks, g_failures);
     fflush(stdout);
     return g_failures ? 1 : 0;
