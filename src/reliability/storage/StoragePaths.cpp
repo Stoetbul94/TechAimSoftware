@@ -70,6 +70,7 @@ QString StoragePaths::reportsDirectory()           { return dir("Reports"); }
 QString StoragePaths::exportsDirectory()           { return dir("Exports"); }
 QString StoragePaths::logsDirectory()              { return dir("Logs"); }
 QString StoragePaths::settingsDirectory()          { return dir("Settings"); }
+QString StoragePaths::matchRecordsDirectory()      { return dir("Matches"); }
 QString StoragePaths::supportBundlesDirectory()    { return dir("SupportBundles"); }
 QString StoragePaths::derivedIndexesDirectory()    { return dir("DerivedIndexes"); }
 QString StoragePaths::legacyImportDirectory()      { return dir("Sessions/Archive/Legacy"); }

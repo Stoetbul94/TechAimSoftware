@@ -116,6 +116,32 @@ QString configFilePath(const QString& configFileName)
 #endif
 }
 
+QString matchRecordPath(const QString& fileName)
+{
+#if defined(Q_OS_ANDROID)
+    const QString dir = ta::rel::StoragePaths::matchRecordsDirectory();
+    QDir().mkpath(dir);
+    return QDir(dir).filePath(fileName);
+#else
+    // Windows: return the name untouched. A deployed install saves its match
+    // records beside the executable and both the operator and the support
+    // bundle already look for them there; moving them would be a silent
+    // relocation of the customer's own data.
+    return fileName;
+#endif
+}
+
+QString userDetailsPath(const QString& fileName)
+{
+#if defined(Q_OS_ANDROID)
+    const QString dir = ta::rel::StoragePaths::settingsDirectory();
+    QDir().mkpath(dir);
+    return QDir(dir).filePath(fileName);
+#else
+    return QDir(QCoreApplication::applicationDirPath()).filePath(fileName);
+#endif
+}
+
 QString finalsAudioClipsRoot()
 {
 #if defined(Q_OS_ANDROID)

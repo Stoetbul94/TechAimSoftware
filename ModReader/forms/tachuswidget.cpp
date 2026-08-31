@@ -1,4 +1,5 @@
 #include "tachuswidget.h"
+#include "src/platform/PlatformService.h"
 #include "ui_tachuswidget.h"
 #include "sender.h"
 
@@ -2889,8 +2890,10 @@ void TachusWidget::setCurrentMatchTotalShotsCount(int currentMatchTotalShotsCoun
 
 void TachusWidget::saveNameAndPort(QString name, QString port, QString networkPath)
 {
-    QString appPath = QCoreApplication::applicationDirPath();
-    QString filePath = QString("%1/%2").arg(appPath).arg(USER_DETAILS);
+    // Platform seam: on Android applicationDirPath() is the native-library
+    // directory and can never be written to, so this file silently failed to
+    // save there. Windows resolution is unchanged.
+    QString filePath = ta::platform::userDetailsPath(QStringLiteral(USER_DETAILS));
     QFile file(filePath);
 
     if (!file.open(QIODevice::WriteOnly))
@@ -2911,8 +2914,10 @@ void TachusWidget::saveNameAndPort(QString name, QString port, QString networkPa
 
 QString TachusWidget::getUserName()
 {
-    QString appPath = QCoreApplication::applicationDirPath();
-    QString filePath = QString("%1/%2").arg(appPath).arg(USER_DETAILS);
+    // Platform seam: on Android applicationDirPath() is the native-library
+    // directory and can never be written to, so this file silently failed to
+    // save there. Windows resolution is unchanged.
+    QString filePath = ta::platform::userDetailsPath(QStringLiteral(USER_DETAILS));
     QFile file(filePath);
 
     if (!file.open(QIODevice::ReadOnly))
@@ -2929,8 +2934,10 @@ QString TachusWidget::getUserName()
 
 QString TachusWidget::getPortNumber()
 {
-    QString appPath = QCoreApplication::applicationDirPath();
-    QString filePath = QString("%1/%2").arg(appPath).arg(USER_DETAILS);
+    // Platform seam: on Android applicationDirPath() is the native-library
+    // directory and can never be written to, so this file silently failed to
+    // save there. Windows resolution is unchanged.
+    QString filePath = ta::platform::userDetailsPath(QStringLiteral(USER_DETAILS));
     QFile file(filePath);
 
     if (!file.open(QIODevice::ReadOnly))
@@ -2947,8 +2954,10 @@ QString TachusWidget::getPortNumber()
 
 QString TachusWidget::getNetworkPath()
 {
-    QString appPath = QCoreApplication::applicationDirPath();
-    QString filePath = QString("%1/%2").arg(appPath).arg(USER_DETAILS);
+    // Platform seam: on Android applicationDirPath() is the native-library
+    // directory and can never be written to, so this file silently failed to
+    // save there. Windows resolution is unchanged.
+    QString filePath = ta::platform::userDetailsPath(QStringLiteral(USER_DETAILS));
     QFile file(filePath);
 
     if (!file.open(QIODevice::ReadOnly))

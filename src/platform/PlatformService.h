@@ -103,6 +103,25 @@ QString configFilePath(const QString& configFileName);
 //   executable directory. No audio file is duplicated in the repository.
 QString finalsAudioClipsRoot();
 
+// Absolute path of a saved match record (.tch).
+//
+// Windows: unchanged — the caller's relative name is returned untouched, so a
+//   match still saves beside the executable exactly where operators and the
+//   support bundle already look for it.
+//
+// Android: the working directory is "/" and the application binary directory
+//   is not writable, so a relative name is not merely wrong there - the save
+//   silently fails and a completed match is lost. It resolves into an
+//   app-private Matches directory instead.
+QString matchRecordPath(const QString& fileName);
+
+// Absolute path of the remembered user/port details file.
+//
+// Windows: unchanged — <applicationDirPath>/<fileName>.
+// Android: applicationDirPath() is the native-library directory, which can
+//   never be written to. Resolves into the app-private settings directory.
+QString userDetailsPath(const QString& fileName);
+
 // Ensure a configuration file exists at `path`, seeding the minimum required
 // for a first run on a platform that ships no config.ini.
 //

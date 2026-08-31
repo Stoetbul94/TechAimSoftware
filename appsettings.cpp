@@ -1,4 +1,5 @@
 #include "appsettings.h"
+#include "src/platform/PlatformService.h"
 #include "defines.h"
 #include "platform/PlatformService.h"
 
@@ -201,10 +202,10 @@ void AppSettings::saveMatch(bool createNew)
 {
     if (m_matchSavedFile == NULL || createNew) {
         if (m_isOverwriteOldSaveFile) {
-            m_matchSavedFile = new QFile(QString("Match_%1.tch").arg(user_name));
+            m_matchSavedFile = new QFile(ta::platform::matchRecordPath(QString("Match_%1.tch").arg(user_name)));
 
         } else
-            m_matchSavedFile = new QFile(QString("Match_%1.tch").arg(QDateTime::currentDateTime().toString("ddMMyyyy-hhmmss")));
+            m_matchSavedFile = new QFile(ta::platform::matchRecordPath(QString("Match_%1.tch").arg(QDateTime::currentDateTime().toString("ddMMyyyy-hhmmss"))));
     }
 
     if (m_matchSavedFile->open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate))
@@ -247,10 +248,10 @@ void AppSettings::autoSaveMatch()
 {
     if (m_matchSavedFile == NULL) {
         if (m_isOverwriteOldSaveFile) {
-            m_matchSavedFile = new QFile(QString("match_%1.tch").arg(user_name));
+            m_matchSavedFile = new QFile(ta::platform::matchRecordPath(QString("match_%1.tch").arg(user_name)));
 
         } else
-            m_matchSavedFile = new QFile(QString("test_match%1.tch").arg(QDateTime::currentDateTime().toString("ddMMyyyy-hhmmss")));
+            m_matchSavedFile = new QFile(ta::platform::matchRecordPath(QString("test_match%1.tch").arg(QDateTime::currentDateTime().toString("ddMMyyyy-hhmmss"))));
     }
 
     //    if (m_matchSavedFile->open(QIODevice::WriteOnly | QIODevice::Text))

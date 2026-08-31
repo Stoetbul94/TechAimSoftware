@@ -74,6 +74,9 @@ public:
     static QString exportsDirectory();
     static QString logsDirectory();
     static QString settingsDirectory();
+    // Saved .tch match records. Used only where the platform cannot write
+    // beside the executable; Windows keeps its historical location.
+    static QString matchRecordsDirectory();
     static QString supportBundlesDirectory();
     static QString derivedIndexesDirectory();
     static QString legacyImportDirectory();      // Sessions/Archive/Legacy

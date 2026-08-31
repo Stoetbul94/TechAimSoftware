@@ -22,6 +22,9 @@
 
 #include "test_support.h"
 
+#include <QCoreApplication>
+#include <QDir>
+
 #include "platform/PlatformService.h"
 #include "reliability/storage/StoragePaths.h"
 #include "target/SerialDeviceProvider.h"   // interface + FixedSerialDeviceProvider only
@@ -270,4 +273,33 @@ void run_platform_tests()
     checkSerialProviderContract();
     checkSingleCore();
     std::fflush(stdout);
+    // ── §19 storage: no persistent output may depend on the working
+    // directory or the executable directory ─────────────────────────────
+    {
+        const QString tch  = ta::platform::matchRecordPath(QStringLiteral("Match_x.tch"));
+        const QString user = ta::platform::userDetailsPath(QStringLiteral("userDetails_seta.txt"));
+#if defined(Q_OS_ANDROID)
+        check(QDir::isAbsolutePath(tch),
+              "PLATFORM-STORE-001: a match record resolves to an ABSOLUTE path "
+              "on Android - a relative name resolves against \"/\" and the save "
+              "silently fails", tch);
+        check(QDir::isAbsolutePath(user),
+              "PLATFORM-STORE-001: so does the remembered user/port file", user);
+        check(!tch.startsWith(QCoreApplication::applicationDirPath()),
+              "PLATFORM-STORE-001: and neither lands in the application "
+              "directory, which on Android is the unwritable native-library dir",
+              tch);
+#else
+        check(tch == QStringLiteral("Match_x.tch"),
+              "PLATFORM-STORE-001: Windows match-record resolution is unchanged "
+              "- the customer's saved matches do not move", tch);
+        check(user == QDir(QCoreApplication::applicationDirPath())
+                          .filePath(QStringLiteral("userDetails_seta.txt")),
+              "PLATFORM-STORE-001: Windows user/port file resolution is "
+              "unchanged", user);
+#endif
+        check(!tch.isEmpty() && !user.isEmpty(),
+              "PLATFORM-STORE-001: neither resolver can return an empty path");
+    }
+
 }
