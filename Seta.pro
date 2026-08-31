@@ -83,7 +83,11 @@ APP_VERSION_STR = 0.9.0-RC3a-SETA
 # release-candidate identity that was audited and shipped; an APK must never
 # be mistaken for it. A1 is a development milestone, not a release, and the
 # label says so wherever the version is displayed.
-android: APP_VERSION_STR = 0.9.0-ANDROID-A2.5
+# C2: shared core converged onto Tech Aim 1.0, monotonic competition clock,
+# Android-safe persistence and support export. Still a DEVELOPMENT label,
+# not an evaluation release: there is no target transport, so nothing about
+# this build can be physically qualified.
+android: APP_VERSION_STR = 0.9.0-ANDROID-C2-DEV
 GIT_SHA = $$system(git -C \"$$PWD\" rev-parse --short HEAD)
 isEmpty(GIT_SHA): GIT_SHA = unknown
 DEFINES += APP_VERSION_STR=\\\"$$APP_VERSION_STR\\\"
