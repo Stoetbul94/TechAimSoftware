@@ -138,12 +138,17 @@ $brandLeaf = ($mProduct -replace '[^A-Za-z0-9]', '')
 # than an empty bundle - it just says loudly that it did.
 $vendorRoot = if ($VendorRoot) { $VendorRoot }
               else { Join-Path $env:LOCALAPPDATA 'TechAim' }
-$storageName = if ($StorageName) { $StorageName }
-               elseif ($manifest -and $manifest.applicationStorageName) { $manifest.applicationStorageName }
-               else { '' }
+# PowerShell variable names are CASE-INSENSITIVE, so a lower-cased copy of
+# the $StorageName parameter is the SAME variable, not a new one. Deriving into a same-name-different-case
+# variable overwrote the parameter, so a bundle whose root came from the
+# manifest still reported it as coming from the command line. The derived
+# value gets its own name, and the source is decided before it is assigned.
 $rootSource = if ($StorageName) { 'command line (-StorageName)' }
-              elseif ($storageName) { 'deployment manifest (applicationStorageName)' }
+              elseif ($manifest -and $manifest.applicationStorageName) { 'deployment manifest (applicationStorageName)' }
               else { 'NOT DECLARED' }
+$dataRootName = if ($StorageName) { $StorageName }
+                elseif ($manifest -and $manifest.applicationStorageName) { $manifest.applicationStorageName }
+                else { '' }
 $productRoots = @()
 $rootStatus   = ''
 if ($AllProducts) {
@@ -156,13 +161,13 @@ if ($AllProducts) {
     $rootStatus = "ALL PRODUCTS - deliberate cross-product collection (-AllProducts). " +
                   "This bundle may contain more than one product's sessions."
 }
-elseif ($storageName) {
-    $scoped = Join-Path $vendorRoot $storageName
+elseif ($dataRootName) {
+    $scoped = Join-Path $vendorRoot $dataRootName
     if (Test-Path $scoped) {
         $productRoots = @($scoped)
-        $rootStatus   = "OK - scoped to this product only ($storageName)"
+        $rootStatus   = "OK - scoped to this product only ($dataRootName)"
     } else {
-        $rootStatus = "DATA ROOT MISSING - the manifest declares '$storageName' but " +
+        $rootStatus = "DATA ROOT MISSING - the manifest declares '$dataRootName' but " +
                       "$scoped does not exist. Either the application has never run on " +
                       "this machine, or it stores its data somewhere this script does not " +
                       "know about. This is NOT the same as having no recent sessions."

@@ -186,6 +186,36 @@ def main():
             check("journals modified in the last 1 h: 0" in what,
                   "SUP-002 C: the empty result is stated as a count, not implied", what[:200])
 
+        # ── C2. the reported SOURCE must be truthful ─────────────────────
+        # PowerShell variable names are case-insensitive, so deriving the root
+        # into $storageName silently overwrote the $StorageName parameter and
+        # every bundle claimed its root came from the command line. The root was
+        # still right; only the account of where it came from was wrong - which
+        # is exactly the kind of quiet inaccuracy a support bundle must not have.
+        out = os.path.join(base, "out-source")
+        os.makedirs(out)
+        manifest_dir = os.path.dirname(SCRIPT)
+        p = run_collector(vendor, out, storage="TechAimSETA")
+        z = newest_bundle(out)
+        if z:
+            names, what, ident = bundle_contents(z)
+            check("data root source : command line (-StorageName)" in what,
+                  "SUP-002 C2: an explicit -StorageName is reported as coming from "
+                  "the command line")
+            check("Data root source     : command line (-StorageName)" in ident,
+                  "SUP-002 C2: and the identity file agrees")
+        # A manifest-driven run cannot be staged here without a packaged
+        # manifest beside the script, so the code path is asserted on the source:
+        # the source is decided BEFORE the derived name is assigned.
+        src0 = io.open(SCRIPT, encoding="utf-8", errors="replace").read()
+        i_src = src0.index("$rootSource = if ($StorageName)")
+        i_val = src0.index("$dataRootName = if ($StorageName)")
+        check(i_src < i_val,
+              "SUP-002 C2: the root SOURCE is decided before the derived name is "
+              "assigned, so the parameter cannot be shadowed first")
+        check("$storageName" not in src0,
+              "SUP-002 C2: no lower-cased alias of the parameter survives")
+
         # ── D. cross-product only when explicitly asked ──────────────────
         out = os.path.join(base, "out-all")
         os.makedirs(out)
