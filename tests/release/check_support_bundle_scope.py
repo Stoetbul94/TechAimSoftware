@@ -137,6 +137,9 @@ def main():
 
             check(len(seta_hit) > 0,
                   "SUP-002 A: SETA-session.jsonl is COLLECTED", jsonls)
+            check(all(os.path.basename(n).startswith("TechAimSETA-") for n in jsonls),
+                  "SUP-002 A: each copy is prefixed with the PRODUCT it came from, "
+                  "not with a folder counted upwards from the file", jsonls)
             check(len(techaim_hit) == 0,
                   "SUP-002 A: TechAim-session.jsonl is NOT collected", techaim_hit)
             check(len(jsonls) > 0,

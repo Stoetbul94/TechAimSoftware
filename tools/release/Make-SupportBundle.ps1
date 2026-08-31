@@ -351,15 +351,21 @@ if ($SessionId) {
 }
 elseif ($RecentHours -gt 0) {
     $cut = (Get-Date).AddHours(-$RecentHours)
-    $j = @(foreach ($pr in $productRoots) {
-               Get-ChildItem (Join-Path $pr 'Sessions') -Recurse -File -Filter '*.jsonl' -ErrorAction SilentlyContinue |
-                   Where-Object { $_.LastWriteTime -ge $cut }
-           })
-    # Two products can hold a journal of the same name; prefix with the
-    # product folder so neither silently overwrites the other.
-    foreach ($f in $j) {
-        $leaf = Split-Path (Split-Path (Split-Path $f.FullName -Parent) -Parent) -Leaf
-        Copy-Item $f.FullName (Join-Path $sesOut "$leaf-$($f.Name)") -Force
+    # Two products can hold a journal of the same name, so each copy is
+    # prefixed with the PRODUCT it came from - which is the root being searched,
+    # not a directory counted upwards from the file. Counting upwards gave
+    # "Sessions-" for a journal in Sessions/Corrupt and "2026-" for one in
+    # Sessions/Archive/2026/08: names that identify a folder depth rather than a
+    # product, and that collide with each other across products anyway.
+    $j = @()
+    foreach ($pr in $productRoots) {
+        $leaf = Split-Path $pr -Leaf
+        $found = @(Get-ChildItem (Join-Path $pr 'Sessions') -Recurse -File -Filter '*.jsonl' -ErrorAction SilentlyContinue |
+                       Where-Object { $_.LastWriteTime -ge $cut })
+        foreach ($f in $found) {
+            Copy-Item $f.FullName (Join-Path $sesOut "$leaf-$($f.Name)") -Force
+        }
+        $j += $found
     }
     $sesNotes += "journals modified in the last $RecentHours h: $($j.Count)"
 
