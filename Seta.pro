@@ -101,6 +101,7 @@ android: ANDROID_VERSION_NAME = $$APP_VERSION_STR
 
 SOURCES += src/app/CompetitionClock.cpp
 SOURCES += src/app/SupportBundle.cpp
+SOURCES += src/target/AndroidUsbTransport.cpp
 SOURCES += main.cpp \
     customprint.cpp \
     appsettings.cpp \
@@ -140,6 +141,7 @@ SOURCES += main.cpp \
 # Offline coach-analytics module (pure C++, independent from Qt/QML).
 HEADERS += src/app/CompetitionClock.h
 HEADERS += src/app/SupportBundle.h
+HEADERS += src/target/AndroidUsbTransport.h
 HEADERS += src/target/AcquisitionSequencer.h
 HEADERS += \
     src/analytics/ShotAnalyticsTypes.h \
