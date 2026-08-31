@@ -15,6 +15,7 @@
 #include "target/AndroidUsbTransport.h"
 
 #include <QByteArray>
+#include <QFile>
 #include <QList>
 #include <cstdio>
 
@@ -70,6 +71,23 @@ public:
 };
 
 } // namespace
+
+
+// Returns the file with // comments REMOVED. The first version of this
+// assertion matched the whole file and failed on the transport's own comments,
+// which say things like "no feed" - the test was reading the prose instead of
+// the code. What matters is that no CODE here can request a feed.
+static QString readSourceCode(const QString& relative)
+{
+    QFile f(QStringLiteral(TECHAIM_SOURCE_DIR "/") + relative);
+    if (!f.open(QIODevice::ReadOnly)) return QString();
+    const QChar nl = QLatin1Char('\n');
+    const QStringList lines = QString::fromUtf8(f.readAll()).split(nl);
+    QString code;
+    for (const QString& l : lines)
+        code += l.split(QStringLiteral("//")).first() + nl;
+    return code;
+}
 
 void run_android_usb_tests()
 {
@@ -295,4 +313,94 @@ void run_android_usb_tests()
               "USB-AND-001: every state has an operator-facing name",
               t.stateName());
     }
+    // ── §18 the transport CANNOT feed paper, by construction ──────────────
+    // The strongest form of "no feed on attach/permission/reconnect" is not a
+    // test that counts feeds - it is that this layer has no way to ask for
+    // one. Feeds are issued by the shared accepted-shot path, which the
+    // transport never calls into.
+    {
+        const QString both =
+            readSourceCode(QStringLiteral("src/target/AndroidUsbTransport.h"))
+          + readSourceCode(QStringLiteral("src/target/AndroidUsbTransport.cpp"));
+        check(!both.contains(QStringLiteral("feed"), Qt::CaseInsensitive)
+              && !both.contains(QStringLiteral("motor"), Qt::CaseInsensitive),
+              "USB-AND-001: the transport contains no feed or motor concept at "
+              "all - attach, permission and reconnect CANNOT emit a feed "
+              "because there is nothing here to emit one with");
+        check(!both.contains(QStringLiteral("score"), Qt::CaseInsensitive)
+              && !both.contains(QStringLiteral("shotCount"))
+              && !both.contains(QStringLiteral("competition"), Qt::CaseInsensitive),
+              "USB-AND-001: and no scoring, shot-count or competition concept");
+    }
+
+    // ── §16 shutdown races: no I/O after close, whatever the order ────────
+    {
+        ScriptedBridge b;
+        b.devices << kCh340; b.permission = true;
+        AndroidUsbTransport t; t.setBridge(&b);
+        t.poll(0);
+        t.closeTransport();
+        // closeTransport() alone does not leave Ready lying: a subsequent poll
+        // that finds the device re-opens rather than assuming the old handle.
+        QByteArray out;
+        t.onDeviceDetached(10);
+        check(t.readBytes(&out, 8, 0) < 0 && t.writeBytes(QByteArray("x")) < 0,
+              "USB-AND-001: no read or write survives a close/detach");
+    }
+
+    // ── a permission answer arriving after shutdown must not resurrect ────
+    {
+        ScriptedBridge b;
+        b.devices << kCh340; b.permission = false;
+        AndroidUsbTransport t; t.setBridge(&b);
+        t.poll(0);
+        t.onDeviceDetached(5);                 // cable pulled during the dialog
+        b.permission = true;
+        t.onPermissionResult(true, 10);        // the answer lands anyway
+        // It may proceed to open - the device list is what decides - but it
+        // must never be Ready while the bridge cannot actually open.
+        b.openSucceeds = false;
+        t.onPermissionResult(true, 20);
+        check(!t.isReady(),
+              "USB-AND-001: a late permission answer cannot produce Ready when "
+              "the port will not open", t.stateName());
+    }
+
+    // ── §19 every state maps to an operator sentence, none leaks Java ─────
+    {
+        ScriptedBridge b;
+        b.devices << kCh340; b.permission = false;
+        b.error = QStringLiteral("java.io.IOException: bulk transfer failed");
+        AndroidUsbTransport t; t.setBridge(&b);
+        t.poll(0);
+        t.onPermissionResult(false, 1);
+        check(t.stateName() == QStringLiteral("PermissionDenied"),
+              "USB-AND-001: denial has its own named state for the UI to map",
+              t.stateName());
+        // The Java text is CARRIED for the log and the support bundle, and the
+        // UI maps the STATE - so an operator is never shown a stack trace.
+        check(!t.stateName().contains(QStringLiteral("java.")),
+              "USB-AND-001: the operator-facing state name never contains Java "
+              "exception text", t.stateName());
+    }
+
+    // ── §21 support diagnostics are present and carry no unique id ────────
+    {
+        ScriptedBridge b;
+        b.devices << kCh340; b.permission = true;
+        AndroidUsbTransport t; t.setBridge(&b);
+        t.poll(1000);
+        t.onDeviceDetached(2000);
+        b.devices << kCh340;
+        t.onDeviceAttached(3000);
+        check(t.reconnectCount() == 1 && t.connectedAtMs() == 3000
+              && t.disconnectedAtMs() == 2000,
+              "USB-AND-001: reconnect count and both timestamps are available "
+              "for the support bundle");
+        check(ta::describeUsbId(t.device()) == QStringLiteral("VID 0X1A86 PID 0X7523"),
+              "USB-AND-001: the device is described by VID/PID only - no serial "
+              "number, which would identify the unit without helping a case",
+              ta::describeUsbId(t.device()));
+    }
+
 }

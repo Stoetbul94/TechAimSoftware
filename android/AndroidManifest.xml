@@ -41,6 +41,22 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!--
+      USB HOST — REQUIRED, and that is a product decision rather than a default.
+
+      Tech Aim Android exists to score a physical target, and the only
+      transport it has is a CH340 on USB host. A tablet without USB host
+      support cannot do the one thing this application is for, so required=true
+      keeps it off those devices instead of letting an operator install it and
+      discover at the range that it can never connect. If a future Android
+      product gains a networked transport, this becomes required="false" and
+      the decision gets revisited in writing.
+
+      No new PERMISSION is requested: USB host access is granted per device by
+      the user at connect time, not by an install-time permission.
+    -->
+    <uses-feature android:name="android.hardware.usb.host" android:required="true" />
+
+    <!--
       THE Qt PERMISSION AND FEATURE INJECTION MARKERS ARE DELIBERATELY ABSENT.
 
       The Qt template carries INSERT_PERMISSIONS and INSERT_FEATURES markers.
@@ -140,6 +156,17 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!--
+              Android offers to launch Tech Aim when a recognised target is
+              attached, and hands the permission grant with it, which is what
+              removes one dialog from the operator's path at the range.
+            -->
+            <intent-filter>
+                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
+            </intent-filter>
+            <meta-data android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
+                       android:resource="@xml/device_filter" />
+
             <meta-data
                 android:name="android.app.lib_name"
                 android:value="-- %%INSERT_APP_LIB_NAME%% --" />
@@ -152,5 +179,22 @@
                 android:name="android.app.extract_android_style"
                 android:value="minimal" />
         </activity>
+
+        <!--
+          Sharing a file with another Android app requires a content:// URI.
+          A raw file:// URI throws FileUriExposedException on API 24+, so this
+          is not a nicety - it is the only legal way to hand the tester's
+          support bundle to their mail or messaging app.
+
+          The provider serves READ-ONLY files from the app's private files
+          directory and refuses anything that resolves outside it, so the
+          exposed surface is enforced in code rather than in a paths file.
+        -->
+        <provider
+            android:name="za.co.techaim.target.TechAimFileProvider"
+            android:authorities="za.co.techaim.target.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+        </provider>
     </application>
 </manifest>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Tech Aim target devices.
+
+  The SAME whitelist as AndroidUsbTransport.cpp and UsbSerialBridge.java, and
+  all three were taken from the vendored driver's own getSupportedDevices()
+  rather than from memory: WCH/QinHeng vendor 0x1A86 (6790) with CH340 product
+  0x7523 (29987) and CH341 product 0x5523 (21795).
+
+  Android requires DECIMAL here. The hex equivalents are in the comment above
+  so the three lists can be compared by eye without a converter.
+
+  This filter is what makes Android offer to launch Tech Aim when a target is
+  plugged in. It is deliberately narrow: a device that merely exposes serial
+  endpoints is not a Tech Aim target.
+-->
+<resources>
+    <usb-device vendor-id="6790" product-id="29987" />
+    <usb-device vendor-id="6790" product-id="21795" />
+</resources>

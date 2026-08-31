@@ -96,3 +96,8 @@ SOURCES += \
     tst_recovery.cpp \
     tst_operatingmode.cpp \
     tst_fixtures.cpp
+
+# Lets a test read the shipping SOURCE, for assertions about structure that
+# cannot be made about behaviour - e.g. that the transport contains no feed
+# concept at all.
+DEFINES += TECHAIM_SOURCE_DIR='\\"$$PWD/../..\\"'

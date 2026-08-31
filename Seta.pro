@@ -87,7 +87,11 @@ APP_VERSION_STR = 0.9.0-RC3a-SETA
 # Android-safe persistence and support export. Still a DEVELOPMENT label,
 # not an evaluation release: there is no target transport, so nothing about
 # this build can be physically qualified.
-android: APP_VERSION_STR = 0.9.0-ANDROID-C2-DEV
+# EVAL1 - the first Android package intended for real target evaluation.
+# The USB transport is IMPLEMENTED but has never run on a device: this
+# machine has no tablet and no CH340. EVAL1 means ready to be tested, not
+# tested.
+android: APP_VERSION_STR = 1.0.0-EVAL1
 GIT_SHA = $$system(git -C \"$$PWD\" rev-parse --short HEAD)
 isEmpty(GIT_SHA): GIT_SHA = unknown
 DEFINES += APP_VERSION_STR=\\\"$$APP_VERSION_STR\\\"
@@ -102,6 +106,14 @@ android: ANDROID_VERSION_NAME = $$APP_VERSION_STR
 SOURCES += src/app/CompetitionClock.cpp
 SOURCES += src/app/SupportBundle.cpp
 SOURCES += src/target/AndroidUsbTransport.cpp
+# Android-only transport glue. Both files compile to nothing on desktop, but
+# keeping them out of the desktop build entirely means a Windows link can never
+# depend on a JNI symbol.
+android {
+    SOURCES += src/target/AndroidUsbBridgeJni.cpp
+    SOURCES += src/target/ModbusAndroidUsbBackend.cpp
+    INCLUDEPATH += $$PWD/ModReader/3rdparty/libmodbus
+}
 SOURCES += main.cpp \
     customprint.cpp \
     appsettings.cpp \
