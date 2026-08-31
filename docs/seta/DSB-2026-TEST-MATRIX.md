@@ -20,7 +20,8 @@ nothing about DSB conduct and is not claimed here.
 | Project memory | **216 / 0** |
 | Training Lab evidence | **903 / 0** |
 | Windows icon | **7 / 0** |
-| **Total** | **6 378 / 0** |
+| Support-bundle scope (SUP-002, added at EVAL4) | **26 / 0** |
+| **Total** | **6 418 / 0** |
 
 Two checks are environmental and were not counted as product results:
 `check_generated_manuals.py` needs a manual build that has not been run in this
