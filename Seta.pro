@@ -134,6 +134,7 @@ SOURCES += main.cpp \
 
 # Offline coach-analytics module (pure C++, independent from Qt/QML).
 HEADERS += src/app/CompetitionClock.h
+HEADERS += src/target/AcquisitionSequencer.h
 HEADERS += \
     src/analytics/ShotAnalyticsTypes.h \
     src/analytics/CoachReportData.h \
