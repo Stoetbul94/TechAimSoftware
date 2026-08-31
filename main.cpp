@@ -34,6 +34,7 @@
 #include "src/finals/FinalsAudioService.h"
 #include "src/mode/OperatingMode.h"
 #include "src/mode/OperatingModeService.h"
+#include "src/app/CompetitionClock.h"
 #include "src/training/TrainingProgramController.h"
 #include "src/training/CallDiagnoseController.h"
 #include "src/training/PositionTransitionController.h"
@@ -592,6 +593,12 @@ int main(int argc, char *argv[])
     QualificationController qualController;
     qualController.setOperatingMode(runningModeInt);   // F10 input-source gate
     engine.rootContext()->setContextProperty("QUAL", &qualController);
+    // B3. The authoritative competition clock for Open Practice,
+    // Qualification, 50 m Prone and 3P Qualification. The QML tick used to BE
+    // the clock, which meant Android stopped counting competition time
+    // whenever it backgrounded the activity. The tick now only reads this.
+    ta::CompetitionClock matchClock;
+    engine.rootContext()->setContextProperty("MATCHCLOCK", &matchClock);
     // Training Lab (T1) — Technical Blocks domain controller. Separate from
     // every competition controller; owns ALL Training state and journals
     // Training-specific events (sessionKind=Training). Same F10 source gate.

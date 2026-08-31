@@ -23,6 +23,7 @@ include(../../Telemetry.pri)
 INCLUDEPATH += $$PWD/../../src
 INCLUDEPATH += $$PWD/../../src/training
 SOURCES += $$PWD/../../src/qualification/QualificationController.cpp
+SOURCES += $$PWD/../../src/app/CompetitionClock.cpp
 SOURCES += $$PWD/../../src/incident/EstIncidentController.cpp
 SOURCES += $$PWD/../../src/mode/OperatingModeService.cpp
 # Stage 5: the Wind Map controller. Compiling it in this QT=core harness is
@@ -31,6 +32,9 @@ SOURCES += $$PWD/../../src/training/WindMapController.cpp
 SOURCES += $$PWD/../../src/training/WindMapAnalytics.cpp
 SOURCES += $$PWD/../../src/training/WindMapVerdict.cpp
 HEADERS += $$PWD/../../src/training/WindMapController.h
+# Q_OBJECT: the header must be in HEADERS or moc never runs on it and the
+# vtable and signals do not exist at link time.
+HEADERS += $$PWD/../../src/app/CompetitionClock.h
 HEADERS += $$PWD/../../src/training/WindMapAnalytics.h
 HEADERS += $$PWD/../../src/training/WindMapVerdict.h
 HEADERS += $$PWD/../../src/qualification/QualificationController.h
@@ -79,6 +83,7 @@ SOURCES += \
     tst_reducer.cpp \
     tst_incidents.cpp \
     tst_qualification.cpp \
+    tst_competition_clock.cpp \
     tst_node_telemetry.cpp \
     tst_snapshot.cpp \
     tst_store.cpp \

@@ -45,6 +45,7 @@ int main(int argc, char** argv)
     run_reducer_tests();
     run_incident_tests();
     run_qualification_tests();
+    run_competition_clock_tests();
     run_node_telemetry_tests();
     run_snapshot_tests();
     run_store_tests();

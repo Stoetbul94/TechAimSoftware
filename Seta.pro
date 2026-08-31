@@ -95,6 +95,7 @@ else: DEFINES += APP_BUILD_CONFIG=\\\"Debug\\\"
 android: ANDROID_VERSION_NAME = $$APP_VERSION_STR
 #QMAKE_TARGET_PRODUCT = "TACHUS CPU"
 
+SOURCES += src/app/CompetitionClock.cpp
 SOURCES += main.cpp \
     customprint.cpp \
     appsettings.cpp \
@@ -132,6 +133,7 @@ SOURCES += main.cpp \
     src/target/PaperFeedCoordinator.cpp
 
 # Offline coach-analytics module (pure C++, independent from Qt/QML).
+HEADERS += src/app/CompetitionClock.h
 HEADERS += \
     src/analytics/ShotAnalyticsTypes.h \
     src/analytics/CoachReportData.h \

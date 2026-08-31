@@ -172,6 +172,9 @@ Item {
             }
 
             gameTime = totalTimeSavedGame
+            // Re-anchor: without this the monotonic base still refers to the
+            // old anchor and the next tick silently undoes the assignment.
+            MATCHCLOCK.reanchor(gameTime)
             APPSETTINGS.clearLoadedData()
             showShootingAnimation = true
             rightPanel.isGameLoaded = false
@@ -474,8 +477,21 @@ Item {
         id:gameTimer
         interval: 1000
         repeat: true
+        // B3. Anchoring lives here rather than at the eight call sites that
+        // start and stop this timer, so a future caller cannot start the timer
+        // and forget the clock. restart() on an already-running timer does not
+        // toggle `running`, which is correct: a restart mid-match must not
+        // re-anchor and lose the elapsed time.
+        onRunningChanged: {
+            if (running) MATCHCLOCK.start(gameTime)
+            else         MATCHCLOCK.stop()
+        }
         onTriggered: {
-            gameTime++;
+            // READS the authoritative clock. It no longer matters whether this
+            // tick fired on time, late, or at all: Android suspends timers
+            // while the activity is backgrounded, and `gameTime++` meant the
+            // athlete silently gained every second the tablet was not in front.
+            gameTime = MATCHCLOCK.elapsedSeconds();
             var remainingTime = (totalGameTime - gameTime)*1
             var formatedTime = minutesToseconds(remainingTime)
             //            console.log("Formated Time is .......", formatedTime,remainingTime,
@@ -1938,6 +1954,11 @@ Item {
         // credit can push the remaining time above the original duration
         // (remaining = totalGameTime − gameTime keeps counting correctly).
         gameTime = totalGameTime - remainSecs
+        // Re-anchor for the same reason, and note this is the path that may
+        // legitimately set a NEGATIVE elapsed value after a Jury time credit.
+        // CompetitionClock adds the anchor rather than clamping it, so that
+        // stays true.
+        MATCHCLOCK.reanchor(gameTime)
         stopTimer.text = minutesToseconds(Math.max(0, remainSecs))
     }
     function restorePrepCountdownRemaining(remainSecs)
