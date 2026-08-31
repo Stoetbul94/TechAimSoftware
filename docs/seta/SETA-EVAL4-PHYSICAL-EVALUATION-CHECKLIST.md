@@ -108,6 +108,6 @@ worth testing in **1.20 (C)**, and in 1.10, 1.80, 2.10 and 2.20.
 
 ## What SETA is not being asked to do
 
-Reproduce the automated suite. 6 378 automated checks pass, ~186 of them DSB
+Reproduce the automated suite. 6 418 automated checks pass, ~186 of them DSB
 specific, including all ten DSB 1.20 recovery scenarios. Those cover what a
 machine can check. This list covers what only a physical target can.
