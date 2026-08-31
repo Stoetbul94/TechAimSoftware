@@ -43,6 +43,7 @@
         <file>HeatMapCanvas.qml</file>
         <file>LoginPage.qml</file>
         <file>ShootingPage.qml</file>
+        <file>Finals3PRightPanel.qml</file>
         <file>FinalsHud.qml</file>
         <file>Finals10mHud.qml</file>
         <file>TrainingHud.qml</file>

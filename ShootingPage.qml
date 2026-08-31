@@ -273,21 +273,6 @@ Item {
         currentmatchDisplay = "10m FINAL"
     }
 
-    // RMS telemetry carries the STABLE programme identity, never a display
-    // label (QML-LANG-001). The catalogue is the single description of what
-    // "issf.10m.air-rifle.qualification60" means; this pushes the id the user
-    // actually selected, plus the rule authority and target standard that
-    // identity resolves to, down to the node telemetry publisher.
-    function publishProgrammeIdentity(programmeId)
-    {
-        if (typeof NODETELEMETRY === "undefined")
-            return
-        var profile = competitionCatalogue.profile(programmeId)
-        NODETELEMETRY.setProgramme(programmeId ? programmeId : "",
-                                   profile ? profile.rulesetId : "",
-                                   profile ? profile.targetStandardId : "")
-    }
-
     function setCurrentGameType(index)
     {
         if (APPSETTINGS.getDeveloperMode()) console.log("setCurrentGameType  ", index)
@@ -302,7 +287,6 @@ Item {
                 currentGameDisplay1 = game10RangeEventModel_15.get(index).gameDisplay1
                 currentGameDisplay2 = game10RangeEventModel_15.get(index).gameDisplay2
                 currentmatchDisplay = game10RangeEventModel_15.get(index).matchDisplay
-                publishProgrammeIdentity(game10RangeEventModel_15.get(index).programmeId)
             } else {
                 if (index >= game10RangeEventModel.count)
                     return
@@ -311,7 +295,6 @@ Item {
                 currentGameDisplay1 = game10RangeEventModel.get(index).gameDisplay1
                 currentGameDisplay2 = game10RangeEventModel.get(index).gameDisplay2
                 currentmatchDisplay = game10RangeEventModel.get(index).matchDisplay
-                publishProgrammeIdentity(game10RangeEventModel.get(index).programmeId)
             }
         } else if (gameRange === 50) {
             // if 15 shoots
@@ -323,7 +306,6 @@ Item {
                 currentGameDisplay1 = game50RangeEventModel_15.get(index).gameDisplay1
                 currentGameDisplay2 = game50RangeEventModel_15.get(index).gameDisplay2
                 currentmatchDisplay = game50RangeEventModel_15.get(index).matchDisplay
-                publishProgrammeIdentity(game50RangeEventModel_15.get(index).programmeId)
             } else {
                 if (index >= game50RangeEventModel.count)
                     return
@@ -332,7 +314,6 @@ Item {
                 currentGameDisplay1 = game50RangeEventModel.get(index).gameDisplay1
                 currentGameDisplay2 = game50RangeEventModel.get(index).gameDisplay2
                 currentmatchDisplay = game50RangeEventModel.get(index).matchDisplay
-                publishProgrammeIdentity(game50RangeEventModel.get(index).programmeId)
             }
 
     }
@@ -731,6 +712,31 @@ Item {
         // warning is exactly what was on screen while acquisition was dead on
         // 2026-08-09. A positive READY is the thing worth showing.
         visible: true
+
+        // UI-LAYOUT-001 INSTRUMENTATION. Not a fix - a measurement.
+        //
+        // The RC3C screenshots show a full-width status bar covering the
+        // session identity row (FINAL 24 | 10m FINAL | Arnold), which is
+        // left-anchored at x=16 inside a 42 px strip. This panel reads as
+        // right-anchored and at most 380 wide, so the rendered geometry
+        // contradicts the source, and two explanations have already been
+        // falsified: the strip's binding is intact, and main.qml hides
+        // LoginPage entirely so its full-width panel cannot leak.
+        //
+        // Rather than guess at a layout change on the header every discipline
+        // uses, this prints what the panel ACTUALLY resolves to. One line, on
+        // the developer-mode build only, at startup. The next physical run
+        // settles it.
+        Component.onCompleted: {
+            if (APPSETTINGS.getDeveloperMode())
+                MODREADER.appendToLogFile(
+                    "UI-LAYOUT-001 panel geometry: x=" + x + " y=" + y
+                    + " w=" + width + " h=" + height
+                    + " compact=" + compact + " expanded=" + expanded
+                    + " parentW=" + (parent ? parent.width : -1)
+                    + " stripH=" + statusStrip.height
+                    + " reserve=" + shootingPage.headerStatusReserve)
+        }
     }
 
     LeftPanel {
@@ -816,7 +822,12 @@ Item {
         // Final-specific Finals10mRightPanel occupies the same slot. Its width
         // is preserved (visible:false keeps the layout) so the target keeps its
         // size. Qualification/3P use this panel unchanged.
-        visible: !isFinals10mMatch && !isTrainingMatch && !isCallDiagnoseMatch
+        // FINALS-3P-PANEL-001: the 3P Final now has its own column too, so
+        // the qualification panel yields to BOTH finals. Before this it stayed
+        // mounted through a 3P Final and showed a qualification series
+        // structure (S1-S6) that a 35-shot Final does not have.
+        visible: !isFinals10mMatch && !isFinalsMatch
+                 && !isTrainingMatch && !isCallDiagnoseMatch
                  && !isPositionTransitionMatch && !isWindMapMatch
         onSwitchToSighter:
         {
@@ -850,6 +861,21 @@ Item {
         // F9: the reopener shows once the completion card is dismissed.
         summaryDismissed: finals10mHud.dismissed
         onReopenSummaryRequested: finals10mHud.dismissed = false
+    }
+
+    // 50 m 3P FINAL right-hand information column. Same slot and width as the
+    // qualification panel and the 10 m Final panel; every value from FINALS3P.
+    // The visual architecture is deliberately shared with the 10 m Final - the
+    // competition model deliberately is not.
+    Finals3PRightPanel {
+        id: finals3pRightPanel
+        visible: isFinalsMatch
+        width: rightPanel.width
+        height: rightPanel.height
+        anchors.right: parent.right
+        anchors.top: statusStrip.bottom
+        z: 11
+        ctl: FINALS3P
     }
 
     // TRAINING LAB (T1.4): the persistent Training control + information column.
@@ -994,6 +1020,15 @@ Item {
                                           + globalMatchModel.count + "/" + matchShootCount + ")")
                 return
             }
+            // UI-LASTSHOT-DWELL-001 safety. If a shot arrives while the last
+            // shot of the previous position is still being held on the face,
+            // collapse the hold FIRST. The authoritative state already moved on
+            // (sligterMode was set the moment the transition ran, so this shot
+            // is routed by the NEW state either way) - this only makes sure the
+            // deferred buffer swap cannot wipe the marker of a shot that has
+            // just been fired. The held display must never become authority.
+            if (lastShotHoldTimer.running)
+                shootingPage.applyPositionTransitionDisplay()
             rightPanel.addToSeries(xPosition,yPosition,currentCalculatedScore,
                                    centerPanel.lastShotXmm, centerPanel.lastShotYmm)
             if (APPSETTINGS.getDeveloperMode()) console.log("x ", xPosition, " y ", yPosition, " score ", currentCalculatedScore, " matchShootCount ", matchShootCount)
@@ -1241,6 +1276,25 @@ Item {
             rec.position = 2   // 10m final has no rifle position; standing face
             if (!(shootingPage.recoveryReplayInProgress && rec.isSighter))
                 globalModelOfData.append(rec)
+
+            // FINAL-TCH-TIME-001. The .tch serialiser reads getTime()/
+            // getTimeStamp(), which read m_timeConsumedList - a list only
+            // RightPanel.addToSeries() ever appended to. A 10m Final shows
+            // finals10mRightPanel instead, so that list stayed EMPTY for the
+            // whole course and getTime() returned its -1 fallback for every
+            // index: the RC3C Final record carried <time>-1</time> and an empty
+            // <time_stamp> for all 29 shots, while the HUD displayed real times
+            // (#24 - 14s, mean 12.9 s).
+            //
+            // The time is the one the controller already measured from splitMs;
+            // the timestamp is taken at acceptance, as it happens. Neither is
+            // reconstructed after the fact. A replayed recovery shot must NOT
+            // append again - its time is already in the record being restored.
+            if (!shootingPage.recoveryReplayInProgress) {
+                MODREADER.appendTimeConsumed("" + (rec.timeSec === undefined ? 0 : rec.timeSec))
+                MODREADER.appendTimeStamp(
+                    new Date().toLocaleTimeString(Qt.locale("en-US"), "HH:mm:ss"))
+            }
         }
 
         function onWindowStateChanged() {
@@ -1253,10 +1307,9 @@ Item {
             }
         }
 
+        // RESULTS ARE FINAL -> the 10m Final's own report window (BLOCKER G).
         function onReportRequested() {
-            // Full 10m finals report is F6; F2 shows the in-HUD completion
-            // panel. Keep the intent observable for the later report window.
-            MODREADER.appendToLogFile("FINALS10M: report requested (F6 pending)")
+            windowManager.openFinals10mReport()
         }
     }
 
@@ -1898,7 +1951,13 @@ Item {
         ctl: FINALS10M
         developerMode: APPSETTINGS.getDeveloperMode()
         // F9 exit workflow (durable session close before leaving).
-        onViewReportRequested: finals10mHud.dismissed = false   // keep/show summary
+        // BLOCKER G: View Report opens the 10m Final report. The completion
+        // card stays behind it - dismissing the report must not lose the
+        // result summary the operator was looking at.
+        onViewReportRequested: {
+            finals10mHud.dismissed = false
+            windowManager.openFinals10mReport()
+        }
         onNewFinalRequested: shootingPage.startNewFinals10m()
         onHomeRequested: shootingPage.homeFromFinals10m()
     }
@@ -1912,10 +1971,17 @@ Item {
             if (leftPanel.playVisible)
                 return;
 
-            // 3P FINAL: the qualification Match auto-export must never be fed
-            // finals data — open the finals report instead (manual Save PDF).
+            // FINALS: the qualification Match auto-export must never be fed
+            // finals data — open that family's own finals report instead
+            // (manual Save PDF). BLOCKER G: the 10m Final needs this guard as
+            // much as the 3P one, and previously fell straight through to the
+            // qualification Match auto-export.
             if (isFinalsMatch) {
                 windowManager.openFinalsReport()
+                return;
+            }
+            if (isFinals10mMatch) {
+                windowManager.openFinals10mReport()
                 return;
             }
 
@@ -1979,6 +2045,16 @@ Item {
     {
         isFinalsMatch = true
         is3PMatch = false
+        // FINALS-3P-MIX-001: clear the 10m Final flag too. Every mode-entry
+        // function owns ALL of the discipline flags, not just its own - a flag
+        // left set by a previous session keeps that discipline's layer mounted.
+        // This one cleared only is3PMatch, so a 10m Final earlier in the same
+        // run left isFinals10mMatch true and the 3P Final rendered the 10m
+        // right panel ("10m Air Rifle Final", 0/24, Series 1/2/Singles), a
+        // second HUD with its own clock, and a second enabled shot router on
+        // top of the 3P shell. Enforced for every entry point by
+        // tests/qml/tst_mode_entry_exclusivity.
+        isFinals10mMatch = false
         // Fresh, start-from-zero session: the finals path returns before the
         // qualification clearing flows run, so clear the shot models here
         // (role locks survive clear()).
@@ -2138,6 +2214,11 @@ Item {
             // callers arrive with all of this already done.
             isFinalsMatch = false
             is3PMatch = false
+            // FINALS-3P-MIX-001 (second instance): a qualification session
+            // recovered after a 10m Final in the same run would otherwise keep
+            // the 10m right panel and HUD mounted. Same rule - an entry point
+            // owns every discipline flag.
+            isFinals10mMatch = false
             resetDataModels()                    // clear stale fresh models
             centerPanel.totalSighterTime = APPSETTINGS.getPrepTimeCount()
             changedToSigherMode()                // sighter routing + clean face
@@ -2303,14 +2384,6 @@ Item {
             centerPanel.disableMotorMovement = true
             centerPanel.setSighterIndicator(true)
             leftPanel.enableSighterMode(true)
-            globalModelOfData.clear()
-            for(var index = 0; index <globalSlighterModel.count; ++index )
-            {
-                // Only sighters fired for the position being entered.
-                if (globalSlighterModel.get(index).position !== p3Position)
-                    continue
-                globalModelOfData.append(globalSlighterModel.get(index))
-            }
             sligterMode = true
             // Deliberately NOT calling MODREADER.changeSighterMode() here: its
             // QList swaps race against the 100ms polling worker that reads the
@@ -2318,9 +2391,20 @@ Item {
             // Shot routing to sighter/match models is handled QML-side by
             // sligterMode in addToSeries, which is all the 3P transition needs.
             rightPanel.updateTotal()
-            centerPanel.currentPageIndexChanged()
             centerPanel.disableMotorMovement = false
             leftPanel.playVisible = true
+            // UI-LASTSHOT-DWELL-001. Everything above is authoritative and has
+            // already happened: sligterMode (so the NEXT shot routes as a
+            // sighter), the target indicator, the panel totals. The match clock
+            // was never touched here and still is not.
+            //
+            // The only thing deferred is the DISPLAY BUFFER swap - the line
+            // that wipes the completed position's markers off the face. Measured
+            // on three tablets at the live event, the last shot of a position was
+            // visible for 1.63-2.03 s (mean 1.84), which the operator reported as
+            // too short to read. That dwell was incidental: paper-feed duration
+            // plus one 500 ms positionWatch tick. This makes it deliberate.
+            lastShotHoldTimer.restart()
             MODREADER.appendToLogFile("3P: position change -> " + p3Names[p3Position]
                                       + " (sighting, match clock keeps running)")
         } catch (e) {
@@ -2328,8 +2412,35 @@ Item {
         }
     }
 
+    // The deferred half of enterPositionTransition(). Presentation only.
+    // Idempotent, so the timer and an early collapse cannot double-apply it.
+    function applyPositionTransitionDisplay()
+    {
+        lastShotHoldTimer.stop()
+        globalModelOfData.clear()
+        for (var index = 0; index < globalSlighterModel.count; ++index) {
+            // Only sighters fired for the position being entered.
+            if (globalSlighterModel.get(index).position !== p3Position)
+                continue
+            globalModelOfData.append(globalSlighterModel.get(index))
+        }
+        centerPanel.currentPageIndexChanged()
+    }
+
+    // UI-LASTSHOT-DWELL-001: how long the completed position's last shot stays
+    // on the face after the transition. 2.5 s was chosen against the measured
+    // 1.84 s: enough to be a real improvement, short enough not to read as a
+    // frozen screen, and far shorter than any observed shot-to-shot interval.
+    Timer {
+        id: lastShotHoldTimer
+        interval: 2500
+        repeat: false
+        onTriggered: shootingPage.applyPositionTransitionDisplay()
+    }
+
     function changedToMatchMode()
     {
+        lastShotHoldTimer.stop()   // UI-LASTSHOT-DWELL-001: never outlive the transition
         centerPanel.stopPreparationCountdown()
         centerPanel.disableMotorMovement = true
         centerPanel.showSlighter(false)
@@ -2372,6 +2483,7 @@ Item {
 
     function changedToMatchFinish()
     {
+        lastShotHoldTimer.stop()   // UI-LASTSHOT-DWELL-001: never outlive the transition
         matchFinished = true
         centerPanel.stopMatchClock()
 

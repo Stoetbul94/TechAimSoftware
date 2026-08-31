@@ -316,7 +316,19 @@ void run_windmap_qml_tests()
         check(shoot.contains(QStringLiteral("visible: isFinalsMatch"))
               && shoot.contains(QStringLiteral("visible: isFinals10mMatch")),
               "10. FinalsHud / Finals10mHud keep their original gates");
-        check(shoot.contains(QStringLiteral("!isFinals10mMatch && !isTrainingMatch")),
+        // This asserted the literal "!isFinals10mMatch && !isTrainingMatch".
+        // The Tech Aim 1.0 convergence renamed the training half of that gate
+        // to isTrainingModeAny, an UMBRELLA covering every Training Lab
+        // programme rather than the single one isTrainingMatch named. The
+        // assertion was therefore pinning an implementation detail - a
+        // variable name - and not the rule it exists to defend.
+        //
+        // The rule is that competition chrome stays hidden in Finals and in
+        // Training, and it is not merely preserved but STRENGTHENED: more
+        // training modes are now excluded, not fewer. Either spelling
+        // satisfies it; a gate that names neither does not.
+        check(shoot.contains(QStringLiteral("!isFinals10mMatch && !isTrainingModeAny"))
+              || shoot.contains(QStringLiteral("!isFinals10mMatch && !isTrainingMatch")),
               "10. the existing Finals/Training gates are preserved, not replaced");
         bool okF3 = false, okF10 = false;
         const QString f3  = stripComments(qmlSource("FinalsHud.qml", &okF3));
