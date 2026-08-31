@@ -1,4 +1,5 @@
 #include "Finals10mController.h"
+#include <cmath>
 #include "../reliability/storage/StoragePaths.h"
 #include "../reliability/core/FixedPoint.h"
 #include "../incident/EstIncidentController.h"
@@ -158,6 +159,7 @@ void Finals10mController::startFinal()
     m_journalFailureNotified = false;
     m_missingShots.clear();
     m_officialShotRecords.clear();
+    m_sighterRecords.clear();
     m_rejectionRecords.clear();
     m_sighterCount = 0;
     m_cumulativeTotal = 0.0;
@@ -359,6 +361,14 @@ QVariantMap Finals10mController::makeShotRecord(bool sighter, double xMm, double
     m[QStringLiteral("calculatedscore")] = QString::number(score, 'f', 1);
     m[QStringLiteral("score")] = score;
     m[QStringLiteral("sighter")] = sighter;
+    // FINALS-TCH-SIGHTER-001: state the role explicitly. A reader must never
+    // have to infer "the first five were sighters" from ordering. `isSighter`
+    // matches the 3P record's spelling so both disciplines read the same way.
+    m[QStringLiteral("isSighter")] = sighter;
+    m[QStringLiteral("shotRole")] = sighter ? QStringLiteral("SIGHTER")
+                                            : QStringLiteral("OFFICIAL");
+    m[QStringLiteral("officialShotNumber")] = sighter ? 0 : finalNumber;
+    m[QStringLiteral("discipline")] = disciplineId();
     m[QStringLiteral("finalShotNumber")] = finalNumber;
     m[QStringLiteral("withinStage")] = withinStage;
     m[QStringLiteral("seriesIndex")] = seriesIndexFor(m_stage, m_singleIndex);
@@ -409,14 +419,16 @@ void Finals10mController::acceptShot(bool sighter, double xMm, double yMm,
         m_lastShotTimeSec = splitSec;
         emit lastShotChanged();
     }
-    if (sighter)
+    if (sighter) {
         ++m_sighterCount;
-    else
+        m_sighterRecords.append(shot);
+    } else {
         m_officialShotRecords.append(shot);
+    }
 
     const ta::rel::ShotCore core = buildShotCore(xMm, yMm, score, finalNumber,
                                                  withinStage, externalShotId,
-                                                 direction, simulated);
+                                                 direction, simulated, splitMs);
     if (sighter)
         submitEvent(ta::rel::DomainEvent(ta::rel::SighterAccepted{core}));
     else
@@ -978,6 +990,168 @@ void Finals10mController::submitStagePhase(Stage s)
     }
 }
 
+// ── F6 / BLOCKER G: the 10 m Final report ───────────────────────────────────
+// Assembled from this controller's own records. It does not re-score, does not
+// consult a display model, and does not infer a shot's role from its position
+// in a list - `shotRole` is carried on the record itself (FINALS-TCH-SIGHTER-001).
+//
+// It deliberately reports NO ranking, medal or elimination placement: this is
+// one lane, and placing is a cross-lane decision that belongs to Range
+// Management.
+QVariantMap Finals10mController::buildReport(const QVariantMap& meta) const
+{
+    QVariantMap r = meta;
+
+    // ── identity ────────────────────────────────────────────────────────
+    r[QStringLiteral("discipline")]     = disciplineId();
+    r[QStringLiteral("displayName")]    = m_cfg.displayName;
+    r[QStringLiteral("courseShots")]    = m_cfg.maximumMatchShots;
+    r[QStringLiteral("scoringMode")]    = QStringLiteral("decimal");
+    if (!r.contains(QStringLiteral("athlete")))
+        r[QStringLiteral("athlete")] = m_athleteName;
+    r[QStringLiteral("sessionId")]      = sessionId();
+    r[QStringLiteral("sessionJournal")] = sessionJournalPath();
+    r[QStringLiteral("operatingMode")]  = m_operatingMode == 0
+                                        ? QStringLiteral("LIVE TARGET")
+                                        : QStringLiteral("DEMO / SIMULATION");
+
+    // ── sighters, as their own section ──────────────────────────────────
+    r[QStringLiteral("sighterCount")]   = m_sighterCount;
+    r[QStringLiteral("sighters")]       = m_sighterRecords;
+
+    // ── official shots ──────────────────────────────────────────────────
+    // officialShots is assembled below, once the rule sections are known, so
+    // that every row carries the section it belongs to.
+    r[QStringLiteral("officialShotCount")]  = m_officialShotCount;
+    r[QStringLiteral("missingShots")]       = m_missingShots;
+    r[QStringLiteral("missingShotCount")]   = m_missingShots.size();
+    r[QStringLiteral("rejections")]         = m_rejectionRecords;
+    r[QStringLiteral("acceptedOfShots")]    =
+        QStringLiteral("%1 / %2").arg(m_officialShotCount).arg(m_cfg.maximumMatchShots);
+    r[QStringLiteral("complete")]           = m_officialShotCount >= m_cfg.maximumMatchShots;
+
+    // ── series structure ────────────────────────────────────────────────
+    r[QStringLiteral("series1Subtotal")] = series1Subtotal();
+    r[QStringLiteral("series2Subtotal")] = series2Subtotal();
+    r[QStringLiteral("singlesSubtotal")] = singlesSubtotal();
+    r[QStringLiteral("seriesSubtotals")] = seriesSubtotals();
+    r[QStringLiteral("total")]           = m_cumulativeTotal;
+
+    // ── the course, split into its rule sections HERE ────────────────────
+    // 6.17.2: the first two 5-shot series, then the single shots. The split
+    // is derived from the record's own officialShotNumber and the configured
+    // course, never from the order a list happens to be in and never from
+    // seriesIndex (that field records the stage the controller was IN when
+    // the record was made, which a recovery rebuild cannot restore per shot).
+    // A view must not have to work any of this out for itself.
+    const int perSeries = m_cfg.shotsPerSeries;
+    const int lastSeriesShot = m_cfg.seriesCount * perSeries;
+    QVariantList s1Shots, s2Shots, singleShots, allWithSection;
+    double s1Sum = 0.0, s2Sum = 0.0, sgSum = 0.0;
+    for (const QVariant& v : m_officialShotRecords) {
+        QVariantMap s = v.toMap();
+        const int num = s.value(QStringLiteral("officialShotNumber")).toInt();
+        const double sc = s.value(QStringLiteral("score")).toDouble();
+        if (num >= 1 && num <= perSeries) {
+            s.insert(QStringLiteral("courseSection"), QStringLiteral("SERIES 1"));
+            s1Sum += sc;
+            s1Shots.append(s);
+        } else if (num > perSeries && num <= lastSeriesShot) {
+            s.insert(QStringLiteral("courseSection"), QStringLiteral("SERIES 2"));
+            s2Sum += sc;
+            s2Shots.append(s);
+        } else {
+            s.insert(QStringLiteral("courseSection"), QStringLiteral("SINGLE SHOTS"));
+            s.insert(QStringLiteral("singleOrdinal"), num - lastSeriesShot);
+            sgSum += sc;
+            singleShots.append(s);
+        }
+        allWithSection.append(s);
+    }
+    r[QStringLiteral("officialShots")]  = allWithSection;
+    r[QStringLiteral("series1Shots")]   = s1Shots;
+    r[QStringLiteral("series2Shots")]   = s2Shots;
+    r[QStringLiteral("singleShots")]    = singleShots;
+    // Section subtotals recomputed from the grouped records. The keys above
+    // come from the journalled per-stage running totals, so these two are
+    // INDEPENDENT paths to the same number and the harness asserts they agree
+    // - a divergence is a defect, not a rounding preference.
+    r[QStringLiteral("series1ShotsSubtotal")] = s1Sum;
+    r[QStringLiteral("series2ShotsSubtotal")] = s2Sum;
+    r[QStringLiteral("singleShotsSubtotal")]  = sgSum;
+
+    QVariantList sections;
+    const auto addSection = [&sections](const QString& label, const QString& range,
+                                        const QVariantList& shots, double subtotal) {
+        QVariantMap m;
+        m[QStringLiteral("label")]    = label;
+        m[QStringLiteral("range")]    = range;
+        m[QStringLiteral("shotCount")] = shots.size();
+        m[QStringLiteral("subtotal")] = subtotal;
+        m[QStringLiteral("shots")]    = shots;
+        sections.append(m);
+    };
+    addSection(QStringLiteral("SERIES 1"),
+               QStringLiteral("Shots 1-%1").arg(perSeries), s1Shots, s1Sum);
+    addSection(QStringLiteral("SERIES 2"),
+               QStringLiteral("Shots %1-%2").arg(perSeries + 1).arg(lastSeriesShot),
+               s2Shots, s2Sum);
+    addSection(QStringLiteral("SINGLE SHOTS"),
+               QStringLiteral("Shots %1-%2").arg(lastSeriesShot + 1)
+                   .arg(m_cfg.maximumMatchShots),
+               singleShots, sgSum);
+    r[QStringLiteral("courseSections")] = sections;
+
+    // ── derived statistics over the OFFICIAL shots only ─────────────────
+    double sx = 0.0, sy = 0.0, tSum = 0.0;
+    int n = 0, tN = 0;
+    for (const QVariant& v : m_officialShotRecords) {
+        const QVariantMap s = v.toMap();
+        sx += s.value(QStringLiteral("xmm")).toDouble();
+        sy += s.value(QStringLiteral("ymm")).toDouble();
+        ++n;
+        if (s.contains(QStringLiteral("timeSec"))) {
+            tSum += s.value(QStringLiteral("timeSec")).toDouble();
+            ++tN;
+        }
+    }
+    if (n > 0) {
+        const double mx = sx / n, my = sy / n;
+        r[QStringLiteral("mpiXmm")] = mx;
+        r[QStringLiteral("mpiYmm")] = my;
+        r[QStringLiteral("mpiRadiusMm")] = std::sqrt(mx * mx + my * my);
+        // Group extent: the largest separation between any two official shots.
+        double worst = 0.0;
+        for (int i = 0; i < m_officialShotRecords.size(); ++i) {
+            const QVariantMap a = m_officialShotRecords.at(i).toMap();
+            for (int j = i + 1; j < m_officialShotRecords.size(); ++j) {
+                const QVariantMap b = m_officialShotRecords.at(j).toMap();
+                const double dx = a.value(QStringLiteral("xmm")).toDouble()
+                                - b.value(QStringLiteral("xmm")).toDouble();
+                const double dy = a.value(QStringLiteral("ymm")).toDouble()
+                                - b.value(QStringLiteral("ymm")).toDouble();
+                worst = qMax(worst, std::sqrt(dx * dx + dy * dy));
+            }
+        }
+        r[QStringLiteral("groupExtentMm")] = worst;
+    } else {
+        r[QStringLiteral("mpiXmm")] = 0.0;
+        r[QStringLiteral("mpiYmm")] = 0.0;
+        r[QStringLiteral("mpiRadiusMm")] = 0.0;
+        r[QStringLiteral("groupExtentMm")] = 0.0;
+    }
+    r[QStringLiteral("meanShotTimeSec")] = tN > 0 ? (tSum / tN) : 0.0;
+
+    // ── provenance ──────────────────────────────────────────────────────
+    r[QStringLiteral("commandEvents")] = m_events;
+    // One lane. Placing is not ours to state.
+    r[QStringLiteral("rankingAvailable")] = false;
+    r[QStringLiteral("rankingNote")] =
+        QStringLiteral("Single-lane result. Official placing requires Range "
+                       "Management coordination across lanes.");
+    return r;
+}
+
 void Finals10mController::setStageStatus(int fineId, StageStatus status)
 {
     const int cur = m_stageStatus.value(fineId, 0);
@@ -991,7 +1165,7 @@ void Finals10mController::setStageStatus(int fineId, StageStatus status)
 
 ta::rel::ShotCore Finals10mController::buildShotCore(
     double xMm, double yMm, double score, int finalNumber, int withinStage,
-    qint64 externalShotId, double direction, bool simulated) const
+    qint64 externalShotId, double direction, bool simulated, qint64 splitMs) const
 {
     using namespace ta::rel;
     ShotCore s;
@@ -1010,10 +1184,10 @@ ta::rel::ShotCore Finals10mController::buildShotCore(
     CentiDegrees cd;
     CentiDegrees::fromDouble(direction, &cd);
     s.directionCentiDeg = cd.raw();
-    const qint64 now = scaledNow();
-    const qint64 split = m_lastAcceptScaled > 0 ? (now - m_lastAcceptScaled)
-                                                : (now - m_windowOpenedScaled);
-    s.splitMs = static_cast<qint32>(split > 0 ? split : 0);
+    // The caller's measurement, verbatim. What the operator reads on screen and
+    // what the journal keeps are then the same number, so a recovered session
+    // reports the shot times that were actually shot.
+    s.splitMs = static_cast<qint32>(splitMs > 0 ? splitMs : 0);
     s.windowId = static_cast<qint16>(m_windowId);
     s.targetMode = static_cast<qint8>(m_targetMode);
     s.externalId = externalShotId < 0 ? 0 : externalShotId;
@@ -1098,16 +1272,21 @@ void Finals10mController::loadRecoveredState(const ta::rel::RecoveredMatchState&
 
     // Refill display sources (signals only — no re-journaling).
     m_officialShotRecords.clear();
+    m_sighterRecords.clear();
     m_rejectionRecords.clear();
     m_missingShots.clear();
     m_events.clear();
     for (const StateShotRecord& r : s.sighters) {
         const double xMm = r.shot.xHundredthMm / 100.0;
         const double yMm = r.shot.yHundredthMm / 100.0;
-        emit shotAccepted(makeShotRecord(true, xMm, yMm, r.effectiveTenths() / 10.0,
-                                         0, 0, r.shot.externalId,
-                                         r.shot.directionCentiDeg / 100.0,
-                                         r.shot.simulated, r.seq));
+        QVariantMap srec = makeShotRecord(true, xMm, yMm, r.effectiveTenths() / 10.0,
+                                          0, 0, r.shot.externalId,
+                                          r.shot.directionCentiDeg / 100.0,
+                                          r.shot.simulated, r.seq);
+        srec[QStringLiteral("timeSec")] =
+            static_cast<int>((qMax<qint32>(0, r.shot.splitMs) + 999) / 1000);
+        m_sighterRecords.append(srec);
+        emit shotAccepted(srec);
     }
     for (const StateShotRecord& r : s.officials) {
         const double xMm = r.shot.xHundredthMm / 100.0;
