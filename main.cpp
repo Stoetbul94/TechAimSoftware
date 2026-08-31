@@ -35,6 +35,7 @@
 #include "src/mode/OperatingMode.h"
 #include "src/mode/OperatingModeService.h"
 #include "src/app/CompetitionClock.h"
+#include "src/app/SupportBundle.h"
 #include "src/training/TrainingProgramController.h"
 #include "src/training/CallDiagnoseController.h"
 #include "src/training/PositionTransitionController.h"
@@ -599,6 +600,11 @@ int main(int argc, char *argv[])
     // whenever it backgrounded the activity. The tick now only reads this.
     ta::CompetitionClock matchClock;
     engine.rootContext()->setContextProperty("MATCHCLOCK", &matchClock);
+    // Android has no Collect-Logs.cmd. Without an in-app path the only
+    // route to a tablet's journals is adb, which a customer at a range
+    // cannot be asked to use.
+    ta::SupportBundle supportBundle;
+    engine.rootContext()->setContextProperty("SUPPORTBUNDLE", &supportBundle);
     // Training Lab (T1) — Technical Blocks domain controller. Separate from
     // every competition controller; owns ALL Training state and journals
     // Training-specific events (sessionKind=Training). Same F10 source gate.

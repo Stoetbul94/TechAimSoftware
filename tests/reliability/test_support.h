@@ -108,6 +108,7 @@ void run_reducer_tests();
 void run_incident_tests();
 void run_qualification_tests();
 void run_competition_clock_tests();
+void run_support_bundle_tests();
 void run_node_telemetry_tests();
 void run_snapshot_tests();
 void run_store_tests();
