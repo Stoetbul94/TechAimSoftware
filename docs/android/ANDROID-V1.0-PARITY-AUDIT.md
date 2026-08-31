@@ -285,3 +285,75 @@ No production code was changed. Specifically **not** attempted:
 
 Steps 2–5 are ordinary engineering and can start immediately. Step 1 is a
 decision, and it is the one that governs whether step 6 is weeks or days away.
+
+---
+
+# Phase C2 outcome — what this round changed
+
+Appended after the work, so the audit above stays the record of what was found
+and this section is the record of what was done.
+
+## Blockers
+
+| | Before | After |
+|---|---|---|
+| **B1** transport | not implemented, decision open | **DECIDED** — USB Host + CH340, from hardware evidence. Implementation is next round. See `ANDROID-TARGET-TRANSPORT-DECISION.md` |
+| **B2** stale shared core | 2 of 18 fixes present | **18 of 18 present** |
+| **B3** UI-tick clock | release blocker | **CLOSED** — monotonic authority, 15 assertions |
+
+## The convergence, and how it avoided a blind merge
+
+Every shared file was classified against the merge base *before* it was
+touched:
+
+- **SHARED — TAKE TECH AIM CURRENT** (Android had never modified them, so
+  taking the current version is safe by inspection): `AcquisitionDecision.h`,
+  `AcquisitionSequencer.h` (absent entirely on Android),
+  `modbuscommsettings.cpp`, `mainwindow.h`, `Finals10mController.{cpp,h}`,
+  `TargetStatusPanel.qml`, `ShootingPage.qml`, `Finals3PRightPanel.qml`.
+- **SHARED WITH ANDROID DELTA — MANUAL**: `tachuswidget.cpp` (the USER_DETAILS
+  seam) and `CenterPane.qml` (the B3 clock). Both were taken whole from Tech
+  Aim and the Android edits re-applied on top.
+- **ANDROID ONLY — PRESERVE**: `SerialDeviceProvider.cpp`. Its entire
+  difference from Tech Aim is Android's own deliberate empty-enumeration block.
+  **This is the file a blind merge would have destroyed**, and it is the reason
+  the round did not run one.
+
+## Storage (§19)
+
+`.tch` match records and the `USER_DETAILS` file now resolve through the
+platform seam. Both previously failed **silently** on Android — a relative
+`.tch` resolves against `/`, and `applicationDirPath()` is the unwritable
+native-library directory. Windows resolution is byte-identical to before, and
+the tests assert that on both platforms.
+
+## Support export (§23)
+
+`SUPPORTBUNDLE.createNow()` collects build identity, device/OS, journals from
+Current/Archive/Corrupt, `.tch` records, logs and configuration into a
+timestamped directory, reporting each class as a **count** so "none found" is
+stated rather than inferred.
+
+**Open gap, named rather than half-implemented:** it does not *share* the
+bundle off the device. That needs a `FileProvider` in the manifest and a share
+Intent — Java the repository does not have. `adb` can pull the directory today;
+a later share step can hand it over whole.
+
+## Finite gaps that remain
+
+1. **Transport** — decided, not implemented. Blocks the physical gate entirely.
+2. **Test coverage is behind the code it now protects.** The 10 m finals
+   controller is converged but its harness runs 143 checks against Tech Aim's
+   229; the QML harness runs 139. The Android tree carries the fixed behaviour
+   with less coverage proving it than Windows has.
+3. **Report/QML parity beyond the fix-bearing files.** Around 55 QML files
+   still differ from Tech Aim 1.0. The ones carrying named correctness fixes
+   were converged; the remainder are presentation and report-layout drift, not
+   known defects.
+4. **Support bundle sharing** — see above.
+5. **Lifecycle testing (§24)** is asserted only at the clock. Background /
+   foreground / permission-dialog behaviour for session state, target
+   connection and report state is untested because there is no transport to
+   interrupt and no device to background.
+6. **USB host/OTG on the intended tablet is unverified.** One five-minute
+   check, and it gates the whole transport plan.
