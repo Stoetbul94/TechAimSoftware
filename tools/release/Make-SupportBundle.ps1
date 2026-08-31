@@ -20,7 +20,19 @@ param(
     # reliably readable from outside, so it comes from the field-kit release
     # manifest rather than being scraped. Auto-discovered beside this script,
     # one level up, or in a manifest/ documents/ docs/ folder.
-    [string]$ReleaseManifest = ''
+    [string]$ReleaseManifest = '',
+    # SUP-002. The vendor folder that holds one directory per product. Only
+    # overridden by the scope test, which points it at a fixture instead of
+    # %LOCALAPPDATA%.
+    [string]$VendorRoot = '',
+    # This product's application-data folder name inside the vendor folder -
+    # TechAim or TechAimSETA. Normally read from the deployment manifest, so
+    # the collector follows the product it shipped beside instead of guessing.
+    [string]$StorageName = '',
+    # Deliberate cross-product collection. OFF by default: a SETA bundle must
+    # not carry Tech Aim's sessions just because both products ran on one
+    # machine. Support asks for this when it actually wants both.
+    [switch]$AllProducts
 )
 $ErrorActionPreference = 'Stop'
 
@@ -33,38 +45,6 @@ $zip   = Join-Path $OutDir "$name.zip"
 if (Test-Path $work) { Remove-Item $work -Recurse -Force }
 New-Item -ItemType Directory -Force $work | Out-Null
 
-# THE DATA ROOT IS TWO LEVELS DEEP, NOT ONE.
-#
-# Qt resolves AppLocalDataLocation as
-#     %LOCALAPPDATA%\<organisationName>\<applicationName>
-# so the sessions and journals live in
-#     %LOCALAPPDATA%\TechAim\TechAim        (Tech Aim)
-#     %LOCALAPPDATA%\TechAim\TechAimSETA    (SETA)
-# and NOT in %LOCALAPPDATA%\TechAim, which is only the vendor folder.
-#
-# This script looked in the vendor folder. %LOCALAPPDATA%\TechAim\Sessions
-# does not exist for either product, so the -RecentHours and -SessionId
-# searches walked an absent directory and reported 0 journals every time -
-# silently, because -ErrorAction SilentlyContinue turns a missing path into an
-# empty result. That is why the RC3F bundles carried no journals, and it would
-# have taken SETA's physical test down with it.
-#
-# EVERY product folder under the vendor root is searched now, so the bundle is
-# correct whichever brand produced the data and whichever brand collects it.
-$vendorRoot = Join-Path $env:LOCALAPPDATA 'TechAim'
-$productRoots = @()
-if (Test-Path $vendorRoot) {
-    $productRoots = @(Get-ChildItem $vendorRoot -Directory -ErrorAction SilentlyContinue |
-                      Where-Object { (Test-Path (Join-Path $_.FullName 'Sessions')) -or
-                                     (Test-Path (Join-Path $_.FullName 'Logs')) } |
-                      ForEach-Object { $_.FullName })
-}
-# The vendor root stays in the list so anything written directly there - by an
-# older build, or by a future one - is still collected rather than missed.
-if (Test-Path $vendorRoot) { $productRoots += $vendorRoot }
-# $appData remains the vendor root for the paths that were always correct
-# (SupportBundles, config); the per-product roots are used for the data.
-$appData = $vendorRoot
 $here    = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 Write-Host "== support bundle =="
@@ -128,6 +108,79 @@ $mAnalytics = if ($manifest) { $manifest.analyticsVersion } else { 'UNKNOWN - no
 $mExeSha    = if ($manifest) { $manifest.executableSha256 } else { '' }
 # Now that the product is known, name the bundle after it.
 $brandLeaf = ($mProduct -replace '[^A-Za-z0-9]', '')
+
+# ---- THE PRODUCT'S OWN DATA ROOT (SUP-002) -------------------------------
+#
+# Qt resolves AppLocalDataLocation as
+#     %LOCALAPPDATA%\<organisationName>\<applicationName>
+# so the data lives in
+#     %LOCALAPPDATA%\TechAim\TechAim        (Tech Aim)
+#     %LOCALAPPDATA%\TechAim\TechAimSETA    (SETA)
+# and NOT in %LOCALAPPDATA%\TechAim, which is only the vendor folder.
+#
+# This script once searched the vendor folder itself, found no Sessions
+# directory and reported 0 journals every time - silently, because
+# -ErrorAction SilentlyContinue turns a missing path into an empty result.
+# The fix for that was to search EVERY product folder under the vendor root.
+# It cured the silence and introduced a different fault: a SETA bundle carried
+# Tech Aim's session journals. This script's own header promises "no unrelated
+# athletes' sessions", and another product's athletes are exactly that.
+#
+# The root is now the ONE the running product owns, named by the deployment
+# manifest - configuration, not a guess. Neither fault can come back, because
+# the two failure modes are now REPORTED SEPARATELY and never conflated:
+#
+#   ROOT OK, 0 journals      -> nothing recent. A true, unalarming answer.
+#   ROOT MISSING / UNDECLARED-> stated in capitals, in the bundle and on screen.
+#
+# The old vendor scan survives only as an announced fallback for a build whose
+# manifest declares nothing, so an unknown build still yields evidence rather
+# than an empty bundle - it just says loudly that it did.
+$vendorRoot = if ($VendorRoot) { $VendorRoot }
+              else { Join-Path $env:LOCALAPPDATA 'TechAim' }
+$storageName = if ($StorageName) { $StorageName }
+               elseif ($manifest -and $manifest.applicationStorageName) { $manifest.applicationStorageName }
+               else { '' }
+$rootSource = if ($StorageName) { 'command line (-StorageName)' }
+              elseif ($storageName) { 'deployment manifest (applicationStorageName)' }
+              else { 'NOT DECLARED' }
+$productRoots = @()
+$rootStatus   = ''
+if ($AllProducts) {
+    if (Test-Path $vendorRoot) {
+        $productRoots = @(Get-ChildItem $vendorRoot -Directory -ErrorAction SilentlyContinue |
+                          Where-Object { (Test-Path (Join-Path $_.FullName 'Sessions')) -or
+                                         (Test-Path (Join-Path $_.FullName 'Logs')) } |
+                          ForEach-Object { $_.FullName })
+    }
+    $rootStatus = "ALL PRODUCTS - deliberate cross-product collection (-AllProducts). " +
+                  "This bundle may contain more than one product's sessions."
+}
+elseif ($storageName) {
+    $scoped = Join-Path $vendorRoot $storageName
+    if (Test-Path $scoped) {
+        $productRoots = @($scoped)
+        $rootStatus   = "OK - scoped to this product only ($storageName)"
+    } else {
+        $rootStatus = "DATA ROOT MISSING - the manifest declares '$storageName' but " +
+                      "$scoped does not exist. Either the application has never run on " +
+                      "this machine, or it stores its data somewhere this script does not " +
+                      "know about. This is NOT the same as having no recent sessions."
+    }
+}
+else {
+    if (Test-Path $vendorRoot) {
+        $productRoots = @(Get-ChildItem $vendorRoot -Directory -ErrorAction SilentlyContinue |
+                          Where-Object { (Test-Path (Join-Path $_.FullName 'Sessions')) -or
+                                         (Test-Path (Join-Path $_.FullName 'Logs')) } |
+                          ForEach-Object { $_.FullName })
+    }
+    $rootStatus = "DATA ROOT NOT DECLARED - this build's manifest names no " +
+                  "applicationStorageName, so every product folder under the vendor root " +
+                  "was searched. The bundle may contain another product's sessions."
+}
+# SupportBundles and crash information belong to the PRODUCT, not the vendor.
+$appData = if ($productRoots.Count -ge 1) { $productRoots[0] } else { $vendorRoot }
 if (-not $brandLeaf) { $brandLeaf = 'Support' }
 $name = "$brandLeaf-Support-$stamp"
 $zip  = Join-Path $OutDir "$name.zip"
@@ -170,7 +223,10 @@ Windows              : $([System.Environment]::OSVersion.VersionString)
 Windows product      : $((Get-CimInstance Win32_OperatingSystem).Caption)
 Architecture         : $env:PROCESSOR_ARCHITECTURE
 Machine              : $env:COMPUTERNAME
-AppData root         : $appData
+Vendor root          : $vendorRoot
+Application data root: $(if ($productRoots) { $productRoots -join '; ' } else { '(none)' })
+Data root source     : $rootSource
+Data root status     : $rootStatus
 Session id requested : $(if ($SessionId) { $SessionId } else { '(none - no session data collected)' })
 
 The Git commit above comes from the field-kit release manifest and is checked
@@ -239,13 +295,21 @@ if (Test-Path $cfgSrc) {
 }
 
 # ---- target communication summary ----------------------------------------
+# $logSrc used to be read here after the collection loop above had left it
+# holding the LAST product root - so this summary described one root chosen by
+# iteration order, and was null (a hard error) when there were no roots at all.
+# Iterate the roots properly instead; with none, there is simply nothing to
+# summarise, which is a state this script must survive rather than throw on.
 $commLines = @()
-if (Test-Path $logSrc) {
-    $commLines = Get-ChildItem $logSrc -File | Sort-Object LastWriteTime -Descending |
+foreach ($pr in $productRoots) {
+    $ls = Join-Path $pr 'Logs'
+    if (-not (Test-Path $ls)) { continue }
+    $commLines += Get-ChildItem $ls -File | Sort-Object LastWriteTime -Descending |
         Select-Object -First $LogCount | ForEach-Object { Get-Content $_.FullName } |
         Select-String -Pattern 'target|modbus|COM\d|connect|disconnect|protocol|malformed' |
-        Select-Object -Last 400 | ForEach-Object { $_.Line }
+        ForEach-Object { $_.Line }
 }
+if ($commLines.Count -gt 400) { $commLines = $commLines[-400..-1] }
 $commText = if ($commLines.Count) { $commLines -join "`n" } else { 'No target communication lines found in the collected logs.' }
 [System.IO.File]::WriteAllText((Join-Path $work 'target-communication.txt'), $commText)
 
@@ -302,9 +366,12 @@ elseif ($RecentHours -gt 0) {
 }
 else { $sesNotes += 'session data: not collected (-RecentHours 0)' }
 $sesNotes += ''
+$sesNotes += "data root source : $rootSource"
+$sesNotes += "data root status : $rootStatus"
+$sesNotes += ''
 $sesNotes += 'product data roots searched:'
 if ($productRoots) { foreach ($pr in $productRoots) { $sesNotes += "  $pr" } }
-else               { $sesNotes += '  NONE FOUND - the application has not run on this machine yet' }
+else               { $sesNotes += '  NONE - see the data root status above' }
 [System.IO.File]::WriteAllText((Join-Path $sesOut 'WHAT-WAS-COLLECTED.txt'),
     ($sesNotes -join [Environment]::NewLine))
 
