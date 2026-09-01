@@ -19,6 +19,7 @@ void run_monitor_tests();
 void run_simulator_tests();
 void run_scale_tests();
 void run_control_tests();
+void run_replay_tests();
 void run_readonly_tests();
 void run_range_config_tests();
 void run_match_plan_tests();

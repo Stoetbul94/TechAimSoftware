@@ -119,6 +119,13 @@ NodeControlEndpoint::onBytes(const QByteArray& bytes, qint64 nowUtcMs)
         }
 
         case MessageType::Command: {
+            if (m_authenticated
+                && d.command.commandType == QLatin1String(cmd::kRequestReplay)) {
+                // Replay answers with a BATCH, not merely an ack: the ack says
+                // the request was accepted, the batch carries the events.
+                out.reply += buildReplay(d.command, nowUtcMs);
+                break;
+            }
             if (!m_authenticated) {
                 // The whole point: no state-changing command before auth.
                 Ack a = makeAck(d.command, false, reason::kNotAuthenticated,
@@ -143,6 +150,54 @@ NodeControlEndpoint::onBytes(const QByteArray& bytes, qint64 nowUtcMs)
             return out;
         }
     }
+    return out;
+}
+
+
+QByteArray NodeControlEndpoint::buildReplay(const Command& c, qint64 nowUtcMs)
+{
+    QByteArray out;
+
+    if (!hasCapability(cap::kEventReplay)) {
+        out += frame(encode(makeAck(c, false, reason::kUnsupportedCapability,
+                     QStringLiteral("node does not advertise eventReplay"), nowUtcMs)));
+        return out;
+    }
+    if (!m_handler) {
+        out += frame(encode(makeAck(c, false, reason::kPreconditionFailed,
+                     QStringLiteral("no command handler is attached"), nowUtcMs)));
+        return out;
+    }
+
+    // A replay request is idempotent by NATURE - it reads history and changes
+    // nothing - so a repeat is served again rather than refused. That is the
+    // point: RMS asking twice must be safe, and RMS's own ledger discards what
+    // it already holds.
+    const QString sessionId = c.payload.value(QStringLiteral("sessionId")).toString();
+    const int afterSeq = c.payload.value(QStringLiteral("afterSequence")).toInt(0);
+    int maxEvents = c.payload.value(QStringLiteral("maxEvents")).toInt(kMaxReplayEvents);
+    // Clamped, not trusted. A peer asking for a million events must not make
+    // the node build a million-event response.
+    maxEvents = qBound(1, maxEvents, kMaxReplayEvents);
+
+    bool hasMore = false;
+    const QList<QJsonObject> events =
+        m_handler->replayEvents(sessionId, afterSeq, maxEvents, &hasMore);
+
+    ReplayBatch b;
+    b.controlProtocolVersion = kControlProtocolVersion;
+    b.requestId    = c.commandId;
+    b.sessionId    = sessionId;
+    b.fromSequence = afterSeq + 1;
+    b.events       = events;      // ORIGINAL objects; no id is re-minted
+    b.hasMore      = hasMore;
+    b.nextSequence = events.isEmpty()
+                         ? afterSeq
+                         : events.last().value(QStringLiteral("shotSequence")).toInt();
+
+    out += frame(encode(b));
+    out += frame(encode(makeAck(c, true, reason::kOk,
+                 QStringLiteral("replay batch of %1").arg(events.size()), nowUtcMs)));
     return out;
 }
 

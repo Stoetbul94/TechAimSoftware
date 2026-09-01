@@ -101,6 +101,8 @@ public:
 
 private:
     Ack handleCommand(const Command& c, qint64 nowUtcMs);
+    // Emits a REPLAY_BATCH followed by its ack.
+    QByteArray buildReplay(const Command& c, qint64 nowUtcMs);
     Ack makeAck(const Command& c, bool accepted, const char* reasonCode,
                 const QString& message, qint64 nowUtcMs) const;
     bool hasCapability(const char* c) const;

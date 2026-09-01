@@ -41,6 +41,7 @@ SOURCES += \
     tst_target_geometry.cpp \
     tst_field_test.cpp \
     tst_control.cpp \
+    tst_replay.cpp \
     tst_readonly.cpp \
     $$PWD/../../src/rms/StationCode.cpp \
     $$PWD/../../src/rms/FieldTestRecorder.cpp \
