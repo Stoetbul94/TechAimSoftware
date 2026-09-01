@@ -16,6 +16,7 @@
 #include "rms/RangeListModel.h"
 #include "rms/RangeMonitor.h"
 #include "rms/RmsProtocol.h"
+#include "rms/control/ControlProtocol.h"
 #include "rms/RmsUdpObserver.h"
 
 #include <QDir>
@@ -73,6 +74,18 @@ QString readAll(const QString& path)
     return QString::fromUtf8(f.readAll());
 }
 
+
+// Returns the file with // comments removed, so a structural assertion tests
+// the code rather than the prose describing it.
+QString stripComments(const QString& src)
+{
+    QString out;
+    const QStringList lines = src.split(QLatin1Char('\n'));
+    for (const QString& l : lines)
+        out += l.split(QStringLiteral("//")).first() + QLatin1Char(' ');
+    return out;
+}
+
 bool methodNameSuggestsControl(const QByteArray& name)
 {
     const QByteArray n = name.toLower();
@@ -94,10 +107,22 @@ void run_readonly_tests()
     // src/rms/dev/ is EXCLUDED: the simulator plays the NODE's role and is
     // allowed to transmit. It is compiled only under TECHAIM_RMS_DEV_SIMULATOR
     // and is not part of the observer.
+    // src/rms/control/ is EXCLUDED for the same reason src/rms/dev/ is: it is
+    // not the observer. R2 added an AUTHENTICATED control plane, which the
+    // command-boundary design anticipated and required to be "its own reviewed
+    // change" - this is that change, made deliberately rather than by a token
+    // slipping past.
+    //
+    // The guard is NOT weakened. What it protects is that the READ-ONLY
+    // TELEMETRY OBSERVER cannot transmit, and RangeMonitor, the models and
+    // RmsProtocol are all still scanned. The control plane is separately
+    // constrained below: it may transmit, but it may not touch the legacy UDP
+    // path and it may not reach into telemetry.
     const QStringList observerSources =
         collectSources(root + QStringLiteral("/src/rms"),
                        { QStringLiteral("*.cpp"), QStringLiteral("*.h") },
-                       { QStringLiteral("/src/rms/dev/") });
+                       { QStringLiteral("/src/rms/dev/"),
+                         QStringLiteral("/src/rms/control/") });
 
     check(observerSources.size() >= 12,
           QStringLiteral("the observer source set was found (%1 files)")
@@ -228,4 +253,44 @@ void run_readonly_tests()
         check(d.rejectReason.contains(QLatin1String("unknown type")),
               "...and is rejected as an unknown type", d.rejectReason);
     }
+    // ── 4. the control plane may transmit, but only where it is allowed ──
+    {
+        const QStringList controlSources =
+            collectSources(root + QStringLiteral("/src/rms/control"),
+                           { QStringLiteral("*.cpp"), QStringLiteral("*.h") }, {});
+        check(controlSources.size() >= 4,
+              QStringLiteral("the control source set was found (%1 files)")
+                  .arg(controlSources.size()));
+
+        for (const QString& path : controlSources) {
+            // Comments STRIPPED. The first version of this matched the whole
+            // file and failed on the control header's own comment explaining
+            // that telemetry stays on 7755 - it was reading the prose instead
+            // of the code. What matters is that no CODE here touches it.
+            const QString text = stripComments(readAll(path));
+            const QString name = QFileInfo(path).fileName();
+
+            // THE LEGACY PATH STAYS UNTOUCHED. UDP 7756 belongs to the target
+            // application's historical startMatchFromServer receiver, which
+            // predates RMS. The control plane uses TCP 7756 - a different
+            // socket - and must never write a datagram to the legacy one.
+            check(!text.contains(QStringLiteral("QUdpSocket")),
+                  QStringLiteral("%1 opens no UDP socket - the legacy UDP 7756 "
+                                 "receiver is not touched").arg(name));
+
+            // Control must not reach into the telemetry plane either. One
+            // ingress for telemetry, one channel for control, no crossing.
+            check(!text.contains(QStringLiteral("kObservationPort"))
+                  && !text.contains(QStringLiteral("7755")),
+                  QStringLiteral("%1 does not touch the telemetry port").arg(name));
+        }
+
+        // And the port constant still says what it is.
+        check(ta::rms::control::kControlPort == 7756,
+              QStringLiteral("the control plane uses TCP 7756"));
+        check(ta::rms::control::kControlPort == ta::rms::kReservedCommandPort,
+              QStringLiteral("...which is the port the telemetry contract "
+                             "reserved, now used deliberately over TCP"));
+    }
+
 }

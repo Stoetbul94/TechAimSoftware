@@ -40,12 +40,17 @@ SOURCES += \
     tst_target_display.cpp \
     tst_target_geometry.cpp \
     tst_field_test.cpp \
+    tst_control.cpp \
     tst_readonly.cpp \
     $$PWD/../../src/rms/StationCode.cpp \
     $$PWD/../../src/rms/FieldTestRecorder.cpp \
     $$PWD/../../src/rms/NetworkDiagnostics.cpp \
     $$PWD/../../src/rms/FieldTestService.cpp \
     $$PWD/../../src/rms/RmsProtocol.cpp \
+    $$PWD/../../src/rms/control/ControlProtocol.cpp \
+    $$PWD/../../src/rms/control/ControlAuth.cpp \
+    $$PWD/../../src/rms/control/NodeControlEndpoint.cpp \
+    $$PWD/../../src/rms/control/RmsControlClient.cpp \
     $$PWD/../../src/rms/TargetNodeRecord.cpp \
     $$PWD/../../src/rms/RangeMonitor.cpp \
     $$PWD/../../src/rms/RangeListModel.cpp \

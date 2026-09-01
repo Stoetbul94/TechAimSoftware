@@ -20,6 +20,7 @@ int main(int argc, char** argv)
     run_monitor_tests();
     run_simulator_tests();
     run_scale_tests();
+    run_control_tests();
     run_udp_tests();
     run_range_config_tests();
     run_match_plan_tests();
