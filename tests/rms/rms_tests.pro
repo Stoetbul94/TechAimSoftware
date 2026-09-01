@@ -32,6 +32,7 @@ SOURCES += \
     tst_protocol.cpp \
     tst_monitor.cpp \
     tst_simulator.cpp \
+    tst_scale.cpp \
     tst_udp.cpp \
     tst_range_config.cpp \
     tst_match_plan.cpp \

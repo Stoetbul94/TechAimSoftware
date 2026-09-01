@@ -55,7 +55,12 @@ public:
     //                 windows are explicit, not left to a restart's timing.
     enum class Scenario { Development, FieldTestDemo };
 
-    // Builds the scripted scenario. `laneCount` is clamped to 3..6, matching
+    // The largest simulated range the harness supports. Chosen to cover the
+    // fifty-lane scale target with headroom; the simulator holds one SimNode
+    // per lane and nothing here is quadratic.
+    static constexpr int kMaxSimulatedLanes = 64;
+
+    // Builds the scripted scenario. `laneCount` is clamped to 3..kMaxSimulatedLanes, matching
     // the milestone's "3-6 target nodes".
     void configure(int laneCount, Scenario scenario = Scenario::Development);
 

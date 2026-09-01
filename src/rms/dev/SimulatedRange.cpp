@@ -39,6 +39,8 @@ const LanePlan kPlan[] = {
       "techaim", "issf.50m.pistol",     -1 }
 };
 
+constexpr int kPlanCount = int(sizeof(kPlan) / sizeof(kPlan[0]));
+
 } // namespace
 
 SimulatedRange::SimulatedRange(QObject* parent)
@@ -49,7 +51,16 @@ SimulatedRange::SimulatedRange(QObject* parent)
 void SimulatedRange::configure(int laneCount, Scenario scenario)
 {
     m_scenario = scenario;
-    const int n = qBound(3, laneCount, 6);
+    // SCALE. The upper bound was 6 because kPlan has six entries and reading
+    // past it is undefined behaviour - a real constraint, not an arbitrary
+    // limit. The plan is now a TEMPLATE that repeats, while every identity
+    // that RMS keys on stays unique per lane, so a fifty-lane range is fifty
+    // distinct nodes rather than six nodes announced eight times.
+    //
+    // Lanes 1-6 are byte-identical to before: i % kPlanCount == i there, and
+    // the generated laneId matches kPlan's own "Lane N" string. The existing
+    // suite therefore still asserts exactly what it asserted.
+    const int n = qBound(3, laneCount, kMaxSimulatedLanes);
     m_nodes.clear();
     m_nowMs = 0;
     m_emitted = 0;
@@ -73,18 +84,32 @@ void SimulatedRange::configure(int laneCount, Scenario scenario)
             "E368E222403F", "9A41C7B10D22", "5C02FA8E9147",
             "17BD3E60C8A5", "B4F97120DE63", "2D8A05C3F91E"
         };
+        const LanePlan& plan = kPlan[i % kPlanCount];
+        // Beyond the sixth lane the demo hex would repeat, and two nodes
+        // sharing a nodeId is the one thing RMS must never see - it would
+        // merge two lanes into one. The lane number is appended past the
+        // template so the id stays the right SHAPE and still unique.
         s.nodeId    = (scenario == Scenario::FieldTestDemo)
-                          ? QStringLiteral("TA-NODE-%1").arg(QLatin1String(kDemoHex[i % 6]))
+                          ? (i < kPlanCount
+                                 ? QStringLiteral("TA-NODE-%1").arg(QLatin1String(kDemoHex[i]))
+                                 : QStringLiteral("TA-NODE-%1%2")
+                                       .arg(QLatin1String(kDemoHex[i % kPlanCount]))
+                                       .arg(i + 1, 3, 10, QLatin1Char('0')))
                           : QStringLiteral("TA-NODE-%1").arg(i + 1, 3, 10, QLatin1Char('0'));
         s.bootId    = QStringLiteral("boot-%1-a").arg(i + 1);
-        s.laneId    = QString::fromLatin1(kPlan[i].lane);
+        s.laneId    = QStringLiteral("Lane %1").arg(i + 1);
         s.sessionId = QStringLiteral("sess-%1-2026-08-19").arg(i + 1);
-        s.programmeId      = QString::fromLatin1(kPlan[i].programmeId);
-        s.rulesetId        = QString::fromLatin1(kPlan[i].rulesetId);
-        s.targetStandardId = QString::fromLatin1(kPlan[i].targetStandardId);
-        s.athlete   = QString::fromLatin1(kPlan[i].athlete);
+        s.programmeId      = QString::fromLatin1(plan.programmeId);
+        s.rulesetId        = QString::fromLatin1(plan.rulesetId);
+        s.targetStandardId = QString::fromLatin1(plan.targetStandardId);
+        // The athlete name repeats past the template, so it is qualified with
+        // the lane to stay a distinct person on the dashboard.
+        s.athlete   = (i < kPlanCount)
+                          ? QString::fromLatin1(plan.athlete)
+                          : QStringLiteral("%1 (L%2)")
+                                .arg(QLatin1String(plan.athlete)).arg(i + 1);
         s.device    = QStringLiteral("TechAim-EST/%1").arg(4100 + i);
-        s.shotsExpected = kPlan[i].shotsExpected;
+        s.shotsExpected = plan.shotsExpected;
         // Stagger the first shot so the dashboard does not pulse in lockstep.
         s.nextShotMs = 3000 + (i * 400);
         if (scenario == Scenario::FieldTestDemo) {
@@ -96,6 +121,8 @@ void SimulatedRange::configure(int laneCount, Scenario scenario)
             // which may or may not swallow a shot.
             s.dropsOut = false;
             s.restarts = false;
+            // Absolute on purpose: the DEMO promises an operator one
+            // permanently offline lane and one that heals, on lanes 3 and 4.
             if (i == 2) { s.silentFromMs = 14000; s.silentToMs = -1; }
             if (i == 3) { s.silentFromMs = 14000; s.silentToMs = 34000; }
             // Correlated fixtures for this lane's target standard.
@@ -107,8 +134,11 @@ void SimulatedRange::configure(int laneCount, Scenario scenario)
                 }
             }
         } else {
-            s.dropsOut = (i == 2);   // Lane 3 loses the network and comes back
-            s.restarts = (i == 4);   // Lane 5's application restarts
+            // Periodic rather than absolute, so a fifty-lane run still
+            // exercises dropout and restart on roughly one lane in six
+            // instead of only ever on lanes 3 and 5. Identical for i < 6.
+            s.dropsOut = (i % kPlanCount == 2);   // loses the network, returns
+            s.restarts = (i % kPlanCount == 4);   // the application restarts
         }
         s.swapPending = true;    // every lane delivers one pair out of order
         m_nodes.append(s);

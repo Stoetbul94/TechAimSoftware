@@ -158,7 +158,12 @@ void run_simulator_tests()
               "...from an identical datagram count");
     }
 
-    // ── lane count is clamped to the milestone's 3-6 ────────────────────
+    // ── lane count is clamped to 3..kMaxSimulatedLanes ──────────────────
+    // The upper bound WAS six, because kPlan has six entries and reading past
+    // it is undefined behaviour. The plan is now a repeating template with
+    // per-lane unique identities, so the bound moved to the simulator's own
+    // constant. The assertion moved with it rather than being deleted: a
+    // clamp that is not asserted is a clamp that silently stops existing.
     {
         Rig few;
         few.sim.configure(1);
@@ -166,9 +171,11 @@ void run_simulator_tests()
         check(few.monitor.nodeCount() == 3, "fewer than three lanes is clamped up to three");
 
         Rig many;
-        many.sim.configure(99);
+        many.sim.configure(999);
         many.runTo(6000);
-        check(many.monitor.nodeCount() == 6, "more than six lanes is clamped down to six");
+        check(many.monitor.nodeCount() == ta::rms::dev::SimulatedRange::kMaxSimulatedLanes,
+              "an absurd lane count is clamped down to the simulator maximum",
+              QString::number(many.monitor.nodeCount()));
     }
 
     // ── dashboard evidence, printed ─────────────────────────────────────
