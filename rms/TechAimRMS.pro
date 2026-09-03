@@ -73,6 +73,7 @@ SOURCES += \
     $$PWD/../src/rms/RmsUdpObserver.cpp \
     $$PWD/../src/rms/dev/SimulatedRange.cpp \
     $$PWD/../src/rms/control/ControlProtocol.cpp \
+    $$PWD/../src/rms/control/CommandJournal.cpp \
     $$PWD/../src/rms/control/ControlAuth.cpp \
     $$PWD/../src/rms/control/NodeControlEndpoint.cpp \
     $$PWD/../src/rms/control/RmsControlClient.cpp \
@@ -108,6 +109,7 @@ HEADERS += \
     $$PWD/../src/rms/RmsUdpObserver.h \
     $$PWD/../src/rms/dev/SimulatedRange.h \
     $$PWD/../src/rms/control/ControlProtocol.h \
+    $$PWD/../src/rms/control/CommandJournal.h \
     $$PWD/../src/rms/control/ControlAuth.h \
     $$PWD/../src/rms/control/NodeControlEndpoint.h \
     $$PWD/../src/rms/control/RmsControlClient.h \

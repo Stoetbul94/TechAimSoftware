@@ -36,6 +36,7 @@ class ControlStatusModel : public QAbstractListModel
     Q_PROPERTY(int authenticatedCount READ authenticatedCount NOTIFY summaryChanged)
     Q_PROPERTY(int unobservedShots READ unobservedShots NOTIFY summaryChanged)
     Q_PROPERTY(int lanesBehind READ lanesBehind NOTIFY summaryChanged)
+    Q_PROPERTY(int lanesRecovering READ lanesRecovering NOTIFY summaryChanged)
     // One line for the banner. Says what is true, including "not enabled".
     Q_PROPERTY(QString statusLine READ statusLine NOTIFY summaryChanged)
     Q_PROPERTY(QString tone READ tone NOTIFY summaryChanged)
@@ -44,10 +45,12 @@ public:
     enum Roles {
         NodeIdRole = Qt::UserRole + 1,
         LaneLabelRole,
-        ChannelRole,        // "AUTHENTICATED" | "NOT CONNECTED"
+        ChannelRole,        // the control link state, by name
         SyncQualityRole,    // "GOOD" | "DEGRADED" | "UNUSABLE"
         UnobservedRole,
         ReconciledToRole,   // the persisted watermark, or -1
+        RestartsRole,       // node restarts RMS has observed on this lane
+        PendingRole,        // commands still awaiting an answer
         ToneRole
     };
 
@@ -64,6 +67,8 @@ public:
     int authenticatedCount() const;
     int unobservedShots() const;
     int lanesBehind() const;
+    // Lanes passing through a restart: detected, reauthenticating or replaying.
+    int lanesRecovering() const;
     QString statusLine() const;
     QString tone() const;
 
@@ -84,6 +89,9 @@ private:
         QString nodeId;
         QString laneLabel;
         bool    authenticated = false;
+        QString channel;
+        int     restarts = 0;
+        int     pendingCommands = 0;
         QString syncQuality;
         int     unobserved = 0;
         int     reconciledTo = -1;

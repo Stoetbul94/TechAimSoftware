@@ -6,7 +6,6 @@ namespace control {
 
 namespace {
 const char* kNotConnected = "NOT CONNECTED";
-const char* kAuthenticated = "AUTHENTICATED";
 }
 
 ControlStatusModel::ControlStatusModel(QObject* parent)
@@ -48,11 +47,20 @@ void ControlStatusModel::refresh()
             // operator must describe the range, not the software's optimism.
             if (m_transportAttached && m_coordinator) {
                 r.authenticated = m_coordinator->isAuthenticated(rec->nodeId);
+                // The channel's OWN state, which is more than authenticated or
+                // not: a lane the node restarted under passes through RESTART
+                // DETECTED and REAUTHENTICATING on the way back, and an
+                // operator watching a lane go quiet is owed those words rather
+                // than a gap.
+                r.channel = controlLinkStateName(m_coordinator->linkState(rec->nodeId));
+                r.restarts = m_coordinator->restartsObserved(rec->nodeId);
+                r.pendingCommands = m_coordinator->pendingCommandCount(rec->nodeId);
                 r.syncQuality = syncQualityName(
                     m_coordinator->timeSync(rec->nodeId).quality);
                 const ReconciliationWatermark w = m_coordinator->watermark(rec->nodeId);
                 r.reconciledTo = w.nodeId.isEmpty() ? -1 : w.highestSequence;
             } else {
+                r.channel = QLatin1String(kNotConnected);
                 r.syncQuality = syncQualityName(SyncQuality::Unusable);
             }
             m_rows.append(r);
@@ -98,12 +106,31 @@ QString ControlStatusModel::statusLine() const
     const int auth = authenticatedCount();
     QString s = QStringLiteral("Control channel enabled. %1 of %2 lanes authenticated")
                     .arg(auth).arg(m_rows.size());
+    // A lane the node restarted under is NAMED as such while it recovers. An
+    // operator who saw a station reboot should read that back, not a silent
+    // dip in the authenticated count.
+    const int recovering = lanesRecovering();
+    if (recovering > 0)
+        s += QStringLiteral("; %1 lane%2 recovering from a node restart")
+                 .arg(recovering).arg(recovering == 1 ? "" : "s");
     const int behind = lanesBehind();
     if (behind > 0)
         s += QStringLiteral("; %1 lane%2 behind by %3 shot%4 - recovering")
                  .arg(behind).arg(behind == 1 ? "" : "s")
                  .arg(unobservedShots()).arg(unobservedShots() == 1 ? "" : "s");
     return s + QLatin1Char('.');
+}
+
+int ControlStatusModel::lanesRecovering() const
+{
+    int n = 0;
+    for (const Row& r : m_rows) {
+        if (r.channel == QLatin1String("RESTART DETECTED")
+            || r.channel == QLatin1String("REAUTHENTICATING")
+            || r.channel == QLatin1String("REPLAYING"))
+            ++n;
+    }
+    return n;
 }
 
 QString ControlStatusModel::tone() const
@@ -133,11 +160,12 @@ QVariant ControlStatusModel::data(const QModelIndex& index, int role) const
     switch (role) {
     case NodeIdRole:       return r.nodeId;
     case LaneLabelRole:    return r.laneLabel;
-    case ChannelRole:      return QLatin1String(r.authenticated ? kAuthenticated
-                                                                : kNotConnected);
+    case ChannelRole:      return r.channel;
     case SyncQualityRole:  return r.syncQuality;
     case UnobservedRole:   return r.unobserved;
     case ReconciledToRole: return r.reconciledTo;
+    case RestartsRole:     return r.restarts;
+    case PendingRole:      return r.pendingCommands;
     case ToneRole:
         if (!r.authenticated) return QStringLiteral("neutral");
         return r.unobserved > 0 ? QStringLiteral("warn") : QStringLiteral("live");
@@ -154,6 +182,8 @@ QHash<int, QByteArray> ControlStatusModel::roleNames() const
             {SyncQualityRole, "syncQuality"},
             {UnobservedRole, "unobserved"},
             {ReconciledToRole, "reconciledTo"},
+            {RestartsRole, "restarts"},
+            {PendingRole, "pendingCommands"},
             {ToneRole, "tone"}};
 }
 

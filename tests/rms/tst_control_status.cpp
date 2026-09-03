@@ -101,12 +101,62 @@ void testAttachedReportsPerLane()
     // Per lane, and NOT averaged.
     int notConnected = 0, behind = 0;
     for (int i = 0; i < m.laneCount(); ++i) {
+        // AUTH FAILURE, not a vague "not connected": the handshake was
+        // attempted and refused, and an operator chasing a lane needs the
+        // difference between "no answer" and "answered wrongly".
         if (cell(m, i, ControlStatusModel::ChannelRole).toString()
-            == QLatin1String("NOT CONNECTED")) ++notConnected;
+            == QLatin1String("AUTH FAILURE")) ++notConnected;
         if (cell(m, i, ControlStatusModel::UnobservedRole).toInt() > 0) ++behind;
     }
-    check(notConnected == 1, "status: one lane individually reads NOT CONNECTED");
+    check(notConnected == 1, "status: one lane individually reads AUTH FAILURE");
     check(behind == 1, "status: one lane individually reads behind");
+}
+
+// ── §13: the restart sequence is visible, not a silent gap ─────────────────
+void testRestartSequenceIsShown()
+{
+    ControlHarness h(key32());
+    auto* n = h.addNode(QStringLiteral("TA-NODE-001"), QStringLiteral("Lane 1"));
+    h.connectAll();
+    n->fire(4, h.now());
+    h.pumpTelemetry(h.now());
+    h.pumpAllStatus(h.now());
+    h.coordinator().serviceNodes(&h.monitor(), h.now());
+
+    ControlStatusModel m;
+    m.setSources(&h.monitor(), &h.coordinator());
+    m.setTransportAttached(true);
+    check(cell(m, 0, ControlStatusModel::ChannelRole).toString()
+              == QLatin1String("CURRENT"),
+          "restart-ui: a settled lane reads CURRENT");
+    check(cell(m, 0, ControlStatusModel::RestartsRole).toInt() == 0,
+          "restart-ui: with no restarts yet");
+
+    // The node restarts and RMS is told, but has not yet reconnected.
+    n->restart();
+    h.pumpAllStatus(h.now() + 500);
+    h.coordinator().noteBootIdentity(QStringLiteral("TA-NODE-001"), n->bootId(),
+                                     h.now() + 500);
+    m.refresh();
+    check(cell(m, 0, ControlStatusModel::ChannelRole).toString()
+              == QLatin1String("RESTART DETECTED"),
+          "restart-ui: the moment RMS learns of it, the lane reads RESTART DETECTED");
+    check(m.lanesRecovering() == 1, "restart-ui: counted as recovering");
+    check(m.statusLine().contains(QLatin1String("recovering from a node restart")),
+          "restart-ui: and the banner says so in words");
+    check(m.authenticatedCount() == 0,
+          "restart-ui: the lane is not reported as authenticated while it is not");
+
+    // The automatic pass takes it the rest of the way.
+    h.coordinator().serviceNodes(&h.monitor(), h.now() + 600);
+    m.refresh();
+    check(cell(m, 0, ControlStatusModel::ChannelRole).toString()
+              == QLatin1String("CURRENT"),
+          "restart-ui: after reauthentication and replay it is CURRENT again");
+    check(cell(m, 0, ControlStatusModel::RestartsRole).toInt() == 1,
+          "restart-ui: and the restart is still reported, not forgotten");
+    check(m.lanesRecovering() == 0, "restart-ui: nothing is recovering any more");
+    check(m.authenticatedCount() == 1, "restart-ui: authenticated once more");
 }
 
 void testSyncQualityAndWatermarkSurface()
@@ -150,6 +200,7 @@ void run_control_status_tests()
     std::printf("\n-- control-channel status panel --\n");
     testNoTransportSaysSo();
     testAttachedReportsPerLane();
+    testRestartSequenceIsShown();
     testSyncQualityAndWatermarkSurface();
     std::fflush(stdout);
 }
