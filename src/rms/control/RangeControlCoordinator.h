@@ -17,12 +17,14 @@
 
 #include "rms/RangeMonitor.h"
 #include "rms/RmsJsonStore.h"
+#include "rms/control/CommandJournal.h"
 #include "rms/control/ControlProtocol.h"
 #include "rms/control/RmsControlClient.h"
 
 #include <QHash>
 #include <QJsonObject>
 #include <QList>
+#include <QSet>
 #include <QString>
 #include <functional>
 
@@ -30,10 +32,44 @@ namespace ta {
 namespace rms {
 namespace control {
 
+// WHERE A NODE'S CONTROL CHANNEL IS. Deliberately separate from telemetry: a
+// healthy UDP heartbeat says nothing about whether commands can be delivered,
+// and R2B proved the two can disagree for a whole restart.
+enum class ControlLinkState {
+    Disconnected,       // no channel, and none attempted
+    RestartDetected,    // the node's bootId changed; the old channel is void
+    Reauthenticating,   // handshaking again against the SAME nodeId
+    Authenticated,      // a channel exists and is trusted
+    Replaying,          // authenticated, and fetching what was missed
+    Current,            // authenticated, and RMS holds everything the node has
+    Failed              // the handshake was refused
+};
+QString controlLinkStateName(ControlLinkState s);
+
+// WHAT AN AUDIT LINE MEANS. Without this, a retry that the node correctly
+// suppressed and a command that genuinely ran a second time look identical in
+// the record - which would make the audit worse than useless for the one
+// question it exists to answer.
+enum class AuditKind {
+    Initial,             // first issue of this commandId
+    Retry,               // the SAME commandId, sent again on purpose
+    DuplicateSuppressed, // the node recognised it; NOTHING ran a second time
+    AckRecovered,        // a retry recovered the outcome of a lost ack
+    NodeRestart,         // observed, not commanded
+    Reauthentication     // control authority re-established
+};
+QString auditKindName(AuditKind k);
+
 // One state-changing command, as persisted. Deliberately carries NO key, NO
 // MAC and NO nonce: an audit trail exists to answer "who asked what, and what
 // happened", and none of those help.
 struct CommandAuditEntry {
+    AuditKind kind = AuditKind::Initial;
+    // True when the node answered that it had already handled this id. The
+    // action did NOT happen twice, and this line must never be counted as a
+    // second execution.
+    bool    duplicate = false;
+    QString bootId;
     QString commandId;
     QString commandType;
     QString nodeId;
@@ -121,6 +157,46 @@ public:
     bool isAuthenticated(const QString& nodeId) const;
     QString lastError(const QString& nodeId) const;
 
+    // ── boot transitions and control authority (§7-§10) ───────────────────
+    //
+    // R2B left RMS believing a channel was authenticated after the node behind
+    // it had restarted. The node refused the next command, so nothing was
+    // wrongly applied - but RMS discovered the restart by being told NO, which
+    // is a bad way to learn it and no way to recover automatically.
+    //
+    // Now the boot identity in the node's own telemetry drives it. A bootId
+    // change means the process was replaced, so whatever authenticated to the
+    // previous one is VOID by definition.
+    ControlLinkState linkState(const QString& nodeId) const;
+    QString observedBootId(const QString& nodeId) const
+    { return m_knownBoot.value(nodeId); }
+    int restartsObserved(const QString& nodeId) const
+    { return m_restartsSeen.value(nodeId, 0); }
+    int reauthentications() const { return m_reauths; }
+
+    // Called with what telemetry reports. A CHANGED bootId retires the channel
+    // immediately; an unchanged one does nothing at all.
+    //
+    // BOOT IS NOT IDENTITY (§8). This never creates a lane, a node, an athlete
+    // assignment or a session - a new process incarnation is the same node
+    // doing the same job, and treating it as a new one would split a live
+    // athlete's match in half.
+    void noteBootIdentity(const QString& nodeId, const QString& bootId,
+                          qint64 nowUtcMs);
+
+    // THE AUTOMATIC LOOP. Boot transitions, reauthentication, retry of pending
+    // commands and catch-up, for the whole range, with no operator action.
+    // Returns the number of nodes whose control authority it re-established.
+    int serviceNodes(RangeMonitor* monitor, qint64 nowUtcMs);
+
+    // ── pending commands (§9) ─────────────────────────────────────────────
+    // A command whose answer never arrived. RMS does not know whether the node
+    // applied it, so it is neither forgotten nor re-invented: it is retried
+    // with the SAME commandId after reauthentication. Minting a new id for the
+    // same operator intent would defeat exactly-once protection.
+    int pendingCommandCount(const QString& nodeId) const;
+    int pendingCommandCount() const;
+
     // ── time sync (§16) ───────────────────────────────────────────────────
     // t0 send, t1/t2 at the node, t3 receive. Offset and round trip are
     // estimated the classic way; uncertainty is half the round trip, which is
@@ -176,17 +252,52 @@ public:
     int replayBatchesReceived() const { return m_replayBatches; }
     int replayEventsIngested() const  { return m_replayEvents; }
 
+    // Audit lines that represent a SECOND physical execution of an action.
+    // Must stay at zero: a duplicate the node suppressed is not one of these.
+    int semanticDoubleExecutions() const;
+
 private:
     void markReconciled(const QString& nodeId, RangeMonitor* monitor);
     void recordAudit(const CommandOutcome& o, const QString& type,
                      const QString& laneId, const QString& sessionId,
-                     qint64 issuedAt, const QJsonObject& state);
+                     qint64 issuedAt, const QJsonObject& state,
+                     AuditKind kind, bool duplicate);
+    void recordEvent(AuditKind kind, const QString& nodeId, const QString& bootId,
+                     qint64 nowUtcMs, const QString& reasonCode);
+    void invalidateControl(const QString& nodeId, const QString& newBootId,
+                           qint64 nowUtcMs);
+    void retryPending(const QString& nodeId, qint64 nowUtcMs);
+    void rememberPending(const QString& nodeId, const QString& commandId,
+                         const QString& commandType, const QString& laneId,
+                         const QJsonObject& payload, qint64 nowUtcMs);
+    void forgetPending(const QString& nodeId, const QString& commandId);
+
+    // A command sent but not answered. Held so it can be retried with the SAME
+    // id, which is what the node's journal recognises.
+    struct PendingCommand {
+        QString commandId, commandType, laneId;
+        QJsonObject payload;
+        qint64 issuedAtUtcMs = 0;
+        int    attempts = 1;
+
+        QJsonObject toJson() const;
+        static PendingCommand fromJson(const QJsonObject& o);
+    };
 
     QString    m_instanceId;
     QByteArray m_key;
     Link       m_link;
 
     QHash<QString, RmsControlClient*> m_clients;
+    QHash<QString, ControlLinkState>  m_state;
+    QHash<QString, QString>           m_knownBoot;
+    QHash<QString, int>               m_restartsSeen;
+    QHash<QString, QList<PendingCommand>> m_pending;
+    // Every commandId RMS has issued, so a re-issue is recognisable as a RETRY
+    // rather than mistaken for a new command in the audit. Rebuilt from the
+    // audit on load rather than persisted separately.
+    QSet<QString> m_issued;
+    int m_reauths = 0;
     QHash<QString, TimeSync>          m_sync;
     QHash<QString, ReconciliationWatermark> m_watermarks;
     QList<CommandAuditEntry> m_audit;

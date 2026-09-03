@@ -7,6 +7,45 @@ namespace ta {
 namespace rms {
 namespace control {
 
+QString controlLinkStateName(ControlLinkState s)
+{
+    switch (s) {
+    case ControlLinkState::RestartDetected:  return QStringLiteral("RESTART DETECTED");
+    case ControlLinkState::Reauthenticating: return QStringLiteral("REAUTHENTICATING");
+    case ControlLinkState::Authenticated:    return QStringLiteral("AUTHENTICATED");
+    case ControlLinkState::Replaying:        return QStringLiteral("REPLAYING");
+    case ControlLinkState::Current:          return QStringLiteral("CURRENT");
+    case ControlLinkState::Failed:           return QStringLiteral("AUTH FAILURE");
+    case ControlLinkState::Disconnected:     break;
+    }
+    return QStringLiteral("DISCONNECTED");
+}
+
+QString auditKindName(AuditKind k)
+{
+    switch (k) {
+    case AuditKind::Retry:               return QStringLiteral("RETRY");
+    case AuditKind::DuplicateSuppressed: return QStringLiteral("DUPLICATE SUPPRESSED");
+    case AuditKind::AckRecovered:        return QStringLiteral("ACK RECOVERED");
+    case AuditKind::NodeRestart:         return QStringLiteral("NODE RESTART");
+    case AuditKind::Reauthentication:    return QStringLiteral("REAUTHENTICATION");
+    case AuditKind::Initial:             break;
+    }
+    return QStringLiteral("INITIAL");
+}
+
+namespace {
+AuditKind auditKindFromName(const QString& n)
+{
+    if (n == QLatin1String("RETRY"))                return AuditKind::Retry;
+    if (n == QLatin1String("DUPLICATE SUPPRESSED")) return AuditKind::DuplicateSuppressed;
+    if (n == QLatin1String("ACK RECOVERED"))        return AuditKind::AckRecovered;
+    if (n == QLatin1String("NODE RESTART"))         return AuditKind::NodeRestart;
+    if (n == QLatin1String("REAUTHENTICATION"))     return AuditKind::Reauthentication;
+    return AuditKind::Initial;
+}
+}
+
 QString syncQualityName(SyncQuality q)
 {
     switch (q) {
@@ -20,6 +59,8 @@ QString syncQualityName(SyncQuality q)
 QJsonObject CommandAuditEntry::toJson() const
 {
     return QJsonObject{
+        {"kind", auditKindName(kind)}, {"duplicate", duplicate},
+        {"bootId", bootId},
         {"commandId", commandId}, {"commandType", commandType},
         {"nodeId", nodeId}, {"laneId", laneId}, {"sessionId", sessionId},
         {"issuedAtUtcMs", double(issuedAtUtcMs)}, {"accepted", accepted},
@@ -30,6 +71,9 @@ QJsonObject CommandAuditEntry::toJson() const
 CommandAuditEntry CommandAuditEntry::fromJson(const QJsonObject& o)
 {
     CommandAuditEntry e;
+    e.kind        = auditKindFromName(o.value("kind").toString());
+    e.duplicate   = o.value("duplicate").toBool();
+    e.bootId      = o.value("bootId").toString();
     e.commandId   = o.value("commandId").toString();
     e.commandType = o.value("commandType").toString();
     e.nodeId      = o.value("nodeId").toString();
@@ -105,7 +149,19 @@ bool RangeControlCoordinator::connectNode(const QString& nodeId)
             break;
         toNode = r.reply;
     }
-    return c->state() == RmsControlClient::State::Authenticated;
+    const bool ok = c->state() == RmsControlClient::State::Authenticated;
+    // Capabilities arrive on the Challenge of THIS handshake, so a
+    // reauthentication refreshes them by construction: a node that came back
+    // running a different build is believed about the capabilities it now
+    // advertises, not the ones the previous process advertised.
+    m_state.insert(nodeId, ok ? ControlLinkState::Authenticated
+                              : ControlLinkState::Failed);
+    return ok;
+}
+
+ControlLinkState RangeControlCoordinator::linkState(const QString& nodeId) const
+{
+    return m_state.value(nodeId, ControlLinkState::Disconnected);
 }
 
 bool RangeControlCoordinator::isAuthenticated(const QString& nodeId) const
@@ -159,12 +215,21 @@ CommandOutcome RangeControlCoordinator::send(const QString& nodeId,
         ? QStringLiteral("%1-%2-%3").arg(m_instanceId, commandType).arg(++m_commandSeq)
         : commandId;
 
+    // A RETRY is an explicit re-issue of an id RMS has already used. It is the
+    // only way exactly-once protection can be reached at all, so it is named in
+    // the audit rather than left looking like a second, separate command.
+    const bool isRetry = !commandId.isEmpty() && m_issued.contains(commandId);
+    const AuditKind kind = isRetry ? AuditKind::Retry : AuditKind::Initial;
+    m_issued.insert(out.commandId);
+
     auto* c = m_clients.value(nodeId, nullptr);
     if (!c || c->state() != RmsControlClient::State::Authenticated) {
         out.accepted = false;
         out.reasonCode = QLatin1String(reason::kNotAuthenticated);
         out.message = QStringLiteral("control channel is not authenticated");
-        recordAudit(out, commandType, laneId, QString(), nowUtcMs, QJsonObject());
+        rememberPending(nodeId, out.commandId, commandType, laneId, payload, nowUtcMs);
+        recordAudit(out, commandType, laneId, QString(), nowUtcMs, QJsonObject(),
+                    kind, false);
         return out;
     }
 
@@ -181,34 +246,107 @@ CommandOutcome RangeControlCoordinator::send(const QString& nodeId,
     if (back.isEmpty()) {
         // Unreachable. A command that could not be delivered is FAILED - never
         // assumed applied, which is the whole reason acks exist.
+        //
+        // But FAILED is not the same as DID NOT HAPPEN: the frame may have
+        // reached the node and only the answer been lost. It is therefore held
+        // as PENDING and retried later with the SAME id, which is the only kind
+        // of retry the node journal can recognise as a duplicate.
         out.accepted = false;
         out.reasonCode = QStringLiteral("UNREACHABLE");
         out.message = QStringLiteral("node did not answer");
-        recordAudit(out, commandType, laneId, QString(), nowUtcMs, QJsonObject());
+        rememberPending(nodeId, out.commandId, commandType, laneId, payload, nowUtcMs);
+        recordAudit(out, commandType, laneId, QString(), nowUtcMs, QJsonObject(),
+                    kind, false);
         return out;
     }
 
     const auto r = c->onBytes(back);
+    bool duplicate = false;
     if (!r.gotAck) {
         out.accepted = false;
         out.reasonCode = QStringLiteral("NO_ACK");
         out.message = QStringLiteral("node answered without an acknowledgement");
+        rememberPending(nodeId, out.commandId, commandType, laneId, payload, nowUtcMs);
     } else {
         out.accepted   = r.ack.accepted;
         out.reasonCode = r.ack.reasonCode;
         out.message    = r.ack.message;
+        duplicate      = r.ack.duplicate;
         out.latencyMs  = r.ack.nodeTimestampUtcMs > 0
                              ? qAbs(r.ack.nodeTimestampUtcMs - nowUtcMs) : 0;
+        // An answer of any kind settles it: the node has now spoken about this
+        // id, so there is nothing left to retry.
+        forgetPending(nodeId, out.commandId);
+    }
+
+    AuditKind resolved = kind;
+    if (duplicate) {
+        // The node recognised the id and did NOT act again. Recorded as a
+        // suppression - or, when RMS was retrying precisely because it never
+        // heard the first answer, as the RECOVERY of that lost ack. Neither is
+        // a second execution, and neither may ever be counted as one.
+        resolved = isRetry ? AuditKind::AckRecovered : AuditKind::DuplicateSuppressed;
     }
     recordAudit(out, commandType, laneId, QString(), nowUtcMs,
-                r.gotAck ? r.ack.resultingState : QJsonObject());
+                r.gotAck ? r.ack.resultingState : QJsonObject(), resolved, duplicate);
     return out;
+}
+
+void RangeControlCoordinator::rememberPending(const QString& nodeId,
+                                              const QString& commandId,
+                                              const QString& commandType,
+                                              const QString& laneId,
+                                              const QJsonObject& payload,
+                                              qint64 nowUtcMs)
+{
+    // Only state-changing commands are worth retrying. A lost PING answer costs
+    // nothing, and re-sending diagnostics after every restart would put
+    // pointless traffic on a range that has just had a problem.
+    if (!isDurableCommand(commandType))
+        return;
+    QList<PendingCommand>& list = m_pending[nodeId];
+    for (const PendingCommand& p : list)
+        if (p.commandId == commandId)
+            return;                    // already held; never duplicated
+    PendingCommand p;
+    p.commandId = commandId;
+    p.commandType = commandType;
+    p.laneId = laneId;
+    p.payload = payload;
+    p.issuedAtUtcMs = nowUtcMs;
+    list.append(p);
+}
+
+void RangeControlCoordinator::forgetPending(const QString& nodeId,
+                                            const QString& commandId)
+{
+    auto it = m_pending.find(nodeId);
+    if (it == m_pending.end())
+        return;
+    for (int i = 0; i < it->size(); ++i) {
+        if (it->at(i).commandId == commandId) { it->removeAt(i); break; }
+    }
+    if (it->isEmpty())
+        m_pending.erase(it);
+}
+
+int RangeControlCoordinator::pendingCommandCount(const QString& nodeId) const
+{
+    return m_pending.value(nodeId).size();
+}
+
+int RangeControlCoordinator::pendingCommandCount() const
+{
+    int n = 0;
+    for (const QList<PendingCommand>& l : m_pending) n += l.size();
+    return n;
 }
 
 void RangeControlCoordinator::recordAudit(const CommandOutcome& o,
                                           const QString& type, const QString& laneId,
                                           const QString& sessionId, qint64 issuedAt,
-                                          const QJsonObject& state)
+                                          const QJsonObject& state,
+                                          AuditKind kind, bool duplicate)
 {
     // PING and REQUEST_STATUS are diagnostics: they change nothing, and
     // persisting a heartbeat's worth of them would bury the entries that
@@ -217,6 +355,9 @@ void RangeControlCoordinator::recordAudit(const CommandOutcome& o,
         return;
 
     CommandAuditEntry e;
+    e.kind = kind;
+    e.duplicate = duplicate;
+    e.bootId = m_knownBoot.value(o.nodeId);
     e.commandId = o.commandId;
     e.commandType = type;
     e.nodeId = o.nodeId;
@@ -228,6 +369,43 @@ void RangeControlCoordinator::recordAudit(const CommandOutcome& o,
     e.ackUtcMs = issuedAt + o.latencyMs;
     e.resultingState = state;   // no key, no MAC, no nonce - by construction
     m_audit.append(e);
+}
+
+void RangeControlCoordinator::recordEvent(AuditKind kind, const QString& nodeId,
+                                          const QString& bootId, qint64 nowUtcMs,
+                                          const QString& reasonCode)
+{
+    // A restart and a reauthentication are things that HAPPENED TO the range,
+    // not things RMS commanded. They belong in the same trail, because reading
+    // a duplicate suppression without the restart that caused it explains
+    // nothing.
+    CommandAuditEntry e;
+    e.kind = kind;
+    e.nodeId = nodeId;
+    e.bootId = bootId;
+    e.issuedAtUtcMs = nowUtcMs;
+    e.ackUtcMs = nowUtcMs;
+    e.accepted = (kind == AuditKind::Reauthentication);
+    e.reasonCode = reasonCode;
+    m_audit.append(e);
+}
+
+int RangeControlCoordinator::semanticDoubleExecutions() const
+{
+    // An action counts as executed when the node accepted it AND did not say it
+    // was a duplicate. Counting accepted duplicates here would report an
+    // execution the node explicitly said it did not perform.
+    QHash<QString, int> executions;
+    for (const CommandAuditEntry& e : m_audit) {
+        if (e.commandId.isEmpty() || !isDurableCommand(e.commandType))
+            continue;
+        if (e.accepted && !e.duplicate)
+            ++executions[e.commandId];
+    }
+    int doubles = 0;
+    for (auto it = executions.constBegin(); it != executions.constEnd(); ++it)
+        if (it.value() > 1) ++doubles;
+    return doubles;
 }
 
 FanOutResult RangeControlCoordinator::sendToMany(const QStringList& nodeIds,
@@ -259,7 +437,7 @@ FanOutResult RangeControlCoordinator::startAt(const QStringList& nodeIds,
             o.message = QStringLiteral("time sync quality is unusable");
             r.outcomes.append(o);
             recordAudit(o, QLatin1String(cmd::kStartAt), QString(), QString(),
-                        nowUtcMs, QJsonObject());
+                        nowUtcMs, QJsonObject(), AuditKind::Initial, false);
             continue;
         }
         const QJsonObject payload{
@@ -270,6 +448,132 @@ FanOutResult RangeControlCoordinator::startAt(const QStringList& nodeIds,
                                payload, nowUtcMs));
     }
     return r;
+}
+
+void RangeControlCoordinator::noteBootIdentity(const QString& nodeId,
+                                               const QString& bootId,
+                                               qint64 nowUtcMs)
+{
+    if (nodeId.isEmpty() || bootId.isEmpty())
+        return;
+
+    const QString known = m_knownBoot.value(nodeId);
+    if (known == bootId)
+        return;                         // the boot we are already tracking
+
+    if (known.isEmpty()) {
+        // First sight of this node. Not a restart - there is nothing to
+        // invalidate, and calling it one would inflate every range start.
+        m_knownBoot.insert(nodeId, bootId);
+        return;
+    }
+
+    invalidateControl(nodeId, bootId, nowUtcMs);
+}
+
+void RangeControlCoordinator::invalidateControl(const QString& nodeId,
+                                                const QString& newBootId,
+                                                qint64 nowUtcMs)
+{
+    // THE PROCESS BEHIND THE CHANNEL IS GONE. Whatever authenticated to the
+    // previous incarnation authenticated to something that no longer exists, so
+    // the channel is void by definition - not "probably stale", not "worth a
+    // try". RMS retires it here rather than discovering it by being refused.
+    delete m_clients.take(nodeId);
+
+    m_knownBoot.insert(nodeId, newBootId);
+    m_restartsSeen[nodeId] = m_restartsSeen.value(nodeId, 0) + 1;
+    m_state.insert(nodeId, ControlLinkState::RestartDetected);
+
+    // NOT TOUCHED, deliberately: the lane, the athlete, the session, the
+    // ledger, the watermark and the time-sync measurement. A bootId is a
+    // process incarnation, not an identity - the same node is doing the same
+    // job for the same athlete, and resetting any of that would split a live
+    // match in half. Only the CHANNEL is invalid.
+    //
+    // Pending commands are kept for the same reason. They were issued to this
+    // NODE, and after reauthentication they are retried with their original
+    // ids so the node journal can recognise them.
+    recordEvent(AuditKind::NodeRestart, nodeId, newBootId, nowUtcMs,
+                QStringLiteral("BOOT_CHANGED"));
+}
+
+void RangeControlCoordinator::retryPending(const QString& nodeId, qint64 nowUtcMs)
+{
+    const QList<PendingCommand> pending = m_pending.value(nodeId);
+    for (const PendingCommand& p : pending) {
+        // THE SAME commandId. Minting a new one for the same operator intent
+        // would make the node treat it as a new command and apply it a second
+        // time, which is precisely the failure being closed here.
+        send(nodeId, p.laneId, p.commandType, p.payload, nowUtcMs, p.commandId);
+    }
+}
+
+int RangeControlCoordinator::serviceNodes(RangeMonitor* monitor, qint64 nowUtcMs)
+{
+    if (!monitor)
+        return 0;
+
+    int reestablished = 0;
+    for (int i = 0; i < monitor->nodeCount(); ++i) {
+        const TargetNodeRecord* rec = monitor->nodeAt(i);
+        if (!rec || rec->nodeId.isEmpty())
+            continue;
+        const QString nodeId = rec->nodeId;
+
+        // 1. The node's own telemetry is what reveals the restart. RMS does
+        //    not wait to be refused by a command it should never have sent.
+        noteBootIdentity(nodeId, rec->bootId, nowUtcMs);
+
+        // Anything without a live authenticated channel needs one. That covers
+        // the restart just detected, an earlier handshake failure, AND an RMS
+        // that has itself just restarted - after which no channel exists even
+        // though the nodes never went anywhere.
+        if (isAuthenticated(nodeId))
+            continue;
+
+        // 2. Reauthenticate against the SAME stable nodeId. Capabilities come
+        //    back on this handshake, so they are refreshed rather than
+        //    remembered from a process that no longer exists.
+        m_state.insert(nodeId, ControlLinkState::Reauthenticating);
+        if (!connectNode(nodeId)) {
+            m_state.insert(nodeId, ControlLinkState::Failed);
+            continue;                   // stays visible as a failure
+        }
+        ++m_reauths;
+        ++reestablished;
+        recordEvent(AuditKind::Reauthentication, nodeId, m_knownBoot.value(nodeId),
+                    nowUtcMs, QLatin1String(reason::kOk));
+
+        // 3. Anything that was in flight when the process died is retried with
+        //    its ORIGINAL id, so the node answers with what it already did
+        //    instead of doing it again.
+        retryPending(nodeId, nowUtcMs);
+
+        // 4. Then catch up on shots taken while RMS was not listening.
+        m_state.insert(nodeId, ControlLinkState::Replaying);
+        catchUp(nodeId, monitor, nowUtcMs);
+        m_state.insert(nodeId, ControlLinkState::Current);
+    }
+
+    // Every authenticated node that is behind is reconciled on the same pass,
+    // restart or no restart - an ordinary reconnect needs no operator either.
+    reconcileAll(monitor, nowUtcMs);
+
+    // Then settle each lane's reported state against what is actually true.
+    // CURRENT is a stronger claim than AUTHENTICATED and must be earned: a
+    // channel exists AND RMS holds everything the node says it has. A lane
+    // still short of shots reads AUTHENTICATED, which is exactly what it is.
+    for (int i = 0; i < monitor->nodeCount(); ++i) {
+        const TargetNodeRecord* rec = monitor->nodeAt(i);
+        if (!rec || !isAuthenticated(rec->nodeId))
+            continue;
+        const bool complete = rec->unobservedShotCount() == 0
+                              && rec->ledger.missingSequences().isEmpty();
+        m_state.insert(rec->nodeId, complete ? ControlLinkState::Current
+                                             : ControlLinkState::Authenticated);
+    }
+    return reestablished;
 }
 
 void RangeControlCoordinator::markReconciled(const QString& nodeId,
@@ -414,10 +718,54 @@ QJsonObject RangeControlCoordinator::saveState() const
     QJsonArray aud;
     for (const CommandAuditEntry& e : m_audit)
         aud.append(e.toJson());
+    // PENDING COMMANDS ARE PERSISTED. Without this, an RMS crash between
+    // issuing a command and hearing its answer would lose the fact that an
+    // answer is still owed - and RMS would either forget the operator intent
+    // entirely or reissue it under a NEW id, which the node journal could not
+    // recognise. Either way exactly-once is defeated by the RMS side alone.
+    QJsonArray pend;
+    for (auto it = m_pending.constBegin(); it != m_pending.constEnd(); ++it) {
+        for (const PendingCommand& p : it.value()) {
+            QJsonObject o = p.toJson();
+            o.insert(QStringLiteral("nodeId"), it.key());
+            pend.append(o);
+        }
+    }
+    // The boot identities RMS last saw, so a node that restarted WHILE RMS was
+    // down is still recognised as restarted when RMS comes back.
+    QJsonArray boots;
+    for (auto it = m_knownBoot.constBegin(); it != m_knownBoot.constEnd(); ++it) {
+        boots.append(QJsonObject{{"nodeId", it.key()}, {"bootId", it.value()},
+                                 {"restarts", m_restartsSeen.value(it.key(), 0)}});
+    }
+
     // No schemaVersion stamped here: the store stamps it, so no caller can
     // forget to and no two callers can disagree about it.
     return QJsonObject{{"watermarks", marks},
-                       {"commandAudit", aud}};
+                       {"commandAudit", aud},
+                       {"pendingCommands", pend},
+                       {"observedBoots", boots}};
+}
+
+QJsonObject RangeControlCoordinator::PendingCommand::toJson() const
+{
+    return QJsonObject{{"commandId", commandId}, {"commandType", commandType},
+                       {"laneId", laneId}, {"payload", payload},
+                       {"issuedAtUtcMs", double(issuedAtUtcMs)},
+                       {"attempts", attempts}};
+}
+
+RangeControlCoordinator::PendingCommand
+RangeControlCoordinator::PendingCommand::fromJson(const QJsonObject& o)
+{
+    PendingCommand p;
+    p.commandId   = o.value("commandId").toString();
+    p.commandType = o.value("commandType").toString();
+    p.laneId      = o.value("laneId").toString();
+    p.payload     = o.value("payload").toObject();
+    p.issuedAtUtcMs = qint64(o.value("issuedAtUtcMs").toDouble());
+    p.attempts    = o.value("attempts").toInt(1);
+    return p;
 }
 
 void RangeControlCoordinator::loadState(const QJsonObject& o)
@@ -432,6 +780,41 @@ void RangeControlCoordinator::loadState(const QJsonObject& o)
     const QJsonArray aud = o.value("commandAudit").toArray();
     for (const QJsonValue& v : aud)
         m_audit.append(CommandAuditEntry::fromJson(v.toObject()));
+
+    m_pending.clear();
+    const QJsonArray pend = o.value("pendingCommands").toArray();
+    for (const QJsonValue& v : pend) {
+        const QJsonObject po = v.toObject();
+        const QString nodeId = po.value("nodeId").toString();
+        const PendingCommand p = PendingCommand::fromJson(po);
+        if (!nodeId.isEmpty() && !p.commandId.isEmpty())
+            m_pending[nodeId].append(p);
+    }
+
+    m_knownBoot.clear();
+    m_restartsSeen.clear();
+    const QJsonArray boots = o.value("observedBoots").toArray();
+    for (const QJsonValue& v : boots) {
+        const QJsonObject bo = v.toObject();
+        const QString nodeId = bo.value("nodeId").toString();
+        if (nodeId.isEmpty()) continue;
+        m_knownBoot.insert(nodeId, bo.value("bootId").toString());
+        m_restartsSeen.insert(nodeId, bo.value("restarts").toInt());
+    }
+
+    // Rebuilt rather than stored: every commandId in the audit was issued, so a
+    // re-issue after an RMS restart is still recognised as a RETRY instead of
+    // being logged as a fresh command.
+    m_issued.clear();
+    for (const CommandAuditEntry& e : m_audit)
+        if (!e.commandId.isEmpty())
+            m_issued.insert(e.commandId);
+
+    // Every channel died with the process. Nothing is assumed authenticated
+    // across an RMS restart - the handshakes are redone.
+    qDeleteAll(m_clients);
+    m_clients.clear();
+    m_state.clear();
 }
 
 StoreResult RangeControlCoordinator::saveTo(RmsJsonStore& store) const
