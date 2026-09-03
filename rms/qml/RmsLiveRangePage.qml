@@ -56,10 +56,20 @@ Item {
         }
     }
 
+    RmsControlStatusBar {
+        id: controlBar
+        anchors {
+            top: summary.bottom; left: parent.left
+            topMargin: theme.spacingUnit * 1.5
+            leftMargin: theme.spacingUnit * 2
+        }
+        width: parent.width - detailPane.width - theme.spacingUnit * 6
+    }
+
     Item {
         id: lanes
         anchors {
-            top: summary.bottom; left: parent.left; bottom: parent.bottom
+            top: controlBar.bottom; left: parent.left; bottom: parent.bottom
             topMargin: theme.spacingUnit * 2
             leftMargin: theme.spacingUnit * 2
             bottomMargin: theme.spacingUnit * 2

@@ -72,6 +72,7 @@
 #include "rms/RangeMonitor.h"
 #include "rms/RmsProtocol.h"
 #include "rms/RmsUdpObserver.h"
+#include "rms/control/ControlStatusModel.h"
 #include "rms/UnassignedNodeModel.h"
 #include "rms/dev/SimulatedRange.h"
 
@@ -292,6 +293,17 @@ int main(int argc, char* argv[])
     LaneListModel laneModel(&rangeConfig, &monitor);      // the physical range
     UnassignedNodeModel unassignedModel(&rangeConfig, &monitor);
 
+    // ── control-channel STATUS ───────────────────────────────────────────
+    // The R2 control plane exists and is qualified as a protocol, but no
+    // transport is wired into this application yet. The model is therefore
+    // constructed with NO transport attached, which is what makes the window
+    // say so in as many words instead of showing an idle panel an operator
+    // could mistake for a working one. Wiring the socket is a separate,
+    // separately-qualified change; until then this reports the truth.
+    ta::rms::control::ControlStatusModel controlStatus;
+    controlStatus.setSources(&monitor, nullptr);
+    controlStatus.setTransportAttached(false);
+
     // ── competition preparation ──────────────────────────────────────────
     // RMS's own start list and match plans. These write RMS data files and
     // nothing else: preparing a match records an intention, and no station is
@@ -381,6 +393,9 @@ int main(int argc, char* argv[])
         // Same cadence as liveness: the service compares state and records
         // only what actually changed, so this cannot flood the timeline.
         fieldTest.poll();
+        // Same cadence again: the panel is a view of what the monitor already
+        // holds, so refreshing it costs a walk of the node list and nothing more.
+        controlStatus.refresh();
     });
     tick.start(250);
 
@@ -636,6 +651,7 @@ int main(int argc, char* argv[])
     engine.rootContext()->setContextProperty(QStringLiteral("FIELDTEST"), &fieldTest);
     engine.rootContext()->setContextProperty(QStringLiteral("FIELDLOG"), &fieldLog);
     engine.rootContext()->setContextProperty(QStringLiteral("NETDIAG"), &network);
+    engine.rootContext()->setContextProperty(QStringLiteral("CONTROL"), &controlStatus);
     engine.rootContext()->setContextProperty(QStringLiteral("RMS_SIMULATED"), !live);
     // DEVELOPMENT ONLY. Prints the scale and the last shot's millimetres onto
     // the face so a qualification screenshot states its own geometry instead of

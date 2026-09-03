@@ -16,6 +16,7 @@
         <file alias="RmsLaneCard.qml">qml/RmsLaneCard.qml</file>
         <file alias="RmsLaneDetail.qml">qml/RmsLaneDetail.qml</file>
         <file alias="RmsStatusPill.qml">qml/RmsStatusPill.qml</file>
+        <file alias="RmsControlStatusBar.qml">qml/RmsControlStatusBar.qml</file>
         <file alias="RmsNewMatchPage.qml">qml/RmsNewMatchPage.qml</file>
         <file alias="RmsAthletesPage.qml">qml/RmsAthletesPage.qml</file>
         <file alias="RmsMatchReview.qml">qml/RmsMatchReview.qml</file>
