@@ -24,6 +24,8 @@ void run_catchup_tests();
 void run_timesync_tests();
 void run_control_scale_tests();
 void run_control_status_tests();
+void run_journal_tests();
+void run_reauth_tests();
 void run_readonly_tests();
 void run_range_config_tests();
 void run_match_plan_tests();

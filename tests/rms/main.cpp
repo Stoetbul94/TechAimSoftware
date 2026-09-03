@@ -26,6 +26,8 @@ int main(int argc, char** argv)
     run_timesync_tests();
     run_control_scale_tests();
     run_control_status_tests();
+    run_journal_tests();
+    run_reauth_tests();
     run_udp_tests();
     run_range_config_tests();
     run_match_plan_tests();

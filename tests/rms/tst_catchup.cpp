@@ -244,13 +244,16 @@ void testRestartRecovery()
     check(n->bootId() != firstBoot, "restart: the boot identity changed");
     check(n->eventCount() == 11, "restart: the node still holds its session");
 
-    // THE STALE CHANNEL. RMS's own client still believes it is authenticated -
-    // nothing told it otherwise - but the node behind it is a new process that
-    // never saw that handshake. The node REFUSES, which is the behaviour that
-    // matters: a command must not be applied on the strength of an
-    // authentication the current process never performed.
+    // THE NODE'S OWN DEFENCE, tested in isolation. Nothing has told RMS about
+    // the boot change here - that path is `serviceNodes`, and tst_reauth.cpp
+    // proves it - so this is deliberately the raw case: a client that still
+    // believes in a handshake the current process never performed.
+    //
+    // The node REFUSES. That is the property being pinned: even with RMS at its
+    // most wrong, a command is not applied on the strength of an authentication
+    // that no longer exists. It is a second line of defence, not the first one.
     check(h.coordinator().isAuthenticated(n->nodeId()),
-          "restart: RMS still believes the old channel is authenticated");
+          "restart: an unserviced RMS still believes the old channel is good");
     const auto onStale = h.coordinator().send(n->nodeId(), n->laneId(),
                                               QLatin1String(cmd::kStop),
                                               QJsonObject{}, h.now() + 100);
@@ -274,19 +277,17 @@ void testRestartRecovery()
           "restart: the session continues across the restart, all 15 held");
     check(rec->unobservedShotCount() == 0, "restart: nothing is unobserved after it");
 
-    // AND THE HONEST PART. The restarted process has no memory of the command
-    // ids it already handled - that cache lived in the endpoint that died. The
-    // SAME command id is therefore applied a SECOND time across a restart.
-    // Asserted rather than hidden: it is a real limit of v1, and the
-    // qualification document records it as one.
+    // THE R2C FIX, at the point where R2B recorded a limitation. The node
+    // recovered its handled-command journal along with its session, so the
+    // reused id is recognised ACROSS the restart and nothing runs twice.
     const int appliedBefore = n->applied().count(QString::fromLatin1(cmd::kAssignAthlete));
     const auto after = h.coordinator().send(n->nodeId(), n->laneId(),
                                             QLatin1String(cmd::kAssignAthlete),
                                             QJsonObject{{"athlete", "A"}},
                                             h.now() + 6000, reused);
-    check(after.accepted, "restart: the reused command id is accepted again");
-    check(n->applied().count(QString::fromLatin1(cmd::kAssignAthlete)) == appliedBefore + 1,
-          "restart: KNOWN LIMIT - it was APPLIED again; idempotency is per boot");
+    check(after.accepted, "restart: the reused command id is answered, not refused");
+    check(n->applied().count(QString::fromLatin1(cmd::kAssignAthlete)) == appliedBefore,
+          "restart: and it was NOT applied again - idempotency survives the boot");
 
     // Within ONE boot it is still suppressed, which is what R2 proved and what
     // makes an ordinary retry safe.

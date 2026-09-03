@@ -46,6 +46,8 @@ SOURCES += \
     tst_timesync.cpp \
     tst_control_scale.cpp \
     tst_control_status.cpp \
+    tst_journal.cpp \
+    tst_reauth.cpp \
     tst_readonly.cpp \
     $$PWD/../../src/rms/StationCode.cpp \
     $$PWD/../../src/rms/FieldTestRecorder.cpp \
@@ -53,6 +55,7 @@ SOURCES += \
     $$PWD/../../src/rms/FieldTestService.cpp \
     $$PWD/../../src/rms/RmsProtocol.cpp \
     $$PWD/../../src/rms/control/ControlProtocol.cpp \
+    $$PWD/../../src/rms/control/CommandJournal.cpp \
     $$PWD/../../src/rms/control/ControlAuth.cpp \
     $$PWD/../../src/rms/control/NodeControlEndpoint.cpp \
     $$PWD/../../src/rms/control/RmsControlClient.cpp \
@@ -111,5 +114,6 @@ HEADERS += \
     $$PWD/../../src/rms/RmsUdpObserver.h \
     $$PWD/../../src/rms/dev/SimulatedRange.h \
     $$PWD/../../src/rms/dev/ControlledNode.h \
+    $$PWD/../../src/rms/control/CommandJournal.h \
     $$PWD/../../src/rms/control/RangeControlCoordinator.h \
     $$PWD/../../src/rms/control/ControlStatusModel.h

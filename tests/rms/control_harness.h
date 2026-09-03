@@ -70,6 +70,14 @@ public:
     void setControlLink(const QString& nodeId, bool up)
     { if (up) m_cutControl.remove(nodeId); else m_cutControl.insert(nodeId); }
 
+    // A LOST ACKNOWLEDGEMENT: the node RECEIVES the frame, applies it and
+    // journals it - and the answer never gets back. This is not the same as a
+    // dead link, and the difference is the whole problem. RMS is left unable to
+    // tell "it never arrived" from "it arrived and I did not hear", which is
+    // why a retry must be idempotent rather than merely unlikely.
+    void setSwallowReplies(const QString& nodeId, bool swallow)
+    { if (swallow) m_swallow.insert(nodeId); else m_swallow.remove(nodeId); }
+
     // Moves whatever the nodes have produced into the monitor - the same
     // ingest a real UDP datagram takes.
     int pumpTelemetry(qint64 nowUtcMs)
@@ -133,7 +141,12 @@ private:
         dev::ControlledNode* n = node(nodeId);
         if (!n)
             return QByteArray();
-        return n->endpoint().onBytes(frame, m_now).reply;
+        // The node processes it either way - that is what makes this a LOST
+        // ACK rather than a lost command.
+        const QByteArray reply = n->endpoint().onBytes(frame, m_now).reply;
+        if (m_swallow.contains(nodeId))
+            return QByteArray();
+        return reply;
     }
 
     QByteArray m_key;
@@ -144,6 +157,7 @@ private:
     QHash<QString, int> m_index;
     QStringList m_order;
     QSet<QString> m_cutControl;
+    QSet<QString> m_swallow;
     QHash<QString, quint64> m_statusSeq;
 };
 
