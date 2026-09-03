@@ -20,6 +20,7 @@
 // It is confined to src/rms/dev/, which the read-only guard excludes by name,
 // because a simulator plays the node's role and is allowed to transmit.
 
+#include "rms/control/CommandJournal.h"
 #include "rms/control/ControlProtocol.h"
 #include "rms/control/NodeControlEndpoint.h"
 
@@ -62,6 +63,16 @@ public:
     // ── control plane ─────────────────────────────────────────────────────
     control::NodeControlEndpoint& endpoint() { return *m_endpoint; }
 
+    // The node's durable handled-command store. It belongs to the NODE, not to
+    // the endpoint, which is why it survives restart() - the same way a file on
+    // disk outlives the process that wrote it.
+    control::CommandJournal& journal() { return m_journal; }
+
+    // A COLD restart: the journal comes back from the given document rather
+    // than from memory, which is what a node reading its own file after a power
+    // cut actually does.
+    void restartFrom(const QJsonObject& persistedJournal);
+
     QString nodeId() const    { return m_nodeId; }
     QString laneId() const    { return m_laneId; }
     QString sessionId() const { return m_sessionId; }
@@ -91,8 +102,11 @@ public:
 private:
     QJsonObject buildShot(int seq, qint64 nowUtcMs) const;
 
+    void rebuildEndpoint();
+
     QString m_nodeId, m_laneId, m_sessionId, m_bootId;
     QByteArray m_key;
+    control::CommandJournal m_journal;
     std::unique_ptr<control::NodeControlEndpoint> m_endpoint;
 
     QList<QJsonObject> m_events;      // authoritative session history

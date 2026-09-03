@@ -19,6 +19,7 @@
 // NO SCORING. This file contains no scoring, no coordinate handling and no
 // competition rules. It validates, dispatches to a handler, and answers.
 
+#include "rms/control/CommandJournal.h"
 #include "rms/control/ControlProtocol.h"
 
 #include <QByteArray>
@@ -72,9 +73,16 @@ public:
         QStringList capabilities;
     };
 
+    // `journal` is the node's handled-command store. Passing one that was
+    // LOADED FROM DISK is what makes idempotency survive a restart: a new
+    // endpoint on a new boot still recognises a commandId the previous
+    // incarnation executed. Passing none gives an endpoint-owned in-memory
+    // journal, which is the pre-R2C behaviour and is still correct within a
+    // boot - it simply protects nothing across one.
     NodeControlEndpoint(Identity id,
                         QByteArray rangeKey,
-                        IControlCommandHandler* handler);
+                        IControlCommandHandler* handler,
+                        CommandJournal* journal = nullptr);
 
     // Feed received bytes; returns bytes to send back. A returned
     // `closeConnection` means the peer must be dropped - the reason is in
@@ -96,8 +104,14 @@ public:
     static constexpr qint64 kCommandWindowMs = 60 * 1000;
 
     // Bounded history: a range does not issue unbounded commands, and an
-    // unbounded set would be a memory leak an attacker could drive.
-    static constexpr int kCommandHistory = 512;
+    // unbounded set would be a memory leak an attacker could drive. The bound
+    // and its safety rule now live in CommandJournal, which enforces them for
+    // the in-memory and the persisted case alike.
+    static constexpr int kCommandHistory = CommandJournal::kMaxEntries;
+
+    // The journal in use, for a node that needs to persist it.
+    CommandJournal& journal() { return *m_journal; }
+    const CommandJournal& journal() const { return *m_journal; }
 
 private:
     Ack handleCommand(const Command& c, qint64 nowUtcMs);
@@ -105,6 +119,7 @@ private:
     QByteArray buildReplay(const Command& c, qint64 nowUtcMs);
     Ack makeAck(const Command& c, bool accepted, const char* reasonCode,
                 const QString& message, qint64 nowUtcMs) const;
+    void remember(const Command& c, const Ack& ack, qint64 nowUtcMs);
     bool hasCapability(const char* c) const;
 
     Identity   m_id;
@@ -118,10 +133,10 @@ private:
     int     m_applied = 0;
     int     m_duplicates = 0;
 
-    // commandId → the ack that was produced the first time. A repeat returns
-    // this instead of applying anything again.
-    QHash<QString, Ack> m_handled;
-    QQueue<QString>     m_handledOrder;
+    // commandId → what happened the first time. A repeat returns that instead
+    // of applying anything again. NOT owned unless it is the fallback below.
+    CommandJournal* m_journal = nullptr;
+    CommandJournal  m_ownJournal;
 };
 
 } // namespace control

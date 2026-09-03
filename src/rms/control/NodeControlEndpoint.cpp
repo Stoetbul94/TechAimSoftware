@@ -10,10 +10,12 @@ namespace control {
 
 NodeControlEndpoint::NodeControlEndpoint(Identity id,
                                          QByteArray rangeKey,
-                                         IControlCommandHandler* handler)
+                                         IControlCommandHandler* handler,
+                                         CommandJournal* journal)
     : m_id(std::move(id))
     , m_key(std::move(rangeKey))
     , m_handler(handler)
+    , m_journal(journal ? journal : &m_ownJournal)
 {
 }
 
@@ -213,13 +215,15 @@ Ack NodeControlEndpoint::handleCommand(const Command& c, qint64 nowUtcMs)
     // IDEMPOTENCY, before anything is applied. A repeated commandId returns the
     // ORIGINAL outcome and does not act again - which is what stops a retried
     // FEED_PAPER feeding twice.
-    auto it = m_handled.constFind(c.commandId);
-    if (it != m_handled.constEnd()) {
+    //
+    // The lookup goes through the JOURNAL, so when the journal was loaded from
+    // disk this recognises a command the PREVIOUS INCARNATION of this node
+    // executed. That is the whole of the R2C fix: the question is no longer
+    // "did this process do it" but "did this node do it".
+    HandledCommand prior;
+    if (m_journal->recall(c.commandId, &prior)) {
         ++m_duplicates;
-        Ack a = it.value();
-        a.duplicate = true;
-        a.nodeTimestampUtcMs = nowUtcMs;
-        return a;
+        return prior.toAck(nowUtcMs);
     }
 
     // Stale commands are refused rather than applied late. A START_AT captured
@@ -253,8 +257,7 @@ Ack NodeControlEndpoint::handleCommand(const Command& c, qint64 nowUtcMs)
                               .arg(QLatin1String(g.cap)), nowUtcMs);
             // Still recorded, so a retry of a refused command is also a no-op
             // and gets the same answer.
-            m_handled.insert(c.commandId, ack);
-            m_handledOrder.enqueue(c.commandId);
+            remember(c, ack, nowUtcMs);
             return ack;
         }
     }
@@ -286,12 +289,26 @@ Ack NodeControlEndpoint::handleCommand(const Command& c, qint64 nowUtcMs)
                       QStringLiteral("unknown command type"), nowUtcMs);
     }
 
-    m_handled.insert(c.commandId, ack);
-    m_handledOrder.enqueue(c.commandId);
-    while (m_handledOrder.size() > kCommandHistory)
-        m_handled.remove(m_handledOrder.dequeue());
-
+    remember(c, ack, nowUtcMs);
     return ack;
+}
+
+void NodeControlEndpoint::remember(const Command& c, const Ack& ack, qint64 nowUtcMs)
+{
+    HandledCommand h;
+    h.commandId   = c.commandId;
+    h.commandType = c.commandType;
+    h.nodeId      = m_id.nodeId;
+    // The session as the JOURNAL understands it - the node owns that fact and
+    // states it; it is never guessed from the command, which RMS may have sent
+    // without one.
+    h.sessionId   = m_journal->currentSession();
+    h.accepted    = ack.accepted;
+    h.reasonCode  = ack.reasonCode;
+    h.message     = ack.message;
+    h.resultingState = ack.resultingState;
+    h.processedAtUtcMs = nowUtcMs;
+    m_journal->record(h);
 }
 
 } // namespace control

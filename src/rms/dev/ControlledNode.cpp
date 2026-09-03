@@ -30,14 +30,10 @@ ControlledNode::ControlledNode(const QString& nodeId, const QString& laneId,
     , m_bootId(QStringLiteral("boot-%1-a").arg(nodeId))
     , m_key(rangeKey)
 {
-    NodeControlEndpoint::Identity id;
-    id.nodeId = m_nodeId;
-    id.bootId = m_bootId;
-    id.product = QStringLiteral("Tech Aim");
-    id.appVersion = QStringLiteral("1.0.0");
-    id.commit = QStringLiteral("simnode");
-    id.capabilities = fullCapabilities();
-    m_endpoint = std::make_unique<NodeControlEndpoint>(id, m_key, this);
+    // The journal is the NODE's, not the endpoint's, so it outlives the
+    // endpoint the way a file on disk outlives a process.
+    m_journal.setCurrentSession(m_sessionId);
+    rebuildEndpoint();
 }
 
 QJsonObject ControlledNode::buildShot(int seq, qint64 nowUtcMs) const
@@ -80,13 +76,22 @@ QList<QByteArray> ControlledNode::drainTelemetry()
     return out;
 }
 
-void ControlledNode::restart()
+void ControlledNode::restartFrom(const QJsonObject& persistedJournal)
 {
+    // A COLD start: the journal is rebuilt from a document, not carried over in
+    // memory. Used for the case where RMS restarted too and neither side has
+    // anything but its own files to work from.
     ++m_restarts;
-    // Same node, same session, NEW boot. This is what lets RMS tell "the
-    // application restarted" from "the network blinked".
     m_bootId = QStringLiteral("boot-%1-%2").arg(m_nodeId).arg(m_restarts + 1);
+    m_journal = CommandJournal();
+    m_journal.loadState(persistedJournal);
+    m_journal.setCurrentSession(m_sessionId);
+    rebuildEndpoint();
+    m_scheduledStartNodeMs = -1;
+}
 
+void ControlledNode::rebuildEndpoint()
+{
     NodeControlEndpoint::Identity id;
     id.nodeId = m_nodeId;
     id.bootId = m_bootId;
@@ -94,16 +99,39 @@ void ControlledNode::restart()
     id.appVersion = QStringLiteral("1.0.0");
     id.commit = QStringLiteral("simnode");
     id.capabilities = fullCapabilities();
+    m_endpoint = std::make_unique<NodeControlEndpoint>(id, m_key, this, &m_journal);
+}
 
-    // A NEW endpoint, on purpose. A restarted process has no memory of the old
-    // connection - and none of the command ids it had handled. That is a real
-    // property of the system and the tests assert it rather than papering over
-    // it: duplicate protection is per process unless a command is persisted,
-    // and the qualification document says so.
-    m_endpoint = std::make_unique<NodeControlEndpoint>(id, m_key, this);
+void ControlledNode::restart()
+{
+    ++m_restarts;
+    // Same node, same session, NEW boot. This is what lets RMS tell "the
+    // application restarted" from "the network blinked".
+    m_bootId = QStringLiteral("boot-%1-%2").arg(m_nodeId).arg(m_restarts + 1);
+
+    // A NEW endpoint, on purpose: a restarted process has no memory of the old
+    // connection, and RMS must re-authenticate.
+    //
+    // THE JOURNAL IS RECOVERED FROM DISK, exactly as a real node would recover
+    // it, and handed to the new endpoint. This is the R2C fix: the question a
+    // repeated commandId asks is no longer "did THIS PROCESS do it" but "did
+    // THIS NODE do it". Note the round trip is genuine - the in-memory journal
+    // is serialised, cleared and re-read, so a field that failed to persist
+    // would fail the test rather than survive by accident.
+    const QJsonObject persisted = m_journal.saveState();
+    m_journal = CommandJournal();
+    m_journal.loadState(persisted);
+    m_journal.setCurrentSession(m_sessionId);
+
+    rebuildEndpoint();
 
     // The session and its events SURVIVE - the node recovered them from its own
     // store. Only the boot identity and the connection are new.
+    //
+    // The SCHEDULED START does not survive: a process that died before its
+    // start instant did not start. Re-arming it silently would begin a match
+    // nobody watched being armed. RMS retrying the same START_AT is the correct
+    // path, and the journal now makes that retry safe.
     m_scheduledStartNodeMs = -1;
 }
 
