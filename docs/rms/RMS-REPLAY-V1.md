@@ -62,3 +62,69 @@ it inherits the deduplication already proven at fifty lanes:
 A replay batch may arrive interleaved with live telemetry. Both go through one
 ingest and the ledger is keyed by sequence, so a live shot 26 arriving during a
 replay of 21–25 lands correctly whichever order they reach RMS.
+
+---
+
+## R2B — who asks, when, and how the gap is found
+
+R2 defined the request and proved the response. It did not define **who runs
+it**. R2B did: `RangeControlCoordinator::reconcileAll` catches up every
+authenticated node the monitor says is behind, on the dashboard's own tick.
+**No operator action is required for an ordinary reconnect.**
+
+### The gap is found from SEQUENCES, never from totals
+
+A score total can match while shots are missing, and a total cannot say
+*which*. RMS compares two things and asks about their difference:
+
+| Kind | What it looks like | How it is detected |
+|---|---|---|
+| **Shortfall** | a stretch offline | `shotsAcceptedByNode > ledger.observedCount()` |
+| **Hole** | one lost datagram | `ledger.missingSequences()` is non-empty |
+
+**The second one is the trap.** Once a later shot arrives, the highest sequence
+already equals the node's count, so a shortfall test *alone* declares RMS
+current while shot #18 is missing. Both are checked, every time. When a hole
+exists the request starts **below the first hole**, not at the highest sequence,
+so the missing middle is fetched rather than skipped.
+
+Re-fetching shots RMS already holds costs nothing: the ledger deduplicates on
+`eventId`, which is exactly why replayed events keep their original ids.
+
+### A current node is not asked at all
+
+If there is no shortfall and no hole, **no request is sent**. A reconciliation
+pass that asked every node on every tick would put a fifty-lane range's worth of
+pointless traffic on the wire during a live match.
+
+### What counts as recovered
+
+Only events that were genuinely new: `Accepted`, `AcceptedOutOfOrder`, and
+`SessionRestarted` — the last being what the *first* shot of a session looks
+like when RMS learned of the node from a status message and has never seen one
+of its shots. A duplicate suppressed on replay is **not** counted as a recovery.
+Counting every replayed event would report a recovery that did not happen.
+
+### The reconciliation watermark
+
+Persisted through `RmsJsonStore` — the same versioned, atomic store every other
+RMS document uses (temp file then rename, `schemaVersion` stamped by the store,
+a newer document refused rather than half-read). **Not SQLite, and not a second
+private file format.**
+
+It records `nodeId`, `sessionId`, `lastBootId` and `highestSequence`, read back
+from the monitor **after** ingesting — never from what RMS asked for. Recording
+the request would claim a reconciliation that may not have happened, and the
+shots between the claim and the truth would never be requested again.
+
+It is written on the **no-gap** path too: "reconciled to 20, nothing missing" is
+the common case and precisely the fact a crash must not lose.
+
+On load, a failed or refused read applies **nothing**. A partially-applied
+watermark would tell RMS it had reconciled further than it had.
+
+### Proven at
+
+1 lane, 20 lanes and 50 lanes; sessions longer than one 200-event batch; a
+single lost middle datagram; a full offline stretch; and a node process restart
+mid-session. See `RMS-R2-QUALIFICATION.md`.

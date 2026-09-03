@@ -66,3 +66,57 @@ Both are acceptable on a closed range LAN and would not be on an open network.
 If RMS is ever exposed beyond a range network, this section is the first thing
 that must change — and the answer is TLS with node certificates, not a bigger
 MAC.
+
+---
+
+## R2B — the audit, and what it deliberately does not contain
+
+Phase R2B added a **persisted command audit**: every state-changing command RMS
+issued, whether it was accepted, and what the node said came of it.
+
+### It carries no secret material
+
+No key. No MAC. No nonce. By construction — an audit exists to answer *who
+asked what, and what happened*, and none of those three help with that. This is
+not a convention; a test serialises the whole document and asserts that the
+strings `mac`, `nonce` and `key`, and the range key's own bytes, do not appear
+in it.
+
+Each entry holds: `commandId`, `commandType`, `nodeId`, `laneId`, `sessionId`,
+`issuedAtUtcMs`, `accepted`, `reasonCode`, `ackUtcMs`, and the node's reported
+`resultingState`.
+
+### Diagnostics are not recorded
+
+`PING` and `REQUEST_STATUS` change nothing and are not written. An audit buried
+under heartbeats is an audit nobody reads. `REQUEST_REPLAY` is likewise not
+audited: it reads history and alters no state.
+
+### A failure is recorded as a failure
+
+A command that could not be delivered is written with reason `UNREACHABLE` and
+`accepted: false` — never as an optimistic success, and never as a refusal the
+node did not make.
+
+### Where it is written
+
+Through `RmsJsonStore`, into **RMS's own** application data location, alongside
+the reconciliation watermark. It is RMS data about RMS's own actions. Nothing in
+it can reach a target node, and nothing in it is transmitted anywhere.
+
+### An unchanged boundary, restated
+
+The audit records what RMS *asked for*. It is **not** a record of what happened
+on the range: the node remains authoritative, may refuse any command, and its
+own session journal is the record of the match. A disagreement between the two
+is resolved in the node's favour, always.
+
+### One security-relevant limit found by qualification
+
+Command idempotency does not survive a node restart — the handled-command cache
+lives in the endpoint that died. A replayed `commandId` across a restart **is**
+applied again. This is a correctness and operator-trust limit rather than an
+authentication weakness (the replay still has to pass the HMAC handshake of the
+new boot), but it is the kind of thing that must be written down rather than
+discovered later. Details and the closing work: `RMS-R2-QUALIFICATION.md` §3
+and §9.

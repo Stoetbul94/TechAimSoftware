@@ -181,3 +181,70 @@ nothing about whether commands can be delivered.
 - No TLS. The security boundary is stated honestly in `RMS-SECURITY-V1.md`.
 - No command that alters scoring, coordinates or the node's own competition
   rules. The authority boundary is unchanged: the node may always refuse.
+
+---
+
+## 14. R2B — what qualification added and what it exposed
+
+Phase R2B exercised this protocol against simulated nodes that speak it
+through the **production** `NodeControlEndpoint`, at 1, 20 and 50 lanes. Full
+results: `RMS-R2-QUALIFICATION.md`. Two properties of v1 surfaced that were not
+visible when the protocol was tested one message at a time, and both are
+recorded here as part of the contract rather than left in a test file.
+
+### 14.1 Command idempotency is PER BOOT
+
+The handled-command cache lives in the endpoint, and the endpoint dies with the
+process. A `commandId` reused **across a node restart** is applied a **second
+time**. Within one boot it is still suppressed, which is what makes an ordinary
+retry safe.
+
+This is a **known limit of control protocol v1**. Closing it requires the node
+to persist handled command ids alongside its session, which is a node-side
+change and its own reviewed work. Until then:
+
+- an RMS retry after a timeout is safe *within* a boot;
+- an RMS retry that spans a node restart is **not** idempotent;
+- the persisted command audit is what lets an operator see that it happened.
+
+### 14.2 A stale control channel is refused by the NODE
+
+After a node restarts, RMS's client still reports `ControlAuthenticated` —
+nothing told it otherwise. The **node** refuses the next command with
+`NOT_AUTHENTICATED` and the command is not applied.
+
+The protection is real and it holds, but it lives at the wrong end. RMS should
+also notice the `bootId` change in that node's telemetry and drop the channel
+itself. That is open work, listed in `RMS-R2-QUALIFICATION.md` §9.
+
+### 14.3 `START_AT` (§16–§20)
+
+`START_AT` names an **instant**, never an action, and carries the measured
+offset with it:
+
+```json
+{ "commandType": "START_AT",
+  "payload": { "startAtUtcMs": 1700000030000,
+               "rmsToNodeOffsetMs": -2500,
+               "syncQuality": "GOOD" } }
+```
+
+The node converts the instant into its **own** clock using that offset and
+schedules. It does **not** start on arrival — starting on arrival would give
+every lane its own delivery jitter as a head start.
+
+Rules, all enforced and tested:
+
+- a lane whose measured sync quality is `UNUSABLE` is **refused before the
+  command is sent**, with reason `SYNC_UNUSABLE`. A start placed wrongly is
+  worse than a start refused;
+- a second `START_AT` on a lane that already has one scheduled or running is
+  refused with `PRECONDITION_FAILED`, and the existing instant is **unchanged**.
+  Silently re-basing a running competition clock would rewrite the elapsed time
+  of a live match.
+
+### 14.4 An undelivered command is FAILED
+
+A command that got no answer is reported `UNREACHABLE` and **failed** — never
+assumed applied, and never recorded as a refusal the node did not make. This is
+the reason acks exist, and it is asserted per lane in the fan-out tests.
