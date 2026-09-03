@@ -36,6 +36,14 @@ TargetNodeRecord& RangeMonitor::recordFor(const QString& nodeId, bool* created)
     return m_nodes.insert(nodeId, r).value();
 }
 
+bool RangeMonitor::isStaleBoot(const TargetNodeRecord& r, const QString& bootId) const
+{
+    // Asks the question without CHANGING anything - applyBoot has side effects
+    // (the drop counter, the restart counter, lastStatusSeq) that are right for
+    // state messages and wrong for a historical shot.
+    return !bootId.isEmpty() && r.bootId != bootId && r.priorBootIds.contains(bootId);
+}
+
 BootOutcome RangeMonitor::applyBoot(TargetNodeRecord& r, const QString& bootId)
 {
     if (bootId.isEmpty() || r.bootId == bootId)
@@ -188,11 +196,34 @@ IngestOutcome RangeMonitor::ingestDatagram(const QByteArray& payload, qint64 now
         out.nodeId = sh.nodeId;
         bool created = false;
         TargetNodeRecord& r = recordFor(sh.nodeId, &created);
-        const BootOutcome boot = applyBoot(r, sh.bootId);
-        if (boot == BootOutcome::Stale) {
+
+        // A SHOT FROM A SUPERSEDED BOOT IS STILL A SHOT THE ATHLETE FIRED.
+        //
+        // The stale-boot guard exists to stop an old run's STATE overwriting
+        // the current run's - an old heartbeat dragging the shot count or the
+        // phase backwards. A shot is not state. It is an immutable historical
+        // fact carrying its own unique eventId, and the ledger deduplicates on
+        // that, so accepting a late one cannot corrupt anything.
+        //
+        // Dropping it, on the other hand, loses it permanently - and the case
+        // is not hypothetical: after a node restart, catch-up replays exactly
+        // these events, because the shots taken before the restart were taken
+        // under the previous boot. Discarding them would leave a lane
+        // permanently short of the shots its athlete actually fired.
+        //
+        // So it is ingested, and NOTHING about the node's identity, liveness or
+        // boot bookkeeping is touched by it.
+        if (isStaleBoot(r, sh.bootId)) {
             out.staleBoot = true;
+            out.shotResult = r.ledger.ingest(sh);
+            emit nodeChanged(sh.nodeId);
+            if (out.shotResult != ShotIngest::DuplicateSuppressed
+                && out.shotResult != ShotIngest::SequenceConflict)
+                emit shotObserved(sh.nodeId, sh.shotSequence);
             return out;
         }
+
+        const BootOutcome boot = applyBoot(r, sh.bootId);
         const bool restarted = (boot == BootOutcome::Restarted);
         if (created)
             r.firstSeenUtcMs = nowUtcMs;

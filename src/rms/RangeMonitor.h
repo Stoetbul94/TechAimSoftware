@@ -113,6 +113,9 @@ private:
     // Classifies and applies a bootId. A node restart re-bases observation but
     // never discards the node from the range; a superseded boot is refused.
     BootOutcome applyBoot(TargetNodeRecord& r, const QString& bootId);
+    // The same question, with no side effects. A shot from a superseded boot is
+    // history, not state, and must not tick the drop counter.
+    bool isStaleBoot(const TargetNodeRecord& r, const QString& bootId) const;
 
     QHash<QString, TargetNodeRecord> m_nodes;
     QVector<QString> m_order;           // stable insertion order for the UI

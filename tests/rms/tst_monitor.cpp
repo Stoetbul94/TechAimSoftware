@@ -281,6 +281,34 @@ void run_monitor_tests()
         check(r && r->shotsAcceptedByNode == 3,
               "...and cannot overwrite the current run's state with the old run's");
 
+        // BUT A SHOT FROM THE SUPERSEDED BOOT IS STILL A SHOT.
+        //
+        // The guard protects STATE - it stops an old run's heartbeat dragging
+        // the count or the phase backwards. A shot is not state: it is an
+        // immutable fact with its own eventId, and the ledger deduplicates on
+        // that. Dropping one would lose it permanently, and the case is real:
+        // after a restart, catch-up replays exactly these events, because the
+        // shots fired before the restart were fired under the previous boot.
+        const int heldBefore = r->ledger.observedCount();
+        const IngestOutcome lateShot = m.ingestDatagram(shot(2, "e2"), 5300);
+        r = m.nodeById(QLatin1String(kNode));
+        check(lateShot.staleBoot, "a shot from a superseded boot is still identified as stale");
+        check(r && r->ledger.observedCount() == heldBefore + 1,
+              "...but it is INGESTED - a shot the athlete fired is not thrown away");
+        check(r && r->bootId == QLatin1String("boot-b"),
+              "...without dragging the node back to the previous boot");
+        check(r && r->nodeRestarts == 1, "...and without counting a second restart");
+        check(r && r->shotsAcceptedByNode == 3,
+              "...and without touching the node's own reported state");
+        check(r && r->staleBootDropped == 1,
+              "...and the DROP counter does not move, because nothing was dropped");
+
+        // Replaying it again changes nothing: eventId dedup still applies.
+        m.ingestDatagram(shot(2, "e2"), 5400);
+        r = m.nodeById(QLatin1String(kNode));
+        check(r && r->ledger.observedCount() == heldBefore + 1,
+              "...and a repeat of it is suppressed like any other duplicate");
+
         // The guard must not block a genuine SECOND restart.
         m.ingestDatagram(announce("boot-c"), 6000);
         r = m.nodeById(QLatin1String(kNode));
