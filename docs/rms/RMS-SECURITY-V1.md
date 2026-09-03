@@ -120,3 +120,41 @@ authentication weakness (the replay still has to pass the HMAC handshake of the
 new boot), but it is the kind of thing that must be written down rather than
 discovered later. Details and the closing work: `RMS-R2-QUALIFICATION.md` §3
 and §9.
+
+---
+
+## R2C — the limit named above is closed
+
+The previous section closed by naming one security-relevant limit: command
+idempotency did not survive a node restart, so a replayed `commandId` across a
+restart was applied again. **That is fixed.** The node now keeps a durable
+handled-command journal, and a repeated id is recognised across a restart and
+answered with the original outcome rather than executed a second time.
+
+That paragraph should be read as history, not as current behaviour.
+
+### The journal holds no secret material either
+
+The same rule the audit follows, for the same reason. The journal answers "what
+did this node already do": `commandId`, `commandType`, `nodeId`, `sessionId`,
+the outcome, the reason code, the message, the resulting state, and a timestamp.
+No key, no MAC, no nonce, no handshake material — asserted by serialising the
+document and looking for them.
+
+### A note on retention as a security property
+
+The journal is bounded (512 entries, 48 hours) because an unbounded store is a
+disk leak a peer could drive by issuing commands. But the bound never evicts an
+entry for the node's **current session**: an attacker who could push a live
+match's `START_AT` out of the journal by flooding harmless commands would have
+restored the very replay window the journal removes. Protected entries are
+skipped rather than dropped, and a store that cannot get under budget says so.
+
+### Boot change as an authentication boundary
+
+A `bootId` change now invalidates control authority on the RMS side as well as
+the node side. The practical effect is that the window in which RMS believes in
+a channel the peer no longer honours has gone from "until the next command is
+refused" to "until the next telemetry datagram". Neither window ever allowed a
+command to be applied — the node refused throughout — but the shorter one is
+what lets RMS recover by itself instead of waiting to be told no.

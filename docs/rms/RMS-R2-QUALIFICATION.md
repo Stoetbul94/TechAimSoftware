@@ -3,9 +3,15 @@
 What phase R2B set out to prove, what it now proves, and — set out just as
 plainly — what it still does not.
 
-**Status:** software qualification complete. **No physical qualification has
-been performed.** Nothing in this document may be cited as evidence that a real
-target node behaved any particular way.
+**Status:** software qualification complete, through phase R2C. **No physical
+qualification has been performed.** Nothing in this document may be cited as
+evidence that a real target node behaved any particular way.
+
+**Phase history.** R2 built the protocol. R2B qualified it in use and found two
+correctness defects, which it recorded rather than hid. **R2C closed both** —
+§3a and §3b — and re-ran every gate. Where this document previously described a
+limitation as accepted behaviour, that text has been replaced by the fix and its
+evidence, not merely annotated.
 
 ---
 
@@ -40,16 +46,17 @@ it cannot block on the "no Qt platform plugin" modal.
 cd tests/rms && qmake rms_tests.pro && mingw32-make -f Makefile.Release && ./release/rms_tests.exe
 ```
 
-**1542 checks, 0 failures.** (R2 baseline: 1391.) The new work contributes 141
-named checks across four suites, and the read-only guard contributes 10 more by
-scanning the two new control-plane file pairs:
+**1719 checks, 0 failures.** (R2 baseline: 1391; R2B: 1542.) The control-plane
+suites:
 
 | Suite | Checks | What it holds |
 |---|---:|---|
 | `tst_catchup.cpp` | 57 | gap detection, automatic recovery, restart, watermark, audit |
 | `tst_timesync.cpp` | 31 | offset measurement, quality grading, scheduled starts |
 | `tst_control_scale.cpp` | 32 | full control at 20 and 50 lanes, partial failure |
-| `tst_control_status.cpp` | 21 | what the window says, and refuses to say |
+| `tst_control_status.cpp` | 31 | what the window says, and refuses to say |
+| `tst_journal.cpp` | 47 | the durable handled-command store and its retention contract |
+| `tst_reauth.cpp` | 109 | exactly-once across restarts, boot invalidation, 20/50-lane restart qualification |
 
 ### No simulator-only protocol
 
@@ -104,24 +111,150 @@ Same node, same session, **new `bootId`**. The node recovered its own shots from
 its own store; RMS tracks the boot change, counts one restart, and the ledger
 continues across it — asserted at 11 shots before and 15 after.
 
-### Two findings recorded rather than smoothed over
+### Two findings R2B recorded, both CLOSED in R2C
 
-**A stale control channel is refused by the node, not by RMS.** After a node
-process restarts, RMS's client still believes it is authenticated — nothing told
-it otherwise. The *node* refuses the next command with `NOT_AUTHENTICATED`, and
-the test asserts both halves: RMS's optimism, and the node's refusal. The
-protection is real, but it lives at the node. A future revision should have RMS
-notice the boot change and drop the channel itself.
+R2B found and wrote down two real defects. Neither is accepted behaviour any
+more; both were fixed, and the sections below are the evidence.
 
-**Command idempotency is per boot.** The handled-command cache lives in the
-endpoint, which dies with the process. A command id reused *across* a restart is
-applied a **second** time. Within one boot it is still suppressed, which is what
-makes an ordinary retry safe.
+| R2B finding | Status |
+|---|---|
+| Command idempotency was per boot — a reused id executed again after a restart | **CLOSED** — §3a, durable command journal |
+| RMS did not invalidate control authority when `bootId` changed | **CLOSED** — §3b, boot-driven invalidation |
 
-This is a **known limit of control protocol v1**. It is asserted in
-`tst_catchup.cpp` rather than hidden, and it is why the audit persists what was
-issued: closing it needs the node to persist handled command ids, which is a
-node-side change and its own reviewed work.
+---
+
+## 3a. Command idempotency now survives a restart (R2C §2–§6)
+
+**The failure being closed.** RMS sends a command. The node applies it. The ack
+is lost. From where RMS sits, "it never arrived" and "it arrived and I did not
+hear" are indistinguishable — so RMS must retry. Then the node restarts. Under
+R2B the retry executed a *second* time, because the handled-command cache died
+with the process. For a `START_AT` that restarts a running match; for a paper
+feed it feeds twice.
+
+### The durable journal
+
+`src/rms/control/CommandJournal` is the node's handled-command store, owned by
+the **node** rather than by the endpoint — so it outlives the endpoint the way a
+file outlives a process. `NodeControlEndpoint` now asks it, not a private cache,
+which turns the question a repeated `commandId` asks from *"did this process do
+it"* into *"did this node do it"*.
+
+**What is persisted.** Not merely that an id was seen: `commandId`,
+`commandType`, `nodeId`, `sessionId`, the accepted/refused outcome, the reason
+code, the message, the node's resulting state, and when it was processed. That
+is what lets a duplicate be answered with the **original acknowledgement**
+(`duplicate: true`) rather than a bare `ALREADY_EXECUTED` — which would leave
+RMS exactly as ignorant as the lost ack did. Refusals are remembered too: a
+retried command that was refused is refused again, with the same reason.
+
+**What is never persisted.** No key, no MAC, no nonce, no handshake material —
+by construction, and asserted by serialising the document and looking.
+
+### Which commands are protected
+
+| Journalled (durable) | Not journalled |
+|---|---|
+| `ASSIGN_ATHLETE`, `PREPARE_SESSION`, `START_AT`, `STOP`, `FEED_PAPER` | `PING`, `REQUEST_STATUS`, `REQUEST_REPLAY` |
+
+`FEED_PAPER` is included **before** it is ever enabled, so when a node adapter
+turns it on it arrives already protected rather than needing a second change.
+The three exclusions read and change nothing, so repeating one is harmless and
+journalling them would spend the retention budget on traffic that never needed
+protecting.
+
+### The retention contract
+
+Bounded, because an unbounded store is a disk leak a peer could drive. Bounded
+**safely**, because the obvious way to stay inside a budget is to forget the
+running match's `START_AT` — which would re-arm the exact failure being closed.
+
+1. **Hard rule, above the bounds.** An entry that is durable **and** belongs to
+   the **current session** is never evicted, by count or by age.
+2. **Count.** At most **512** entries. Over budget, the oldest *evictable*
+   entry goes first; protected entries are skipped, not dropped. If everything
+   left is protected, nothing is evicted and `retainedOverBudget()` counts it —
+   visible, never silent.
+3. **Age.** Evictable entries older than **48 hours** are pruned. That outlives
+   a competition day and the night after it.
+
+Rule 1 outranks rules 2 and 3. Once a session is finished its entries become
+evictable like anything else, so the store can still shrink.
+
+### Evidence
+
+`tst_journal.cpp` and `tst_reauth.cpp`:
+
+- a flood of 712 finished-session entries does **not** evict the live session's
+  `START_AT`, and the age bound does not either — but once its session ends, it
+  prunes;
+- lost ack → node restart → same `commandId` retried, for `START_AT`, `STOP`,
+  `ASSIGN_ATHLETE` and `PREPARE_SESSION` in turn: each is applied **exactly
+  once**, the retry is answered with the original outcome, and the audit records
+  `ACK RECOVERED`;
+- **§5, the harder case:** node restarts *and* RMS restarts, both recovering
+  only from their own files, then RMS retries the same id — still exactly once.
+
+---
+
+## 3b. A boot change now invalidates control authority (R2C §7–§10)
+
+Under R2B, RMS discovered a restart by being **refused**. The node's own defence
+held — a command was never applied on the strength of an authentication the
+current process never performed — but learning about it that way meant RMS could
+not recover on its own.
+
+**Now the node's telemetry drives it.** `noteBootIdentity` compares the
+`bootId` in what the node reports against the one RMS is tracking. A change
+means the process was replaced, so whatever authenticated to the previous one is
+**void by definition** — not "probably stale", not "worth a try". The channel is
+retired at that moment, before anything is sent on it.
+
+`serviceNodes` then runs the whole sequence automatically, with no operator
+action: **RESTART DETECTED → REAUTHENTICATING → (retry pending) → REPLAYING →
+CURRENT**. Capabilities are refreshed by construction, because they arrive on
+the Challenge of the new handshake — a node that came back running a different
+build is believed about what it now advertises, not what its predecessor did.
+
+### `bootId` is a process incarnation, not an identity (§8)
+
+A boot change creates **no** new lane, node, athlete assignment or session. The
+ledger, the watermark and the time-sync measurement are all left alone. Only the
+channel is invalid. Asserted directly: after a restart the node count is still
+1, the lane and session are unchanged, and the six shots already held are still
+held.
+
+First sight of a node is **not** a restart, and an unchanged `bootId` is not one
+either — otherwise every range start would report a restart per lane.
+
+### Pending commands (§9)
+
+A command whose answer never arrived is neither forgotten nor re-invented. It is
+held as **pending** and, after reauthentication, retried with the **same
+`commandId`** — minting a new id for the same operator intent would make the
+node treat it as a new command and defeat exactly-once protection entirely.
+
+Pending commands are **persisted**, so an RMS crash between issuing a command
+and hearing its answer does not lose the fact that an answer is still owed.
+
+### A defect this uncovered in the observer
+
+Building the restart-plus-catch-up scenario exposed a real bug in `RangeMonitor`
+that no earlier test could have reached: **the stale-boot guard was discarding
+replayed pre-restart shots.**
+
+The guard exists to stop an old run's *state* overwriting the current run's — an
+old heartbeat dragging the shot count or the phase backwards. But a shot is not
+state. It is an immutable historical fact with its own unique `eventId`, and the
+ledger deduplicates on that. After a node restart, catch-up replays exactly
+those events, because the shots fired before the restart were fired under the
+previous boot. Dropping them left a lane permanently short of shots its athlete
+had actually fired.
+
+Fixed: a shot from a superseded boot is **ingested**, and touches nothing about
+the node's identity, liveness or boot bookkeeping. The drop counter does not
+move, because nothing is dropped. The guard is unchanged for announces and
+statuses, and the R1 test that pins it still passes.
 
 ---
 
@@ -286,12 +419,20 @@ anywhere under `src/rms/control/`, and no reference to the telemetry port.
 2. **No control transport is wired.** The protocol, the coordinator and the
    panel exist; the socket does not. Until it does, RMS still cannot command a
    target — which is what the window says.
-3. **Command idempotency does not survive a node restart** (§3). Closing it
-   needs the node to persist handled command ids.
-4. **RMS does not drop a channel on a boot change** (§3). The node refuses; RMS
-   should also notice.
-5. **`FEED_PAPER` stays capability-gated off.** It moves physical hardware and
+3. **`FEED_PAPER` stays capability-gated off.** It moves physical hardware and
    does not become an operator-visible range command until a node adapter is
-   physically validated.
-6. **Real-network timing is unmeasured.** The sync grades are software
+   physically validated. It is journalled already, so when it is enabled it
+   arrives protected.
+4. **Real-network timing is unmeasured.** The sync grades are software
    thresholds, not field figures.
+5. **The RMS command audit is not bounded.** The *node's* journal is (§3a);
+   RMS's own audit trail grows with the range's activity. That is deliberate
+   for now — an audit exists to be complete — but a long-lived installation
+   will eventually need a retention policy of its own.
+6. **The node's journal is written by the simulator, not yet by Tech Aim
+   Windows.** `CommandJournal` is production code and `ControlledNode` drives
+   the real one, but wiring it into the target application is R3 work and is
+   explicitly out of scope here.
+
+Items 3 and 4 of the R2B list — per-boot idempotency and RMS not noticing a boot
+change — are **closed**, not deferred. See §3a and §3b.

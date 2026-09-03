@@ -128,3 +128,45 @@ watermark would tell RMS it had reconciled further than it had.
 1 lane, 20 lanes and 50 lanes; sessions longer than one 200-event batch; a
 single lost middle datagram; a full offline stretch; and a node process restart
 mid-session. See `RMS-R2-QUALIFICATION.md`.
+
+---
+
+## R2C — replay across a node restart
+
+A restart and a catch-up now happen together, because that is how they happen on
+a range: the station reboots, the athlete keeps shooting, and the shots taken
+before the reboot are still owed to RMS.
+
+### A shot from a superseded boot is still a shot
+
+Building that scenario exposed a real defect in the observer. `RangeMonitor`
+carries a stale-boot guard: a datagram whose `bootId` has already been
+superseded is dropped, because datagrams do not stop in flight when an
+application restarts, and an old heartbeat must not drag the current run's state
+backwards.
+
+Correct for a **status**. Wrong for a **shot** — and replay is made of shots
+from before the restart, so every recovery after a node reboot was silently
+losing them.
+
+The distinction now drawn:
+
+| | Stale-boot datagram |
+|---|---|
+| `NODE_ANNOUNCE`, `NODE_STATUS` | dropped — they carry current state, and the old run's state is not current |
+| `ACCEPTED_SHOT` | **ingested** — it is an immutable historical fact with its own `eventId`, and the ledger deduplicates on that |
+
+A stale-boot shot touches nothing but the ledger: not the node's `bootId`, not
+its liveness, not the restart counter, and not the drop counter — because
+nothing was dropped. Repeating it is suppressed like any other duplicate.
+
+### The sequence, end to end
+
+Shots 1–20 arrive live. The node loses telemetry, restarts, recovers its
+session, and fires 5 more. The new `bootId` appears in its next status. RMS
+invalidates the stale channel, reauthenticates, retries anything pending with
+its original id, requests replay, and the ledger reaches **25 exactly once** —
+with no hole, nothing unobserved, and no athlete, lane or session reset.
+
+Asserted at 1 lane, 20 lanes and 50 lanes, with restarts landing both during a
+pending command and during an offline stretch.

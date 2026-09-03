@@ -192,30 +192,70 @@ results: `RMS-R2-QUALIFICATION.md`. Two properties of v1 surfaced that were not
 visible when the protocol was tested one message at a time, and both are
 recorded here as part of the contract rather than left in a test file.
 
-### 14.1 Command idempotency is PER BOOT
+### 14.1 Command idempotency is DURABLE
 
-The handled-command cache lives in the endpoint, and the endpoint dies with the
-process. A `commandId` reused **across a node restart** is applied a **second
-time**. Within one boot it is still suppressed, which is what makes an ordinary
-retry safe.
+> **R2B recorded per-boot idempotency as an accepted limitation. R2C closed it.**
+> The text describing it as accepted behaviour has been replaced, not annotated.
 
-This is a **known limit of control protocol v1**. Closing it requires the node
-to persist handled command ids alongside its session, which is a node-side
-change and its own reviewed work. Until then:
+The handled-command store is a **journal owned by the node**, not a cache owned
+by the endpoint, and a node hands its recovered journal to the new endpoint on
+startup. The question a repeated `commandId` asks is therefore *"did this NODE
+do it"*, not *"did this PROCESS do it"*.
 
-- an RMS retry after a timeout is safe *within* a boot;
-- an RMS retry that spans a node restart is **not** idempotent;
-- the persisted command audit is what lets an operator see that it happened.
+A `commandId` reused **across a node restart** is recognised and **not applied
+again**. The node answers with the ORIGINAL outcome — accepted or refused, with
+its reason code and resulting state — and `duplicate: true`. That matters: RMS
+retried precisely because it never heard the first answer, so a bare
+"already executed" would leave it exactly as ignorant as the lost ack did.
 
-### 14.2 A stale control channel is refused by the NODE
+| Command | Journalled |
+|---|---|
+| `ASSIGN_ATHLETE`, `PREPARE_SESSION`, `START_AT`, `STOP`, `FEED_PAPER` | yes |
+| `PING`, `REQUEST_STATUS`, `REQUEST_REPLAY` | no — they read and change nothing |
 
-After a node restarts, RMS's client still reports `ControlAuthenticated` —
-nothing told it otherwise. The **node** refuses the next command with
-`NOT_AUTHENTICATED` and the command is not applied.
+**Retention.** At most 512 entries; evictable entries older than 48 hours are
+pruned. Above both bounds sits one rule: an entry that is durable **and**
+belongs to the node's current session is never evicted. Staying inside a budget
+by forgetting the running match's `START_AT` would re-arm the exact failure the
+journal exists to prevent. When everything left is protected the store stays
+over budget and reports that it did, rather than dropping something dangerous.
 
-The protection is real and it holds, but it lives at the wrong end. RMS should
-also notice the `bootId` change in that node's telemetry and drop the channel
-itself. That is open work, listed in `RMS-R2-QUALIFICATION.md` §9.
+**What RMS may now rely on.** A retry with the same `commandId` is safe, within
+a boot and across one. Retrying after a timeout is the correct action.
+
+**What RMS must still never do.** Mint a NEW `commandId` for a retry of the same
+operator intent. The journal recognises ids; a new id is a new command, and
+exactly-once is defeated by the RMS side alone.
+
+### 14.2 A boot change RETIRES the channel
+
+> **R2B recorded this protection as living at the wrong end. R2C moved it.**
+
+RMS compares the `bootId` in a node's telemetry against the one it is tracking.
+A change means the process was replaced, so whatever authenticated to the
+previous incarnation is **void by definition** — not "probably stale", not
+"worth a try". The channel is retired at that moment, before anything is sent on
+it, and this sequence runs automatically with no operator action:
+
+```
+RESTART DETECTED → REAUTHENTICATING → (pending commands retried) → REPLAYING → CURRENT
+```
+
+Capabilities are refreshed by construction, because they arrive on the Challenge
+of the new handshake — a node that came back running a different build is
+believed about what it now advertises.
+
+The node's own refusal remains as a **second** line of defence: even with RMS at
+its most wrong, a command is never applied on the strength of an authentication
+the current process did not perform. It is simply no longer the *first* line.
+
+**`bootId` is a process incarnation, not an identity.** A boot change creates no
+lane, no node, no athlete assignment and no session, and leaves the ledger, the
+watermark and the time-sync measurement untouched. First sight of a node is not
+a restart, and an unchanged `bootId` is not one either.
+
+**A pending command survives it.** A command whose answer never arrived is held
+— and persisted — and retried after reauthentication with its ORIGINAL id.
 
 ### 14.3 `START_AT` (§16–§20)
 
