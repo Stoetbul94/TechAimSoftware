@@ -42,6 +42,10 @@ SOURCES += \
     tst_field_test.cpp \
     tst_control.cpp \
     tst_replay.cpp \
+    tst_catchup.cpp \
+    tst_timesync.cpp \
+    tst_control_scale.cpp \
+    tst_control_status.cpp \
     tst_readonly.cpp \
     $$PWD/../../src/rms/StationCode.cpp \
     $$PWD/../../src/rms/FieldTestRecorder.cpp \
@@ -52,6 +56,8 @@ SOURCES += \
     $$PWD/../../src/rms/control/ControlAuth.cpp \
     $$PWD/../../src/rms/control/NodeControlEndpoint.cpp \
     $$PWD/../../src/rms/control/RmsControlClient.cpp \
+    $$PWD/../../src/rms/control/RangeControlCoordinator.cpp \
+    $$PWD/../../src/rms/control/ControlStatusModel.cpp \
     $$PWD/../../src/rms/TargetNodeRecord.cpp \
     $$PWD/../../src/rms/RangeMonitor.cpp \
     $$PWD/../../src/rms/RangeListModel.cpp \
@@ -72,7 +78,8 @@ SOURCES += \
     $$PWD/../../src/rms/AthleteListModel.cpp \
     $$PWD/../../src/rms/ProgrammeDisplay.cpp \
     $$PWD/../../src/rms/RmsUdpObserver.cpp \
-    $$PWD/../../src/rms/dev/SimulatedRange.cpp
+    $$PWD/../../src/rms/dev/SimulatedRange.cpp \
+    $$PWD/../../src/rms/dev/ControlledNode.cpp
 
 HEADERS += \
     test_support.h \
@@ -102,4 +109,7 @@ HEADERS += \
     $$PWD/../../src/rms/AthleteListModel.h \
     $$PWD/../../src/rms/ProgrammeDisplay.h \
     $$PWD/../../src/rms/RmsUdpObserver.h \
-    $$PWD/../../src/rms/dev/SimulatedRange.h
+    $$PWD/../../src/rms/dev/SimulatedRange.h \
+    $$PWD/../../src/rms/dev/ControlledNode.h \
+    $$PWD/../../src/rms/control/RangeControlCoordinator.h \
+    $$PWD/../../src/rms/control/ControlStatusModel.h

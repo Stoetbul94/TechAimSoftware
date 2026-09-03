@@ -22,6 +22,10 @@ int main(int argc, char** argv)
     run_scale_tests();
     run_control_tests();
     run_replay_tests();
+    run_catchup_tests();
+    run_timesync_tests();
+    run_control_scale_tests();
+    run_control_status_tests();
     run_udp_tests();
     run_range_config_tests();
     run_match_plan_tests();
