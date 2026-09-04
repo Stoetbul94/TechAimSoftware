@@ -53,7 +53,10 @@ for(legacy, LEGACY_EXES) {
 # candidate wording. Nothing about acquisition, scoring, timing or the state
 # machines differs between them, so the RC3F physical evidence carries forward
 # unchanged (docs/release/V1.0-PHYSICAL-EVIDENCE-INHERITANCE.md).
-APP_VERSION_STR = 1.0.0
+# RMS NODE EVALUATION BUILD. Deliberately NOT the customer 1.0.0 string: this
+# binary carries the RMS node seams and has never been range-tested, and an
+# operator must be able to tell the two apart from the About screen alone.
+APP_VERSION_STR = 1.0.0-RMS-EVAL1
 GIT_SHA = $$system(git -C \"$$PWD\" rev-parse --short HEAD)
 isEmpty(GIT_SHA): GIT_SHA = unknown
 DEFINES += APP_VERSION_STR=\\\"$$APP_VERSION_STR\\\"
@@ -177,6 +180,18 @@ INCLUDEPATH += src/mode
 include(Reliability.pri)
 # QSoundEffect for the finals audio cues (FinalsAudioService).
 QT += multimedia
+
+# ── RMS node telemetry (1.0.0-RMS-EVAL1) ─────────────────────────────────────
+# The shared protocol contract plus this station publisher. Node -> RMS is
+# OBSERVATION ONLY on UDP 7755; the sink never binds and has no inbound path.
+QT += network
+include(Telemetry.pri)
+
+# ── RMS node CONTROL plane (1.0.0-RMS-EVAL1) ─────────────────────────────────
+# The node half of the qualified R2 control channel: TCP 7756, HMAC-SHA256,
+# durable command journal. The LEGACY UDP 7756 listener in ModReader is
+# untouched - different socket, both run side by side.
+include(RmsNode.pri)
 
 # P0 Phase F: compiled .qm catalogues ship INSIDE the binary, so a deployed
 # install cannot lose its translations to a missing file on disk.

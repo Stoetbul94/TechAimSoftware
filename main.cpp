@@ -43,6 +43,14 @@
 #include "src/app/ProductIdentityBridge.h"
 #include "src/app/LanguageService.h"
 #include "src/app/DocumentationCapture.h"
+#include "src/rms/RmsProtocol.h"
+#include "src/telemetry/NodeIdentity.h"
+#include "src/telemetry/NodeTelemetryService.h"
+#include "src/telemetry/UdpTelemetrySink.h"
+#include "src/rms/control/CommandJournal.h"
+#include "src/rms/control/ControlAuth.h"
+#include "src/rms/node/NodeControlServer.h"
+#include "src/rms/node/TechAimNodeCommands.h"
 #include "logfile.h"
 #include <memory>
 #include <QFileInfo>
@@ -507,6 +515,125 @@ int main(int argc, char *argv[])
             return nullptr;
         });
     engine.rootContext()->setContextProperty("INCIDENTS", &incidentController);
+
+    // ── RMS node telemetry ───────────────────────────────────────────────
+    // This station describes itself to a Range Management System. It is
+    // OBSERVATION ONLY: the sink is a write-only UDP socket, there is no
+    // inbound path on it, and nothing RMS observes can reach the match. If no
+    // RMS is listening, every datagram simply goes nowhere and this
+    // application behaves exactly as it did before.
+    //
+    // It subscribes to the SAME session stores the incident service consults,
+    // at SessionStore::eventApplied - DOWNSTREAM of acceptance, so it can only
+    // ever describe shots the node has already made authoritative. It never
+    // sees a Modbus candidate, and it never scores anything.
+    ta::telemetry::UdpTelemetrySink telemetrySink;
+    ta::telemetry::NodeTelemetryService nodeTelemetry(
+        ta::telemetry::NodeIdentity::forApplication(), &telemetrySink);
+    nodeTelemetry.setAppVersion(QStringLiteral(APP_VERSION_STR));
+    nodeTelemetry.setProductIdentity(product.displayName);
+    nodeTelemetry.attachStore(qualController.store());
+    nodeTelemetry.attachStore(finalsController.store());
+    nodeTelemetry.attachStore(finals10mController.store());
+    // The target link state comes from the existing target-status signal, not
+    // from datagram arrival: a node can be perfectly reachable with its target
+    // unplugged, and a range display must not show those as the same thing.
+    QObject::connect(widget, &TachusWidget::targetStatusChanged, &nodeTelemetry,
+                     [widget, &nodeTelemetry]() {
+                         nodeTelemetry.setTargetConnected(widget->targetReady());
+                         nodeTelemetry.setDeviceIdentity(widget->targetDevice());
+                     });
+    nodeTelemetry.setTargetConnected(widget->targetReady());
+    nodeTelemetry.setDeviceIdentity(widget->targetDevice());
+    engine.rootContext()->setContextProperty("NODETELEMETRY", &nodeTelemetry);
+    nodeTelemetry.start();
+    LogFile::instance().appendToLogFile(
+        QStringLiteral("RMS telemetry: node %1 boot %2 publishing on UDP %3")
+            .arg(nodeTelemetry.nodeId(), nodeTelemetry.bootId())
+            .arg(int(ta::rms::kObservationPort)),
+        LogType::interfaceLevel);
+
+    // ── RMS node CONTROL plane ───────────────────────────────────────────
+    // The node half of the qualified R2 control channel. Unlike telemetry,
+    // this one LISTENS - so it authenticates every peer with HMAC-SHA256
+    // against a range key that never travels, and it does not open at all
+    // without one.
+    //
+    // The LEGACY UDP 7756 listener inside ModReader is untouched. TCP 7756 and
+    // UDP 7756 are different sockets; both run, neither knows about the other.
+    ta::rms::node::TechAimNodeCommands nodeCommands;
+    nodeCommands.setIdentity(nodeTelemetry.nodeId(), nodeTelemetry.bootId());
+    nodeCommands.setQualificationController(&qualController);
+    nodeCommands.setStoreProvider(
+        [&qualController, &finalsController, &finals10mController]() -> ta::rel::SessionStore* {
+            if (qualController.store() && qualController.store()->active())
+                return qualController.store();
+            if (finalsController.store() && finalsController.store()->active())
+                return finalsController.store();
+            if (finals10mController.store() && finals10mController.store()->active())
+                return finals10mController.store();
+            return nullptr;
+        });
+    nodeCommands.setJournalDirectory(ta::rel::StoragePaths::currentSessionsDirectory());
+
+    // SESSION CONTROL IS OFF UNLESS EXPLICITLY ARMED. Unarmed, the node does
+    // not ADVERTISE startAt/stop/prepare/assign at all, so the endpoint refuses
+    // them as unsupported - RMS is told the truth in the protocol's own
+    // vocabulary rather than being given an ack for something that did not
+    // happen. Arming is deliberate and per-run for this evaluation build.
+    nodeCommands.setSessionControlArmed(
+        qEnvironmentVariableIntValue("TECHAIM_RMS_ARM_CONTROL") == 1);
+
+    // The handled-command journal, RECOVERED FROM DISK before the endpoint is
+    // built. This is what makes a retried commandId idempotent across a restart
+    // of this application, not merely within one run.
+    ta::rms::control::CommandJournal commandJournal;
+    ta::rms::RmsJsonStore commandJournalStore(
+        QDir(ta::rel::StoragePaths::settingsDirectory())
+            .filePath(QStringLiteral("rms_command_journal.json")));
+    commandJournal.loadFrom(commandJournalStore);
+
+    QString rangeKeyError;
+    const QString rangeKeyPath =
+        QDir(ta::rel::StoragePaths::settingsDirectory())
+            .filePath(QStringLiteral("range.key"));
+    const QByteArray rangeKey =
+        ta::rms::control::loadOrCreateRangeKey(rangeKeyPath, &rangeKeyError);
+
+    ta::rms::control::NodeControlEndpoint::Identity controlIdentity;
+    controlIdentity.nodeId = nodeTelemetry.nodeId();
+    controlIdentity.bootId = nodeTelemetry.bootId();
+    controlIdentity.product = product.displayName;
+    controlIdentity.appVersion = QStringLiteral(APP_VERSION_STR);
+    controlIdentity.commit = QStringLiteral(APP_GIT_SHA);
+    controlIdentity.capabilities = nodeCommands.capabilities();
+
+    ta::rms::node::NodeControlServer controlServer(controlIdentity, rangeKey,
+                                                   &nodeCommands, &commandJournal);
+    controlServer.setPersistHook([&commandJournal, &commandJournalStore]() {
+        commandJournal.saveTo(commandJournalStore);
+    });
+    const bool controlUp = controlServer.start();
+    engine.rootContext()->setContextProperty("NODECONTROL", &nodeCommands);
+    engine.rootContext()->setContextProperty("NODECONTROLLINK", &controlServer);
+    LogFile::instance().appendToLogFile(
+        controlUp
+            ? QStringLiteral("RMS control: listening on TCP %1, session control %2")
+                  .arg(QString::number(int(ta::rms::control::kControlPort)),
+                       nodeCommands.sessionControlArmed() ? QStringLiteral("ARMED")
+                                                          : QStringLiteral("not armed"))
+            : QStringLiteral("RMS control: NOT started - %1")
+                  .arg(controlServer.lastError().isEmpty() ? rangeKeyError
+                                                           : controlServer.lastError()),
+        LogType::interfaceLevel);
+
+    // The journal is persisted as the application closes, so what this boot
+    // handled is still known to the next one.
+    QObject::connect(&app, &QCoreApplication::aboutToQuit, &nodeCommands,
+                     [&commandJournal, &commandJournalStore]() {
+                         commandJournal.saveTo(commandJournalStore);
+                     });
+
     engine.load(QUrl(QLatin1String("qrc:/main.qml")));
     if (engine.rootObjects().isEmpty())
         return -1;

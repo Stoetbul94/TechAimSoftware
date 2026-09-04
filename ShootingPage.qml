@@ -273,6 +273,28 @@ Item {
         currentmatchDisplay = "10m FINAL"
     }
 
+    // RMS telemetry carries the STABLE programme identity, never a display
+    // label (QML-LANG-001). The catalogue is the single description of what
+    // "techaim.10m.air-rifle.match60" means; this pushes the id the user
+    // actually selected, plus the rule authority and target standard that
+    // identity resolves to, down to the node telemetry publisher.
+    //
+    // ADAPTED FOR CURRENT TECH AIM: the event ListModels do NOT carry a
+    // programmeId role on this base - the catalogue resolves identity BY INDEX
+    // through programmeIdAt(), and its ordering is load-bearing for exactly
+    // that reason. Reading a role that does not exist would have published an
+    // empty identity on every lane, silently.
+    function publishProgrammeIdentity(modelKey, index)
+    {
+        if (typeof NODETELEMETRY === "undefined")
+            return
+        var programmeId = competitionCatalogue.programmeIdAt(modelKey, index)
+        var profile = competitionCatalogue.profile(programmeId)
+        NODETELEMETRY.setProgramme(programmeId ? programmeId : "",
+                                   profile ? profile.rulesetId : "",
+                                   profile ? profile.targetStandardId : "")
+    }
+
     function setCurrentGameType(index)
     {
         if (APPSETTINGS.getDeveloperMode()) console.log("setCurrentGameType  ", index)
@@ -287,6 +309,7 @@ Item {
                 currentGameDisplay1 = game10RangeEventModel_15.get(index).gameDisplay1
                 currentGameDisplay2 = game10RangeEventModel_15.get(index).gameDisplay2
                 currentmatchDisplay = game10RangeEventModel_15.get(index).matchDisplay
+                publishProgrammeIdentity("game10RangeEventModel_15", index)
             } else {
                 if (index >= game10RangeEventModel.count)
                     return
@@ -295,6 +318,7 @@ Item {
                 currentGameDisplay1 = game10RangeEventModel.get(index).gameDisplay1
                 currentGameDisplay2 = game10RangeEventModel.get(index).gameDisplay2
                 currentmatchDisplay = game10RangeEventModel.get(index).matchDisplay
+                publishProgrammeIdentity("game10RangeEventModel", index)
             }
         } else if (gameRange === 50) {
             // if 15 shoots
@@ -306,6 +330,7 @@ Item {
                 currentGameDisplay1 = game50RangeEventModel_15.get(index).gameDisplay1
                 currentGameDisplay2 = game50RangeEventModel_15.get(index).gameDisplay2
                 currentmatchDisplay = game50RangeEventModel_15.get(index).matchDisplay
+                publishProgrammeIdentity("game50RangeEventModel_15", index)
             } else {
                 if (index >= game50RangeEventModel.count)
                     return
@@ -314,6 +339,7 @@ Item {
                 currentGameDisplay1 = game50RangeEventModel.get(index).gameDisplay1
                 currentGameDisplay2 = game50RangeEventModel.get(index).gameDisplay2
                 currentmatchDisplay = game50RangeEventModel.get(index).matchDisplay
+                publishProgrammeIdentity("game50RangeEventModel", index)
             }
 
     }
