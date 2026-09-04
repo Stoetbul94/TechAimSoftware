@@ -78,3 +78,4 @@ tools/uirender/Makefile*
 tools/uirender/release/
 tools/uirender/debug/
 tools/uirender/.qmake.stash
+tools/rmsnodecheck/release/
