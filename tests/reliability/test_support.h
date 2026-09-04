@@ -97,6 +97,7 @@ QVector<ta::rel::EventEnvelope> writeScript(
 
 // per-module entry points (defined one per tst_*.cpp)
 void run_storagepaths_tests();
+void run_node_telemetry_tests();
 void run_fixedpoint_tests();
 void run_event_tests();
 void run_serializer_tests();

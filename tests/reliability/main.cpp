@@ -35,6 +35,7 @@ int main(int argc, char** argv)
     std::printf("=== Session Reliability tests (M0 storage + M1 core) ===\n");
 
     run_storagepaths_tests();
+    run_node_telemetry_tests();
     run_fixedpoint_tests();
     run_event_tests();
     run_serializer_tests();

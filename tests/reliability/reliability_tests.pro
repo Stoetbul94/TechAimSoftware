@@ -77,4 +77,12 @@ SOURCES += \
     tst_store.cpp \
     tst_recovery.cpp \
     tst_operatingmode.cpp \
+    tst_node_telemetry.cpp \
     tst_fixtures.cpp
+
+# RMS node telemetry. TELEMETRY_NO_NET takes the QtCore-only group: compiling
+# the publisher in this QT = core harness is what PROVES it carries no GUI and
+# no socket dependency. The UDP sink is exercised in tests/telemetry, the only
+# harness that needs QtNetwork.
+TELEMETRY_NO_NET = 1
+include(../../Telemetry.pri)
