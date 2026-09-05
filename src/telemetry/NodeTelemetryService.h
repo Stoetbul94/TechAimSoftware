@@ -124,10 +124,27 @@ signals:
     void telemetrySendFailed(QString detail);
     void telemetryDropped(int totalDropped);
 
+    // WHAT HAPPENED TO ONE DATAGRAM, WITH ENOUGH TO IDENTIFY IT.
+    //
+    // The first physical test lost exactly one accepted shot between this
+    // publisher and RMS, and the node could not say which side lost it -
+    // because the only signals it had were a bare count and a string, neither
+    // carrying an eventId. A telemetry path that cannot name the event it
+    // dropped cannot be diagnosed, only guessed at.
+    //
+    // `stage` is one of: QUEUED, SENT, SEND_FAILED, DROPPED_OVERFLOW.
+    void telemetryStage(const QString& stage, const QString& messageType,
+                        const QString& eventId, const QString& sessionId,
+                        int shotSequence, int bytes, int queueDepth,
+                        const QString& detail);
+
 private:
     void onEventApplied(ta::rel::SessionStore* store,
                         const ta::rel::DomainEvent& event, bool replayed);
-    void enqueue(const QByteArray& datagram);
+    void enqueue(const QByteArray& datagram, const QString& messageType,
+                 const QString& eventId = QString(),
+                 const QString& sessionId = QString(),
+                 int shotSequence = 0);
     qint64 nowMs() const;
 
     ta::rms::NodeStatus buildStatus() const;
@@ -156,7 +173,18 @@ private:
     QString       m_publishedSession;
     QSet<qint32>  m_publishedShots;
 
-    QQueue<QByteArray> m_outbox;
+    // The datagram AND enough context to name it later. Storing bytes alone is
+    // what made a send failure anonymous: by the time flushOutbox() fails, the
+    // shot it belonged to is otherwise unknowable without re-parsing JSON in
+    // the failure path.
+    struct Outgoing {
+        QByteArray  datagram;
+        QString     messageType;
+        QString     eventId;
+        QString     sessionId;
+        int         shotSequence = 0;
+    };
+    QQueue<Outgoing> m_outbox;
     QTimer* m_flushTimer = nullptr;
     QTimer* m_statusTimer = nullptr;
     QTimer* m_announceTimer = nullptr;

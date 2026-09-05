@@ -205,6 +205,81 @@ void run_node_telemetry_tests()
         check(!anyOffline, "a node NEVER declares itself OFFLINE");
     }
 
+    // ── R3B: every shot datagram is ACCOUNTED FOR, by eventId ──────────
+    //
+    // The 2026-09-05 physical test lost one accepted shot between this
+    // publisher and RMS and the node could not say which side lost it: the
+    // drop signals existed but carried no identity and nothing was connected to
+    // them. These checks pin the instrumentation that closed that gap.
+    {
+        Rig rig(ini);
+        rig.beginMatch(qualHeader());
+        rig.sink.clear();
+
+        struct Stage {
+            QString stage, messageType, eventId, sessionId, detail;
+            int sequence = 0, bytes = 0, queueDepth = 0;
+        };
+        QVector<Stage> stages;
+        QObject::connect(&rig.telemetry, &NodeTelemetryService::telemetryStage,
+                         [&stages](const QString& st, const QString& mt,
+                                   const QString& ev, const QString& sid,
+                                   int seq, int bytes, int depth, const QString& d) {
+                             stages.append(Stage{st, mt, ev, sid, d, seq, bytes, depth});
+                         });
+
+        rig.store.submit(DomainEvent(ShotAccepted{testjournal::shot(3, 68, 690, -770)}));
+        rig.telemetry.flushOutbox();
+
+        int queued = 0, sent = 0;
+        Stage queuedShot, sentShot;
+        for (const Stage& st : stages) {
+            if (st.messageType != QLatin1String("shot.accepted"))
+                continue;
+            if (st.stage == QLatin1String("QUEUED")) { ++queued; queuedShot = st; }
+            if (st.stage == QLatin1String("SENT"))   { ++sent;   sentShot = st; }
+        }
+        check(queued == 1, "observability: the shot is reported QUEUED exactly once");
+        check(sent == 1, "observability: and SENT exactly once");
+        check(queuedShot.sequence == 3,
+              "observability: the report names the shot SEQUENCE");
+        check(!queuedShot.eventId.isEmpty(),
+              "observability: and its eventId - the field that was missing",
+              queuedShot.eventId);
+        check(queuedShot.eventId == sentShot.eventId,
+              "observability: the same event is traceable from queue to send");
+        check(queuedShot.bytes > 0, "observability: with the datagram size");
+
+        // A SEND FAILURE NAMES THE EVENT. This is the case the physical test
+        // could not diagnose: previously it produced a bare count.
+        rig.sink.failNext = true;
+        stages.clear();
+        rig.store.submit(DomainEvent(ShotAccepted{testjournal::shot(4, 43, 600, 1560)}));
+        rig.telemetry.flushOutbox();
+        rig.sink.failNext = false;
+
+        Stage failed;
+        int failures = 0;
+        for (const Stage& st : stages) {
+            // The shot only. A failed shot is followed by a failed STATUS,
+            // because the shot moved the authoritative count - counting both
+            // would make this assert the wrong number for the right reason.
+            if (st.stage == QLatin1String("SEND_FAILED")
+                && st.messageType == QLatin1String("shot.accepted")) {
+                ++failures;
+                failed = st;
+            }
+        }
+        check(failures == 1, "observability: a failed send is reported once");
+        check(failed.sequence == 4,
+              "observability: naming WHICH shot failed, not just that one did");
+        check(!failed.eventId.isEmpty(),
+              "observability: with the eventId needed to request it again",
+              failed.eventId);
+        check(failed.messageType == QLatin1String("shot.accepted"),
+              "observability: and what kind of message it was");
+    }
+
     // ── accepted shots ─────────────────────────────────────────────────
     {
         Rig rig(ini);

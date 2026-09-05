@@ -144,7 +144,8 @@ void NodeTelemetryService::onEventApplied(ta::rel::SessionStore* store,
         const ta::rms::AcceptedShot shot =
             toAcceptedShot(core, state.sessionId, m_identity.nodeId(),
                            m_identity.bootId(), m_laneHint, m_programmeId, nowMs());
-        enqueue(ta::rms::encode(shot));
+        enqueue(ta::rms::encode(shot), QStringLiteral("shot.accepted"),
+                shot.eventId, shot.sessionId, shot.shotSequence);
         ++m_shotsPublished;
         // The shot moved the authoritative count and total, so the range view
         // should follow it immediately rather than at the next heartbeat.
@@ -232,7 +233,7 @@ void NodeTelemetryService::publishAnnounce()
     a.appVersion      = m_appVersion;
     a.productIdentity = m_productIdentity;
     a.timestampUtcMs  = nowMs();
-    enqueue(ta::rms::encode(a));
+    enqueue(ta::rms::encode(a), QStringLiteral("node.announce"));
     ++m_announces;
 }
 
@@ -242,25 +243,46 @@ void NodeTelemetryService::publishStatus()
     // Monotonic within this boot. RMS drops anything not strictly newer, which
     // is what stops a reordered datagram from dragging a live lane backwards.
     s.statusSeq = ++m_statusSeq;
-    enqueue(ta::rms::encode(s));
+    enqueue(ta::rms::encode(s), QStringLiteral("node.status"),
+            QString(), s.sessionId, 0);
     ++m_statuses;
 }
 
 // ── outbox ───────────────────────────────────────────────────────────────
 
-void NodeTelemetryService::enqueue(const QByteArray& datagram)
+void NodeTelemetryService::enqueue(const QByteArray& datagram,
+                                   const QString& messageType,
+                                   const QString& eventId,
+                                   const QString& sessionId,
+                                   int shotSequence)
 {
     if (m_outbox.size() >= kOutboxCapacity) {
         // Drop the OLDEST. Telemetry is a live view: the newest observation is
         // the one worth keeping, and RMS reconciles any gap from the
         // authoritative counts in the next status.
-        m_outbox.dequeue();
+        //
+        // NAMED, not just counted. The dropped event is identified here because
+        // this is the last moment anything knows which one it was.
+        const Outgoing lost = m_outbox.dequeue();
         ++m_dropped;
         emit telemetryDropped(m_dropped);
+        emit telemetryStage(QStringLiteral("DROPPED_OVERFLOW"), lost.messageType,
+                            lost.eventId, lost.sessionId, lost.shotSequence,
+                            lost.datagram.size(), int(m_outbox.size()),
+                            QStringLiteral("outbox full (%1)").arg(kOutboxCapacity));
     }
-    m_outbox.enqueue(datagram);
+    Outgoing out;
+    out.datagram = datagram;
+    out.messageType = messageType;
+    out.eventId = eventId;
+    out.sessionId = sessionId;
+    out.shotSequence = shotSequence;
+    m_outbox.enqueue(out);
+    emit telemetryStage(QStringLiteral("QUEUED"), messageType, eventId, sessionId,
+                        shotSequence, datagram.size(), int(m_outbox.size()),
+                        QString());
     // Nothing is sent here. This function is reached from inside the shot's
-    // own call stack, and a socket call there is exactly what §12 forbids.
+    // own call stack, and a socket call there is exactly what forbids it.
 }
 
 int NodeTelemetryService::flushOutbox()
@@ -269,23 +291,30 @@ int NodeTelemetryService::flushOutbox()
         return 0;
     int sent = 0;
     while (!m_outbox.isEmpty()) {
-        const QByteArray datagram = m_outbox.dequeue();
-        if (m_sink->send(datagram)) {
+        const Outgoing out = m_outbox.dequeue();
+        if (m_sink->send(out.datagram)) {
             ++sent;
+            emit telemetryStage(QStringLiteral("SENT"), out.messageType, out.eventId,
+                                out.sessionId, out.shotSequence,
+                                out.datagram.size(), int(m_outbox.size()), QString());
             continue;
         }
         // One attempt, then dropped and counted. No synchronous retry, no
         // growing backlog: RMS already reports the difference between what the
         // node accepted and what it observed, which is the correct place for a
         // lost datagram to become visible.
+        //
+        // But it is no longer ANONYMOUS. The event that failed is named, so the
+        // next investigation starts from a fact instead of an inference.
         ++m_sendFailures;
         emit telemetrySendFailed(QStringLiteral("telemetry datagram dropped (%1 total)")
                                      .arg(m_sendFailures));
+        emit telemetryStage(QStringLiteral("SEND_FAILED"), out.messageType, out.eventId,
+                            out.sessionId, out.shotSequence, out.datagram.size(),
+                            int(m_outbox.size()), m_sink->lastError());
     }
     return sent;
 }
-
-// ── lifecycle ────────────────────────────────────────────────────────────
 
 void NodeTelemetryService::start()
 {

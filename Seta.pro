@@ -56,7 +56,7 @@ for(legacy, LEGACY_EXES) {
 # RMS NODE EVALUATION BUILD. Deliberately NOT the customer 1.0.0 string: this
 # binary carries the RMS node seams and has never been range-tested, and an
 # operator must be able to tell the two apart from the About screen alone.
-APP_VERSION_STR = 1.0.0-RMS-EVAL1
+APP_VERSION_STR = 1.0.0-RMS-EVAL2
 GIT_SHA = $$system(git -C \"$$PWD\" rev-parse --short HEAD)
 isEmpty(GIT_SHA): GIT_SHA = unknown
 DEFINES += APP_VERSION_STR=\\\"$$APP_VERSION_STR\\\"

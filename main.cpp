@@ -546,6 +546,56 @@ int main(int argc, char *argv[])
     nodeTelemetry.setTargetConnected(widget->targetReady());
     nodeTelemetry.setDeviceIdentity(widget->targetDevice());
     engine.rootContext()->setContextProperty("NODETELEMETRY", &nodeTelemetry);
+
+    // ── telemetry observability ──────────────────────────────────────────
+    // The first physical test lost one accepted shot between this publisher and
+    // RMS and the node could not say which side lost it: the drop signals
+    // existed but nothing was connected to them, so every failure path was
+    // silent. They are connected now, and every shot datagram is accounted for
+    // by eventId.
+    //
+    // BOUNDED ON PURPOSE. Shot events are logged at every stage because there
+    // are tens of them in a match and they are the ones that matter. Status and
+    // announce heartbeats - one every 2 s and 30 s - are logged only when they
+    // FAIL, so a normal match does not bury the shot lines under heartbeats.
+    // The payload itself is never logged; the identifying fields are.
+    QObject::connect(&nodeTelemetry, &ta::telemetry::NodeTelemetryService::telemetryStage,
+                     [](const QString& stage, const QString& messageType,
+                        const QString& eventId, const QString& sessionId,
+                        int shotSequence, int bytes, int queueDepth,
+                        const QString& detail) {
+                         const bool isShot = messageType == QLatin1String("shot.accepted");
+                         const bool bad = stage != QLatin1String("QUEUED")
+                                          && stage != QLatin1String("SENT");
+                         if (!isShot && !bad)
+                             return;
+                         LogFile::instance().appendToLogFile(
+                             QStringLiteral("RMS telemetry %1 %2 seq=%3 event=%4 session=%5 "
+                                            "bytes=%6 queue=%7%8")
+                                 .arg(stage, messageType)
+                                 .arg(shotSequence)
+                                 .arg(eventId.isEmpty() ? QStringLiteral("-") : eventId,
+                                      sessionId.isEmpty() ? QStringLiteral("-") : sessionId)
+                                 .arg(bytes).arg(queueDepth)
+                                 .arg(detail.isEmpty() ? QString()
+                                                       : QStringLiteral(" detail=%1").arg(detail)),
+                             LogType::interfaceLevel);
+                     });
+    QObject::connect(&nodeTelemetry, &ta::telemetry::NodeTelemetryService::telemetryDropped,
+                     [](int total) {
+                         LogFile::instance().appendToLogFile(
+                             QStringLiteral("RMS telemetry DROP TOTAL %1 - the outbox "
+                                            "overflowed; RMS will report the gap")
+                                 .arg(total),
+                             LogType::interfaceLevel);
+                     });
+    QObject::connect(&nodeTelemetry, &ta::telemetry::NodeTelemetryService::telemetrySendFailed,
+                     [](const QString& detail) {
+                         LogFile::instance().appendToLogFile(
+                             QStringLiteral("RMS telemetry SEND FAILURE - %1").arg(detail),
+                             LogType::interfaceLevel);
+                     });
+
     nodeTelemetry.start();
     LogFile::instance().appendToLogFile(
         QStringLiteral("RMS telemetry: node %1 boot %2 publishing on UDP %3")
