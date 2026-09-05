@@ -169,6 +169,19 @@ int main(int argc, char** argv)
     const bool armed = caps.contains(QLatin1String(cap::kStartAt));
     std::printf("     session control is %s\n", armed ? "ARMED" : "NOT armed");
 
+    // UNIQUE PER RUN. Fixed ids collided with the node's PERSISTED command
+    // journal: a second run reusing "chk-assign-1" was answered from the
+    // journal with the FIRST run's outcome, before the capability gate was
+    // even consulted. That ordering is correct - the command really did run on
+    // this node, and a capability withdrawn afterwards must not rewrite
+    // history - but it made this tool assert the wrong thing. A run tag keeps
+    // each run's ids its own, and the duplicate check below reuses one
+    // deliberately.
+    const QString runTag = QString::number(QDateTime::currentMSecsSinceEpoch(), 16);
+    auto cid = [&runTag](const char* stem) {
+        return QStringLiteral("chk-%1-%2").arg(QLatin1String(stem), runTag);
+    };
+
     auto sendCmd = [&](const QString& type, const QJsonObject& payload,
                        const QString& id) {
         Command c;
@@ -183,7 +196,7 @@ int main(int argc, char** argv)
 
     // REQUEST_STATUS - always available, changes nothing.
     auto st = sendCmd(QLatin1String(cmd::kRequestStatus), {},
-                      QStringLiteral("chk-status-1"));
+                      cid("status-1"));
     check(st.gotAck && st.ack.accepted, QStringLiteral("REQUEST_STATUS answered"),
           st.ack.message);
     check(st.ack.resultingState.contains(QStringLiteral("nodeId")),
@@ -194,7 +207,7 @@ int main(int argc, char** argv)
     // REQUEST_REPLAY - reads the node's own journal.
     auto rp = sendCmd(QLatin1String(cmd::kRequestReplay),
                       QJsonObject{{"sessionId", seenSessionId}, {"afterSequence", 0}},
-                      QStringLiteral("chk-replay-1"));
+                      cid("replay-1"));
     check(rp.gotReplay || (rp.gotAck && rp.ack.accepted),
           QStringLiteral("REQUEST_REPLAY answered from the journal"),
           rp.gotReplay ? QStringLiteral("%1 events").arg(rp.replay.events.size())
@@ -203,7 +216,7 @@ int main(int argc, char** argv)
     // The session-control group, whose availability is the point.
     auto assign = sendCmd(QLatin1String(cmd::kAssignAthlete),
                           QJsonObject{{"athlete", "R3A Check"}},
-                          QStringLiteral("chk-assign-1"));
+                          cid("assign-1"));
     if (armed) {
         check(assign.gotAck && assign.ack.accepted,
               QStringLiteral("ASSIGN_ATHLETE accepted"), assign.ack.message);
@@ -217,13 +230,13 @@ int main(int argc, char** argv)
     // IDEMPOTENCY within this connection: the same id must not act twice.
     auto again = sendCmd(QLatin1String(cmd::kAssignAthlete),
                          QJsonObject{{"athlete", "R3A Check"}},
-                         QStringLiteral("chk-assign-1"));
+                         cid("assign-1"));
     check(again.gotAck && again.ack.duplicate,
           QStringLiteral("a repeated commandId is answered as a DUPLICATE"),
           again.ack.reasonCode);
 
     auto prep = sendCmd(QLatin1String(cmd::kPrepareSession), {},
-                        QStringLiteral("chk-prepare-1"));
+                        cid("prepare-1"));
     check(prep.gotAck, QStringLiteral("PREPARE_SESSION answered"),
           prep.ack.accepted ? QStringLiteral("accepted") : prep.ack.reasonCode);
 
@@ -232,7 +245,7 @@ int main(int argc, char** argv)
                          QJsonObject{{"startAtUtcMs", double(startAt)},
                                      {"rmsToNodeOffsetMs", 0.0},
                                      {"syncQuality", "GOOD"}},
-                         QStringLiteral("chk-startat-1"));
+                         cid("startat-1"));
     check(start.gotAck, QStringLiteral("START_AT answered"),
           start.ack.accepted ? QStringLiteral("accepted") : start.ack.reasonCode);
     if (armed && start.ack.accepted) {
@@ -241,19 +254,19 @@ int main(int argc, char** argv)
         auto second = sendCmd(QLatin1String(cmd::kStartAt),
                               QJsonObject{{"startAtUtcMs", double(startAt + 5000)},
                                           {"rmsToNodeOffsetMs", 0.0}},
-                              QStringLiteral("chk-startat-2"));
+                              cid("startat-2"));
         check(second.gotAck && !second.ack.accepted,
               QStringLiteral("a SECOND start is refused, not silently re-based"),
               second.ack.reasonCode);
     }
 
-    auto stop = sendCmd(QLatin1String(cmd::kStop), {}, QStringLiteral("chk-stop-1"));
+    auto stop = sendCmd(QLatin1String(cmd::kStop), {}, cid("stop-1"));
     check(stop.gotAck, QStringLiteral("STOP answered"),
           stop.ack.accepted ? QStringLiteral("accepted") : stop.ack.reasonCode);
 
     // An unknown command is refused rather than ignored.
     auto bogus = sendCmd(QStringLiteral("DEMOLISH_RANGE"), {},
-                         QStringLiteral("chk-bogus-1"));
+                         cid("bogus-1"));
     check(bogus.gotAck && !bogus.ack.accepted,
           QStringLiteral("an unknown command is refused"), bogus.ack.reasonCode);
 
@@ -267,14 +280,14 @@ int main(int argc, char** argv)
         std::printf("\n-- cross-boot idempotency --\n");
         auto acrossBoot = sendCmd(QLatin1String(cmd::kAssignAthlete),
                                   QJsonObject{{"athlete", "R3A Check"}},
-                                  QStringLiteral("chk-assign-1"));
+                                  cid("assign-1"));
         check(acrossBoot.gotAck && acrossBoot.ack.duplicate,
               QStringLiteral("a commandId from the PREVIOUS boot is recognised"),
               acrossBoot.ack.reasonCode);
         auto startAcross = sendCmd(QLatin1String(cmd::kStartAt),
                                    QJsonObject{{"startAtUtcMs", double(startAt)},
                                                {"rmsToNodeOffsetMs", 0.0}},
-                                   QStringLiteral("chk-startat-1"));
+                                   cid("startat-1"));
         check(startAcross.gotAck && startAcross.ack.duplicate,
               QStringLiteral("and so is the previous boot's START_AT - it does NOT restart"),
               startAcross.ack.reasonCode);
