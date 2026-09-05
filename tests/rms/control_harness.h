@@ -84,13 +84,33 @@ public:
     {
         int n = 0;
         for (const QString& id : m_order) {
+            int index = 0;
             for (const QByteArray& d : node(id)->drainTelemetry()) {
+                ++index;
+                // DROP EXACTLY ONE DATAGRAM, on purpose.
+                //
+                // This models what the 2026-09-05 physical test did to itself:
+                // one accepted shot's datagram never arrived, while the ones
+                // either side of it did. UDP is not made reliable to fix that -
+                // the recovery is gap detection plus authenticated replay, and
+                // this is how that path is exercised deterministically.
+                const int dropAt = m_dropNth.value(id, 0);
+                if (dropAt > 0 && index == dropAt) {
+                    ++m_droppedDatagrams;
+                    continue;
+                }
                 m_monitor.ingestDatagram(d, nowUtcMs);
                 ++n;
             }
         }
         return n;
     }
+
+    // Drops the Nth datagram this node produces in the NEXT drain (1-based).
+    // Zero disables it.
+    void dropNthTelemetryDatagram(const QString& nodeId, int nth)
+    { m_dropNth.insert(nodeId, nth); }
+    int droppedDatagrams() const { return m_droppedDatagrams; }
 
     // The node's status message, which is what tells RMS how many shots the
     // node says it has accepted. Without this RMS cannot know it is behind:
@@ -159,6 +179,8 @@ private:
     QSet<QString> m_cutControl;
     QSet<QString> m_swallow;
     QHash<QString, quint64> m_statusSeq;
+    QHash<QString, int> m_dropNth;
+    int m_droppedDatagrams = 0;
 };
 
 } // namespace test

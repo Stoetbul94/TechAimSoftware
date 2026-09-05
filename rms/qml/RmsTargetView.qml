@@ -37,9 +37,26 @@ Item {
     // stale rather than blank.
     property bool stale: false
 
+    // FIT THE WHOLE SCORING REGION, not just the cropped tile.
+    //
+    // The compact lane tile crops at the 4 ring on purpose - most of a match
+    // happens near the middle and a tile that drew rings 1-3 would waste its
+    // area. But the first physical test put two perfectly valid shots (3.4 and
+    // 4.3) outside that crop, where they rendered as edge arrows and read as
+    // errors. A detail view sets this true and gets the whole card.
+    property bool fitToScoringRegion: false
+
     readonly property var spec: TARGETGEO.specFor(targetStandardId)
     readonly property bool supported: spec && spec.supported === true
-    readonly property real faceRadius: Math.min(width, height) / 2 - 4
+    // How much bigger the scoring region is than the drawn face. Dividing the
+    // face by this is the WHOLE fix: shot positions are already fractions of
+    // the face, so shrinking the face inside the same widget moves every shot
+    // and every ring correctly with no second mapping to keep in step.
+    readonly property real scoringFactor:
+        (fitToScoringRegion && spec && spec.scoringRadiusFraction !== undefined)
+            ? spec.scoringRadiusFraction : 1.0
+    readonly property real faceRadius:
+        (Math.min(width, height) / 2 - 4) / scoringFactor
     readonly property real cx: width / 2
     readonly property real cy: height / 2
     // THE PROJECTILE, AT ITS TRUE PHYSICAL SIZE. Not a fixed pixel dot: a
@@ -91,6 +108,36 @@ Item {
             ctx.beginPath()
             ctx.arc(cx, cy, Math.min(1.0, s.blackRadiusFraction) * R, 0, 2 * Math.PI)
             ctx.fill()
+
+            // The cropped face is drawn above. When fitting to the scoring
+            // region, the rings OUTSIDE it are drawn first, on the paper the
+            // card actually has, so a low shot lands on rings instead of on
+            // nothing.
+            if (view.fitToScoringRegion && s.scoringRings) {
+                var outer = s.scoringRings
+                var SR = R * view.scoringFactor
+                // The card beyond the cropped face: same cream, so the face
+                // and its surround read as one piece of paper.
+                ctx.fillStyle = "#efe9dd"
+                ctx.beginPath(); ctx.arc(cx, cy, SR, 0, 2 * Math.PI); ctx.fill()
+                ctx.fillStyle = "#f4efe4"
+                ctx.beginPath(); ctx.arc(cx, cy, R, 0, 2 * Math.PI); ctx.fill()
+                ctx.fillStyle = "#141414"
+                ctx.beginPath()
+                ctx.arc(cx, cy, Math.min(1.0, s.blackRadiusFraction) * R, 0, 2 * Math.PI)
+                ctx.fill()
+                for (var k = 0; k < outer.length; ++k) {
+                    if (!outer[k].outsideDrawnFace)
+                        continue
+                    var ro = outer[k].fraction * SR
+                    if (ro <= 0.5)
+                        continue
+                    ctx.beginPath(); ctx.arc(cx, cy, ro, 0, 2 * Math.PI)
+                    ctx.strokeStyle = "rgba(35,35,35,0.40)"
+                    ctx.lineWidth = 1
+                    ctx.stroke()
+                }
+            }
 
             // ring edges, at their true fractions of the face
             var rings = s.rings ? s.rings : []

@@ -78,7 +78,9 @@ SOURCES += \
     $$PWD/../src/rms/control/NodeControlEndpoint.cpp \
     $$PWD/../src/rms/control/RmsControlClient.cpp \
     $$PWD/../src/rms/control/RangeControlCoordinator.cpp \
-    $$PWD/../src/rms/control/ControlStatusModel.cpp
+    $$PWD/../src/rms/control/ControlStatusModel.cpp \
+    $$PWD/../src/rms/control/NodeAddressBook.cpp \
+    $$PWD/../src/rms/control/RmsControlTransport.cpp
 
 HEADERS += \
     $$PWD/../src/rms/RmsProtocol.h \
@@ -114,6 +116,8 @@ HEADERS += \
     $$PWD/../src/rms/control/NodeControlEndpoint.h \
     $$PWD/../src/rms/control/RmsControlClient.h \
     $$PWD/../src/rms/control/RangeControlCoordinator.h \
-    $$PWD/../src/rms/control/ControlStatusModel.h
+    $$PWD/../src/rms/control/ControlStatusModel.h \
+    $$PWD/../src/rms/control/NodeAddressBook.h \
+    $$PWD/../src/rms/control/RmsControlTransport.h
 
 RESOURCES += rms.qrc

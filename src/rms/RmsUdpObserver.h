@@ -18,6 +18,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 #include <QByteArray>
+#include <QHostAddress>
 #include <QObject>
 
 class QUdpSocket;
@@ -38,6 +39,10 @@ public:
 
 signals:
     void datagramReceived(const QByteArray& payload);
+    // The same datagram, with the address it arrived from. CONNECTION METADATA
+    // ONLY - see the note in readPending(). Emitted alongside the plain signal
+    // so every existing observer keeps working untouched.
+    void datagramReceivedFrom(const QByteArray& payload, const QHostAddress& sender);
 
 private slots:
     void readPending();

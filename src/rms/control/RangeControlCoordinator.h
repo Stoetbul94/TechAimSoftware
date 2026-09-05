@@ -151,6 +151,15 @@ public:
 
     void setLink(Link link) { m_link = std::move(link); }
 
+    // Called immediately BEFORE each handshake, with the node about to be
+    // dialled. A real transport uses it to drop any socket it still holds: the
+    // node builds one endpoint per connection, so a new handshake arriving on
+    // an old socket would be answered by an endpoint that already believes it
+    // is authenticated. Purely a notification - it makes no decision and the
+    // handshake logic below is unchanged.
+    void setPreConnectHook(std::function<void(const QString&)> hook)
+    { m_preConnect = std::move(hook); }
+
     // Authenticates a control channel to one node. Returns false and records
     // the reason on any failure - wrong key, wrong identity, wrong version.
     bool connectNode(const QString& nodeId);
@@ -284,6 +293,7 @@ private:
         static PendingCommand fromJson(const QJsonObject& o);
     };
 
+    std::function<void(const QString&)> m_preConnect;
     QString    m_instanceId;
     QByteArray m_key;
     Link       m_link;

@@ -170,6 +170,35 @@ QVariantMap TargetGeometryBridge::specFor(const QString& targetStandardId) const
         rings.append(r);
     }
     m[QStringLiteral("rings")] = rings;
+
+    // ── THE FULL SCORING REGION, for a view that wants to fit to it ──────
+    // Everything above describes the CROPPED tile, unchanged, so every existing
+    // renderer behaves exactly as before. What follows describes how much
+    // bigger the region a score can come from actually is - which the lane
+    // detail needs, because the first physical test drew two perfectly valid
+    // low shots as arrows outside the tile.
+    const double scoring = s.scoringRadiusMm();
+    m[QStringLiteral("scoringRadiusMm")]       = scoring;
+    m[QStringLiteral("outermostScoringRing")]  = s.outermostScoringRing;
+    // How much larger the scoring region is than the drawn tile. A view can
+    // multiply its face size by this to show every valid shot; at 10 m air
+    // rifle it is about 1.49.
+    m[QStringLiteral("scoringRadiusFraction")] = scoring / face;
+
+    // Every scoring ring, outermost first, as a fraction of the SCORING
+    // radius - so a detail view can draw the whole card rather than the crop.
+    QVariantList scoringRings;
+    for (int ring = s.outermostScoringRing; ring <= 10; ++ring) {
+        QVariantMap r;
+        r[QStringLiteral("ring")]     = ring;
+        r[QStringLiteral("fraction")] = s.ringRadiusMm(ring) / scoring;
+        r[QStringLiteral("inBlack")]  = s.ringRadiusMm(ring) <= s.blackRadiusMm();
+        // True for rings the compact tile crops away. A renderer can style
+        // these differently without having to recompute the crop itself.
+        r[QStringLiteral("outsideDrawnFace")] = ring < s.outermostRing;
+        scoringRings.append(r);
+    }
+    m[QStringLiteral("scoringRings")] = scoringRings;
     return m;
 }
 

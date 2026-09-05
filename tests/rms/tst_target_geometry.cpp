@@ -449,3 +449,78 @@ void run_target_geometry_tests()
               QString::number(a.faceRadiusMm()));
     }
 }
+
+// ── R3B: the full scoring region, and the physical shots that exposed it ────
+//
+// The first physical test produced two valid low shots - 3.4 at r = 18.83 mm
+// and 4.3 at r = 16.71 mm - which rendered as arrows at the edge of a face
+// drawn to 15.25 mm. Nothing was wrong with the score or the coordinates; the
+// drawn face is deliberately cropped at the 4 ring, and those shots were simply
+// outside the crop.
+//
+// These checks pin BOTH facts: the crop is unchanged, and the full scoring
+// region is now available to a view that wants to fit to it.
+void run_scoring_region_tests()
+{
+    std::printf("\n-- the full 10 m scoring region (R3B) --\n");
+
+    const ta::rms::TargetSpec s =
+        ta::rms::TargetGeometry::specFor(QStringLiteral("issf.10m.air-rifle"));
+    check(s.supported, "region: the 10 m air rifle standard is known");
+
+    // The crop is UNCHANGED. Every existing lane tile renders as before.
+    check(qAbs(s.faceRadiusMm() - 15.25) < 0.001,
+          "region: the drawn face is still cropped at the 4 ring (15.25 mm)",
+          QStringLiteral("%1").arg(s.faceRadiusMm()));
+
+    // The card scores out to the 1 ring: 0.5 + 9 x 5.0 = 45.5 mm diameter.
+    check(qAbs(s.scoringRadiusMm() - 22.75) < 0.001,
+          "region: but the scoring region reaches the 1 ring (22.75 mm)",
+          QStringLiteral("%1").arg(s.scoringRadiusMm()));
+    check(s.scoringRadiusMm() > s.faceRadiusMm(),
+          "region: the scoring region is LARGER than the drawn tile");
+
+    // THE TWO PHYSICAL SHOTS. Both are valid shots on the card, and both fall
+    // outside the cropped tile - which is exactly why they looked wrong.
+    const double rShot1 = 18.82976367350371;   // scored 3.4
+    const double rShot4 = 16.714065932620944;  // scored 4.3
+    check(rShot1 > s.faceRadiusMm(),
+          "region: the 3.4 shot is outside the CROPPED face - hence the arrow");
+    check(s.withinScoringRegion(rShot1),
+          "region: but it is inside the SCORING region - a valid shot, not an error");
+    check(rShot4 > s.faceRadiusMm(),
+          "region: the 4.3 shot is outside the cropped face too");
+    check(s.withinScoringRegion(rShot4),
+          "region: and is also a valid scoring shot");
+
+    // A shot genuinely off the card is still distinguishable from those two.
+    check(!s.withinScoringRegion(30.0),
+          "region: a shot beyond the card is still reported as outside it");
+
+    // The bridge exposes both, so a renderer can choose without arithmetic.
+    ta::rms::TargetGeometryBridge bridge;
+    const QVariantMap m = bridge.specFor(QStringLiteral("issf.10m.air-rifle"));
+    check(qAbs(m.value("faceRadiusMm").toDouble() - 15.25) < 0.001,
+          "region: the bridge still reports the cropped face unchanged");
+    check(qAbs(m.value("scoringRadiusMm").toDouble() - 22.75) < 0.001,
+          "region: and now also reports the scoring radius");
+    const double factor = m.value("scoringRadiusFraction").toDouble();
+    check(qAbs(factor - (22.75 / 15.25)) < 0.0001,
+          "region: with the factor a detail view needs to fit to it",
+          QStringLiteral("%1").arg(factor));
+
+    const QVariantList scoringRings = m.value("scoringRings").toList();
+    check(scoringRings.size() == 10,
+          "region: all ten scoring rings are described",
+          QStringLiteral("%1").arg(scoringRings.size()));
+    int croppedAway = 0;
+    for (const QVariant& v : scoringRings)
+        if (v.toMap().value("outsideDrawnFace").toBool()) ++croppedAway;
+    check(croppedAway == 3,
+          "region: rings 1-3 are marked as cropped from the compact tile",
+          QStringLiteral("%1").arg(croppedAway));
+    // The outermost scoring ring sits exactly at the scoring radius.
+    check(qAbs(scoringRings.first().toMap().value("fraction").toDouble() - 1.0) < 0.0001,
+          "region: the 1 ring lands exactly on the scoring radius");
+    std::fflush(stdout);
+}

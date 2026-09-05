@@ -453,6 +453,67 @@ void runRestartQualification(int lanes, const char* label)
           QStringLiteral("%1: nothing is left owed on any lane").arg(QLatin1String(label)));
 }
 
+// ── §11: the physical failure, reproduced deterministically ────────────────
+//
+// 2026-09-05: a node published official sequences 1..5, RMS received 1, 2, 4, 5
+// and reported 1 SHOT NOT OBSERVED. The station totalled 27.7, RMS 20.9. RMS
+// detected the gap correctly and could not act on it, because that build had no
+// control client.
+//
+// This is that scenario with the control client attached - the shape the second
+// physical test is meant to produce.
+void testSingleDatagramLossRecoversAutomatically()
+{
+    ControlHarness h(key32());
+    auto* n = h.addNode(QLatin1String(kNode), QStringLiteral("Lane 1"));
+    check(h.connectAll() == 1, "gap: the control channel authenticates");
+    h.pumpAllStatus(h.now());
+    h.coordinator().serviceNodes(&h.monitor(), h.now());
+
+    // Five official shots; the THIRD datagram never arrives.
+    h.dropNthTelemetryDatagram(QLatin1String(kNode), 3);
+    n->fire(5, h.now());
+    h.pumpTelemetry(h.now());
+    h.pumpAllStatus(h.now());
+    check(h.droppedDatagrams() == 1, "gap: exactly one datagram was dropped");
+
+    const auto* before = h.monitor().nodeById(QLatin1String(kNode));
+    check(before->ledger.observedCount() == 4,
+          "gap: RMS holds 4 of 5 - the physical state");
+    check(before->shotsAcceptedByNode == 5,
+          "gap: while the node reports 5 accepted");
+    check(before->unobservedShotCount() == 1,
+          "gap: RMS reports 1 SHOT NOT OBSERVED");
+    check(before->ledger.missingSequences() == QList<int>{3},
+          "gap: and names sequence 3");
+    // THE DISTINCTION THAT MATTERS. The highest sequence already reads 5, so a
+    // node-count-vs-highest-sequence check would call this lane current. Only
+    // the missing-sequence logic finds a MIDDLE hole.
+    check(before->ledger.highestSequence() == 5,
+          "gap: highestSequence already reads 5 - a tail-only check would miss it");
+
+    // ONE automatic pass. No operator button.
+    const int recovered = h.coordinator().serviceNodes(&h.monitor(), h.now() + 1000);
+    Q_UNUSED(recovered);
+
+    const auto* after = h.monitor().nodeById(QLatin1String(kNode));
+    check(after->ledger.observedCount() == 5,
+          "gap: automatic catch-up completes the ledger to 5");
+    check(after->unobservedShotCount() == 0, "gap: nothing is unobserved");
+    check(after->ledger.missingSequences().isEmpty(), "gap: and no hole remains");
+    check(after->ledger.sequenceConflicts() == 0,
+          "gap: recovery created no sequence conflict");
+    check(h.coordinator().semanticDoubleExecutions() == 0,
+          "gap: and no command was executed twice recovering it");
+
+    // Running the pass again must change nothing - an operator or a timer may
+    // trigger it repeatedly.
+    h.coordinator().serviceNodes(&h.monitor(), h.now() + 2000);
+    const auto* stable = h.monitor().nodeById(QLatin1String(kNode));
+    check(stable->ledger.observedCount() == 5,
+          "gap: a second pass leaves the ledger at 5 - no duplicate shot");
+}
+
 void testTwentyLaneRestarts() { runRestartQualification(20, "20-lane restart"); }
 void testFiftyLaneRestarts()  { runRestartQualification(50, "50-lane restart"); }
 
@@ -470,6 +531,7 @@ void run_reauth_tests()
     testStaleChannelIsRetiredBeforeItIsUsed();
     testFirstSightIsNotARestart();
     testReplayAfterRestart();
+    testSingleDatagramLossRecoversAutomatically();
     testTwentyLaneRestarts();
     testFiftyLaneRestarts();
     std::fflush(stdout);

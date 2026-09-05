@@ -134,6 +134,8 @@ bool RangeControlCoordinator::connectNode(const QString& nodeId)
     if (!m_link)
         return false;
 
+    if (m_preConnect)
+        m_preConnect(nodeId);
     delete m_clients.take(nodeId);
     auto* c = new RmsControlClient(m_instanceId, m_key);
     c->setExpectedNode(nodeId);          // identity is verified, not assumed

@@ -59,6 +59,25 @@ bool macEquals(const QString& a, const QString& b)
     return diff == 0;
 }
 
+QByteArray loadRangeKey(const QString& path, QString* errorOut)
+{
+    const auto fail = [errorOut](const QString& why) {
+        if (errorOut) *errorOut = why;
+        return QByteArray();
+    };
+    if (!QFileInfo::exists(path))
+        return fail(QStringLiteral("range key not configured"));
+    QFile f(path);
+    if (!f.open(QIODevice::ReadOnly))
+        return fail(QStringLiteral("range key exists but cannot be read"));
+    const QByteArray key = QByteArray::fromHex(f.readAll().trimmed());
+    // Short or corrupt is a FAILURE, never a fallback to no authentication.
+    if (key.size() < 32)
+        return fail(QStringLiteral("range key is too short to use"));
+    if (errorOut) errorOut->clear();
+    return key;
+}
+
 QByteArray loadOrCreateRangeKey(const QString& path, QString* errorOut)
 {
     const auto fail = [errorOut](const QString& why) {

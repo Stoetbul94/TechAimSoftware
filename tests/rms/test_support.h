@@ -32,6 +32,7 @@ void run_match_plan_tests();
 void run_competition_state_tests();
 void run_target_display_tests();
 void run_target_geometry_tests();
+void run_scoring_region_tests();
 void run_field_test_tests();
 void run_udp_tests();
 

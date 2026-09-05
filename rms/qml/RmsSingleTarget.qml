@@ -110,6 +110,13 @@ Item {
             targetStandardId: single.f("targetStandardId", "")
             shots: (single.lane && single.lane.shots) ? single.lane.shots : []
             showLastShotLabel: false
+            // THE FULL CARD, not the cropped tile. This is the large view, so
+            // it has the room - and the first physical test showed why it
+            // needs it: two valid low shots (3.4 and 4.3) fell outside the
+            // crop and read as errors at the edge. The compact lane tile in
+            // RmsTargetCard is deliberately left cropped; a range overview
+            // should stay dense.
+            fitToScoringRegion: true
             stale: single.f("hasDevice", false) && !single.online
         }
 

@@ -81,6 +81,18 @@ struct TargetSpec {
     // rarely touches, so the face is cropped here and the crop is a display
     // decision, not a claim about the card.
     int     outermostRing = 4;
+    // Lowest-numbered ring that still SCORES. Real cards carry rings out to 1,
+    // and a shot in the 3 ring is a valid competition shot worth 3.x - it is
+    // simply outside the cropped tile above.
+    //
+    // WHY THIS IS SEPARATE FROM THE CROP. The first physical test put two valid
+    // shots (3.4 and 4.3, at r = 18.8 and 16.7 mm) outside a face drawn to
+    // 15.25 mm, so they rendered as arrows at the edge and looked like errors.
+    // They were not errors. The compact lane tile is still right to crop - most
+    // of a match happens near the middle - but the detail view must be able to
+    // show the whole region a score can come from, and it needs a number for
+    // that region which is NOT the crop.
+    int     outermostScoringRing = 1;
     // Telemetry y is positive upwards; screens are positive downwards.
     bool    yAxisUp = true;
     bool    supported = false;
@@ -92,6 +104,12 @@ struct TargetSpec {
     }
     double ringRadiusMm(int ring) const { return ringDiameterMm(ring) / 2.0; }
     double faceRadiusMm() const  { return ringRadiusMm(outermostRing); }
+    // The full scoring extent, which is what a detail view should fit to.
+    double scoringRadiusMm() const { return ringRadiusMm(outermostScoringRing); }
+    // A shot beyond this cannot have come from this face at all - as opposed to
+    // one merely outside the cropped tile, which is ordinary.
+    bool withinScoringRegion(double radiusMm) const
+    { return radiusMm <= scoringRadiusMm(); }
     double blackRadiusMm() const { return blackDiameterMm / 2.0; }
     double innerTenRadiusMm() const { return innerTenDiameterMm / 2.0; }
     double projectileRadiusMm() const { return projectileDiameterMm / 2.0; }

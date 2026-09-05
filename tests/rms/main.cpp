@@ -34,6 +34,7 @@ int main(int argc, char** argv)
     run_competition_state_tests();
     run_target_display_tests();
     run_target_geometry_tests();
+    run_scoring_region_tests();
     run_field_test_tests();
     run_readonly_tests();
 

@@ -40,6 +40,7 @@ class ControlStatusModel : public QAbstractListModel
     // One line for the banner. Says what is true, including "not enabled".
     Q_PROPERTY(QString statusLine READ statusLine NOTIFY summaryChanged)
     Q_PROPERTY(QString tone READ tone NOTIFY summaryChanged)
+    Q_PROPERTY(bool keyConfigured READ keyConfigured NOTIFY summaryChanged)
 
 public:
     enum Roles {
@@ -62,6 +63,13 @@ public:
     // with a link set in a test is not a range with a socket.
     void setTransportAttached(bool attached);
     bool transportAttached() const { return m_transportAttached; }
+
+    // A transport can be wired and still unusable because no range key was
+    // configured. Those are DIFFERENT operator problems - one is "this build
+    // cannot", the other is "copy the key across" - so they are never
+    // collapsed into one message.
+    void setKeyConfigured(bool configured, const QString& detail = QString());
+    bool keyConfigured() const { return m_keyConfigured; }
 
     int laneCount() const { return m_rows.size(); }
     int authenticatedCount() const;
@@ -100,6 +108,8 @@ private:
     RangeMonitor* m_monitor = nullptr;
     RangeControlCoordinator* m_coordinator = nullptr;
     bool m_transportAttached = false;
+    bool m_keyConfigured = false;
+    QString m_keyDetail;
     QVector<Row> m_rows;
 };
 

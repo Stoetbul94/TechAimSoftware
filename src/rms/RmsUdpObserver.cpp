@@ -59,10 +59,29 @@ void RmsUdpObserver::readPending()
         while (s->hasPendingDatagrams()) {
             QByteArray payload;
             payload.resize(int(s->pendingDatagramSize()));
-            // The sender address is deliberately discarded. RMS has no reply
-            // path, so keeping a destination around would only invite one.
-            s->readDatagram(payload.data(), payload.size());
+            // THE SENDER ADDRESS IS CONNECTION METADATA, NEVER IDENTITY.
+            //
+            // Until R3B this was deliberately discarded, because an observer
+            // with no reply path should not keep a destination around. R3B
+            // gives RMS a reply path - the authenticated TCP control channel -
+            // and it has to dial somewhere, so the address is now carried.
+            //
+            // What has NOT changed is what it means. A node is its nodeId. The
+            // address is only where that node was last heard from: RMS dials it
+            // and then VERIFIES the authenticated nodeId is the one it meant to
+            // reach, dropping the connection if it is not. Nothing downstream
+            // may treat this as identity.
+            QHostAddress sender;
+            quint16 senderPort = 0;
+            s->readDatagram(payload.data(), payload.size(), &sender, &senderPort);
+            // IPv4-mapped IPv6 (::ffff:a.b.c.d) is normalised so the same node
+            // heard on either socket yields one address, not two.
+            bool converted = false;
+            const quint32 v4 = sender.toIPv4Address(&converted);
+            if (converted)
+                sender = QHostAddress(v4);
             emit datagramReceived(payload);
+            emit datagramReceivedFrom(payload, sender);
         }
     }
 }

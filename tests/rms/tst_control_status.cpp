@@ -86,6 +86,7 @@ void testAttachedReportsPerLane()
     ControlStatusModel m;
     m.setSources(&h.monitor(), &h.coordinator());
     m.setTransportAttached(true);
+    m.setKeyConfigured(true);
 
     check(m.authenticatedCount() == 3, "status: three lanes authenticated");
     check(m.laneCount() == 4, "status: four lanes listed");
@@ -126,6 +127,7 @@ void testRestartSequenceIsShown()
     ControlStatusModel m;
     m.setSources(&h.monitor(), &h.coordinator());
     m.setTransportAttached(true);
+    m.setKeyConfigured(true);
     check(cell(m, 0, ControlStatusModel::ChannelRole).toString()
               == QLatin1String("CURRENT"),
           "restart-ui: a settled lane reads CURRENT");
@@ -159,6 +161,39 @@ void testRestartSequenceIsShown()
     check(m.authenticatedCount() == 1, "restart-ui: authenticated once more");
 }
 
+// ── R3B: a wired transport with no key is its OWN state ────────────────────
+void testTransportWithoutKeyIsNotConfigured()
+{
+    ControlHarness h(key32());
+    h.addNode(QStringLiteral("TA-NODE-001"), QStringLiteral("Lane 1"));
+    h.connectAll();
+    h.pumpAllStatus(h.now());
+
+    ControlStatusModel m;
+    m.setSources(&h.monitor(), &h.coordinator());
+    m.setTransportAttached(true);
+    m.setKeyConfigured(false, QStringLiteral("range key not configured"));
+
+    // NOT the same message as a build with no control channel. That one is
+    // "this build cannot"; this one is "copy the key across" - and sending an
+    // operator to look for a build problem they cannot fix wastes a range day.
+    check(m.statusLine().contains(QLatin1String("NOT CONFIGURED")),
+          "not-configured: the banner says CONTROL NOT CONFIGURED");
+    check(!m.statusLine().contains(QLatin1String("NOT ENABLED")),
+          "not-configured: and does NOT claim the channel is disabled");
+    check(m.statusLine().contains(QLatin1String("Telemetry is unaffected")),
+          "not-configured: it says what still works");
+    check(cell(m, 0, ControlStatusModel::ChannelRole).toString()
+              == QLatin1String("NOT CONFIGURED"),
+          "not-configured: the lane reads NOT CONFIGURED");
+    check(m.authenticatedCount() == 0,
+          "not-configured: no lane is reported authenticated");
+    // A WARNING, unlike the no-transport build: this one could be recovering
+    // shots and is not.
+    check(m.tone() == QLatin1String("warn"),
+          "not-configured: it is a warning, because it is fixable and costing recovery");
+}
+
 void testSyncQualityAndWatermarkSurface()
 {
     ControlHarness h(key32());
@@ -171,6 +206,7 @@ void testSyncQualityAndWatermarkSurface()
     ControlStatusModel m;
     m.setSources(&h.monitor(), &h.coordinator());
     m.setTransportAttached(true);
+    m.setKeyConfigured(true);
 
     // Before any measurement the quality is UNUSABLE - the honest default. An
     // unmeasured clock is not a good clock.
@@ -201,6 +237,7 @@ void run_control_status_tests()
     testNoTransportSaysSo();
     testAttachedReportsPerLane();
     testRestartSequenceIsShown();
+    testTransportWithoutKeyIsNotConfigured();
     testSyncQualityAndWatermarkSurface();
     std::fflush(stdout);
 }
