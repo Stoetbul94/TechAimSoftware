@@ -3,3 +3,9 @@
 
 # Reliability golden fixtures are byte-exact journals: no EOL conversion
 tests/reliability/fixtures/*.jsonl -text
+
+# PHYSICAL EVIDENCE - never line-ending converted.
+# tests/rmsnode/fixtures holds byte-identical copies of journals recovered from
+# real range hardware. A checkout that rewrote their line endings would change
+# their hashes and quietly turn evidence into a re-typed expectation.
+tests/rmsnode/fixtures/** -text -diff
