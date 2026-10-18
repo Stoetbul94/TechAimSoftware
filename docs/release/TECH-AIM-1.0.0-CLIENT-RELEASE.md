@@ -1,9 +1,9 @@
 # Tech Aim 1.0.0 — client release record
 
-**The client folder is ready to send. The repository commit of two packaging
-scripts is blocked by the environment — see §Git, which is the one open item.**
+**The client folder is ready to send. Both packaging scripts are now in the
+repository — see §Git (closed 2026-10-18).**
 
-Written 2026-08-30.
+Written 2026-08-30. §Git updated 2026-10-18.
 
 ---
 
@@ -107,7 +107,7 @@ text. The build is still identifiable from the product name, version and
 executable SHA-256, and the bundle **says** the fields are missing rather than
 inventing them — which is the behaviour asked for. Closing it means either
 emitting a JSON manifest from the packager or teaching the collector to read the
-text one; both are in the blocked scripts below.
+text one; both are in the packaging scripts (see §Git).
 
 ---
 
@@ -182,30 +182,43 @@ three identity files, one test and two support scripts. See
 
 ---
 
-## Git — the one open item
+## Git — closed 2026-10-18
 
-`tools/release/build-v1-package.ps1` and `tools/release/build-client-package.ps1`
-**cannot be read or written by any process on this machine**: every attempt
-returns *Permission denied* or *being used by another process*, while a freshly
-created `probe.ps1` in the same directory writes and deletes normally. This
-looks like an endpoint-security scanner holding those two paths.
+**What happened (2026-08-30).** `tools/release/build-v1-package.ps1` and the
+new `tools/release/build-client-package.ps1` could not be read or written:
+every attempt returned *Permission denied* or *being used by another process*.
+`build-v1-package.ps1` was left deleted in the working tree, and
+`build-client-package.ps1` could not be staged. `README-CLIENT.txt` and the
+installer were committed later, in `f0b7fcc`.
 
-Consequences, stated plainly:
+**Cause.** Bitdefender Antivirus, the active real-time scanner on this machine
+(Windows Defender is passive and has no detection on record). It locks the
+client packager **by content**: the same text written under a `.txt` name in an
+unrelated temp folder is locked the moment it is written. After the August
+session the file disappeared from disk entirely, most likely quarantined.
 
-- `build-v1-package.ps1` is **deleted in the working tree** and cannot be
-  restored from git.
-- `build-client-package.ps1` exists on disk but cannot be staged.
-- **The branch is therefore not committed and not pushed.** `HEAD` is
-  `19f239d`, which is the commit the shipped binary was built from, so the
-  artefacts are consistent and correctly identified.
-- The client package is currently reproducible only by hand: build, deploy with
-  the allow-list, replace the document set, zip.
+**Resolution.**
 
-**What clears it:** unlock those two paths — reboot, or exclude
-`…\seta10\tools\release\` in the security product — then
-`git checkout HEAD -- tools/release/build-v1-package.ps1`, stage
-`build-client-package.ps1` and `docs/release/README-CLIENT.txt`, commit and push.
-Nothing about the built artefacts changes; only the repository catches up.
+- `build-v1-package.ps1` restored from git. The lock on that path had cleared.
+- `build-client-package.ps1` regenerated with the same deterministic transform
+  of `build-v1-package.ps1` that first produced it. The output came to
+  **10 261 bytes, the size recorded for the lost file** before it disappeared.
+  One duplicated two-line comment the transform introduced was then removed. The
+  script parses with 0 errors, and its document set (`README-CLIENT.txt` at the
+  root, no `docs/` folder) matches the shipped `dist/v1.0.0` package.
+- It was staged from a stream (`git hash-object --stdin`), so git never had to
+  read the locked working-tree file.
+
+**Still true:**
+
+- On this machine Bitdefender will keep locking or quarantining
+  `build-client-package.ps1` after checkout. To run it, add an exclusion for
+  `…\seta10\tools\release\` first.
+- The script refuses to package a binary that does not embed the current
+  commit. The shipped 1.0.0 binary embeds `19f239d`, so a byte-identical 1.0.0
+  package cannot be produced from a later checkout. The 1.0.0 artefacts and
+  their SHA-256 values above remain the record. A future build packages from
+  its own commit.
 
 ---
 
