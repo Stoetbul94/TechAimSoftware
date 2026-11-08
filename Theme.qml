@@ -22,6 +22,7 @@ import "qrc:/src/ui/theme"
 // error-prone today.
 
 QtObject {
+    id: themeRoot
 
     // ══ UI-1 DESIGN SYSTEM ══════════════════════════════════════════════════
     // The semantic token layer. New and refactored screens read
@@ -31,6 +32,19 @@ QtObject {
     //
     // Full rules: docs/design/TechAim_Design_System.md
     readonly property DesignTokens tokens: DesignTokens { }
+
+    // UI-DEC-017. The HOME screens (athlete home + operator homepage) read
+    // homeTokens; everything else keeps `tokens`, which is always dark.
+    // homeLight is persisted as config.ini home_theme and changed only from the
+    // home Display settings. typeof guard: harness scenes have no APPSETTINGS.
+    property bool homeLight: typeof APPSETTINGS !== "undefined"
+                             && APPSETTINGS.getHomeTheme() === "light"
+    function setHomeLight(on) {
+        homeLight = on
+        if (typeof APPSETTINGS !== "undefined")
+            APPSETTINGS.setHomeTheme(on ? "light" : "dark")
+    }
+    readonly property DesignTokens homeTokens: DesignTokens { light: themeRoot.homeLight }
     readonly property Typography   type:   Typography   { }
     readonly property Spacing      space:  Spacing      { }
 

@@ -52,6 +52,28 @@ AppSettings::AppSettings(QString fileName)
     // config.ini [App_Settings] developer_mode=1 — default OFF in production.
     m_developerMode = m_settings->value("developer_mode", 0).toInt() != 0;
 
+    // UI-DEC-016 / 017. athlete_mode=1 opens the athlete home; operator_pin
+    // guards the operator homepage (empty = confirm only); athlete_programmes
+    // is a comma-separated programmeId list (empty = the default set chosen in
+    // QML); home_theme is dark|light. Unknown theme values fall back to dark.
+    m_athleteMode = m_settings->value("athlete_mode", 0).toInt() != 0;
+    m_operatorPin = m_settings->value("operator_pin", QString()).toString().trimmed();
+    {
+        // QSettings splits an unquoted comma list into a QStringList itself;
+        // a quoted value arrives as one string. Accept both.
+        const QVariant v = m_settings->value("athlete_programmes");
+        QStringList raw = v.typeId() == QMetaType::QStringList
+                              ? v.toStringList()
+                              : v.toString().split(QLatin1Char(','));
+        for (QString id : raw) {
+            id = id.trimmed();
+            if (!id.isEmpty()) m_athleteProgrammes << id;
+        }
+    }
+    const QString theme = m_settings->value("home_theme", "dark").toString().trimmed().toLower();
+    m_homeTheme = theme == QLatin1String("light") ? QStringLiteral("light")
+                                                  : QStringLiteral("dark");
+
 #ifndef BRAND_TACHUS
     m_is15Shoot = m_settings->value("15_shoot_match", 0).toInt() == 0 ? false : true;
 #endif
@@ -675,6 +697,18 @@ void AppSettings::setGame_is_sighter_mode(int value)
 double AppSettings::getMotor_movement_time() const
 {
     return motor_movement_time;
+}
+
+void AppSettings::setHomeTheme(const QString& theme)
+{
+    const QString t = theme.trimmed().toLower() == QLatin1String("light")
+                          ? QStringLiteral("light") : QStringLiteral("dark");
+    m_homeTheme = t;
+    // Same pattern as saveMotorTimes: a fresh QSettings with an explicit group
+    // path, because m_settings' group state after construction is unknown.
+    QSettings s(m_iniFileName, QSettings::IniFormat);
+    s.setValue("App_Settings/home_theme", t);
+    s.sync();
 }
 
 void AppSettings::saveMotorTimes(double matchSecs, double sighterSecs)

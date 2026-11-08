@@ -490,3 +490,68 @@ and `tests/qml` enforces it file-wide rather than at the one site that failed.
 **Affected decisions.** UI-DEC-001 through UI-DEC-014 are all **preserved**.
 
 **Supersedes.** Nothing.
+
+---
+
+## UI-DEC-016 — SETA athlete mode: a minimal home over the unchanged start path
+
+| | |
+|---|---|
+| **Date** | 2026-11-08 |
+| **Status** | PROPOSED — awaiting HUMAN VISUAL APPROVAL |
+| **Commit** | branch `feature/seta-athlete-mode` |
+| **Requested by** | ARNOLD BAILIE, 2026-11-08 ("idiot-proof", minimalistic athlete version) |
+
+**Decision.** When `config.ini` sets `athlete_mode=1`, the application opens on
+an athlete home (`AthleteHome.qml`): name, a status pill, the club's programme
+tiles and one START. The operator homepage stays exactly as accepted and is
+reached through an operator PIN. Spec: `docs/seta/SETA-ATHLETE-MODE-SPEC.md`.
+
+**Reasoning.** The operator homepage exposes rule sets, Training Lab, network
+share, Live/Demo and the COM port — every one a way for an unsupervised athlete
+to start the wrong thing. Hiding them behind a PIN removes the choices without
+removing the tested behaviour: the athlete START commits the tile through
+`applySetaProgramme()` and then calls the landing page's own start handler, so
+no start, gate or connection logic is duplicated.
+
+**Alternatives considered.**
+- *A second product / branch for athletes* — rejected by UI-DEC-010.
+- *Restyle the operator homepage itself* — rejected: UI-DEC-012 closes it to
+  styling change, and operators still need the full page.
+- *Implement Version C stepped workflow* — UI-DEC-011 stays DEFERRED; athlete
+  mode is a separate, opt-in screen, not a new entry flow for everyone.
+
+**Affected decisions.** UI-DEC-001…015 **preserved**. UI-DEC-012 is preserved:
+the operator homepage changes only by token source (UI-DEC-017) and one
+*Back to athlete view* button that is visible only in athlete mode.
+
+**Supersedes.** Nothing.
+
+---
+
+## UI-DEC-017 — Home display settings: light/dark theme and language
+
+| | |
+|---|---|
+| **Date** | 2026-11-08 |
+| **Status** | PROPOSED — awaiting HUMAN VISUAL APPROVAL |
+| **Commit** | branch `feature/seta-athlete-mode` |
+| **Requested by** | ARNOLD BAILIE, 2026-11-08 |
+
+**Decision.** Both home screens carry a *Display* control offering Theme
+(Dark / Light) and Language (English / Deutsch). Theme is persisted as
+`home_theme` and applies to the **home screens only**, through a second
+`DesignTokens` instance (`theme.homeTokens`) whose `light` flag swaps surfaces,
+borders, text and status colours. Accent colours do not change. Language uses
+the existing `LANGUAGE.selectLanguage()` and applies application-wide.
+
+**Reasoning.** The homepage reads only tokens (zero colour literals), so a
+light variant is a token change, not a page rewrite. The match screen, HUDs and
+reports still hold literals (UI-DEC-004 scope), so a global light theme would
+produce half-light screens; it is deferred until those screens are migrated.
+
+**Affected decisions.** UI-DEC-003 (palette) **preserved** — the dark values are
+unchanged and remain the default; light values are additions. UI-DEC-004
+**preserved** — scope still excludes the shooting UI. UI-DEC-015 **preserved**.
+
+**Supersedes.** Nothing.

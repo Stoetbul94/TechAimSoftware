@@ -151,11 +151,11 @@ int main(int argc, char* argv[])
         check(!tokens.isEmpty(), "SETA-BRAND-001: DesignTokens.qml is readable");
         check(flatTokens.contains(QStringLiteral("accentPrimary:PRODUCT.accentPrimary"))
               && flatTokens.contains(QStringLiteral("accentBright:PRODUCT.accentBright"))
-              && flatTokens.contains(QStringLiteral("focusOutline:PRODUCT.focusOutline")),
+              && flatTokens.contains(QStringLiteral("focusOutline:light?PRODUCT.accentPrimary:PRODUCT.focusOutline")) /* UI-DEC-017: both branches from the brand package */,
               "SETA-BRAND-001: the accent comes from the build's brand package");
-        check(flatTokens.contains(QStringLiteral("errorText:\"#D0392B\""))
-              && flatTokens.contains(QStringLiteral("successText:\"#20C997\""))
-              && flatTokens.contains(QStringLiteral("warningText:\"#E8A13D\"")),
+        check(flatTokens.contains(QStringLiteral("errorText:light?\"#B3261E\":\"#D0392B\"") /* UI-DEC-017 light value added; dark unchanged */)
+              && flatTokens.contains(QStringLiteral("successText:light?\"#0B7A55\":\"#20C997\""))
+              && flatTokens.contains(QStringLiteral("warningText:light?\"#9A5B00\":\"#E8A13D\"")),
               "SETA-BRAND-001: fault / healthy / warning are NOT brand-driven");
 
         // Semantic and scoring sites deliberately kept literal. Each one means
@@ -374,9 +374,9 @@ int main(int argc, char* argv[])
         const int at = page.indexOf(QStringLiteral("// Demo pill"));
         check(at > 0, "SETA-ID-002: the Demo pill is locatable");
         const QString pill = page.mid(at, 1800);
-        check(pill.contains(QStringLiteral("border.color: !opModeRow.opLive ? theme.tokens.errorText")),
+        check(pill.contains(QStringLiteral("border.color: !opModeRow.opLive ? theme.homeTokens.errorText")),
               "SETA-ID-002: the Demo border is the ERROR token, not the brand accent");
-        check(pill.contains(QStringLiteral("color: !opModeRow.opLive ? theme.tokens.errorText")),
+        check(pill.contains(QStringLiteral("color: !opModeRow.opLive ? theme.homeTokens.errorText")),
               "SETA-ID-002: the Demo label is the ERROR token, not the brand accent");
         check(pill.contains(QStringLiteral("width: 4; radius: 2")),
               "SETA-ID-002: selection is one restrained accent edge strip");
@@ -974,11 +974,11 @@ int main(int argc, char* argv[])
         check(!tokens.isEmpty(), "SETA-BRAND-001: DesignTokens.qml is readable");
         check(flatTokens.contains(QStringLiteral("accentPrimary:PRODUCT.accentPrimary"))
               && flatTokens.contains(QStringLiteral("accentBright:PRODUCT.accentBright"))
-              && flatTokens.contains(QStringLiteral("focusOutline:PRODUCT.focusOutline")),
+              && flatTokens.contains(QStringLiteral("focusOutline:light?PRODUCT.accentPrimary:PRODUCT.focusOutline")) /* UI-DEC-017: both branches from the brand package */,
               "SETA-BRAND-001: the accent comes from the build's brand package");
-        check(flatTokens.contains(QStringLiteral("errorText:\"#D0392B\""))
-              && flatTokens.contains(QStringLiteral("successText:\"#20C997\""))
-              && flatTokens.contains(QStringLiteral("warningText:\"#E8A13D\"")),
+        check(flatTokens.contains(QStringLiteral("errorText:light?\"#B3261E\":\"#D0392B\"") /* UI-DEC-017 light value added; dark unchanged */)
+              && flatTokens.contains(QStringLiteral("successText:light?\"#0B7A55\":\"#20C997\""))
+              && flatTokens.contains(QStringLiteral("warningText:light?\"#9A5B00\":\"#E8A13D\"")),
               "SETA-BRAND-001: fault / healthy / warning are NOT brand-driven");
 
         // Semantic and scoring sites deliberately kept literal. Each one means
@@ -1197,9 +1197,9 @@ int main(int argc, char* argv[])
         const int at = page.indexOf(QStringLiteral("// Demo pill"));
         check(at > 0, "SETA-ID-002: the Demo pill is locatable");
         const QString pill = page.mid(at, 1800);
-        check(pill.contains(QStringLiteral("border.color: !opModeRow.opLive ? theme.tokens.errorText")),
+        check(pill.contains(QStringLiteral("border.color: !opModeRow.opLive ? theme.homeTokens.errorText")),
               "SETA-ID-002: the Demo border is the ERROR token, not the brand accent");
-        check(pill.contains(QStringLiteral("color: !opModeRow.opLive ? theme.tokens.errorText")),
+        check(pill.contains(QStringLiteral("color: !opModeRow.opLive ? theme.homeTokens.errorText")),
               "SETA-ID-002: the Demo label is the ERROR token, not the brand accent");
         check(pill.contains(QStringLiteral("width: 4; radius: 2")),
               "SETA-ID-002: selection is one restrained accent edge strip");
@@ -2780,11 +2780,11 @@ int main(int argc, char* argv[])
         check(!tokens.isEmpty(), "SETA-BRAND-001: DesignTokens.qml is readable");
         check(flatTokens.contains(QStringLiteral("accentPrimary:PRODUCT.accentPrimary"))
               && flatTokens.contains(QStringLiteral("accentBright:PRODUCT.accentBright"))
-              && flatTokens.contains(QStringLiteral("focusOutline:PRODUCT.focusOutline")),
+              && flatTokens.contains(QStringLiteral("focusOutline:light?PRODUCT.accentPrimary:PRODUCT.focusOutline")) /* UI-DEC-017: both branches from the brand package */,
               "SETA-BRAND-001: the accent comes from the build's brand package");
-        check(flatTokens.contains(QStringLiteral("errorText:\"#D0392B\""))
-              && flatTokens.contains(QStringLiteral("successText:\"#20C997\""))
-              && flatTokens.contains(QStringLiteral("warningText:\"#E8A13D\"")),
+        check(flatTokens.contains(QStringLiteral("errorText:light?\"#B3261E\":\"#D0392B\"") /* UI-DEC-017 light value added; dark unchanged */)
+              && flatTokens.contains(QStringLiteral("successText:light?\"#0B7A55\":\"#20C997\""))
+              && flatTokens.contains(QStringLiteral("warningText:light?\"#9A5B00\":\"#E8A13D\"")),
               "SETA-BRAND-001: fault / healthy / warning are NOT brand-driven");
 
         // Semantic and scoring sites deliberately kept literal. Each one means
@@ -3003,9 +3003,9 @@ int main(int argc, char* argv[])
         const int at = page.indexOf(QStringLiteral("// Demo pill"));
         check(at > 0, "SETA-ID-002: the Demo pill is locatable");
         const QString pill = page.mid(at, 1800);
-        check(pill.contains(QStringLiteral("border.color: !opModeRow.opLive ? theme.tokens.errorText")),
+        check(pill.contains(QStringLiteral("border.color: !opModeRow.opLive ? theme.homeTokens.errorText")),
               "SETA-ID-002: the Demo border is the ERROR token, not the brand accent");
-        check(pill.contains(QStringLiteral("color: !opModeRow.opLive ? theme.tokens.errorText")),
+        check(pill.contains(QStringLiteral("color: !opModeRow.opLive ? theme.homeTokens.errorText")),
               "SETA-ID-002: the Demo label is the ERROR token, not the brand accent");
         check(pill.contains(QStringLiteral("width: 4; radius: 2")),
               "SETA-ID-002: selection is one restrained accent edge strip");

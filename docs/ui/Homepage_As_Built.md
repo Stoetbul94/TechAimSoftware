@@ -256,3 +256,22 @@ selected-programme summary, the network share state, typography and branding.
 
 Everything else in this document is derived from the source at `d4674d0` and
 from tests that read that source.
+
+
+## 29. SETA athlete mode (UI-DEC-016) and home display settings (UI-DEC-017)
+
+Added on `feature/seta-athlete-mode`, 2026-11-08. The operator homepage above
+is unchanged except:
+
+- every token read is `theme.homeTokens.*` (was `theme.tokens.*`) — identical
+  values in dark;
+- the header bar carries **Display** (theme + language) and, only when
+  `athlete_mode=1`, **Back to athlete view**;
+- the landing Start handler body moved verbatim into `startFromLanding()`.
+
+`AthleteHome.qml` sits over the page at z 40 when `athlete_mode=1` and the
+operator page is locked: title + status pill, name, programme tiles
+(`athleteProgrammeIds()`), fixed action bar (Display, Operator, START). Operator
+opens a PIN pad (`operator_pin`) or a confirm when no PIN is set.
+`HomeDisplaySettings.qml` is shared by both home screens. Theme persists as
+`home_theme`; language uses `LANGUAGE.selectLanguage()`.

@@ -325,3 +325,17 @@ appeared in `%LOCALAPPDATA%\TechAim\TechAim\cache\`: Qt QML and pipeline
 the capture profile. No session, athlete or result data was created or
 modified. Recorded for completeness so the earlier "123 files / 3,151,405
 bytes" figure is not treated as a discrepancy.
+
+
+---
+
+## SETA athlete mode — 2026-11-08
+
+Branch `feature/seta-athlete-mode` (SETA worktree), cut from SETA 1.0.0-EVAL4
+`9e3acd5`. Increment 1 of 4 done: config keys, home light/dark theme, athlete
+home, operator PIN, Display (theme + language) on both home screens. Decisions
+UI-DEC-016 / 017 are **PROPOSED**, awaiting Arnold's visual approval. Tests:
+reliability **2521 / 0**, qml **299 / 0**. Not yet: the match screen and
+end-of-match screen in athlete mode, German strings for the new screen, a hand
+run of the full flow, and a physical-target run. Spec:
+`docs/seta/SETA-ATHLETE-MODE-SPEC.md`.

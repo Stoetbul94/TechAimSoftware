@@ -141,6 +141,15 @@ public:
     // Read-only developer/testing gate from config.ini (developer_mode=1).
     Q_INVOKABLE bool getDeveloperMode() const;
 
+    // UI-DEC-016 / UI-DEC-017 — SETA athlete mode and home display settings.
+    // PRESENTATION ONLY: nothing here reaches scoring, rules, timing,
+    // acquisition or recovery. Read once at startup, like developer_mode.
+    Q_INVOKABLE bool getAthleteMode() const { return m_athleteMode; }
+    Q_INVOKABLE QString getOperatorPin() const { return m_operatorPin; }
+    Q_INVOKABLE QStringList getAthleteProgrammes() const { return m_athleteProgrammes; }
+    Q_INVOKABLE QString getHomeTheme() const { return m_homeTheme; }
+    Q_INVOKABLE void setHomeTheme(const QString& theme);
+
     Q_INVOKABLE bool getIsSingleDecimal() const;
     Q_INVOKABLE void setIsSingleDecimal(bool isSingleDecimal);
 
@@ -260,6 +269,10 @@ private:
     bool m_isLaneStatusFileAvailalble;
     bool m_internalStatusFileModification = false;
     bool m_developerMode = false;
+    bool m_athleteMode = false;
+    QString m_operatorPin;
+    QStringList m_athleteProgrammes;
+    QString m_homeTheme = QStringLiteral("dark");
     bool m_is15Shoot = false;
     bool m_isSingleDecimal = true;
     double m_match_meter = 10;

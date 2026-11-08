@@ -9,6 +9,7 @@
 // Scenes live in this directory and pull the application's components in with
 // a relative directory import (`import "../.."`), so they render in place —
 // nothing has to be copied to the repository root first. See README.md.
+#include <QQmlPropertyMap>
 #include <QGuiApplication>
 #include <QQuickView>
 #include <QQuickItem>
@@ -116,7 +117,9 @@ int main(int argc, char** argv)
         Q_INVOKABLE void selectLanguage(const QString&) {}
         Q_INVOKABLE void selectMode(int) {}
     };
-    Stub appSettings, modReader, login, language, opMode;
+    Stub appSettings, modReader, login, opMode;
+    // A property map, so QML can actually read the language list (see PRODUCT).
+    QQmlPropertyMap language;
 
     // Text draws as empty boxes unless a real font file is registered first,
     // and the family named here has to be one that actually resolved.
@@ -131,34 +134,53 @@ int main(int argc, char** argv)
     // Enough of PRODUCT / BUILDINFO / LANGUAGE / OPMODE for SettingsPage to
     // lay itself out. Values are placeholders - this renders LAYOUT, not build
     // identity, and nothing here is evidence about the real binary.
-    QObject product, buildInfo;
-    product.setProperty("fullProductName", "Tech Aim Electronic Target Control");
-    product.setProperty("displayName", "Tech Aim");
-    product.setProperty("version", "0.9.0");
-    product.setProperty("releaseChannel", "RC2");
-    product.setProperty("legalPublisher", "JAC SHOOTING SOLUTIONS (PTY) LTD");
+    // PRODUCT is a QQmlPropertyMap, not a QObject with dynamic properties:
+    // QML cannot see dynamic properties, so every palette read through the old
+    // stub was undefined and accent fills rendered black.
+    QQmlPropertyMap product;
+    QObject buildInfo;
+    product.insert("fullProductName", "Tech Aim Electronic Target Control");
+    product.insert("displayName", "Tech Aim");
+    product.insert("version", "0.9.0");
+    product.insert("releaseChannel", "RC2");
+    product.insert("legalPublisher", "JAC SHOOTING SOLUTIONS (PTY) LTD");
     // Theme.qml and the report components read the brand mark from identity,
     // so the stub has to supply it or they render an empty image.
-    product.setProperty("brandLogoPath", "qrc:/images/logo/techaim_color.png");
-    product.setProperty("brandLogoOnDarkPath", "qrc:/images/logo/techaim_white.png");
-    product.setProperty("brandKey", "TECH_AIM");
+    product.insert("brandLogoPath", "qrc:/images/logo/techaim_color.png");
+    product.insert("brandLogoOnDarkPath", "qrc:/images/logo/techaim_white.png");
+    product.insert("brandKey", "TECH_AIM");
     // DesignTokens and the scene-rendered components read the palette from
     // PRODUCT. The renderer is a LAYOUT tool: these are the Tech Aim values so
     // a scene renders in a known brand, and a scene may override them.
-    product.setProperty("accentPrimary", "#A80038");
-    product.setProperty("accentHover", "#C40046");
-    product.setProperty("accentPressed", "#80032A");
-    product.setProperty("accentSubtle", "#2D0A18");
-    product.setProperty("accentBright", "#E8003D");
-    product.setProperty("textOnAccent", "#FFFFFF");
-    product.setProperty("focusOutline", "#C40046");
-    product.setProperty("brandLogoSecondary", "#BF1919");
-    product.setProperty("qtVersion", "6.5.3");
-    product.setProperty("architecture", "x86_64");
-    product.setProperty("windowsVersion", "Windows 11 Home Single Language 10.0.26200");
-    product.setProperty("analyticsVersion", "13");
-    product.setProperty("isFieldTest", false);
-    product.setProperty("fieldTestNotice", "");
+    product.insert("accentPrimary", "#A80038");
+    product.insert("accentHover", "#C40046");
+    product.insert("accentPressed", "#80032A");
+    product.insert("accentSubtle", "#2D0A18");
+    product.insert("accentBright", "#E8003D");
+    product.insert("textOnAccent", "#FFFFFF");
+    product.insert("focusOutline", "#C40046");
+    product.insert("brandLogoSecondary", "#BF1919");
+    product.insert("accentSubtleLight", "#FBE9EF");
+    // UIRENDER_BRAND=SETA renders a scene in the SETA package's palette
+    // (src/app/BrandPackage.cpp makeSetaOem), for SETA evidence.
+    if (qEnvironmentVariable("UIRENDER_BRAND").compare("SETA", Qt::CaseInsensitive) == 0) {
+        product.insert("brandKey", "SETA");
+        product.insert("displayName", "SETA");
+        product.insert("accentPrimary", "#00539E");
+        product.insert("accentHover", "#25B0E6");
+        product.insert("accentPressed", "#003A6E");
+        product.insert("accentSubtle", "#0F2740");
+        product.insert("accentSubtleLight", "#E9F1F8");
+        product.insert("accentBright", "#25B0E6");
+        product.insert("focusOutline", "#25B0E6");
+        product.insert("brandLogoSecondary", "#212D60");
+    }
+    product.insert("qtVersion", "6.5.3");
+    product.insert("architecture", "x86_64");
+    product.insert("windowsVersion", "Windows 11 Home Single Language 10.0.26200");
+    product.insert("analyticsVersion", "13");
+    product.insert("isFieldTest", false);
+    product.insert("fieldTestNotice", "");
     buildInfo.setProperty("config", "Release");
     buildInfo.setProperty("commit", "0000000");
     buildInfo.setProperty("built", "2026-08-11");
@@ -167,10 +189,10 @@ int main(int argc, char** argv)
     for (auto pair : { std::make_pair("en", "English"), std::make_pair("de", "Deutsch (beta)") }) {
         QVariantMap m; m["code"] = pair.first; m["label"] = pair.second; langs << m;
     }
-    language.setProperty("availableLanguages", langs);
-    language.setProperty("languageCode", "en");
-    language.setProperty("isBetaTranslation", true);
-    language.setProperty("restartRequired", false);
+    language.insert("availableLanguages", langs);
+    language.insert("languageCode", "en");
+    language.insert("isBetaTranslation", true);
+    language.insert("restartRequired", false);
     opMode.setProperty("live", false);
     opMode.setProperty("restartRequired", false);
 

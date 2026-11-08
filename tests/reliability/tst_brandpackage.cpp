@@ -401,6 +401,54 @@ void run_brand_package_tests()
               "tokens: the touch-target floor is 44 px");
     }
 
+    // ── UI-DEC-016 / 017: athlete mode and the home theme ──────────────────
+    {
+        bool ok = false;
+        const QString tokens = stripComments(readFile(QStringLiteral("src/ui/theme/DesignTokens.qml"), &ok));
+        check(ok && tokens.contains(QStringLiteral("property bool light: false")),
+              "home-theme: DesignTokens defaults to dark (light is opt-in)");
+        check(tokens.contains(QStringLiteral("light ? \"#F2F5F9\" : \"#0B0D10\"")),
+              "home-theme: the dark canvas value is unchanged (UI-DEC-003)");
+        check(!tokens.contains(QStringLiteral("light ? PRODUCT.accentHover"))
+              && tokens.contains(QStringLiteral("readonly property color accentPrimary: PRODUCT.accentPrimary")),
+              "home-theme: the brand accent does not change with the theme");
+
+        const QString themeQml = stripComments(readFile(QStringLiteral("Theme.qml"), &ok));
+        check(ok && themeQml.contains(QStringLiteral("readonly property DesignTokens tokens: DesignTokens { }")),
+              "home-theme: the global token instance is untouched, so non-home screens stay dark");
+        check(themeQml.contains(QStringLiteral("homeTokens: DesignTokens { light: themeRoot.homeLight }")),
+              "home-theme: only the home instance follows the light setting");
+
+        const QString athlete = stripComments(readFile(QStringLiteral("AthleteHome.qml"), &ok));
+        check(ok && !athlete.isEmpty(), "athlete: AthleteHome.qml is readable");
+        // Presentation only: it may not talk to the target, the settings, or
+        // the competition mapping. It emits a programmeId and a name.
+        check(!athlete.contains(QStringLiteral("MODREADER."))
+              && !athlete.contains(QStringLiteral("APPSETTINGS."))
+              && !athlete.contains(QStringLiteral("applySetaProgramme"))
+              && !athlete.contains(QStringLiteral("activeProgrammeId")),
+              "athlete: the athlete home decides nothing about a match");
+        check(athlete.contains(QStringLiteral("signal startRequested(string programmeId, string name)")),
+              "athlete: START hands over a programmeId and a name only");
+
+        const QString page = stripComments(readFile(QStringLiteral("LoginPage.qml"), &ok));
+        check(page.contains(QStringLiteral("onClicked: startFromLanding()")),
+              "athlete: the operator Start button runs the shared landing start");
+        const int a = page.indexOf(QStringLiteral("function athleteStart("));
+        const int ap = page.indexOf(QStringLiteral("applySetaProgramme(programmeId)"), a);
+        const int as = page.indexOf(QStringLiteral("startFromLanding()"), a);
+        check(a > 0 && ap > a && as > ap,
+              "athlete: athlete START commits through applySetaProgramme, THEN the shared start");
+        check(page.contains(QStringLiteral("setaCatalogue.programmeAvailable(ids[i])")),
+              "athlete: a tile is offered only for a programme the catalogue offers");
+        check(page.contains(QStringLiteral("if (visible) operatorUnlocked = false")),
+              "athlete: returning to the home screen re-locks the operator page");
+
+        const QString cfg = stripComments(readFile(QStringLiteral("appsettings.cpp"), &ok));
+        check(cfg.contains(QStringLiteral("value(\"athlete_mode\", 0)")),
+              "athlete: athlete mode is OFF unless config.ini turns it on");
+    }
+
     // ── the homepage carries no hard-coded palette ──────────────────────────
     {
         bool ok = false;
@@ -408,8 +456,13 @@ void run_brand_package_tests()
             readFile(QStringLiteral("LoginPage.qml"), &ok));
         check(ok && !page.isEmpty(), "home: LoginPage.qml is readable");
 
-        check(page.contains(QStringLiteral("theme.tokens.accentPrimary")),
-              "home: the homepage binds to the central accent token");
+        // UI-DEC-017: the home screens read the HOME token instance, which is
+        // the same DesignTokens type with a light flag. Still the central
+        // token - never a literal.
+        check(page.contains(QStringLiteral("theme.homeTokens.accentPrimary")),
+              "home: the homepage binds to the central accent token (home instance)");
+        check(!page.contains(QStringLiteral("theme.tokens.")),
+              "home: the homepage reads ONE token instance, never a mix of home and global");
 
         // Any remaining #rrggbb literal in the CODE is a regression.
         const QRegularExpression hex(QStringLiteral("\"#[0-9A-Fa-f]{3,8}\""));

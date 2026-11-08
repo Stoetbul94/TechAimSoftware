@@ -227,3 +227,28 @@ quietly upgraded later without someone actually looking.
 
 No further homepage styling changes are to be made unless a new defect is
 found — see `UI-DEC-012`.
+
+
+---
+
+## 4. SETA athlete mode and home display settings (UI-DEC-016 / UI-DEC-017)
+
+Branch `feature/seta-athlete-mode` · 2026-11-08 · Spec:
+`docs/seta/SETA-ATHLETE-MODE-SPEC.md`
+
+| Check | Status | Evidence |
+|---|---|---|
+| Athlete home decides nothing about a match (no MODREADER / APPSETTINGS / programme mapping in the file) | PASS | `tst_brandpackage.cpp` athlete checks — reliability **2521 / 0** |
+| Athlete START commits through `applySetaProgramme`, then the shared `startFromLanding()` | PASS | same |
+| Operator Start runs the same `startFromLanding()` (extracted verbatim) | PASS | same |
+| Only catalogue-offered programmes become tiles | PASS | same |
+| Returning home after a match re-locks the operator page | PASS (source) · HUMAN VISUAL CHECK REQUIRED (behaviour) | same |
+| Athlete mode is off unless `athlete_mode=1` | PASS | same |
+| Dark tokens unchanged; light is opt-in; accent unchanged by theme | PASS | reliability + `tests/qml` **299 / 0** |
+| Global tokens untouched — match screen stays dark | PASS | reliability |
+| Athlete home renders: dark/ready/selected, light/not connected, PIN pad, Display panel | PASS — RENDERED COMPONENT | `docs/seta/evidence/athlete-home-eval.png` (uirender, SETA palette) |
+| No QML errors from changed files at launch, athlete mode off and on (offscreen, Demo) | PASS | launch log 2026-11-08 |
+| Full flow in the running app: PIN → operator page → Back; START → match | HUMAN VISUAL CHECK REQUIRED | not driven by hand |
+| Operator homepage in **light** theme | HUMAN VISUAL CHECK REQUIRED | not rendered — the homepage needs the full app context |
+| German catalogue on the athlete home | NOT TESTED | new strings are not yet in `techaim_de_DE.ts` |
+| 1366 × 768 and smaller | NOT TESTED | |

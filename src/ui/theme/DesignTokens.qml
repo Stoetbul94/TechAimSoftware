@@ -18,6 +18,13 @@ import QtQuick 2.15
 
 QtObject {
 
+    // UI-DEC-017. Light variant of the SURFACE / BORDER / TEXT / STATUS layers.
+    // Default false: every dark value below is unchanged and remains the
+    // product default (UI-DEC-003). Only theme.homeTokens sets this, so the
+    // match screen, HUDs and reports - which still hold colour literals - are
+    // never half-switched. Accent colours do not change with the theme.
+    property bool light: false
+
     // ── BRAND ACCENT ────────────────────────────────────────────────────────
     // The values live in the BUILD's BrandPackage (src/app/BrandPackage.cpp)
     // and arrive through PRODUCT. This file stays the semantic layer: a screen
@@ -35,7 +42,7 @@ QtObject {
     readonly property color accentPrimary: PRODUCT.accentPrimary   // rest state
     readonly property color accentHover:   PRODUCT.accentHover     // hover / focus lift
     readonly property color accentPressed: PRODUCT.accentPressed   // active / pressed
-    readonly property color accentSubtle:  PRODUCT.accentSubtle    // tinted fill behind a selected card
+    readonly property color accentSubtle:  light ? PRODUCT.accentSubtleLight : PRODUCT.accentSubtle  // tinted fill behind a selected card
     readonly property color textOnAccent:  PRODUCT.textOnAccent    // the only text colour permitted on an accent fill
 
     // The BRIGHTER brand tone the live shooting UI and the Training Lab HUDs
@@ -49,45 +56,47 @@ QtObject {
     readonly property color brandLogoSecondary: PRODUCT.brandLogoSecondary
 
     // ── SURFACES ────────────────────────────────────────────────────────────
-    readonly property color backgroundPrimary:   "#0B0D10"  // the window canvas
-    readonly property color backgroundSecondary: "#0C0E12"  // app bar / header strip
-    readonly property color surfacePrimary:      "#15171C"  // panels and cards
-    readonly property color surfaceSecondary:    "#1B1E24"  // nested cards, popovers
-    readonly property color surfaceElevated:     "#1F2026"  // hover surface, raised rows
-    readonly property color inputBackground:     "#1D2026"  // text fields and pickers
+    readonly property color backgroundPrimary:   light ? "#F2F5F9" : "#0B0D10"  // the window canvas
+    readonly property color backgroundSecondary: light ? "#E8EDF3" : "#0C0E12"  // app bar / header strip
+    readonly property color surfacePrimary:      light ? "#FFFFFF" : "#15171C"  // panels and cards
+    readonly property color surfaceSecondary:    light ? "#F4F7FA" : "#1B1E24"  // nested cards, popovers
+    readonly property color surfaceElevated:     light ? "#EAF0F6" : "#1F2026"  // hover surface, raised rows
+    readonly property color inputBackground:     light ? "#FFFFFF" : "#1D2026"  // text fields and pickers
 
     // ── BORDERS ─────────────────────────────────────────────────────────────
-    readonly property color borderSubtle: "#2A2E36"  // default card / field outline
-    readonly property color borderStrong: "#3A404A"  // secondary buttons, dividers that must read
+    readonly property color borderSubtle: light ? "#D3DBE5" : "#2A2E36"  // default card / field outline
+    readonly property color borderStrong: light ? "#A9B6C6" : "#3A404A"  // secondary buttons, dividers that must read
 
     // ── TEXT ────────────────────────────────────────────────────────────────
     // The audit found five near-identical greys doing this one job
     // (#9aa0aa / #8a8f98 / #9a9ba0 / #8a8a92 / #6b7280, ~86 occurrences).
     // They collapse to two here plus a disabled step.
-    readonly property color textPrimary:   "#F3F6FA"  // headings and primary content
-    readonly property color textSecondary: "#AAB4C0"  // labels, captions, supporting copy
-    readonly property color textDisabled:  "#6F7A86"  // disabled controls, micro-labels
+    readonly property color textPrimary:   light ? "#121A26" : "#F3F6FA"  // headings and primary content
+    readonly property color textSecondary: light ? "#4A5768" : "#AAB4C0"  // labels, captions, supporting copy
+    readonly property color textDisabled:  light ? "#7C8796" : "#6F7A86"  // disabled controls, micro-labels
 
     // ── STATUS ──────────────────────────────────────────────────────────────
     // FUNCTIONAL, not decorative. A brand package may tune the hue but may not
     // swap the meanings or make the three states hard to tell apart: in this
     // product they carry connection state and Live-vs-Demo, and Live/Demo
     // confusion is a result-integrity risk, not a styling preference.
-    readonly property color successBackground: "#0D2018"
-    readonly property color successText:       "#20C997"
-    readonly property color warningBackground: "#2A1A05"
-    readonly property color warningText:       "#E8A13D"
-    readonly property color errorBackground:   "#2A0B10"
-    readonly property color errorText:         "#D0392B"
-    readonly property color infoBackground:    "#0C1A2E"
-    readonly property color infoText:          "#2F6FD0"
+    readonly property color successBackground: light ? "#E3F6EE" : "#0D2018"
+    readonly property color successText:       light ? "#0B7A55" : "#20C997"
+    readonly property color warningBackground: light ? "#FFF3DF" : "#2A1A05"
+    readonly property color warningText:       light ? "#9A5B00" : "#E8A13D"
+    readonly property color errorBackground:   light ? "#FDE8E8" : "#2A0B10"
+    readonly property color errorText:         light ? "#B3261E" : "#D0392B"
+    readonly property color infoBackground:    light ? "#E5EEFB" : "#0C1A2E"
+    readonly property color infoText:          light ? "#1F5BB5" : "#2F6FD0"
 
     // ── FOCUS ───────────────────────────────────────────────────────────────
     // Keyboard focus must be visible against every surface above. accentHover
     // is used rather than accentPrimary because it is the lighter of the two
     // and stays legible on the darkest canvas. The package decides which
     // colour that is (Tech Aim #C40046 at 3.18:1; SETA #25B0E6 at 7.81:1).
-    readonly property color focusOutline: PRODUCT.focusOutline
+    // On a light surface the package's light focus colour (SETA #25B0E6) is
+    // ~2.5:1 against white, so light mode outlines in the primary accent.
+    readonly property color focusOutline: light ? PRODUCT.accentPrimary : PRODUCT.focusOutline
     readonly property int   focusOutlineWidth: 2
 
     // ── OVERLAY ─────────────────────────────────────────────────────────────

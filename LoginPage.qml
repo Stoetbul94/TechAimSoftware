@@ -61,6 +61,43 @@ Item {
     property string setaProgrammeId: ""
     property bool setaBrowsing: false
 
+    // ── SETA athlete mode (UI-DEC-016) ───────────────────────────────────────
+    // config.ini athlete_mode=1 puts AthleteHome over this page. Unlocking with
+    // the operator PIN shows this page unchanged; returning to the home screen
+    // after a match re-locks it. PRESENTATION ONLY - see athleteStart().
+    readonly property bool athleteMode: APPSETTINGS.getAthleteMode()
+    property bool operatorUnlocked: false
+    readonly property bool athleteHomeShown: athleteMode && !operatorUnlocked
+
+    // The lane's event tiles. Only ids the catalogue knows AND offers survive,
+    // so a typo in config.ini drops a tile instead of starting the wrong match.
+    function athleteProgrammeIds() {
+        var ids = APPSETTINGS.getAthleteProgrammes()
+        if (!ids || ids.length === 0)
+            ids = APPSETTINGS.getGame_distance() === 50
+                ? ["dsb.50m.rifle.prone60", "dsb.50m.rifle.3x20",
+                   "dsb.50m.rifle.3x40",    "dsb.50m.pistol.p60"]
+                : ["dsb.10m.air-rifle.lg40", "dsb.10m.air-rifle.lg60",
+                   "dsb.10m.air-rifle.3x10", "dsb.10m.air-rifle.3x20",
+                   "dsb.10m.air-pistol.lp40", "dsb.10m.air-pistol.lp60"]
+        var out = []
+        for (var i = 0; i < ids.length; ++i)
+            if (setaCatalogue && setaCatalogue.profile(ids[i]) !== null
+                && setaCatalogue.programmeAvailable(ids[i]))
+                out.push(ids[i])
+        return out
+    }
+
+    // The athlete START. Commit the tile the same way the selector does, then
+    // run the operator page's own start handler - one start path, not two.
+    function athleteStart(programmeId, name) {
+        isSaveGame = false
+        username_loginPage = name
+        applySetaProgramme(programmeId)
+        if (setaProgrammeId !== programmeId) return   // unknown id: nothing committed
+        startFromLanding()
+    }
+
     // The ONE place a hierarchy choice becomes machine state. Everything it
     // sets already existed; the catalogue supplies the mapping so there is no
     // second set of match-configuration rules. Nothing here runs while the
@@ -164,26 +201,26 @@ Item {
     // APPROVED 2026-07-29: the accent is #A80038, sampled from the approved
     // logo images/logo/techaim_color.png. #C40046 becomes the hover state and
     // #80032A the pressed state. See docs/design/TechAim_Design_System.md.
-    readonly property color _bg:         theme.tokens.backgroundPrimary
-    readonly property color _bgHeader:   theme.tokens.backgroundSecondary
-    readonly property color _surface:    theme.tokens.surfacePrimary
-    readonly property color _surfaceAlt: theme.tokens.surfaceSecondary
-    readonly property color _input:      theme.tokens.inputBackground
-    readonly property color _borderSub:  theme.tokens.borderSubtle
-    readonly property color _borderStr:  theme.tokens.borderStrong
-    readonly property color _red:        theme.tokens.accentPrimary
-    readonly property color _redHover:   theme.tokens.accentHover
-    readonly property color _redPressed: theme.tokens.accentPressed
-    readonly property color _redDark:    theme.tokens.accentSubtle
-    readonly property color _txt:        theme.tokens.textPrimary
-    readonly property color _txtSec:     theme.tokens.textSecondary
-    readonly property color _txtMut:     theme.tokens.textDisabled
-    readonly property color _green:      theme.tokens.successText
-    readonly property color _okBg:       theme.tokens.successBackground
-    readonly property color _errBg:      theme.tokens.errorBackground
-    readonly property color _warnBg:     theme.tokens.warningBackground
-    readonly property color _warnTxt:    theme.tokens.warningText
-    readonly property color _onAccent:   theme.tokens.textOnAccent
+    readonly property color _bg:         theme.homeTokens.backgroundPrimary
+    readonly property color _bgHeader:   theme.homeTokens.backgroundSecondary
+    readonly property color _surface:    theme.homeTokens.surfacePrimary
+    readonly property color _surfaceAlt: theme.homeTokens.surfaceSecondary
+    readonly property color _input:      theme.homeTokens.inputBackground
+    readonly property color _borderSub:  theme.homeTokens.borderSubtle
+    readonly property color _borderStr:  theme.homeTokens.borderStrong
+    readonly property color _red:        theme.homeTokens.accentPrimary
+    readonly property color _redHover:   theme.homeTokens.accentHover
+    readonly property color _redPressed: theme.homeTokens.accentPressed
+    readonly property color _redDark:    theme.homeTokens.accentSubtle
+    readonly property color _txt:        theme.homeTokens.textPrimary
+    readonly property color _txtSec:     theme.homeTokens.textSecondary
+    readonly property color _txtMut:     theme.homeTokens.textDisabled
+    readonly property color _green:      theme.homeTokens.successText
+    readonly property color _okBg:       theme.homeTokens.successBackground
+    readonly property color _errBg:      theme.homeTokens.errorBackground
+    readonly property color _warnBg:     theme.homeTokens.warningBackground
+    readonly property color _warnTxt:    theme.homeTokens.warningText
+    readonly property color _onAccent:   theme.homeTokens.textOnAccent
     signal loadSavedGame()
     signal sighterStartedFromServer()
     signal matchStartedFromServer()
@@ -224,7 +261,11 @@ Item {
         APPSETTINGS.setSetaSettingsFilePathFromQML(netowrk_path_text.text)
     }
 
-    onVisibleChanged: { MODREADER.setOnLoginPage(visible) }
+    onVisibleChanged: {
+        MODREADER.setOnLoginPage(visible)
+        // Back on the home screen after a match: the athlete view returns.
+        if (visible) operatorUnlocked = false
+    }
 
     // ─── Dialogs ─────────────────────────────────────────────────────────────
 
@@ -599,6 +640,126 @@ Item {
         return true
     }
 
+    // The landing page's start path, extracted VERBATIM from startMouse so the
+    // athlete home (UI-DEC-016) runs exactly the same start - the gate, the
+    // Training Lab branches, the connection checks, the rule-authority save and
+    // polling start - instead of a second copy that could drift.
+    function startFromLanding() {
+        // The start gate comes FIRST: this handler is the
+        // SETA landing page's own start path and does not
+        // go through perfromStart(), so the guard has to be
+        // asked here too or the block is one path wide.
+        if (profileStartBlocked()) return
+        // TRAINING LAB (R2): Wind Map — new Training session
+        // (kind=Training, wind_map; 50m Prone and 50m 3P only).
+        // Opens in Setup so a condition can be recorded before
+        // the first shot. NEVER a qualification/Final session.
+        if (wmConfirmed) {
+            if (!WINDMAP.startWindMap(username_loginPage)) {
+                dialogManager.showError(qsTr("Cannot start Wind Map"),
+                    WINDMAP.lastStartError !== "" ? WINDMAP.lastStartError
+                        : qsTr("The session could not be started."))
+                return
+            }
+            shootingPage.enterWindMapMode()
+            rootItem.visible = false
+            return
+        }
+        // TRAINING LAB (T4): Position Transition — new Training
+        // session (kind=Training, position_transition; 3P only).
+        if (ptConfirmed) {
+            if (!POSTRANS.startPositionTransition(username_loginPage)) {
+                dialogManager.showError(qsTr("Cannot start Position Transition"),
+                    POSTRANS.lastStartError !== "" ? POSTRANS.lastStartError
+                        : qsTr("The session could not be started."))
+                return
+            }
+            shootingPage.enterPositionTransitionMode()
+            rootItem.visible = false
+            return
+        }
+        // TRAINING LAB (T2): Call & Diagnose — new Training
+        // session (kind=Training, call_and_diagnose). Opens in
+        // Sighters; NEVER a qualification/Final session.
+        if (cdConfirmed) {
+            if (!CALLDIAG.startCallDiagnose(username_loginPage)) {
+                dialogManager.showError(qsTr("Cannot start Call & Diagnose"),
+                    CALLDIAG.lastStartError !== ""
+                        ? CALLDIAG.lastStartError
+                        : qsTr("The session could not be started."))
+                return
+            }
+            shootingPage.enterCallDiagnoseMode()
+            rootItem.visible = false
+            return
+        }
+        // TRAINING LAB (T1): explicit Start training — new
+        // Training session (kind=Training, technical_blocks,
+        // mode/discipline/focus/visibility persisted, Block 1
+        // started once). NEVER a qualification/Final session.
+        if (trainingConfirmed) {
+            if (!TRAINING.startTraining(username_loginPage)) {
+                // T1.1: specific, actionable reason from the
+                // controller (lastStartError is a real property).
+                dialogManager.showError(qsTr("Cannot start training"),
+                    TRAINING.lastStartError !== ""
+                        ? TRAINING.lastStartError
+                        : qsTr("The training session could not be started."))
+                return
+            }
+            shootingPage.enterTrainingMode()
+            rootItem.visible = false
+            return
+        }
+        if (!appMode) {
+            MODREADER.appendToLogFile("Application running in demo mode")
+            if (connectToMaster && !MODREADER.isMasterSystemConnected()) {
+                dialogManager.showError(qsTr("Master Not Connected"),
+                    qsTr("The master system is not connected.\n\nPlease press \u201CConnect\u201D and try again.")); return
+            }
+            rootItem.visible = false
+        } else {
+            MODREADER.appendToLogFile("Application running in Live mode")
+            if (connectToMaster && !MODREADER.isMasterSystemConnected()) {
+                MODREADER.appendToLogFile("Master application required")
+                dialogManager.showError(qsTr("Master Not Connected"),
+                    qsTr("The master system is not connected.\n\nPlease press \u201CConnect\u201D and try again.")); return
+            }
+            if (masterConnectBtn && port_name_text_field.text != "") {
+                MODREADER.appendToLogFile("Application with port text field")
+                MODREADER.connectedModbus(port_name_text_field.text)
+                mod_connected = MODREADER.isModBusConnected()
+            }
+            if (!MODREADER.isModBusConnected()) {
+                validateLogin.text = "Com port not connected"; validateLogin.visible = true
+            } else if (!MODREADER.isHardwareConnected()) {
+                validateLogin.text = "Hardware not connected."; validateLogin.visible = true
+            } else if (!MODREADER.checkAutoFeedMode()) {
+                validateLogin.text = "Auto feed mode is off"; validateLogin.visible = false
+            } else if (validate()) {
+                MODREADER.appendToLogFile("Validation was successful"); rootItem.visible = false
+            } else { MODREADER.appendToLogFile("Com-port connected but validation failed") }
+        }
+        // The SAVED FILE records which competition produced it - the same
+        // adopted definition the journal gets. A programme with no rule
+        // authority records nothing, and the file loads as legacy.
+        APPSETTINGS.setSessionRuleAuthority(
+            window.activeProgrammeId !== ""
+                ? setaCatalogue.ruleAuthorityFor(window.activeProgrammeId,
+                                                 window.profilePrepSeconds * 1000,
+                                                 window.profileMatchSeconds * 1000)
+                : ({}))
+        APPSETTINGS.saveMatch(true)
+        APPSETTINGS.updateUserHistoryData(name_text_field.text)
+        MODREADER.saveNameAndPort(name_text_field.text, port_name_text_field.text, netowrk_path_text.text)
+        // Only start hardware polling in LIVE mode. In demo a
+        // COM port may be open with no target answering, and
+        // on_pushButton_clicked's blocking reads would freeze
+        // the transition to the shooting page.
+        if (appMode && mod_connected) { MODREADER.on_pushButton_clicked(); MODREADER.on_pushButton_2_clicked() }
+        MODREADER.resetShootinCount()
+    }
+
     function perfromStart() {
         if (profileStartBlocked()) return
         if (!appMode) {
@@ -712,6 +873,36 @@ Item {
             // Deliberately kept elsewhere: Demo mode must stay unmissable,
             // because mistaking a Demo session for a Live one is a
             // result-integrity risk, not a cosmetic one. Two indicators remain.
+        }
+
+        // UI-DEC-016 / 017: Display (theme + language) on the homepage, and a
+        // way back to the athlete view that exists only in athlete mode.
+        Row {
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.right: parent.right; anchors.rightMargin: 16
+            spacing: 8
+            Repeater {
+                model: athleteMode ? ["display", "athlete"] : ["display"]
+                Rectangle {
+                    objectName: modelData === "display" ? "homeDisplayButton" : "backToAthleteButton"
+                    height: 36; radius: 6
+                    width: hdrBtnText.implicitWidth + 28
+                    color: hdrBtnMouse.pressed ? _redPressed : _input
+                    border.color: _borderSub; border.width: 1
+                    Text {
+                        id: hdrBtnText; anchors.centerIn: parent
+                        text: modelData === "display" ? qsTr("Display") : qsTr("Back to athlete view")
+                        color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 13; font.bold: true
+                    }
+                    MouseArea {
+                        id: hdrBtnMouse; anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (modelData === "display") homeDisplayOverlay.visible = true
+                            else operatorUnlocked = false
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -1009,7 +1200,7 @@ Item {
                 Rectangle {
                     width: (parent.width - parent.spacing) / 2; height: 52; radius: 6
                     color: !opModeRow.opLive ? _errBg : _input
-                    border.color: !opModeRow.opLive ? theme.tokens.errorText : _borderSub
+                    border.color: !opModeRow.opLive ? theme.homeTokens.errorText : _borderSub
                     border.width: !opModeRow.opLive ? 2 : 1
                     Rectangle {
                         anchors.left: parent.left; anchors.top: parent.top
@@ -1021,7 +1212,7 @@ Item {
                     Column {
                         anchors.centerIn: parent; spacing: 1
                         Text { text: qsTr("DEMO / SIMULATION")
-                               color: !opModeRow.opLive ? theme.tokens.errorText : _txt
+                               color: !opModeRow.opLive ? theme.homeTokens.errorText : _txt
                                font.family: theme.fontFamily; font.pixelSize: 12; font.bold: true
                                anchors.horizontalCenter: parent.horizontalCenter }
                         Text { text: qsTr("Simulated clicks"); color: _txtMut
@@ -1059,7 +1250,7 @@ Item {
                 closePolicy: Popup.CloseOnEscape
                 width: 380; padding: 0
                 background: Rectangle { color: _surfaceAlt; radius: 13; border.color: _borderSub; border.width: 1 }
-                Overlay.modal: Rectangle { color: theme.tokens.scrim }
+                Overlay.modal: Rectangle { color: theme.homeTokens.scrim }
                 contentItem: Column {
                     spacing: 12; padding: 22; width: opModeConfirm.width
                     Text {
@@ -2316,7 +2507,7 @@ Item {
                         visible: text !== ""
                         text: ""
                         width: parent.width; wrapMode: Text.WordWrap
-                        color: theme.tokens.errorText; font.family: theme.fontFamily; font.pixelSize: 11
+                        color: theme.homeTokens.errorText; font.family: theme.fontFamily; font.pixelSize: 11
                     }
                     Row {
                         spacing: 10; topPadding: 6
@@ -2430,7 +2621,7 @@ Item {
                         id: cdSetupError
                         visible: text !== ""; text: ""
                         width: parent.width; wrapMode: Text.WordWrap
-                        color: theme.tokens.errorText; font.family: theme.fontFamily; font.pixelSize: 11
+                        color: theme.homeTokens.errorText; font.family: theme.fontFamily; font.pixelSize: 11
                     }
                     Row {
                         spacing: 10; topPadding: 6
@@ -2559,7 +2750,7 @@ Item {
                     }
 
                     Text { id: ptSetupError; visible: text !== ""; text: ""; width: parent.width; wrapMode: Text.WordWrap
-                           color: theme.tokens.errorText; font.family: theme.fontFamily; font.pixelSize: 11 }
+                           color: theme.homeTokens.errorText; font.family: theme.fontFamily; font.pixelSize: 11 }
                     Row { spacing: 10; topPadding: 6
                         Rectangle { width: 110; height: 52; radius: 8; color: "transparent"; border.color: _borderStr; border.width: 1
                             Text { anchors.centerIn: parent; text: qsTr("Back"); color: _txtSec; font.family: theme.fontFamily; font.pixelSize: 12 }
@@ -2656,7 +2847,7 @@ Item {
                            color: _txtMut; font.family: theme.fontFamily; font.pixelSize: 10 }
 
                     Text { id: wmSetupError; visible: text !== ""; text: ""; width: parent.width
-                           wrapMode: Text.WordWrap; color: theme.tokens.errorText
+                           wrapMode: Text.WordWrap; color: theme.homeTokens.errorText
                            font.family: theme.fontFamily; font.pixelSize: 11 }
                     Row { spacing: 10; topPadding: 6
                         Rectangle { width: 110; height: 52; radius: 8; color: "transparent"
@@ -2788,121 +2979,7 @@ Item {
                         anchors.fill: parent; hoverEnabled: true
                         onEntered: startSessionRect._startHov = true
                         onExited:  startSessionRect._startHov = false
-                        onClicked: {
-                            // The start gate comes FIRST: this handler is the
-                            // SETA landing page's own start path and does not
-                            // go through perfromStart(), so the guard has to be
-                            // asked here too or the block is one path wide.
-                            if (profileStartBlocked()) return
-                            // TRAINING LAB (R2): Wind Map — new Training session
-                            // (kind=Training, wind_map; 50m Prone and 50m 3P only).
-                            // Opens in Setup so a condition can be recorded before
-                            // the first shot. NEVER a qualification/Final session.
-                            if (wmConfirmed) {
-                                if (!WINDMAP.startWindMap(username_loginPage)) {
-                                    dialogManager.showError(qsTr("Cannot start Wind Map"),
-                                        WINDMAP.lastStartError !== "" ? WINDMAP.lastStartError
-                                            : qsTr("The session could not be started."))
-                                    return
-                                }
-                                shootingPage.enterWindMapMode()
-                                rootItem.visible = false
-                                return
-                            }
-                            // TRAINING LAB (T4): Position Transition — new Training
-                            // session (kind=Training, position_transition; 3P only).
-                            if (ptConfirmed) {
-                                if (!POSTRANS.startPositionTransition(username_loginPage)) {
-                                    dialogManager.showError(qsTr("Cannot start Position Transition"),
-                                        POSTRANS.lastStartError !== "" ? POSTRANS.lastStartError
-                                            : qsTr("The session could not be started."))
-                                    return
-                                }
-                                shootingPage.enterPositionTransitionMode()
-                                rootItem.visible = false
-                                return
-                            }
-                            // TRAINING LAB (T2): Call & Diagnose — new Training
-                            // session (kind=Training, call_and_diagnose). Opens in
-                            // Sighters; NEVER a qualification/Final session.
-                            if (cdConfirmed) {
-                                if (!CALLDIAG.startCallDiagnose(username_loginPage)) {
-                                    dialogManager.showError(qsTr("Cannot start Call & Diagnose"),
-                                        CALLDIAG.lastStartError !== ""
-                                            ? CALLDIAG.lastStartError
-                                            : qsTr("The session could not be started."))
-                                    return
-                                }
-                                shootingPage.enterCallDiagnoseMode()
-                                rootItem.visible = false
-                                return
-                            }
-                            // TRAINING LAB (T1): explicit Start training — new
-                            // Training session (kind=Training, technical_blocks,
-                            // mode/discipline/focus/visibility persisted, Block 1
-                            // started once). NEVER a qualification/Final session.
-                            if (trainingConfirmed) {
-                                if (!TRAINING.startTraining(username_loginPage)) {
-                                    // T1.1: specific, actionable reason from the
-                                    // controller (lastStartError is a real property).
-                                    dialogManager.showError(qsTr("Cannot start training"),
-                                        TRAINING.lastStartError !== ""
-                                            ? TRAINING.lastStartError
-                                            : qsTr("The training session could not be started."))
-                                    return
-                                }
-                                shootingPage.enterTrainingMode()
-                                rootItem.visible = false
-                                return
-                            }
-                            if (!appMode) {
-                                MODREADER.appendToLogFile("Application running in demo mode")
-                                if (connectToMaster && !MODREADER.isMasterSystemConnected()) {
-                                    dialogManager.showError(qsTr("Master Not Connected"),
-                                        qsTr("The master system is not connected.\n\nPlease press \u201CConnect\u201D and try again.")); return
-                                }
-                                rootItem.visible = false
-                            } else {
-                                MODREADER.appendToLogFile("Application running in Live mode")
-                                if (connectToMaster && !MODREADER.isMasterSystemConnected()) {
-                                    MODREADER.appendToLogFile("Master application required")
-                                    dialogManager.showError(qsTr("Master Not Connected"),
-                                        qsTr("The master system is not connected.\n\nPlease press \u201CConnect\u201D and try again.")); return
-                                }
-                                if (masterConnectBtn && port_name_text_field.text != "") {
-                                    MODREADER.appendToLogFile("Application with port text field")
-                                    MODREADER.connectedModbus(port_name_text_field.text)
-                                    mod_connected = MODREADER.isModBusConnected()
-                                }
-                                if (!MODREADER.isModBusConnected()) {
-                                    validateLogin.text = "Com port not connected"; validateLogin.visible = true
-                                } else if (!MODREADER.isHardwareConnected()) {
-                                    validateLogin.text = "Hardware not connected."; validateLogin.visible = true
-                                } else if (!MODREADER.checkAutoFeedMode()) {
-                                    validateLogin.text = "Auto feed mode is off"; validateLogin.visible = false
-                                } else if (validate()) {
-                                    MODREADER.appendToLogFile("Validation was successful"); rootItem.visible = false
-                                } else { MODREADER.appendToLogFile("Com-port connected but validation failed") }
-                            }
-                            // The SAVED FILE records which competition produced it - the same
-                            // adopted definition the journal gets. A programme with no rule
-                            // authority records nothing, and the file loads as legacy.
-                            APPSETTINGS.setSessionRuleAuthority(
-                                window.activeProgrammeId !== ""
-                                    ? setaCatalogue.ruleAuthorityFor(window.activeProgrammeId,
-                                                                     window.profilePrepSeconds * 1000,
-                                                                     window.profileMatchSeconds * 1000)
-                                    : ({}))
-                            APPSETTINGS.saveMatch(true)
-                            APPSETTINGS.updateUserHistoryData(name_text_field.text)
-                            MODREADER.saveNameAndPort(name_text_field.text, port_name_text_field.text, netowrk_path_text.text)
-                            // Only start hardware polling in LIVE mode. In demo a
-                            // COM port may be open with no target answering, and
-                            // on_pushButton_clicked's blocking reads would freeze
-                            // the transition to the shooting page.
-                            if (appMode && mod_connected) { MODREADER.on_pushButton_clicked(); MODREADER.on_pushButton_2_clicked() }
-                            MODREADER.resetShootinCount()
-                        }
+                        onClicked: startFromLanding()
                     }
                 }
             }
@@ -3100,5 +3177,35 @@ Item {
                 }
             }
         }
+    }
+
+    // ── UI-DEC-017: Display settings for the operator homepage ──────────────
+    Rectangle {
+        id: homeDisplayOverlay
+        anchors.fill: parent; z: 45; visible: false
+        color: theme.homeTokens.scrim
+        MouseArea { anchors.fill: parent; onClicked: homeDisplayOverlay.visible = false }
+        HomeDisplaySettings {
+            anchors.centerIn: parent
+            onCloseRequested: homeDisplayOverlay.visible = false
+        }
+    }
+
+    // ── UI-DEC-016: athlete home ─────────────────────────────────────────────
+    // z 40: above the homepage, BELOW the legacy connection overlays (z 50-52)
+    // so a connection prompt raised by the shared start path is still seen.
+    AthleteHome {
+        id: athleteHome
+        objectName: "athleteHome"
+        anchors.fill: parent; z: 40
+        visible: athleteHomeShown
+        catalogue: setaCatalogue
+        programmeIds: athleteMode ? athleteProgrammeIds() : []
+        liveMode: appMode
+        targetReady: MODREADER.targetReady
+        operatorPin: athleteMode ? APPSETTINGS.getOperatorPin() : ""
+        athleteName: username_loginPage
+        onStartRequested: function (programmeId, name) { athleteStart(programmeId, name) }
+        onOperatorUnlocked: operatorUnlocked = true
     }
 }
