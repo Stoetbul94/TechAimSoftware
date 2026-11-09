@@ -296,6 +296,27 @@ Item {
         currentmatchDisplay = "10m FINAL"
     }
 
+    // A competition profile sets the course DIRECTLY: shot count and display
+    // come from the definition, not from a ListModel row. That is what lets a
+    // programme exist whose shot count has no legacy row at all - DSB 1.60 is
+    // 120 shots, and no legacy event card carries that.
+    function applyCompetitionProfile(def) {
+        if (!def) return false
+        matchShootCount = def.shotCount
+        applyCompetitionDisplay(def)
+        return true
+    }
+
+    // DISPLAY ONLY. A recovered session takes its labels from the catalogue so
+    // it does not read as a generic course, while its RULES stay the ones it
+    // adopted - which is why the shot count is deliberately not touched here.
+    function applyCompetitionDisplay(def) {
+        if (!def) return
+        currentGameDisplay1 = qsTr(def.gameDisplay1Key)
+        currentGameDisplay2 = qsTr(def.gameDisplay2Key)
+        currentmatchDisplay = qsTr(def.matchDisplayKey)
+    }
+
     function setCurrentGameType(index)
     {
         if (APPSETTINGS.getDeveloperMode()) console.log("setCurrentGameType  ", index)

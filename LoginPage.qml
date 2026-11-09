@@ -898,7 +898,7 @@ Item {
                         id: hdrBtnMouse; anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                         onClicked: {
                             if (modelData === "display") homeDisplayOverlay.visible = true
-                            else operatorUnlocked = false
+                            else rootItem.operatorUnlocked = false
                         }
                     }
                 }
@@ -3206,6 +3206,8 @@ Item {
         operatorPin: athleteMode ? APPSETTINGS.getOperatorPin() : ""
         athleteName: username_loginPage
         onStartRequested: function (programmeId, name) { athleteStart(programmeId, name) }
-        onOperatorUnlocked: operatorUnlocked = true
+        // MUST be qualified: inside this handler a bare "operatorUnlocked" is
+        // AthleteHome's own signal of the same name, so the page never unlocked.
+        onOperatorUnlocked: rootItem.operatorUnlocked = true
     }
 }

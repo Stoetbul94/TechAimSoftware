@@ -443,6 +443,20 @@ void run_brand_package_tests()
               "athlete: a tile is offered only for a programme the catalogue offers");
         check(page.contains(QStringLiteral("if (visible) operatorUnlocked = false")),
               "athlete: returning to the home screen re-locks the operator page");
+        check(page.contains(QStringLiteral("onOperatorUnlocked: rootItem.operatorUnlocked = true")),
+              "athlete: the PIN unlock sets the PAGE property, not AthleteHome's same-named signal");
+        check(!page.contains(QStringLiteral("onOperatorUnlocked: operatorUnlocked")),
+              "athlete: no unqualified operatorUnlocked inside the AthleteHome handler");
+        // main.qml calls these on EVERY DSB commit (updateGameType) and on recovery.
+        // 6409b4a removed them and 28a36f0 did not restore them: the TypeError
+        // aborted applySetaProgramme, so no DSB programme could be committed.
+        const QString sp = stripComments(readFile(QStringLiteral("ShootingPage.qml"), &ok));
+        check(sp.contains(QStringLiteral("function applyCompetitionProfile(def)")),
+              "dsb: ShootingPage defines applyCompetitionProfile (main.qml updateGameType calls it)");
+        check(sp.contains(QStringLiteral("function applyCompetitionDisplay(def)")),
+              "dsb: ShootingPage defines applyCompetitionDisplay (main.qml recovery calls it)");
+        check(sp.contains(QStringLiteral("matchShootCount = def.shotCount")),
+              "dsb: a committed profile sets the course shot count from the definition");
 
         const QString cfg = stripComments(readFile(QStringLiteral("appsettings.cpp"), &ok));
         check(cfg.contains(QStringLiteral("value(\"athlete_mode\", 0)")),
