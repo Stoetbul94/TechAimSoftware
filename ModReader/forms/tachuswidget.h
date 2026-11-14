@@ -358,6 +358,16 @@ public slots:
     double getXMPI(int series = -1);
     double getGroup(int pageIndex, bool withPalletOffset = true);
     double getGroupFromList(QList<double> xList, QList<double> yList);
+    // REPORT-RECOVERY-001. Whole-match MPI / group / Teiler for coordinates
+    // the CALLER supplies (the reports pass globalMatchModel, the authoritative
+    // match record), with the same formulas as getXMPI/getYMPI(-1),
+    // getGroup(-1) and getTeiler(-1). PURE: it reads no capture list and
+    // changes no acquisition state - after a crash recovery the capture lists
+    // hold only post-resume shots, and the acquisition sequencer depends on
+    // them, so they are deliberately not refilled. Keys: count, mpiX, mpiY,
+    // group, teiler. With no shots every value but count is NaN.
+    Q_INVOKABLE QVariantMap matchFiguresFor(const QVariantList& xs,
+                                            const QVariantList& ys);
     double getGroup_1(int pageIndex);
     double getXGroup();
     double getYGroup();

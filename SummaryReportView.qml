@@ -85,9 +85,9 @@ Item {
                             MetricCard { width: metricGrid.cw; label: "Total Shots"; value: "" + globalMatchModel.count }
                             MetricCard { width: metricGrid.cw; label: "Inner 10"; value: "" + rightPanel.totalStars }
                             MetricCard { width: metricGrid.cw; label: "MPI"; unit: "mm"; valueSize: 18
-                                value: (screenPresence.tick, MODREADER.getXMPI().toFixed(1) + " / " + MODREADER.getYMPI().toFixed(1)) }
+                                value: (screenPresence.tick, globalMatchModel.count, fmtMm(wholeMatchFigures().mpiX) + " / " + fmtMm(wholeMatchFigures().mpiY)) }
                             MetricCard { width: metricGrid.cw; label: "Group"; unit: "mm²"; valueSize: 20
-                                value: (screenPresence.tick, "" + MODREADER.getGroup(-1).toFixed(1)) }
+                                value: (screenPresence.tick, globalMatchModel.count, fmtMm(wholeMatchFigures().group)) }
                             MetricCard { width: metricGrid.cw; label: "Total Time"; unit: "min"; valueSize: 20
                                 value: converSecondToMins(totalTime) }
                             MetricCard { width: metricGrid.cw; label: "Avg Time / Shot"; unit: "min"; valueSize: 20
@@ -320,6 +320,20 @@ Item {
         return formatText
     }
 
+    // REPORT-RECOVERY-001: whole-match MPI / group / Teiler from the
+    // AUTHORITATIVE match record (globalMatchModel), via MODREADER's pure
+    // matchFiguresFor() - the capture lists only hold post-resume shots after
+    // a crash recovery. Same formulas as the capture-list getters.
+    function wholeMatchFigures() {
+        var xs = [], ys = []
+        for (var i = 0; i < globalMatchModel.count; ++i) {
+            var r = globalMatchModel.get(i)
+            xs.push(r.xmm * 1); ys.push(r.ymm * 1)
+        }
+        return MODREADER.matchFiguresFor(xs, ys)
+    }
+    function fmtMm(v) { return isFinite(v) ? Number(v).toFixed(1) : "—" }
+
     function getMPI()
     {
         return (":  X: " + getXMPI()+"; Y: "+getYMPI())
@@ -327,12 +341,12 @@ Item {
 
     function getXMPI()
     {
-        return MODREADER.getXMPI()
+        return fmtMm(wholeMatchFigures().mpiX)
     }
     function getYMPI()
     {
         if (APPSETTINGS.getDeveloperMode()) console.log("-----------------*******************__________________1")
-        return MODREADER.getYMPI()
+        return fmtMm(wholeMatchFigures().mpiY)
     }
     function converSecondToMins(seconds)
     {

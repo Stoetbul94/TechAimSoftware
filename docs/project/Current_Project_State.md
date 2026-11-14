@@ -367,3 +367,26 @@ is pre-existing and independent of this work.
 - 10 m Finals reporting (F6) and the Open Practice reporting checks remain
   deferred, unchanged by this round. See
   `docs/field-tests/reporting-architecture-audit.md`.
+
+## Crash-recovery fixes ported from SETA — 2026-11-15
+
+Branch `fix/techaim-recovery-port` (off `release/techaim-1.0.0`, `f7a3d9f`).
+Found on the SETA preview after a real power loss; Tech Aim 1.0.0 shares the
+code and had all four faults:
+
+- **RECOVERY-CLOCK-001** — a second crash restored the full 75:00 (or charged
+  the downtime). Each resume now journals the crash interval as a clock pause.
+- **REPORT-STALE-001 / REPORT-RECOVERY-001** — the match/summary report MPI and
+  group showed "NaN" / 0.0 or only post-resume shots. They now read the match
+  record through the pure `TachusWidget::matchFiguresFor()`; Tech Aim still
+  shows no Teiler.
+- **RECOVERY-SHOTTIME-001** — recovered shots showed 0 s; the shot time is now
+  journalled (`ShotCore.splitMs`).
+- **RECOVERY-RETURN-001** — the restorer threw before `return true`.
+
+Proof: reliability **2631 / 0** (incl. the double-crash test), qml **440 / 0**,
+finals **379 / 0**, finals10m **229 / 0**, training **568 / 0**. Hand run on an
+isolated documentation-capture data root: Time left 74:47 → 74:40 across two
+crashes, shot times 6/7/7 s kept, report MPI/group over all shots
+(`docs/field-tests/evidence/techaim-double-crash-recovery-2026-11-15.jpg`).
+Not a release: no version bump; a 1.0.1 build needs its own decision.

@@ -22,6 +22,20 @@ Item {
     signal requestPrint()
 
     property bool isPrintFromBackend: false
+    // One decimal, or a dash when the value was never measured (NaN / inf).
+    // REPORT-RECOVERY-001: whole-match MPI / group / Teiler from the
+    // AUTHORITATIVE match record (globalMatchModel), via MODREADER's pure
+    // matchFiguresFor() - the capture lists only hold post-resume shots after
+    // a crash recovery. Same formulas as the capture-list getters.
+    function wholeMatchFigures() {
+        var xs = [], ys = []
+        for (var i = 0; i < globalMatchModel.count; ++i) {
+            var r = globalMatchModel.get(i)
+            xs.push(r.xmm * 1); ys.push(r.ymm * 1)
+        }
+        return MODREADER.matchFiguresFor(xs, ys)
+    }
+    function fmtMm(v) { return isFinite(v) ? Number(v).toFixed(1) : "—" }
     property bool isAutoPrintOn: false
     // Set when THIS view starts a save, so the shared CUSTOMPRINT.saveComplete
     // signal only closes the window for a Match save (not a Summary save).
@@ -169,9 +183,14 @@ Item {
                     MetricCard { width: execGrid.cw; label: qsTr("Total Shots");   value: "" + globalModelOfData.count }
                     MetricCard { width: execGrid.cw; label: qsTr("Inner 10");      value: "" + rightPanel.totalStars }
                     MetricCard { width: execGrid.cw; label: qsTr("MPI"); unit: "mm"; valueSize: 18
-                        value: MODREADER.getXMPI(-1).toFixed(1) + " / " + MODREADER.getYMPI(-1).toFixed(1) }
+                        // REPORT-STALE-001: a bare MODREADER call has no change signal, so
+                        // the card kept the value from BEFORE the first shot (0/0 = NaN).
+                        // the shot count re-evaluates it after every shot (cf. SummaryReportView.tick);
+                        // an unmeasured value prints a dash (ACQ-SENTINEL-003).
+                        value: (globalMatchModel.count, globalModelOfData.count,
+                                fmtMm(wholeMatchFigures().mpiX) + " / " + fmtMm(wholeMatchFigures().mpiY)) }
                     MetricCard { width: execGrid.cw; label: qsTr("Group"); unit: "mm"; valueSize: 20
-                        value: MODREADER.getGroup(-1).toFixed(1) }
+                        value: (globalMatchModel.count, fmtMm(wholeMatchFigures().group)) }
                     MetricCard { width: execGrid.cw; label: qsTr("Total Time"); unit: "min"; valueSize: 20
                         value: screenPresence.converSecondToMins(totalTime) }
                 }

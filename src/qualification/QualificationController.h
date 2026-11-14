@@ -69,12 +69,15 @@ public:
     // (decimal for rifle, floored integer for full-ring pistol — the caller
     // decides); it is persisted as fixed-point tenths. Returns false only if the
     // reducer rejects the shot (e.g. official beyond the phase, duplicate).
+    // splitSec: the shot's time since the previous shot, as the right panel
+    // shows it (RECOVERY-SHOTTIME-001). Journalled in ShotCore.splitMs so a
+    // recovered shot keeps its time; < 0 = unknown (recorded as 0).
     Q_INVOKABLE bool submitSighter(double xMm, double yMm, double score,
                                    qint64 externalId, double directionDeg,
-                                   bool simulated);
+                                   bool simulated, double splitSec = -1);
     Q_INVOKABLE bool submitOfficial(double xMm, double yMm, double score,
                                     qint64 externalId, double directionDeg,
-                                    bool simulated);
+                                    bool simulated, double splitSec = -1);
 
     // F10: running operating mode (0 = Live, 1 = Demo). Set once at startup;
     // the authoritative input-source gate in submitShot rejects a shot whose
@@ -145,7 +148,8 @@ signals:
 
 private:
     bool submitShot(bool sighter, double xMm, double yMm, double score,
-                    qint64 externalId, double directionDeg, bool simulated);
+                    qint64 externalId, double directionDeg, bool simulated,
+                    double splitSec);
     void submitEvent(const ta::rel::DomainEvent& event);
     void loadRecoveredState(const ta::rel::RecoveredMatchState& recovered);
 
