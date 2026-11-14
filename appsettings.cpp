@@ -626,7 +626,14 @@ int AppSettings::getTimeCount(int shootCount)
             return 75 * 60;
         if (m_10or50mRange == 10)    // 10m Air Rifle
             return 75 * 60;
-        if (game_sub_mode == 1)      // 50m Rifle 3 Positions on EST (105 min is paper/outdoor)
+        // 50m Rifle 3 Positions. ISSF Rule Book 2026, Edition 2025 (Second
+        // Print 07/2026), 6.11.9.2: 105 minutes if an OUTDOOR range is used,
+        // 90 minutes if an INDOOR range is used. This build implements the
+        // INDOOR course only. The distinction is the RANGE, not paper vs EST -
+        // the earlier comment here said paper/outdoor, which is not what the
+        // rule says. Outdoor support needs a declared range environment
+        // (Phase 2 audit F2, docs/seta/PHASE2-RULES-AUDIT-2026-11-15.md).
+        if (game_sub_mode == 1)
             return 90 * 60;
         return 50 * 60;              // 50m Rifle Prone
     }
