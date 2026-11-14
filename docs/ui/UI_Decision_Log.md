@@ -555,3 +555,50 @@ unchanged and remain the default; light values are additions. UI-DEC-004
 **preserved** — scope still excludes the shooting UI. UI-DEC-015 **preserved**.
 
 **Supersedes.** Nothing.
+
+---
+
+## UI-DEC-018 — Athlete home: DSB, ISSF and Practice groups; keyboard PIN entry
+
+| | |
+|---|---|
+| **Date** | 2026-11-14 |
+| **Status** | PROPOSED — awaiting HUMAN VISUAL APPROVAL |
+| **Commit** | branch `feature/seta-athlete-mode` |
+| **Requested by** | ARNOLD BAILIE, 2026-11-14 ("add the ISSF and Practise to the athletes window"; "the user can use their keyboard to input the code") |
+
+**Decision.** The athlete home shows its tiles in up to three groups, chosen
+with one segmented control above the tiles: **DSB**, **ISSF** and **Practice**.
+A group with no tiles is not shown. Changing group clears the selection, so
+START never runs a tile the athlete can no longer see.
+
+- *DSB* — the club programmes, as before (UI-DEC-016).
+- *ISSF* — the catalogue's ISSF qualification courses at the lane's distance.
+- *Practice* — the catalogue's practice presets (free / 10 / 20 / 30 / 40, or
+  the 15-shot paper set when `15_shoot_match` is on) at the lane's distance.
+
+`athlete_programmes` in `config.ini` still trims the lane to a fixed list; the
+listed ids are sorted into the same three groups by their `rulesetId`.
+
+The operator PIN also accepts the **keyboard**: digits (main row and numpad),
+Backspace, Enter to confirm and Esc to cancel. The on-screen pad is unchanged.
+
+**Reasoning.** Athletes train on ISSF courses and practice presets as often as
+on DSB programmes; sending them to the operator page for those defeats athlete
+mode. The tiles still pass only a `programmeId` to the unchanged
+`athleteStart()` → `applySetaProgramme()` → `startFromLanding()` path, which
+already commits ISSF and practice entries for the operator page, so no start,
+timing or rule logic is added. ISSF/practice tile times come from the SAME
+function the operator page's preview uses (`legacyMatchTimeText`), so the two
+can never disagree.
+
+**Not included, deliberately.** ISSF 50 m 3 Positions (it is a position switch
+on the 60-shot course, not a programme id) and the ISSF Finals (separate
+controllers with their own operator workflow). Both stay on the operator page.
+
+**Affected decisions.** UI-DEC-016 **preserved** — still a presentation-only
+screen over the unchanged start path; it gains groups, not behaviour.
+UI-DEC-017 **preserved**. UI-DEC-009 (selection indicator) **preserved**.
+UI-DEC-012 **preserved** — the operator homepage is untouched.
+
+**Supersedes.** Nothing.

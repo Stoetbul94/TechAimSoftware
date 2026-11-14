@@ -458,6 +458,30 @@ void run_brand_package_tests()
         check(sp.contains(QStringLiteral("matchShootCount = def.shotCount")),
               "dsb: a committed profile sets the course shot count from the definition");
 
+        // UI-DEC-018: DSB / ISSF / Practice groups and keyboard PIN entry.
+        check(page.contains(QStringLiteral("function athleteProgrammeGroups()")),
+              "athlete groups: LoginPage builds the athlete groups");
+        check(page.contains(QStringLiteral("all[e].rulesetId === (r === 0 ? \"issf\" : \"techaim\")")),
+              "athlete groups: the default lists offer ISSF and the practice presets");
+        check(page.contains(QStringLiteral("p.fifteenShotVariant !== fifteen")),
+              "athlete groups: a preset for the other paper mode is never offered");
+        check(page.contains(QStringLiteral("return legacyMatchTimeText(getGameEventText(gameEvent), gameMode, gameRange, gameSubMode)")),
+              "athlete groups: the operator preview reads the shared time table");
+        check(page.contains(QStringLiteral("out[p.programmeId] = legacyMatchTimeText(")),
+              "athlete groups: ISSF/practice tile times come from the SAME table");
+        check(athlete.contains(QStringLiteral("home.groupIndex = index; home.selectedId = \"\"")),
+              "athlete groups: switching group clears the selection");
+        check(athlete.contains(QStringLiteral("model: home.shownIds")),
+              "athlete groups: the grid shows the current group only");
+        check(athlete.contains(QStringLiteral("onVisibleChanged: if (visible) forceActiveFocus()")),
+              "athlete PIN: opening the pad gives it keyboard focus");
+        for (const char* k : { "Qt.Key_0", "Qt.Key_9", "Qt.Key_Backspace",
+                               "Qt.Key_Return", "Qt.Key_Enter", "Qt.Key_Escape" })
+            check(athlete.contains(QLatin1String(k)),
+                  qPrintable(QStringLiteral("athlete PIN: the keyboard handles %1").arg(QLatin1String(k))));
+        check(athlete.contains(QStringLiteral("if (entered.length < 8) entered += String(event.key - Qt.Key_0)")),
+              "athlete PIN: typed digits obey the same 8-digit limit as the pad");
+
         const QString cfg = stripComments(readFile(QStringLiteral("appsettings.cpp"), &ok));
         check(cfg.contains(QStringLiteral("value(\"athlete_mode\", 0)")),
               "athlete: athlete mode is OFF unless config.ini turns it on");

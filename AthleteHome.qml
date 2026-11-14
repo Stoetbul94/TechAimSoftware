@@ -12,7 +12,17 @@ Item {
     // ── Inputs ────────────────────────────────────────────────────────────
     property var tok: theme.homeTokens
     property var catalogue: null
-    property var programmeIds: []          // already filtered by LoginPage
+    property var programmeIds: []          // a single ungrouped list (evidence scenes)
+    // UI-DEC-018: [{key, label, ids}] already filtered by LoginPage. When set,
+    // it replaces programmeIds and a group switcher is shown above the tiles.
+    property var groups: []
+    // ISSF / practice tile times, from LoginPage.legacyMatchTimeText().
+    property var tileTimes: ({})
+    property int groupIndex: 0
+    readonly property int groupIndexClamped:
+        groups.length > 0 ? Math.max(0, Math.min(groupIndex, groups.length - 1)) : 0
+    readonly property var shownIds:
+        groups.length > 0 ? groups[groupIndexClamped].ids : programmeIds
     property bool liveMode: true            // config.ini app_mode=Live
     property bool targetReady: false        // MODREADER.targetReady
     property string operatorPin: ""         // empty = confirm only
@@ -29,9 +39,19 @@ Item {
     readonly property bool canStart: nameField.text.trim() !== "" && selectedId !== ""
 
     function programmeTitle(p) {
+        if (p.rulesetId !== "dsb")
+            return qsTr(p.gameDisplay1Key) + " " + qsTr(p.gameDisplay2Key)
+                   + "  " + qsTr(p.matchDisplayKey)
         return p.ruleNumber + "  " + qsTr(p.disciplineLabelKey)
+               + "  " + p.programmeVariant.replace("x", "×")
     }
     function programmeDetail(p) {
+        if (p.rulesetId !== "dsb") {
+            if (p.unlimited) return qsTr("Unlimited shots")
+            var t = home.tileTimes[p.programmeId]
+            return qsTr("%1 shots").arg(p.shotCount)
+                   + ((t && t !== "—") ? "  ·  " + t : "")
+        }
         var time = p.matchMinutes > 0
                 ? qsTr("%1 min").arg(p.matchMinutes)
                 : qsTr("%1 min per position").arg(p.positionMinutes.join(" / "))
@@ -137,24 +157,56 @@ Item {
     Text {
         anchors.top: eventLabel.bottom; anchors.topMargin: 12
         anchors.left: topRow.left; anchors.right: topRow.right
-        visible: home.programmeIds.length === 0
+        visible: home.shownIds.length === 0
         wrapMode: Text.WordWrap
         text: qsTr("No events are set up for this lane. Ask the range operator.")
         color: tok.warningText; font.family: theme.fontFamily; font.pixelSize: 18
     }
     // Scrolls on its own; the action bar below never scrolls (Screen Layout
     // Rules §1: the primary action is always reachable).
+    // UI-DEC-018: DSB / ISSF / Practice. Shown only when there is a choice.
+    // Switching clears the selection so START never runs an unseen tile.
+    Row {
+        id: groupRow
+        objectName: "athleteGroupRow"
+        anchors.top: eventLabel.bottom; anchors.topMargin: 12
+        anchors.left: topRow.left
+        spacing: 8
+        visible: home.groups.length > 1
+        height: visible ? 48 : 0
+        Repeater {
+            model: home.groups
+            Rectangle {
+                objectName: "athleteGroup_" + modelData.key
+                readonly property bool current: index === home.groupIndexClamped
+                width: Math.max(120, grpText.implicitWidth + 40); height: 48; radius: 24
+                color: current ? tok.accentPrimary : tok.surfacePrimary
+                border.color: current ? tok.accentPrimary : tok.borderStrong; border.width: 1
+                Text {
+                    id: grpText; anchors.centerIn: parent; text: modelData.label
+                    color: parent.current ? tok.textOnAccent : tok.textPrimary
+                    font.family: theme.fontFamily; font.pixelSize: 17; font.bold: true
+                }
+                MouseArea {
+                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                    onClicked: if (home.groupIndex !== index) {
+                                   home.groupIndex = index; home.selectedId = "" }
+                }
+            }
+        }
+    }
+
     GridView {
         id: tiles
         objectName: "athleteProgrammeGrid"
-        anchors.top: eventLabel.bottom; anchors.topMargin: 12
+        anchors.top: groupRow.bottom; anchors.topMargin: groupRow.visible ? 16 : 0
         anchors.left: topRow.left; anchors.right: topRow.right
         anchors.bottom: actionBar.top; anchors.bottomMargin: 16
         clip: true
         boundsBehavior: Flickable.StopAtBounds
         readonly property int cols: width >= 1000 ? 3 : 2
         cellWidth: width / cols; cellHeight: 104
-        model: home.programmeIds
+        model: home.shownIds
         delegate: Item {
             width: tiles.cellWidth; height: tiles.cellHeight
             readonly property var p: home.catalogue ? home.catalogue.profile(modelData) : null
@@ -173,7 +225,7 @@ Item {
                     spacing: 6
                     Text {
                         width: parent.width; elide: Text.ElideRight
-                        text: p ? home.programmeTitle(p) + "  " + p.programmeVariant.replace("x", "×") : modelData
+                        text: p ? home.programmeTitle(p) : modelData
                         color: tok.textPrimary; font.family: theme.fontFamily
                         font.pixelSize: 20; font.bold: true
                     }
@@ -289,6 +341,28 @@ Item {
         anchors.fill: parent; visible: false
         color: tok.scrim
         MouseArea { anchors.fill: parent; onClicked: pinOverlay.visible = false }
+
+        // UI-DEC-018: the keyboard works too - digits (main row and numpad),
+        // Backspace, Enter to confirm, Esc to cancel. Same rules as the pad.
+        onVisibleChanged: if (visible) forceActiveFocus()
+        Keys.onPressed: function (event) {
+            if (event.key === Qt.Key_Escape) {
+                visible = false
+            } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                submit()
+            } else if (!needsPin) {
+                return
+            } else if (event.key >= Qt.Key_0 && event.key <= Qt.Key_9) {
+                wrong = false
+                if (entered.length < 8) entered += String(event.key - Qt.Key_0)
+            } else if (event.key === Qt.Key_Backspace) {
+                wrong = false
+                entered = entered.slice(0, -1)
+            } else {
+                return
+            }
+            event.accepted = true
+        }
 
         function submit() {
             if (!needsPin || entered === home.operatorPin) {

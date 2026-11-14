@@ -252,3 +252,19 @@ Branch `feature/seta-athlete-mode` · 2026-11-08 · Spec:
 | Operator homepage in **light** theme | HUMAN VISUAL CHECK REQUIRED | not rendered — the homepage needs the full app context |
 | German catalogue on the athlete home | NOT TESTED | new strings are not yet in `techaim_de_DE.ts` |
 | 1366 × 768 and smaller | NOT TESTED | |
+
+### 4a. Athlete groups and keyboard PIN (UI-DEC-018) — 2026-11-14
+
+| Check | Status | Evidence |
+|---|---|---|
+| DSB / ISSF / Practice switcher shown; empty groups hidden | PASS | hand-run 2026-11-14, `docs/seta/evidence/athlete-groups-practice-2026-11-14.jpg` |
+| ISSF group: 10m Air Rifle and Air Pistol MATCH-60, 60 shots · 75 min | PASS | hand-run 2026-11-14 |
+| Practice group: 10 presets, times match the operator preview (shared `legacyMatchTimeText`) | PASS | hand-run + `tst_brandpackage.cpp` UI-DEC-018 checks — reliability **2788 / 0** |
+| Switching group clears the selection | PASS (source) | same |
+| ISSF AR60 from the athlete home starts a 60-shot match (log `ruleset=LEGACY discipline=AR10 shots=60`) | PASS | hand-run 2026-11-14 |
+| Practice AP Match-10 starts a 10-shot pistol match (log `discipline=AP10 shots=10`) | PASS | hand-run 2026-11-14 |
+| DSB 1.10 LG40 still starts with its own authority after group switching | PASS | hand-run 2026-11-14, log `ruleset=DSB … shots=40` |
+| PIN by keyboard: wrong code rejected, Backspace, 1234 + Enter unlocks, Esc closes | PASS | hand-run 2026-11-14 |
+| Full flow PIN → operator page → Back; START → match → Home re-locks | PASS | hand-run 2026-11-09 and 2026-11-14 (supersedes the "not driven by hand" line above) |
+| 50 m lane groups (`game_distance=50`) | NOT TESTED | only the 10 m lane was run |
+| German text for the group labels / new tile text | NOT TESTED | strings not yet in `techaim_de_DE.ts` |

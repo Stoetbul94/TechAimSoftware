@@ -339,3 +339,12 @@ reliability **2521 / 0**, qml **299 / 0**. Not yet: the match screen and
 end-of-match screen in athlete mode, German strings for the new screen, a hand
 run of the full flow, and a physical-target run. Spec:
 `docs/seta/SETA-ATHLETE-MODE-SPEC.md`.
+
+**2026-11-14 — UI-DEC-018.** The athlete home now offers **DSB / ISSF /
+Practice** groups, and the operator PIN accepts the keyboard. Hand-run in the
+running app (ISSF AR60, practice AP Match-10 and DSB 1.10 LG40 all started
+correctly; keyboard PIN incl. wrong code, Backspace, Enter, Esc). Reliability
+**2788 / 0**, qml **299 / 0**. Earlier the same week: the PIN unlock and DSB
+start defects were fixed (`2d3c918`) and two Tech Aim 1.0.0 integrity guards
+were carried forward. Still open: German strings for the new screens, the
+50 m lane run, match / end-of-match screens in athlete mode, physical target.

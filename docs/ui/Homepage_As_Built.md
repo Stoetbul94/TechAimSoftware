@@ -275,3 +275,22 @@ operator page is locked: title + status pill, name, programme tiles
 opens a PIN pad (`operator_pin`) or a confirm when no PIN is set.
 `HomeDisplaySettings.qml` is shared by both home screens. Theme persists as
 `home_theme`; language uses `LANGUAGE.selectLanguage()`.
+
+### 29a. Athlete groups and keyboard PIN (UI-DEC-018) — 2026-11-14
+
+- `LoginPage.athleteProgrammeGroups()` replaces `athleteProgrammeIds()` and
+  returns `[{key, label, ids}]` for **DSB**, **ISSF** and **Practice** (empty
+  groups dropped). Default: the DSB club set, plus every catalogue `issf` and
+  `techaim` entry at `game_distance` for the configured paper mode. A
+  configured `athlete_programmes` list is sorted into the groups by `rulesetId`.
+- `LoginPage.legacyMatchTimeText(shots, mode, range, subMode)` is the legacy
+  time table moved verbatim out of `getMatchTime()`; both the operator preview
+  and `athleteTileTimes()` call it.
+- `AthleteHome` gains `groups`, `tileTimes`, `groupIndex` and a pill switcher
+  above the grid (shown only with more than one group). ISSF / practice tiles
+  read "10M AIR RIFLE  MATCH-20" · "20 shots · 20 min"; unlimited presets read
+  "Unlimited shots". `programmeIds` still works for an ungrouped list.
+- The PIN overlay takes keyboard focus when opened: digits 0–9 (main row and
+  numpad), Backspace, Enter / Return, Esc.
+- Not offered on the athlete home: ISSF 50 m 3 Positions and the ISSF Finals
+  (operator page only).

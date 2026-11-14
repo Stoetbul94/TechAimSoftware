@@ -69,22 +69,60 @@ Item {
     property bool operatorUnlocked: false
     readonly property bool athleteHomeShown: athleteMode && !operatorUnlocked
 
-    // The lane's event tiles. Only ids the catalogue knows AND offers survive,
-    // so a typo in config.ini drops a tile instead of starting the wrong match.
-    function athleteProgrammeIds() {
+    // The lane's event tiles, in groups (UI-DEC-018): DSB, ISSF, Practice.
+    // Only ids the catalogue knows AND offers survive, so a typo in config.ini
+    // drops a tile instead of starting the wrong match. A configured
+    // athlete_programmes list is sorted into the groups by rulesetId; with no
+    // list, DSB gets the club set and ISSF / Practice get every catalogue
+    // entry for this lane's distance and paper mode.
+    function athleteProgrammeGroups() {
+        if (!setaCatalogue) return []
+        var dist = APPSETTINGS.getGame_distance() === 50 ? 50 : 10
+        var fifteen = APPSETTINGS.getIs15Shoot()
         var ids = APPSETTINGS.getAthleteProgrammes()
-        if (!ids || ids.length === 0)
-            ids = APPSETTINGS.getGame_distance() === 50
+        if (!ids || ids.length === 0) {
+            ids = dist === 50
                 ? ["dsb.50m.rifle.prone60", "dsb.50m.rifle.3x20",
                    "dsb.50m.rifle.3x40",    "dsb.50m.pistol.p60"]
                 : ["dsb.10m.air-rifle.lg40", "dsb.10m.air-rifle.lg60",
                    "dsb.10m.air-rifle.3x10", "dsb.10m.air-rifle.3x20",
                    "dsb.10m.air-pistol.lp40", "dsb.10m.air-pistol.lp60"]
+            var all = setaCatalogue.entriesIn(fifteen)
+            for (var r = 0; r < 2; ++r)
+                for (var e = 0; e < all.length; ++e)
+                    if (all[e].rulesetId === (r === 0 ? "issf" : "techaim")
+                        && all[e].distanceM === dist)
+                        ids.push(all[e].programmeId)
+        }
+        var byRuleset = { "dsb": [], "issf": [], "techaim": [] }
+        for (var i = 0; i < ids.length; ++i) {
+            var p = setaCatalogue.profile(ids[i])
+            if (p === null || !setaCatalogue.programmeAvailable(ids[i])) continue
+            // A preset for the OTHER paper mode cannot run on this lane.
+            if (p.rulesetId !== "dsb" && p.fifteenShotVariant !== fifteen) continue
+            if (byRuleset[p.rulesetId] !== undefined) byRuleset[p.rulesetId].push(ids[i])
+        }
         var out = []
-        for (var i = 0; i < ids.length; ++i)
-            if (setaCatalogue && setaCatalogue.profile(ids[i]) !== null
-                && setaCatalogue.programmeAvailable(ids[i]))
-                out.push(ids[i])
+        if (byRuleset.dsb.length)     out.push({ "key": "dsb",      "label": qsTr("DSB"),      "ids": byRuleset.dsb })
+        if (byRuleset.issf.length)    out.push({ "key": "issf",     "label": qsTr("ISSF"),     "ids": byRuleset.issf })
+        if (byRuleset.techaim.length) out.push({ "key": "practice", "label": qsTr("Practice"), "ids": byRuleset.techaim })
+        return out
+    }
+
+    // Tile times for ISSF / practice tiles. These programmes keep their timing
+    // in the legacy table, so the tile asks the SAME function the operator
+    // preview uses - the two cannot show different minutes. DSB tiles read
+    // their own declared times and are not listed here.
+    function athleteTileTimes(groups) {
+        var out = {}
+        for (var g = 0; g < groups.length; ++g)
+            for (var i = 0; i < groups[g].ids.length; ++i) {
+                var p = setaCatalogue.profile(groups[g].ids[i])
+                if (p === null || p.rulesetId === "dsb") continue
+                out[p.programmeId] = legacyMatchTimeText(
+                    p.unlimited ? "Free Practice" : String(p.shotCount),
+                    p.isPistol ? 0 : 1, p.distanceM, 0)
+            }
         return out
     }
 
@@ -491,7 +529,13 @@ Item {
         if (ac !== null && ac.positionMinutes !== undefined
             && ac.positionMinutes.length > 0)
             return qsTr("%1 min per position").arg(ac.positionMinutes.join(" / "))
-        var shots = getGameEventText(gameEvent)
+        return legacyMatchTimeText(getGameEventText(gameEvent), gameMode, gameRange, gameSubMode)
+    }
+
+    // The legacy (ISSF / practice) match-time table, as a PURE function of the
+    // course so the operator preview and the athlete tiles (UI-DEC-018) read
+    // one table. Moved verbatim out of getMatchTime(); behaviour unchanged.
+    function legacyMatchTimeText(shots, mode, range, subMode) {
         if (shots === "Free Practice") return "—"
         if (shots === "10") return qsTr("10 min")
         if (shots === "15") return qsTr("15 min")
@@ -499,9 +543,9 @@ Item {
         if (shots === "30") return qsTr("30 min")
         if (shots === "40") return qsTr("40 min")
         if (shots === "60") {
-            if (gameMode === 0)      return qsTr("75 min")   // 10m Air Pistol  (ISSF 2026)
-            if (gameRange === 10)    return qsTr("75 min")   // 10m Air Rifle   (ISSF 2026)
-            if (gameSubMode === 1)   return qsTr("90 min")   // 50m Rifle 3 Pos on EST (ISSF 2026)
+            if (mode === 0)          return qsTr("75 min")   // 10m Air Pistol  (ISSF 2026)
+            if (range === 10)        return qsTr("75 min")   // 10m Air Rifle   (ISSF 2026)
+            if (subMode === 1)       return qsTr("90 min")   // 50m Rifle 3 Pos on EST (ISSF 2026)
             return qsTr("50 min")                            // 50m Rifle Prone (ISSF 2026)
         }
         return "—"
@@ -3200,7 +3244,8 @@ Item {
         anchors.fill: parent; z: 40
         visible: athleteHomeShown
         catalogue: setaCatalogue
-        programmeIds: athleteMode ? athleteProgrammeIds() : []
+        groups: athleteMode ? athleteProgrammeGroups() : []
+        tileTimes: athleteMode ? athleteTileTimes(groups) : ({})
         liveMode: appMode
         targetReady: MODREADER.targetReady
         operatorPin: athleteMode ? APPSETTINGS.getOperatorPin() : ""
