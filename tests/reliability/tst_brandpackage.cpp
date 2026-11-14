@@ -469,6 +469,28 @@ void run_brand_package_tests()
               "athlete groups: the operator preview reads the shared time table");
         check(page.contains(QStringLiteral("out[p.programmeId] = legacyMatchTimeText(")),
               "athlete groups: ISSF/practice tile times come from the SAME table");
+        // REPORT-STALE-001: the match report's MPI / Group / Teiler cards re-read
+        // the backend after every shot and print a dash, never "NaN".
+        {
+            const QString mrv = stripComments(readFile(QStringLiteral("MatchReportView.qml"), &ok));
+            check(mrv.contains(QStringLiteral("value: (globalModelOfData.count,\n")) ||
+                  mrv.contains(QStringLiteral("value: (globalModelOfData.count,\r\n")),
+                  "report: the MPI card re-evaluates when a shot arrives");
+            check(mrv.contains(QStringLiteral("value: (globalModelOfData.count, fmtMm(MODREADER.getGroup(-1)))")),
+                  "report: the Group card re-evaluates when a shot arrives");
+            check(mrv.contains(QStringLiteral("function fmtMm(v) { return isFinite(v) ?")),
+                  "report: an unmeasured value prints a dash, not NaN");
+            check(!mrv.contains(QStringLiteral("value: MODREADER.getXMPI(-1).toFixed(1)")),
+                  "report: no bare, never-refreshed MPI binding is left");
+            const QString rw = stripComments(readFile(QStringLiteral("ReportWindow.qml"), &ok));
+            check(rw.contains(QStringLiteral("title: qsTr(\"Report\")")) && rw.contains(QStringLiteral("qsTr(\"Coach Report\")")),
+                  "report: the report window's own labels are translatable again (lost in 6409b4a)");
+        }
+        // PRACTICE-TIME-001: the practice text asks the function the clock uses.
+        check(page.contains(QStringLiteral("return qsTr(\"%1 min\").arg(Math.round(APPSETTINGS.getTimeCount(n) / 60))")),
+              "practice time: the shown minutes come from APPSETTINGS.getTimeCount, as the clock does");
+        check(!page.contains(QStringLiteral("if (shots === \"10\") return qsTr(\"10 min\")")),
+              "practice time: no hard-coded practice minutes are left to disagree with the clock");
         check(athlete.contains(QStringLiteral("home.groupIndex = index; home.selectedId = \"\"")),
               "athlete groups: switching group clears the selection");
         check(athlete.contains(QStringLiteral("model: home.shownIds")),

@@ -267,4 +267,6 @@ Branch `feature/seta-athlete-mode` · 2026-11-08 · Spec:
 | PIN by keyboard: wrong code rejected, Backspace, 1234 + Enter unlocks, Esc closes | PASS | hand-run 2026-11-14 |
 | Full flow PIN → operator page → Back; START → match → Home re-locks | PASS | hand-run 2026-11-09 and 2026-11-14 (supersedes the "not driven by hand" line above) |
 | 50 m lane groups (`game_distance=50`) | NOT TESTED | only the 10 m lane was run |
-| German text for the group labels / new tile text | NOT TESTED | strings not yet in `techaim_de_DE.ts` |
+| German text for the group labels / new tile text | PASS | hand-run in German 2026-11-14: athlete home, Training/ISSF tabs, PIN, recovery dialog, match banner, Standstörung window |
+| Practice tile times equal the clock (PRACTICE-TIME-001) | PASS | tiles show 15/30/45/60 and 90 min (config defaults); `tst_brandpackage` |
+| German match report: labels, no clipping | PASS (first open) · RE-CHECK REQUIRED | 2026-11-14 screenshot found "Ringwertung (ganze Rin…" clipped (shortened) and NaN MPI (REPORT-STALE-001, fixed); the re-check was cut off by a power loss |

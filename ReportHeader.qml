@@ -29,14 +29,14 @@ Item {
     function metaPairs() {
         var p = []
         function add(l, v) { if (v && String(v).length) p.push({ l: l, v: v }) }
-        add("Athlete", athlete)
-        add("Discipline", discipline)
-        add("Session", sessionType)
-        add("Date", dateText)
-        add("Time", timeText)
-        add("Range", range)
-        add("Lane", lane)
-        add("Mode", mode)
+        add(qsTr("Athlete"), athlete)
+        add(qsTr("Discipline"), discipline)
+        add(qsTr("Session"), sessionType)
+        add(qsTr("Date"), dateText)
+        add(qsTr("Time"), timeText)
+        add(qsTr("Range"), range)
+        add(qsTr("Lane"), lane)
+        add(qsTr("Mode"), mode)
         add(extraLabel, extraValue)
         for (var i = 0; i < extraPairs.length; ++i)
             add(extraPairs[i].l, extraPairs[i].v)

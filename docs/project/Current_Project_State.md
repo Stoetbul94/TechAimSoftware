@@ -348,3 +348,11 @@ correctly; keyboard PIN incl. wrong code, Backspace, Enter, Esc). Reliability
 start defects were fixed (`2d3c918`) and two Tech Aim 1.0.0 integrity guards
 were carried forward. Still open: German strings for the new screens, the
 50 m lane run, match / end-of-match screens in athlete mode, physical target.
+
+**2026-11-14 — Phase 1 (trust + German).** Practice times now show what the
+clock runs (PRACTICE-TIME-001). German added for the athlete screens, match
+command banners, the Range Incident window and the qualification reports; the
+report window's labels lost in `6409b4a` restored; match-report MPI / Group /
+Teiler cards no longer stale or "NaN" (REPORT-STALE-001). Reliability
+**2795 / 0**, qml **299 / 0**. Open: Finals / Coach / Training Lab report text
+(not yet in `qsTr`), native German review, re-check of the German match report.

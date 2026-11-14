@@ -449,16 +449,19 @@ int main(int argc, char* argv[])
         const QString ts = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/translations/techaim_de_DE.ts"));
         check(!ts.isEmpty(), "SETA-LANG-004: the German catalogue is readable");
 
+        // 2026-11-14: the Range Incident window and the qualification match /
+        // summary / 3P reports are now translated and are CLAIMED here, so they
+        // left this list. What remains is the Finals, Coach and Training Lab
+        // report views (their text is not yet wrapped in qsTr at all) and the
+        // unreachable vendored QModMaster forms.
         // Printed report / PDF views are a SEPARATE surface: fixed A4 geometry,
         // documents rather than controls. They are excluded here and reported
         // as the remaining area rather than silently counted as done.
         const QStringList reportCtx = {
             QStringLiteral("FinalsReportView"), QStringLiteral("CoachPrintView"),
             QStringLiteral("CallDiagnoseReportView"), QStringLiteral("TrainingReportView"),
-            QStringLiteral("SummaryReportView"), QStringLiteral("CoachDashboardView"),
+            QStringLiteral("CoachDashboardView"),
             QStringLiteral("CoachDetailedView"), QStringLiteral("PositionTransitionReportView"),
-            QStringLiteral("Report3P"), QStringLiteral("Report3PSeries"),
-            QStringLiteral("MatchReportInfo"), QStringLiteral("MatchReportView"),
             QStringLiteral("ReportHeader"), QStringLiteral("ReportFooter"),
             QStringLiteral("PdfSeriesPage"), QStringLiteral("SectionTitle"),
             QStringLiteral("FinalsReportTarget"), QStringLiteral("About"),
@@ -466,8 +469,7 @@ int main(int argc, char* argv[])
             QStringLiteral("Settings"), QStringLiteral("SettingsModbusRTU"),
             QStringLiteral("SettingsModbusTCP"), QStringLiteral("ModbusAdapter"),
             QStringLiteral("SerialModbusAdapter"), QStringLiteral("QObject"),
-            QStringLiteral("ConnectionError"), QStringLiteral("SeriesComponent"),
-            QStringLiteral("IncidentWindow")
+            QStringLiteral("ConnectionError")
         };
         // Units, axis labels, score bands, shot counts, format fragments and the
         // vendored form's designer name. Translating any of these would change a
@@ -1272,16 +1274,19 @@ int main(int argc, char* argv[])
         const QString ts = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/translations/techaim_de_DE.ts"));
         check(!ts.isEmpty(), "SETA-LANG-004: the German catalogue is readable");
 
+        // 2026-11-14: the Range Incident window and the qualification match /
+        // summary / 3P reports are now translated and are CLAIMED here, so they
+        // left this list. What remains is the Finals, Coach and Training Lab
+        // report views (their text is not yet wrapped in qsTr at all) and the
+        // unreachable vendored QModMaster forms.
         // Printed report / PDF views are a SEPARATE surface: fixed A4 geometry,
         // documents rather than controls. They are excluded here and reported
         // as the remaining area rather than silently counted as done.
         const QStringList reportCtx = {
             QStringLiteral("FinalsReportView"), QStringLiteral("CoachPrintView"),
             QStringLiteral("CallDiagnoseReportView"), QStringLiteral("TrainingReportView"),
-            QStringLiteral("SummaryReportView"), QStringLiteral("CoachDashboardView"),
+            QStringLiteral("CoachDashboardView"),
             QStringLiteral("CoachDetailedView"), QStringLiteral("PositionTransitionReportView"),
-            QStringLiteral("Report3P"), QStringLiteral("Report3PSeries"),
-            QStringLiteral("MatchReportInfo"), QStringLiteral("MatchReportView"),
             QStringLiteral("ReportHeader"), QStringLiteral("ReportFooter"),
             QStringLiteral("PdfSeriesPage"), QStringLiteral("SectionTitle"),
             QStringLiteral("FinalsReportTarget"), QStringLiteral("About"),
@@ -1289,8 +1294,7 @@ int main(int argc, char* argv[])
             QStringLiteral("Settings"), QStringLiteral("SettingsModbusRTU"),
             QStringLiteral("SettingsModbusTCP"), QStringLiteral("ModbusAdapter"),
             QStringLiteral("SerialModbusAdapter"), QStringLiteral("QObject"),
-            QStringLiteral("ConnectionError"), QStringLiteral("SeriesComponent"),
-            QStringLiteral("IncidentWindow")
+            QStringLiteral("ConnectionError")
         };
         // Units, axis labels, score bands, shot counts, format fragments and the
         // vendored form's designer name. Translating any of these would change a
@@ -3078,16 +3082,19 @@ int main(int argc, char* argv[])
         const QString ts = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/translations/techaim_de_DE.ts"));
         check(!ts.isEmpty(), "SETA-LANG-004: the German catalogue is readable");
 
+        // 2026-11-14: the Range Incident window and the qualification match /
+        // summary / 3P reports are now translated and are CLAIMED here, so they
+        // left this list. What remains is the Finals, Coach and Training Lab
+        // report views (their text is not yet wrapped in qsTr at all) and the
+        // unreachable vendored QModMaster forms.
         // Printed report / PDF views are a SEPARATE surface: fixed A4 geometry,
         // documents rather than controls. They are excluded here and reported
         // as the remaining area rather than silently counted as done.
         const QStringList reportCtx = {
             QStringLiteral("FinalsReportView"), QStringLiteral("CoachPrintView"),
             QStringLiteral("CallDiagnoseReportView"), QStringLiteral("TrainingReportView"),
-            QStringLiteral("SummaryReportView"), QStringLiteral("CoachDashboardView"),
+            QStringLiteral("CoachDashboardView"),
             QStringLiteral("CoachDetailedView"), QStringLiteral("PositionTransitionReportView"),
-            QStringLiteral("Report3P"), QStringLiteral("Report3PSeries"),
-            QStringLiteral("MatchReportInfo"), QStringLiteral("MatchReportView"),
             QStringLiteral("ReportHeader"), QStringLiteral("ReportFooter"),
             QStringLiteral("PdfSeriesPage"), QStringLiteral("SectionTitle"),
             QStringLiteral("FinalsReportTarget"), QStringLiteral("About"),
@@ -3095,8 +3102,7 @@ int main(int argc, char* argv[])
             QStringLiteral("Settings"), QStringLiteral("SettingsModbusRTU"),
             QStringLiteral("SettingsModbusTCP"), QStringLiteral("ModbusAdapter"),
             QStringLiteral("SerialModbusAdapter"), QStringLiteral("QObject"),
-            QStringLiteral("ConnectionError"), QStringLiteral("SeriesComponent"),
-            QStringLiteral("IncidentWindow")
+            QStringLiteral("ConnectionError")
         };
         // Units, axis labels, score bands, shot counts, format fragments and the
         // vendored form's designer name. Translating any of these would change a

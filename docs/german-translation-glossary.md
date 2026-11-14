@@ -66,6 +66,36 @@ English by design.
 
 The separator is an em dash (U+2014), matching the English source.
 
+### Match-screen command banners (added 2026-11-14 — review first)
+
+| English | German |
+|---|---|
+| PREPARATION AND SIGHTING TIME...START | VORBEREITUNGS- UND PROBEZEIT...START |
+| END OF PREPARATION AND SIGHTING...STOP | ENDE DER VORBEREITUNGS- UND PROBEZEIT...STOP |
+| MATCH FIRING...START | WETTKAMPF...START |
+| 10 MINUTES / 5 MINUTES / 30 SECONDS | 10 MINUTEN / 5 MINUTEN / 30 SEKUNDEN |
+| STOP | STOP |
+
+### Range incident / athlete home terms (added 2026-11-14 — review first)
+
+| English | German | Note |
+|---|---|---|
+| EST incident | EST-Störung | glossary "Range Incident" = Standstörung |
+| Range Officer | Standaufsicht | |
+| Jury | Jury | |
+| Firing point (FP) | Stand | |
+| Relay | Durchgang | |
+| Time credit | Zeitgutschrift | |
+| No additional allowance | Keine zusätzliche Zeit | |
+| Reserve target | Ersatzscheibe | |
+| Backup score | Sicherungswertung | |
+| Official shots | Wertungsschüsse | |
+| Operator (athlete-mode PIN) | Aufsicht | |
+| Practice (athlete tab) | Training | |
+| MPI (reports) | MTP | space-critical form of Mittlerer Treffpunkt |
+| Group (reports) | Streukreis | |
+| Inner 10 | Innenzehner | |
+
 ## Reviewer notes
 
 - **`Streukreisdurchmesser` is long.** It is the correct term, but it is 24

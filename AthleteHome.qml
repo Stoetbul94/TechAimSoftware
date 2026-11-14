@@ -38,18 +38,32 @@ Item {
     property alias pinOpen: pinOverlay.visible
     readonly property bool canStart: nameField.text.trim() !== "" && selectedId !== ""
 
+    // ISSF / practice tiles are named like the DSB ones ("10m Air Rifle ·
+    // Practice 20"), not by the operator page's upper-case display codes, and
+    // every word is a literal qsTr() so lupdate can extract it. Keyed on the
+    // machine disciplineId, never on display text (QML-LANG-001).
+    function disciplineName(p) {
+        switch (p.disciplineId) {
+        case "AR10":         return qsTr("10m Air Rifle")
+        case "AP10":         return qsTr("10m Air Pistol")
+        case "RIFLE50":      return qsTr("50m Rifle")
+        case "FREEPISTOL50": return qsTr("50m Pistol")
+        }
+        return qsTr(p.gameDisplay1Key) + " " + qsTr(p.gameDisplay2Key)
+    }
     function programmeTitle(p) {
         if (p.rulesetId !== "dsb")
-            return qsTr(p.gameDisplay1Key) + " " + qsTr(p.gameDisplay2Key)
-                   + "  " + qsTr(p.matchDisplayKey)
+            return disciplineName(p) + "  ·  "
+                 + (p.rulesetId === "issf" ? qsTr("Qualification %1").arg(p.shotCount)
+                    : p.unlimited ? qsTr("Free practice")
+                    : qsTr("Practice %1").arg(p.shotCount))
         return p.ruleNumber + "  " + qsTr(p.disciplineLabelKey)
                + "  " + p.programmeVariant.replace("x", "×")
     }
     function programmeDetail(p) {
         if (p.rulesetId !== "dsb") {
-            if (p.unlimited) return qsTr("Unlimited shots")
             var t = home.tileTimes[p.programmeId]
-            return qsTr("%1 shots").arg(p.shotCount)
+            return (p.unlimited ? qsTr("Unlimited shots") : qsTr("%1 shots").arg(p.shotCount))
                    + ((t && t !== "—") ? "  ·  " + t : "")
         }
         var time = p.matchMinutes > 0

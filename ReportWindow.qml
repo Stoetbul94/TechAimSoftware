@@ -9,7 +9,7 @@ import QtQuick 2.15
 // No report calculations, values or the PDF grab paths are changed.
 FloatingWindow {
     id: reportWin
-    title: "Report"
+    title: qsTr("Report")
     subtitle: (typeof userName !== "undefined" && userName) ? userName : ""
     minW: 900; minH: 620
 
@@ -78,10 +78,10 @@ FloatingWindow {
             spacing: 2
             Repeater {
                 model: reportWin.isFinals10mReport
-                       ? [{ l: "Final", t: 3 }]
+                       ? [{ l: qsTr("Final"), t: 3 }]
                        : reportWin.isFinals3PReport
-                       ? [{ l: "Finals", t: 2 }]
-                       : [{ l: "Summary", t: 0 }, { l: "Match", t: 1 }]
+                       ? [{ l: qsTr("Finals"), t: 2 }]
+                       : [{ l: qsTr("Summary"), t: 0 }, { l: qsTr("Match"), t: 1 }]
                 delegate: Rectangle {
                     width: tt.implicitWidth + 30; height: 30; radius: 6
                     color: reportWin.tab === modelData.t ? "#2f3138" : (ma.containsMouse ? "#26272c" : "transparent")
@@ -143,13 +143,13 @@ FloatingWindow {
                 visible: !reportWin.finalsMode
                 width: crTxt.implicitWidth + 26; height: 28; radius: 6
                 color: crMA.pressed ? "#2a2b30" : "#26272c"; border.color: "#3a3b42"; border.width: 1
-                Text { id: crTxt; anchors.centerIn: parent; text: "Coach Report"; color: "#d7d8dd"; font.family: "Segoe UI"; font.pixelSize: 12 }
+                Text { id: crTxt; anchors.centerIn: parent; text: qsTr("Coach Report"); color: "#d7d8dd"; font.family: "Segoe UI"; font.pixelSize: 12 }
                 MouseArea { id: crMA; anchors.fill: parent; onClicked: reportWin.coachRequestedFromReport() }
             }
             Rectangle {
                 width: spTxt.implicitWidth + 26; height: 28; radius: 6
                 color: spMA.pressed ? PRODUCT.accentPressed : PRODUCT.accentPrimary
-                Text { id: spTxt; anchors.centerIn: parent; text: "⤓  Save PDF"; color: "white"; font.family: "Segoe UI"; font.pixelSize: 12; font.bold: true }
+                Text { id: spTxt; anchors.centerIn: parent; text: qsTr("⤓  Save PDF"); color: "white"; font.family: "Segoe UI"; font.pixelSize: 12; font.bold: true }
                 MouseArea {
                     id: spMA; anchors.fill: parent
                     onClicked: reportWin.tab === 3 ? finals10mView.exportPdf()

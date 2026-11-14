@@ -78,25 +78,25 @@ Item {
                             property real cw: (width - 2 * columnSpacing) / 3
 
                             // 3P (ISSF): integer total primary, decimal in brackets; others decimal-primary.
-                            MetricCard { width: metricGrid.cw; label: "Total Score"
+                            MetricCard { width: metricGrid.cw; label: qsTr("Total Score")
                                 value: "" + (shootingPage.is3PMatch ? totalScoreWithoutDecimal : totalScore)
                                 unit: "(" + (shootingPage.is3PMatch ? totalScore : totalScoreWithoutDecimal) + ")" }
-                            MetricCard { width: metricGrid.cw; label: "Average Shot"; value: globalMatchModel.count > 0 ? (totalScore / globalMatchModel.count).toFixed(2) : "—" }
-                            MetricCard { width: metricGrid.cw; label: "Total Shots"; value: "" + globalMatchModel.count }
-                            MetricCard { width: metricGrid.cw; label: "Inner 10"; value: "" + rightPanel.totalStars }
-                            MetricCard { width: metricGrid.cw; label: "MPI"; unit: "mm"; valueSize: 18
+                            MetricCard { width: metricGrid.cw; label: qsTr("Average Shot"); value: globalMatchModel.count > 0 ? (totalScore / globalMatchModel.count).toFixed(2) : "—" }
+                            MetricCard { width: metricGrid.cw; label: qsTr("Total Shots"); value: "" + globalMatchModel.count }
+                            MetricCard { width: metricGrid.cw; label: qsTr("Inner 10"); value: "" + rightPanel.totalStars }
+                            MetricCard { width: metricGrid.cw; label: qsTr("MPI"); unit: "mm"; valueSize: 18
                                 value: (screenPresence.tick, MODREADER.getXMPI().toFixed(1) + " / " + MODREADER.getYMPI().toFixed(1)) }
-                            MetricCard { width: metricGrid.cw; label: "Group"; unit: "mm²"; valueSize: 20
+                            MetricCard { width: metricGrid.cw; label: qsTr("Group"); unit: "mm²"; valueSize: 20
                                 value: (screenPresence.tick, "" + MODREADER.getGroup(-1).toFixed(1)) }
                             // Teiler: a BRAND decision, not a report decision. A Grid
                             // skips an invisible child, so a brand that omits it
                             // loses no space to it.
-                            MetricCard { width: metricGrid.cw; label: "Teiler"; valueSize: 20
+                            MetricCard { width: metricGrid.cw; label: qsTr("Teiler"); valueSize: 20
                                 visible: PRODUCT.showTeilerMetric
                                 value: (screenPresence.tick, MODREADER.getTeiler(-1).toFixed(1)) }
-                            MetricCard { width: metricGrid.cw; label: "Total Time"; unit: "min"; valueSize: 20
+                            MetricCard { width: metricGrid.cw; label: qsTr("Total Time"); unit: "min"; valueSize: 20
                                 value: converSecondToMins(totalTime) }
-                            MetricCard { width: metricGrid.cw; label: "Avg Time / Shot"; unit: "min"; valueSize: 20
+                            MetricCard { width: metricGrid.cw; label: qsTr("Avg Time / Shot"); unit: "min"; valueSize: 20
                                 value: globalMatchModel.count > 0 ? converSecondToMins(totalTime / globalMatchModel.count) : "—" }
                         }
 

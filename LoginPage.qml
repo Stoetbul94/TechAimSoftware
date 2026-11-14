@@ -532,23 +532,26 @@ Item {
         return legacyMatchTimeText(getGameEventText(gameEvent), gameMode, gameRange, gameSubMode)
     }
 
-    // The legacy (ISSF / practice) match-time table, as a PURE function of the
-    // course so the operator preview and the athlete tiles (UI-DEC-018) read
-    // one table. Moved verbatim out of getMatchTime(); behaviour unchanged.
+    // The legacy (ISSF / practice) match time, as a function of the course so
+    // the operator preview and the athlete tiles (UI-DEC-018) read one source.
+    //
+    // PRACTICE-TIME-001: practice counts used to show a hard-coded "10 min" /
+    // "20 min" ... while the clock actually ran APPSETTINGS.getTimeCount() -
+    // the config.ini table, 15 / 30 / 45 / 60 min (and 90 for unlimited) by
+    // default. The text now asks the SAME function the clock does
+    // (ShootingPage.authoritativeMatchSeconds), so the two cannot disagree.
+    // The 60-shot ISSF table below is unchanged: getTimeCount(60) branches on
+    // the CURRENT mode/range, so a tile for another course cannot ask it.
     function legacyMatchTimeText(shots, mode, range, subMode) {
-        if (shots === "Free Practice") return "—"
-        if (shots === "10") return qsTr("10 min")
-        if (shots === "15") return qsTr("15 min")
-        if (shots === "20") return qsTr("20 min")
-        if (shots === "30") return qsTr("30 min")
-        if (shots === "40") return qsTr("40 min")
-        if (shots === "60") {
-            if (mode === 0)          return qsTr("75 min")   // 10m Air Pistol  (ISSF 2026)
-            if (range === 10)        return qsTr("75 min")   // 10m Air Rifle   (ISSF 2026)
-            if (subMode === 1)       return qsTr("90 min")   // 50m Rifle 3 Pos on EST (ISSF 2026)
-            return qsTr("50 min")                            // 50m Rifle Prone (ISSF 2026)
+        if (shots !== "60") {
+            var n = shots === "Free Practice" ? -1 : parseInt(shots, 10)
+            if (isNaN(n)) return "—"
+            return qsTr("%1 min").arg(Math.round(APPSETTINGS.getTimeCount(n) / 60))
         }
-        return "—"
+        if (mode === 0)          return qsTr("75 min")   // 10m Air Pistol  (ISSF 2026)
+        if (range === 10)        return qsTr("75 min")   // 10m Air Rifle   (ISSF 2026)
+        if (subMode === 1)       return qsTr("90 min")   // 50m Rifle 3 Pos on EST (ISSF 2026)
+        return qsTr("50 min")                            // 50m Rifle Prone (ISSF 2026)
     }
 
     // ── AUTHORITATIVE SELECTED-PROGRAMME STATE ────────────────────────────

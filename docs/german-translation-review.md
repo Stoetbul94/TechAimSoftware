@@ -5,6 +5,20 @@
 This document tells a German-speaking reviewer exactly what exists, what does
 not, and how to change it without touching application code.
 
+## Update 2026-11-14 — Phase 1 (athlete edition)
+
+- New athlete screens, Display panel, DSB/ISSF/Training tabs: translated.
+- Match-screen command banners (VORBEREITUNGS- UND PROBEZEIT...START, etc.):
+  translated — **safety-critical, review first** (glossary §Match-screen).
+- Range Incident window (107 strings): translated and now gated as on-screen.
+- Qualification reports (Match / Summary / 3P / series): translated, header,
+  tab and card labels wrapped in qsTr; report-window labels lost in `6409b4a`
+  restored.
+- Still English: the Finals, Coach and Training Lab report views — their text
+  is not wrapped in `qsTr()` at all (~170 strings), so it is a code pass plus
+  an A4 page check, not a catalogue task. Vendored QModMaster forms: not shown.
+- Catalogue: 73 entries open = vendored forms + neutral units only.
+
 ## Current state — SETA German completion pass (product/seta)
 
 **Status: COMPLETE DRAFT — NATIVE TECHNICAL REVIEW PENDING (on-screen UI).**
