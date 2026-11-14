@@ -305,15 +305,15 @@ Rectangle {
             // ----- Executive Summary -----
             CoachReportCard {
                 width: scrollColumn.width; visible: reportPage.rep && reportPage.rep.valid
-                title: "Executive Summary"; body: reportPage.fmtExec(reportPage.rep ? reportPage.rep.executiveSummary : null)
+                title: qsTr("Executive Summary"); body: reportPage.fmtExec(reportPage.rep ? reportPage.rep.executiveSummary : null)
             }
 
             // ----- Shot Map / Heat Map (density heat map + dot targets) -----
             CoachReportCard {
                 width: scrollColumn.width; visible: reportPage.rep && reportPage.rep.valid
-                title: "Shot Map / Heat Map"; body: reportPage.fmtHeat(reportPage.rep ? reportPage.rep.heatMapAnalysis : null)
+                title: qsTr("Shot Map / Heat Map"); body: reportPage.fmtHeat(reportPage.rep ? reportPage.rep.heatMapAnalysis : null)
 
-                Text { width: parent.width; text: "Density heat map"; color: theme.textSecondary; font.pixelSize: 13; font.bold: true; font.family: theme.fontFamily }
+                Text { width: parent.width; text: qsTr("Density heat map"); color: theme.textSecondary; font.pixelSize: 13; font.bold: true; font.family: theme.fontFamily }
                 Flow {
                     width: parent.width; spacing: 18
                     Repeater {
@@ -321,7 +321,7 @@ Rectangle {
                         delegate: HeatMapCanvas { title: modelData.title; shots: modelData.shots; side: 260; extentMm: reportPage.sharedExtent }
                     }
                 }
-                Text { width: parent.width; text: "Shot positions"; color: theme.textSecondary; font.pixelSize: 13; font.bold: true; font.family: theme.fontFamily }
+                Text { width: parent.width; text: qsTr("Shot positions"); color: theme.textSecondary; font.pixelSize: 13; font.bold: true; font.family: theme.fontFamily }
                 Flow {
                     width: parent.width; spacing: 18
                     Repeater {
@@ -342,7 +342,7 @@ Rectangle {
             // ----- Score Distribution (pie) -----
             CoachReportCard {
                 width: scrollColumn.width; visible: reportPage.rep && reportPage.rep.valid
-                title: "Score Distribution"; body: reportPage.fmtDist(reportPage.rep ? reportPage.rep.shotDistribution : null)
+                title: qsTr("Score Distribution"); body: reportPage.fmtDist(reportPage.rep ? reportPage.rep.shotDistribution : null)
                 ChartView {
                     width: parent.width; height: 280
                     antialiasing: true; legend.visible: true; legend.alignment: Qt.AlignRight
@@ -357,7 +357,7 @@ Rectangle {
             // ----- Trend (line) -----
             CoachReportCard {
                 width: scrollColumn.width; visible: reportPage.rep && reportPage.rep.valid
-                title: "Trend"; body: reportPage.fmtTrend(reportPage.rep ? reportPage.rep.trendAnalysis : null)
+                title: qsTr("Trend"); body: reportPage.fmtTrend(reportPage.rep ? reportPage.rep.trendAnalysis : null)
                 ChartView {
                     width: parent.width; height: 300
                     antialiasing: true; legend.visible: true; legend.alignment: Qt.AlignBottom
@@ -373,12 +373,12 @@ Rectangle {
             }
 
             // ----- remaining text sections -----
-            CoachReportCard { width: scrollColumn.width; visible: reportPage.rep && reportPage.rep.valid; title: "Timing"; body: reportPage.fmtTiming(reportPage.rep ? reportPage.rep.timingAnalysis : null) }
-            CoachReportCard { width: scrollColumn.width; visible: reportPage.rep && reportPage.rep.valid; title: "Position Analysis"; body: reportPage.fmtPosition(reportPage.rep ? reportPage.rep.positionAnalysis : null) }
+            CoachReportCard { width: scrollColumn.width; visible: reportPage.rep && reportPage.rep.valid; title: qsTr("Timing"); body: reportPage.fmtTiming(reportPage.rep ? reportPage.rep.timingAnalysis : null) }
+            CoachReportCard { width: scrollColumn.width; visible: reportPage.rep && reportPage.rep.valid; title: qsTr("Position Analysis"); body: reportPage.fmtPosition(reportPage.rep ? reportPage.rep.positionAnalysis : null) }
             // ----- Recovery (structured, with evidence) -----
             CoachReportCard {
                 width: scrollColumn.width; visible: reportPage.rep && reportPage.rep.valid
-                title: "Recovery Analysis"; body: ""
+                title: qsTr("Recovery Analysis"); body: ""
                 Row {
                     spacing: 8
                     Rectangle {
@@ -424,7 +424,7 @@ Rectangle {
             // ----- Fatigue (structured, with evidence) -----
             CoachReportCard {
                 width: scrollColumn.width; visible: reportPage.rep && reportPage.rep.valid
-                title: "Fatigue Analysis"; body: ""
+                title: qsTr("Fatigue Analysis"); body: ""
                 Row {
                     spacing: 8
                     Rectangle {
@@ -465,9 +465,9 @@ Rectangle {
                     color: theme.textSecondary; font.pixelSize: 13; font.family: theme.fontFamily
                 }
             }
-            CoachReportCard { width: scrollColumn.width; visible: reportPage.rep && reportPage.rep.valid; title: "Training Priorities"; body: reportPage.fmtPriorities(reportPage.rep ? reportPage.rep.trainingPriorities : null) }
-            CoachReportCard { width: scrollColumn.width; visible: reportPage.rep && reportPage.rep.valid; title: "Coach Conclusion"; body: reportPage.fmtConclusion(reportPage.rep ? reportPage.rep.coachConclusion : null) }
-            CoachReportCard { width: scrollColumn.width; visible: reportPage.rep && reportPage.rep.valid; title: "Coach Diary"; body: reportPage.fmtDiary(reportPage.rep ? reportPage.rep.coachDiary : null) }
+            CoachReportCard { width: scrollColumn.width; visible: reportPage.rep && reportPage.rep.valid; title: qsTr("Training Priorities"); body: reportPage.fmtPriorities(reportPage.rep ? reportPage.rep.trainingPriorities : null) }
+            CoachReportCard { width: scrollColumn.width; visible: reportPage.rep && reportPage.rep.valid; title: qsTr("Coach Conclusion"); body: reportPage.fmtConclusion(reportPage.rep ? reportPage.rep.coachConclusion : null) }
+            CoachReportCard { width: scrollColumn.width; visible: reportPage.rep && reportPage.rep.valid; title: qsTr("Coach Diary"); body: reportPage.fmtDiary(reportPage.rep ? reportPage.rep.coachDiary : null) }
 
             Item { width: 1; height: 12 }
         }

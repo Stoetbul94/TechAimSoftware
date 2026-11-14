@@ -21,7 +21,16 @@ ApplicationWindow {
     // move every stored setting.)
     property string userName: "Athlete"
     property string lane_number_text: "Lane1"
-    property string eventName: shootingPage.currentGameDisplay1 + " " + shootingPage.currentGameDisplay2
+    // LOC-HEADER-001: the discipline phrase, translated as a WHOLE (German
+    // word order differs from "10M AIR" + "RIFLE"). Reports read this.
+    property string eventName: shootingPage.disciplineHeaderText()
+    // LOC-DATE-001: the locale the UI is shown in - NOT the Windows locale.
+    // Report dates and weekday names follow the language the athlete chose.
+    function uiLocale() {
+        var code = (typeof LANGUAGE !== "undefined" && LANGUAGE.languageCode)
+                   ? LANGUAGE.languageCode : "en"
+        return Qt.locale(code === "en" ? "en_GB" : code.replace("-", "_"))
+    }
     property string eventDate: "9/3/2017 4:34 PM"
     property string numberOfShots: "10"
     property string averageScore : "9.68"

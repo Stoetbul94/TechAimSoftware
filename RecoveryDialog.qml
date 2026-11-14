@@ -47,6 +47,40 @@ Rectangle {
         if (id === 3) return qsTr("Official match")
         return "—"
     }
+    // LOC-RECOVERY-001. The C++ candidate carries English diagnostic labels
+    // ("10m Air Rifle", "Clean"). They stay English in the journal and logs;
+    // the dialog shows translatable names chosen from the STABLE ids. A
+    // rule-governed session names its programme from the catalogue, so a DSB
+    // 1.20 match no longer reads as a generic "10m Air Rifle".
+    function disciplineName(c) {
+        if (!c) return ""
+        if (c.ruleProgrammeId && typeof competitionCatalogue !== "undefined") {
+            var p = competitionCatalogue.profile(c.ruleProgrammeId)
+            if (p && p.rulesetId === "dsb")
+                return "DSB " + p.ruleNumber + "  " + qsTr(p.disciplineLabelKey)
+                       + "  " + String(p.programmeVariant).replace("x", "×")
+        }
+        switch (c.disciplineId) {
+        case "AR10":       return qsTr("10m Air Rifle")
+        case "AP10":       return qsTr("10m Air Pistol")
+        case "PRONE50":    return qsTr("50m Rifle Prone")
+        case "3P50":       return qsTr("50m Rifle 3 Positions")
+        case "FINAL3P":    return qsTr("50m Rifle 3 Positions Final")
+        case "FINAL_AR10": return qsTr("10m Air Rifle Final")
+        case "FINAL_AP10": return qsTr("10m Air Pistol Final")
+        case "TRAINING":   return qsTr("Training")
+        }
+        return c.disciplineLabel || ""
+    }
+    function journalStatus(cls) {
+        switch (cls) {
+        case "Clean":       return qsTr("Clean")
+        case "Recoverable": return qsTr("Recoverable")
+        case "Corrupt":     return qsTr("Corrupt")
+        case "Fatal":       return qsTr("Fatal")
+        }
+        return cls || ""
+    }
     function remainingText(ms) {
         if (ms === undefined || ms < 0) return ""
         var totalSecs = Math.floor(ms / 1000)
@@ -104,7 +138,7 @@ Rectangle {
                                 ? qsTr("  ·  Block %1").arg(parent.c.trainingBlock) : "")
                        color: "#c9a06a"; font.pixelSize: 13; font.bold: true }
                 Text { text: qsTr("Discipline"); color: "#9aa0aa"; font.pixelSize: 13 }
-                Text { text: parent.c ? (parent.c.disciplineLabel || "") : ""
+                Text { text: root.disciplineName(parent.c)
                        color: "white"; font.pixelSize: 13; font.bold: true }
                 Text { text: qsTr("Athlete"); color: "#9aa0aa"; font.pixelSize: 13 }
                 Text { text: parent.c ? (parent.c.athlete || "—") : ""
@@ -139,7 +173,7 @@ Rectangle {
                 Text { text: parent.c ? (parent.c.lastEventWallIso || parent.c.lastModifiedIso || "") : ""
                        color: "white"; font.pixelSize: 13 }
                 Text { text: qsTr("Journal"); color: "#9aa0aa"; font.pixelSize: 13 }
-                Text { text: parent.c ? (parent.c.recoveryClass || "") : ""
+                Text { text: parent.c ? root.journalStatus(parent.c.recoveryClass) : ""
                        color: root.resumable ? "#43b581" : "#d0392b"
                        font.pixelSize: 13; font.bold: true }
             }

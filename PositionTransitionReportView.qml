@@ -75,9 +75,9 @@ Item {
                             width: sourceSize.height > 0 ? height * sourceSize.width / sourceSize.height : 0
                             fillMode: Image.PreserveAspectFit; smooth: true; mipmap: true }
                         Row { spacing: 8
-                            Text { text: "TRAINING LAB"; color: view.red; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2
+                            Text { text: qsTr("TRAINING LAB"); color: view.red; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2
                                    anchors.verticalCenter: parent.verticalCenter }
-                            Text { text: "POSITION TRANSITION REPORT"; color: view.ink; font.pixelSize: 15; font.bold: true
+                            Text { text: qsTr("POSITION TRANSITION REPORT"); color: view.ink; font.pixelSize: 15; font.bold: true
                                    anchors.verticalCenter: parent.verticalCenter }
                         }
                     }
@@ -98,7 +98,7 @@ Item {
                 }
             }
             Rectangle { width: parent.width; height: 2; color: view.red; opacity: 0.85 }
-            Text { text: "Not an official competition result"; color: view.sub; font.pixelSize: 9; font.italic: true }
+            Text { text: qsTr("Not an official competition result"); color: view.sub; font.pixelSize: 9; font.italic: true }
             Item { id: inner; width: parent.width; height: parent.height - 180 }
         }
         Item {
@@ -128,7 +128,7 @@ Item {
         id: overviewPage; pageNo: 1
         Column {
             width: parent.width; spacing: 8
-            Text { text: "SESSION OVERVIEW"; color: view.ink; font.pixelSize: 15; font.bold: true }
+            Text { text: qsTr("SESSION OVERVIEW"); color: view.ink; font.pixelSize: 15; font.bold: true }
             Item { height: 4; width: 1 }
             KV { k: "Athlete"; v: view.model.athlete || "—" }
             KV { k: "Date / time"; v: view.model.createdAtIso || "—" }
@@ -143,7 +143,7 @@ Item {
             KV { k: "Sighters"; v: "" + (view.model.totalSighters||0) + " (excluded from results)" }
             KV { k: "Duration"; v: { var d = view.model.durationSec||0; return Math.floor(d/60)+" min "+("0"+(d%60)).slice(-2)+" s" } }
             Item { height: 8; width: 1 }
-            Text { text: "WHAT YOU SHOULD TAKE FROM THIS SESSION"; color: view.red; font.pixelSize: 12; font.bold: true }
+            Text { text: qsTr("WHAT YOU SHOULD TAKE FROM THIS SESSION"); color: view.red; font.pixelSize: 12; font.bold: true }
             Repeater { model: (view.model.insights ? (view.model.insights.observations||[]) : [])
                 Text { width: 700; wrapMode: Text.WordWrap; text: "· " + modelData; color: view.ink; font.pixelSize: 11 } }
             Repeater { model: (view.model.insights ? (view.model.insights.reviewItems||[]) : [])
@@ -156,9 +156,9 @@ Item {
         id: comparisonPage; pageNo: 2
         Column {
             width: parent.width; spacing: 6
-            Text { text: "POSITION COMPARISON"; color: view.ink; font.pixelSize: 15; font.bold: true }
+            Text { text: qsTr("POSITION COMPARISON"); color: view.ink; font.pixelSize: 15; font.bold: true }
             // ranked session highlights
-            Text { text: "SESSION HIGHLIGHTS"; color: view.red; font.pixelSize: 11; font.bold: true; topPadding: 2 }
+            Text { text: qsTr("SESSION HIGHLIGHTS"); color: view.red; font.pixelSize: 11; font.bold: true; topPadding: 2 }
             Flow { width: 714; spacing: 8
                 Repeater {
                     model: {
@@ -191,7 +191,7 @@ Item {
                     Text { width: 100; color: view.ink; font.pixelSize: 10; text: Number(r.averageScore||0).toFixed(1) } } }
             Item { height: 8; width: 1 }
             // shot rhythm / cadence per position
-            Text { text: "SHOT RHYTHM"; color: view.sub; font.pixelSize: 10; font.bold: true }
+            Text { text: qsTr("SHOT RHYTHM"); color: view.sub; font.pixelSize: 10; font.bold: true }
             Repeater { model: (view.model.comparison || [])
                 Row { spacing: 8; property var r: modelData
                     Text { width: 140; color: view.ink; font.pixelSize: 10; font.bold: true; text: r.positionName + " R" + r.repeat }
@@ -256,18 +256,18 @@ Item {
                     }
                 }
                 // checklist
-                Text { text: "SETUP CHECKLIST"; color: view.sub; font.pixelSize: 10; font.bold: true; topPadding: 4 }
+                Text { text: qsTr("SETUP CHECKLIST"); color: view.sub; font.pixelSize: 10; font.bold: true; topPadding: 4 }
                 Repeater { model: r.checklist ? r.checklist : []
                     Text { width: 700; color: view.ink; font.pixelSize: 10
                            text: (modelData.state===1?"✓ ":(modelData.state===2?"– ":"○ ")) + modelData.label } }
                 // group pattern
                 Column { width: 700; spacing: 1; visible: (r.groupPattern && r.groupPattern.hasData===true)
-                    Text { text: "GROUP PATTERN INSIGHTS"; color: view.red; font.pixelSize: 10; font.bold: true; topPadding: 4 }
+                    Text { text: qsTr("GROUP PATTERN INSIGHTS"); color: view.red; font.pixelSize: 10; font.bold: true; topPadding: 4 }
                     Repeater { model: (r.groupPattern ? (r.groupPattern.properties||[]) : [])
                         Column { width: 700; spacing: 0
                             Text { text: modelData.label + "  (" + modelData.confidence + " evidence)"; color: view.ink; font.pixelSize: 10; font.bold: true }
                             Text { width: 700; wrapMode: Text.WordWrap; text: modelData.evidence; color: view.sub; font.pixelSize: 10 } } } }
-                Text { text: "ATHLETE NOTE"; color: view.sub; font.pixelSize: 10; font.bold: true; topPadding: 4 }
+                Text { text: qsTr("ATHLETE NOTE"); color: view.sub; font.pixelSize: 10; font.bold: true; topPadding: 4 }
                 Text { width: 700; wrapMode: Text.WordWrap; color: view.ink; font.pixelSize: 11; text: (r.note && r.note.length>0) ? r.note : "—" }
                 Text { width: 700; wrapMode: Text.WordWrap; color: view.sub; font.pixelSize: 9; text: r.disclaimer || "" }
             }
@@ -279,7 +279,7 @@ Item {
         id: notesPage; pageNo: view.totalPages
         Column {
             width: parent.width; spacing: 8
-            Text { text: "NOTES & OBSERVATIONS"; color: view.ink; font.pixelSize: 15; font.bold: true }
+            Text { text: qsTr("NOTES & OBSERVATIONS"); color: view.ink; font.pixelSize: 15; font.bold: true }
             Text { visible: (view.model.sessionNote||"").length>0; text: "Session note: " + (view.model.sessionNote||"")
                    color: view.ink; font.pixelSize: 11; width: 700; wrapMode: Text.WordWrap }
             Repeater { model: view.positions
@@ -288,12 +288,12 @@ Item {
                     Text { text: (r.positionName||"") + " · Repeat " + (r.repeat||1); color: view.sub; font.pixelSize: 10; font.bold: true }
                     Text { text: r.note || ""; color: view.ink; font.pixelSize: 11; width: 700; wrapMode: Text.WordWrap } } }
             Item { height: 8; width: 1 }
-            Text { text: "OVERALL OBSERVED"; color: view.ink; font.pixelSize: 15; font.bold: true }
+            Text { text: qsTr("OVERALL OBSERVED"); color: view.ink; font.pixelSize: 15; font.bold: true }
             Repeater { model: view.model.observations ? view.model.observations : []
                 Text { width: 700; wrapMode: Text.WordWrap; text: "· " + modelData; color: view.ink; font.pixelSize: 11 } }
             Item { height: 10; width: 1 }
             Text { width: 700; wrapMode: Text.WordWrap; color: view.sub; font.pixelSize: 10; font.italic: true
-                   text: "Measured training data only. This is not an official competition result. Sighters are excluded from all results." }
+                   text: qsTr("Measured training data only. This is not an official competition result. Sighters are excluded from all results.") }
         }
     }
 }

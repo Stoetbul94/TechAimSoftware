@@ -1020,6 +1020,16 @@ QtObject {
     // programmeId as a role. qsTr() is applied HERE, at display-build time,
     // exactly as the replaced ListElement literals did - the *Key fields are
     // the English source text, and programmeId is what logic uses.
+    // LOC-HEADER-001. Display codes arrive as DATA, which lupdate cannot see.
+    // Listing them here registers them in THIS file's translation context -
+    // the context fill() and trKey() translate in. Extraction aid only:
+    // nothing reads the list and no logic compares these strings.
+    readonly property var translatableDisplayKeys: [
+        qsTr("MATCH-10"), qsTr("MATCH-15"), qsTr("MATCH-20"), qsTr("MATCH-30"),
+        qsTr("MATCH-40"), qsTr("MATCH-60"), qsTr("UN-LIMITED")
+    ]
+    function trKey(key) { return qsTr(key) }
+
     function fill(model, modelKey) {
         var e = entriesFor(modelKey)
         model.clear()

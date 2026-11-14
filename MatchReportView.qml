@@ -159,8 +159,8 @@ Item {
                     reportTitle: qsTr("Match Report")
                     athlete: userName
                     discipline: eventName
-                    dateText: new Date().toLocaleString(Qt.locale(""), "ddd yyyy-MM-dd")
-                    timeText: new Date().toLocaleString(Qt.locale(""), "hh:mm:ss")
+                    dateText: new Date().toLocaleString(window.uiLocale(), "ddd yyyy-MM-dd")
+                    timeText: new Date().toLocaleString(window.uiLocale(), "hh:mm:ss")
                     extraPairs: [
                         { l: qsTr("Shots"), v: "" + globalModelOfData.count },
                         { l: qsTr("Score"), v: totalScore + " (" + totalScoreWithoutDecimal + ")" },
@@ -304,7 +304,7 @@ Item {
                 anchors.rightMargin: 28
                 anchors.bottomMargin: 20
                 softwareVersion: PRODUCT.softwareVersionLabel
-                generatedText: qsTr("Generated ") + new Date().toLocaleString(Qt.locale(""), "ddd yyyy-MM-dd hh:mm")
+                generatedText: qsTr("Generated ") + new Date().toLocaleString(window.uiLocale(), "ddd yyyy-MM-dd hh:mm")
                 pageText: qsTr("Page 1")
             }
         }

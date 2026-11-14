@@ -1,0 +1,49 @@
+﻿{
+    "summary":  {
+                    "label":  "laptop-after-PERF-001-002-athlete-de",
+                    "exe":  "C:\\Users\\User\\Downloads\\SETA-Athlete-Preview-2026-11-14\\SETA.exe",
+                    "date":  "2026-11-15T02:13:36",
+                    "cores":  12,
+                    "machine":  "LAPTOP-AL3JN0PV",
+                    "runs":  3,
+                    "idleSeconds":  30,
+                    "windowMs (min/med/max)":  "1569 / 1589 / 2480",
+                    "workingSetMB (min/med/max)":  "257,1 / 257,9 / 258,3",
+                    "privateMB (min/med/max)":  "261,5 / 262,1 / 262,4",
+                    "idleCpuPctCore (min/med/max)":  "0 / 0,1 / 0,2",
+                    "idleCpuPctTotal (min/med/max)":  "0 / 0,01 / 0,01",
+                    "privateGrowthPct (min/med/max)":  ""
+                },
+    "runs":  [
+                 {
+                     "windowMs":  2480,
+                     "workingSetMB":  258.3,
+                     "privateMB":  262.4,
+                     "idleCpuPctCore":  0.1,
+                     "idleCpuPctTotal":  0.01,
+                     "workingSetAfterIdleMB":  259.3,
+                     "topThreadsMs":  "23140:16 46196:16 29944:0 31800:0",
+                     "threadCount":  25
+                 },
+                 {
+                     "windowMs":  1589,
+                     "workingSetMB":  257.1,
+                     "privateMB":  261.5,
+                     "idleCpuPctCore":  0.2,
+                     "idleCpuPctTotal":  0.01,
+                     "workingSetAfterIdleMB":  257,
+                     "topThreadsMs":  "43716:47 34684:0 39456:0 46296:0",
+                     "threadCount":  25
+                 },
+                 {
+                     "windowMs":  1569,
+                     "workingSetMB":  257.9,
+                     "privateMB":  262.1,
+                     "idleCpuPctCore":  0,
+                     "idleCpuPctTotal":  0,
+                     "workingSetAfterIdleMB":  257.6,
+                     "topThreadsMs":  "8276:0 10824:0 34212:0 25144:0",
+                     "threadCount":  25
+                 }
+             ]
+}

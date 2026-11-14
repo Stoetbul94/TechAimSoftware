@@ -314,7 +314,25 @@ Item {
         if (!def) return
         currentGameDisplay1 = qsTr(def.gameDisplay1Key)
         currentGameDisplay2 = qsTr(def.gameDisplay2Key)
-        currentmatchDisplay = qsTr(def.matchDisplayKey)
+        // LOC-HEADER-001: translated in the catalogue's context, where the
+        // display codes are registered for lupdate - the same path fill() uses.
+        currentmatchDisplay = competitionCatalogue.trKey(def.matchDisplayKey)
+    }
+
+    // LOC-HEADER-001. The header joins two display codes ("10M AIR" + "RIFLE",
+    // "50 Meter" + "RIFLE"). Translating the parts separately cannot produce
+    // German ("LUFTGEWEHR" is one word), so the WHOLE phrase is translated.
+    // English output is unchanged; an unknown pair falls back to the codes.
+    // Presentation only: no logic reads this text (QML-LANG-001).
+    function disciplineHeaderText() {
+        var en = currentGameDisplay1 + " " + currentGameDisplay2
+        switch (en) {
+        case "10M AIR RIFLE":         return qsTr("10M AIR RIFLE")
+        case "10M AIR PISTOL":        return qsTr("10M AIR PISTOL")
+        case "50 Meter RIFLE":        return qsTr("50 Meter RIFLE")
+        case "50 Meter Free PISTOL":  return qsTr("50 Meter Free PISTOL")
+        }
+        return en
     }
 
     function setCurrentGameType(index)
@@ -433,7 +451,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             spacing: 12
             Text {
-                text: currentGameDisplay1 + " " + currentGameDisplay2
+                text: disciplineHeaderText()
                 color: "white"; font.family: theme.fontFamily
                 font.pixelSize: 14; font.bold: true
                 anchors.verticalCenter: parent.verticalCenter

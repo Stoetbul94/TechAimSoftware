@@ -86,27 +86,61 @@ Item {
 
     // ── display-only mappings ────────────────────────────────────────────
     function stageDisplay(stageId) {
-        if (stageId === 3) return "Kneeling"
-        if (stageId === 5) return "Prone"
-        if (stageId === 7) return "Standing Series 1"
-        if (stageId === 8) return "Standing Series 2"
-        if (stageId >= 9 && stageId <= 13) return "Standing Single " + (22 + stageId)
+        if (stageId === 3) return qsTr("Kneeling")
+        if (stageId === 5) return qsTr("Prone")
+        if (stageId === 7) return qsTr("Standing Series 1")
+        if (stageId === 8) return qsTr("Standing Series 2")
+        if (stageId >= 9 && stageId <= 13) return qsTr("Standing Single %1").arg(22 + stageId)
         return ""
     }
     function seriesDisplay(si) {
-        if (si === 0) return "Kneeling"
-        if (si === 1) return "Prone"
-        if (si === 2) return "Standing Series 1"
-        if (si === 3) return "Standing Series 2"
-        if (si >= 4 && si <= 8) return "Standing Single " + (27 + si)
+        if (si === 0) return qsTr("Kneeling")
+        if (si === 1) return qsTr("Prone")
+        if (si === 2) return qsTr("Standing Series 1")
+        if (si === 3) return qsTr("Standing Series 2")
+        if (si >= 4 && si <= 8) return qsTr("Standing Single %1").arg(27 + si)
         return ""
     }
     function statusDisplay(name) {
-        if (name === "Complete")   return "COMPLETE"
-        if (name === "Incomplete") return "INCOMPLETE"
-        if (name === "Aborted")    return "ABORTED"
-        if (name === "InProgress") return "IN PROGRESS"
+        if (name === "Complete")   return qsTr("COMPLETE")
+        if (name === "Incomplete") return qsTr("INCOMPLETE")
+        if (name === "Aborted")    return qsTr("ABORTED")
+        if (name === "InProgress") return qsTr("IN PROGRESS")
         return "—"
+    }
+    // LOC-REPORT-001. FinalsReportBuilder (C++) supplies a CLOSED set of
+    // English labels - validation checks, positions, stages, completion status.
+    // They stay English in C++ and in the journal; the report translates them
+    // here, at display time, and shows anything unknown unchanged.
+    function trLabel(en) {
+        switch (en) {
+        case "Final Completed":         return qsTr("Final Completed")
+        case "35 Official Shots":       return qsTr("35 Official Shots")
+        case "Decimal Scoring":         return qsTr("Decimal Scoring")
+        case "ISSF Sequence Completed": return qsTr("ISSF Sequence Completed")
+        case "No Missing Shots":        return qsTr("No Missing Shots")
+        case "Report Verified":         return qsTr("Report Verified")
+        case "KNEELING":                return qsTr("KNEELING")
+        case "PRONE":                   return qsTr("PRONE")
+        case "STANDING":                return qsTr("STANDING")
+        case "COMPLETE":                return qsTr("COMPLETE")
+        case "INCOMPLETE":              return qsTr("INCOMPLETE")
+        case "ABORTED":                 return qsTr("ABORTED")
+        case "IN PROGRESS":             return qsTr("IN PROGRESS")
+        case "KneelingMatch":           return qsTr("Kneeling")
+        case "ProneMatch":              return qsTr("Prone")
+        case "StandingSeries1":         return qsTr("Standing Series 1")
+        case "StandingSeries2":         return qsTr("Standing Series 2")
+        case "StandingSingle1":         return qsTr("Standing Single %1").arg(31)
+        case "StandingSingle2":         return qsTr("Standing Single %1").arg(32)
+        case "StandingSingle3":         return qsTr("Standing Single %1").arg(33)
+        case "StandingSingle4":         return qsTr("Standing Single %1").arg(34)
+        case "StandingSingle5":         return qsTr("Standing Single %1").arg(35)
+        case "Warning":                 return qsTr("Warning")
+        case "Information":             return qsTr("Information")
+        case "Critical":                return qsTr("Critical")
+        }
+        return en
     }
     function statusColor(name) {
         if (name === "Complete")   return "#1f8a4c"
@@ -193,12 +227,12 @@ Item {
                             Column {
                                 spacing: 1
                                 Text {
-                                    text: "3P FINAL REPORT"
+                                    text: qsTr("3P FINAL REPORT")
                                     color: "#191b1f"; font.family: "Segoe UI"
                                     font.pixelSize: 20; font.bold: true; font.letterSpacing: 0.5
                                 }
                                 Text {
-                                    text: "ISSF 50m Rifle 3 Positions — Final · 35 shots · decimal scoring"
+                                    text: qsTr("ISSF 50m Rifle 3 Positions — Final · 35 shots · decimal scoring")
                                     color: "#6b7280"; font.family: "Segoe UI"; font.pixelSize: 11
                                 }
                             }
@@ -210,14 +244,14 @@ Item {
                             columns: 2; columnSpacing: 26; rowSpacing: 3
                             Repeater {
                                 model: [
-                                    { l: "Athlete",    v: finalsReport.summaryVal("athlete", "") },
-                                    { l: "Discipline", v: "50m Rifle 3 Positions" },
-                                    { l: "Date",       v: finalsReport.summaryVal("dateTime", "") },
-                                    { l: "Session",    v: finalsReport.summaryVal("sessionType", "") },
-                                    { l: "Software",   v: finalsReport.summaryVal("softwareVersion", "") },
-                                    { l: "Mode",       v: "Training" },
-                                    { l: "Lane",       v: finalsReport.summaryVal("lane", "") || "—" },
-                                    { l: "Target ID",  v: finalsReport.summaryVal("targetId", "") || "—" }
+                                    { l: qsTr("Athlete"),    v: finalsReport.summaryVal("athlete", "") },
+                                    { l: qsTr("Discipline"), v: qsTr("50m Rifle 3 Positions") },
+                                    { l: qsTr("Date"),       v: finalsReport.summaryVal("dateTime", "") },
+                                    { l: qsTr("Session"),    v: finalsReport.summaryVal("sessionType", "") },
+                                    { l: qsTr("Software"),   v: finalsReport.summaryVal("softwareVersion", "") },
+                                    { l: qsTr("Mode"),       v: qsTr("Training") },
+                                    { l: qsTr("Lane"),       v: finalsReport.summaryVal("lane", "") || "—" },
+                                    { l: qsTr("Target ID"),  v: finalsReport.summaryVal("targetId", "") || "—" }
                                 ]
                                 delegate: Row {
                                     spacing: 6
@@ -242,14 +276,14 @@ Item {
                             Item {
                                 width: parent.width; height: 18
                                 Text {
-                                    text: "MATCH VALIDATION"
+                                    text: qsTr("MATCH VALIDATION")
                                     color: "#5b6270"; font.family: "Segoe UI"
                                     font.pixelSize: 11; font.bold: true; font.letterSpacing: 1
                                 }
                                 Text {
                                     anchors.right: parent.right
                                     text: finalsReport.validationValid()
-                                          ? "✓  REPORT VERIFIED" : "⚠  MATCH INCOMPLETE"
+                                          ? qsTr("✓  REPORT VERIFIED") : qsTr("⚠  MATCH INCOMPLETE")
                                     color: finalsReport.validationValid() ? "#1f8a4c" : "#c77700"
                                     font.family: "Segoe UI"; font.pixelSize: 11; font.bold: true
                                     font.letterSpacing: 0.5
@@ -268,7 +302,7 @@ Item {
                                             font.family: "Segoe UI"; font.pixelSize: 12; font.bold: true
                                         }
                                         Text {
-                                            text: modelData.label
+                                            text: finalsReport.trLabel(modelData.label)
                                             color: "#191b1f"; font.family: "Segoe UI"; font.pixelSize: 11
                                         }
                                     }
@@ -283,7 +317,7 @@ Item {
                                                function (c) { return !c.ok && c.detail.length > 0 })
                                     delegate: Text {
                                         width: parent.width
-                                        text: "Reason — " + modelData.label + ": " + modelData.detail
+                                        text: qsTr("Reason — %1: %2").arg(finalsReport.trLabel(modelData.label)).arg(modelData.detail)
                                         color: "#c77700"; font.family: "Segoe UI"; font.pixelSize: 10
                                         wrapMode: Text.WordWrap
                                     }
@@ -292,7 +326,7 @@ Item {
                         }
                     }
 
-                    SectionTitle { width: parent.width; title: "Executive Summary" }
+                    SectionTitle { width: parent.width; title: qsTr("Executive Summary") }
 
                     Grid {
                         id: finalsMetricGrid
@@ -300,37 +334,37 @@ Item {
                         columns: 3; columnSpacing: 10; rowSpacing: 10
                         property real cw: (width - 2 * columnSpacing) / 3
 
-                        MetricCard { width: finalsMetricGrid.cw; label: "Total Score"
+                        MetricCard { width: finalsMetricGrid.cw; label: qsTr("Total Score")
                             value: Number(finalsReport.summaryVal("cumulativeTotal", 0)).toFixed(1) }
-                        MetricCard { width: finalsMetricGrid.cw; label: "Official Shots"
+                        MetricCard { width: finalsMetricGrid.cw; label: qsTr("Official Shots")
                             value: finalsReport.summaryVal("officialShotCount", 0) + " / 35" }
-                        MetricCard { width: finalsMetricGrid.cw; label: "Average Shot"
+                        MetricCard { width: finalsMetricGrid.cw; label: qsTr("Average Shot")
                             value: finalsReport.summaryVal("officialShotCount", 0) > 0
                                    ? Number(finalsReport.summaryVal("averageShot", 0)).toFixed(2) : "—" }
-                        MetricCard { width: finalsMetricGrid.cw; label: "Highest Shot"; valueSize: 22
+                        MetricCard { width: finalsMetricGrid.cw; label: qsTr("Highest Shot"); valueSize: 22
                             value: finalsReport.summaryVal("officialShotCount", 0) > 0
                                    ? Number(finalsReport.summaryVal("highestShot", 0)).toFixed(1) : "—"
                             unit: finalsReport.summaryVal("highestShotNumber", 0) > 0
-                                  ? "shot " + finalsReport.summaryVal("highestShotNumber", 0) : "" }
-                        MetricCard { width: finalsMetricGrid.cw; label: "Lowest Shot"; valueSize: 22
+                                  ? qsTr("shot %1").arg(finalsReport.summaryVal("highestShotNumber", 0)) : "" }
+                        MetricCard { width: finalsMetricGrid.cw; label: qsTr("Lowest Shot"); valueSize: 22
                             value: finalsReport.summaryVal("officialShotCount", 0) > 0
                                    ? Number(finalsReport.summaryVal("lowestShot", 0)).toFixed(1) : "—"
                             unit: finalsReport.summaryVal("lowestShotNumber", 0) > 0
-                                  ? "shot " + finalsReport.summaryVal("lowestShotNumber", 0) : "" }
-                        MetricCard { width: finalsMetricGrid.cw; label: "Inner 10s"
+                                  ? qsTr("shot %1").arg(finalsReport.summaryVal("lowestShotNumber", 0)) : "" }
+                        MetricCard { width: finalsMetricGrid.cw; label: qsTr("Inner 10s")
                             value: "" + finalsReport.summaryVal("innerTens", 0)
                             unit: "≥ 10.2" }
-                        MetricCard { width: finalsMetricGrid.cw; label: "Sighting Shots"
+                        MetricCard { width: finalsMetricGrid.cw; label: qsTr("Sighting Shots")
                             value: "" + finalsReport.summaryVal("sighterCount", 0) }
-                        MetricCard { width: finalsMetricGrid.cw; label: "Missing Shots"
+                        MetricCard { width: finalsMetricGrid.cw; label: qsTr("Missing Shots")
                             value: "" + finalsReport.summaryVal("missingCount", 0)
                             unit: finalsReport.summaryVal("missingCount", 0) > 0 ? "DNS" : "" }
-                        MetricCard { width: finalsMetricGrid.cw; label: "Incidents"
+                        MetricCard { width: finalsMetricGrid.cw; label: qsTr("Incidents")
                             value: "" + finalsReport.summaryVal("incidentCount", 0)
-                            unit: finalsReport.summaryVal("incidentCount", 0) > 0 ? "rejected triggers" : "" }
+                            unit: finalsReport.summaryVal("incidentCount", 0) > 0 ? qsTr("rejected triggers") : "" }
                     }
 
-                    SectionTitle { width: parent.width; title: "Stage Breakdown" }
+                    SectionTitle { width: parent.width; title: qsTr("Stage Breakdown") }
 
                     Column {
                         width: parent.width
@@ -339,15 +373,15 @@ Item {
                             width: parent.width; height: 24; color: "#f1f3f5"
                             Row {
                                 anchors.fill: parent
-                                Text { width: parent.width*0.17; height: parent.height; text: "Stage";   leftPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.09; height: parent.height; text: "Shots";   horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.12; height: parent.height; text: "Score";   horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.10; height: parent.height; text: "Average"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.10; height: parent.height; text: "Best";    horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.10; height: parent.height; text: "Worst";   horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.17; height: parent.height; text: qsTr("Stage");   leftPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.09; height: parent.height; text: qsTr("Shots");   horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.12; height: parent.height; text: qsTr("Score");   horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.10; height: parent.height; text: qsTr("Average"); horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.10; height: parent.height; text: qsTr("Best");    horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.10; height: parent.height; text: qsTr("Worst");   horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
                                 Text { width: parent.width*0.08; height: parent.height; text: "★ 10";    horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.10; height: parent.height; text: "Time";    horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.14; height: parent.height; text: "Status";  horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.10; height: parent.height; text: qsTr("Time");    horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.14; height: parent.height; text: qsTr("Status");  horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
                             }
                             Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 2; color: theme.tokens.accentPrimary }
                         }
@@ -376,7 +410,7 @@ Item {
                             width: parent.width; height: 28; color: "#f1f3f5"
                             Row {
                                 anchors.fill: parent
-                                Text { width: parent.width*0.17; height: parent.height; text: "TOTAL"; leftPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.17; height: parent.height; text: qsTr("TOTAL"); leftPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
                                 Text { width: parent.width*0.09; height: parent.height; text: finalsReport.summaryVal("officialShotCount", 0) + "/35"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
                                 Text { width: parent.width*0.12; height: parent.height; text: Number(finalsReport.summaryVal("cumulativeTotal", 0)).toFixed(1); horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: theme.tokens.accentPrimary; font.pixelSize: 11; font.bold: true; font.family: "Segoe UI" }
                                 Text { width: parent.width*0.10; height: parent.height; text: finalsReport.summaryVal("officialShotCount", 0) > 0 ? Number(finalsReport.summaryVal("averageShot", 0)).toFixed(2) : "—"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
@@ -384,13 +418,13 @@ Item {
                                 Text { width: parent.width*0.10; height: parent.height; text: finalsReport.summaryVal("officialShotCount", 0) > 0 ? Number(finalsReport.summaryVal("lowestShot", 0)).toFixed(1) : "—"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.family: "Segoe UI" }
                                 Text { width: parent.width*0.08; height: parent.height; text: "" + finalsReport.summaryVal("innerTens", 0); horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#191b1f"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
                                 Item { width: parent.width*0.10; height: 1 }
-                                Text { width: parent.width*0.14; height: parent.height; text: finalsReport.report ? finalsReport.report.completionStatus : "—"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: finalsReport.completionColor(finalsReport.report ? finalsReport.report.completionStatus : ""); font.pixelSize: 9; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.14; height: parent.height; text: finalsReport.report ? finalsReport.trLabel(finalsReport.report.completionStatus) : "—"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter; color: finalsReport.completionColor(finalsReport.report ? finalsReport.report.completionStatus : ""); font.pixelSize: 9; font.bold: true; font.family: "Segoe UI" }
                             }
                             Rectangle { anchors.top: parent.top; width: parent.width; height: 1; color: theme.tokens.accentPrimary }
                         }
                     }
 
-                    SectionTitle { width: parent.width; title: "Position Comparison" }
+                    SectionTitle { width: parent.width; title: qsTr("Position Comparison") }
 
                     Column {
                         width: parent.width
@@ -402,7 +436,7 @@ Item {
                                 Text {
                                     width: parent.width * 0.15
                                     anchors.verticalCenter: parent.verticalCenter
-                                    text: modelData.label
+                                    text: finalsReport.trLabel(modelData.label)
                                     color: "#5b6270"; font.family: "Segoe UI"
                                     font.pixelSize: 10; font.bold: true; font.letterSpacing: 0.5
                                 }
@@ -435,7 +469,7 @@ Item {
                     anchors.bottom: parent.bottom
                     anchors.leftMargin: 34; anchors.rightMargin: 34; anchors.bottomMargin: 20
                     softwareVersion: PRODUCT.softwareVersionLabel
-                    generatedText: "Generated " + finalsReport.generatedStamp
+                    generatedText: qsTr("Generated %1").arg(finalsReport.generatedStamp)
                     pageText: "Page 1 / 4"
                 }
             }
@@ -453,7 +487,7 @@ Item {
                     anchors.margins: 34
                     spacing: 12
 
-                    SectionTitle { width: parent.width; title: "Target Plots" }
+                    SectionTitle { width: parent.width; title: qsTr("Target Plots") }
 
                     Item {
                         width: parent.width
@@ -464,7 +498,7 @@ Item {
                             Repeater {
                                 model: finalsReport.report ? finalsReport.report.positionPlots : []
                                 delegate: FinalsReportTarget {
-                                    title: modelData.label
+                                    title: finalsReport.trLabel(modelData.label)
                                     shots: modelData.shots
                                     side: 226
                                     extentMm: finalsReport.plotExtentMm
@@ -475,11 +509,11 @@ Item {
                     Text {
                         width: parent.width
                         horizontalAlignment: Text.AlignHCenter
-                        text: "True ISSF ring geometry · holes at bullet scale · ● ≥ 10.5   ● 10.0 – 10.4   ● < 10.0"
+                        text: qsTr("True ISSF ring geometry · holes at bullet scale · ● ≥ 10.5   ● 10.0 – 10.4   ● < 10.0")
                         color: "#8a8f98"; font.family: "Segoe UI"; font.pixelSize: 9
                     }
 
-                    SectionTitle { width: parent.width; title: "Momentum — Shot Score" }
+                    SectionTitle { width: parent.width; title: qsTr("Momentum — Shot Score") }
 
                     ChartView {
                         width: parent.width; height: 280
@@ -507,7 +541,7 @@ Item {
                         }
                     }
 
-                    SectionTitle { width: parent.width; title: "Cumulative Score" }
+                    SectionTitle { width: parent.width; title: qsTr("Cumulative Score") }
 
                     ChartView {
                         width: parent.width; height: 280
@@ -540,7 +574,7 @@ Item {
                     anchors.bottom: parent.bottom
                     anchors.leftMargin: 34; anchors.rightMargin: 34; anchors.bottomMargin: 20
                     softwareVersion: PRODUCT.softwareVersionLabel
-                    generatedText: "Generated " + finalsReport.generatedStamp
+                    generatedText: qsTr("Generated %1").arg(finalsReport.generatedStamp)
                     pageText: "Page 2 / 4"
                 }
             }
@@ -557,7 +591,7 @@ Item {
                     anchors.margins: 34
                     spacing: 10
 
-                    SectionTitle { width: parent.width; title: "Shot by Shot" }
+                    SectionTitle { width: parent.width; title: qsTr("Shot by Shot") }
 
                     Column {
                         width: parent.width
@@ -567,12 +601,12 @@ Item {
                             Row {
                                 anchors.fill: parent
                                 Text { width: parent.width*0.07; height: parent.height; text: "#";             leftPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.21; height: parent.height; text: "Stage";         verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.11; height: parent.height; text: "Score";         horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.11; height: parent.height; text: "Hold";          horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.11; height: parent.height; text: "Split";         horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.15; height: parent.height; text: "Running Total"; horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.24; height: parent.height; text: "Notes";         horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.21; height: parent.height; text: qsTr("Stage");         verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.11; height: parent.height; text: qsTr("Score");         horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.11; height: parent.height; text: qsTr("Hold");          horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.11; height: parent.height; text: qsTr("Split");         horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.15; height: parent.height; text: qsTr("Running Total"); horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.24; height: parent.height; text: qsTr("Notes");         horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
                             }
                             Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 2; color: theme.tokens.accentPrimary }
                         }
@@ -601,7 +635,7 @@ Item {
 
                     Text {
                         width: parent.width
-                        text: "★ inner ten (≥ 10.2) · Split = time since the previous shot in the firing window · Hold pending hardware support"
+                        text: qsTr("★ inner ten (≥ 10.2) · Split = time since the previous shot in the firing window · Hold pending hardware support")
                         color: "#8a8f98"; font.family: "Segoe UI"; font.pixelSize: 9
                     }
                 }
@@ -611,7 +645,7 @@ Item {
                     anchors.bottom: parent.bottom
                     anchors.leftMargin: 34; anchors.rightMargin: 34; anchors.bottomMargin: 20
                     softwareVersion: PRODUCT.softwareVersionLabel
-                    generatedText: "Generated " + finalsReport.generatedStamp
+                    generatedText: qsTr("Generated %1").arg(finalsReport.generatedStamp)
                     pageText: "Page 3 / 4"
                 }
             }
@@ -628,12 +662,12 @@ Item {
                     anchors.margins: 34
                     spacing: 10
 
-                    SectionTitle { width: parent.width; title: "Incident Log" }
+                    SectionTitle { width: parent.width; title: qsTr("Incident Log") }
 
                     Text {
                         visible: !finalsReport.report
                                  || finalsReport.report.incidents.length === 0
-                        text: "No incidents — no shots were rejected during this final."
+                        text: qsTr("No incidents — no shots were rejected during this final.")
                         color: "#8a8f98"; font.family: "Segoe UI"; font.pixelSize: 11
                     }
                     Column {
@@ -644,10 +678,10 @@ Item {
                             width: parent.width; height: 22; color: "#f1f3f5"
                             Row {
                                 anchors.fill: parent
-                                Text { width: parent.width*0.13; height: parent.height; text: "Time";     leftPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.22; height: parent.height; text: "Stage";    verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.17; height: parent.height; text: "Severity"; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
-                                Text { width: parent.width*0.48; height: parent.height; text: "Event";    verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.13; height: parent.height; text: qsTr("Time");     leftPadding: 8; verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.22; height: parent.height; text: qsTr("Stage");    verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.17; height: parent.height; text: qsTr("Severity"); verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
+                                Text { width: parent.width*0.48; height: parent.height; text: qsTr("Event");    verticalAlignment: Text.AlignVCenter; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI" }
                             }
                             Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 2; color: theme.tokens.accentPrimary }
                         }
@@ -686,15 +720,15 @@ Item {
                         Text {
                             visible: finalsReport.report
                                      && finalsReport.report.incidents.length > finalsReport.maxIncidentRows
-                            text: "+ " + (finalsReport.report
-                                          ? finalsReport.report.incidents.length - finalsReport.maxIncidentRows : 0)
-                                  + " further incidents — see the session journal (finals_session.jsonl)"
+                            text: qsTr("+ %1 further incidents — see the session journal (finals_session.jsonl)")
+                                  .arg(finalsReport.report
+                                       ? finalsReport.report.incidents.length - finalsReport.maxIncidentRows : 0)
                             color: "#8a8f98"; font.family: "Segoe UI"; font.pixelSize: 9
                             topPadding: 4
                         }
                     }
 
-                    SectionTitle { width: parent.width; title: "CRO Command Timeline" }
+                    SectionTitle { width: parent.width; title: qsTr("CRO Command Timeline") }
 
                     Column {
                         width: parent.width
@@ -714,15 +748,15 @@ Item {
                         Text {
                             visible: finalsReport.report
                                      && finalsReport.report.timeline.length > finalsReport.maxTimelineRows
-                            text: "+ " + (finalsReport.report
-                                          ? finalsReport.report.timeline.length - finalsReport.maxTimelineRows : 0)
-                                  + " further events — see the session journal (finals_session.jsonl)"
+                            text: qsTr("+ %1 further events — see the session journal (finals_session.jsonl)")
+                                  .arg(finalsReport.report
+                                       ? finalsReport.report.timeline.length - finalsReport.maxTimelineRows : 0)
                             color: "#8a8f98"; font.family: "Segoe UI"; font.pixelSize: 9
                             topPadding: 4
                         }
                     }
 
-                    SectionTitle { width: parent.width; title: "Performance Summary" }
+                    SectionTitle { width: parent.width; title: qsTr("Performance Summary") }
 
                     Grid {
                         width: parent.width
@@ -737,14 +771,14 @@ Item {
                                 var p = parent.perf
                                 if (!p) return []
                                 return [
-                                    { l: "Highest Shot",   v: Number(p.highestShot).toFixed(1),  d: "shot " + p.highestShotNumber },
-                                    { l: "Lowest Shot",    v: Number(p.lowestShot).toFixed(1),   d: "shot " + p.lowestShotNumber },
-                                    { l: "Longest Split",  v: p.longestSplitSec + " s",          d: "shot " + p.longestSplitShot },
-                                    { l: "Shortest Split", v: p.shortestSplitSec + " s",         d: "shot " + p.shortestSplitShot },
-                                    { l: "Fastest Stage",  v: p.fastestStage,                    d: p.fastestStageSec + " s" },
-                                    { l: "Slowest Stage",  v: p.slowestStage,                    d: p.slowestStageSec + " s" },
-                                    { l: "Standing Avg",   v: Number(p.standingAverage).toFixed(2), d: "shots 21–35" },
-                                    { l: "Overall Avg",    v: Number(p.overallAverage).toFixed(2),  d: "all official shots" }
+                                    { l: qsTr("Highest Shot"),   v: Number(p.highestShot).toFixed(1),  d: qsTr("shot %1").arg(p.highestShotNumber) },
+                                    { l: qsTr("Lowest Shot"),    v: Number(p.lowestShot).toFixed(1),   d: qsTr("shot %1").arg(p.lowestShotNumber) },
+                                    { l: qsTr("Longest Split"),  v: p.longestSplitSec + " s",          d: qsTr("shot %1").arg(p.longestSplitShot) },
+                                    { l: qsTr("Shortest Split"), v: p.shortestSplitSec + " s",         d: qsTr("shot %1").arg(p.shortestSplitShot) },
+                                    { l: qsTr("Fastest Stage"),  v: finalsReport.trLabel(p.fastestStage), d: p.fastestStageSec + " s" },
+                                    { l: qsTr("Slowest Stage"),  v: finalsReport.trLabel(p.slowestStage), d: p.slowestStageSec + " s" },
+                                    { l: qsTr("Standing Avg"),   v: Number(p.standingAverage).toFixed(2), d: qsTr("shots 21–35") },
+                                    { l: qsTr("Overall Avg"),    v: Number(p.overallAverage).toFixed(2),  d: qsTr("all official shots") }
                                 ]
                             }
                             delegate: Column {
@@ -757,12 +791,12 @@ Item {
                         }
                         Text {
                             visible: parent.perf === null
-                            text: "Not available — no official shots recorded."
+                            text: qsTr("Not available — no official shots recorded.")
                             color: "#8a8f98"; font.family: "Segoe UI"; font.pixelSize: 11
                         }
                     }
 
-                    SectionTitle { width: parent.width; title: "Coach Notes" }
+                    SectionTitle { width: parent.width; title: qsTr("Coach Notes") }
 
                     // Ruled lines for handwritten notes — many coaches print
                     // this report (~20% of the page reserved).
@@ -781,7 +815,7 @@ Item {
                     anchors.bottom: parent.bottom
                     anchors.leftMargin: 34; anchors.rightMargin: 34; anchors.bottomMargin: 20
                     softwareVersion: PRODUCT.softwareVersionLabel
-                    generatedText: "Generated " + finalsReport.generatedStamp
+                    generatedText: qsTr("Generated %1").arg(finalsReport.generatedStamp)
                     pageText: "Page 4 / 4"
                 }
             }

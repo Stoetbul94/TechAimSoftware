@@ -293,7 +293,10 @@ Item {
                     width: parent.width * 0.4; height: parent.height; radius: 2
                     color: view._red
                     SequentialAnimation on x {
-                        running: !view.ready; loops: Animation.Infinite
+                        // PERF-002: only while the analysis is on screen. The
+                        // view is built at startup with ready = false, so this
+                        // ran invisibly from the first second of every session.
+                        running: !view.ready && view.visible; loops: Animation.Infinite
                         NumberAnimation { from: 0; to: 132; duration: 700; easing.type: Easing.InOutQuad }
                         NumberAnimation { from: 132; to: 0; duration: 700; easing.type: Easing.InOutQuad }
                     }

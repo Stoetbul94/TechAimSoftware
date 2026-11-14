@@ -62,6 +62,11 @@ Item {
     // then it should dominate.
     property bool compact: false
     readonly property bool expanded: !compact || blocksShooting
+    // PERF-002 (Phase 3 WP2): an owner whose copy is covered (the operator
+    // page under the athlete home) switches the fault pulse off. The pulse
+    // also only runs while the panel is effectively visible: an endless
+    // animation on a hidden item kept the renderer drawing frames at idle.
+    property bool pulseEnabled: true
 
     implicitWidth: 260
     implicitHeight: expanded ? col.implicitHeight + theme.space.spacing12 * 2
@@ -106,16 +111,19 @@ Item {
     }
 
     Rectangle {
+        id: panelFace
         anchors.fill: parent
         radius: theme.space.radiusSmall
         color: theme.bgSurface
         border.width: root.blocksShooting ? 2 : 1
         border.color: root.blocksShooting ? root.accent : theme.borderColor
 
-        // A fault must not be possible to overlook at a glance.
+        // A fault must not be possible to overlook at a glance - wherever the
+        // panel can actually be seen.
         SequentialAnimation on opacity {
-            running: root.isFault
+            running: root.isFault && root.visible && root.pulseEnabled
             loops: Animation.Infinite
+            onStopped: panelFace.opacity = 1.0
             NumberAnimation { to: 0.55; duration: 620 }
             NumberAnimation { to: 1.00; duration: 620 }
         }

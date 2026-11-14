@@ -110,7 +110,7 @@ Item {
                     }
 
                     // ── RESULT ───────────────────────────────────────────
-                    SectionTitle { width: parent.width; title: "RESULT" }
+                    SectionTitle { width: parent.width; title: qsTr("RESULT") }
                     Grid {
                         id: resultGrid
                         width: parent.width
@@ -119,41 +119,41 @@ Item {
                         rowSpacing: 12
                         readonly property real cw: (width - 3 * columnSpacing) / 4
                         MetricCard {
-                            width: resultGrid.cw; label: "Final total"; valueSize: 26
+                            width: resultGrid.cw; label: qsTr("Final total"); valueSize: 26
                             value: finals10mReport.num("total", 1)
                         }
                         MetricCard {
-                            width: resultGrid.cw; label: "Official shots"; valueSize: 22
+                            width: resultGrid.cw; label: qsTr("Official shots"); valueSize: 22
                             value: finals10mReport.val("acceptedOfShots", "—")
                         }
                         MetricCard {
-                            width: resultGrid.cw; label: "Sighters"; valueSize: 26
+                            width: resultGrid.cw; label: qsTr("Sighters"); valueSize: 26
                             value: String(finals10mReport.val("sighterCount", 0))
                         }
                         MetricCard {
-                            width: resultGrid.cw; label: "Mean shot time"; valueSize: 22
+                            width: resultGrid.cw; label: qsTr("Mean shot time"); valueSize: 22
                             value: finals10mReport.num("meanShotTimeSec", 1); unit: "s"
                         }
                         MetricCard {
-                            width: resultGrid.cw; label: "Series 1 (1-5)"; valueSize: 22
+                            width: resultGrid.cw; label: qsTr("Series 1 (1-5)"); valueSize: 22
                             value: finals10mReport.num("series1Subtotal", 1)
                         }
                         MetricCard {
-                            width: resultGrid.cw; label: "Series 2 (6-10)"; valueSize: 22
+                            width: resultGrid.cw; label: qsTr("Series 2 (6-10)"); valueSize: 22
                             value: finals10mReport.num("series2Subtotal", 1)
                         }
                         MetricCard {
-                            width: resultGrid.cw; label: "Single shots (11-24)"; valueSize: 22
+                            width: resultGrid.cw; label: qsTr("Single shots (11-24)"); valueSize: 22
                             value: finals10mReport.num("singlesSubtotal", 1)
                         }
                         MetricCard {
-                            width: resultGrid.cw; label: "Scoring"; valueSize: 18
+                            width: resultGrid.cw; label: qsTr("Scoring"); valueSize: 18
                             value: String(finals10mReport.val("scoringMode", "decimal")).toUpperCase()
                         }
                     }
 
                     // ── GROUP ────────────────────────────────────────────
-                    SectionTitle { width: parent.width; title: "GROUP" }
+                    SectionTitle { width: parent.width; title: qsTr("GROUP") }
                     Grid {
                         id: groupGrid
                         width: parent.width
@@ -161,31 +161,31 @@ Item {
                         columnSpacing: 12
                         readonly property real cw: (width - 3 * columnSpacing) / 4
                         MetricCard {
-                            width: groupGrid.cw; label: "MPI X"; valueSize: 22
+                            width: groupGrid.cw; label: qsTr("MPI X"); valueSize: 22
                             value: finals10mReport.num("mpiXmm", 2); unit: "mm"
                         }
                         MetricCard {
-                            width: groupGrid.cw; label: "MPI Y"; valueSize: 22
+                            width: groupGrid.cw; label: qsTr("MPI Y"); valueSize: 22
                             value: finals10mReport.num("mpiYmm", 2); unit: "mm"
                         }
                         MetricCard {
-                            width: groupGrid.cw; label: "MPI radius"; valueSize: 22
+                            width: groupGrid.cw; label: qsTr("MPI radius"); valueSize: 22
                             value: finals10mReport.num("mpiRadiusMm", 2); unit: "mm"
                         }
                         MetricCard {
-                            width: groupGrid.cw; label: "Group extent"; valueSize: 22
+                            width: groupGrid.cw; label: qsTr("Group extent"); valueSize: 22
                             value: finals10mReport.num("groupExtentMm", 2); unit: "mm"
                         }
                     }
                     Text {
                         width: parent.width; wrapMode: Text.WordWrap
-                        text: "Mean point of impact and group extent are measured over the "
+                        text: qsTr("Mean point of impact and group extent are measured over the ")
                               + "official shots only; sighters are excluded."
                         color: "#8a8f98"; font.pixelSize: 10; font.family: "Segoe UI"
                     }
 
                     // ── COURSE OF FIRE ───────────────────────────────────
-                    SectionTitle { width: parent.width; title: "COURSE OF FIRE" }
+                    SectionTitle { width: parent.width; title: qsTr("COURSE OF FIRE") }
                     Column {
                         width: parent.width
                         spacing: 0
@@ -193,10 +193,10 @@ Item {
                             width: parent.width; height: 24; color: "#f1f3f5"
                             Row {
                                 anchors.fill: parent
-                                Text { width: parent.width * 0.34; height: parent.height; text: "Section"; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; leftPadding: 10; verticalAlignment: Text.AlignVCenter }
-                                Text { width: parent.width * 0.26; height: parent.height; text: "Shots"; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; verticalAlignment: Text.AlignVCenter }
-                                Text { width: parent.width * 0.18; height: parent.height; text: "Count"; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
-                                Text { width: parent.width * 0.22; height: parent.height; text: "Subtotal"; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter }
+                                Text { width: parent.width * 0.34; height: parent.height; text: qsTr("Section"); color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; leftPadding: 10; verticalAlignment: Text.AlignVCenter }
+                                Text { width: parent.width * 0.26; height: parent.height; text: qsTr("Shots"); color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; verticalAlignment: Text.AlignVCenter }
+                                Text { width: parent.width * 0.18; height: parent.height; text: qsTr("Count"); color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
+                                Text { width: parent.width * 0.22; height: parent.height; text: qsTr("Subtotal"); color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter }
                             }
                             Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 2; color: PRODUCT.accentPrimary }
                         }
@@ -218,7 +218,7 @@ Item {
                             width: parent.width; height: 28; color: "#fbfbfc"
                             Row {
                                 anchors.fill: parent
-                                Text { width: parent.width * 0.78; height: parent.height; text: "FINAL TOTAL"; color: "#191b1f"; font.pixelSize: 12; font.bold: true; font.family: "Segoe UI"; leftPadding: 10; verticalAlignment: Text.AlignVCenter }
+                                Text { width: parent.width * 0.78; height: parent.height; text: qsTr("FINAL TOTAL"); color: "#191b1f"; font.pixelSize: 12; font.bold: true; font.family: "Segoe UI"; leftPadding: 10; verticalAlignment: Text.AlignVCenter }
                                 Text { width: parent.width * 0.22; height: parent.height; text: finals10mReport.num("total", 1); color: PRODUCT.accentPrimary; font.pixelSize: 14; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter }
                             }
                         }
@@ -227,16 +227,16 @@ Item {
                     // ── SIGHTERS ─────────────────────────────────────────
                     // Kept apart from the course on purpose: a sighter is not
                     // part of any series, any single shot, or the total.
-                    SectionTitle { width: parent.width; title: "SIGHTERS" }
+                    SectionTitle { width: parent.width; title: qsTr("SIGHTERS") }
                     Text {
                         width: parent.width; wrapMode: Text.WordWrap
-                        text: "Sighting shots. They do not count towards the official "
+                        text: qsTr("Sighting shots. They do not count towards the official ")
                               + "shot count, the series, the single shots or the Final total."
                         color: "#8a8f98"; font.pixelSize: 10; font.family: "Segoe UI"
                     }
                     Text {
                         visible: finals10mReport.sighterList().length === 0
-                        text: "No sighting shots recorded for this Final."
+                        text: qsTr("No sighting shots recorded for this Final.")
                         color: "#5b6270"; font.pixelSize: 11; font.family: "Segoe UI"
                     }
                     Column {
@@ -247,11 +247,11 @@ Item {
                             width: parent.width; height: 22; color: "#f1f3f5"
                             Row {
                                 anchors.fill: parent
-                                Text { width: parent.width * 0.16; height: parent.height; text: "Sighter"; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; leftPadding: 10; verticalAlignment: Text.AlignVCenter }
-                                Text { width: parent.width * 0.18; height: parent.height; text: "Score"; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
-                                Text { width: parent.width * 0.20; height: parent.height; text: "X (mm)"; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
-                                Text { width: parent.width * 0.20; height: parent.height; text: "Y (mm)"; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
-                                Text { width: parent.width * 0.26; height: parent.height; text: "Time"; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter }
+                                Text { width: parent.width * 0.16; height: parent.height; text: qsTr("Sighter"); color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; leftPadding: 10; verticalAlignment: Text.AlignVCenter }
+                                Text { width: parent.width * 0.18; height: parent.height; text: qsTr("Score"); color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
+                                Text { width: parent.width * 0.20; height: parent.height; text: qsTr("X (mm)"); color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
+                                Text { width: parent.width * 0.20; height: parent.height; text: qsTr("Y (mm)"); color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
+                                Text { width: parent.width * 0.26; height: parent.height; text: qsTr("Time"); color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter }
                             }
                             Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 2; color: "#8a8f98" }
                         }
@@ -325,7 +325,7 @@ Item {
                     }
 
                     // ── THE OFFICIAL COURSE ──────────────────────────────
-                    SectionTitle { width: parent.width; title: "OFFICIAL COURSE" }
+                    SectionTitle { width: parent.width; title: qsTr("OFFICIAL COURSE") }
                     Column {
                         width: parent.width
                         spacing: 0
@@ -333,11 +333,11 @@ Item {
                             width: parent.width; height: 22; color: "#f1f3f5"
                             Row {
                                 anchors.fill: parent
-                                Text { width: parent.width * 0.16; height: parent.height; text: "Shot"; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; leftPadding: 10; verticalAlignment: Text.AlignVCenter }
-                                Text { width: parent.width * 0.18; height: parent.height; text: "Score"; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
-                                Text { width: parent.width * 0.20; height: parent.height; text: "X (mm)"; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
-                                Text { width: parent.width * 0.20; height: parent.height; text: "Y (mm)"; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
-                                Text { width: parent.width * 0.26; height: parent.height; text: "Time"; color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter }
+                                Text { width: parent.width * 0.16; height: parent.height; text: qsTr("Shot"); color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; leftPadding: 10; verticalAlignment: Text.AlignVCenter }
+                                Text { width: parent.width * 0.18; height: parent.height; text: qsTr("Score"); color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
+                                Text { width: parent.width * 0.20; height: parent.height; text: qsTr("X (mm)"); color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
+                                Text { width: parent.width * 0.20; height: parent.height; text: qsTr("Y (mm)"); color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 8; verticalAlignment: Text.AlignVCenter }
+                                Text { width: parent.width * 0.26; height: parent.height; text: qsTr("Time"); color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter }
                             }
                             Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 2; color: PRODUCT.accentPrimary }
                         }
@@ -387,7 +387,7 @@ Item {
                     Text {
                         visible: !finals10mReport.val("complete", false)
                         width: parent.width; wrapMode: Text.WordWrap
-                        text: "COURSE INCOMPLETE — "
+                        text: qsTr("COURSE INCOMPLETE — ")
                               + finals10mReport.val("acceptedOfShots", "")
                               + " official shots recorded. This is not a completed Final result."
                         color: PRODUCT.accentPrimary; font.pixelSize: 11; font.bold: true; font.family: "Segoe UI"

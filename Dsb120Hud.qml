@@ -48,8 +48,12 @@ Item {
     // The DISPLAYED clock is the ENGINE's clock, read back once a second rather
     // than counted independently in QML. A second counter would be a second
     // opinion about competition time.
+    // PERF-001 (Phase 3 WP2): runs only while the HUD is shown, i.e. during a
+    // DSB 1.20 match. It used to poll the engine 4x a second from application
+    // start, in every mode. triggeredOnStart refreshes the clock the moment
+    // the HUD appears. Nothing outside this file reads remainingSec.
     Timer {
-        interval: 250; running: true; repeat: true
+        interval: 250; running: hud.visible; repeat: true; triggeredOnStart: true
         onTriggered: {
             var ms = DSB120.remainingMs()
             hud.remainingSec = ms < 0 ? -1 : Math.floor(ms / 1000)

@@ -85,9 +85,9 @@ Item {
                             width: sourceSize.height > 0 ? height * sourceSize.width / sourceSize.height : 0
                             fillMode: Image.PreserveAspectFit; smooth: true; mipmap: true }
                         Row { spacing: 8
-                            Text { text: "TRAINING LAB"; color: view.red; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2
+                            Text { text: qsTr("TRAINING LAB"); color: view.red; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2
                                    anchors.verticalCenter: parent.verticalCenter }
-                            Text { text: "CALL & DIAGNOSE REPORT"; color: view.ink; font.pixelSize: 15; font.bold: true
+                            Text { text: qsTr("CALL & DIAGNOSE REPORT"); color: view.ink; font.pixelSize: 15; font.bold: true
                                    anchors.verticalCenter: parent.verticalCenter }
                         }
                     }
@@ -113,7 +113,7 @@ Item {
                 }
             }
             Rectangle { width: parent.width; height: 2; color: view.red; opacity: 0.85 }
-            Text { text: "Not an official competition result"; color: view.sub; font.pixelSize: 9; font.italic: true }
+            Text { text: qsTr("Not an official competition result"); color: view.sub; font.pixelSize: 9; font.italic: true }
             Item { id: inner; width: parent.width; height: parent.height - 180 }
         }
         Item {
@@ -168,7 +168,7 @@ Item {
         id: overviewPage; pageNo: 1
         Column {
             width: parent.width; spacing: 8
-            Text { text: "SESSION OVERVIEW"; color: view.ink; font.pixelSize: 15; font.bold: true }
+            Text { text: qsTr("SESSION OVERVIEW"); color: view.ink; font.pixelSize: 15; font.bold: true }
             Item { height: 4; width: 1 }
             KV { k: "Athlete";        v: view.model.athlete || "—" }
             KV { k: "Date / time";    v: view.model.createdAtIso || "—" }
@@ -184,7 +184,7 @@ Item {
                     return Math.floor(d / 60) + " min " + ("0" + (d % 60)).slice(-2) + " s"
                 } }
             Item { height: 8; width: 1 }
-            Text { text: "CALL ACCURACY"; color: view.sub; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2 }
+            Text { text: qsTr("CALL ACCURACY"); color: view.sub; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2 }
             Grid {
                 columns: 3; columnSpacing: 40; rowSpacing: 6
                 property var s: view.model.stats || {}
@@ -208,7 +208,7 @@ Item {
                 }
             }
             Item { height: 8; width: 1 }
-            Text { text: "WHAT YOU SHOULD TAKE FROM THIS SESSION"; color: view.red; font.pixelSize: 12; font.bold: true }
+            Text { text: qsTr("WHAT YOU SHOULD TAKE FROM THIS SESSION"); color: view.red; font.pixelSize: 12; font.bold: true }
             Repeater {
                 model: {
                     var i = view.model.insights || {}
@@ -228,7 +228,7 @@ Item {
             }
             Item { height: 6; width: 1 }
             Text { visible: view.model.insights !== undefined && (view.model.insights.reviewShots || []).length > 0
-                   text: "SHOTS TO REVIEW"; color: view.sub; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2 }
+                   text: qsTr("SHOTS TO REVIEW"); color: view.sub; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2 }
             Repeater { model: (view.model.insights ? (view.model.insights.reviewShots || []) : [])
                 Text { width: 700; wrapMode: Text.WordWrap; text: "· Shot " + modelData.shotNumber + ": " + modelData.text
                        color: view.ink; font.pixelSize: 11 } }
@@ -240,7 +240,7 @@ Item {
         id: analyticsPage; pageNo: 2
         Column {
             width: parent.width; spacing: 8
-            Text { text: "CALL ERROR BY SHOT"; color: view.ink; font.pixelSize: 15; font.bold: true }
+            Text { text: qsTr("CALL ERROR BY SHOT"); color: view.ink; font.pixelSize: 15; font.bold: true }
             // simple bar chart of radial error per shot
             Column {
                 width: parent.width; spacing: 3
@@ -262,7 +262,7 @@ Item {
                 }
             }
             Item { height: 10; width: 1 }
-            Text { text: "DIRECTIONAL BIAS (call − actual)"; color: view.sub; font.pixelSize: 10; font.bold: true; font.letterSpacing: 1 }
+            Text { text: qsTr("DIRECTIONAL BIAS (call − actual)"); color: view.sub; font.pixelSize: 10; font.bold: true; font.letterSpacing: 1 }
             Text {
                 width: 700; wrapMode: Text.WordWrap; color: view.ink; font.pixelSize: 11
                 text: {
@@ -276,7 +276,7 @@ Item {
             // 3P position breakdown
             Column {
                 width: parent.width; spacing: 3; visible: view.model.threePositions === true
-                Text { text: "BY POSITION"; color: view.sub; font.pixelSize: 10; font.bold: true; font.letterSpacing: 1; topPadding: 6 }
+                Text { text: qsTr("BY POSITION"); color: view.sub; font.pixelSize: 10; font.bold: true; font.letterSpacing: 1; topPadding: 6 }
                 Repeater {
                     model: view.model.byPosition ? view.model.byPosition : []
                     Text { width: 700; color: view.ink; font.pixelSize: 11
@@ -328,10 +328,10 @@ Item {
                 }
                 Row { spacing: 8
                     Rectangle { width: 11; height: 11; radius: 6; color: "transparent"; border.color: view.blue; border.width: 2; anchors.verticalCenter: parent.verticalCenter }
-                    Text { text: "CALL"; color: view.sub; font.pixelSize: 9; anchors.verticalCenter: parent.verticalCenter }
+                    Text { text: qsTr("CALL"); color: view.sub; font.pixelSize: 9; anchors.verticalCenter: parent.verticalCenter }
                     Item { width: 12; height: 1 }
                     Rectangle { width: 9; height: 9; radius: 2; rotation: 45; color: view.red; border.color: "white"; border.width: 1; anchors.verticalCenter: parent.verticalCenter }
-                    Text { text: "ACTUAL (centre)"; color: view.sub; font.pixelSize: 9; anchors.verticalCenter: parent.verticalCenter } }
+                    Text { text: qsTr("ACTUAL (centre)"); color: view.sub; font.pixelSize: 9; anchors.verticalCenter: parent.verticalCenter } }
             }
         }
     }
@@ -341,7 +341,7 @@ Item {
         id: notesPage; pageNo: view.totalPages
         Column {
             width: parent.width; spacing: 8
-            Text { text: "NOTES & OBSERVATIONS"; color: view.ink; font.pixelSize: 15; font.bold: true }
+            Text { text: qsTr("NOTES & OBSERVATIONS"); color: view.ink; font.pixelSize: 15; font.bold: true }
             Text { visible: (view.model.sessionNote || "").length > 0; text: "Session note: " + (view.model.sessionNote || "")
                    color: view.ink; font.pixelSize: 11; width: 700; wrapMode: Text.WordWrap }
             Repeater {
@@ -353,12 +353,12 @@ Item {
                     Text { text: s.note || ""; color: view.ink; font.pixelSize: 11; width: 700; wrapMode: Text.WordWrap } }
             }
             Item { height: 8; width: 1 }
-            Text { text: "OVERALL OBSERVED"; color: view.ink; font.pixelSize: 15; font.bold: true }
+            Text { text: qsTr("OVERALL OBSERVED"); color: view.ink; font.pixelSize: 15; font.bold: true }
             Repeater { model: view.model.observations ? view.model.observations : []
                 Text { width: 700; wrapMode: Text.WordWrap; text: "· " + modelData; color: view.ink; font.pixelSize: 11 } }
             Item { height: 10; width: 1 }
             Text { width: 700; wrapMode: Text.WordWrap; color: view.sub; font.pixelSize: 10; font.italic: true
-                   text: "Measured shot-awareness data only. This is not an official competition result and carries no ranking status. Sighters are excluded from all results." }
+                   text: qsTr("Measured shot-awareness data only. This is not an official competition result and carries no ranking status. Sighters are excluded from all results.") }
         }
     }
 }

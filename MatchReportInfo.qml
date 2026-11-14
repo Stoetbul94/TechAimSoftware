@@ -68,7 +68,7 @@ Item {
 //                Row {
 //                    spacing: 2
 //                    Text {
-//                        text:"Date and Time"
+//                        text:qsTr("Date and Time")
 //                        font.bold: true
 //                    }
 //                    Text {
@@ -108,7 +108,7 @@ Item {
                     spacing: 2
                     Text {
                         id:eventLabel
-                        text:"Event"
+                        text:qsTr("Event")
                         font.bold: true
                         visible: isMatchSummary
                     }
@@ -128,7 +128,7 @@ Item {
                 Row {
                     spacing: 2
                     Text {
-                        text:"Date"
+                        text:qsTr("Date")
                         font.bold: true
                     }
                     Text {
@@ -146,7 +146,7 @@ Item {
                 Row {
                     spacing: 2
                     Text {
-                        text:"Time"
+                        text:qsTr("Time")
                         font.bold: true
                     }
                     Text {
@@ -232,7 +232,7 @@ Item {
 //                Row {
 //                    spacing: 2
 //                    Text {
-//                        text:"Average Time/shot"
+//                        text:qsTr("Average Time/shot")
 //                        font.bold: true
 //                    }
 //                    Text {
@@ -253,7 +253,7 @@ Item {
                     spacing: 2
                     Text {
                         id: mpiLabel
-                        text:"MPI"
+                        text:qsTr("MPI")
                         font.bold: true
                     }
                     Text {
@@ -274,7 +274,7 @@ Item {
                     spacing: 2
                     Text {
                         id: teilerLabel
-                        text:"Teiler"
+                        text:qsTr("Teiler")
                         font.bold: true
                     }
                     Text {
@@ -294,7 +294,7 @@ Item {
                     spacing: 2
                     Text {
                         id: startTotal
-                        text:"Inner 10 Count"
+                        text:qsTr("Inner 10 Count")
                         font.bold: true
                     }
                     Text {
@@ -314,7 +314,7 @@ Item {
                     spacing: 2
                     Text {
                         id: group
-                        text:"Group"
+                        text:qsTr("Group")
                         font.bold: true
                     }
                     Text {
@@ -357,7 +357,7 @@ Item {
                 rowSpacing: 10
                 id:seriesName
                 //                Text {
-                //                    text:"Date and Time"
+                //                    text:qsTr("Date and Time")
                 //                    font.bold: true
                 //                }
                 //                Text {

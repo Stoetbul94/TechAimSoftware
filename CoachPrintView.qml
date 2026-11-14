@@ -154,7 +154,7 @@ Rectangle {
         anchors.horizontalCenter: parent.horizontalCenter
         width: savedFlash.implicitWidth + 24; height: 26; radius: 13
         color: "#243428"; border.color: "#2e9e5b"; border.width: 1
-        Text { id: savedFlash; visible: false; anchors.centerIn: parent; text: "✓ diary saved"; color: "#7fd18f"; font.pixelSize: 13; font.family: pg.fam }
+        Text { id: savedFlash; visible: false; anchors.centerIn: parent; text: qsTr("✓ diary saved"); color: "#7fd18f"; font.pixelSize: 13; font.family: pg.fam }
     }
 
     Flickable {
@@ -192,29 +192,29 @@ Rectangle {
                     Column {
                         width: parent.width; spacing: 10
                         property var e: pg.rep ? pg.rep.executiveSummary : null
-                        SectionTitle { width: parent.width; title: "Executive Summary" }
+                        SectionTitle { width: parent.width; title: qsTr("Executive Summary") }
                         Grid {
                             id: execGrid
                             width: parent.width; columns: 3; columnSpacing: 12; rowSpacing: 12
                             property real cw: (width - 2*columnSpacing) / 3
                             property var e: parent.e
-                            MetricCard { width: execGrid.cw; label: "Shots";          value: execGrid.e ? pg.f(execGrid.e.competitionShotCount,0) : "—" }
-                            MetricCard { width: execGrid.cw; label: "Total Score";    value: execGrid.e ? pg.f(execGrid.e.totalScore,1) : "—" }
-                            MetricCard { width: execGrid.cw; label: "Average";        value: execGrid.e ? pg.f(execGrid.e.averageScore,2) : "—" }
-                            MetricCard { width: execGrid.cw; label: "Consistency";    valueSize: 22; value: execGrid.e ? pg.pct(execGrid.e.consistencyPercentage) : "—" }
-                            MetricCard { width: execGrid.cw; label: "Best / Worst";   valueSize: 18; value: execGrid.e ? pg.f(execGrid.e.bestShot,1)+" / "+pg.f(execGrid.e.worstShot,1) : "—" }
-                            MetricCard { width: execGrid.cw; label: "Score SD";       valueSize: 20; value: execGrid.e ? pg.f(execGrid.e.scoreStandardDeviation,3) : "—" }
-                            MetricCard { width: execGrid.cw; label: "Group Radius";   unit: "mm"; valueSize: 20; value: execGrid.e ? pg.f(execGrid.e.groupRadius,1) : "—" }
-                            MetricCard { width: execGrid.cw; label: "Group Diameter"; unit: "mm"; valueSize: 20; value: execGrid.e ? pg.f(execGrid.e.groupDiameter,1) : "—" }
-                            MetricCard { width: execGrid.cw; label: "MPI"; unit: "mm"; valueSize: 18; value: execGrid.e ? pg.f(execGrid.e.horizontalBias,1)+", "+pg.f(execGrid.e.verticalBias,1) : "—" }
-                            MetricCard { width: execGrid.cw; label: "Trend";          valueSize: 18; value: execGrid.e ? (execGrid.e.trendDirection||"—") : "—" }
+                            MetricCard { width: execGrid.cw; label: qsTr("Shots");          value: execGrid.e ? pg.f(execGrid.e.competitionShotCount,0) : "—" }
+                            MetricCard { width: execGrid.cw; label: qsTr("Total Score");    value: execGrid.e ? pg.f(execGrid.e.totalScore,1) : "—" }
+                            MetricCard { width: execGrid.cw; label: qsTr("Average");        value: execGrid.e ? pg.f(execGrid.e.averageScore,2) : "—" }
+                            MetricCard { width: execGrid.cw; label: qsTr("Consistency");    valueSize: 22; value: execGrid.e ? pg.pct(execGrid.e.consistencyPercentage) : "—" }
+                            MetricCard { width: execGrid.cw; label: qsTr("Best / Worst");   valueSize: 18; value: execGrid.e ? pg.f(execGrid.e.bestShot,1)+" / "+pg.f(execGrid.e.worstShot,1) : "—" }
+                            MetricCard { width: execGrid.cw; label: qsTr("Score SD");       valueSize: 20; value: execGrid.e ? pg.f(execGrid.e.scoreStandardDeviation,3) : "—" }
+                            MetricCard { width: execGrid.cw; label: qsTr("Group Radius");   unit: "mm"; valueSize: 20; value: execGrid.e ? pg.f(execGrid.e.groupRadius,1) : "—" }
+                            MetricCard { width: execGrid.cw; label: qsTr("Group Diameter"); unit: "mm"; valueSize: 20; value: execGrid.e ? pg.f(execGrid.e.groupDiameter,1) : "—" }
+                            MetricCard { width: execGrid.cw; label: qsTr("MPI"); unit: "mm"; valueSize: 18; value: execGrid.e ? pg.f(execGrid.e.horizontalBias,1)+", "+pg.f(execGrid.e.verticalBias,1) : "—" }
+                            MetricCard { width: execGrid.cw; label: qsTr("Trend");          valueSize: 18; value: execGrid.e ? (execGrid.e.trendDirection||"—") : "—" }
                         }
                     }
 
                     // Shot Map (ISSF targets)
                     Column {
                         width: parent.width; spacing: 6
-                        SectionTitle { width: parent.width; title: "Shot Map" }
+                        SectionTitle { width: parent.width; title: qsTr("Shot Map") }
                         Flow {
                             width: parent.width; spacing: 12
                             Repeater {
@@ -231,7 +231,7 @@ Rectangle {
                     // Score Distribution (print-friendly bars)
                     Column {
                         width: parent.width; spacing: 6
-                        SectionTitle { width: parent.width; title: "Score Distribution" }
+                        SectionTitle { width: parent.width; title: qsTr("Score Distribution") }
                         Repeater {
                             model: {
                                 var d = pg.rep ? pg.rep.shotDistribution : null; if(!d) return []
@@ -259,7 +259,7 @@ Rectangle {
                     // Trend
                     Column {
                         width: parent.width; spacing: 6
-                        SectionTitle { width: parent.width; title: "Trend" }
+                        SectionTitle { width: parent.width; title: qsTr("Trend") }
                         ChartView {
                             width: parent.width; height: 220; antialiasing: true; legend.visible: true; legend.alignment: Qt.AlignTop
                             backgroundColor: "transparent"; plotAreaColor: "transparent"; theme: ChartView.ChartThemeLight
@@ -276,7 +276,7 @@ Rectangle {
                     Column {
                         width: parent.width; spacing: 6
                         visible: pg.rep && pg.rep.positionAnalysis && pg.rep.positionAnalysis.positions.length > 1
-                        SectionTitle { width: parent.width; title: "Position Summary" }
+                        SectionTitle { width: parent.width; title: qsTr("Position Summary") }
                         Row {
                             width: parent.width
                             Repeater {
@@ -305,7 +305,7 @@ Rectangle {
                     Column {
                         width: parent.width; spacing: 4
                         property var ra: pg.rep ? pg.rep.recoveryAnalysis : null
-                        SectionTitle { width: parent.width; title: "Recovery Analysis" }
+                        SectionTitle { width: parent.width; title: qsTr("Recovery Analysis") }
                         Text { text: pg.recoveryLabel(parent.ra?parent.ra.overall.pattern:""); color: pg.cInk; font.bold: true; font.pixelSize: 13; font.family: pg.fam }
                         Text { visible: parent.ra&&parent.ra.overall.available; text: "Recovery rate "+pg.pct(parent.ra?parent.ra.overall.badShotRecoveryRate:0)+"   ·   confidence "+pg.pct(parent.ra?parent.ra.overall.recoveryConfidence:0); color: pg.cSub; font.pixelSize: 12; font.family: pg.fam }
                         Repeater { model: pg.evLines(parent.ra?parent.ra.metrics:[]); delegate: Text { width: parent.width; text: "• "+modelData; color: pg.cSub; font.pixelSize: 11; font.family: pg.fam; wrapMode: Text.WordWrap } }
@@ -315,7 +315,7 @@ Rectangle {
                     Column {
                         width: parent.width; spacing: 4
                         property var fa: pg.rep ? pg.rep.fatigueAnalysis : null
-                        SectionTitle { width: parent.width; title: "Fatigue Analysis" }
+                        SectionTitle { width: parent.width; title: qsTr("Fatigue Analysis") }
                         Text { text: pg.fatigueLabel(parent.fa?parent.fa.overallPattern:""); color: pg.cInk; font.bold: true; font.pixelSize: 13; font.family: pg.fam }
                         Text { visible: parent.fa&&parent.fa.scoreTrendAvailable; text: "Fatigue index "+pg.f(parent.fa?parent.fa.fatigueIndex:0,2)+"   ·   confidence "+pg.pct(parent.fa?parent.fa.confidence:0); color: pg.cSub; font.pixelSize: 12; font.family: pg.fam }
                         Repeater { model: pg.evLines(parent.fa?parent.fa.metrics:[]); delegate: Text { width: parent.width; text: "• "+modelData; color: pg.cSub; font.pixelSize: 11; font.family: pg.fam; wrapMode: Text.WordWrap } }
@@ -324,19 +324,19 @@ Rectangle {
                     // Training Priorities
                     Column {
                         width: parent.width; spacing: 4
-                        SectionTitle { width: parent.width; title: "Training Priorities" }
+                        SectionTitle { width: parent.width; title: qsTr("Training Priorities") }
                         Repeater {
                             model: (pg.rep&&pg.rep.trainingPriorities)?pg.rep.trainingPriorities:[]
                             delegate: Text { width: parent.width; text: (index+1)+".  "+modelData.priority+"   ["+modelData.impact+" impact]"; color: pg.cInk; font.pixelSize: 12; font.family: pg.fam; wrapMode: Text.WordWrap }
                         }
-                        Text { visible: !(pg.rep&&pg.rep.trainingPriorities&&pg.rep.trainingPriorities.length); text: "No major training priority detected."; color: pg.cSub; font.pixelSize: 12; font.family: pg.fam }
+                        Text { visible: !(pg.rep&&pg.rep.trainingPriorities&&pg.rep.trainingPriorities.length); text: qsTr("No major training priority detected."); color: pg.cSub; font.pixelSize: 12; font.family: pg.fam }
                     }
 
                     // Coach Conclusion
                     Column {
                         width: parent.width; spacing: 4
                         property var cc: pg.rep ? pg.rep.coachConclusion : null
-                        SectionTitle { width: parent.width; title: "Coach Conclusion" }
+                        SectionTitle { width: parent.width; title: qsTr("Coach Conclusion") }
                         Text { text: "Rating: "+(parent.cc?parent.cc.rating:"—"); color: pg.cAccent; font.bold: true; font.pixelSize: 13; font.family: pg.fam }
                         Text { width: parent.width; text: parent.cc?parent.cc.overallAssessment:""; color: pg.cInk; font.pixelSize: 12; font.family: pg.fam; wrapMode: Text.WordWrap }
                         Text { width: parent.width; visible: parent.cc&&parent.cc.trainingFocusSummary; text: parent.cc?parent.cc.trainingFocusSummary:""; color: pg.cSub; font.pixelSize: 12; font.family: pg.fam; wrapMode: Text.WordWrap }
@@ -345,55 +345,55 @@ Rectangle {
                     // Coach Diary (editable)
                     Column {
                         width: parent.width; spacing: 8
-                        SectionTitle { width: parent.width; title: "Coach Diary" }
+                        SectionTitle { width: parent.width; title: qsTr("Coach Diary") }
                         Grid {
                             id: diaryGrid
                             width: parent.width; columns: 2; columnSpacing: 16; rowSpacing: 8
                             property real fw: (width - 16) / 2
                             Column { width: diaryGrid.fw; spacing: 2
-                                Text { text: "Equipment changes"; color: pg.cSub; font.pixelSize: 11; font.family: pg.fam }
+                                Text { text: qsTr("Equipment changes"); color: pg.cSub; font.pixelSize: 11; font.family: pg.fam }
                                 Basic.TextField { id: dfEquip; width: parent.width; font.pixelSize: 12; font.family: pg.fam; color: pg.cInk
                                     background: Rectangle { color: "#fbfbf9"; border.color: pg.cRule; border.width: 1; radius: 3 } } }
                             Column { width: diaryGrid.fw; spacing: 2
-                                Text { text: "Sight changes"; color: pg.cSub; font.pixelSize: 11; font.family: pg.fam }
+                                Text { text: qsTr("Sight changes"); color: pg.cSub; font.pixelSize: 11; font.family: pg.fam }
                                 Basic.TextField { id: dfSight; width: parent.width; font.pixelSize: 12; font.family: pg.fam; color: pg.cInk
                                     background: Rectangle { color: "#fbfbf9"; border.color: pg.cRule; border.width: 1; radius: 3 } } }
                             Column { width: diaryGrid.fw; spacing: 2
-                                Text { text: "Ammunition / pellets"; color: pg.cSub; font.pixelSize: 11; font.family: pg.fam }
+                                Text { text: qsTr("Ammunition / pellets"); color: pg.cSub; font.pixelSize: 11; font.family: pg.fam }
                                 Basic.TextField { id: dfAmmo; width: parent.width; font.pixelSize: 12; font.family: pg.fam; color: pg.cInk
                                     background: Rectangle { color: "#fbfbf9"; border.color: pg.cRule; border.width: 1; radius: 3 } } }
                             Column { width: diaryGrid.fw; spacing: 2
-                                Text { text: "Weather"; color: pg.cSub; font.pixelSize: 11; font.family: pg.fam }
+                                Text { text: qsTr("Weather"); color: pg.cSub; font.pixelSize: 11; font.family: pg.fam }
                                 Basic.TextField { id: dfWeather; width: parent.width; font.pixelSize: 12; font.family: pg.fam; color: pg.cInk
                                     background: Rectangle { color: "#fbfbf9"; border.color: pg.cRule; border.width: 1; radius: 3 } } }
                             Column { width: diaryGrid.fw; spacing: 2
-                                Text { text: "Wind direction"; color: pg.cSub; font.pixelSize: 11; font.family: pg.fam }
+                                Text { text: qsTr("Wind direction"); color: pg.cSub; font.pixelSize: 11; font.family: pg.fam }
                                 Basic.TextField { id: dfWind; width: parent.width; font.pixelSize: 12; font.family: pg.fam; color: pg.cInk
                                     background: Rectangle { color: "#fbfbf9"; border.color: pg.cRule; border.width: 1; radius: 3 } } }
                             Column { width: diaryGrid.fw; spacing: 2
-                                Text { text: "Lighting"; color: pg.cSub; font.pixelSize: 11; font.family: pg.fam }
+                                Text { text: qsTr("Lighting"); color: pg.cSub; font.pixelSize: 11; font.family: pg.fam }
                                 Basic.TextField { id: dfLight; width: parent.width; font.pixelSize: 12; font.family: pg.fam; color: pg.cInk
                                     background: Rectangle { color: "#fbfbf9"; border.color: pg.cRule; border.width: 1; radius: 3 } } }
                             Column { width: diaryGrid.fw; spacing: 2
-                                Text { text: "Physical state"; color: pg.cSub; font.pixelSize: 11; font.family: pg.fam }
+                                Text { text: qsTr("Physical state"); color: pg.cSub; font.pixelSize: 11; font.family: pg.fam }
                                 Basic.TextField { id: dfPhys; width: parent.width; font.pixelSize: 12; font.family: pg.fam; color: pg.cInk
                                     background: Rectangle { color: "#fbfbf9"; border.color: pg.cRule; border.width: 1; radius: 3 } } }
                             Column { width: diaryGrid.fw; spacing: 2
-                                Text { text: "Mental state"; color: pg.cSub; font.pixelSize: 11; font.family: pg.fam }
+                                Text { text: qsTr("Mental state"); color: pg.cSub; font.pixelSize: 11; font.family: pg.fam }
                                 Basic.TextField { id: dfMental; width: parent.width; font.pixelSize: 12; font.family: pg.fam; color: pg.cInk
                                     background: Rectangle { color: "#fbfbf9"; border.color: pg.cRule; border.width: 1; radius: 3 } } }
                         }
                         Column { width: parent.width; spacing: 2
-                            Text { text: "Coach notes"; color: pg.cSub; font.pixelSize: 11; font.family: pg.fam }
+                            Text { text: qsTr("Coach notes"); color: pg.cSub; font.pixelSize: 11; font.family: pg.fam }
                             Basic.TextArea { id: dfCoach; width: parent.width; height: 46; font.pixelSize: 12; font.family: pg.fam; color: pg.cInk
                                 background: Rectangle { color: "#fbfbf9"; border.color: pg.cRule; border.width: 1; radius: 3 } }
                         }
                         Column { width: parent.width; spacing: 2
-                            Text { text: "Athlete notes"; color: pg.cSub; font.pixelSize: 11; font.family: pg.fam }
+                            Text { text: qsTr("Athlete notes"); color: pg.cSub; font.pixelSize: 11; font.family: pg.fam }
                             Basic.TextArea { id: dfAthlete; width: parent.width; height: 46; font.pixelSize: 12; font.family: pg.fam; color: pg.cInk
                                 background: Rectangle { color: "#fbfbf9"; border.color: pg.cRule; border.width: 1; radius: 3 } }
                         }
-                        Text { text: "Next training focus"; color: pg.cSub; font.pixelSize: 11; font.family: pg.fam }
+                        Text { text: qsTr("Next training focus"); color: pg.cSub; font.pixelSize: 11; font.family: pg.fam }
                         Flow {
                             width: parent.width; spacing: 6
                             Repeater {
@@ -409,7 +409,7 @@ Rectangle {
                             }
                         }
                         Column { width: parent.width; spacing: 2
-                            Text { text: "Free-text next-session focus"; color: pg.cSub; font.pixelSize: 11; font.family: pg.fam }
+                            Text { text: qsTr("Free-text next-session focus"); color: pg.cSub; font.pixelSize: 11; font.family: pg.fam }
                             Basic.TextField { id: dfNext; width: parent.width; font.pixelSize: 12; font.family: pg.fam; color: pg.cInk
                                 background: Rectangle { color: "#fbfbf9"; border.color: pg.cRule; border.width: 1; radius: 3 } }
                         }
@@ -427,7 +427,7 @@ Rectangle {
                 Text {
                     anchors.centerIn: parent
                     visible: !(pg.rep && pg.rep.valid)
-                    text: "No report to print yet."
+                    text: qsTr("No report to print yet.")
                     color: pg.cSub; font.pixelSize: 15; font.family: pg.fam
                 }
             }

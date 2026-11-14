@@ -1,0 +1,49 @@
+﻿{
+    "summary":  {
+                    "label":  "laptop-baseline-3d531cd-athlete-de",
+                    "exe":  "C:\\Users\\User\\Downloads\\SETA-Athlete-Preview-2026-11-14\\SETA.exe",
+                    "date":  "2026-11-15T02:09:08",
+                    "cores":  12,
+                    "machine":  "LAPTOP-AL3JN0PV",
+                    "runs":  3,
+                    "idleSeconds":  30,
+                    "windowMs (min/med/max)":  "1489 / 1517 / 1575",
+                    "workingSetMB (min/med/max)":  "257,8 / 257,9 / 257,9",
+                    "privateMB (min/med/max)":  "261,9 / 262 / 262,8",
+                    "idleCpuPctCore (min/med/max)":  "9,3 / 9,8 / 10,9",
+                    "idleCpuPctTotal (min/med/max)":  "0,78 / 0,82 / 0,91",
+                    "privateGrowthPct (min/med/max)":  ""
+                },
+    "runs":  [
+                 {
+                     "windowMs":  1575,
+                     "workingSetMB":  257.8,
+                     "privateMB":  262.8,
+                     "idleCpuPctCore":  9.8,
+                     "idleCpuPctTotal":  0.82,
+                     "workingSetAfterIdleMB":  257.6,
+                     "topThreadsMs":  "27108:1234 17048:875 43684:578 38556:172",
+                     "threadCount":  25
+                 },
+                 {
+                     "windowMs":  1517,
+                     "workingSetMB":  257.9,
+                     "privateMB":  261.9,
+                     "idleCpuPctCore":  9.3,
+                     "idleCpuPctTotal":  0.78,
+                     "workingSetAfterIdleMB":  257.7,
+                     "topThreadsMs":  "5556:1125 33876:797 1216:719 13916:78",
+                     "threadCount":  25
+                 },
+                 {
+                     "windowMs":  1489,
+                     "workingSetMB":  257.9,
+                     "privateMB":  262,
+                     "idleCpuPctCore":  10.9,
+                     "idleCpuPctTotal":  0.91,
+                     "workingSetAfterIdleMB":  257.7,
+                     "topThreadsMs":  "45464:1344 45704:953 45916:781 34340:141",
+                     "threadCount":  25
+                 }
+             ]
+}

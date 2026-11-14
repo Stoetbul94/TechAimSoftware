@@ -1173,6 +1173,8 @@ Item {
             // really talking to before they start shooting.
             TargetStatusPanel {
                 id: loginTargetStatus
+                // PERF-002: covered by the athlete home - nobody can see it pulse.
+                pulseEnabled: !rootItem.athleteHomeShown
                 anchors.top: connRow.bottom; anchors.topMargin: 8
                 anchors.left: parent.left;   anchors.leftMargin: 22
                 anchors.right: parent.right; anchors.rightMargin: 22

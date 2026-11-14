@@ -107,9 +107,9 @@ Item {
                             fillMode: Image.PreserveAspectFit; smooth: true; mipmap: true
                         }
                         Row { spacing: 8
-                            Text { text: "TRAINING LAB"; color: view.red; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2
+                            Text { text: qsTr("TRAINING LAB"); color: view.red; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2
                                    anchors.verticalCenter: parent.verticalCenter }
-                            Text { text: "TECHNICAL BLOCKS REPORT"; color: view.ink; font.pixelSize: 15; font.bold: true
+                            Text { text: qsTr("TECHNICAL BLOCKS REPORT"); color: view.ink; font.pixelSize: 15; font.bold: true
                                    anchors.verticalCenter: parent.verticalCenter }
                         }
                     }
@@ -133,7 +133,7 @@ Item {
                 }
             }
             Rectangle { width: parent.width; height: 2; color: view.red; opacity: 0.85 }
-            Text { text: "Not an official competition result"; color: view.sub; font.pixelSize: 9; font.italic: true }
+            Text { text: qsTr("Not an official competition result"); color: view.sub; font.pixelSize: 9; font.italic: true }
             Item { id: inner; width: parent.width; height: parent.height - 180 }
         }
         // branded footer: small wordmark + tagline (left), page X of Y (right)
@@ -201,7 +201,7 @@ Item {
                     return "" + (a.total || 0)
                 } }
             Item { height: 8; width: 1 }
-            Text { text: "Sighters are excluded from all Training results below."
+            Text { text: qsTr("Sighters are excluded from all Training results below.")
                    color: view.sub; font.pixelSize: 10; font.italic: true }
         }
     }
@@ -212,7 +212,7 @@ Item {
         pageNo: 2
         Column {
             width: parent.width; spacing: 8
-            Text { text: "BLOCK COMPARISON"; color: view.ink; font.pixelSize: 15; font.bold: true }
+            Text { text: qsTr("BLOCK COMPARISON"); color: view.ink; font.pixelSize: 15; font.bold: true }
             // table header
             Row {
                 width: parent.width; spacing: 0
@@ -235,7 +235,7 @@ Item {
                 }
             }
             Item { height: 10; width: 1 }
-            Text { text: "GROUP DIAMETER BY BLOCK"; color: view.sub; font.pixelSize: 10; font.bold: true }
+            Text { text: qsTr("GROUP DIAMETER BY BLOCK"); color: view.sub; font.pixelSize: 10; font.bold: true }
             Repeater {
                 model: view.blocks
                 Row {
@@ -251,7 +251,7 @@ Item {
                 }
             }
             Item { height: 10; width: 1 }
-            Text { text: "OBSERVED"; color: view.sub; font.pixelSize: 10; font.bold: true }
+            Text { text: qsTr("OBSERVED"); color: view.sub; font.pixelSize: 10; font.bold: true }
             Repeater {
                 model: view.model.observations ? view.model.observations : []
                 Text { width: 700; wrapMode: Text.WordWrap; text: "· " + modelData; color: view.ink; font.pixelSize: 11 }
@@ -315,13 +315,13 @@ Item {
                         KV { k: "Avg shot time"; v: b.hasTiming ? Number(b.averageShotTime).toFixed(1)+" s" : "—"; width: 360 }
                     }
                 }
-                Text { text: "OBSERVED"; color: view.sub; font.pixelSize: 10; font.bold: true; topPadding: 6 }
+                Text { text: qsTr("OBSERVED"); color: view.sub; font.pixelSize: 10; font.bold: true; topPadding: 6 }
                 Repeater { model: b.observations ? b.observations : []
                     Text { width: 700; wrapMode: Text.WordWrap; text: "· " + modelData; color: view.ink; font.pixelSize: 11 } }
                 // GROUP PATTERN INSIGHTS (T3)
                 Column {
                     width: 700; spacing: 2; visible: (b.groupPattern && b.groupPattern.hasData === true)
-                    Text { text: "GROUP PATTERN INSIGHTS"; color: view.red; font.pixelSize: 10; font.bold: true; topPadding: 6 }
+                    Text { text: qsTr("GROUP PATTERN INSIGHTS"); color: view.red; font.pixelSize: 10; font.bold: true; topPadding: 6 }
                     Repeater { model: (b.groupPattern ? (b.groupPattern.properties || []) : [])
                         Column { width: 700; spacing: 0
                             Text { text: modelData.label + "  (" + modelData.confidence + " evidence)"; color: view.ink; font.pixelSize: 10; font.bold: true }
@@ -330,7 +330,7 @@ Item {
                            text: "Coach discussion: " + b.groupPattern.prompt; color: view.ink; font.pixelSize: 10; font.italic: true }
                     Text { width: 700; wrapMode: Text.WordWrap; text: b.groupPattern.disclaimer || ""; color: view.sub; font.pixelSize: 9 }
                 }
-                Text { text: "ATHLETE NOTE"; color: view.sub; font.pixelSize: 10; font.bold: true; topPadding: 6 }
+                Text { text: qsTr("ATHLETE NOTE"); color: view.sub; font.pixelSize: 10; font.bold: true; topPadding: 6 }
                 Text { width: 700; wrapMode: Text.WordWrap; color: view.ink; font.pixelSize: 11
                        text: (b.note && b.note.length > 0) ? b.note : "—" }
             }
@@ -343,7 +343,7 @@ Item {
         pageNo: view.totalPages
         Column {
             width: parent.width; spacing: 10
-            Text { text: "ATHLETE NOTES"; color: view.ink; font.pixelSize: 15; font.bold: true }
+            Text { text: qsTr("ATHLETE NOTES"); color: view.ink; font.pixelSize: 15; font.bold: true }
             Repeater {
                 model: view.blocks
                 Column {
@@ -356,14 +356,14 @@ Item {
                 }
             }
             Item { height: 10; width: 1 }
-            Text { text: "OVERALL OBSERVED"; color: view.ink; font.pixelSize: 15; font.bold: true }
+            Text { text: qsTr("OVERALL OBSERVED"); color: view.ink; font.pixelSize: 15; font.bold: true }
             Repeater {
                 model: view.model.observations ? view.model.observations : []
                 Text { width: 700; wrapMode: Text.WordWrap; text: "· " + modelData; color: view.ink; font.pixelSize: 11 }
             }
             Item { height: 12; width: 1 }
             Text { width: 700; wrapMode: Text.WordWrap; color: view.sub; font.pixelSize: 10; font.italic: true
-                   text: "Measured training data only. Sighters are excluded from all results. "
+                   text: qsTr("Measured training data only. Sighters are excluded from all results. ")
                        + "This is not an official competition result and carries no ranking status." }
         }
     }

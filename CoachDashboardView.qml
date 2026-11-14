@@ -217,7 +217,7 @@ Rectangle {
             Text {
                 width: parent.width
                 visible: !(dash.rep && dash.rep.valid)
-                text: "No report to display yet — finish a match, then open Coach Report."
+                text: qsTr("No report to display yet — finish a match, then open Coach Report.")
                 color: cSub; font.pixelSize: 15; font.family: fam; wrapMode: Text.WordWrap
             }
 
@@ -228,7 +228,7 @@ Rectangle {
                 color: cPanel; border.color: cBorder; border.width: 1; radius: 10
                 Column {
                     id: kciCol; x: 16; y: 12; width: parent.width - 32; spacing: 10
-                    Text { text: "✦  Key Coach Insights"; color: cText; font.bold: true; font.pixelSize: 16; font.family: fam }
+                    Text { text: qsTr("✦  Key Coach Insights"); color: cText; font.bold: true; font.pixelSize: 16; font.family: fam }
                     Row {
                         width: parent.width
                         Repeater {
@@ -250,7 +250,7 @@ Rectangle {
                 color: cPanel; border.color: cBorder; border.width: 1; radius: 10
                 Column {
                     id: shotCol; x: 16; y: 14; width: parent.width - 32; spacing: 12
-                    Text { text: "◎  Shot Map"; color: cText; font.bold: true; font.pixelSize: 18; font.family: fam }
+                    Text { text: qsTr("◎  Shot Map"); color: cText; font.bold: true; font.pixelSize: 18; font.family: fam }
                     Row {
                         width: parent.width; spacing: 16
                         // targets
@@ -272,14 +272,14 @@ Rectangle {
                             // legend + target info
                             Column {
                                 width: 200; spacing: 10
-                                Text { text: "Score (legend)"; color: cText; font.bold: true; font.pixelSize: 13; font.family: fam }
-                                Row { spacing: 8; Rectangle { width: 12; height: 12; radius: 6; color: cGreen; anchors.verticalCenter: parent.verticalCenter } Text { text: "≥ 10.5  Perfect / Excellent"; color: cSub; font.pixelSize: 12; font.family: fam } }
-                                Row { spacing: 8; Rectangle { width: 12; height: 12; radius: 6; color: cAmber; anchors.verticalCenter: parent.verticalCenter } Text { text: "10.0 – 10.4  Good / Acceptable"; color: cSub; font.pixelSize: 12; font.family: fam } }
-                                Row { spacing: 8; Rectangle { width: 12; height: 12; radius: 6; color: cRed; anchors.verticalCenter: parent.verticalCenter } Text { text: "< 10.0  Recovery / Poor"; color: cSub; font.pixelSize: 12; font.family: fam } }
+                                Text { text: qsTr("Score (legend)"); color: cText; font.bold: true; font.pixelSize: 13; font.family: fam }
+                                Row { spacing: 8; Rectangle { width: 12; height: 12; radius: 6; color: cGreen; anchors.verticalCenter: parent.verticalCenter } Text { text: qsTr("≥ 10.5  Perfect / Excellent"); color: cSub; font.pixelSize: 12; font.family: fam } }
+                                Row { spacing: 8; Rectangle { width: 12; height: 12; radius: 6; color: cAmber; anchors.verticalCenter: parent.verticalCenter } Text { text: qsTr("10.0 – 10.4  Good / Acceptable"); color: cSub; font.pixelSize: 12; font.family: fam } }
+                                Row { spacing: 8; Rectangle { width: 12; height: 12; radius: 6; color: cRed; anchors.verticalCenter: parent.verticalCenter } Text { text: qsTr("< 10.0  Recovery / Poor"); color: cSub; font.pixelSize: 12; font.family: fam } }
                                 Item { width: 1; height: 6 }
-                                Text { text: "Target info"; color: cText; font.bold: true; font.pixelSize: 13; font.family: fam }
-                                Text { text: "Scale: real ISSF rings (mm)"; color: cSub; font.pixelSize: 12; font.family: fam }
-                                Text { text: "+Y = High  (Flip Y to invert)"; color: cSub; font.pixelSize: 12; font.family: fam }
+                                Text { text: qsTr("Target info"); color: cText; font.bold: true; font.pixelSize: 13; font.family: fam }
+                                Text { text: qsTr("Scale: real ISSF rings (mm)"); color: cSub; font.pixelSize: 12; font.family: fam }
+                                Text { text: qsTr("+Y = High  (Flip Y to invert)"); color: cSub; font.pixelSize: 12; font.family: fam }
                             }
                         }
                     }
@@ -296,7 +296,7 @@ Rectangle {
                     color: cPanel; border.color: cBorder; border.width: 1; radius: 10
                     Column {
                         x: 16; y: 14; width: parent.width - 32; spacing: 8
-                        Text { text: "▦  Score Distribution"; color: cText; font.bold: true; font.pixelSize: 16; font.family: fam }
+                        Text { text: qsTr("▦  Score Distribution"); color: cText; font.bold: true; font.pixelSize: 16; font.family: fam }
                         ChartView {
                             width: parent.width; height: 250
                             antialiasing: true; legend.visible: false; backgroundColor: "transparent"; plotAreaColor: "transparent"
@@ -318,7 +318,7 @@ Rectangle {
                     color: cPanel; border.color: cBorder; border.width: 1; radius: 10
                     Column {
                         x: 16; y: 14; width: parent.width - 32; spacing: 6
-                        Text { text: "📈  Trend"; color: cText; font.bold: true; font.pixelSize: 16; font.family: fam }
+                        Text { text: qsTr("📈  Trend"); color: cText; font.bold: true; font.pixelSize: 16; font.family: fam }
                         ChartView {
                             width: parent.width; height: 250
                             antialiasing: true; legend.visible: true; legend.alignment: Qt.AlignTop
@@ -339,7 +339,7 @@ Rectangle {
                     color: cPanel; border.color: cBorder; border.width: 1; radius: 10
                     Column {
                         x: 16; y: 14; width: parent.width - 32; spacing: 6
-                        Text { text: "◎  Summary"; color: cText; font.bold: true; font.pixelSize: 16; font.family: fam }
+                        Text { text: qsTr("◎  Summary"); color: cText; font.bold: true; font.pixelSize: 16; font.family: fam }
                         Repeater {
                             model: dash.summaryRows()
                             delegate: Row {
@@ -360,7 +360,7 @@ Rectangle {
                 color: cPanel; border.color: cBorder; border.width: 1; radius: 10
                 Column {
                     id: posCol; x: 16; y: 14; width: parent.width - 32; spacing: 8
-                    Text { text: "By Position Summary"; color: cText; font.bold: true; font.pixelSize: 16; font.family: fam }
+                    Text { text: qsTr("By Position Summary"); color: cText; font.bold: true; font.pixelSize: 16; font.family: fam }
                     // header row
                     Row {
                         width: parent.width

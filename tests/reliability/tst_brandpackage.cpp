@@ -469,6 +469,23 @@ void run_brand_package_tests()
               "athlete groups: the operator preview reads the shared time table");
         check(page.contains(QStringLiteral("out[p.programmeId] = legacyMatchTimeText(")),
               "athlete groups: ISSF/practice tile times come from the SAME table");
+        // PERF-001 / PERF-002 (Phase 3 WP2): no timer or endless animation runs
+        // for a screen nobody can see. Measured on the laptop: idle CPU 9.8 % of
+        // a core -> 0.1 %, all of it from the Wind Map loader animation that ran
+        // invisibly from startup.
+        {
+            const QString hud = stripComments(readFile(QStringLiteral("Dsb120Hud.qml"), &ok));
+            check(hud.contains(QStringLiteral("running: hud.visible; repeat: true; triggeredOnStart: true")),
+                  "PERF-001: the DSB 1.20 clock poll runs only while its HUD is shown");
+            const QString wm = stripComments(readFile(QStringLiteral("WindMapAnalysisView.qml"), &ok));
+            check(wm.contains(QStringLiteral("running: !view.ready && view.visible")),
+                  "PERF-002: the Wind Map loader animation runs only while the view is shown");
+            const QString tsp = stripComments(readFile(QStringLiteral("TargetStatusPanel.qml"), &ok));
+            check(tsp.contains(QStringLiteral("running: root.isFault && root.visible && root.pulseEnabled")),
+                  "PERF-002: the fault pulse still runs for every VISIBLE acquisition fault");
+            check(tsp.contains(QStringLiteral("onStopped: panelFace.opacity = 1.0")),
+                  "PERF-002: a stopped pulse never leaves the panel half-transparent");
+        }
         // REPORT-STALE-001: the match report's MPI / Group / Teiler cards re-read
         // the backend after every shot and print a dash, never "NaN".
         {
