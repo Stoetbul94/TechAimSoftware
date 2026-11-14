@@ -269,4 +269,9 @@ Branch `feature/seta-athlete-mode` · 2026-11-08 · Spec:
 | 50 m lane groups (`game_distance=50`) | NOT TESTED | only the 10 m lane was run |
 | German text for the group labels / new tile text | PASS | hand-run in German 2026-11-14: athlete home, Training/ISSF tabs, PIN, recovery dialog, match banner, Standstörung window |
 | Practice tile times equal the clock (PRACTICE-TIME-001) | PASS | tiles show 15/30/45/60 and 90 min (config defaults); `tst_brandpackage` |
-| German match report: labels, no clipping | PASS (first open) · RE-CHECK REQUIRED | 2026-11-14 screenshot found "Ringwertung (ganze Rin…" clipped (shortened) and NaN MPI (REPORT-STALE-001, fixed); the re-check was cut off by a power loss |
+| German match report: labels, no clipping | PASS | re-checked 2026-11-15, `docs/seta/evidence/german-match-report-after-recovery-2026-11-15.jpg` — all labels German, "Ringwertung" fits |
+| Report MPI / Group / Teiler update live, dash instead of NaN (REPORT-STALE-001) | PASS | same run: "— / —" before a backend shot, value after shot 5 |
+| Report MPI / Group / Teiler / total time cover the WHOLE match after crash recovery | **FAIL — OPEN (REPORT-RECOVERY-001)** | same run: score 50.80 counts all 5 shots, but MTP −0.3/−1.5 and Teiler 153.8 are shot 5 alone and Gesamtzeit 0:32 is post-resume only — the cards read the C++ backend lists, which recovery does not refill (globalMatchModel is the full record) |
+| Match clock keeps elapsed time across a second recovery | **FAIL — OPEN (RECOVERY-CLOCK-001)** | 2026-11-15: clock was 74:39 before power loss, recovery dialog said Restzeit 75:00 and the match resumed at ~75:00; first recovery (14 Nov) kept time correctly. Needs the ISSF/EST recovery rules before any change |
+| Recovered shots keep their shot times | FAIL — OPEN | after recovery the shot list shows 0 s for every recovered shot |
+| Report date in German | FAIL — OPEN | header shows "Sun 2026-11-15" (English weekday) |
