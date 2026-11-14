@@ -648,4 +648,97 @@ void run_qualification_tests()
         c60.closeSession();
         QDir(root).removeRecursively();
     }
+
+    // 12) RECOVERY-CLOCK-001 / RECOVERY-SHOTTIME-001 — a match that crashes
+    //     TWICE. Rules (est-malfunctions.md §5.1): the clock freezes at the last
+    //     valid journalled event; downtime never counts against the athlete.
+    //     Found 2026-11-15: the second recovery restored 75:00 instead of the
+    //     frozen value, because monotonic time restarts with every run and the
+    //     old run's anchor was compared with the new run's event times.
+    //     (a) restart-from-zero clock (production SystemMonotonicClock and a
+    //         reboot both behave this way);
+    //     (b) a clock that keeps counting across the outage (same process
+    //         origin), where the bug instead charged the downtime.
+    for (int variant = 0; variant < 2; ++variant) {
+        struct KeepClock : public IMonotonicClock {      // (b): start() keeps time
+            qint64 now = 0;
+            void start() override {}
+            qint64 nowMs() const override { return now; }
+            QString wallIso() const override
+            { return QStringLiteral("2026-11-15T10:00:00.000"); }
+        };
+        const bool keep = (variant == 1);
+        const char* tag = keep ? "same-origin clock" : "restart-from-zero clock";
+        const QString root = QDir::temp().filePath(
+            QStringLiteral("ta_qual_recovery_clock_%1").arg(variant));
+        QDir(root).removeRecursively();
+        StoragePaths::setRootOverrideForTesting(root);
+        StoragePaths::initialize();
+        const qint64 matchMs = 4500000;                  // 75 min
+
+        ManualClock m1, m2, m3;
+        KeepClock k;
+        auto setNow = [&](ManualClock& m, qint64 t) { if (keep) k.now = t; else m.setNowMs(t); };
+        IMonotonicClock* c1 = keep ? static_cast<IMonotonicClock*>(&k) : &m1;
+        IMonotonicClock* c2 = keep ? static_cast<IMonotonicClock*>(&k) : &m2;
+        IMonotonicClock* c3 = keep ? static_cast<IMonotonicClock*>(&k) : &m3;
+
+        QString sid;
+        {   // run 1: match clock anchored at t=100 s, last shot at t=120 s, crash
+            QualificationController a;
+            a.storeForTesting()->setClockForTesting(c1);
+            check(a.startSession(QStringLiteral("AR10"), QStringLiteral("60"),
+                    QStringLiteral("A"), 60, matchMs, 900000, -1, QString(), QString()),
+                  "clock recovery: session starts");
+            a.beginPreparation();
+            a.beginSighting();
+            setNow(m1, 100000);
+            a.beginOfficialMatch();
+            setNow(m1, 110000);
+            a.submitOfficial(0, 0, 10.5, 1, 0, true, 11.0);
+            setNow(m1, 120000);
+            a.submitOfficial(0, 0, 10.1, 2, 0, true, 9.4);
+            sid = a.sessionId();
+        }
+        if (keep) k.now = 700000;                        // 580 s of downtime
+        qint64 r2 = 0;
+        {   // run 2: resume, one more shot 30 s later, crash again
+            QualificationController b;
+            b.storeForTesting()->setClockForTesting(c2);
+            check(b.resumeFromRecovery(sid),
+                  qPrintable(QStringLiteral("clock recovery (%1): first resume").arg(tag)));
+            r2 = b.recoveredRemainingMs();
+            check(r2 == matchMs - 20000,
+                  qPrintable(QStringLiteral("clock recovery (%1): first resume freezes at the "
+                                            "last event (74:40)").arg(tag)),
+                  QString::number(r2));
+            const QVariantList shots = b.recoveredShots();
+            check(shots.size() == 2 && qAbs(shots.at(0).toMap().value(QStringLiteral("splitSec")).toDouble() - 11.0) < 1e-9
+                      && qAbs(shots.at(1).toMap().value(QStringLiteral("splitSec")).toDouble() - 9.4) < 1e-9,
+                  qPrintable(QStringLiteral("shot time recovery (%1): each shot keeps its "
+                                            "journalled time").arg(tag)));
+            const qint64 base = keep ? k.now : m2.nowMs();
+            setNow(m2, base + 30000);
+            check(b.submitOfficial(0, 0, 9.9, 3, 0, true, 30.0),
+                  qPrintable(QStringLiteral("clock recovery (%1): shot after resume").arg(tag)));
+        }
+        if (keep) k.now += 900000;                       // another 15 min down
+        {   // run 3: the SECOND recovery must continue from the frozen value
+            QualificationController c;
+            c.storeForTesting()->setClockForTesting(c3);
+            check(c.resumeFromRecovery(sid),
+                  qPrintable(QStringLiteral("clock recovery (%1): second resume").arg(tag)));
+            const qint64 r3 = c.recoveredRemainingMs();
+            check(r3 == matchMs - 20000 - 30000,
+                  qPrintable(QStringLiteral("RECOVERY-CLOCK-001 (%1): the second recovery "
+                                            "continues at 74:10 - not 75:00, and no downtime "
+                                            "charged").arg(tag)),
+                  QString::number(r3));
+            check(c.officialShotCount() == 3,
+                  qPrintable(QStringLiteral("clock recovery (%1): all 3 officials survive two "
+                                            "crashes").arg(tag)));
+            c.closeSession();
+        }
+        QDir(root).removeRecursively();
+    }
 }

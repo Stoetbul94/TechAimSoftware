@@ -23,6 +23,18 @@ Item {
 
     property bool isPrintFromBackend: false
     // One decimal, or a dash when the value was never measured (NaN / inf).
+    // REPORT-RECOVERY-001: whole-match MPI / group / Teiler from the
+    // AUTHORITATIVE match record (globalMatchModel), via MODREADER's pure
+    // matchFiguresFor() - the capture lists only hold post-resume shots after
+    // a crash recovery. Same formulas as the capture-list getters.
+    function wholeMatchFigures() {
+        var xs = [], ys = []
+        for (var i = 0; i < globalMatchModel.count; ++i) {
+            var r = globalMatchModel.get(i)
+            xs.push(r.xmm * 1); ys.push(r.ymm * 1)
+        }
+        return MODREADER.matchFiguresFor(xs, ys)
+    }
     function fmtMm(v) { return isFinite(v) ? Number(v).toFixed(1) : "—" }
     property bool isAutoPrintOn: false
     // Set when THIS view starts a save, so the shared CUSTOMPRINT.saveComplete
@@ -175,17 +187,17 @@ Item {
                         // the card kept the value from BEFORE the first shot (0/0 = NaN).
                         // the shot count re-evaluates it after every shot (cf. SummaryReportView.tick);
                         // an unmeasured value prints a dash (ACQ-SENTINEL-003).
-                        value: (globalModelOfData.count,
-                                fmtMm(MODREADER.getXMPI(-1)) + " / " + fmtMm(MODREADER.getYMPI(-1))) }
+                        value: (globalMatchModel.count, globalModelOfData.count,
+                                fmtMm(wholeMatchFigures().mpiX) + " / " + fmtMm(wholeMatchFigures().mpiY)) }
                     MetricCard { width: execGrid.cw; label: qsTr("Group"); unit: "mm"; valueSize: 20
-                        value: (globalModelOfData.count, fmtMm(MODREADER.getGroup(-1))) }
+                        value: (globalMatchModel.count, fmtMm(wholeMatchFigures().group)) }
                     MetricCard { width: execGrid.cw; label: qsTr("Total Time"); unit: "min"; valueSize: 20
                         value: screenPresence.converSecondToMins(totalTime) }
                     // Teiler: a BRAND decision. Tech Aim omits it; the SETA
                     // product presents it, as it always has.
                     MetricCard { width: execGrid.cw; label: qsTr("Teiler"); valueSize: 20
                         visible: PRODUCT.showTeilerMetric
-                        value: (globalModelOfData.count, fmtMm(MODREADER.getTeiler(-1))) }
+                        value: (globalMatchModel.count, fmtMm(wholeMatchFigures().teiler)) }
                 }
 
                 SectionTitle { width: parent.width; title: qsTr("Overall Target") }

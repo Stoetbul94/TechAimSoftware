@@ -884,6 +884,52 @@ double TachusWidget:: getXMPI(int series)
     return mpiString.toDouble();
 }
 
+QVariantMap TachusWidget::matchFiguresFor(const QVariantList& xs, const QVariantList& ys)
+{
+    QVariantMap out;
+    const int n = qMin(xs.size(), ys.size());
+    out[QStringLiteral("count")] = n;
+    const double nan = qQNaN();
+    if (n == 0) {
+        out[QStringLiteral("mpiX")] = nan;
+        out[QStringLiteral("mpiY")] = nan;
+        out[QStringLiteral("group")] = nan;
+        out[QStringLiteral("teiler")] = nan;
+        return out;
+    }
+    // The capture lists hold the 10 m coordinates divided by the reduced-
+    // distance ratio (getRealValue / uxShoot); apply the same scaling so these
+    // figures are identical to what the capture-list getters return.
+    const double ratio = (getGame_range() == 10 && getMatch_distance_new() > 0)
+            ? double(getMatch_distance_new()) / getGame_range() : 1.0;
+    QList<double> xl, yl;
+    double sx = 0, sy = 0, teiler = 0;
+    for (int i = 0; i < n; ++i) {
+        const double x = xs.at(i).toDouble() / ratio;
+        const double y = ys.at(i).toDouble() / ratio;
+        xl << x; yl << y;
+        sx += x; sy += y;
+        teiler += std::sqrt(x * x + y * y) * 100;      // getTeiler(-1)
+    }
+    // getXMPI / getYMPI(-1): mean, two decimals.
+    out[QStringLiteral("mpiX")] = QString::number(sx / n, 'f', 2).toDouble();
+    out[QStringLiteral("mpiY")] = QString::number(sy / n, 'f', 2).toDouble();
+    out[QStringLiteral("teiler")] = getFormatedValueFoeTwoDecimal(teiler / n);
+    // getGroup(-1): 0 below two shots; otherwise the getGroupFromList circle
+    // plus the projectile diameter, two decimals. getGroupFromList writes the
+    // live group centre (m_xGroup/m_yGroup), which this pure call must not move.
+    double group = 0;
+    if (n >= 2) {
+        const double keepX = m_xGroup, keepY = m_yGroup;
+        group = getGroupFromList(xl, yl);
+        m_xGroup = keepX; m_yGroup = keepY;
+        group += (m_game_range == 10 ? 4.5 : 5.6);
+        group = QString::number(group, 'f', 2).toDouble();
+    }
+    out[QStringLiteral("group")] = group;
+    return out;
+}
+
 double TachusWidget::getGroup(int pageIndex, bool withPalletOffset)
 {
     double maxDistance = 0;

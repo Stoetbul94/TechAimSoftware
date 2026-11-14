@@ -263,21 +263,24 @@ void QualificationController::beginOfficialMatch()
 
 bool QualificationController::submitSighter(double xMm, double yMm, double score,
                                             qint64 externalId, double directionDeg,
-                                            bool simulated)
+                                            bool simulated, double splitSec)
 {
-    return submitShot(true, xMm, yMm, score, externalId, directionDeg, simulated);
+    return submitShot(true, xMm, yMm, score, externalId, directionDeg, simulated,
+                      splitSec);
 }
 
 bool QualificationController::submitOfficial(double xMm, double yMm, double score,
                                              qint64 externalId, double directionDeg,
-                                             bool simulated)
+                                             bool simulated, double splitSec)
 {
-    return submitShot(false, xMm, yMm, score, externalId, directionDeg, simulated);
+    return submitShot(false, xMm, yMm, score, externalId, directionDeg, simulated,
+                      splitSec);
 }
 
 bool QualificationController::submitShot(bool sighter, double xMm, double yMm,
                                          double score, qint64 externalId,
-                                         double directionDeg, bool simulated)
+                                         double directionDeg, bool simulated,
+                                         double splitSec)
 {
     if (!m_store || !m_store->active())
         return false;
@@ -330,7 +333,11 @@ bool QualificationController::submitShot(bool sighter, double xMm, double yMm,
     core.yHundredthMm = static_cast<qint32>(qRound(yMm * 100.0));
     core.scoreTenths = scoreTenths;
     core.directionCentiDeg = static_cast<qint32>(qRound(directionDeg * 100.0));
-    core.splitMs = 0;
+    // RECOVERY-SHOTTIME-001: the time the right panel shows for this shot,
+    // so a recovered shot keeps it. Unknown (< 0) stays 0, as before.
+    core.splitMs = splitSec >= 0
+        ? static_cast<qint32>(qBound<qint64>(qint64(0), qRound64(splitSec * 1000.0), qint64(0x7fffffff)))
+        : 0;
     core.windowId = 0;
     core.targetMode = 0;
     core.externalId = externalId;
@@ -448,6 +455,40 @@ void QualificationController::loadRecoveredState(const RecoveredMatchState& reco
     // The recovered journal already carries the anchor; re-anchoring on the
     // next position change would restart the master clock.
     m_matchClockAnchored = (s.timer.timerId == TimerId::Match && s.timer.active);
+
+    // RECOVERY-CLOCK-001. The crash interval is journalled as a clock PAUSE.
+    // Monotonic time restarts with the process (and with Windows on a reboot),
+    // so the old run's timer anchor and the new run's event times cannot be
+    // subtracted from each other. Without this, a SECOND recovery either
+    // clamped the clock back to the full duration (reboot: new-run times are
+    // smaller than the old anchor) or charged the downtime to the athlete
+    // (same boot). Rules: docs/issf-rules/est-malfunctions.md §5.1 - the clock
+    // freezes at the last valid journalled event and the unavailable interval
+    // must not count against the athlete.
+    //   running: TimerPaused(at = last pre-crash event, old run) then
+    //            TimerResumed(at = now, new run)      -> accum += now - last
+    //   paused (open incident): TimerResumed(now) then TimerPaused(now) moves
+    //            the pause marker into the new run; the frozen value is kept.
+    // Every later difference is then taken within ONE run. Existing events
+    // only: no schema, snapshot or fixture change.
+    const TimerState t = m_store->state().timer;
+    if (t.active && t.durationMs > 0) {
+        const qint64 now = m_store->nowMonotonicMs();
+        bool rebased = false;
+        if (!t.paused) {
+            rebased = m_store->submit(DomainEvent(
+                          TimerPaused{t.timerId, recovered.lastEventMonoMs})).ok
+                   && m_store->submit(DomainEvent(TimerResumed{t.timerId, now})).ok;
+        } else {
+            rebased = m_store->submit(DomainEvent(TimerResumed{t.timerId, now})).ok
+                   && m_store->submit(DomainEvent(TimerPaused{t.timerId, now})).ok;
+        }
+        if (rebased)
+            m_recoveredLastEventMonoMs = now;   // frozen value read at the rebase
+        else
+            qWarning("RECOVERY-CLOCK-001: clock rebase refused - remaining time "
+                     "falls back to the pre-crash anchor");
+    }
     m_recovered = true;
     // The recovered session brings its OWN rules. Whatever the operator has
     // since selected in the UI is irrelevant to it, and the catalogue is not
@@ -477,6 +518,7 @@ QVariantMap recordFromReducerShot(const StateShotRecord& r, bool sighter)
         QString::number(r.shot.directionCentiDeg / 100.0, 'f', 2);
     m[QStringLiteral("externalId")] = static_cast<qlonglong>(r.shot.externalId);
     m[QStringLiteral("simulated")] = r.shot.simulated;
+    m[QStringLiteral("splitSec")] = r.shot.splitMs / 1000.0;   // RECOVERY-SHOTTIME-001
     return m;
 }
 } // namespace

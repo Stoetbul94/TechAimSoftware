@@ -1079,8 +1079,13 @@ Item {
         }
     }
 
-    function addToSeries(angle,radius,calScore,xmm,ymm)
+    // recoveredSplitSec (RECOVERY-SHOTTIME-001): crash recovery replays each
+    // journalled shot with the time it originally showed, instead of "now -
+    // last shot" (which made every recovered shot 0 s). Live shots omit it.
+    function addToSeries(angle,radius,calScore,xmm,ymm,recoveredSplitSec)
     {
+        var useRecovered = (recoveredSplitSec !== undefined && recoveredSplitSec !== null
+                            && recoveredSplitSec * 1 > 0)
         // Raw target-face mm (used by the 3P report for per-position group,
         // MPI and plots). Default 0 for callers that don't supply them.
         var shotXmm = xmm === undefined ? 0 : xmm*1
@@ -1089,10 +1094,11 @@ Item {
         grandTotal = scoreCutoffTofirstDecimal( grandTotal*1 + (calScore)*1)
 //        subTotal = /*Math.round*/scoreCutoffTofirstDecimal( subTotal + (calculatedScore)*1)
         grandTotalExculdeDec = ( grandTotalExculdeDec*1 + Math.floor(calScore))
-        totalTimeConsume = totalTimeConsume*1 + (timeInSec - lastUsedTime)
+        var shotSplit = useRecovered ? Math.round(recoveredSplitSec * 1) : (timeInSec - lastUsedTime)
+        totalTimeConsume = totalTimeConsume*1 + shotSplit
 
 
-        var text = isGameLoaded ? centerPanel.curShootTimeSavedGame : timeInSec - lastUsedTime
+        var text = isGameLoaded ? centerPanel.curShootTimeSavedGame : shotSplit
         if (APPSETTINGS.getDeveloperMode()) console.log(timeInSec+"---"+lastUsedTime+"---"+text+" matchinfo------------------------------------------1-----------------"+centerPanel.curShootTimeSavedGame+ "***********"+isGameLoaded)
         lastUsedTime = timeInSec
         MODREADER.appendTimeConsumed(text)

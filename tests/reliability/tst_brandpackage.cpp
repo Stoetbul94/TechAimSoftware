@@ -473,11 +473,39 @@ void run_brand_package_tests()
         // the backend after every shot and print a dash, never "NaN".
         {
             const QString mrv = stripComments(readFile(QStringLiteral("MatchReportView.qml"), &ok));
-            check(mrv.contains(QStringLiteral("value: (globalModelOfData.count,\n")) ||
-                  mrv.contains(QStringLiteral("value: (globalModelOfData.count,\r\n")),
+            check(mrv.contains(QStringLiteral("fmtMm(wholeMatchFigures().mpiX)")),
                   "report: the MPI card re-evaluates when a shot arrives");
-            check(mrv.contains(QStringLiteral("value: (globalModelOfData.count, fmtMm(MODREADER.getGroup(-1)))")),
+            check(mrv.contains(QStringLiteral("value: (globalMatchModel.count, fmtMm(wholeMatchFigures().group))")),
                   "report: the Group card re-evaluates when a shot arrives");
+            // REPORT-RECOVERY-001: whole-match figures come from the match
+            // record, not the capture lists (post-resume shots only).
+            const QString srv = stripComments(readFile(QStringLiteral("SummaryReportView.qml"), &ok));
+            for (const QString& v : { mrv, srv }) {
+                check(v.contains(QStringLiteral("return MODREADER.matchFiguresFor(xs, ys)"))
+                          && v.contains(QStringLiteral("globalMatchModel.get(i)")),
+                      "REPORT-RECOVERY-001: report MPI/group/Teiler read the authoritative match record");
+                check(!v.contains(QStringLiteral("MODREADER.getGroup(-1)"))
+                          && !v.contains(QStringLiteral("MODREADER.getTeiler(-1)")),
+                      "REPORT-RECOVERY-001: no whole-match card reads the capture lists");
+            }
+            const QString tw = stripComments(readFile(QStringLiteral("ModReader/forms/tachuswidget.cpp"), &ok));
+            const int mf = tw.indexOf(QStringLiteral("QVariantMap TachusWidget::matchFiguresFor("));
+            const int mfEnd = tw.indexOf(QStringLiteral("double TachusWidget::getGroup(int"), mf);
+            const QString mfBody = (mf > 0 && mfEnd > mf) ? tw.mid(mf, mfEnd - mf) : QString();
+            check(!mfBody.isEmpty() && !mfBody.contains(QStringLiteral("m_xCordList"))
+                      && !mfBody.contains(QStringLiteral("m_seq")),
+                  "REPORT-RECOVERY-001: matchFiguresFor reads no capture list and no acquisition state");
+            check(mfBody.contains(QStringLiteral("m_xGroup = keepX; m_yGroup = keepY;")),
+                  "REPORT-RECOVERY-001: matchFiguresFor leaves the live group centre untouched");
+            const QString qc = stripComments(readFile(QStringLiteral("src/qualification/QualificationController.cpp"), &ok));
+            check(qc.contains(QStringLiteral("TimerPaused{t.timerId, recovered.lastEventMonoMs}")),
+                  "RECOVERY-CLOCK-001: a resume journals the crash interval as a clock pause");
+            const QString spg = stripComments(readFile(QStringLiteral("ShootingPage.qml"), &ok));
+            check(!spg.contains(QStringLiteral("QUAL.officialShotCount()"))
+                      && !spg.contains(QStringLiteral("QUAL.sighterCount()")),
+                  "RECOVERY-RETURN-001: the restorer reads QUAL's count PROPERTIES (calling them threw before 'return true')");
+            check(spg.contains(QStringLiteral("s.xmm * 1, s.ymm * 1, s.splitSec)")),
+                  "RECOVERY-SHOTTIME-001: recovered shots are replayed with their journalled time");
             check(mrv.contains(QStringLiteral("function fmtMm(v) { return isFinite(v) ?")),
                   "report: an unmeasured value prints a dash, not NaN");
             check(!mrv.contains(QStringLiteral("value: MODREADER.getXMPI(-1).toFixed(1)")),

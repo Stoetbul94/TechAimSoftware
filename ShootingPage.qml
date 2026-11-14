@@ -1108,12 +1108,17 @@ Item {
                 // (demo click vs physical target); the controller's input-source
                 // gate refuses it if it does not match the running mode.
                 var qualSimulated = (centerPanel.lastShotSource === 1)
+                // RECOVERY-SHOTTIME-001: the same "time since the previous shot"
+                // addToSeries() is about to show, journalled with the shot.
+                var qualSplitSec = rightPanel.timeInSec - rightPanel.lastUsedTime
                 if (sligterMode)
                     QUAL.submitSighter(centerPanel.lastShotXmm, centerPanel.lastShotYmm,
-                                       seamScore, extId, xPosition, qualSimulated)
+                                       seamScore, extId, xPosition, qualSimulated,
+                                       qualSplitSec)
                 else
                     QUAL.submitOfficial(centerPanel.lastShotXmm, centerPanel.lastShotYmm,
-                                        seamScore, extId, xPosition, qualSimulated)
+                                        seamScore, extId, xPosition, qualSimulated,
+                                        qualSplitSec)
                 return
             }
             // Hard cap at the match shot count. The auto-finish watcher polls
@@ -2523,7 +2528,7 @@ Item {
                 continue
             p = centerPanel.polarForMm(s.xmm * 1, s.ymm * 1)
             rightPanel.addToSeries(p.x, p.y, s.calculatedscore * 1,
-                                   s.xmm * 1, s.ymm * 1)
+                                   s.xmm * 1, s.ymm * 1, s.splitSec)
         }
         var remainSecs = Math.floor(QUAL.recoveredRemainingMs() / 1000)
         if (QUAL.recoveredPhaseId() === 3) {   // MatchPhase::OfficialMatch
@@ -2538,7 +2543,7 @@ Item {
                     continue
                 p = centerPanel.polarForMm(s.xmm * 1, s.ymm * 1)
                 rightPanel.addToSeries(p.x, p.y, s.calculatedscore * 1,
-                                       s.xmm * 1, s.ymm * 1)
+                                       s.xmm * 1, s.ymm * 1, s.splitSec)
             }
             centerPanel.restoreMatchClockRemaining(remainSecs)
         } else {
@@ -2571,10 +2576,13 @@ Item {
                                       + "incident (" + incState.statusKey
                                       + ") — officials blocked")
         }
+        // officialShotCount / sighterCount are Q_PROPERTYs, not Q_INVOKABLEs:
+        // calling them threw a TypeError here, so this function never reached
+        // "return true" (RECOVERY-RETURN-001).
         MODREADER.appendToLogFile("QUAL: recovered " + disciplineId + " session "
                                   + sessionId + " — officials "
-                                  + QUAL.officialShotCount() + ", sighters "
-                                  + QUAL.sighterCount() + ", remaining "
+                                  + QUAL.officialShotCount + ", sighters "
+                                  + QUAL.sighterCount + ", remaining "
                                   + remainSecs + "s")
         return true
     }

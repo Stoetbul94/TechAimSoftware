@@ -85,15 +85,15 @@ Item {
                             MetricCard { width: metricGrid.cw; label: qsTr("Total Shots"); value: "" + globalMatchModel.count }
                             MetricCard { width: metricGrid.cw; label: qsTr("Inner 10"); value: "" + rightPanel.totalStars }
                             MetricCard { width: metricGrid.cw; label: qsTr("MPI"); unit: "mm"; valueSize: 18
-                                value: (screenPresence.tick, MODREADER.getXMPI().toFixed(1) + " / " + MODREADER.getYMPI().toFixed(1)) }
+                                value: (screenPresence.tick, globalMatchModel.count, fmtMm(wholeMatchFigures().mpiX) + " / " + fmtMm(wholeMatchFigures().mpiY)) }
                             MetricCard { width: metricGrid.cw; label: qsTr("Group"); unit: "mm²"; valueSize: 20
-                                value: (screenPresence.tick, "" + MODREADER.getGroup(-1).toFixed(1)) }
+                                value: (screenPresence.tick, globalMatchModel.count, fmtMm(wholeMatchFigures().group)) }
                             // Teiler: a BRAND decision, not a report decision. A Grid
                             // skips an invisible child, so a brand that omits it
                             // loses no space to it.
                             MetricCard { width: metricGrid.cw; label: qsTr("Teiler"); valueSize: 20
                                 visible: PRODUCT.showTeilerMetric
-                                value: (screenPresence.tick, MODREADER.getTeiler(-1).toFixed(1)) }
+                                value: (screenPresence.tick, globalMatchModel.count, fmtMm(wholeMatchFigures().teiler)) }
                             MetricCard { width: metricGrid.cw; label: qsTr("Total Time"); unit: "min"; valueSize: 20
                                 value: converSecondToMins(totalTime) }
                             MetricCard { width: metricGrid.cw; label: qsTr("Avg Time / Shot"); unit: "min"; valueSize: 20
@@ -326,6 +326,20 @@ Item {
         return formatText
     }
 
+    // REPORT-RECOVERY-001: whole-match MPI / group / Teiler from the
+    // AUTHORITATIVE match record (globalMatchModel), via MODREADER's pure
+    // matchFiguresFor() - the capture lists only hold post-resume shots after
+    // a crash recovery. Same formulas as the capture-list getters.
+    function wholeMatchFigures() {
+        var xs = [], ys = []
+        for (var i = 0; i < globalMatchModel.count; ++i) {
+            var r = globalMatchModel.get(i)
+            xs.push(r.xmm * 1); ys.push(r.ymm * 1)
+        }
+        return MODREADER.matchFiguresFor(xs, ys)
+    }
+    function fmtMm(v) { return isFinite(v) ? Number(v).toFixed(1) : "—" }
+
     function getMPI()
     {
         return (":  X: " + getXMPI()+"; Y: "+getYMPI())
@@ -333,12 +347,12 @@ Item {
 
     function getXMPI()
     {
-        return MODREADER.getXMPI()
+        return fmtMm(wholeMatchFigures().mpiX)
     }
     function getYMPI()
     {
         if (APPSETTINGS.getDeveloperMode()) console.log("-----------------*******************__________________1")
-        return MODREADER.getYMPI()
+        return fmtMm(wholeMatchFigures().mpiY)
     }
     function converSecondToMins(seconds)
     {

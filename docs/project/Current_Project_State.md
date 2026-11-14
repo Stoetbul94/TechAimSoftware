@@ -356,3 +356,13 @@ report window's labels lost in `6409b4a` restored; match-report MPI / Group /
 Teiler cards no longer stale or "NaN" (REPORT-STALE-001). Reliability
 **2795 / 0**, qml **299 / 0**. Open: Finals / Coach / Training Lab report text
 (not yet in `qsTr`), native German review, re-check of the German match report.
+
+**2026-11-15 — crash recovery fixed.** A second crash restored 75:00 instead
+of the frozen clock (RECOVERY-CLOCK-001), report MPI / group / Teiler after a
+recovery covered only post-resume shots (REPORT-RECOVERY-001), recovered shots
+showed 0 s (RECOVERY-SHOTTIME-001), and the restorer threw before
+`return true` (RECOVERY-RETURN-001). All four fixed and proven with a
+three-crash hand run; reliability **2820 / 0**, qml 299, finals 240,
+finals10m 229, training 568. Tech Aim 1.0.0 shares the qualification
+recovery code and has the same faults — port required. DSB 1.20 clock
+recovery not covered.
