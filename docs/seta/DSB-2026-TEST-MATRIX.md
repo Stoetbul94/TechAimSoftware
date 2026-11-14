@@ -110,6 +110,24 @@ All pass, from `tst_dsb120`:
 No duplicate shot, no missing shot, no position restart, no timer restart, no
 shot-count reset.
 
+### Correction 2026-11-15 — the matrix above was replay-level only
+
+Those rows replay the journal; none resumed a real controller, and none crashed
+the SAME match twice. A hand-run on the SETA preview found four defects the
+replay tests could not see, all fixed with a controller-level test on a disk
+journal (`tst_dsb120`, DSB120-RECOVERY-CLOCK-001, both clock models):
+
+| ID | Defect (before) | Now |
+|---|---|---|
+| DSB120-RECOVERY-CLOCK-001 | a SECOND resume handed back the full position time (25:00 / 35:00), or charged the downtime | the crash interval is journalled as a pause; the clock continues from its last event every time (hand run: 24:37 → 24:28) |
+| DSB120-RECOVERY-SHOTID-001 | after a restart the next shots reused journalled ids and were **silently refused** — one lost shot per shot fired before the crash | the restorer moves the shot counter past every recovered id (hand run: shot 4 accepted immediately) |
+| DSB120-RECOVERY-PREP-001 | the resume also started a fresh 15-minute preparation clock on top, and created a stray practice session | `isRecoveredGame` is set before the restorer reveals the page |
+| DSB120-RECOVERY-SHOTTIME-001 | recovered shots showed 0 s | the shot time is journalled (`splitMs`) and replayed |
+
+Still open (cosmetic, recorded): during 1.20 the page also shows a static
+legacy "45:00" clock; after recovery the header and recovery dialog still say
+"10M AIR RIFLE / MATCH-10" rather than the DSB programme.
+
 ### The one recovery gap, named where it belongs
 
 **DSB 1.40 and 1.60 have no journal recovery.** An interrupted 60- or 120-shot

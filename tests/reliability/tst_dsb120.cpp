@@ -14,6 +14,9 @@
 #include "test_support.h"
 
 #include <QVariantMap>
+#include <QDir>
+#include "reliability/storage/StoragePaths.h"
+#include "reliability/store/MonotonicClock.h"
 
 using namespace ta::rel;
 using ta::dsb::Phase;
@@ -521,5 +524,93 @@ void run_dsb120_tests()
         check(discOf(s) && discOf(s)->phase == quint8(Phase::WaitingStart),
               "DSB-120-001 control: the journal itself says WAITING, so even a "
               "replay cannot produce a running prone clock");
+    }
+
+    // ── DSB120-RECOVERY-CLOCK-001: a 1.20 match that crashes TWICE ─────────
+    // DSB SpO 0.8.4 (S-0.14): lost shooting time is recorded, never charged.
+    // The kneeling clock must continue from where it froze on EVERY resume.
+    // Before the fix the second resume compared the new run's event times
+    // with the first run's anchor and handed back the FULL position time.
+    // Real controller + disk journal; the injected clock restarts at 0 on
+    // every start/resume, exactly like production and like a reboot.
+    for (int variant = 0; variant < 2; ++variant) {
+        struct KeepClock : public IMonotonicClock {      // origin survives outage
+            qint64 now = 0;
+            void start() override {}
+            qint64 nowMs() const override { return now; }
+            QString wallIso() const override
+            { return QStringLiteral("2026-11-15T10:00:00.000"); }
+        };
+        const bool keep = (variant == 1);
+        const char* tag = keep ? "same-origin clock" : "restart-from-zero clock";
+        const QString root = QDir::temp().filePath(
+            QStringLiteral("ta_dsb120_recovery_clock_%1").arg(variant));
+        QDir(root).removeRecursively();
+        StoragePaths::setRootOverrideForTesting(root);
+        StoragePaths::initialize();
+
+        ManualClock m1, m2, m3;
+        KeepClock k;
+        auto setNow = [&](ManualClock& m, qint64 t) { if (keep) k.now = t; else m.setNowMs(t); };
+        auto nowOf = [&](ManualClock& m) { return keep ? k.now : m.nowMs(); };
+        IMonotonicClock* c1 = keep ? static_cast<IMonotonicClock*>(&k) : &m1;
+        IMonotonicClock* c2 = keep ? static_cast<IMonotonicClock*>(&k) : &m2;
+        IMonotonicClock* c3 = keep ? static_cast<IMonotonicClock*>(&k) : &m3;
+        const qint64 kneelingMs = 2100000;               // 35 min, 1.20 3x20
+
+        QString sid;
+        {   // run 1: kneeling clock anchored at t=100 s, shots at 110 / 120 s
+            Dsb120Controller a;
+            a.storeForTesting()->setClockForTesting(c1);
+            a.startSession(a3x20(), QStringLiteral("A"));
+            a.startPreparation();
+            setNow(m1, 100000);
+            check(a.startPosition(0),
+                  qPrintable(QStringLiteral("1.20 recovery (%1): kneeling starts").arg(tag)));
+            setNow(m1, 110000);
+            a.submitShot(0.5, -0.5, 10.0, 1, 0, true, 11.0);
+            setNow(m1, 120000);
+            a.submitShot(0.5, -0.5, 9.0, 2, 0, true, 9.4);
+            sid = a.storeForTesting()->state().sessionId;
+        }
+        if (keep) k.now = 700000;                        // 580 s down
+        {   // run 2: resume, one shot 30 s later, crash again
+            Dsb120Controller b;
+            b.storeForTesting()->setClockForTesting(c2);
+            check(b.resumeFromRecovery(sid),
+                  qPrintable(QStringLiteral("1.20 recovery (%1): first resume").arg(tag)));
+            check(b.remainingMs() == kneelingMs - 20000,
+                  qPrintable(QStringLiteral("1.20 recovery (%1): first resume freezes the "
+                                            "kneeling clock at the last shot").arg(tag)),
+                  QString::number(b.remainingMs()));
+            const QVariantList shots = b.recoveredShots();
+            check(shots.size() == 2
+                      && qAbs(shots.at(0).toMap().value(QStringLiteral("splitSec")).toDouble() - 11.0) < 1e-9
+                      && qAbs(shots.at(1).toMap().value(QStringLiteral("splitSec")).toDouble() - 9.4) < 1e-9,
+                  qPrintable(QStringLiteral("1.20 shot time recovery (%1): each shot keeps "
+                                            "its journalled time").arg(tag)));
+            setNow(m2, nowOf(m2) + 30000);
+            check(b.submitShot(0.5, -0.5, 10.0, 3, 0, true, 30.0),
+                  qPrintable(QStringLiteral("1.20 recovery (%1): shot after resume").arg(tag)));
+        }
+        if (keep) k.now += 900000;                       // another 15 min down
+        {   // run 3: the SECOND resume continues from the frozen value
+            Dsb120Controller c;
+            c.storeForTesting()->setClockForTesting(c3);
+            check(c.resumeFromRecovery(sid),
+                  qPrintable(QStringLiteral("1.20 recovery (%1): second resume").arg(tag)));
+            check(c.remainingMs() == kneelingMs - 50000,
+                  qPrintable(QStringLiteral("DSB120-RECOVERY-CLOCK-001 (%1): the second resume "
+                                            "continues the kneeling clock (34:10) - not a fresh "
+                                            "35:00, no downtime charged").arg(tag)),
+                  QString::number(c.remainingMs()));
+            setNow(m3, nowOf(m3) + 10000);
+            check(c.remainingMs() == kneelingMs - 60000,
+                  qPrintable(QStringLiteral("1.20 recovery (%1): and keeps running after "
+                                            "the second resume").arg(tag)),
+                  QString::number(c.remainingMs()));
+            c.closeSession();
+        }
+        QDir(root).removeRecursively();
     }
 }

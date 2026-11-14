@@ -506,6 +506,28 @@ void run_brand_package_tests()
                   "RECOVERY-RETURN-001: the restorer reads QUAL's count PROPERTIES (calling them threw before 'return true')");
             check(spg.contains(QStringLiteral("s.xmm * 1, s.ymm * 1, s.splitSec)")),
                   "RECOVERY-SHOTTIME-001: recovered shots are replayed with their journalled time");
+            // DSB 1.20 recovery (2026-11-15).
+            {
+                const int r0 = spg.indexOf(QStringLiteral("function restoreDsb120Session("));
+                const int r1 = spg.indexOf(QStringLiteral("\n    }"), r0);
+                const QString body = (r0 > 0 && r1 > r0) ? spg.mid(r0, r1 - r0) : QString();
+                check(body.contains(QStringLiteral("qualShotSeq = Math.max(qualShotSeq, shots[k].externalId * 1)")),
+                      "DSB120-RECOVERY-SHOTID-001: the DSB restorer moves the shot counter past every recovered id");
+                check(body.contains(QStringLiteral("s.xmm * 1, s.ymm * 1, s.splitSec)")),
+                      "DSB120-RECOVERY-SHOTTIME-001: recovered DSB shots keep their journalled time");
+            }
+            const QString mq = stripComments(readFile(QStringLiteral("main.qml"), &ok));
+            {
+                const int d0 = mq.indexOf(QStringLiteral("if (disciplineId === \"DSB120\") {"));
+                const int flag = mq.indexOf(QStringLiteral("window.isRecoveredGame = true"), d0);
+                const int call = mq.indexOf(QStringLiteral("shootingPage.restoreDsb120Session(sessionId)"), d0);
+                check(d0 > 0 && flag > d0 && call > flag,
+                      "DSB120-RECOVERY-PREP-001: isRecoveredGame is set BEFORE the DSB restorer reveals the page");
+            }
+            const QString dc = stripComments(readFile(QStringLiteral("src/dsb/Dsb120Controller.cpp"), &ok));
+            check(dc.contains(QStringLiteral("TimerPaused{t.timerId, rec.lastEventMonoMs}"))
+                      && !dc.contains(QStringLiteral("m_resumeRemainingMs")),
+                  "DSB120-RECOVERY-CLOCK-001: a DSB resume journals the crash as a pause; no in-memory resume clock");
             check(mrv.contains(QStringLiteral("function fmtMm(v) { return isFinite(v) ?")),
                   "report: an unmeasured value prints a dash, not NaN");
             check(!mrv.contains(QStringLiteral("value: MODREADER.getXMPI(-1).toFixed(1)")),

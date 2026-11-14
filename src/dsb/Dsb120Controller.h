@@ -107,9 +107,12 @@ public:
     // ── shots ────────────────────────────────────────────────────────────
     // Classification comes from the competition state, never from a caller's
     // opinion about what kind of shot this is.
+    // splitSec: the shot's time since the previous shot as the right panel
+    // shows it; journalled in ShotCore.splitMs so a recovered shot keeps it
+    // (DSB120-RECOVERY-SHOTTIME-001). < 0 = unknown (recorded as 0).
     Q_INVOKABLE bool submitShot(double xMm, double yMm, double score,
                                 qint64 externalId, double directionDeg,
-                                bool simulated);
+                                bool simulated, double splitSec = -1);
 
     // ── recovery ─────────────────────────────────────────────────────────
     Q_INVOKABLE QVariantList scanForRecovery();
@@ -171,6 +174,4 @@ private:
     // again from the moment of resume. Both halves are needed: the frozen
     // value is the competition fact, and the new anchor is what makes the
     // clock live again instead of standing still.
-    qint64 m_resumeRemainingMs = -1;
-    qint64 m_resumeAtMonoMs = 0;
 };

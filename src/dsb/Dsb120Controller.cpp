@@ -147,7 +147,6 @@ bool Dsb120Controller::startPreparation()
     // official shots are impossible until a position is in its match phase.
     submitEvent(DomainEvent(PreparationStarted{0}));
     submitEvent(DomainEvent(SightingStarted{0}));
-    m_resumeRemainingMs = -1;   // a new clock has its own anchor
     submitEvent(DomainEvent(TimerStarted{TimerId::Preparation, m_preparationMs}));
     if (!step(Dsb120Step::PreparationStarted, -1, m_preparationMs))
         return false;
@@ -171,7 +170,6 @@ bool Dsb120Controller::startPosition(int positionIndex)
     // this same anchor, which is what makes prone and standing sighters cost
     // competition time; there is no second TimerStarted when the athlete moves
     // to the match phase, so nothing can reset it.
-    m_resumeRemainingMs = -1;   // a new clock has its own anchor
     submitEvent(DomainEvent(TimerStarted{TimerId::Match, duration}));
     // Kneeling had its sighting in the shared preparation period and therefore
     // opens IN match. Prone and standing open in sighting.
@@ -230,7 +228,7 @@ bool Dsb120Controller::finishMatch()
 
 bool Dsb120Controller::submitShot(double xMm, double yMm, double score,
                                   qint64 externalId, double directionDeg,
-                                  bool simulated)
+                                  bool simulated, double splitSec)
 {
     if (!active())
         return false;
@@ -277,6 +275,11 @@ bool Dsb120Controller::submitShot(double xMm, double yMm, double score,
     core.directionCentiDeg = static_cast<qint32>(qRound(directionDeg * 100.0));
     core.externalId = externalId;
     core.simulated = simulated;
+    // DSB120-RECOVERY-SHOTTIME-001: the shown shot time, so recovery keeps it.
+    core.splitMs = splitSec >= 0
+        ? static_cast<qint32>(qBound<qint64>(qint64(0), qRound64(splitSec * 1000.0),
+                                             qint64(0x7fffffff)))
+        : 0;
 
     const SubmitResult r = sighter
         ? m_store->submit(DomainEvent(SighterAccepted{core}))
@@ -327,20 +330,33 @@ bool Dsb120Controller::resumeFromRecovery(const QString& sessionId)
     if (!std::holds_alternative<Dsb120State>(rec.state.disc))
         return false;
 
-    // The frozen remaining time is computed from the RECOVERED state, before
-    // the store reopens the journal: resuming appends events, and the timer
-    // anchor is rebased with them.
-    m_resumeRemainingMs = rec.state.timer.active
-        ? rec.state.timer.durationMs
-          - (rec.lastEventMonoMs - rec.state.timer.startedAtMonoMs)
-        : -1;
-    if (m_resumeRemainingMs < 0 && rec.state.timer.active)
-        m_resumeRemainingMs = 0;
-
     const ReliabilityResult rr = m_store->resumeSession(rec);
     if (!rr.ok) {
         emit journalWriteFailed(journalPath(), rr.error.technicalDetail);
         return false;
+    }
+
+    // DSB120-RECOVERY-CLOCK-001 (DSB SpO 0.8.4 / S-0.14: lost shooting time
+    // is recorded, never charged). The crash interval is journalled as a
+    // clock PAUSE, exactly as QualificationController does: monotonic time
+    // restarts with every run, so the old run's anchor and the new run's
+    // event times must never be subtracted. Before this, a second resume
+    // handed back the FULL position time (restart-from-zero clock) or charged
+    // the downtime (same-origin clock); the old in-memory "remaining at
+    // resume" value only survived until the next restart.
+    //   running: TimerPaused(last pre-crash event) + TimerResumed(now)
+    //   paused:  TimerResumed(now) + TimerPaused(now)
+    // remainingMs() then reads one pause-aware value from the journal state.
+    const TimerState t = m_store->state().timer;
+    if (t.active && t.durationMs > 0) {
+        const qint64 now = m_store->nowMonotonicMs();
+        const bool rebased = !t.paused
+            ? (m_store->submit(DomainEvent(TimerPaused{t.timerId, rec.lastEventMonoMs})).ok
+               && m_store->submit(DomainEvent(TimerResumed{t.timerId, now})).ok)
+            : (m_store->submit(DomainEvent(TimerResumed{t.timerId, now})).ok
+               && m_store->submit(DomainEvent(TimerPaused{t.timerId, now})).ok);
+        if (!rebased)
+            qWarning("DSB120-RECOVERY-CLOCK-001: clock rebase refused");
     }
     // EVERY duration comes back from the session's own adopted authority. The
     // catalogue is not consulted: a 2027 edition must not re-time a 2026 match.
@@ -351,7 +367,6 @@ bool Dsb120Controller::resumeFromRecovery(const QString& sessionId)
         ? rec.state.config.perPositionShots
         : rec.state.config.officialShots / 3;
     m_scoringMode = a.scoringMode;
-    m_resumeAtMonoMs = m_store->nowMonotonicMs();
     m_recovered = true;
 
     qInfo("competition recovered: %s position=%d phase=%d matchShots=%d",
@@ -385,6 +400,7 @@ QVariantList Dsb120Controller::recoveredShots() const
         m[QStringLiteral("xmm")] = r.shot.xHundredthMm / 100.0;
         m[QStringLiteral("ymm")] = r.shot.yHundredthMm / 100.0;
         m[QStringLiteral("externalId")] = static_cast<qlonglong>(r.shot.externalId);
+        m[QStringLiteral("splitSec")] = r.shot.splitMs / 1000.0;   // DSB120-RECOVERY-SHOTTIME-001
         out.append(m);
     };
     for (const StateShotRecord& r : s.sighters) add(r, true);
@@ -503,26 +519,21 @@ qint64 Dsb120Controller::remainingMs() const
     }
     if (!s.timer.active)
         return -1;
-    // A RESUMED position continues from the time it had when the application
-    // stopped, and runs on from there. Anything else either restarts the
-    // position at full duration or leaves it frozen - both of which would be
-    // a different competition than the one that was interrupted.
-    if (m_recovered && m_resumeRemainingMs >= 0) {
-        const qint64 remaining =
-            m_resumeRemainingMs - (m_store->nowMonotonicMs() - m_resumeAtMonoMs);
-        if (remaining <= 0)
-            return 0;
-        // A position clock can never hold MORE than its own duration: 1.20 has
-        // no time credit, so any excess is an artefact of the monotonic clock
-        // restarting with the process (a session resumed twice compares a new
-        // run's timestamps with an old run's anchor). Clamping keeps a resumed
-        // athlete from gaining time; it cannot cost any.
-        const qint64 duration = s.timer.durationMs;
-        return (duration > 0 && remaining > duration) ? duration : remaining;
-    }
-    const qint64 remaining =
-        s.timer.durationMs - (m_store->nowMonotonicMs() - s.timer.startedAtMonoMs);
-    return remaining > 0 ? remaining : 0;
+    // ONE computation for a live and a resumed position (DSB120-RECOVERY-
+    // CLOCK-001): pause-aware, from the journal state. A resume journals the
+    // crash interval as a pause, so a resumed position continues from the
+    // time it had at its last event and every difference is taken within one
+    // run. 1.20 grants no time credit, so the clock can never exceed its
+    // duration; the clamp guards that invariant, not an artefact.
+    const qint64 stopAt = s.timer.paused ? s.timer.pausedAtMonoMs
+                                         : m_store->nowMonotonicMs();
+    qint64 elapsed = stopAt - s.timer.startedAtMonoMs - s.timer.pausedAccumMs;
+    if (elapsed < 0)
+        elapsed = 0;
+    const qint64 remaining = s.timer.durationMs - elapsed;
+    if (remaining <= 0)
+        return 0;
+    return remaining > s.timer.durationMs ? s.timer.durationMs : remaining;
 }
 
 QString Dsb120Controller::journalPath() const

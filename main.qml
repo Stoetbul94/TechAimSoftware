@@ -522,13 +522,19 @@ ApplicationWindow {
             return okp
         }
         if (disciplineId === "DSB120") {
+            // DSB120-RECOVERY-PREP-001: the flag must be set BEFORE the
+            // restorer runs. It reveals the shooting page itself, and the
+            // page's onVisibleChanged starts a fresh preparation phase unless
+            // isRecoveredGame is already true - which put a second, 15-minute
+            // preparation clock on top of the resumed position clock.
+            window.isRecoveredGame = true
             var okd = shootingPage.restoreDsb120Session(sessionId)
-            if (!okd)
+            if (!okd) {
+                window.isRecoveredGame = false
                 dialogManager.showError(qsTr("DSB 1.20 Recovery Failed"),
                     qsTr("The DSB 1.20 session could not be resumed. "
                          + "Its journal has been left intact."))
-            else
-                window.isRecoveredGame = true
+            }
             return okd
         }
         if (disciplineId === "TRAINING") {

@@ -366,3 +366,11 @@ three-crash hand run; reliability **2820 / 0**, qml 299, finals 240,
 finals10m 229, training 568. Tech Aim 1.0.0 shares the qualification
 recovery code and has the same faults — port required. DSB 1.20 clock
 recovery not covered.
+
+**2026-11-15 — DSB 1.20 recovery fixed.** Second-resume clock reset, silently
+refused shots after a restart (shot-id collision), a stray preparation clock
+and session on resume, and 0 s shot times — all fixed and proven with a
+controller-level double-crash test and a hand run (Restzeit 24:37 → 24:28,
+shot 4 accepted at once). reliability **2840 / 0**, qml 299, finals 240,
+finals10m 229, training 568. Cosmetic leftovers recorded in
+`docs/seta/DSB-2026-TEST-MATRIX.md`.

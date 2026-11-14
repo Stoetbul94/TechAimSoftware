@@ -1078,8 +1078,10 @@ Item {
                 var dsbSimulated = (centerPanel.lastShotSource === 1)
                 // A refusal is logged rather than swallowed: "the shot did
                 // not appear" is the hardest kind of report to answer.
+                // DSB120-RECOVERY-SHOTTIME-001: journal the time this shot shows.
                 if (!DSB120.submitShot(centerPanel.lastShotXmm, centerPanel.lastShotYmm,
-                                       dsbScore, dsbId, xPosition, dsbSimulated))
+                                       dsbScore, dsbId, xPosition, dsbSimulated,
+                                       rightPanel.timeInSec - rightPanel.lastUsedTime))
                     MODREADER.appendToLogFile(
                         "DSB120: shot REFUSED - phase " + DSB120.phaseId
                         + " position " + DSB120.positionIndex
@@ -2034,8 +2036,16 @@ Item {
             if (s.isSighter === true) continue
             var p = centerPanel.polarForMm(s.xmm * 1, s.ymm * 1)
             rightPanel.addToSeries(p.x, p.y, s.calculatedscore * 1,
-                                   s.xmm * 1, s.ymm * 1)
+                                   s.xmm * 1, s.ymm * 1, s.splitSec)
         }
+        // DSB120-RECOVERY-SHOTID-001. DSB 1.20 numbers its shots with
+        // qualShotSeq, which restarts at 0 with the application. Every other
+        // restorer moves its counter past the recovered external ids; this one
+        // did not, so after a crash the athlete's next shots reused journalled
+        // ids and the reducer silently REFUSED them as duplicates - one lost
+        // shot for every shot fired before the crash.
+        for (var k = 0; k < shots.length; ++k)
+            qualShotSeq = Math.max(qualShotSeq, shots[k].externalId * 1)
         MODREADER.appendToLogFile("DSB120: resumed position " + DSB120.positionIndex
                                   + " phase " + DSB120.phaseId
                                   + " matchShots " + DSB120.totalMatchShots)
