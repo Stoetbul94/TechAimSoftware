@@ -194,7 +194,10 @@ product string translated, gate `tests/docs/check_localisation.py` 240 / 0,
 Training Lab + 10 m Final reports rendered EN + DE without clipping (3P Final,
 Coach and Match Summary: human visual check). Engine- and controller-supplied
 sentences stay English by design (see `docs/german-translation-review.md`).
-WP2 next.
+WP2 first increment done: Wind Map analysis + three Training Lab PDF
+renderers created on demand (PERF-003/004), −4.4 MB at start-up; hand check of
+those flows still open, and demo clicks in Technical Blocks record no shot
+(pre-existing, open).
 
 ### P1 — athlete experience
 

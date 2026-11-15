@@ -1,0 +1,49 @@
+﻿{
+    "summary":  {
+                    "label":  "laptop-wp2-perf003-004-release",
+                    "exe":  "C:\\Users\\User\\Downloads\\TechAimSoftware-SETA\\release\\SETA.exe",
+                    "date":  "2026-11-15T10:27:04",
+                    "cores":  12,
+                    "machine":  "LAPTOP-AL3JN0PV",
+                    "runs":  3,
+                    "idleSeconds":  20,
+                    "windowMs (min/med/max)":  "3108 / 3116 / 3328",
+                    "workingSetMB (min/med/max)":  "250,7 / 250,7 / 250,8",
+                    "privateMB (min/med/max)":  "255,4 / 255,8 / 255,9",
+                    "idleCpuPctCore (min/med/max)":  "0 / 0,2 / 0,4",
+                    "idleCpuPctTotal (min/med/max)":  "0 / 0,01 / 0,03",
+                    "privateGrowthPct (min/med/max)":  ""
+                },
+    "runs":  [
+                 {
+                     "windowMs":  3328,
+                     "workingSetMB":  250.8,
+                     "privateMB":  255.9,
+                     "idleCpuPctCore":  0,
+                     "idleCpuPctTotal":  0,
+                     "workingSetAfterIdleMB":  250.9,
+                     "topThreadsMs":  "9468:0 26772:0 35440:0 9256:0",
+                     "threadCount":  40
+                 },
+                 {
+                     "windowMs":  3108,
+                     "workingSetMB":  250.7,
+                     "privateMB":  255.4,
+                     "idleCpuPctCore":  0.4,
+                     "idleCpuPctTotal":  0.03,
+                     "workingSetAfterIdleMB":  250.8,
+                     "topThreadsMs":  "10444:62 17300:16 39540:0 29996:0",
+                     "threadCount":  40
+                 },
+                 {
+                     "windowMs":  3116,
+                     "workingSetMB":  250.7,
+                     "privateMB":  255.8,
+                     "idleCpuPctCore":  0.2,
+                     "idleCpuPctTotal":  0.01,
+                     "workingSetAfterIdleMB":  250.8,
+                     "topThreadsMs":  "4396:31 36104:0 5048:0 43368:0",
+                     "threadCount":  40
+                 }
+             ]
+}

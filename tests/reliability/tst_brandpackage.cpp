@@ -486,6 +486,29 @@ void run_brand_package_tests()
             check(tsp.contains(QStringLiteral("onStopped: panelFace.opacity = 1.0")),
                   "PERF-002: a stopped pulse never leaves the panel half-transparent");
         }
+        // PERF-003 / PERF-004 (Phase 3 WP2): views that hold no shot stream are
+        // created on demand instead of at ShootingPage start-up.
+        {
+            const QString sp = stripComments(readFile(QStringLiteral("ShootingPage.qml"), &ok));
+            check(sp.contains(QStringLiteral("active: isWindMapMatch && WINDMAP.phase === 6")),
+                  "PERF-003: the Wind Map analysis view exists only while it is shown");
+            const QString wm = stripComments(readFile(QStringLiteral("WindMapAnalysisView.qml"), &ok));
+            check(wm.contains(QStringLiteral("Component.onCompleted: {"))
+                  && wm.contains(QStringLiteral("prepareTimer.restart()")),
+                  "PERF-003: a view created already visible still fetches its analysis");
+            for (const char* id : { "trainingReportView", "callDiagReportView", "posTransReportView" }) {
+                const QString i = QString::fromLatin1(id);
+                check(sp.contains(i + QStringLiteral(".active = true"))
+                      && sp.contains(i + QStringLiteral(".item.exportPdf(path)"))
+                      && !sp.contains(i + QStringLiteral(".exportPdf(path)")),
+                      QStringLiteral("PERF-004: %1 is built on the first export, and every export goes through the Loader").arg(i));
+            }
+            // The shot-projecting views are NOT lazy: they stay bound to their
+            // mode flag so no shot can arrive while they do not exist.
+            check(sp.contains(QStringLiteral("TrainingHud {")) && sp.contains(QStringLiteral("WindMapHud {"))
+                  && sp.contains(QStringLiteral("Finals10mHud {")),
+                  "PERF-004: the shot-projecting HUDs are still created with the page");
+        }
         // REPORT-STALE-001: the match report's MPI / Group / Teiler cards re-read
         // the backend after every shot and print a dash, never "NaN".
         {

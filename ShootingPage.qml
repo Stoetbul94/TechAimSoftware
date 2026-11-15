@@ -1504,16 +1504,24 @@ Item {
     }
 
     // T1.4: off-screen Training PDF renderer (A4 pages from the report model).
-    TrainingReportView {
+    // PERF-004 (Phase 3 WP2): created on the first PDF export and then kept
+    // (never destroyed from inside its own exported/failed handler). Most
+    // sessions never export, so start-up no longer builds these A4 pages.
+    Loader {
         id: trainingReportView
-        ctl: TRAINING
-        onExported: function(path) {
-            dialogManager.show({ "type": "info", "title": qsTr("Training report saved"),
-                "message": qsTr("Saved to:\n%1").arg(path),
-                "buttons": [ { "label": qsTr("OK"), "result": "ok", "accent": true } ] })
-        }
-        onFailed: function(reason) {
-            dialogManager.showError(qsTr("Export failed"), reason)
+        active: false
+        sourceComponent: Component {
+            TrainingReportView {
+                ctl: TRAINING
+                onExported: function(path) {
+                    dialogManager.show({ "type": "info", "title": qsTr("Training report saved"),
+                        "message": qsTr("Saved to:\n%1").arg(path),
+                        "buttons": [ { "label": qsTr("OK"), "result": "ok", "accent": true } ] })
+                }
+                onFailed: function(reason) {
+                    dialogManager.showError(qsTr("Export failed"), reason)
+                }
+            }
         }
     }
 
@@ -1541,15 +1549,23 @@ Item {
         onNewSessionRequested: shootingPage.newCallDiagnoseSession()
         onExportPdfRequested: shootingPage.exportCallDiagnosePdf()
     }
-    CallDiagnoseReportView {
+    // PERF-004 (Phase 3 WP2): created on the first PDF export and then kept
+    // (never destroyed from inside its own exported/failed handler). Most
+    // sessions never export, so start-up no longer builds these A4 pages.
+    Loader {
         id: callDiagReportView
-        ctl: CALLDIAG
-        onExported: function(path) {
-            dialogManager.show({ "type": "info", "title": qsTr("Call & Diagnose report saved"),
-                "message": qsTr("Saved to:\n%1").arg(path),
-                "buttons": [ { "label": qsTr("OK"), "result": "ok", "accent": true } ] })
+        active: false
+        sourceComponent: Component {
+            CallDiagnoseReportView {
+                ctl: CALLDIAG
+                onExported: function(path) {
+                    dialogManager.show({ "type": "info", "title": qsTr("Call & Diagnose report saved"),
+                        "message": qsTr("Saved to:\n%1").arg(path),
+                        "buttons": [ { "label": qsTr("OK"), "result": "ok", "accent": true } ] })
+                }
+                onFailed: function(reason) { dialogManager.showError(qsTr("Export failed"), reason) }
+            }
         }
-        onFailed: function(reason) { dialogManager.showError(qsTr("Export failed"), reason) }
     }
     // C&D display router: ONLY sighters are drawn on the live target (they are
     // visible). The actual impact is NEVER drawn here — it stays hidden until
@@ -1621,7 +1637,8 @@ Item {
         var date = "" + now.getFullYear() + ("0" + (now.getMonth() + 1)).slice(-2) + ("0" + now.getDate()).slice(-2)
         var sid = (m.sessionId || "").substring(0, 8)
         var path = (dir && dir.length ? dir + "/" : "") + productFilePrefix() + "_CallAndDiagnose_" + athlete + "_" + date + "_" + sid + ".pdf"
-        callDiagReportView.exportPdf(path)
+        callDiagReportView.active = true                 // PERF-004: build on demand
+        callDiagReportView.item.exportPdf(path)
     }
     function restoreCallDiagnoseSession(sessionId) {
         if (!CALLDIAG.resumeFromRecovery(sessionId))
@@ -1652,15 +1669,23 @@ Item {
         onNewSessionRequested: shootingPage.newPositionTransitionSession()
         onExportPdfRequested: shootingPage.exportPositionTransitionPdf()
     }
-    PositionTransitionReportView {
+    // PERF-004 (Phase 3 WP2): created on the first PDF export and then kept
+    // (never destroyed from inside its own exported/failed handler). Most
+    // sessions never export, so start-up no longer builds these A4 pages.
+    Loader {
         id: posTransReportView
-        ctl: POSTRANS
-        onExported: function(path) {
-            dialogManager.show({ "type": "info", "title": qsTr("Position Transition report saved"),
-                "message": qsTr("Saved to:\n%1").arg(path),
-                "buttons": [ { "label": qsTr("OK"), "result": "ok", "accent": true } ] })
+        active: false
+        sourceComponent: Component {
+            PositionTransitionReportView {
+                ctl: POSTRANS
+                onExported: function(path) {
+                    dialogManager.show({ "type": "info", "title": qsTr("Position Transition report saved"),
+                        "message": qsTr("Saved to:\n%1").arg(path),
+                        "buttons": [ { "label": qsTr("OK"), "result": "ok", "accent": true } ] })
+                }
+                onFailed: function(reason) { dialogManager.showError(qsTr("Export failed"), reason) }
+            }
         }
-        onFailed: function(reason) { dialogManager.showError(qsTr("Export failed"), reason) }
     }
     // Only sighters are drawn on the live target; verification/setup shots are
     // not drawn here (they reveal at the position review).
@@ -1721,7 +1746,8 @@ Item {
         var date = "" + now.getFullYear() + ("0" + (now.getMonth() + 1)).slice(-2) + ("0" + now.getDate()).slice(-2)
         var sid = (m.sessionId || "").substring(0, 8)
         var path = (dir && dir.length ? dir + "/" : "") + productFilePrefix() + "_PositionTransition_" + athlete + "_" + date + "_" + sid + ".pdf"
-        posTransReportView.exportPdf(path)
+        posTransReportView.active = true                 // PERF-004: build on demand
+        posTransReportView.item.exportPdf(path)
     }
     // ── WIND MAP (Release 2) ─────────────────────────────────────────────
     WindMapRightPanel {
@@ -1751,14 +1777,24 @@ Item {
     // UI-WIND-008: there is deliberately NO export signal to handle. The PDF is
     // Stage 6.2, so the view shows a disabled "PDF — COMING NEXT" control rather
     // than a primary-styled button that opens a placeholder message.
-    WindMapAnalysisView {
+    //
+    // PERF-003 (Phase 3 WP2): the analysis view (the largest Training Lab view)
+    // is CREATED only while it is shown, and destroyed when the athlete leaves.
+    // It reads WINDMAP.analysisModel() on creation and owns no shot stream, so
+    // nothing is lost: the analysis is the controller's, not the view's.
+    Loader {
         id: windMapAnalysis
-        visible: isWindMapMatch && WINDMAP.phase === 6
+        active: isWindMapMatch && WINDMAP.phase === 6
+        visible: active
         anchors.fill: parent
         z: 61
-        ctl: WINDMAP
-        onHomeRequested: shootingPage.homeFromWindMap()
-        onNewSessionRequested: shootingPage.newWindMapSession()
+        sourceComponent: Component {
+            WindMapAnalysisView {
+                ctl: WINDMAP
+                onHomeRequested: shootingPage.homeFromWindMap()
+                onNewSessionRequested: shootingPage.newWindMapSession()
+            }
+        }
     }
     // Sighters are drawn on the live target so the athlete can see them;
     // counted shots are drawn too — Wind Map hides nothing, it only records
@@ -1845,7 +1881,8 @@ Item {
         var sid = (m.sessionId || "").substring(0, 8)
         var fname = productFilePrefix() + "_TechnicalBlocks_" + athlete + "_" + date + "_" + sid + ".pdf"
         var path = (dir && dir.length ? dir + "/" : "") + fname
-        trainingReportView.exportPdf(path)
+        trainingReportView.active = true                 // PERF-004: build on demand
+        trainingReportView.item.exportPdf(path)
     }
 
     // UI-CD-001. Target state for every Training Lab readiness panel.

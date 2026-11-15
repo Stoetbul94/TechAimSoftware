@@ -290,3 +290,14 @@ Branch `feature/seta-athlete-mode` · 2026-11-08 · Spec:
 | 3P Final, Coach dashboard / detailed / print, Match Summary in German | HUMAN VISUAL CHECK REQUIRED | not rendered — need the live controllers; gate-clean |
 | Engine / controller sentences in German | NOT IN SCOPE | stay English by design — `docs/german-translation-review.md` |
 | Native German review of the report wording | HUMAN REVIEW REQUIRED | SETA |
+
+### 4c. Low-risk performance (P0 WP2, PERF-003 / PERF-004) — 2026-11-15
+
+| Check | Status | Evidence |
+|---|---|---|
+| Wind Map analysis view exists only while shown (Loader) and still fetches its analysis on creation | PASS (source) · HUMAN VISUAL CHECK REQUIRED (behaviour) | `tst_brandpackage` PERF-003 — reliability **2850 / 0**; no 50 m Wind Map session was run by hand |
+| Technical Blocks / Call & Diagnose / Position Transition PDF renderers built on the first export | PASS (source) · HUMAN VISUAL CHECK REQUIRED (export) | `tst_brandpackage` PERF-004; hand export not reached (see next line) |
+| Shot-projecting HUDs and panels still created with the page | PASS | PERF-004 control check; not changed by design |
+| No new QML errors at launch | PASS | launch log: same warning set as the WP1 build |
+| Memory at start-up | PASS — MEASURED | working set 255.1 → 250.7 MB, private 260.2 → 255.8 MB (median of 3); `docs/seta/perf/before-wp2-…json`, `after-wp2-perf003-004-…json` |
+| Demo: target click during a Technical Blocks block records a shot | FAIL — OPEN (pre-existing) | 2026-11-15, isolated data root: block starts, no shot is journalled — **identical on the WP1 build `cd3420b`**, so not caused by WP2; not yet diagnosed |

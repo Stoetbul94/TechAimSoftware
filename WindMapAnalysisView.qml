@@ -62,6 +62,13 @@ Item {
         view._t0 = Date.now()
         prepareTimer.restart()
     }
+    // PERF-003: ShootingPage creates the view on demand, already visible, so
+    // onVisibleChanged never fires - start the fetch on creation as well.
+    Component.onCompleted: {
+        if (!visible) return
+        view._t0 = Date.now()
+        prepareTimer.restart()
+    }
     // A single deferred tick so the loading state can paint before the model is
     // fetched. The fetch itself is a cached read; this exists so the athlete
     // never sees an unexplained blank frame.

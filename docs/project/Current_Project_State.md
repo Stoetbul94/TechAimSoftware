@@ -385,3 +385,14 @@ reports rendered EN + DE without clipping; 3P Final / Coach / Summary need a
 human visual check. Engine and controller sentences stay English by design;
 decimal comma is an open SETA decision. reliability **2844 / 0**, qml 299,
 finals 240, finals10m 229, training 568, evidence 903, manuals 1458.
+
+**2026-11-15 — P0 WP2 (first increment).** The Wind Map analysis view
+(PERF-003) and the three Training Lab PDF renderers (PERF-004) are created on
+demand instead of at start-up; shot-projecting HUDs/panels deliberately stay
+as they were. Measured: working set 255.1 → 250.7 MB, private bytes
+260.2 → 255.8 MB, idle CPU unchanged (~0.2 % of a core). reliability
+**2850 / 0**. Behaviour in the running app NOT yet hand-checked: a demo hand
+run found that target clicks in a Technical Blocks block record no shot — the
+same on the WP1 build, so pre-existing and open. The remaining lazy-load
+candidates (four Training Lab right panels, Position Transition HUD, DSB 1.20
+HUD) are smaller views; not measured, not done.

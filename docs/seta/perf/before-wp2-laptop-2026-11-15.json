@@ -1,0 +1,49 @@
+﻿{
+    "summary":  {
+                    "label":  "laptop-wp1-cd3420b-release",
+                    "exe":  "C:\\Users\\User\\Downloads\\TechAimSoftware-SETA\\release\\SETA.exe",
+                    "date":  "2026-11-15T10:22:45",
+                    "cores":  12,
+                    "machine":  "LAPTOP-AL3JN0PV",
+                    "runs":  3,
+                    "idleSeconds":  20,
+                    "windowMs (min/med/max)":  "3097 / 3265 / 3462",
+                    "workingSetMB (min/med/max)":  "255,1 / 255,1 / 255,6",
+                    "privateMB (min/med/max)":  "259,3 / 260,2 / 260,7",
+                    "idleCpuPctCore (min/med/max)":  "0,2 / 0,2 / 0,8",
+                    "idleCpuPctTotal (min/med/max)":  "0,01 / 0,01 / 0,07",
+                    "privateGrowthPct (min/med/max)":  ""
+                },
+    "runs":  [
+                 {
+                     "windowMs":  3462,
+                     "workingSetMB":  255.1,
+                     "privateMB":  260.7,
+                     "idleCpuPctCore":  0.2,
+                     "idleCpuPctTotal":  0.01,
+                     "workingSetAfterIdleMB":  255.2,
+                     "topThreadsMs":  "25800:31 42876:0 45140:0 36004:0",
+                     "threadCount":  40
+                 },
+                 {
+                     "windowMs":  3097,
+                     "workingSetMB":  255.1,
+                     "privateMB":  259.3,
+                     "idleCpuPctCore":  0.2,
+                     "idleCpuPctTotal":  0.01,
+                     "workingSetAfterIdleMB":  255.2,
+                     "topThreadsMs":  "532:31 29328:0 27816:0 11284:0",
+                     "threadCount":  40
+                 },
+                 {
+                     "windowMs":  3265,
+                     "workingSetMB":  255.6,
+                     "privateMB":  260.2,
+                     "idleCpuPctCore":  0.8,
+                     "idleCpuPctTotal":  0.07,
+                     "workingSetAfterIdleMB":  255.8,
+                     "topThreadsMs":  "42784:156 21404:0 28800:0 43892:0",
+                     "threadCount":  40
+                 }
+             ]
+}
