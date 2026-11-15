@@ -189,6 +189,13 @@ package; nothing pushed.
 | **WP1c Localisation gate** | test: no user-visible bare literal in product QML (allowlist for neutral values) + catalogue open set == allowlist | `tests/qml` | gate fails on any new untranslated string |
 | **WP2 Low-risk performance** | gate `Dsb120Hud` timer to DSB mode; then lazy-load mode-specific HUD/panel/report components **one at a time**, each after auditing its `Connections`/state | `Dsb120Hud.qml`, `ShootingPage.qml`, `WindowManager.qml` | before/after measured; shot reception and recovery tests unchanged; no component that projects shots is unloaded while its mode runs |
 
+**P0 progress (2026-11-15):** WP0 done (`056eede`). WP1a/b/c done — every
+product string translated, gate `tests/docs/check_localisation.py` 240 / 0,
+Training Lab + 10 m Final reports rendered EN + DE without clipping (3P Final,
+Coach and Match Summary: human visual check). Engine- and controller-supplied
+sentences stay English by design (see `docs/german-translation-review.md`).
+WP2 next.
+
 ### P1 — athlete experience
 
 | WP | Content | Acceptance |

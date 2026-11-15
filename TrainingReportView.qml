@@ -12,6 +12,27 @@ import QtQuick 2.15
 // completed blocks the model contains.
 Item {
     id: view
+    // LOC-REPORT-001: the controller supplies English position names; the
+    // report translates them at display time (unknown names unchanged).
+    // LOC-REPORT-001: GroupPatternAnalyzer supplies its confidence as an
+    // English word; translated here, at display time.
+    function trEvidence(c) {
+        switch (c) {
+        case "insufficient": return qsTr("insufficient")
+        case "low":          return qsTr("low")
+        case "moderate":     return qsTr("moderate")
+        case "strong":       return qsTr("strong")
+        }
+        return c || ""
+    }
+    function trPos(n) {
+        switch (n) {
+        case "Kneeling": return qsTr("Kneeling")
+        case "Prone":    return qsTr("Prone")
+        case "Standing": return qsTr("Standing")
+        }
+        return n || ""
+    }
     property var ctl: null                 // TRAINING
     signal exported(string path)
     signal failed(string reason)
@@ -49,7 +70,7 @@ Item {
     property string _path: ""
 
     function exportPdf(path) {
-        if (!ctl) { failed("No training session"); return }
+        if (!ctl) { failed(qsTr("No training session")); return }
         view.model = ctl.trainingReportModel()
         view.blocks = view.model.blocks ? view.model.blocks : []
         _path = path
@@ -118,11 +139,11 @@ Item {
                     anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; spacing: 2
                     Repeater {
                         model: [
-                            { l: "Athlete",  v: view.model.athlete || "—" },
-                            { l: "Discipline", v: view.model.threePositions ? "50m Rifle 3P"
-                                                : (view.model.discipline || "Single position") },
-                            { l: "Date",     v: (view.model.createdAtIso || "").substring(0, 10) },
-                            { l: "Session",  v: (view.model.sessionId || "").substring(0, 8) }
+                            { l: qsTr("Athlete"),  v: view.model.athlete || "—" },
+                            { l: qsTr("Discipline"), v: view.model.threePositions ? qsTr("50m Rifle 3P")
+                                                : (view.model.discipline || qsTr("Single position")) },
+                            { l: qsTr("Date"),     v: (view.model.createdAtIso || "").substring(0, 10) },
+                            { l: qsTr("Session"),  v: (view.model.sessionId || "").substring(0, 8) }
                         ]
                         delegate: Row {
                             anchors.right: parent.right; spacing: 6
@@ -155,7 +176,7 @@ Item {
             }
             Text {
                 anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
-                text: "Page " + pageNo + " of " + view.totalPages
+                text: qsTr("Page %1 of %2").arg(pageNo).arg(view.totalPages)
                 color: view.sub; font.pixelSize: 9
             }
         }
@@ -175,29 +196,29 @@ Item {
         pageNo: 1
         Column {
             width: parent.width; spacing: 8
-            Text { text: view.model.endedEarly ? "SESSION ENDED EARLY" : "SESSION OVERVIEW"
+            Text { text: view.model.endedEarly ? qsTr("SESSION ENDED EARLY") : qsTr("SESSION OVERVIEW")
                    color: view.ink; font.pixelSize: 15; font.bold: true }
             Item { height: 6; width: 1 }
-            KV { k: "Athlete";        v: view.model.athlete || "—" }
-            KV { k: "Date / time";    v: view.model.createdAtIso || "—" }
-            KV { k: "Session ID";     v: view.model.sessionId || "—" }
-            KV { k: "Operating mode"; v: view.model.operatingMode || "—" }
-            KV { k: "Discipline";     v: view.model.threePositions ? "50m Rifle 3 Positions" : "Single position" }
-            KV { k: "Technical focus"; v: view.model.focus || "—" }
-            KV { k: "Visibility mode"; v: view.model.visibilityLabel || "—" }
-            KV { k: "Programme";      v: (view.model.blockCount || 0) + " blocks × " + (view.model.shotsPerBlock || 0) + " shots" }
-            KV { k: "Planned shots";  v: "" + (view.model.plannedShots || 0) }
-            KV { k: "Counted shots";  v: "" + (view.model.countedShots || 0) }
-            KV { k: "Completed blocks"; v: (view.model.completedBlocks || 0) + " of " + (view.model.blockCount || 0) }
-            KV { k: "Session duration"; v: {
+            KV { k: qsTr("Athlete");        v: view.model.athlete || "—" }
+            KV { k: qsTr("Date / time");    v: view.model.createdAtIso || "—" }
+            KV { k: qsTr("Session ID");     v: view.model.sessionId || "—" }
+            KV { k: qsTr("Operating mode"); v: view.model.operatingMode || "—" }
+            KV { k: qsTr("Discipline");     v: view.model.threePositions ? qsTr("50m Rifle 3 Positions") : qsTr("Single position") }
+            KV { k: qsTr("Technical focus"); v: view.model.focus || "—" }
+            KV { k: qsTr("Visibility mode"); v: view.model.visibilityLabel || "—" }
+            KV { k: qsTr("Programme");      v: qsTr("%1 blocks × %2 shots").arg(view.model.blockCount || 0).arg(view.model.shotsPerBlock || 0) }
+            KV { k: qsTr("Planned shots");  v: "" + (view.model.plannedShots || 0) }
+            KV { k: qsTr("Counted shots");  v: "" + (view.model.countedShots || 0) }
+            KV { k: qsTr("Completed blocks"); v: qsTr("%1 of %2").arg(view.model.completedBlocks || 0).arg(view.model.blockCount || 0) }
+            KV { k: qsTr("Session duration"); v: {
                     var d = view.model.durationSec || 0
                     return Math.floor(d / 60) + " min " + ("0" + (d % 60)).slice(-2) + " s"
                 } }
-            KV { k: "Sighters"; v: {
+            KV { k: qsTr("Sighters"); v: {
                     var a = view.model.sighterAudit || {}
                     if (a.threePositions)
-                        return "Kneeling " + (a.kneeling||0) + ", Prone " + (a.prone||0)
-                             + ", Standing " + (a.standing||0) + "  (total " + (a.total||0) + ")"
+                        return qsTr("Kneeling %1, Prone %2, Standing %3  (total %4)")
+                             .arg(a.kneeling||0).arg(a.prone||0).arg(a.standing||0).arg(a.total||0)
                     return "" + (a.total || 0)
                 } }
             Item { height: 8; width: 1 }
@@ -216,7 +237,7 @@ Item {
             // table header
             Row {
                 width: parent.width; spacing: 0
-                Repeater { model: ["BLOCK", "AVG", "DIA mm", "MPI X/Y mm", "SCORE SD", "SHOTS"]
+                Repeater { model: [qsTr("BLOCK"), qsTr("AVG"), qsTr("DIA mm"), qsTr("MPI X/Y mm"), qsTr("SCORE SD"), qsTr("SHOTS")]
                     Text { text: modelData; color: view.sub; font.pixelSize: 10; font.bold: true; width: 116 } }
             }
             Rectangle { width: parent.width; height: 1; color: view.line }
@@ -226,7 +247,7 @@ Item {
                     width: 700; spacing: 0
                     property var b: modelData
                     Text { width: 116; color: view.ink; font.pixelSize: 11; font.bold: true
-                           text: "Block " + b.blockIndex + (b.positionName ? " · " + b.positionName.substring(0,1) : "") }
+                           text: qsTr("Block %1").arg(b.blockIndex) + (b.positionName ? " · " + view.trPos(b.positionName).substring(0,1) : "") }
                     Text { width: 116; color: view.ink; font.pixelSize: 11; text: Number(b.averageScore).toFixed(1) }
                     Text { width: 116; color: view.ink; font.pixelSize: 11; text: b.hasGroup ? Number(b.groupDiameter).toFixed(1) : "—" }
                     Text { width: 116; color: view.ink; font.pixelSize: 11; text: Number(b.mpiX).toFixed(1) + " / " + Number(b.mpiY).toFixed(1) }
@@ -274,9 +295,9 @@ Item {
             pageNo: 3 + index
             Column {
                 width: parent.width; spacing: 10
-                Text { text: "BLOCK " + b.blockIndex + (b.positionName ? " · " + b.positionName : "")
+                Text { text: qsTr("BLOCK %1").arg(b.blockIndex) + (b.positionName ? " · " + view.trPos(b.positionName) : "")
                        color: view.ink; font.pixelSize: 15; font.bold: true }
-                Text { text: b.shotCount + " counted shots · sighters excluded"
+                Text { text: qsTr("%1 counted shots · sighters excluded").arg(b.shotCount)
                        color: view.sub; font.pixelSize: 10 }
                 Row {
                     width: parent.width; spacing: 16
@@ -306,13 +327,13 @@ Item {
                     // metrics
                     Column {
                         spacing: 6
-                        KV { k: "Average score"; v: Number(b.averageScore).toFixed(1); width: 360 }
-                        KV { k: "Group radius";  v: b.hasGroup ? Number(b.groupRadius).toFixed(1)+" mm" : "—"; width: 360 }
-                        KV { k: "Group diameter"; v: b.hasGroup ? Number(b.groupDiameter).toFixed(1)+" mm" : "—"; width: 360 }
-                        KV { k: "MPI (X / Y)";   v: Number(b.mpiX).toFixed(1)+" / "+Number(b.mpiY).toFixed(1)+" mm"; width: 360 }
-                        KV { k: "H / V spread";  v: b.hasGroup ? Number(b.horizontalSpread).toFixed(1)+" / "+Number(b.verticalSpread).toFixed(1)+" mm" : "—"; width: 360 }
-                        KV { k: "Score SD";      v: Number(b.scoreStdDev).toFixed(2); width: 360 }
-                        KV { k: "Avg shot time"; v: b.hasTiming ? Number(b.averageShotTime).toFixed(1)+" s" : "—"; width: 360 }
+                        KV { k: qsTr("Average score"); v: Number(b.averageScore).toFixed(1); width: 360 }
+                        KV { k: qsTr("Group radius");  v: b.hasGroup ? Number(b.groupRadius).toFixed(1)+" mm" : "—"; width: 360 }
+                        KV { k: qsTr("Group diameter"); v: b.hasGroup ? Number(b.groupDiameter).toFixed(1)+" mm" : "—"; width: 360 }
+                        KV { k: qsTr("MPI (X / Y)");   v: Number(b.mpiX).toFixed(1)+" / "+Number(b.mpiY).toFixed(1)+" mm"; width: 360 }
+                        KV { k: qsTr("H / V spread");  v: b.hasGroup ? Number(b.horizontalSpread).toFixed(1)+" / "+Number(b.verticalSpread).toFixed(1)+" mm" : "—"; width: 360 }
+                        KV { k: qsTr("Score SD");      v: Number(b.scoreStdDev).toFixed(2); width: 360 }
+                        KV { k: qsTr("Avg shot time"); v: b.hasTiming ? Number(b.averageShotTime).toFixed(1)+" s" : "—"; width: 360 }
                     }
                 }
                 Text { text: qsTr("OBSERVED"); color: view.sub; font.pixelSize: 10; font.bold: true; topPadding: 6 }
@@ -324,10 +345,10 @@ Item {
                     Text { text: qsTr("GROUP PATTERN INSIGHTS"); color: view.red; font.pixelSize: 10; font.bold: true; topPadding: 6 }
                     Repeater { model: (b.groupPattern ? (b.groupPattern.properties || []) : [])
                         Column { width: 700; spacing: 0
-                            Text { text: modelData.label + "  (" + modelData.confidence + " evidence)"; color: view.ink; font.pixelSize: 10; font.bold: true }
+                            Text { text: qsTr("%1  (%2 evidence)").arg(modelData.label).arg(view.trEvidence(modelData.confidence)); color: view.ink; font.pixelSize: 10; font.bold: true }
                             Text { width: 700; wrapMode: Text.WordWrap; text: modelData.evidence; color: view.sub; font.pixelSize: 10 } } }
                     Text { visible: (b.groupPattern.prompt || "") !== ""; width: 700; wrapMode: Text.WordWrap
-                           text: "Coach discussion: " + b.groupPattern.prompt; color: view.ink; font.pixelSize: 10; font.italic: true }
+                           text: qsTr("Coach discussion: %1").arg(b.groupPattern.prompt); color: view.ink; font.pixelSize: 10; font.italic: true }
                     Text { width: 700; wrapMode: Text.WordWrap; text: b.groupPattern.disclaimer || ""; color: view.sub; font.pixelSize: 9 }
                 }
                 Text { text: qsTr("ATHLETE NOTE"); color: view.sub; font.pixelSize: 10; font.bold: true; topPadding: 6 }
@@ -349,7 +370,7 @@ Item {
                 Column {
                     width: 700; spacing: 2
                     property var b: modelData
-                    Text { text: "Block " + b.blockIndex + (b.positionName ? " · " + b.positionName : "")
+                    Text { text: qsTr("Block %1").arg(b.blockIndex) + (b.positionName ? " · " + view.trPos(b.positionName) : "")
                            color: view.sub; font.pixelSize: 11; font.bold: true }
                     Text { width: 700; wrapMode: Text.WordWrap; color: view.ink; font.pixelSize: 11
                            text: (b.note && b.note.length > 0) ? b.note : "—" }
@@ -363,8 +384,8 @@ Item {
             }
             Item { height: 12; width: 1 }
             Text { width: 700; wrapMode: Text.WordWrap; color: view.sub; font.pixelSize: 10; font.italic: true
-                   text: qsTr("Measured training data only. Sighters are excluded from all results. ")
-                       + "This is not an official competition result and carries no ranking status." }
+                   text: qsTr("Measured training data only. Sighters are excluded from all results. "
+                            + "This is not an official competition result and carries no ranking status.") }
         }
     }
 }

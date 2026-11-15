@@ -21,6 +21,7 @@
 #include <QQmlEngine>
 #include <QDir>
 #include <QFile>
+#include <QJsonDocument>
 #include <QFont>
 #include <QTranslator>
 #include <QFontDatabase>
@@ -190,7 +191,11 @@ int main(int argc, char** argv)
         QVariantMap m; m["code"] = pair.first; m["label"] = pair.second; langs << m;
     }
     language.insert("availableLanguages", langs);
-    language.insert("languageCode", "en");
+    // The catalogue argument also sets the language code, so a scene's
+    // window.uiLocale() formats dates the way the app would in that language.
+    language.insert("languageCode",
+                    (argc >= 6 && QString::fromLocal8Bit(argv[5]).contains(QLatin1String("_de")))
+                        ? "de" : "en");
     language.insert("isBetaTranslation", true);
     language.insert("restartRequired", false);
     opMode.setProperty("live", false);
@@ -206,6 +211,18 @@ int main(int argc, char** argv)
     view.rootContext()->setContextProperty("LANGUAGE", &language);
     view.rootContext()->setContextProperty("OPMODE", &opMode);
     view.rootContext()->setContextProperty("gameRange", 10);
+    // UIRENDER_DATA=<file.json>: a REAL report model emitted by a test harness
+    // (e.g. training_tests --emit-report), exposed to the scene as RENDER_DATA.
+    QVariantMap renderData;
+    const QString dataPath = qEnvironmentVariable("UIRENDER_DATA");
+    if (!dataPath.isEmpty()) {
+        QFile df(dataPath);
+        if (df.open(QIODevice::ReadOnly))
+            renderData = QJsonDocument::fromJson(df.readAll()).toVariant().toMap();
+        if (renderData.isEmpty())
+            std::printf("WARN: UIRENDER_DATA %s gave no data\n", qPrintable(dataPath));
+    }
+    view.rootContext()->setContextProperty("RENDER_DATA", renderData);
     view.setSource(QUrl::fromLocalFile(scene));
     if (view.status() != QQuickView::Ready) {
         for (const QQmlError& e : view.errors())

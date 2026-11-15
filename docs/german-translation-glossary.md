@@ -95,6 +95,19 @@ The separator is an em dash (U+2014), matching the English source.
 | MPI (reports) | MTP | space-critical form of Mittlerer Treffpunkt |
 | Group (reports) | Streukreis | |
 | Inner 10 | Innenzehner | |
+| Call (Call & Diagnose) | Ansage | "called shots" = angesagte Schüsse |
+| Standard deviation (SD) | Std.-Abw. | column headers and stat lines |
+| Average (column) | Ø | space-critical; "Durchschnitt" where room allows |
+| Split (time since previous shot) | Zwischenzeit | Finals report |
+| Hold | Haltezeit | Finals report |
+| Scoring (mode) | Wertungsart | |
+| Evidence: insufficient / low / moderate / strong | Evidenz: unzureichend / gering / mittel / stark | group-pattern confidence |
+| Repeat (Position Transition) | Wiederholung; row tag R1 → W1 | |
+| Setup / transition | Aufbau / Wechsel | |
+| Generated (report footer) | Erstellt | |
+| Page 1 of 6 | Seite 1 von 6 | |
+| Coach Report | Trainerbericht | |
+| Position (body) | Stellung | used throughout the reports |
 
 ## Reviewer notes
 

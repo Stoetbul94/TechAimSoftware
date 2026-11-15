@@ -33,14 +33,24 @@ Item {
         var now = new Date()
         finals10mReport.report = FINALS10M.buildReport({
             "athlete": (typeof userName !== "undefined" && userName) ? userName : "",
-            "dateText": now.toLocaleString(Qt.locale(""), "ddd yyyy-MM-dd"),
-            "timeText": now.toLocaleString(Qt.locale(""), "hh:mm")
+            "dateText": now.toLocaleString(window.uiLocale(), "ddd yyyy-MM-dd"),
+            "timeText": now.toLocaleString(window.uiLocale(), "hh:mm")
         })
         finals10mReport.generatedStamp =
-            now.toLocaleString(Qt.locale(""), "ddd yyyy-MM-dd hh:mm")
+            now.toLocaleString(window.uiLocale(), "ddd yyyy-MM-dd hh:mm")
     }
 
     // ── display-only helpers ────────────────────────────────────────────
+    // LOC-REPORT-001: the C++ report supplies an English display name; it is
+    // translated here, at display time. Unknown names are shown unchanged.
+    function trName(en) {
+        switch (en) {
+        case "10m Air Rifle Final":  return qsTr("10m Air Rifle Final")
+        case "10m Air Pistol Final": return qsTr("10m Air Pistol Final")
+        case "10m Final":            return qsTr("10m Final")
+        }
+        return en
+    }
     function val(key, dflt) {
         if (!finals10mReport.report) return dflt
         var v = finals10mReport.report[key]
@@ -96,16 +106,16 @@ Item {
 
                     ReportHeader {
                         width: parent.width
-                        reportTitle: "FINAL REPORT"
+                        reportTitle: qsTr("FINAL REPORT")
                         athlete: finals10mReport.val("athlete", "")
-                        discipline: finals10mReport.val("displayName", "")
-                        sessionType: "Final"
+                        discipline: finals10mReport.trName(finals10mReport.val("displayName", ""))
+                        sessionType: qsTr("Final")
                         dateText: finals10mReport.val("dateText", "")
                         timeText: finals10mReport.val("timeText", "")
                         mode: finals10mReport.val("operatingMode", "")
                         extraPairs: [
-                            { l: "Session", v: String(finals10mReport.val("sessionId", "")).substring(0, 18) },
-                            { l: "Build", v: finals10mReport.buildIdentity() }
+                            { l: qsTr("Session"), v: String(finals10mReport.val("sessionId", "")).substring(0, 18) },
+                            { l: qsTr("Build"), v: finals10mReport.buildIdentity() }
                         ]
                     }
 
@@ -179,8 +189,8 @@ Item {
                     }
                     Text {
                         width: parent.width; wrapMode: Text.WordWrap
-                        text: qsTr("Mean point of impact and group extent are measured over the ")
-                              + "official shots only; sighters are excluded."
+                        text: qsTr("Mean point of impact and group extent are measured over the "
+                                   + "official shots only; sighters are excluded.")
                         color: "#8a8f98"; font.pixelSize: 10; font.family: "Segoe UI"
                     }
 
@@ -230,8 +240,8 @@ Item {
                     SectionTitle { width: parent.width; title: qsTr("SIGHTERS") }
                     Text {
                         width: parent.width; wrapMode: Text.WordWrap
-                        text: qsTr("Sighting shots. They do not count towards the official ")
-                              + "shot count, the series, the single shots or the Final total."
+                        text: qsTr("Sighting shots. They do not count towards the official "
+                                   + "shot count, the series, the single shots or the Final total.")
                         color: "#8a8f98"; font.pixelSize: 10; font.family: "Segoe UI"
                     }
                     Text {
@@ -296,8 +306,8 @@ Item {
                     softwareVersion: (typeof PRODUCT !== "undefined"
                                       && PRODUCT.softwareVersionLabel !== undefined)
                                      ? PRODUCT.softwareVersionLabel : ""
-                    generatedText: "Generated " + finals10mReport.generatedStamp
-                    pageText: "Page 1 of 2"
+                    generatedText: qsTr("Generated %1").arg(finals10mReport.generatedStamp)
+                    pageText: qsTr("Page %1 of %2").arg(1).arg(2)
                 }
             }
 
@@ -315,10 +325,10 @@ Item {
 
                     ReportHeader {
                         width: parent.width
-                        reportTitle: "FINAL REPORT"
+                        reportTitle: qsTr("FINAL REPORT")
                         athlete: finals10mReport.val("athlete", "")
-                        discipline: finals10mReport.val("displayName", "")
-                        sessionType: "Final"
+                        discipline: finals10mReport.trName(finals10mReport.val("displayName", ""))
+                        sessionType: qsTr("Final")
                         dateText: finals10mReport.val("dateText", "")
                         timeText: finals10mReport.val("timeText", "")
                         mode: finals10mReport.val("operatingMode", "")
@@ -353,7 +363,7 @@ Item {
                                     Row {
                                         anchors.fill: parent
                                         Text { width: parent.width * 0.60; height: parent.height; text: section.label + "  ·  " + section.range; color: PRODUCT.accentPrimary; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; leftPadding: 10; verticalAlignment: Text.AlignVCenter }
-                                        Text { width: parent.width * 0.40; height: parent.height; text: "Subtotal " + Number(section.subtotal).toFixed(1); color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter }
+                                        Text { width: parent.width * 0.40; height: parent.height; text: qsTr("Subtotal %1").arg(Number(section.subtotal).toFixed(1)); color: "#5b6270"; font.pixelSize: 10; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter }
                                     }
                                 }
                                 Repeater {
@@ -377,7 +387,7 @@ Item {
                             width: parent.width; height: 26; color: "#fbfbfc"
                             Row {
                                 anchors.fill: parent
-                                Text { width: parent.width * 0.60; height: parent.height; text: "FINAL TOTAL  ·  " + finals10mReport.val("acceptedOfShots", ""); color: "#191b1f"; font.pixelSize: 12; font.bold: true; font.family: "Segoe UI"; leftPadding: 10; verticalAlignment: Text.AlignVCenter }
+                                Text { width: parent.width * 0.60; height: parent.height; text: qsTr("FINAL TOTAL  ·  %1").arg(finals10mReport.val("acceptedOfShots", "")); color: "#191b1f"; font.pixelSize: 12; font.bold: true; font.family: "Segoe UI"; leftPadding: 10; verticalAlignment: Text.AlignVCenter }
                                 Text { width: parent.width * 0.40; height: parent.height; text: finals10mReport.num("total", 1); color: PRODUCT.accentPrimary; font.pixelSize: 14; font.bold: true; font.family: "Segoe UI"; horizontalAlignment: Text.AlignRight; rightPadding: 10; verticalAlignment: Text.AlignVCenter }
                             }
                         }
@@ -387,9 +397,8 @@ Item {
                     Text {
                         visible: !finals10mReport.val("complete", false)
                         width: parent.width; wrapMode: Text.WordWrap
-                        text: qsTr("COURSE INCOMPLETE — ")
-                              + finals10mReport.val("acceptedOfShots", "")
-                              + " official shots recorded. This is not a completed Final result."
+                        text: qsTr("COURSE INCOMPLETE — %1 official shots recorded. This is not a completed Final result.")
+                              .arg(finals10mReport.val("acceptedOfShots", ""))
                         color: PRODUCT.accentPrimary; font.pixelSize: 11; font.bold: true; font.family: "Segoe UI"
                     }
                 }
@@ -401,8 +410,8 @@ Item {
                     softwareVersion: (typeof PRODUCT !== "undefined"
                                       && PRODUCT.softwareVersionLabel !== undefined)
                                      ? PRODUCT.softwareVersionLabel : ""
-                    generatedText: "Generated " + finals10mReport.generatedStamp
-                    pageText: "Page 2 of 2"
+                    generatedText: qsTr("Generated %1").arg(finals10mReport.generatedStamp)
+                    pageText: qsTr("Page %1 of %2").arg(2).arg(2)
                 }
             }
         }
@@ -418,7 +427,8 @@ Item {
         page2.grabToImage(function(result) { CUSTOMPRINT.addImage(result.image) },
                           Qt.size(8917/4, 13033/4))
         CUSTOMPRINT.setServerPath(APPSETTINGS.getPrintPDFFilePath())
-        CUSTOMPRINT.createFinalsPdf(finals10mReport.val("displayName", "10m Final")
-                                    + " Report", "final_report.pdf")
+        CUSTOMPRINT.createFinalsPdf(qsTr("%1 Report").arg(finals10mReport.trName(
+                                        finals10mReport.val("displayName", "10m Final"))),
+                                    "final_report.pdf")
     }
 }

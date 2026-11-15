@@ -26,6 +26,8 @@
 #include <QFileInfo>
 
 #include <QCoreApplication>
+#include <QFile>
+#include <QJsonDocument>
 #include <QVariantMap>
 
 #include <cstdio>
@@ -2371,9 +2373,62 @@ static void testPtReportModel()
     c.resetPositionTransition();
 }
 
+// --emit-report <dir>: write REAL report models, built by the real
+// controllers from sessions like the ones testReportModel / testPtReportModel
+// drive, as JSON for the offline renderer (tools/uirender report scenes).
+// Runs no assertions and reports no totals.
+static bool writeJson(const QVariantMap& m, const QString& path)
+{
+    QFile out(path);
+    if (!out.open(QIODevice::WriteOnly | QIODevice::Truncate)) return false;
+    out.write(QJsonDocument::fromVariant(m).toJson(QJsonDocument::Indented));
+    return true;
+}
+
+static int emitReports(const QString& dir)
+{
+    QDir().mkpath(dir);
+    bool ok = true;
+    {   // Technical Blocks: 3 blocks x 5 shots, group widening and drifting.
+        TrainingProgramController c; MemFile f; ManualClock clk;
+        prepare(c, f, clk, "AR10", 1);
+        c.setBlockCount(3); c.setShotsPerBlock(5);
+        c.startTraining(QStringLiteral("A. Athlete"));
+        int id = 1001;
+        for (int b = 0; b < 3; ++b) {
+            c.startBlock();
+            for (int s = 0; s < 5; ++s) {
+                clk.advance(4000 + 500 * s);
+                const double spread = 1.0 + 3.0 * b;
+                c.registerShot(spread * ((s % 3) - 1) + 2.0 * b, spread * ((s % 2) ? 1 : -1) + 1.5 * b,
+                               10.5 - 0.6 * b - 0.1 * s, id++, 0, 1);
+            }
+            c.continueToNextBlock();
+        }
+        ok = writeJson(c.trainingReportModel(), dir + QStringLiteral("/report_training.json")) && ok;
+    }
+    {   // Position Transition: the testPtReportModel session.
+        PositionTransitionController c; MemFile f; ManualClock clk;
+        prepPt(c, f, clk, 1);
+        c.setVerificationShots(5);
+        c.startPositionTransition(QStringLiteral("A. Athlete"));
+        ptRunPosition(c, clk, 5, 1, 10000, 5000, 1.0, 1.0); c.saveNote(QStringLiteral("Kneeling roll checked.")); c.continueToNext();
+        ptRunPosition(c, clk, 5, 2, 12000, 6000, 2.0, 2.0); c.saveNote(QStringLiteral("Sling tension reset.")); c.continueToNext();
+        ptRunPosition(c, clk, 5, 0, 14000, 7000, 3.0, 3.0); c.continueToNext();
+        ok = writeJson(c.reportModel(), dir + QStringLiteral("/report_pt.json")) && ok;
+    }
+    std::printf("emit-report: %s -> %s\n", ok ? "ok" : "FAILED", qUtf8Printable(dir));
+    return ok ? 0 : 1;
+}
+
 int main(int argc, char** argv)
 {
     QCoreApplication app(argc, argv);
+    {
+        const QStringList args = QCoreApplication::arguments();
+        const int at = args.indexOf(QStringLiteral("--emit-report"));
+        if (at >= 0 && at + 1 < args.size()) return emitReports(args.at(at + 1));
+    }
     std::printf("=== Training Lab T1 acceptance ===\n");
     testConfiguration();
     testShotAcceptance();

@@ -903,7 +903,7 @@ Item {
                                 width: parent.width; spacing: 3
                                 Repeater {
                                     model: [
-                                        { l: "MPI X / Y",
+                                        { l: qsTr("MPI X / Y"),
                                           v: view.metric(modelData, "mpiXMm", "hasMpi") + " / "
                                              + view.metric(modelData, "mpiYMm", "hasMpi") + " mm",
                                           d: qsTr("Average centre of the recorded shot group") },

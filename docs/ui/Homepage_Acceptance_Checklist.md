@@ -274,4 +274,19 @@ Branch `feature/seta-athlete-mode` · 2026-11-08 · Spec:
 | Report MPI / Group / Teiler / total time cover the WHOLE match after crash recovery | PASS (REPORT-RECOVERY-001, fixed 2026-11-15) | double-crash hand run: MTP 0.3/−0.5, Streukreis 8.7 over all 3 shots, Gesamtzeit 0:26; `docs/seta/evidence/double-crash-recovery-2026-11-15.jpg`. Was: | same run: score 50.80 counts all 5 shots, but MTP −0.3/−1.5 and Teiler 153.8 are shot 5 alone and Gesamtzeit 0:32 is post-resume only — the cards read the C++ backend lists, which recovery does not refill (globalMatchModel is the full record) |
 | Match clock keeps elapsed time across a second recovery | PASS (RECOVERY-CLOCK-001, fixed 2026-11-15) | three crashes in a row: Restzeit 74:45 → 74:33 → 74:33, downtime never charged; tst_qualification §12 (restart-from-zero and same-origin clocks; negative control reproduced 75:00). Was: | 2026-11-15: clock was 74:39 before power loss, recovery dialog said Restzeit 75:00 and the match resumed at ~75:00; first recovery (14 Nov) kept time correctly. Needs the ISSF/EST recovery rules before any change |
 | Recovered shots keep their shot times | PASS (RECOVERY-SHOTTIME-001, fixed 2026-11-15) — new sessions only; journals written before the fix have no time and still show 0 s | double-crash hand run: 7 / 7 / 12 s survive both crashes. Was: | after recovery the shot list shows 0 s for every recovered shot |
-| Report date in German | FAIL — OPEN | header shows "Sun 2026-11-15" (English weekday) |
+| Report date in German | RESOLVED — AUTOMATED EVIDENCE, HUMAN VISUAL CHECK REQUIRED | every report formats dates with `window.uiLocale()` (gate LOC-GATE-007); rendered 10 m Final footer reads "Erstellt Fr. 2026-07-17" (uirender). Was: | header shows "Sun 2026-11-15" (English weekday) |
+
+### 4b. Report localisation (P0 WP1, LOC-REPORT-001) — 2026-11-15
+
+| Check | Status | Evidence |
+|---|---|---|
+| Every product `qsTr` literal has finished German; only vendored forms open | PASS | `tests/docs/check_localisation.py` **240 / 0** (LOC-GATE-001..003) |
+| No bare English literal in the report files and shared report components | PASS | same gate, LOC-GATE-004; negative controls fail as expected |
+| No logic compares translated text (QML-LANG-001) | PASS | LOC-GATE-005 |
+| Technical Blocks report, 6 pages, EN + DE, no clipping | PASS — RENDERED COMPONENT | uirender `scene_training_report.qml` with the controller's real report model (`training_tests --emit-report`) |
+| Position Transition report, 6 pages, EN + DE, no clipping | PASS — RENDERED COMPONENT | same |
+| Call & Diagnose report, 5 pages, EN + DE, no clipping | PASS — RENDERED COMPONENT | same, archived session `tools/reporttest/cd_session.json` |
+| 10 m Final report, 2 pages, EN + DE, no clipping | PASS — RENDERED COMPONENT | uirender `scene_finals10m_report.qml` with `finals10m_tests --emit-report` |
+| 3P Final, Coach dashboard / detailed / print, Match Summary in German | HUMAN VISUAL CHECK REQUIRED | not rendered — need the live controllers; gate-clean |
+| Engine / controller sentences in German | NOT IN SCOPE | stay English by design — `docs/german-translation-review.md` |
+| Native German review of the report wording | HUMAN REVIEW REQUIRED | SETA |

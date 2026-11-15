@@ -67,18 +67,18 @@ Rectangle {
     }
     function disciplineLabel() {
         var p = positionsPresent()
-        if (p.indexOf("airPistol") >= 0) return "Air Pistol (10m)"
-        if (p.indexOf("airRifle") >= 0)  return "Air Rifle (10m)"
+        if (p.indexOf("airPistol") >= 0) return qsTr("Air Pistol (10m)")
+        if (p.indexOf("airRifle") >= 0)  return qsTr("Air Rifle (10m)")
         if (p.indexOf("kneeling") >= 0 && p.indexOf("standing") >= 0 && p.indexOf("prone") >= 0)
-            return "3-Position Rifle (50m)"
-        if (p.indexOf("prone") >= 0 && p.length === 1) return "Prone Rifle (50m)"
-        return "50m Rifle"
+            return qsTr("3-Position Rifle (50m)")
+        if (p.indexOf("prone") >= 0 && p.length === 1) return qsTr("Prone Rifle (50m)")
+        return qsTr("50m Rifle")
     }
     function trendWord(slope) {
         if (slope === undefined || slope === null) return "—"
-        if (slope > 0.005) return "Improving"
-        if (slope < -0.005) return "Declining"
-        return "Stable"
+        if (slope > 0.005) return qsTr("Improving")
+        if (slope < -0.005) return qsTr("Declining")
+        return qsTr("Stable")
     }
     function trendColor(slope) {
         if (slope > 0.005) return cGreen
@@ -95,23 +95,23 @@ Rectangle {
         return "—"
     }
     function fatigueLevel(fa) {
-        if (!fa || !fa.available || !fa.scoreTrendAvailable) return "N/A"
-        if (fa.overallPattern === "NoFatigueDetected") return "None"
+        if (!fa || !fa.available || !fa.scoreTrendAvailable) return "N/A"   // LOC-KEY: English by design, translated by trVal()
+        if (fa.overallPattern === "NoFatigueDetected") return "None"   // LOC-KEY: English by design, translated by trVal()
         var i = fa.fatigueIndex
-        return i < 0.35 ? "Mild" : (i < 0.55 ? "Moderate" : "High")
+        return i < 0.35 ? "Mild" : (i < 0.55 ? "Moderate" : "High")   // LOC-KEY: English by design, translated by trVal()
     }
     function fatigueColor(fa) {
         var l = fatigueLevel(fa)
         return l === "None" ? cGreen : (l === "Mild" ? cAmber : (l === "Moderate" ? "#e07a30" : (l === "High" ? cRed : cSub)))
     }
     function recoveryRating(ra) {
-        if (!ra || !ra.overall || !ra.overall.available) return "N/A"
+        if (!ra || !ra.overall || !ra.overall.available) return "N/A"   // LOC-KEY: English by design, translated by trVal()
         switch (ra.overall.pattern) {
         case "GoodRecovery":          return "Good"
         case "SlowRecovery":          return "Slow"
         case "RepeatedErrorPattern":  return "Clustered errors"
         case "OverCorrectionPattern": return "Over-correcting"
-        default:                      return "N/A"
+        default:                      return "N/A"   // LOC-KEY: English by design, translated by trVal()
         }
     }
     function recoveryColor(ra) {
@@ -122,25 +122,54 @@ Rectangle {
         if (!ex) return "—"
         var x = ex.horizontalBias, y = ex.verticalBias
         var r = Math.sqrt(x * x + y * y)
-        if (r < 1.0) return "Centred"
+        if (r < 1.0) return "Centred"   // LOC-KEY: English by design, translated by trVal()
         var ang = Math.atan2(y, x) * 180 / Math.PI
         if (ang < 0) ang += 360
         var dirs = ["Right", "High-right", "High", "High-left", "Left", "Low-left", "Low", "Low-right"]
         return dirs[Math.round(ang / 45) % 8]
     }
     function trainingFocus(tp) {
-        if (!tp || tp.length === 0) return "None detected"
+        if (!tp || tp.length === 0) return "None detected"   // LOC-KEY: English by design, translated by trVal()
         return tp[0].priority
+    }
+    // LOC-REPORT-001 / QML-LANG-001: the functions above return ENGLISH words
+    // because the colour logic compares them; they are translated only here,
+    // for display. Engine-supplied text (the priority wording) passes through.
+    function trVal(v) {
+        switch (v) {
+        case "N/A":              return qsTr("N/A")
+        case "None":             return qsTr("None")
+        case "Mild":             return qsTr("Mild")
+        case "Moderate":         return qsTr("Moderate")
+        case "High":             return qsTr("High")
+        case "Good":             return qsTr("Good")
+        case "Slow":             return qsTr("Slow")
+        case "Clustered errors": return qsTr("Clustered errors")
+        case "Over-correcting":  return qsTr("Over-correcting")
+        case "Centred":          return qsTr("Centred")
+        case "Right":            return qsTr("Right")
+        case "High-right":       return qsTr("High-right")
+        case "High-left":        return qsTr("High-left")
+        case "Left":             return qsTr("Left")
+        case "Low-left":         return qsTr("Low-left")
+        case "Low":              return qsTr("Low")
+        case "Low-right":        return qsTr("Low-right")
+        case "None detected":    return qsTr("None detected")
+        case "KNEELING":         return qsTr("KNEELING")
+        case "PRONE":            return qsTr("PRONE")
+        case "STANDING":         return qsTr("STANDING")
+        }
+        return v
     }
     function insightTiles() {
         var r = rep
         if (!r || !r.valid) return []
         return [
-            { label: "Main limiting position", value: limitingPosition(r.positionAnalysis), color: cText },
-            { label: "Fatigue level",          value: fatigueLevel(r.fatigueAnalysis),      color: fatigueColor(r.fatigueAnalysis) },
-            { label: "Recovery rating",        value: recoveryRating(r.recoveryAnalysis),   color: recoveryColor(r.recoveryAnalysis) },
-            { label: "Dominant error dir.",    value: errorDirection(r.executiveSummary),   color: cText },
-            { label: "Main training focus",    value: trainingFocus(r.trainingPriorities),  color: cAccent }
+            { label: qsTr("Main limiting position"), value: trVal(limitingPosition(r.positionAnalysis)), color: cText },
+            { label: qsTr("Fatigue level"),          value: trVal(fatigueLevel(r.fatigueAnalysis)),      color: fatigueColor(r.fatigueAnalysis) },
+            { label: qsTr("Recovery rating"),        value: trVal(recoveryRating(r.recoveryAnalysis)),   color: recoveryColor(r.recoveryAnalysis) },
+            { label: qsTr("Dominant error dir."),    value: trVal(errorDirection(r.executiveSummary)),   color: cText },
+            { label: qsTr("Main training focus"),    value: trVal(trainingFocus(r.trainingPriorities)),  color: cAccent }
         ]
     }
 
@@ -165,7 +194,7 @@ Rectangle {
             for (var m = 0; m < order.length; m++)
                 list.push({ title: order[m], shots: groups[order[m]], stat: statFor[order[m]] })
         var ex = rep ? rep.executiveSummary : null
-        list.push({ title: "All Shots", shots: all,
+        list.push({ title: qsTr("All Shots"), shots: all,
                     stat: ex ? { avg: ex.averageScore, sd: ex.scoreStandardDeviation, mr: ex.groupRadius } : null })
         dash.targets = list
         rebuildDist(); rebuildTrend()
@@ -265,7 +294,7 @@ Rectangle {
                                     Text {
                                         anchors.horizontalCenter: parent.horizontalCenter
                                         color: cSub; font.pixelSize: 12; font.family: fam
-                                        text: modelData.stat ? ("Avg " + dash.f(modelData.stat.avg, 2) + "   SD " + dash.f(modelData.stat.sd, 2) + "   MR " + dash.f(modelData.stat.mr, 1) + "mm") : ""
+                                        text: modelData.stat ? qsTr("Avg %1   SD %2   MR %3mm").arg(dash.f(modelData.stat.avg, 2)).arg(dash.f(modelData.stat.sd, 2)).arg(dash.f(modelData.stat.mr, 1)) : ""
                                     }
                                 }
                             }
@@ -304,7 +333,7 @@ Rectangle {
                             PieSeries { id: distPie; holeSize: 0.55; size: 0.9 }
                             Text {
                                 anchors.centerIn: parent
-                                text: (dash.reportAvailable && dash.rep.executiveSummary !== undefined ? dash.f(dash.rep.executiveSummary.competitionShotCount, 0) : "—") + "\nShots"
+                                text: (dash.reportAvailable && dash.rep.executiveSummary !== undefined ? dash.f(dash.rep.executiveSummary.competitionShotCount, 0) : "—") + "\n" + qsTr("Shots")
                                 horizontalAlignment: Text.AlignHCenter; color: dash.cText; font.bold: true; font.pixelSize: 16; font.family: dash.fam
                             }
                             Component.onCompleted: dash.rebuildDist()
@@ -326,8 +355,8 @@ Rectangle {
                             margins.top: 0; margins.bottom: 0; margins.left: 0; margins.right: 0
                             ValueAxis { id: axX; min: 1; max: 10; labelFormat: "%d" }
                             ValueAxis { id: axY; min: 8; max: 11; labelFormat: "%.1f" }
-                            LineSeries { id: scoreSeries; name: "Shot Score"; axisX: axX; axisY: axY; color: "#2f6fd0"; width: 2 }
-                            LineSeries { id: rollSeries; name: "Rolling Avg (5)"; axisX: axX; axisY: axY; color: dash.cAccent; width: 2 }
+                            LineSeries { id: scoreSeries; name: qsTr("Shot Score"); axisX: axX; axisY: axY; color: "#2f6fd0"; width: 2 }
+                            LineSeries { id: rollSeries; name: qsTr("Rolling Avg (5)"); axisX: axX; axisY: axY; color: dash.cAccent; width: 2 }
                             Component.onCompleted: dash.rebuildTrend()
                         }
                     }
@@ -365,7 +394,7 @@ Rectangle {
                     Row {
                         width: parent.width
                         Repeater {
-                            model: ["Position","Shots","Total","Avg","Best","Worst","SD","MR (mm)","Diameter","1st Half","2nd Half","Slope","Trend"]
+                            model: [qsTr("Position"),qsTr("Shots"),qsTr("Total"),qsTr("Avg"),qsTr("Best"),qsTr("Worst"),qsTr("SD"),qsTr("MR (mm)"),qsTr("Diameter"),qsTr("1st Half"),qsTr("2nd Half"),qsTr("Slope"),qsTr("Trend")]
                             delegate: Text { width: (index === 0) ? posCol.width * 0.12 : posCol.width * 0.073; text: modelData; color: dash.cSub; font.bold: true; font.pixelSize: 12; font.family: dash.fam }
                         }
                     }
@@ -401,16 +430,16 @@ Rectangle {
         var e = rep ? rep.executiveSummary : null
         if (!e) return []
         return [
-            { k: "Total Shots",       v: f(e.competitionShotCount, 0) },
-            { k: "Total Score",       v: f(e.totalScore, 1) },
-            { k: "Average Score",     v: f(e.averageScore, 2) },
-            { k: "Best Score",        v: f(e.bestShot, 1) },
-            { k: "Worst Score",       v: f(e.worstShot, 1) },
-            { k: "Score SD",          v: f(e.scoreStandardDeviation, 2) },
-            { k: "Group Mean Radius", v: f(e.groupRadius, 1) + " mm" },
-            { k: "Group Diameter",    v: f(e.groupDiameter, 1) + " mm" },
-            { k: "Horizontal SD",     v: f(e.horizontalSD, 1) + " mm" },
-            { k: "Vertical SD",       v: f(e.verticalSD, 1) + " mm" }
+            { k: qsTr("Total Shots"),       v: f(e.competitionShotCount, 0) },
+            { k: qsTr("Total Score"),       v: f(e.totalScore, 1) },
+            { k: qsTr("Average Score"),     v: f(e.averageScore, 2) },
+            { k: qsTr("Best Score"),        v: f(e.bestShot, 1) },
+            { k: qsTr("Worst Score"),       v: f(e.worstShot, 1) },
+            { k: qsTr("Score SD"),          v: f(e.scoreStandardDeviation, 2) },
+            { k: qsTr("Group Mean Radius"), v: f(e.groupRadius, 1) + " mm" },
+            { k: qsTr("Group Diameter"),    v: f(e.groupDiameter, 1) + " mm" },
+            { k: qsTr("Horizontal SD"),     v: f(e.horizontalSD, 1) + " mm" },
+            { k: qsTr("Vertical SD"),       v: f(e.verticalSD, 1) + " mm" }
         ]
     }
 }

@@ -374,3 +374,14 @@ controller-level double-crash test and a hand run (Restzeit 24:37 → 24:28,
 shot 4 accepted at once). reliability **2840 / 0**, qml 299, finals 240,
 finals10m 229, training 568. Cosmetic leftovers recorded in
 `docs/seta/DSB-2026-TEST-MATRIX.md`.
+
+**2026-11-15 — P0 WP1: reports localised.** The printed and on-screen reports
+(Finals, 10 m Final, Coach, Training Lab, Match Summary) now translate at
+display time (LOC-REPORT-001); 651 new German entries, every product string
+finished. New gate `tests/docs/check_localisation.py` **240 / 0** stops an
+untranslated or un-catalogued string, a bare report literal, a comparison on
+translated text and a Windows-locale report date. Training Lab and 10 m Final
+reports rendered EN + DE without clipping; 3P Final / Coach / Summary need a
+human visual check. Engine and controller sentences stay English by design;
+decimal comma is an open SETA decision. reliability **2844 / 0**, qml 299,
+finals 240, finals10m 229, training 568, evidence 903, manuals 1458.

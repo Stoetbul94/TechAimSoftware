@@ -6,6 +6,16 @@ import QtQuick 2.15
 // Measured language only — no diagnostic-cause claims, no ranking wording.
 Item {
     id: view
+    // LOC-REPORT-001: the controller supplies English position names; the
+    // report translates them at display time (unknown names unchanged).
+    function trPos(n) {
+        switch (n) {
+        case "Kneeling": return qsTr("Kneeling")
+        case "Prone":    return qsTr("Prone")
+        case "Standing": return qsTr("Standing")
+        }
+        return n || ""
+    }
     property var ctl: null                 // CALLDIAG
     signal exported(string path)
     signal failed(string reason)
@@ -38,7 +48,7 @@ Item {
     property string _path: ""
 
     function exportPdf(path) {
-        if (!ctl) { failed("No Call & Diagnose session"); return }
+        if (!ctl) { failed(qsTr("No Call & Diagnose session")); return }
         view.model = ctl.reportModel()
         view.shots = view.model.shots ? view.model.shots : []
         _path = path
@@ -96,15 +106,15 @@ Item {
                     anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; spacing: 2
                     Repeater {
                         model: [
-                            { l: "Athlete",  v: view.model.athlete || "—" },
+                            { l: qsTr("Athlete"),  v: view.model.athlete || "—" },
                             // CD-REPORT-002: name the discipline (from the
                             // controller), then the layout only where it adds
                             // something. "Single position" alone told the
                             // reader nothing about what was shot.
-                            { l: "Discipline", v: (view.model.discipline || "—")
-                                                  + (view.model.threePositions ? " (K/P/S)" : "") },
-                            { l: "Date",     v: (view.model.createdAtIso || "").substring(0, 10) },
-                            { l: "Session",  v: (view.model.sessionId || "").substring(0, 8) }
+                            { l: qsTr("Discipline"), v: (view.model.discipline || "—")
+                                                  + (view.model.threePositions ? qsTr(" (K/P/S)") : "") },
+                            { l: qsTr("Date"),     v: (view.model.createdAtIso || "").substring(0, 10) },
+                            { l: qsTr("Session"),  v: (view.model.sessionId || "").substring(0, 8) }
                         ]
                         delegate: Row { anchors.right: parent.right; spacing: 6
                             Text { text: modelData.l + ":"; color: view.sub; font.pixelSize: 9 }
@@ -128,7 +138,7 @@ Item {
                              + (PRODUCT.tagline !== "" ? "  ·  " + PRODUCT.tagline : "")
                        color: view.sub; font.pixelSize: 9; anchors.verticalCenter: parent.verticalCenter } }
             Text { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
-                   text: "Page " + pageNo + " of " + view.totalPages; color: view.sub; font.pixelSize: 9 }
+                   text: qsTr("Page %1 of %2").arg(pageNo).arg(view.totalPages); color: view.sub; font.pixelSize: 9 }
         }
     }
 
@@ -170,16 +180,16 @@ Item {
             width: parent.width; spacing: 8
             Text { text: qsTr("SESSION OVERVIEW"); color: view.ink; font.pixelSize: 15; font.bold: true }
             Item { height: 4; width: 1 }
-            KV { k: "Athlete";        v: view.model.athlete || "—" }
-            KV { k: "Date / time";    v: view.model.createdAtIso || "—" }
-            KV { k: "Session ID";     v: view.model.sessionId || "—" }
-            KV { k: "Operating mode"; v: view.model.operatingMode || "—" }
-            KV { k: "Technical focus"; v: view.model.focus || "—" }
-            KV { k: "Programme";      v: (view.model.shotCount || 0) + " called shots"
-                                         + (view.model.threePositions ? " per position" : "") }
-            KV { k: "Called shots";   v: "" + (view.model.calledShots || 0) }
-            KV { k: "Sighters";       v: "" + (view.model.sighters || 0) + " (excluded from results)" }
-            KV { k: "Duration";       v: {
+            KV { k: qsTr("Athlete");        v: view.model.athlete || "—" }
+            KV { k: qsTr("Date / time");    v: view.model.createdAtIso || "—" }
+            KV { k: qsTr("Session ID");     v: view.model.sessionId || "—" }
+            KV { k: qsTr("Operating mode"); v: view.model.operatingMode || "—" }
+            KV { k: qsTr("Technical focus"); v: view.model.focus || "—" }
+            KV { k: qsTr("Programme");      v: (view.model.threePositions ? qsTr("%1 called shots per position") : qsTr("%1 called shots"))
+                                         .arg(view.model.shotCount || 0) }
+            KV { k: qsTr("Called shots");   v: "" + (view.model.calledShots || 0) }
+            KV { k: qsTr("Sighters");       v: qsTr("%1 (excluded from results)").arg(view.model.sighters || 0) }
+            KV { k: qsTr("Duration");       v: {
                     var d = view.model.durationSec || 0
                     return Math.floor(d / 60) + " min " + ("0" + (d % 60)).slice(-2) + " s"
                 } }
@@ -191,15 +201,15 @@ Item {
                 Repeater {
                     model: {
                         var s = view.model.stats || {}
-                        if (s.count === undefined || s.count === 0) return [{ l: "Called shots", v: "0" }]
+                        if (s.count === undefined || s.count === 0) return [{ l: qsTr("Called shots"), v: "0" }]
                         return [
-                            { l: "Average error", v: Number(s.averageError).toFixed(1) + " mm" },
-                            { l: "Median error",  v: Number(s.medianError).toFixed(1) + " mm" },
-                            { l: "Best call",     v: Number(s.smallestError).toFixed(1) + " mm" },
-                            { l: "Largest",       v: Number(s.largestError).toFixed(1) + " mm" },
-                            { l: "Consistency SD", v: Number(s.errorStdDev).toFixed(2) },
-                            { l: "Direction bias", v: Math.abs(s.biasX).toFixed(1) + (s.biasX >= 0 ? " R" : " L")
-                                                     + " · " + Math.abs(s.biasY).toFixed(1) + (s.biasY >= 0 ? " Hi" : " Lo") }
+                            { l: qsTr("Average error"), v: Number(s.averageError).toFixed(1) + " mm" },
+                            { l: qsTr("Median error"),  v: Number(s.medianError).toFixed(1) + " mm" },
+                            { l: qsTr("Best call"),     v: Number(s.smallestError).toFixed(1) + " mm" },
+                            { l: qsTr("Largest"),       v: Number(s.largestError).toFixed(1) + " mm" },
+                            { l: qsTr("Consistency SD"), v: Number(s.errorStdDev).toFixed(2) },
+                            { l: qsTr("Direction bias"), v: Math.abs(s.biasX).toFixed(1) + (s.biasX >= 0 ? qsTr(" R") : qsTr(" L"))
+                                                     + " · " + Math.abs(s.biasY).toFixed(1) + (s.biasY >= 0 ? qsTr(" Hi") : qsTr(" Lo")) }
                         ]
                     }
                     delegate: Column { width: 210; spacing: 1
@@ -214,12 +224,12 @@ Item {
                     var i = view.model.insights || {}
                     if (!i.hasData) return []
                     var m = []
-                    m.push({ t: "Typical call accuracy", b: (i.typicalText || "") + "  " + (i.withinText || "") })
-                    m.push({ t: "Average vs typical", b: i.averageVsMedian || "" })
-                    m.push({ t: "Directional bias", b: (i.biasSentences || []).join("  ") + "  " + (i.biasCaveat || "") })
-                    m.push({ t: "Call consistency", b: i.consistencyText || "" })
-                    m.push({ t: "Trend", b: i.trendText || "" })
-                    m.push({ t: "Awareness vs result", b: i.awarenessText || "" })
+                    m.push({ t: qsTr("Typical call accuracy"), b: (i.typicalText || "") + "  " + (i.withinText || "") })
+                    m.push({ t: qsTr("Average vs typical"), b: i.averageVsMedian || "" })
+                    m.push({ t: qsTr("Directional bias"), b: (i.biasSentences || []).join("  ") + "  " + (i.biasCaveat || "") })
+                    m.push({ t: qsTr("Call consistency"), b: i.consistencyText || "" })
+                    m.push({ t: qsTr("Trend"), b: i.trendText || "" })
+                    m.push({ t: qsTr("Awareness vs result"), b: i.awarenessText || "" })
                     return m
                 }
                 delegate: Column { width: 700; spacing: 1
@@ -230,7 +240,7 @@ Item {
             Text { visible: view.model.insights !== undefined && (view.model.insights.reviewShots || []).length > 0
                    text: qsTr("SHOTS TO REVIEW"); color: view.sub; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2 }
             Repeater { model: (view.model.insights ? (view.model.insights.reviewShots || []) : [])
-                Text { width: 700; wrapMode: Text.WordWrap; text: "· Shot " + modelData.shotNumber + ": " + modelData.text
+                Text { width: 700; wrapMode: Text.WordWrap; text: qsTr("· Shot %1: %2").arg(modelData.shotNumber).arg(modelData.text)
                        color: view.ink; font.pixelSize: 11 } }
         }
     }
@@ -252,7 +262,7 @@ Item {
                 Repeater {
                     model: view.shots
                     Row { spacing: 8; property var s: modelData
-                        Text { text: (s.positionName ? s.positionName.substring(0,1) + " " : "") + "#" + s.shotNumber
+                        Text { text: (s.positionName ? view.trPos(s.positionName).substring(0,1) + " " : "") + "#" + s.shotNumber
                                color: view.sub; font.pixelSize: 9; width: 46 }
                         Rectangle { width: 480; height: 11; color: "#EEEFF2"; anchors.verticalCenter: parent.verticalCenter
                             Rectangle { height: parent.height; color: view.red; radius: 2
@@ -267,10 +277,11 @@ Item {
                 width: 700; wrapMode: Text.WordWrap; color: view.ink; font.pixelSize: 11
                 text: {
                     var s = view.model.stats || {}
-                    if (s.count === undefined || s.count === 0) return "No called shots."
-                    return "Mean call offset: " + Math.abs(s.biasX).toFixed(1) + " mm " + (s.biasX >= 0 ? "right" : "left")
-                         + ", " + Math.abs(s.biasY).toFixed(1) + " mm " + (s.biasY >= 0 ? "high" : "low")
-                         + ".  Average |X| " + Number(s.avgAbsX).toFixed(1) + " mm, average |Y| " + Number(s.avgAbsY).toFixed(1) + " mm."
+                    if (s.count === undefined || s.count === 0) return qsTr("No called shots.")
+                    return qsTr("Mean call offset: %1 mm %2, %3 mm %4.  Average |X| %5 mm, average |Y| %6 mm.")
+                         .arg(Math.abs(s.biasX).toFixed(1)).arg(s.biasX >= 0 ? qsTr("right") : qsTr("left"))
+                         .arg(Math.abs(s.biasY).toFixed(1)).arg(s.biasY >= 0 ? qsTr("high") : qsTr("low"))
+                         .arg(Number(s.avgAbsX).toFixed(1)).arg(Number(s.avgAbsY).toFixed(1))
                 }
             }
             // 3P position breakdown
@@ -280,8 +291,9 @@ Item {
                 Repeater {
                     model: view.model.byPosition ? view.model.byPosition : []
                     Text { width: 700; color: view.ink; font.pixelSize: 11
-                           text: (modelData.positionName || "") + ": " + (modelData.count || 0) + " calls · avg "
-                                 + (modelData.count > 0 ? Number(modelData.averageError).toFixed(1) + " mm" : "—") }
+                           text: qsTr("%1: %2 calls · avg %3").arg(view.trPos(modelData.positionName))
+                                 .arg(modelData.count || 0)
+                                 .arg(modelData.count > 0 ? Number(modelData.averageError).toFixed(1) + " mm" : "—") }
                 }
             }
         }
@@ -297,7 +309,7 @@ Item {
             property var pageShots: view._shotPage(index)
             Column {
                 width: parent.width; spacing: 8
-                Text { text: "CALLED vs ACTUAL — shots " + (index * 6 + 1) + "–" + (index * 6 + Math.max(1, pageShots.length))
+                Text { text: qsTr("CALLED vs ACTUAL — shots %1–%2").arg(index * 6 + 1).arg(index * 6 + Math.max(1, pageShots.length))
                        color: view.ink; font.pixelSize: 15; font.bold: true }
                 Grid {
                     columns: 3; columnSpacing: 16; rowSpacing: 14; width: parent.width
@@ -314,12 +326,12 @@ Item {
                         Row { spacing: 10; property var s: modelData
                             MiniTarget { s: parent.s }
                             Column { spacing: 1; width: 120
-                                Text { text: (s.positionName ? s.positionName + " · " : "") + "Shot " + s.shotNumber
+                                Text { text: (s.positionName ? view.trPos(s.positionName) + " · " : "") + qsTr("Shot %1").arg(s.shotNumber)
                                        color: view.ink; font.pixelSize: 11; font.bold: true }
-                                Text { text: "Score " + Number(s.actualScore).toFixed(1); color: view.sub; font.pixelSize: 10 }
-                                Text { text: "Call error " + Number(s.errorMm).toFixed(1) + " mm"; color: view.ink; font.pixelSize: 10 }
-                                Text { text: Math.abs(s.errorXMm).toFixed(1) + (s.errorXMm >= 0 ? " R" : " L")
-                                             + " · " + Math.abs(s.errorYMm).toFixed(1) + (s.errorYMm >= 0 ? " Hi" : " Lo")
+                                Text { text: qsTr("Score %1").arg(Number(s.actualScore).toFixed(1)); color: view.sub; font.pixelSize: 10 }
+                                Text { text: qsTr("Call error %1 mm").arg(Number(s.errorMm).toFixed(1)); color: view.ink; font.pixelSize: 10 }
+                                Text { text: Math.abs(s.errorXMm).toFixed(1) + (s.errorXMm >= 0 ? qsTr(" R") : qsTr(" L"))
+                                             + " · " + Math.abs(s.errorYMm).toFixed(1) + (s.errorYMm >= 0 ? qsTr(" Hi") : qsTr(" Lo"))
                                        color: view.sub; font.pixelSize: 10; font.family: "Consolas" }
                                 Text { visible: s.note && s.note.length > 0; text: s.note || ""; color: view.sub; font.pixelSize: 9
                                        width: 120; wrapMode: Text.WordWrap } }
@@ -342,13 +354,13 @@ Item {
         Column {
             width: parent.width; spacing: 8
             Text { text: qsTr("NOTES & OBSERVATIONS"); color: view.ink; font.pixelSize: 15; font.bold: true }
-            Text { visible: (view.model.sessionNote || "").length > 0; text: "Session note: " + (view.model.sessionNote || "")
+            Text { visible: (view.model.sessionNote || "").length > 0; text: qsTr("Session note: %1").arg(view.model.sessionNote || "")
                    color: view.ink; font.pixelSize: 11; width: 700; wrapMode: Text.WordWrap }
             Repeater {
                 model: view.shots
                 Column { width: 700; spacing: 1; visible: modelData.note && modelData.note.length > 0
                     property var s: modelData
-                    Text { text: (s.positionName ? s.positionName + " · " : "") + "Shot " + s.shotNumber
+                    Text { text: (s.positionName ? view.trPos(s.positionName) + " · " : "") + qsTr("Shot %1").arg(s.shotNumber)
                            color: view.sub; font.pixelSize: 10; font.bold: true }
                     Text { text: s.note || ""; color: view.ink; font.pixelSize: 11; width: 700; wrapMode: Text.WordWrap } }
             }

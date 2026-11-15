@@ -133,7 +133,7 @@ Item {
                     }
                     Text {
                         id:event_Date
-                        text:": " +new Date().toLocaleString(Qt.locale(""), "ddd yyyy-MM-dd")
+                        text:": " +new Date().toLocaleString(window.uiLocale(), "ddd yyyy-MM-dd")
                         font.bold: true
                     }
                 }
@@ -151,7 +151,7 @@ Item {
                     }
                     Text {
                         id:event_Time
-                        text:": "+ new Date().toLocaleString(Qt.locale(""), "hh:mm:ss")
+                        text:": "+ new Date().toLocaleString(window.uiLocale(), "hh:mm:ss")
                         font.bold: true
                     }
                 }
@@ -166,7 +166,7 @@ Item {
                     spacing: 2
 
                     Text {
-                        text: "Total Shots"//14 char
+                        text: qsTr("Total Shots")//14 char
                         font.bold: true
                         visible: isMatchSummary
                     }
@@ -218,12 +218,12 @@ Item {
                 Row {
                     spacing: 2
                     Text {
-                        text:"Total Time" //14 char
+                        text: qsTr("Total Time") //14 char
                         font.bold: true
                     }
                     Text {
                         id:total_time_shot
-                        text: ": "+converSecondToMins(totalTime) + " Mins"
+                        text: ": "+converSecondToMins(totalTime) + qsTr(" Mins")
 //                        text: isSaveGame ? ": NA" : ": "+converSecondToMins(totalTime) + " Mins"
 //                        text: ": " + totalTime + " Sec"/*converSecondToMins(totalTime) + " Mins"*/
                         font.bold: true
@@ -375,7 +375,7 @@ Item {
                     }
                     Text {
                         id:srName
-                        text: ": "+seriesIndex+ " Group: "+MODREADER.getGroup(seriesIndex-1) + "MPI: "+MODREADER.getXMPI(seriesIndex)+","+MODREADER.getYMPI(seriesIndex)
+                        text: qsTr(": %1 Group: %2 MPI: %3,%4").arg(seriesIndex).arg(MODREADER.getGroup(seriesIndex-1)).arg(MODREADER.getXMPI(seriesIndex)).arg(MODREADER.getYMPI(seriesIndex))
                         font.bold: true
                     }
                 }
@@ -456,7 +456,7 @@ Item {
         }
 
         function refreshSeriesData() {
-            srName.text = ": "+seriesIndex+ "    Group: "+MODREADER.getGroup(seriesIndex-1) + " mm    MPI: "+MODREADER.getXMPI(seriesIndex).toFixed(2)+", "+MODREADER.getYMPI(seriesIndex).toFixed(2)
+            srName.text = qsTr(": %1    Group: %2 mm    MPI: %3, %4").arg(seriesIndex).arg(MODREADER.getGroup(seriesIndex-1)).arg(MODREADER.getXMPI(seriesIndex).toFixed(2)).arg(MODREADER.getYMPI(seriesIndex).toFixed(2))
         }
     }
 
@@ -524,7 +524,7 @@ Item {
             if( ( (i+1) % 10 == 0) && (i>0) )
             {
                 var seriesId = Math.floor((i+1)/10)
-                var seriesText = "Series " + seriesId*1
+                var seriesText = qsTr("Series %1").arg(seriesId*1)
                 seriesText += "(" + (seriesScore*1).toFixed(1) +") , "
                 formatText = formatText + seriesText
                 seriesScore = 0
@@ -532,7 +532,7 @@ Item {
             if( (i === (globalModelOfData.count-1)) && ( (i+1)%10 != 0) )
             {
                 var seriesIdNum = Math.floor((i+1)/10)
-                var seriesScoreText = "Series " + seriesIdNum*1
+                var seriesScoreText = qsTr("Series %1").arg(seriesIdNum*1)
                 seriesScoreText += "(" + (seriesScore*1).toFixed(1) +"), "
                 formatText = formatText + seriesScoreText
                 seriesScore = 0

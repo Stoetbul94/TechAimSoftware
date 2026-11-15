@@ -52,7 +52,7 @@ Rectangle {
     // Discipline derived from the report's own positions (single source).
     function positionsPresent(){ var out=[]; if(rep&&rep.positionAnalysis&&rep.positionAnalysis.positions) for(var i=0;i<rep.positionAnalysis.positions.length;i++) out.push(rep.positionAnalysis.positions[i].position); return out }
     function specKey(){ var p=positionsPresent(); if(p.indexOf("airPistol")>=0)return "airpistol10"; if(p.indexOf("airRifle")>=0)return "airrifle10"; return "rifle50" }
-    function disciplineLabel(){ var p=positionsPresent(); if(p.indexOf("airPistol")>=0)return "Air Pistol (10m)"; if(p.indexOf("airRifle")>=0)return "Air Rifle (10m)"; if(p.indexOf("kneeling")>=0&&p.indexOf("standing")>=0&&p.indexOf("prone")>=0)return "3-Position Rifle (50m)"; if(p.indexOf("prone")>=0&&p.length===1)return "Prone Rifle (50m)"; return "50m Rifle" }
+    function disciplineLabel(){ var p=positionsPresent(); if(p.indexOf("airPistol")>=0)return qsTr("Air Pistol (10m)"); if(p.indexOf("airRifle")>=0)return qsTr("Air Rifle (10m)"); if(p.indexOf("kneeling")>=0&&p.indexOf("standing")>=0&&p.indexOf("prone")>=0)return qsTr("3-Position Rifle (50m)"); if(p.indexOf("prone")>=0&&p.length===1)return qsTr("Prone Rifle (50m)"); return qsTr("50m Rifle") }
     function recoveryLabel(p){ switch(p){case "GoodRecovery":return "Recovers well after mistakes";case "SlowRecovery":return "Slow to recover after mistakes";case "RepeatedErrorPattern":return "Mistakes tend to cluster together";case "OverCorrectionPattern":return "Over-corrects after mistakes";default:return "Not enough poor shots to assess"} }
     function fatigueLabel(p){ switch(p){case "NoFatigueDetected":return "No fatigue signal — held up well";case "GradualDecline":return "Gradual decline through the session";case "LateMatchDrop":return "Score dropped late in the match";case "IncreasingDispersion":return "Group opened up over the session";case "TimingSlowdown":return "Shot timing slowed late";case "FatigueCompensation":return "Working harder late to hold the score";case "PositionSpecificFatigue":return "Fatigue localised to one position";default:return "Not enough data to assess fatigue"} }
 
@@ -62,7 +62,7 @@ Rectangle {
         for(var i=0;i<all.length;i++){ var k=all[i].position; if(!groups[k]){groups[k]=[];order.push(k)} groups[k].push(all[i]) }
         var list=[]
         if(order.length>1) for(var m=0;m<order.length;m++) list.push({title:order[m], shots:groups[order[m]]})
-        list.push({title:"All", shots:all})
+        list.push({title:qsTr("All"), shots:all})
         pg.targets=list
         rebuildTrend()
     }
@@ -106,7 +106,7 @@ Rectangle {
     Timer { id: flashTimer; interval: 2000; onTriggered: savedFlash.visible=false }
 
     // ---- PDF export (grabs Print-view sections; no analysis) ----
-    function athleteName(){ return (typeof userName!=="undefined"&&userName)?userName:"Athlete" }
+    function athleteName(){ return (typeof userName!=="undefined"&&userName)?userName:qsTr("Athlete") }
     function exportPdf(){
         if(!(rep && rep.valid)) return
         var secs=[]
@@ -180,11 +180,11 @@ Rectangle {
                     // ---- header ----
                     ReportHeader {
                         width: parent.width
-                        reportTitle: "Coach Report"
+                        reportTitle: qsTr("Coach Report")
                         athlete: pg.athleteName()
                         discipline: pg.disciplineLabel()
-                        sessionType: "Match"
-                        dateText: Qt.formatDateTime(new Date(),"d MMM yyyy")
+                        sessionType: qsTr("Match")
+                        dateText: new Date().toLocaleString(window.uiLocale(), "d MMM yyyy")
                         timeText: Qt.formatDateTime(new Date(),"HH:mm")
                     }
 
@@ -236,12 +236,12 @@ Rectangle {
                             model: {
                                 var d = pg.rep ? pg.rep.shotDistribution : null; if(!d) return []
                                 return [
-                                    {l:"Perfect ≥10.8", c:d.perfectCount, p:d.perfectPct, col:"#2e7d46"},
-                                    {l:"Excellent 10.5–10.7", c:d.excellentCount, p:d.excellentPct, col:"#5bc07e"},
-                                    {l:"Good 10.2–10.4", c:d.goodCount, p:d.goodPct, col:"#b9891b"},
-                                    {l:"Acceptable 10.0–10.1", c:d.acceptableCount, p:d.acceptablePct, col:"#d0a83a"},
-                                    {l:"Recovery 9.5–9.9", c:d.recoveryCount, p:d.recoveryPct, col:"#d1762e"},
-                                    {l:"Poor <9.5", c:d.poorCount, p:d.poorPct, col:"#c0392b"}
+                                    {l:qsTr("Perfect ≥10.8"), c:d.perfectCount, p:d.perfectPct, col:"#2e7d46"},
+                                    {l:qsTr("Excellent 10.5–10.7"), c:d.excellentCount, p:d.excellentPct, col:"#5bc07e"},
+                                    {l:qsTr("Good 10.2–10.4"), c:d.goodCount, p:d.goodPct, col:"#b9891b"},
+                                    {l:qsTr("Acceptable 10.0–10.1"), c:d.acceptableCount, p:d.acceptablePct, col:"#d0a83a"},
+                                    {l:qsTr("Recovery 9.5–9.9"), c:d.recoveryCount, p:d.recoveryPct, col:"#d1762e"},
+                                    {l:qsTr("Poor <9.5"), c:d.poorCount, p:d.poorPct, col:"#c0392b"}
                                 ]
                             }
                             delegate: Row {
@@ -266,8 +266,8 @@ Rectangle {
                             margins.top: 0; margins.bottom: 0; margins.left: 0; margins.right: 0
                             ValueAxis { id: pAxX; min: 1; max: 10; labelFormat: "%d" }
                             ValueAxis { id: pAxY; min: 8; max: 11; labelFormat: "%.1f" }
-                            LineSeries { id: pScore; name: "Shot Score"; axisX: pAxX; axisY: pAxY; color: "#2f6fd0"; width: 2 }
-                            LineSeries { id: pRoll; name: "Rolling Avg (5)"; axisX: pAxX; axisY: pAxY; color: pg.cAccent; width: 2 }
+                            LineSeries { id: pScore; name: qsTr("Shot Score"); axisX: pAxX; axisY: pAxY; color: "#2f6fd0"; width: 2 }
+                            LineSeries { id: pRoll; name: qsTr("Rolling Avg (5)"); axisX: pAxX; axisY: pAxY; color: pg.cAccent; width: 2 }
                             Component.onCompleted: pg.rebuildTrend()
                         }
                     }
@@ -280,7 +280,7 @@ Rectangle {
                         Row {
                             width: parent.width
                             Repeater {
-                                model: ["Position","Shots","Total","Avg","Best","Worst","SD","MR mm","Ø mm"]
+                                model: [qsTr("Position"),qsTr("Shots"),qsTr("Total"),qsTr("Avg"),qsTr("Best"),qsTr("Worst"),qsTr("SD"),qsTr("MR mm"),qsTr("Ø mm")]
                                 delegate: Text { width: index===0?parent.width*0.2:parent.width*0.1; text: modelData; color: pg.cSub; font.bold: true; font.pixelSize: 11; font.family: pg.fam }
                             }
                         }
@@ -307,7 +307,7 @@ Rectangle {
                         property var ra: pg.rep ? pg.rep.recoveryAnalysis : null
                         SectionTitle { width: parent.width; title: qsTr("Recovery Analysis") }
                         Text { text: pg.recoveryLabel(parent.ra?parent.ra.overall.pattern:""); color: pg.cInk; font.bold: true; font.pixelSize: 13; font.family: pg.fam }
-                        Text { visible: parent.ra&&parent.ra.overall.available; text: "Recovery rate "+pg.pct(parent.ra?parent.ra.overall.badShotRecoveryRate:0)+"   ·   confidence "+pg.pct(parent.ra?parent.ra.overall.recoveryConfidence:0); color: pg.cSub; font.pixelSize: 12; font.family: pg.fam }
+                        Text { visible: parent.ra&&parent.ra.overall.available; text: qsTr("Recovery rate %1   ·   confidence %2").arg(pg.pct(parent.ra?parent.ra.overall.badShotRecoveryRate:0)).arg(pg.pct(parent.ra?parent.ra.overall.recoveryConfidence:0)); color: pg.cSub; font.pixelSize: 12; font.family: pg.fam }
                         Repeater { model: pg.evLines(parent.ra?parent.ra.metrics:[]); delegate: Text { width: parent.width; text: "• "+modelData; color: pg.cSub; font.pixelSize: 11; font.family: pg.fam; wrapMode: Text.WordWrap } }
                     }
 
@@ -317,7 +317,7 @@ Rectangle {
                         property var fa: pg.rep ? pg.rep.fatigueAnalysis : null
                         SectionTitle { width: parent.width; title: qsTr("Fatigue Analysis") }
                         Text { text: pg.fatigueLabel(parent.fa?parent.fa.overallPattern:""); color: pg.cInk; font.bold: true; font.pixelSize: 13; font.family: pg.fam }
-                        Text { visible: parent.fa&&parent.fa.scoreTrendAvailable; text: "Fatigue index "+pg.f(parent.fa?parent.fa.fatigueIndex:0,2)+"   ·   confidence "+pg.pct(parent.fa?parent.fa.confidence:0); color: pg.cSub; font.pixelSize: 12; font.family: pg.fam }
+                        Text { visible: parent.fa&&parent.fa.scoreTrendAvailable; text: qsTr("Fatigue index %1   ·   confidence %2").arg(pg.f(parent.fa?parent.fa.fatigueIndex:0,2)).arg(pg.pct(parent.fa?parent.fa.confidence:0)); color: pg.cSub; font.pixelSize: 12; font.family: pg.fam }
                         Repeater { model: pg.evLines(parent.fa?parent.fa.metrics:[]); delegate: Text { width: parent.width; text: "• "+modelData; color: pg.cSub; font.pixelSize: 11; font.family: pg.fam; wrapMode: Text.WordWrap } }
                     }
 
@@ -327,7 +327,7 @@ Rectangle {
                         SectionTitle { width: parent.width; title: qsTr("Training Priorities") }
                         Repeater {
                             model: (pg.rep&&pg.rep.trainingPriorities)?pg.rep.trainingPriorities:[]
-                            delegate: Text { width: parent.width; text: (index+1)+".  "+modelData.priority+"   ["+modelData.impact+" impact]"; color: pg.cInk; font.pixelSize: 12; font.family: pg.fam; wrapMode: Text.WordWrap }
+                            delegate: Text { width: parent.width; text: qsTr("%1.  %2   [%3 impact]").arg(index+1).arg(modelData.priority).arg(modelData.impact); color: pg.cInk; font.pixelSize: 12; font.family: pg.fam; wrapMode: Text.WordWrap }
                         }
                         Text { visible: !(pg.rep&&pg.rep.trainingPriorities&&pg.rep.trainingPriorities.length); text: qsTr("No major training priority detected."); color: pg.cSub; font.pixelSize: 12; font.family: pg.fam }
                     }
@@ -337,7 +337,7 @@ Rectangle {
                         width: parent.width; spacing: 4
                         property var cc: pg.rep ? pg.rep.coachConclusion : null
                         SectionTitle { width: parent.width; title: qsTr("Coach Conclusion") }
-                        Text { text: "Rating: "+(parent.cc?parent.cc.rating:"—"); color: pg.cAccent; font.bold: true; font.pixelSize: 13; font.family: pg.fam }
+                        Text { text: qsTr("Rating: %1").arg(parent.cc?parent.cc.rating:"—"); color: pg.cAccent; font.bold: true; font.pixelSize: 13; font.family: pg.fam }
                         Text { width: parent.width; text: parent.cc?parent.cc.overallAssessment:""; color: pg.cInk; font.pixelSize: 12; font.family: pg.fam; wrapMode: Text.WordWrap }
                         Text { width: parent.width; visible: parent.cc&&parent.cc.trainingFocusSummary; text: parent.cc?parent.cc.trainingFocusSummary:""; color: pg.cSub; font.pixelSize: 12; font.family: pg.fam; wrapMode: Text.WordWrap }
                     }
@@ -418,7 +418,7 @@ Rectangle {
                     ReportFooter {
                         width: parent.width
                         softwareVersion: PRODUCT.softwareVersionLabel
-                        generatedText: "Generated " + Qt.formatDateTime(new Date(),"ddd yyyy-MM-dd HH:mm")
+                        generatedText: qsTr("Generated %1").arg(new Date().toLocaleString(window.uiLocale(), "ddd yyyy-MM-dd HH:mm"))
                     }
 
                     Item { width: 1; height: 6 }

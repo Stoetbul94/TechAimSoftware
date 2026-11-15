@@ -42,10 +42,10 @@ Item {
         var meta = {
             "athlete": (typeof userName !== "undefined" && userName) ? userName : "",
             "eventName": "50m Rifle 3 Positions — FINAL (35)",
-            "dateTime": now.toLocaleString(Qt.locale(""), "ddd yyyy-MM-dd hh:mm")
+            "dateTime": now.toLocaleString(window.uiLocale(), "ddd yyyy-MM-dd hh:mm")
         }
         finalsReport.report = FINALS3P.buildReport(meta)
-        finalsReport.generatedStamp = now.toLocaleString(Qt.locale(""), "ddd yyyy-MM-dd hh:mm")
+        finalsReport.generatedStamp = now.toLocaleString(window.uiLocale(), "ddd yyyy-MM-dd hh:mm")
         // Shared plot zoom (presentation only): worst-shot radius across all
         // three position groups.
         var ext = 0
@@ -470,7 +470,7 @@ Item {
                     anchors.leftMargin: 34; anchors.rightMargin: 34; anchors.bottomMargin: 20
                     softwareVersion: PRODUCT.softwareVersionLabel
                     generatedText: qsTr("Generated %1").arg(finalsReport.generatedStamp)
-                    pageText: "Page 1 / 4"
+                    pageText: qsTr("Page %1 / %2").arg(1).arg(4)
                 }
             }
 
@@ -575,7 +575,7 @@ Item {
                     anchors.leftMargin: 34; anchors.rightMargin: 34; anchors.bottomMargin: 20
                     softwareVersion: PRODUCT.softwareVersionLabel
                     generatedText: qsTr("Generated %1").arg(finalsReport.generatedStamp)
-                    pageText: "Page 2 / 4"
+                    pageText: qsTr("Page %1 / %2").arg(2).arg(4)
                 }
             }
 
@@ -646,7 +646,7 @@ Item {
                     anchors.leftMargin: 34; anchors.rightMargin: 34; anchors.bottomMargin: 20
                     softwareVersion: PRODUCT.softwareVersionLabel
                     generatedText: qsTr("Generated %1").arg(finalsReport.generatedStamp)
-                    pageText: "Page 3 / 4"
+                    pageText: qsTr("Page %1 / %2").arg(3).arg(4)
                 }
             }
 
@@ -816,7 +816,7 @@ Item {
                     anchors.leftMargin: 34; anchors.rightMargin: 34; anchors.bottomMargin: 20
                     softwareVersion: PRODUCT.softwareVersionLabel
                     generatedText: qsTr("Generated %1").arg(finalsReport.generatedStamp)
-                    pageText: "Page 4 / 4"
+                    pageText: qsTr("Page %1 / %2").arg(4).arg(4)
                 }
             }
         }

@@ -5,6 +5,27 @@ import QtQuick 2.15
 // branding and the shared A4 writer. Measured language only.
 Item {
     id: view
+    // LOC-REPORT-001: the controller supplies English position names; the
+    // report translates them at display time (unknown names unchanged).
+    // LOC-REPORT-001: GroupPatternAnalyzer supplies its confidence as an
+    // English word; translated here, at display time.
+    function trEvidence(c) {
+        switch (c) {
+        case "insufficient": return qsTr("insufficient")
+        case "low":          return qsTr("low")
+        case "moderate":     return qsTr("moderate")
+        case "strong":       return qsTr("strong")
+        }
+        return c || ""
+    }
+    function trPos(n) {
+        switch (n) {
+        case "Kneeling": return qsTr("Kneeling")
+        case "Prone":    return qsTr("Prone")
+        case "Standing": return qsTr("Standing")
+        }
+        return n || ""
+    }
     property var ctl: null                 // POSTRANS
     signal exported(string path)
     signal failed(string reason)
@@ -36,7 +57,7 @@ Item {
     property string _path: ""
 
     function exportPdf(path) {
-        if (!ctl) { failed("No Position Transition session"); return }
+        if (!ctl) { failed(qsTr("No Position Transition session")); return }
         view.model = ctl.reportModel()
         view.positions = view.model.positions ? view.model.positions : []
         _path = path
@@ -86,10 +107,10 @@ Item {
                     anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; spacing: 2
                     Repeater {
                         model: [
-                            { l: "Athlete",  v: view.model.athlete || "—" },
-                            { l: "Discipline", v: "50m Rifle 3 Positions" },
-                            { l: "Date",     v: (view.model.createdAtIso || "").substring(0, 10) },
-                            { l: "Session",  v: (view.model.sessionId || "").substring(0, 8) }
+                            { l: qsTr("Athlete"),  v: view.model.athlete || "—" },
+                            { l: qsTr("Discipline"), v: qsTr("50m Rifle 3 Positions") },
+                            { l: qsTr("Date"),     v: (view.model.createdAtIso || "").substring(0, 10) },
+                            { l: qsTr("Session"),  v: (view.model.sessionId || "").substring(0, 8) }
                         ]
                         delegate: Row { anchors.right: parent.right; spacing: 6
                             Text { text: modelData.l + ":"; color: view.sub; font.pixelSize: 9 }
@@ -113,7 +134,7 @@ Item {
                              + (PRODUCT.tagline !== "" ? "  ·  " + PRODUCT.tagline : "")
                        color: view.sub; font.pixelSize: 9; anchors.verticalCenter: parent.verticalCenter } }
             Text { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
-                   text: "Page " + pageNo + " of " + view.totalPages; color: view.sub; font.pixelSize: 9 }
+                   text: qsTr("Page %1 of %2").arg(pageNo).arg(view.totalPages); color: view.sub; font.pixelSize: 9 }
         }
     }
     component KV: Row {
@@ -130,18 +151,18 @@ Item {
             width: parent.width; spacing: 8
             Text { text: qsTr("SESSION OVERVIEW"); color: view.ink; font.pixelSize: 15; font.bold: true }
             Item { height: 4; width: 1 }
-            KV { k: "Athlete"; v: view.model.athlete || "—" }
-            KV { k: "Date / time"; v: view.model.createdAtIso || "—" }
-            KV { k: "Session ID"; v: view.model.sessionId || "—" }
-            KV { k: "Operating mode"; v: view.model.operatingMode || "—" }
-            KV { k: "Technical focus"; v: view.model.focus || "—" }
-            KV { k: "Sequence"; v: view.model.sequence || "—" }
-            KV { k: "Verification shots"; v: (view.model.verificationShots||0) + " per position" }
-            KV { k: "Repeats"; v: "" + (view.model.repeats||1) }
-            KV { k: "Positions completed"; v: "" + (view.model.positionsCompleted||0) }
-            KV { k: "Counted shots"; v: "" + (view.model.countedShots||0) }
-            KV { k: "Sighters"; v: "" + (view.model.totalSighters||0) + " (excluded from results)" }
-            KV { k: "Duration"; v: { var d = view.model.durationSec||0; return Math.floor(d/60)+" min "+("0"+(d%60)).slice(-2)+" s" } }
+            KV { k: qsTr("Athlete"); v: view.model.athlete || "—" }
+            KV { k: qsTr("Date / time"); v: view.model.createdAtIso || "—" }
+            KV { k: qsTr("Session ID"); v: view.model.sessionId || "—" }
+            KV { k: qsTr("Operating mode"); v: view.model.operatingMode || "—" }
+            KV { k: qsTr("Technical focus"); v: view.model.focus || "—" }
+            KV { k: qsTr("Sequence"); v: view.model.sequence || "—" }
+            KV { k: qsTr("Verification shots"); v: qsTr("%1 per position").arg(view.model.verificationShots||0) }
+            KV { k: qsTr("Repeats"); v: "" + (view.model.repeats||1) }
+            KV { k: qsTr("Positions completed"); v: "" + (view.model.positionsCompleted||0) }
+            KV { k: qsTr("Counted shots"); v: "" + (view.model.countedShots||0) }
+            KV { k: qsTr("Sighters"); v: qsTr("%1 (excluded from results)").arg(view.model.totalSighters||0) }
+            KV { k: qsTr("Duration"); v: { var d = view.model.durationSec||0; return qsTr("%1 min %2 s").arg(Math.floor(d/60)).arg(("0"+(d%60)).slice(-2)) } }
             Item { height: 8; width: 1 }
             Text { text: qsTr("WHAT YOU SHOULD TAKE FROM THIS SESSION"); color: view.red; font.pixelSize: 12; font.bold: true }
             Repeater { model: (view.model.insights ? (view.model.insights.observations||[]) : [])
@@ -164,11 +185,11 @@ Item {
                     model: {
                         var k = view.model.rankings; if (!k) return []
                         var out = []
-                        if (k.fastestSetup)    out.push("⚡ Fastest setup: " + k.fastestSetup.name + " (" + view.ms(k.fastestSetup.value) + ")")
-                        if (k.slowestSetup)    out.push("⏳ Slowest setup: " + k.slowestSetup.name + " (" + view.ms(k.slowestSetup.value) + ")")
-                        if (k.tightestGroup)   out.push("◎ Tightest group: " + k.tightestGroup.name + " (" + Number(k.tightestGroup.value).toFixed(1) + " mm)")
-                        if (k.bestAverage)     out.push("★ Best average: " + k.bestAverage.name + " (" + Number(k.bestAverage.value).toFixed(1) + ")")
-                        if (k.steadiestRhythm) out.push("♪ Lowest rhythm variability: " + k.steadiestRhythm.name)
+                        if (k.fastestSetup)    out.push(qsTr("⚡ Fastest setup: %1 (%2)").arg(view.trPos(k.fastestSetup.name)).arg(view.ms(k.fastestSetup.value)))
+                        if (k.slowestSetup)    out.push(qsTr("⏳ Slowest setup: %1 (%2)").arg(view.trPos(k.slowestSetup.name)).arg(view.ms(k.slowestSetup.value)))
+                        if (k.tightestGroup)   out.push(qsTr("◎ Tightest group: %1 (%2 mm)").arg(view.trPos(k.tightestGroup.name)).arg(Number(k.tightestGroup.value).toFixed(1)))
+                        if (k.bestAverage)     out.push(qsTr("★ Best average: %1 (%2)").arg(view.trPos(k.bestAverage.name)).arg(Number(k.bestAverage.value).toFixed(1)))
+                        if (k.steadiestRhythm) out.push(qsTr("♪ Lowest rhythm variability: %1").arg(view.trPos(k.steadiestRhythm.name)))
                         return out
                     }
                     Rectangle { width: hlTxt.implicitWidth + 16; height: 24; radius: 5; color: "#F4F5F7"; border.color: view.line; border.width: 1
@@ -177,12 +198,12 @@ Item {
             }
             Item { height: 6; width: 1 }
             Row { spacing: 0
-                Repeater { model: ["POSITION","SETUP","SIGHT","R→1st","1ST","DIA mm","AVG SCORE"]
+                Repeater { model: [qsTr("POSITION"),qsTr("SETUP"),qsTr("SIGHT"),qsTr("R→1st"),qsTr("1ST"),qsTr("DIA mm"),qsTr("AVG SCORE")]
                     Text { text: modelData; color: view.sub; font.pixelSize: 10; font.bold: true; width: 100 } } }
             Rectangle { width: parent.width; height: 1; color: view.line }
             Repeater { model: (view.model.comparison || [])
                 Row { spacing: 0; property var r: modelData
-                    Text { width: 100; color: view.ink; font.pixelSize: 10; font.bold: true; text: r.positionName + " R" + r.repeat }
+                    Text { width: 100; color: view.ink; font.pixelSize: 10; font.bold: true; text: qsTr("%1 R%2").arg(view.trPos(r.positionName)).arg(r.repeat) }
                     Text { width: 100; color: view.ink; font.pixelSize: 10; text: view.ms(r.setupDurationMs) }
                     Text { width: 100; color: view.ink; font.pixelSize: 10; text: "" + r.sighterCount }
                     Text { width: 100; color: view.ink; font.pixelSize: 10; text: view.ms(r.readyToFirstShotMs) }
@@ -194,13 +215,13 @@ Item {
             Text { text: qsTr("SHOT RHYTHM"); color: view.sub; font.pixelSize: 10; font.bold: true }
             Repeater { model: (view.model.comparison || [])
                 Row { spacing: 8; property var r: modelData
-                    Text { width: 140; color: view.ink; font.pixelSize: 10; font.bold: true; text: r.positionName + " R" + r.repeat }
+                    Text { width: 140; color: view.ink; font.pixelSize: 10; font.bold: true; text: qsTr("%1 R%2").arg(view.trPos(r.positionName)).arg(r.repeat) }
                     Text { width: 190; color: view.ink; font.pixelSize: 10
                            text: (r.rhythm && r.rhythm.length>0) ? r.rhythm : "—" }
                     // PT-02: the label never appears without the measurement
                     // and the sample size it was derived from.
                     Text { color: view.sub; font.pixelSize: 10
-                           text: "avg shot " + view.secs(r.avgShotTime)
+                           text: qsTr("avg shot %1").arg(view.secs(r.avgShotTime))
                                  + ((r.rhythmBasis && r.rhythmBasis.length > 0)
                                     ? "  ·  " + r.rhythmBasis : "") } } }
             Item { height: 8; width: 1 }
@@ -219,8 +240,8 @@ Item {
             property var r: modelData
             Column {
                 width: parent.width; spacing: 8
-                Text { text: (r.positionName||"") + " · Repeat " + (r.repeat||1); color: view.ink; font.pixelSize: 15; font.bold: true }
-                Text { text: (r.verificationShots||0) + " counted shots · sighters excluded"; color: view.sub; font.pixelSize: 10 }
+                Text { text: qsTr("%1 · Repeat %2").arg(view.trPos(r.positionName)).arg(r.repeat||1); color: view.ink; font.pixelSize: 15; font.bold: true }
+                Text { text: qsTr("%1 counted shots · sighters excluded").arg(r.verificationShots||0); color: view.sub; font.pixelSize: 10 }
                 Row {
                     width: parent.width; spacing: 16
                     // plot
@@ -243,16 +264,16 @@ Item {
                     }
                     // metrics
                     Column { spacing: 3; width: 360
-                        KV { k: "Setup / transition"; v: view.ms(r.setupDurationMs); width: 360 }
-                        KV { k: "Sighters"; v: "" + (r.sighterCount||0); width: 360 }
-                        KV { k: "Ready → first shot"; v: view.ms(r.readyToFirstShotMs); width: 360 }
-                        KV { k: "Verification block"; v: view.ms(r.verificationDurationMs); width: 360 }
-                        KV { k: "First shot"; v: (r.firstShotScore!==undefined?Number(r.firstShotScore).toFixed(1):"—") + " (" + (r.firstShotDistMm!==undefined?Number(r.firstShotDistMm).toFixed(1)+" mm from MPI":"—") + ")"; width: 360 }
-                        KV { k: "Average score"; v: Number(r.averageScore||0).toFixed(1); width: 360 }
-                        KV { k: "Group diameter"; v: r.hasGroup?Number(r.groupDiameter).toFixed(1)+" mm":"—"; width: 360 }
-                        KV { k: "MPI (X/Y)"; v: Number(r.mpiX||0).toFixed(1)+" / "+Number(r.mpiY||0).toFixed(1)+" mm"; width: 360 }
-                        KV { k: "H/V spread"; v: r.hasGroup?Number(r.hSpread).toFixed(1)+" / "+Number(r.vSpread).toFixed(1)+" mm":"—"; width: 360 }
-                        KV { k: "Shot rhythm"; v: (r.rhythm && r.rhythm.length>0) ? (r.rhythm + " · avg " + view.secs(r.avgShotTime)) : "—"; width: 360 }
+                        KV { k: qsTr("Setup / transition"); v: view.ms(r.setupDurationMs); width: 360 }
+                        KV { k: qsTr("Sighters"); v: "" + (r.sighterCount||0); width: 360 }
+                        KV { k: qsTr("Ready → first shot"); v: view.ms(r.readyToFirstShotMs); width: 360 }
+                        KV { k: qsTr("Verification block"); v: view.ms(r.verificationDurationMs); width: 360 }
+                        KV { k: qsTr("First shot"); v: (r.firstShotScore!==undefined?Number(r.firstShotScore).toFixed(1):"—") + " (" + (r.firstShotDistMm!==undefined?qsTr("%1 mm from MPI").arg(Number(r.firstShotDistMm).toFixed(1)):"—") + ")"; width: 360 }
+                        KV { k: qsTr("Average score"); v: Number(r.averageScore||0).toFixed(1); width: 360 }
+                        KV { k: qsTr("Group diameter"); v: r.hasGroup?Number(r.groupDiameter).toFixed(1)+" mm":"—"; width: 360 }
+                        KV { k: qsTr("MPI (X/Y)"); v: Number(r.mpiX||0).toFixed(1)+" / "+Number(r.mpiY||0).toFixed(1)+" mm"; width: 360 }
+                        KV { k: qsTr("H/V spread"); v: r.hasGroup?Number(r.hSpread).toFixed(1)+" / "+Number(r.vSpread).toFixed(1)+" mm":"—"; width: 360 }
+                        KV { k: qsTr("Shot rhythm"); v: (r.rhythm && r.rhythm.length>0) ? (r.rhythm + " · " + qsTr("avg %1").arg(view.secs(r.avgShotTime))) : "—"; width: 360 }
                     }
                 }
                 // checklist
@@ -265,7 +286,7 @@ Item {
                     Text { text: qsTr("GROUP PATTERN INSIGHTS"); color: view.red; font.pixelSize: 10; font.bold: true; topPadding: 4 }
                     Repeater { model: (r.groupPattern ? (r.groupPattern.properties||[]) : [])
                         Column { width: 700; spacing: 0
-                            Text { text: modelData.label + "  (" + modelData.confidence + " evidence)"; color: view.ink; font.pixelSize: 10; font.bold: true }
+                            Text { text: qsTr("%1  (%2 evidence)").arg(modelData.label).arg(view.trEvidence(modelData.confidence)); color: view.ink; font.pixelSize: 10; font.bold: true }
                             Text { width: 700; wrapMode: Text.WordWrap; text: modelData.evidence; color: view.sub; font.pixelSize: 10 } } } }
                 Text { text: qsTr("ATHLETE NOTE"); color: view.sub; font.pixelSize: 10; font.bold: true; topPadding: 4 }
                 Text { width: 700; wrapMode: Text.WordWrap; color: view.ink; font.pixelSize: 11; text: (r.note && r.note.length>0) ? r.note : "—" }
@@ -280,12 +301,12 @@ Item {
         Column {
             width: parent.width; spacing: 8
             Text { text: qsTr("NOTES & OBSERVATIONS"); color: view.ink; font.pixelSize: 15; font.bold: true }
-            Text { visible: (view.model.sessionNote||"").length>0; text: "Session note: " + (view.model.sessionNote||"")
+            Text { visible: (view.model.sessionNote||"").length>0; text: qsTr("Session note: %1").arg(view.model.sessionNote||"")
                    color: view.ink; font.pixelSize: 11; width: 700; wrapMode: Text.WordWrap }
             Repeater { model: view.positions
                 Column { width: 700; spacing: 1; visible: modelData.note && modelData.note.length>0
                     property var r: modelData
-                    Text { text: (r.positionName||"") + " · Repeat " + (r.repeat||1); color: view.sub; font.pixelSize: 10; font.bold: true }
+                    Text { text: qsTr("%1 · Repeat %2").arg(view.trPos(r.positionName)).arg(r.repeat||1); color: view.sub; font.pixelSize: 10; font.bold: true }
                     Text { text: r.note || ""; color: view.ink; font.pixelSize: 11; width: 700; wrapMode: Text.WordWrap } } }
             Item { height: 8; width: 1 }
             Text { text: qsTr("OVERALL OBSERVED"); color: view.ink; font.pixelSize: 15; font.bold: true }

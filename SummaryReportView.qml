@@ -60,14 +60,14 @@ Item {
 
                         ReportHeader {
                             width: parent.width
-                            reportTitle: "Match Summary"
+                            reportTitle: qsTr("Match Summary")
                             athlete: userName
                             discipline: eventName
-                            dateText: new Date().toLocaleString(Qt.locale(""), "ddd yyyy-MM-dd")
-                            timeText: new Date().toLocaleString(Qt.locale(""), "hh:mm:ss")
+                            dateText: new Date().toLocaleString(window.uiLocale(), "ddd yyyy-MM-dd")
+                            timeText: new Date().toLocaleString(window.uiLocale(), "hh:mm:ss")
                         }
 
-                        SectionTitle { width: parent.width; title: "Executive Summary" }
+                        SectionTitle { width: parent.width; title: qsTr("Executive Summary") }
 
                         Grid {
                             id: metricGrid
@@ -100,7 +100,7 @@ Item {
                                 value: globalMatchModel.count > 0 ? converSecondToMins(totalTime / globalMatchModel.count) : "—" }
                         }
 
-                        SectionTitle { width: parent.width; title: "Overall Target" }
+                        SectionTitle { width: parent.width; title: qsTr("Overall Target") }
 
                         // Overall target — existing visualisation, coordinate math kept
                         // verbatim, reframed in a clean white card.
@@ -195,7 +195,7 @@ Item {
 
                         // ── Position breakdown (3P only; auto-hidden otherwise) ──
                         SectionTitle {
-                            width: parent.width; title: "Position Breakdown"
+                            width: parent.width; title: qsTr("Position Breakdown")
                             visible: shootingPage.is3PMatch
                         }
                         Row {
@@ -226,7 +226,7 @@ Item {
                                             // Depend on `tick` (like the score above) so the count/stars
                                             // re-evaluate as shots land — the delegate is built before any
                                             // shots exist, so without this it stays stuck at "0 shots".
-                                            text: (screenPresence.tick, getPositionCount(modelData.p) + " shots · ★ " + getPositionInner(modelData.p))
+                                            text: (screenPresence.tick, qsTr("%1 shots · ★ %2").arg(getPositionCount(modelData.p)).arg(getPositionInner(modelData.p)))
                                             color: "#8a8f98"; font.family: "Segoe UI"; font.pixelSize: 11
                                         }
                                     }
@@ -234,7 +234,7 @@ Item {
                             }
                         }
 
-                        SectionTitle { width: parent.width; title: "Series Breakdown" }
+                        SectionTitle { width: parent.width; title: qsTr("Series Breakdown") }
 
                         // Per-series scores across the full match (10 shots per
                         // series; every series/position included).
@@ -277,7 +277,7 @@ Item {
                         anchors.rightMargin: 34
                         anchors.bottomMargin: 20
                         softwareVersion: PRODUCT.softwareVersionLabel
-                        generatedText: "Generated " + new Date().toLocaleString(Qt.locale(""), "ddd yyyy-MM-dd hh:mm")
+                        generatedText: qsTr("Generated %1").arg(new Date().toLocaleString(window.uiLocale(), "ddd yyyy-MM-dd hh:mm"))
                     }
                 }
 
@@ -309,7 +309,7 @@ Item {
             if( ( (i+1) % 10 == 0) && (i>0) )
             {
                 var seriesId = Math.floor((i+1)/10)
-                var seriesText = "Series " + seriesId*1
+                var seriesText = qsTr("Series %1").arg(seriesId*1)
                 seriesText += "(" + (seriesScore*1).toFixed(1) +") , "
                 formatText = formatText + seriesText
                 seriesScore = 0
@@ -317,7 +317,7 @@ Item {
             if( (i === (globalMatchModel.count-1)) && ( (i+1)%10 != 0) )
             {
                 var seriesIdNum = Math.floor((i+1)/10)
-                var seriesScoreText = "Series " + seriesIdNum*1
+                var seriesScoreText = qsTr("Series %1").arg(seriesIdNum*1)
                 seriesScoreText += "(" + (seriesScore*1).toFixed(1) +")"
                 formatText = formatText + seriesScoreText
                 seriesScore = 0

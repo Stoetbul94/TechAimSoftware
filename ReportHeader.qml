@@ -6,7 +6,7 @@ import QtQuick 2.15
 // the header adapts per discipline/event without empty placeholders.
 Item {
     id: header
-    property string reportTitle: "Report"
+    property string reportTitle: qsTr("Report")
     property string athlete: ""
     property string discipline: ""
     property string sessionType: ""     // Training / Match / Qualification / Final

@@ -5,6 +5,45 @@
 This document tells a German-speaking reviewer exactly what exists, what does
 not, and how to change it without touching application code.
 
+## Update 2026-11-15 — P0 WP1 (printed reports + localisation gate)
+
+- **Reports now translated** (LOC-REPORT-001): 3P Final, 10 m Final, Coach
+  dashboard / detailed / print, Technical Blocks, Call & Diagnose, Position
+  Transition, Wind Map analysis, Match Summary, the older match-report print
+  page, and the shared report header. Sentences are whole `qsTr("… %1")`
+  phrases, never glued fragments, so German word order is free.
+- **Catalogue:** 1,834 entries; every product string has finished German. The
+  only untranslated entries are the 57 vendored QModMaster form strings, which
+  the product never shows (gate LOC-GATE-001).
+- **Gate:** `tests/docs/check_localisation.py` (240 checks) fails the build on
+  a QML file missing from the catalogue, a `qsTr` literal with no finished
+  German, a bare English literal in a report file, a comparison against
+  translated text, or a report date formatted in the Windows locale.
+- **Rendered and checked, EN beside DE, every page:** Technical Blocks (6),
+  Position Transition (6), Call & Diagnose (5), 10 m Final (2) — no clipping,
+  no overflow. Not rendered (need the live controllers): 3P Final, Coach
+  views, Match Summary — **human visual check required** in the running app.
+- **Dates** in reports follow the app language (`window.uiLocale()`), so the
+  German weekday reads "Fr." — not the Windows locale.
+
+**Still English in a German report — by design, and why:**
+
+| Where | Source | Why it stays English for now |
+|---|---|---|
+| Coach "Overall assessment", strengths, priorities, trend words from the engine | frozen coach engine (`src/analytics/`) | translating changes a frozen engine; needs its own approval |
+| Training Lab observation sentences, group-pattern labels and evidence text, setup checklist, rhythm labels, insight sentences | training controllers (C++) | evidence-governed wording (`docs/research/…`) — a translation is a new athlete-facing claim and goes through the evidence register first |
+| Technical focus, visibility mode, sequence (e.g. "Natural point of aim", "Full hidden") | training controllers | controller value, not yet given a display-key lookup |
+| 10 m Final: course section names (SERIES 1, SINGLE SHOTS, Shots 1-5), "DECIMAL", "DEMO / SIMULATION", the single-lane note | `Finals10mReportBuilder` (C++) | report DTO text built in C++ |
+
+**Open decision for SETA — decimal comma.** Scores print as `10.4` in both
+languages. German convention (and DSB printed results) use `10,4`. Changing
+that touches every score display, so it is a product decision, not part of
+this translation pass.
+
+**For the reviewer:** two older on-screen strings still say "offizielle
+Schüsse" (10 m Final HUD, recovery dialog) where the glossary says
+Wertungsschüsse — confirm which the range uses.
+
 ## Update 2026-11-14 — Phase 1 (athlete edition)
 
 - New athlete screens, Display panel, DSB/ISSF/Training tabs: translated.

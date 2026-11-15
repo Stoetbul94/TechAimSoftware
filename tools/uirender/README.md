@@ -35,6 +35,21 @@ The bundled scenes and the sizes they were designed at:
 | `scene_disciplines.qml`| `620 300`  | The four discipline plates as the left pane draws them |
 | `scene_leftpanel.qml`  | `460 760`  | UI-TRAIN-001 — the badge reads the active programme    |
 | `scene_topbar.qml`     | `1536 42`  | The honesty line sits clear of the connection panel    |
+| `scene_training_report.qml` | `794 1000` | Every exported page of a Training Lab report, stacked (needs `UIRENDER_DATA`) |
+| `scene_finals10m_report.qml` | `834 2306` | Both pages of the 10 m Final report (needs `UIRENDER_DATA`) |
+
+### Real report data and language
+
+- `UIRENDER_DATA=<file.json>` exposes a report model to the scene as
+  `RENDER_DATA`. Emit real ones from the harnesses rather than writing them by
+  hand: `training_tests --emit-report <dir>` (Technical Blocks, Position
+  Transition), `finals10m_tests --emit-report <dir>` (10 m AR / AP Final);
+  `tools/reporttest/cd_session.json` is an archived Call & Diagnose session.
+- A 5th argument loads a catalogue and sets the language code, so
+  `window.uiLocale()` and every `qsTr()` follow it:
+  `uirender.exe scene_training_report.qml out.png 794 1000 techaim_de_DE`.
+- Report scenes size themselves; a `WARN … scaling` line for them only means
+  the PNG took the scene's height, not the requested one.
 
 Success is the `saved <path> (WxH)` line **and** exit status 0. A `WARN` line
 means the PNG was written but is not the evidence that was asked for.

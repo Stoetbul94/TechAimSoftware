@@ -301,7 +301,7 @@
         <location filename="../CallDiagnoseHud.qml" line="325"/>
         <location filename="../CallDiagnoseHud.qml" line="350"/>
         <source> mm</source>
-        <translation type="unfinished"> mm</translation>
+        <translation> mm</translation>
     </message>
     <message>
         <location filename="../CallDiagnoseHud.qml" line="329"/>
@@ -357,6 +357,341 @@
         <location filename="../CallDiagnoseHud.qml" line="370"/>
         <source>Home</source>
         <translation>Start</translation>
+    </message>
+</context>
+<context>
+    <name>CallDiagnoseReportView</name>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="13"/>
+        <source>Kneeling</source>
+        <translation>Kniend</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="14"/>
+        <source>Prone</source>
+        <translation>Liegend</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="15"/>
+        <source>Standing</source>
+        <translation>Stehend</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="51"/>
+        <source>No Call &amp; Diagnose session</source>
+        <translation>Keine Sitzung Ansage &amp; Diagnose</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="98"/>
+        <source>TRAINING LAB</source>
+        <translation>TRAININGSLABOR</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="100"/>
+        <source>CALL &amp; DIAGNOSE REPORT</source>
+        <translation>BERICHT ANSAGE &amp; DIAGNOSE</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="109"/>
+        <location filename="../CallDiagnoseReportView.qml" line="183"/>
+        <source>Athlete</source>
+        <translation>Sportler</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="114"/>
+        <source>Discipline</source>
+        <translation>Disziplin</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="115"/>
+        <source> (K/P/S)</source>
+        <translation> (K/L/S)</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="116"/>
+        <source>Date</source>
+        <translation>Datum</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="117"/>
+        <source>Session</source>
+        <translation>Sitzung</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="126"/>
+        <source>Not an official competition result</source>
+        <translation>Kein offizielles Wettkampfergebnis</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="141"/>
+        <source>Page %1 of %2</source>
+        <translation>Seite %1 von %2</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="181"/>
+        <source>SESSION OVERVIEW</source>
+        <translation>SITZUNGSÜBERSICHT</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="184"/>
+        <source>Date / time</source>
+        <translation>Datum / Uhrzeit</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="185"/>
+        <source>Session ID</source>
+        <translation>Sitzungs-ID</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="186"/>
+        <source>Operating mode</source>
+        <translation>Betriebsart</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="187"/>
+        <source>Technical focus</source>
+        <translation>Technischer Schwerpunkt</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="188"/>
+        <source>Programme</source>
+        <translation>Programm</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="188"/>
+        <source>%1 called shots per position</source>
+        <translation>%1 angesagte Schüsse je Stellung</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="188"/>
+        <source>%1 called shots</source>
+        <translation>%1 angesagte Schüsse</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="190"/>
+        <location filename="../CallDiagnoseReportView.qml" line="204"/>
+        <source>Called shots</source>
+        <translation>Angesagte Schüsse</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="191"/>
+        <source>Sighters</source>
+        <translation>Probeschüsse</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="191"/>
+        <source>%1 (excluded from results)</source>
+        <translation>%1 (nicht in der Auswertung)</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="192"/>
+        <source>Duration</source>
+        <translation>Dauer</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="197"/>
+        <source>CALL ACCURACY</source>
+        <translation>ANSAGEGENAUIGKEIT</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="206"/>
+        <source>Average error</source>
+        <translation>Mittlerer Fehler</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="207"/>
+        <source>Median error</source>
+        <translation>Median des Fehlers</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="208"/>
+        <source>Best call</source>
+        <translation>Beste Ansage</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="209"/>
+        <source>Largest</source>
+        <translation>Größter</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="210"/>
+        <source>Consistency SD</source>
+        <translation>Konstanz (Std.-Abw.)</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="211"/>
+        <source>Direction bias</source>
+        <translation>Richtungstendenz</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="211"/>
+        <location filename="../CallDiagnoseReportView.qml" line="333"/>
+        <source> R</source>
+        <translation> R</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="211"/>
+        <location filename="../CallDiagnoseReportView.qml" line="333"/>
+        <source> L</source>
+        <translation> L</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="212"/>
+        <location filename="../CallDiagnoseReportView.qml" line="334"/>
+        <source> Hi</source>
+        <translation> H</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="212"/>
+        <location filename="../CallDiagnoseReportView.qml" line="334"/>
+        <source> Lo</source>
+        <translation> T</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="221"/>
+        <source>WHAT YOU SHOULD TAKE FROM THIS SESSION</source>
+        <translation>WAS SIE AUS DIESER SITZUNG MITNEHMEN SOLLTEN</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="227"/>
+        <source>Typical call accuracy</source>
+        <translation>Typische Ansagegenauigkeit</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="228"/>
+        <source>Average vs typical</source>
+        <translation>Durchschnitt vs. typisch</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="229"/>
+        <source>Directional bias</source>
+        <translation>Richtungstendenz</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="230"/>
+        <source>Call consistency</source>
+        <translation>Konstanz der Ansage</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="231"/>
+        <source>Trend</source>
+        <translation>Verlauf</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="232"/>
+        <source>Awareness vs result</source>
+        <translation>Wahrnehmung vs. Ergebnis</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="241"/>
+        <source>SHOTS TO REVIEW</source>
+        <translation>ZU PRÜFENDE SCHÜSSE</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="243"/>
+        <source>· Shot %1: %2</source>
+        <translation>· Schuss %1: %2</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="253"/>
+        <source>CALL ERROR BY SHOT</source>
+        <translation>ANSAGEFEHLER JE SCHUSS</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="275"/>
+        <source>DIRECTIONAL BIAS (call − actual)</source>
+        <translation>RICHTUNGSTENDENZ (Ansage − Treffer)</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="280"/>
+        <source>No called shots.</source>
+        <translation>Keine angesagten Schüsse.</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="281"/>
+        <source>Mean call offset: %1 mm %2, %3 mm %4.  Average |X| %5 mm, average |Y| %6 mm.</source>
+        <translation>Mittlere Ansageabweichung: %1 mm %2, %3 mm %4.  Mittleres |X| %5 mm, mittleres |Y| %6 mm.</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="282"/>
+        <source>right</source>
+        <translation>rechts</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="282"/>
+        <source>left</source>
+        <translation>links</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="283"/>
+        <source>high</source>
+        <translation>hoch</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="283"/>
+        <source>low</source>
+        <translation>tief</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="290"/>
+        <source>BY POSITION</source>
+        <translation>NACH STELLUNG</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="294"/>
+        <source>%1: %2 calls · avg %3</source>
+        <translation>%1: %2 Ansagen · Ø %3</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="312"/>
+        <source>CALLED vs ACTUAL — shots %1–%2</source>
+        <translation>ANSAGE vs. TREFFER — Schüsse %1–%2</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="329"/>
+        <location filename="../CallDiagnoseReportView.qml" line="363"/>
+        <source>Shot %1</source>
+        <translation>Schuss %1</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="331"/>
+        <source>Score %1</source>
+        <translation>Wertung %1</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="332"/>
+        <source>Call error %1 mm</source>
+        <translation>Ansagefehler %1 mm</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="343"/>
+        <source>CALL</source>
+        <translation>ANSAGE</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="346"/>
+        <source>ACTUAL (centre)</source>
+        <translation>TREFFER (Mitte)</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="356"/>
+        <source>NOTES &amp; OBSERVATIONS</source>
+        <translation>NOTIZEN &amp; BEOBACHTUNGEN</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="357"/>
+        <source>Session note: %1</source>
+        <translation>Notiz zur Sitzung: %1</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="368"/>
+        <source>OVERALL OBSERVED</source>
+        <translation>GESAMTBEOBACHTUNG</translation>
+    </message>
+    <message>
+        <location filename="../CallDiagnoseReportView.qml" line="373"/>
+        <source>Measured shot-awareness data only. This is not an official competition result and carries no ranking status. Sighters are excluded from all results.</source>
+        <translation>Nur gemessene Daten zur Schusswahrnehmung. Dies ist kein offizielles Wettkampfergebnis und hat keinen Ranglistenstatus. Probeschüsse sind von allen Ergebnissen ausgenommen.</translation>
     </message>
 </context>
 <context>
@@ -493,13 +828,13 @@
         <location filename="../CenterPane.qml" line="1293"/>
         <location filename="../CenterPane.qml" line="1942"/>
         <source>X:</source>
-        <translation type="unfinished"></translation>
+        <translation>X:</translation>
     </message>
     <message>
         <location filename="../CenterPane.qml" line="1293"/>
         <location filename="../CenterPane.qml" line="1942"/>
         <source>, Y:</source>
-        <translation type="unfinished"></translation>
+        <translation>, Y:</translation>
     </message>
     <message>
         <location filename="../CenterPane.qml" line="1368"/>
@@ -584,6 +919,1184 @@ Starten Sie einen neuen Wettkampf, um weiterzuschießen.</translation>
     </message>
 </context>
 <context>
+    <name>CoachDashboardView</name>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="70"/>
+        <source>Air Pistol (10m)</source>
+        <translation>Luftpistole (10 m)</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="71"/>
+        <source>Air Rifle (10m)</source>
+        <translation>Luftgewehr (10 m)</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="73"/>
+        <source>3-Position Rifle (50m)</source>
+        <translation>Gewehr 3 Stellungen (50 m)</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="74"/>
+        <source>Prone Rifle (50m)</source>
+        <translation>Gewehr liegend (50 m)</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="75"/>
+        <source>50m Rifle</source>
+        <translation>50 m KK-Gewehr</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="79"/>
+        <source>Improving</source>
+        <translation>Steigend</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="80"/>
+        <source>Declining</source>
+        <translation>Fallend</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="81"/>
+        <source>Stable</source>
+        <translation>Stabil</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="140"/>
+        <source>N/A</source>
+        <translation>k. A.</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="141"/>
+        <source>None</source>
+        <translation>Keine</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="142"/>
+        <source>Mild</source>
+        <translation>Leicht</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="143"/>
+        <source>Moderate</source>
+        <translation>Mittel</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="144"/>
+        <source>High</source>
+        <translation>Hoch</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="145"/>
+        <source>Good</source>
+        <translation>Gut</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="146"/>
+        <source>Slow</source>
+        <translation>Langsam</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="147"/>
+        <source>Clustered errors</source>
+        <translation>Gehäufte Fehler</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="148"/>
+        <source>Over-correcting</source>
+        <translation>Überkorrektur</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="149"/>
+        <source>Centred</source>
+        <translation>Mittig</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="150"/>
+        <source>Right</source>
+        <translation>Rechts</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="151"/>
+        <source>High-right</source>
+        <translation>Hoch rechts</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="152"/>
+        <source>High-left</source>
+        <translation>Hoch links</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="153"/>
+        <source>Left</source>
+        <translation>Links</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="154"/>
+        <source>Low-left</source>
+        <translation>Tief links</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="155"/>
+        <source>Low</source>
+        <translation>Tief</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="156"/>
+        <source>Low-right</source>
+        <translation>Tief rechts</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="157"/>
+        <source>None detected</source>
+        <translation>Keine erkannt</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="158"/>
+        <source>KNEELING</source>
+        <translation>KNIEND</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="159"/>
+        <source>PRONE</source>
+        <translation>LIEGEND</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="160"/>
+        <source>STANDING</source>
+        <translation>STEHEND</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="168"/>
+        <source>Main limiting position</source>
+        <translation>Begrenzende Stellung</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="169"/>
+        <source>Fatigue level</source>
+        <translation>Ermüdungsgrad</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="170"/>
+        <source>Recovery rating</source>
+        <translation>Erholungsbewertung</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="171"/>
+        <source>Dominant error dir.</source>
+        <translation>Hauptfehlerrichtung</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="172"/>
+        <source>Main training focus</source>
+        <translation>Hauptschwerpunkt Training</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="197"/>
+        <source>All Shots</source>
+        <translation>Alle Schüsse</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="249"/>
+        <source>No report to display yet — finish a match, then open Coach Report.</source>
+        <translation>Noch kein Bericht vorhanden — beenden Sie einen Wettkampf und öffnen Sie dann den Trainerbericht.</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="260"/>
+        <source>✦  Key Coach Insights</source>
+        <translation>✦  Wichtigste Erkenntnisse für den Trainer</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="282"/>
+        <source>◎  Shot Map</source>
+        <translation>◎  Trefferbild</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="297"/>
+        <source>Avg %1   SD %2   MR %3mm</source>
+        <translation>Ø %1   Std.-Abw. %2   MR %3mm</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="304"/>
+        <source>Score (legend)</source>
+        <translation>Wertung (Legende)</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="305"/>
+        <source>≥ 10.5  Perfect / Excellent</source>
+        <translation>≥ 10.5  Perfekt / Ausgezeichnet</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="306"/>
+        <source>10.0 – 10.4  Good / Acceptable</source>
+        <translation>10.0 – 10.4  Gut / Akzeptabel</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="307"/>
+        <source>&lt; 10.0  Recovery / Poor</source>
+        <translation>&lt; 10.0  Ausbaufähig / Schwach</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="309"/>
+        <source>Target info</source>
+        <translation>Scheibeninfo</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="310"/>
+        <source>Scale: real ISSF rings (mm)</source>
+        <translation>Maßstab: echte ISSF-Ringe (mm)</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="311"/>
+        <source>+Y = High  (Flip Y to invert)</source>
+        <translation>+Y = hoch  („Y spiegeln“ kehrt um)</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="328"/>
+        <source>▦  Score Distribution</source>
+        <translation>▦  Wertungsverteilung</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="336"/>
+        <location filename="../CoachDashboardView.qml" line="397"/>
+        <source>Shots</source>
+        <translation>Schüsse</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="350"/>
+        <source>📈  Trend</source>
+        <translation>📈  Verlauf</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="358"/>
+        <source>Shot Score</source>
+        <translation>Schusswertung</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="359"/>
+        <source>Rolling Avg (5)</source>
+        <translation>Gleitender Ø (5)</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="371"/>
+        <source>◎  Summary</source>
+        <translation>◎  Übersicht</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="392"/>
+        <source>By Position Summary</source>
+        <translation>Übersicht nach Stellung</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="397"/>
+        <source>Position</source>
+        <translation>Stellung</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="397"/>
+        <source>Total</source>
+        <translation>Gesamt</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="397"/>
+        <source>Avg</source>
+        <translation>Ø</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="397"/>
+        <source>Best</source>
+        <translation>Bester</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="397"/>
+        <source>Worst</source>
+        <translation>Schwächster</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="397"/>
+        <source>SD</source>
+        <translation>Std.-Abw.</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="397"/>
+        <source>MR (mm)</source>
+        <translation>MR (mm)</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="397"/>
+        <source>Diameter</source>
+        <translation>Durchmesser</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="397"/>
+        <source>1st Half</source>
+        <translation>1. Hälfte</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="397"/>
+        <source>2nd Half</source>
+        <translation>2. Hälfte</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="397"/>
+        <source>Slope</source>
+        <translation>Steigung</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="397"/>
+        <source>Trend</source>
+        <translation>Verlauf</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="433"/>
+        <source>Total Shots</source>
+        <translation>Schüsse gesamt</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="434"/>
+        <source>Total Score</source>
+        <translation>Gesamtwertung</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="435"/>
+        <source>Average Score</source>
+        <translation>Durchschnittswertung</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="436"/>
+        <source>Best Score</source>
+        <translation>Beste Wertung</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="437"/>
+        <source>Worst Score</source>
+        <translation>Schwächste Wertung</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="438"/>
+        <source>Score SD</source>
+        <translation>Wertung Std.-Abw.</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="439"/>
+        <source>Group Mean Radius</source>
+        <translation>Mittlerer Streukreisradius</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="440"/>
+        <source>Group Diameter</source>
+        <translation>Streukreisdurchmesser</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="441"/>
+        <source>Horizontal SD</source>
+        <translation>Horizontale Std.-Abw.</translation>
+    </message>
+    <message>
+        <location filename="../CoachDashboardView.qml" line="442"/>
+        <source>Vertical SD</source>
+        <translation>Vertikale Std.-Abw.</translation>
+    </message>
+</context>
+<context>
+    <name>CoachDetailedView</name>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="69"/>
+        <location filename="../CoachDetailedView.qml" line="77"/>
+        <location filename="../CoachDetailedView.qml" line="83"/>
+        <location filename="../CoachDetailedView.qml" line="112"/>
+        <location filename="../CoachDetailedView.qml" line="135"/>
+        <location filename="../CoachDetailedView.qml" line="152"/>
+        <source>Not available</source>
+        <translation>Nicht verfügbar</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="70"/>
+        <source>Shots: %1   Total: %2   Average: %3</source>
+        <translation>Schüsse: %1   Gesamt: %2   Durchschnitt: %3</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="71"/>
+        <source>Best / Worst: %1 / %2   Score SD: %3</source>
+        <translation>Beste / Schwächste: %1 / %2   Std.-Abw.: %3</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="72"/>
+        <source>Consistency: %1</source>
+        <translation>Konstanz: %1</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="73"/>
+        <source>Group radius / diameter: %1 / %2 mm</source>
+        <translation>Streukreisradius / -durchmesser: %1 / %2 mm</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="74"/>
+        <source>MPI (x, y): %1, %2 mm   Trend: %3</source>
+        <translation>MTP (x, y): %1, %2 mm   Verlauf: %3</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="78"/>
+        <source>Perfect (≥10.8): %1 (%2)   Poor (&lt;9.5): %3 (%4)</source>
+        <translation>Perfekt (≥10.8): %1 (%2)   Schwach (&lt;9.5): %3 (%4)</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="79"/>
+        <source>≥10.5: %1   ≥10.7: %2   &lt;10.0: %3</source>
+        <translation>≥10.5: %1   ≥10.7: %2   &lt;10.0: %3</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="80"/>
+        <source>Best streak ≥10.5: %1   Longest poor streak: %2</source>
+        <translation>Beste Folge ≥10.5: %1   Längste schwache Folge: %2</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="84"/>
+        <source>Direction: %1</source>
+        <translation>Richtung: %1</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="85"/>
+        <source>Slope: %1   Corr: %2</source>
+        <translation>Steigung: %1   Korr.: %2</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="86"/>
+        <source>Halves: %1 → %2</source>
+        <translation>Hälften: %1 → %2</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="87"/>
+        <source>Thirds: %1 / %2 / %3</source>
+        <translation>Drittel: %1 / %2 / %3</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="88"/>
+        <source>⚠ Late-session drop: %1</source>
+        <translation>⚠ Abfall gegen Ende: %1</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="89"/>
+        <source>⚠ Deterioration (mean down, variance up)</source>
+        <translation>⚠ Verschlechterung (Mittel sinkt, Streuung steigt)</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="93"/>
+        <source>No coordinate data for this session.</source>
+        <translation>Keine Koordinatendaten für diese Sitzung.</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="95"/>
+        <source>Group radius: %1 mm   Diameter: %2 mm</source>
+        <translation>Streukreisradius: %1 mm   Durchmesser: %2 mm</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="96"/>
+        <source>Dominant zone: %1</source>
+        <translation>Dominante Zone: %1</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="97"/>
+        <source>Drift (halves) x/y: %1 / %2 mm</source>
+        <translation>Drift (Hälften) x/y: %1 / %2 mm</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="98"/>
+        <source>(thirds): %1 / %2 mm</source>
+        <translation>(Drittel): %1 / %2 mm</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="99"/>
+        <source>Dots: green ≥10.5, amber ≥10.0, red &lt;10.0.</source>
+        <translation>Punkte: grün ≥10.5, gelb ≥10.0, rot &lt;10.0.</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="103"/>
+        <source>Not available (no timing data).</source>
+        <translation>Nicht verfügbar (keine Zeitdaten).</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="104"/>
+        <source>Avg interval: %1s   Median: %2s   SD: %3</source>
+        <translation>Ø Intervall: %1 s   Median: %2 s   Std.-Abw.: %3</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="105"/>
+        <source>Fastest / slowest: %1 / %2s</source>
+        <translation>Schnellstes / langsamstes: %1 / %2 s</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="106"/>
+        <source>Rhythm: %1</source>
+        <translation>Rhythmus: %1</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="107"/>
+        <source>Rushed: %1   Delayed: %2</source>
+        <translation>Überhastet: %1   Verzögert: %2</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="108"/>
+        <source>Pace: %1</source>
+        <translation>Tempo: %1</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="117"/>
+        <source>shots: %1   avg: %2   quality: %3</source>
+        <translation>Schüsse: %1   Ø: %2   Qualität: %3</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="118"/>
+        <source>points lost: %1   group radius: %2 mm</source>
+        <translation>verlorene Punkte: %1   Streukreisradius: %2 mm</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="121"/>
+        <source>Strongest: %1   Weakest: %2</source>
+        <translation>Stärkste: %1   Schwächste: %2</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="125"/>
+        <source>Not available (no poor shots, or too few shots).</source>
+        <translation>Nicht verfügbar (keine schwachen Schüsse oder zu wenige Schüsse).</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="127"/>
+        <location filename="../CoachDetailedView.qml" line="136"/>
+        <source>Pattern: %1</source>
+        <translation>Muster: %1</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="128"/>
+        <source>Bad-shot recovery rate: %1   Avg recovery shots: %2</source>
+        <translation>Erholungsquote nach schwachem Schuss: %1   Ø Schüsse bis zur Erholung: %2</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="129"/>
+        <source>Post-error delta: %1   Repeated-error rate: %2</source>
+        <translation>Delta nach Fehler: %1   Wiederholungsfehlerquote: %2</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="130"/>
+        <source>Over-correction rate: %1</source>
+        <translation>Überkorrekturquote: %1</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="131"/>
+        <source>Best / worst position: %1 / %2</source>
+        <translation>Beste / schwächste Stellung: %1 / %2</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="137"/>
+        <source>Fatigue index: %1   Confidence: %2</source>
+        <translation>Ermüdungsindex: %1   Konfidenz: %2</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="138"/>
+        <source>Early → late avg delta: %1</source>
+        <translation>Ø-Delta früh → spät: %1</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="139"/>
+        <source>Group expansion: %1%</source>
+        <translation>Streukreiszunahme: %1%</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="140"/>
+        <source>Timing change: %1%</source>
+        <translation>Zeitänderung: %1%</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="141"/>
+        <source>Most fatigued: %1</source>
+        <translation>Stärkste Ermüdung: %1</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="145"/>
+        <source>No major training priority detected in this session&apos;s data.</source>
+        <translation>In den Daten dieser Sitzung wurde keine wesentliche Trainingspriorität erkannt.</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="148"/>
+        <source>%1. %2   [%3 impact, score %4]</source>
+        <translation>%1. %2   [Auswirkung %3, Punktzahl %4]</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="153"/>
+        <source>Rating: %1</source>
+        <translation>Bewertung: %1</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="154"/>
+        <source>Strengths:</source>
+        <translation>Stärken:</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="155"/>
+        <source>Limiting factors:</source>
+        <translation>Begrenzende Faktoren:</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="156"/>
+        <source>Risk flags:</source>
+        <translation>Risikohinweise:</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="158"/>
+        <source>Confidence: %1</source>
+        <translation>Konfidenz: %1</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="162"/>
+        <source>No diary entered for this session.</source>
+        <translation>Für diese Sitzung wurde kein Tagebuch eingetragen.</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="163"/>
+        <source>Type: %1   Intensity: %2</source>
+        <translation>Art: %1   Intensität: %2</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="164"/>
+        <source>Goal: %1</source>
+        <translation>Ziel: %1</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="165"/>
+        <source>Coach: %1</source>
+        <translation>Trainer: %1</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="166"/>
+        <source>Athlete: %1</source>
+        <translation>Sportler: %1</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="167"/>
+        <source>Tags: %1</source>
+        <translation>Schlagwörter: %1</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="173"/>
+        <source>KNEELING</source>
+        <translation>KNIEND</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="174"/>
+        <source>PRONE</source>
+        <translation>LIEGEND</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="175"/>
+        <source>STANDING</source>
+        <translation>STEHEND</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="183"/>
+        <source>Recovers well after mistakes</source>
+        <translation>Erholt sich gut nach Fehlern</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="184"/>
+        <source>Slow to recover after mistakes</source>
+        <translation>Erholt sich nach Fehlern langsam</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="185"/>
+        <source>Mistakes tend to cluster together</source>
+        <translation>Fehler treten gehäuft auf</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="186"/>
+        <source>Over-corrects after mistakes</source>
+        <translation>Korrigiert nach Fehlern zu stark</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="187"/>
+        <source>Not enough poor shots to assess recovery</source>
+        <translation>Zu wenige schwache Schüsse, um die Erholung zu beurteilen</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="192"/>
+        <source>No fatigue signal — held up well</source>
+        <translation>Kein Ermüdungssignal — gut gehalten</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="193"/>
+        <source>Gradual decline through the session</source>
+        <translation>Allmählicher Rückgang im Verlauf der Sitzung</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="194"/>
+        <source>Score dropped late in the match</source>
+        <translation>Wertung fiel gegen Ende des Wettkampfs ab</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="195"/>
+        <source>Group opened up over the session</source>
+        <translation>Streukreis wurde im Verlauf der Sitzung größer</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="196"/>
+        <source>Shot timing slowed late</source>
+        <translation>Schussrhythmus wurde gegen Ende langsamer</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="197"/>
+        <source>Working harder late to hold the score</source>
+        <translation>Gegen Ende mehr Aufwand, um die Wertung zu halten</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="198"/>
+        <source>Fatigue localised to one position</source>
+        <translation>Ermüdung auf eine Stellung beschränkt</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="199"/>
+        <source>Not enough data to assess fatigue</source>
+        <translation>Zu wenige Daten, um Ermüdung zu beurteilen</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="229"/>
+        <source>All shots</source>
+        <translation>Alle Schüsse</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="296"/>
+        <source>No report to display yet.</source>
+        <translation>Noch kein Bericht vorhanden.</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="296"/>
+        <source>Finish a match, then click Coach Report.</source>
+        <translation>Beenden Sie einen Wettkampf und klicken Sie dann auf „Trainerbericht“.</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="301"/>
+        <source>⚠ Low sample (%1 shots) — results are indicative only.</source>
+        <translation>⚠ Kleine Stichprobe (%1 Schüsse) — Ergebnisse sind nur ein Anhaltspunkt.</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="309"/>
+        <source>Executive Summary</source>
+        <translation>Zusammenfassung</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="315"/>
+        <source>Shot Map / Heat Map</source>
+        <translation>Trefferbild / Dichtekarte</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="317"/>
+        <source>Density heat map</source>
+        <translation>Dichtekarte</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="325"/>
+        <source>Shot positions</source>
+        <translation>Trefferlagen</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="346"/>
+        <source>Score Distribution</source>
+        <translation>Wertungsverteilung</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="361"/>
+        <source>Trend</source>
+        <translation>Verlauf</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="370"/>
+        <source>Score</source>
+        <translation>Wertung</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="371"/>
+        <source>Rolling-5 avg</source>
+        <translation>Gleitender Ø (5)</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="377"/>
+        <source>Timing</source>
+        <translation>Zeitverhalten</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="378"/>
+        <source>Position Analysis</source>
+        <translation>Stellungsanalyse</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="382"/>
+        <source>Recovery Analysis</source>
+        <translation>Erholungsanalyse</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="397"/>
+        <source>Recovery rate %1   •   confidence %2</source>
+        <translation>Erholungsquote %1   •   Konfidenz %2</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="420"/>
+        <source>Best position: %1   •   Worst: %2</source>
+        <translation>Beste Stellung: %1   •   Schwächste: %2</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="430"/>
+        <source>Fatigue Analysis</source>
+        <translation>Ermüdungsanalyse</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="445"/>
+        <source>Fatigue index %1   •   confidence %2</source>
+        <translation>Ermüdungsindex %1   •   Konfidenz %2</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="468"/>
+        <source>Most fatigued position: %1</source>
+        <translation>Stellung mit stärkster Ermüdung: %1</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="472"/>
+        <source>Training Priorities</source>
+        <translation>Trainingsprioritäten</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="473"/>
+        <source>Coach Conclusion</source>
+        <translation>Fazit des Trainers</translation>
+    </message>
+    <message>
+        <location filename="../CoachDetailedView.qml" line="474"/>
+        <source>Coach Diary</source>
+        <translation>Trainertagebuch</translation>
+    </message>
+</context>
+<context>
+    <name>CoachPrintView</name>
+    <message>
+        <location filename="../CoachPrintView.qml" line="55"/>
+        <source>Air Pistol (10m)</source>
+        <translation>Luftpistole (10 m)</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="55"/>
+        <source>Air Rifle (10m)</source>
+        <translation>Luftgewehr (10 m)</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="55"/>
+        <source>3-Position Rifle (50m)</source>
+        <translation>Gewehr 3 Stellungen (50 m)</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="55"/>
+        <source>Prone Rifle (50m)</source>
+        <translation>Gewehr liegend (50 m)</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="55"/>
+        <source>50m Rifle</source>
+        <translation>50 m KK-Gewehr</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="65"/>
+        <source>All</source>
+        <translation>Alle</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="109"/>
+        <source>Athlete</source>
+        <translation>Sportler</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="157"/>
+        <source>✓ diary saved</source>
+        <translation>✓ Tagebuch gespeichert</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="183"/>
+        <source>Coach Report</source>
+        <translation>Trainerbericht</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="186"/>
+        <source>Match</source>
+        <translation>Wettkampf</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="195"/>
+        <source>Executive Summary</source>
+        <translation>Zusammenfassung</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="201"/>
+        <location filename="../CoachPrintView.qml" line="283"/>
+        <source>Shots</source>
+        <translation>Schüsse</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="202"/>
+        <source>Total Score</source>
+        <translation>Gesamtwertung</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="203"/>
+        <source>Average</source>
+        <translation>Durchschnitt</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="204"/>
+        <source>Consistency</source>
+        <translation>Konstanz</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="205"/>
+        <source>Best / Worst</source>
+        <translation>Beste / Schwächste</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="206"/>
+        <source>Score SD</source>
+        <translation>Wertung Std.-Abw.</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="207"/>
+        <source>Group Radius</source>
+        <translation>Streukreisradius</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="208"/>
+        <source>Group Diameter</source>
+        <translation>Streukreisdurchmesser</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="209"/>
+        <source>MPI</source>
+        <translation>MTP</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="210"/>
+        <location filename="../CoachPrintView.qml" line="262"/>
+        <source>Trend</source>
+        <translation>Verlauf</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="217"/>
+        <source>Shot Map</source>
+        <translation>Trefferbild</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="234"/>
+        <source>Score Distribution</source>
+        <translation>Wertungsverteilung</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="239"/>
+        <source>Perfect ≥10.8</source>
+        <translation>Perfekt ≥10.8</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="240"/>
+        <source>Excellent 10.5–10.7</source>
+        <translation>Ausgezeichnet 10.5–10.7</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="241"/>
+        <source>Good 10.2–10.4</source>
+        <translation>Gut 10.2–10.4</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="242"/>
+        <source>Acceptable 10.0–10.1</source>
+        <translation>Akzeptabel 10.0–10.1</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="243"/>
+        <source>Recovery 9.5–9.9</source>
+        <translation>Ausbaufähig 9.5–9.9</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="244"/>
+        <source>Poor &lt;9.5</source>
+        <translation>Schwach &lt;9.5</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="269"/>
+        <source>Shot Score</source>
+        <translation>Schusswertung</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="270"/>
+        <source>Rolling Avg (5)</source>
+        <translation>Gleitender Ø (5)</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="279"/>
+        <source>Position Summary</source>
+        <translation>Übersicht nach Stellung</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="283"/>
+        <source>Position</source>
+        <translation>Stellung</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="283"/>
+        <source>Total</source>
+        <translation>Gesamt</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="283"/>
+        <source>Avg</source>
+        <translation>Ø</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="283"/>
+        <source>Best</source>
+        <translation>Bester</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="283"/>
+        <source>Worst</source>
+        <translation>Schwächster</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="283"/>
+        <source>SD</source>
+        <translation>Std.-Abw.</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="283"/>
+        <source>MR mm</source>
+        <translation>MR mm</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="283"/>
+        <source>Ø mm</source>
+        <translation>Ø mm</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="308"/>
+        <source>Recovery Analysis</source>
+        <translation>Erholungsanalyse</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="310"/>
+        <source>Recovery rate %1   ·   confidence %2</source>
+        <translation>Erholungsquote %1   ·   Konfidenz %2</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="318"/>
+        <source>Fatigue Analysis</source>
+        <translation>Ermüdungsanalyse</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="320"/>
+        <source>Fatigue index %1   ·   confidence %2</source>
+        <translation>Ermüdungsindex %1   ·   Konfidenz %2</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="327"/>
+        <source>Training Priorities</source>
+        <translation>Trainingsprioritäten</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="330"/>
+        <source>%1.  %2   [%3 impact]</source>
+        <translation>%1.  %2   [Auswirkung %3]</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="332"/>
+        <source>No major training priority detected.</source>
+        <translation>Keine wesentliche Trainingspriorität erkannt.</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="339"/>
+        <source>Coach Conclusion</source>
+        <translation>Fazit des Trainers</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="340"/>
+        <source>Rating: %1</source>
+        <translation>Bewertung: %1</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="348"/>
+        <source>Coach Diary</source>
+        <translation>Trainertagebuch</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="354"/>
+        <source>Equipment changes</source>
+        <translation>Änderungen an der Ausrüstung</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="358"/>
+        <source>Sight changes</source>
+        <translation>Änderungen an der Visierung</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="362"/>
+        <source>Ammunition / pellets</source>
+        <translation>Munition / Diabolos</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="366"/>
+        <source>Weather</source>
+        <translation>Wetter</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="370"/>
+        <source>Wind direction</source>
+        <translation>Windrichtung</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="374"/>
+        <source>Lighting</source>
+        <translation>Beleuchtung</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="378"/>
+        <source>Physical state</source>
+        <translation>Körperliche Verfassung</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="382"/>
+        <source>Mental state</source>
+        <translation>Mentale Verfassung</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="387"/>
+        <source>Coach notes</source>
+        <translation>Notizen des Trainers</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="392"/>
+        <source>Athlete notes</source>
+        <translation>Notizen des Sportlers</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="396"/>
+        <source>Next training focus</source>
+        <translation>Nächster Trainingsschwerpunkt</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="412"/>
+        <source>Free-text next-session focus</source>
+        <translation>Freitext: Schwerpunkt der nächsten Sitzung</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="421"/>
+        <source>Generated %1</source>
+        <translation>Erstellt %1</translation>
+    </message>
+    <message>
+        <location filename="../CoachPrintView.qml" line="430"/>
+        <source>No report to print yet.</source>
+        <translation>Noch kein Bericht zum Drucken vorhanden.</translation>
+    </message>
+</context>
+<context>
     <name>CoachReportWindow</name>
     <message>
         <location filename="../CoachReportWindow.qml" line="13"/>
@@ -604,6 +2117,44 @@ Starten Sie einen neuen Wettkampf, um weiterzuschießen.</translation>
         <location filename="../CoachReportWindow.qml" line="106"/>
         <source>⤓  Export PDF</source>
         <translation>⤓  PDF exportieren</translation>
+    </message>
+</context>
+<context>
+    <name>CompetitionCatalogue</name>
+    <message>
+        <location filename="../CompetitionCatalogue.qml" line="1028"/>
+        <source>MATCH-10</source>
+        <translation>WETTKAMPF-10</translation>
+    </message>
+    <message>
+        <location filename="../CompetitionCatalogue.qml" line="1028"/>
+        <source>MATCH-15</source>
+        <translation>WETTKAMPF-15</translation>
+    </message>
+    <message>
+        <location filename="../CompetitionCatalogue.qml" line="1028"/>
+        <source>MATCH-20</source>
+        <translation>WETTKAMPF-20</translation>
+    </message>
+    <message>
+        <location filename="../CompetitionCatalogue.qml" line="1028"/>
+        <source>MATCH-30</source>
+        <translation>WETTKAMPF-30</translation>
+    </message>
+    <message>
+        <location filename="../CompetitionCatalogue.qml" line="1029"/>
+        <source>MATCH-40</source>
+        <translation>WETTKAMPF-40</translation>
+    </message>
+    <message>
+        <location filename="../CompetitionCatalogue.qml" line="1029"/>
+        <source>MATCH-60</source>
+        <translation>WETTKAMPF-60</translation>
+    </message>
+    <message>
+        <location filename="../CompetitionCatalogue.qml" line="1029"/>
+        <source>UN-LIMITED</source>
+        <translation>UNBEGRENZT</translation>
     </message>
 </context>
 <context>
@@ -657,57 +2208,57 @@ Starten Sie einen neuen Wettkampf, um weiterzuschießen.</translation>
         <translation>BEENDET</translation>
     </message>
     <message>
-        <location filename="../Dsb120Hud.qml" line="76"/>
+        <location filename="../Dsb120Hud.qml" line="80"/>
         <source>Air rifle 3 positions</source>
         <translation>Luftgewehr 3-Stellung</translation>
     </message>
     <message>
-        <location filename="../Dsb120Hud.qml" line="87"/>
+        <location filename="../Dsb120Hud.qml" line="91"/>
         <source>POSITION</source>
         <translation>STELLUNG</translation>
     </message>
     <message>
-        <location filename="../Dsb120Hud.qml" line="96"/>
+        <location filename="../Dsb120Hud.qml" line="100"/>
         <source>PHASE</source>
         <translation>PHASE</translation>
     </message>
     <message>
-        <location filename="../Dsb120Hud.qml" line="103"/>
+        <location filename="../Dsb120Hud.qml" line="107"/>
         <source>WAITING FOR %1 START</source>
         <translation>WARTET AUF START %1</translation>
     </message>
     <message>
-        <location filename="../Dsb120Hud.qml" line="111"/>
+        <location filename="../Dsb120Hud.qml" line="115"/>
         <source>TIME</source>
         <translation>ZEIT</translation>
     </message>
     <message>
-        <location filename="../Dsb120Hud.qml" line="116"/>
+        <location filename="../Dsb120Hud.qml" line="120"/>
         <source>NOT RUNNING</source>
         <translation>LÄUFT NICHT</translation>
     </message>
     <message>
-        <location filename="../Dsb120Hud.qml" line="123"/>
+        <location filename="../Dsb120Hud.qml" line="127"/>
         <source>MATCH SHOTS</source>
         <translation>WETTKAMPFSCHÜSSE</translation>
     </message>
     <message>
-        <location filename="../Dsb120Hud.qml" line="135"/>
+        <location filename="../Dsb120Hud.qml" line="139"/>
         <source>COMPETITION CONTROL</source>
         <translation>WETTKAMPFLEITUNG</translation>
     </message>
     <message>
-        <location filename="../Dsb120Hud.qml" line="142"/>
+        <location filename="../Dsb120Hud.qml" line="146"/>
         <source>START %1</source>
         <translation>%1 STARTEN</translation>
     </message>
     <message>
-        <location filename="../Dsb120Hud.qml" line="144"/>
+        <location filename="../Dsb120Hud.qml" line="148"/>
         <source>TO MATCH</source>
         <translation>ZUM WETTKAMPF</translation>
     </message>
     <message>
-        <location filename="../Dsb120Hud.qml" line="145"/>
+        <location filename="../Dsb120Hud.qml" line="149"/>
         <source>END POSITION</source>
         <translation>STELLUNG BEENDEN</translation>
     </message>
@@ -762,7 +2313,7 @@ Starten Sie einen neuen Wettkampf, um weiterzuschießen.</translation>
     <message>
         <location filename="../Finals10mCommandPanel.qml" line="108"/>
         <source>—</source>
-        <translation type="unfinished"></translation>
+        <translation>—</translation>
     </message>
     <message>
         <location filename="../Finals10mCommandPanel.qml" line="119"/>
@@ -924,6 +2475,237 @@ Starten Sie einen neuen Wettkampf, um weiterzuschießen.</translation>
     </message>
 </context>
 <context>
+    <name>Finals10mReportView</name>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="48"/>
+        <source>10m Air Rifle Final</source>
+        <translation>10-m-Luftgewehr-Finale</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="49"/>
+        <source>10m Air Pistol Final</source>
+        <translation>10-m-Luftpistole-Finale</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="50"/>
+        <source>10m Final</source>
+        <translation>10-m-Finale</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="109"/>
+        <location filename="../Finals10mReportView.qml" line="328"/>
+        <source>FINAL REPORT</source>
+        <translation>FINALBERICHT</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="112"/>
+        <location filename="../Finals10mReportView.qml" line="331"/>
+        <source>Final</source>
+        <translation>Finale</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="117"/>
+        <source>Session</source>
+        <translation>Sitzung</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="118"/>
+        <source>Build</source>
+        <translation>Build</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="123"/>
+        <source>RESULT</source>
+        <translation>ERGEBNIS</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="132"/>
+        <source>Final total</source>
+        <translation>Finalergebnis</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="136"/>
+        <source>Official shots</source>
+        <translation>Wertungsschüsse</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="140"/>
+        <source>Sighters</source>
+        <translation>Probeschüsse</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="144"/>
+        <source>Mean shot time</source>
+        <translation>Mittlere Schusszeit</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="148"/>
+        <source>Series 1 (1-5)</source>
+        <translation>Serie 1 (1-5)</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="152"/>
+        <source>Series 2 (6-10)</source>
+        <translation>Serie 2 (6-10)</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="156"/>
+        <source>Single shots (11-24)</source>
+        <translation>Einzelschüsse (11-24)</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="160"/>
+        <source>Scoring</source>
+        <translation>Wertungsart</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="166"/>
+        <source>GROUP</source>
+        <translation>STREUKREIS</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="174"/>
+        <source>MPI X</source>
+        <translation>MTP X</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="178"/>
+        <source>MPI Y</source>
+        <translation>MTP Y</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="182"/>
+        <source>MPI radius</source>
+        <translation>MTP-Radius</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="186"/>
+        <source>Group extent</source>
+        <translation>Streukreisausdehnung</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="192"/>
+        <source>Mean point of impact and group extent are measured over the official shots only; sighters are excluded.</source>
+        <translation>Mittlerer Treffpunkt und Streukreisausdehnung werden nur über die Wertungsschüsse gemessen; Probeschüsse sind ausgenommen.</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="198"/>
+        <source>COURSE OF FIRE</source>
+        <translation>SCHIESSABLAUF</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="206"/>
+        <source>Section</source>
+        <translation>Abschnitt</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="207"/>
+        <source>Shots</source>
+        <translation>Schüsse</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="208"/>
+        <source>Count</source>
+        <translation>Anzahl</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="209"/>
+        <source>Subtotal</source>
+        <translation>Zwischensumme</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="231"/>
+        <source>FINAL TOTAL</source>
+        <translation>FINALERGEBNIS</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="240"/>
+        <source>SIGHTERS</source>
+        <translation>PROBESCHÜSSE</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="243"/>
+        <source>Sighting shots. They do not count towards the official shot count, the series, the single shots or the Final total.</source>
+        <translation>Probeschüsse. Sie zählen weder zur Zahl der Wertungsschüsse noch zu den Serien, den Einzelschüssen oder dem Finalergebnis.</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="249"/>
+        <source>No sighting shots recorded for this Final.</source>
+        <translation>Für dieses Finale wurden keine Probeschüsse erfasst.</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="260"/>
+        <source>Sighter</source>
+        <translation>Probe</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="261"/>
+        <location filename="../Finals10mReportView.qml" line="347"/>
+        <source>Score</source>
+        <translation>Wertung</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="262"/>
+        <location filename="../Finals10mReportView.qml" line="348"/>
+        <source>X (mm)</source>
+        <translation>X (mm)</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="263"/>
+        <location filename="../Finals10mReportView.qml" line="349"/>
+        <source>Y (mm)</source>
+        <translation>Y (mm)</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="264"/>
+        <location filename="../Finals10mReportView.qml" line="350"/>
+        <source>Time</source>
+        <translation>Zeit</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="309"/>
+        <location filename="../Finals10mReportView.qml" line="413"/>
+        <source>Generated %1</source>
+        <translation>Erstellt %1</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="310"/>
+        <location filename="../Finals10mReportView.qml" line="414"/>
+        <source>Page %1 of %2</source>
+        <translation>Seite %1 von %2</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="338"/>
+        <source>OFFICIAL COURSE</source>
+        <translation>OFFIZIELLER ABLAUF</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="346"/>
+        <source>Shot</source>
+        <translation>Schuss</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="366"/>
+        <source>Subtotal %1</source>
+        <translation>Zwischensumme %1</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="390"/>
+        <source>FINAL TOTAL  ·  %1</source>
+        <translation>FINALERGEBNIS  ·  %1</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="400"/>
+        <source>COURSE INCOMPLETE — %1 official shots recorded. This is not a completed Final result.</source>
+        <translation>ABLAUF UNVOLLSTÄNDIG — %1 Wertungsschüsse erfasst. Dies ist kein abgeschlossenes Finalergebnis.</translation>
+    </message>
+    <message>
+        <location filename="../Finals10mReportView.qml" line="430"/>
+        <source>%1 Report</source>
+        <translation>Bericht %1</translation>
+    </message>
+</context>
+<context>
     <name>Finals10mRightPanel</name>
     <message>
         <location filename="../Finals10mRightPanel.qml" line="42"/>
@@ -1003,7 +2785,153 @@ Starten Sie einen neuen Wettkampf, um weiterzuschießen.</translation>
     <message>
         <location filename="../Finals10mRightPanel.qml" line="191"/>
         <source>S</source>
-        <translation type="unfinished"></translation>
+        <translation>P</translation>
+    </message>
+</context>
+<context>
+    <name>Finals3PRightPanel</name>
+    <message>
+        <location filename="../Finals3PRightPanel.qml" line="55"/>
+        <location filename="../Finals3PRightPanel.qml" line="336"/>
+        <source>KNEELING</source>
+        <translation>KNIEND</translation>
+    </message>
+    <message>
+        <location filename="../Finals3PRightPanel.qml" line="56"/>
+        <location filename="../Finals3PRightPanel.qml" line="337"/>
+        <source>PRONE</source>
+        <translation>LIEGEND</translation>
+    </message>
+    <message>
+        <location filename="../Finals3PRightPanel.qml" line="57"/>
+        <location filename="../Finals3PRightPanel.qml" line="338"/>
+        <source>STANDING</source>
+        <translation>STEHEND</translation>
+    </message>
+    <message>
+        <location filename="../Finals3PRightPanel.qml" line="76"/>
+        <source>50 m Rifle 3 Positions Final</source>
+        <translation>Finale 50 m Gewehr 3 Stellungen</translation>
+    </message>
+    <message>
+        <location filename="../Finals3PRightPanel.qml" line="79"/>
+        <source>SHOTS</source>
+        <translation>SCHÜSSE</translation>
+    </message>
+    <message>
+        <location filename="../Finals3PRightPanel.qml" line="81"/>
+        <source>KNEELING · SHOTS 1–10</source>
+        <translation>KNIEND · SCHÜSSE 1–10</translation>
+    </message>
+    <message>
+        <location filename="../Finals3PRightPanel.qml" line="82"/>
+        <source>PRONE · SHOTS 11–20</source>
+        <translation>LIEGEND · SCHÜSSE 11–20</translation>
+    </message>
+    <message>
+        <location filename="../Finals3PRightPanel.qml" line="83"/>
+        <source>STANDING · SERIES 1 (21–25)</source>
+        <translation>STEHEND · SERIE 1 (21–25)</translation>
+    </message>
+    <message>
+        <location filename="../Finals3PRightPanel.qml" line="84"/>
+        <source>STANDING · SERIES 2 (26–30)</source>
+        <translation>STEHEND · SERIE 2 (26–30)</translation>
+    </message>
+    <message>
+        <location filename="../Finals3PRightPanel.qml" line="86"/>
+        <source>STANDING · SINGLE SHOTS (31–35)</source>
+        <translation>STEHEND · EINZELSCHÜSSE (31–35)</translation>
+    </message>
+    <message>
+        <location filename="../Finals3PRightPanel.qml" line="87"/>
+        <source>FINAL — ALL 35 SHOTS</source>
+        <translation>FINALE — ALLE 35 SCHÜSSE</translation>
+    </message>
+    <message>
+        <location filename="../Finals3PRightPanel.qml" line="88"/>
+        <source>SIGHTERS</source>
+        <translation>PROBESCHÜSSE</translation>
+    </message>
+    <message>
+        <location filename="../Finals3PRightPanel.qml" line="105"/>
+        <source>NEXT · STANDING SERIES 1 — 5 MATCH SHOTS — WAIT FOR LOAD</source>
+        <translation>ALS NÄCHSTES · STEHEND SERIE 1 — 5 WETTKAMPFSCHÜSSE — AUF LADEN WARTEN</translation>
+    </message>
+    <message>
+        <location filename="../Finals3PRightPanel.qml" line="106"/>
+        <source>NEXT · STANDING SERIES 2 — 5 MATCH SHOTS — WAIT FOR LOAD</source>
+        <translation>ALS NÄCHSTES · STEHEND SERIE 2 — 5 WETTKAMPFSCHÜSSE — AUF LADEN WARTEN</translation>
+    </message>
+    <message>
+        <location filename="../Finals3PRightPanel.qml" line="107"/>
+        <source>NEXT · SINGLE SHOT 31 — WAIT FOR LOAD</source>
+        <translation>ALS NÄCHSTES · EINZELSCHUSS 31 — AUF LADEN WARTEN</translation>
+    </message>
+    <message>
+        <location filename="../Finals3PRightPanel.qml" line="108"/>
+        <source>NEXT · SINGLE SHOT 32 — WAIT FOR LOAD</source>
+        <translation>ALS NÄCHSTES · EINZELSCHUSS 32 — AUF LADEN WARTEN</translation>
+    </message>
+    <message>
+        <location filename="../Finals3PRightPanel.qml" line="109"/>
+        <source>NEXT · SINGLE SHOT 33 — WAIT FOR LOAD</source>
+        <translation>ALS NÄCHSTES · EINZELSCHUSS 33 — AUF LADEN WARTEN</translation>
+    </message>
+    <message>
+        <location filename="../Finals3PRightPanel.qml" line="110"/>
+        <source>NEXT · SINGLE SHOT 34 — WAIT FOR LOAD</source>
+        <translation>ALS NÄCHSTES · EINZELSCHUSS 34 — AUF LADEN WARTEN</translation>
+    </message>
+    <message>
+        <location filename="../Finals3PRightPanel.qml" line="111"/>
+        <source>NEXT · SINGLE SHOT 35 — WAIT FOR LOAD</source>
+        <translation>ALS NÄCHSTES · EINZELSCHUSS 35 — AUF LADEN WARTEN</translation>
+    </message>
+    <message>
+        <location filename="../Finals3PRightPanel.qml" line="227"/>
+        <source>PAUSED</source>
+        <translation>PAUSIERT</translation>
+    </message>
+    <message>
+        <location filename="../Finals3PRightPanel.qml" line="279"/>
+        <source>LAST OFFICIAL SHOT</source>
+        <translation>LETZTER OFFIZIELLER SCHUSS</translation>
+    </message>
+    <message>
+        <location filename="../Finals3PRightPanel.qml" line="287"/>
+        <source>Shot </source>
+        <translation>Schuss </translation>
+    </message>
+    <message>
+        <location filename="../Finals3PRightPanel.qml" line="295"/>
+        <source> s</source>
+        <translation> s</translation>
+    </message>
+    <message>
+        <location filename="../Finals3PRightPanel.qml" line="320"/>
+        <source>SCORE SUMMARY</source>
+        <translation>WERTUNGSÜBERSICHT</translation>
+    </message>
+    <message>
+        <location filename="../Finals3PRightPanel.qml" line="327"/>
+        <source> / 35 shots</source>
+        <translation> / 35 Schüsse</translation>
+    </message>
+    <message>
+        <location filename="../Finals3PRightPanel.qml" line="362"/>
+        <source>TOTAL</source>
+        <translation>GESAMT</translation>
+    </message>
+    <message>
+        <location filename="../Finals3PRightPanel.qml" line="417"/>
+        <source>Score</source>
+        <translation>Wertung</translation>
+    </message>
+    <message>
+        <location filename="../Finals3PRightPanel.qml" line="433"/>
+        <source>SIGHTER</source>
+        <translation>PROBE</translation>
     </message>
 </context>
 <context>
@@ -1025,6 +2953,494 @@ Starten Sie einen neuen Wettkampf, um weiterzuschießen.</translation>
         <location filename="../FinalsDeveloperDrawer.qml" line="60"/>
         <source>RESUME</source>
         <translation>FORTSETZEN</translation>
+    </message>
+</context>
+<context>
+    <name>FinalsReportView</name>
+    <message>
+        <location filename="../FinalsReportView.qml" line="89"/>
+        <location filename="../FinalsReportView.qml" line="97"/>
+        <location filename="../FinalsReportView.qml" line="130"/>
+        <source>Kneeling</source>
+        <translation>Kniend</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="90"/>
+        <location filename="../FinalsReportView.qml" line="98"/>
+        <location filename="../FinalsReportView.qml" line="131"/>
+        <source>Prone</source>
+        <translation>Liegend</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="91"/>
+        <location filename="../FinalsReportView.qml" line="99"/>
+        <location filename="../FinalsReportView.qml" line="132"/>
+        <source>Standing Series 1</source>
+        <translation>Stehend Serie 1</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="92"/>
+        <location filename="../FinalsReportView.qml" line="100"/>
+        <location filename="../FinalsReportView.qml" line="133"/>
+        <source>Standing Series 2</source>
+        <translation>Stehend Serie 2</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="93"/>
+        <location filename="../FinalsReportView.qml" line="101"/>
+        <location filename="../FinalsReportView.qml" line="134"/>
+        <location filename="../FinalsReportView.qml" line="135"/>
+        <location filename="../FinalsReportView.qml" line="136"/>
+        <location filename="../FinalsReportView.qml" line="137"/>
+        <location filename="../FinalsReportView.qml" line="138"/>
+        <source>Standing Single %1</source>
+        <translation>Stehend Einzelschuss %1</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="105"/>
+        <location filename="../FinalsReportView.qml" line="126"/>
+        <source>COMPLETE</source>
+        <translation>ABGESCHLOSSEN</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="106"/>
+        <location filename="../FinalsReportView.qml" line="127"/>
+        <source>INCOMPLETE</source>
+        <translation>UNVOLLSTÄNDIG</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="107"/>
+        <location filename="../FinalsReportView.qml" line="128"/>
+        <source>ABORTED</source>
+        <translation>ABGEBROCHEN</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="108"/>
+        <location filename="../FinalsReportView.qml" line="129"/>
+        <source>IN PROGRESS</source>
+        <translation>LÄUFT</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="117"/>
+        <source>Final Completed</source>
+        <translation>Finale abgeschlossen</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="118"/>
+        <source>35 Official Shots</source>
+        <translation>35 Wertungsschüsse</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="119"/>
+        <source>Decimal Scoring</source>
+        <translation>Wertung in Zehntelringen</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="120"/>
+        <source>ISSF Sequence Completed</source>
+        <translation>ISSF-Ablauf abgeschlossen</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="121"/>
+        <source>No Missing Shots</source>
+        <translation>Keine fehlenden Schüsse</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="122"/>
+        <source>Report Verified</source>
+        <translation>Bericht geprüft</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="123"/>
+        <source>KNEELING</source>
+        <translation>KNIEND</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="124"/>
+        <source>PRONE</source>
+        <translation>LIEGEND</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="125"/>
+        <source>STANDING</source>
+        <translation>STEHEND</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="139"/>
+        <source>Warning</source>
+        <translation>Warnung</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="140"/>
+        <source>Information</source>
+        <translation>Information</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="141"/>
+        <source>Critical</source>
+        <translation>Kritisch</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="230"/>
+        <source>3P FINAL REPORT</source>
+        <translation>BERICHT FINALE 3 STELLUNGEN</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="235"/>
+        <source>ISSF 50m Rifle 3 Positions — Final · 35 shots · decimal scoring</source>
+        <translation>ISSF 50 m Gewehr 3 Stellungen — Finale · 35 Schüsse · Zehntelringe</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="247"/>
+        <source>Athlete</source>
+        <translation>Sportler</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="248"/>
+        <source>Discipline</source>
+        <translation>Disziplin</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="248"/>
+        <source>50m Rifle 3 Positions</source>
+        <translation>50 m Gewehr 3 Stellungen</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="249"/>
+        <source>Date</source>
+        <translation>Datum</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="250"/>
+        <source>Session</source>
+        <translation>Sitzung</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="251"/>
+        <source>Software</source>
+        <translation>Software</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="252"/>
+        <source>Mode</source>
+        <translation>Modus</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="252"/>
+        <source>Training</source>
+        <translation>Training</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="253"/>
+        <source>Lane</source>
+        <translation>Bahn</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="254"/>
+        <source>Target ID</source>
+        <translation>Scheiben-ID</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="279"/>
+        <source>MATCH VALIDATION</source>
+        <translation>WETTKAMPFPRÜFUNG</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="286"/>
+        <source>✓  REPORT VERIFIED</source>
+        <translation>✓  BERICHT GEPRÜFT</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="286"/>
+        <source>⚠  MATCH INCOMPLETE</source>
+        <translation>⚠  WETTKAMPF UNVOLLSTÄNDIG</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="320"/>
+        <source>Reason — %1: %2</source>
+        <translation>Grund — %1: %2</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="329"/>
+        <source>Executive Summary</source>
+        <translation>Zusammenfassung</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="337"/>
+        <source>Total Score</source>
+        <translation>Gesamtwertung</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="339"/>
+        <source>Official Shots</source>
+        <translation>Wertungsschüsse</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="341"/>
+        <source>Average Shot</source>
+        <translation>Schnitt je Schuss</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="344"/>
+        <location filename="../FinalsReportView.qml" line="774"/>
+        <source>Highest Shot</source>
+        <translation>Bester Schuss</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="348"/>
+        <location filename="../FinalsReportView.qml" line="353"/>
+        <location filename="../FinalsReportView.qml" line="774"/>
+        <location filename="../FinalsReportView.qml" line="775"/>
+        <location filename="../FinalsReportView.qml" line="776"/>
+        <location filename="../FinalsReportView.qml" line="777"/>
+        <source>shot %1</source>
+        <translation>Schuss %1</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="349"/>
+        <location filename="../FinalsReportView.qml" line="775"/>
+        <source>Lowest Shot</source>
+        <translation>Schwächster Schuss</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="354"/>
+        <source>Inner 10s</source>
+        <translation>Innenzehner</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="357"/>
+        <source>Sighting Shots</source>
+        <translation>Probeschüsse</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="359"/>
+        <source>Missing Shots</source>
+        <translation>Fehlende Schüsse</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="362"/>
+        <source>Incidents</source>
+        <translation>Störungen</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="364"/>
+        <source>rejected triggers</source>
+        <translation>abgewiesene Auslösungen</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="367"/>
+        <source>Stage Breakdown</source>
+        <translation>Aufschlüsselung nach Abschnitt</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="376"/>
+        <location filename="../FinalsReportView.qml" line="604"/>
+        <location filename="../FinalsReportView.qml" line="682"/>
+        <source>Stage</source>
+        <translation>Abschnitt</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="377"/>
+        <source>Shots</source>
+        <translation>Schüsse</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="378"/>
+        <location filename="../FinalsReportView.qml" line="605"/>
+        <source>Score</source>
+        <translation>Wertung</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="379"/>
+        <source>Average</source>
+        <translation>Durchschnitt</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="380"/>
+        <source>Best</source>
+        <translation>Bester</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="381"/>
+        <source>Worst</source>
+        <translation>Schwächster</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="383"/>
+        <location filename="../FinalsReportView.qml" line="681"/>
+        <source>Time</source>
+        <translation>Zeit</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="384"/>
+        <source>Status</source>
+        <translation>Status</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="413"/>
+        <source>TOTAL</source>
+        <translation>GESAMT</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="427"/>
+        <source>Position Comparison</source>
+        <translation>Stellungsvergleich</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="472"/>
+        <location filename="../FinalsReportView.qml" line="577"/>
+        <location filename="../FinalsReportView.qml" line="648"/>
+        <location filename="../FinalsReportView.qml" line="818"/>
+        <source>Generated %1</source>
+        <translation>Erstellt %1</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="473"/>
+        <location filename="../FinalsReportView.qml" line="578"/>
+        <location filename="../FinalsReportView.qml" line="649"/>
+        <location filename="../FinalsReportView.qml" line="819"/>
+        <source>Page %1 / %2</source>
+        <translation>Seite %1 / %2</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="490"/>
+        <source>Target Plots</source>
+        <translation>Trefferbilder</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="512"/>
+        <source>True ISSF ring geometry · holes at bullet scale · ● ≥ 10.5   ● 10.0 – 10.4   ● &lt; 10.0</source>
+        <translation>Echte ISSF-Ringgeometrie · Löcher in Geschossgröße · ● ≥ 10.5   ● 10.0 – 10.4   ● &lt; 10.0</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="516"/>
+        <source>Momentum — Shot Score</source>
+        <translation>Verlauf — Schusswertung</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="544"/>
+        <source>Cumulative Score</source>
+        <translation>Kumulierte Wertung</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="594"/>
+        <source>Shot by Shot</source>
+        <translation>Schuss für Schuss</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="606"/>
+        <source>Hold</source>
+        <translation>Haltezeit</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="607"/>
+        <source>Split</source>
+        <translation>Zwischenzeit</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="608"/>
+        <source>Running Total</source>
+        <translation>Laufende Summe</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="609"/>
+        <source>Notes</source>
+        <translation>Notizen</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="638"/>
+        <source>★ inner ten (≥ 10.2) · Split = time since the previous shot in the firing window · Hold pending hardware support</source>
+        <translation>★ Innenzehner (≥ 10.2) · Zwischenzeit = Zeit seit dem vorigen Schuss im Schießfenster · Haltezeit erfordert Hardware-Unterstützung</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="665"/>
+        <source>Incident Log</source>
+        <translation>Störungsprotokoll</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="670"/>
+        <source>No incidents — no shots were rejected during this final.</source>
+        <translation>Keine Störungen — in diesem Finale wurde kein Schuss abgewiesen.</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="683"/>
+        <source>Severity</source>
+        <translation>Schweregrad</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="684"/>
+        <source>Event</source>
+        <translation>Ereignis</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="723"/>
+        <source>+ %1 further incidents — see the session journal (finals_session.jsonl)</source>
+        <translation>+ %1 weitere Störungen — siehe Sitzungsprotokoll (finals_session.jsonl)</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="731"/>
+        <source>CRO Command Timeline</source>
+        <translation>Kommandoverlauf der Schießleitung</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="751"/>
+        <source>+ %1 further events — see the session journal (finals_session.jsonl)</source>
+        <translation>+ %1 weitere Ereignisse — siehe Sitzungsprotokoll (finals_session.jsonl)</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="759"/>
+        <source>Performance Summary</source>
+        <translation>Leistungsübersicht</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="776"/>
+        <source>Longest Split</source>
+        <translation>Längste Zwischenzeit</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="777"/>
+        <source>Shortest Split</source>
+        <translation>Kürzeste Zwischenzeit</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="778"/>
+        <source>Fastest Stage</source>
+        <translation>Schnellster Abschnitt</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="779"/>
+        <source>Slowest Stage</source>
+        <translation>Langsamster Abschnitt</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="780"/>
+        <source>Standing Avg</source>
+        <translation>Ø Stehend</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="780"/>
+        <source>shots 21–35</source>
+        <translation>Schüsse 21–35</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="781"/>
+        <source>Overall Avg</source>
+        <translation>Ø Gesamt</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="781"/>
+        <source>all official shots</source>
+        <translation>alle Wertungsschüsse</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="794"/>
+        <source>Not available — no official shots recorded.</source>
+        <translation>Nicht verfügbar — keine Wertungsschüsse erfasst.</translation>
+    </message>
+    <message>
+        <location filename="../FinalsReportView.qml" line="799"/>
+        <source>Coach Notes</source>
+        <translation>Notizen des Trainers</translation>
     </message>
 </context>
 <context>
@@ -1841,7 +4257,7 @@ Die Anwendung wird jetzt beendet.</translation>
     <message>
         <location filename="../LoginPage.qml" line="524"/>
         <location filename="../LoginPage.qml" line="549"/>
-        <location filename="../LoginPage.qml" line="1531"/>
+        <location filename="../LoginPage.qml" line="1533"/>
         <source>%1 min</source>
         <translation>%1 Min.</translation>
     </message>
@@ -2070,7 +4486,7 @@ Prüfen Sie die USB-Verbindung und versuchen Sie es erneut.</translation>
     <message>
         <location filename="../LoginPage.qml" line="860"/>
         <source> (%1)</source>
-        <translation type="unfinished"></translation>
+        <translation> (%1)</translation>
     </message>
     <message>
         <location filename="../LoginPage.qml" line="911"/>
@@ -2123,52 +4539,52 @@ Prüfen Sie die USB-Verbindung und versuchen Sie es erneut.</translation>
         <translation>Demo · nicht nötig</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1195"/>
+        <location filename="../LoginPage.qml" line="1197"/>
         <source>OPERATING MODE</source>
         <translation>BETRIEBSART</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1224"/>
+        <location filename="../LoginPage.qml" line="1226"/>
         <source>LIVE TARGET</source>
         <translation>LIVE-SCHEIBE</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1227"/>
+        <location filename="../LoginPage.qml" line="1229"/>
         <source>Physical target</source>
         <translation>Physische Scheibe</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1261"/>
+        <location filename="../LoginPage.qml" line="1263"/>
         <source>DEMO / SIMULATION</source>
         <translation>DEMO / SIMULATION</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1265"/>
+        <location filename="../LoginPage.qml" line="1267"/>
         <source>Simulated clicks</source>
         <translation>Simulierte Schüsse</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1286"/>
+        <location filename="../LoginPage.qml" line="1288"/>
         <source>Restart required — the selected mode takes effect on next launch.</source>
         <translation>Neustart erforderlich — die gewählte Betriebsart wird beim nächsten Start wirksam.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1287"/>
+        <location filename="../LoginPage.qml" line="1289"/>
         <source>Switch the target source. Changing mode requires an application restart.</source>
         <translation>Wechseln Sie die Schussquelle. Ein Wechsel der Betriebsart erfordert einen Neustart der Anwendung.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1305"/>
+        <location filename="../LoginPage.qml" line="1307"/>
         <source>Switch to Demo mode?</source>
         <translation>In den Demo-Modus wechseln?</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1305"/>
+        <location filename="../LoginPage.qml" line="1307"/>
         <source>Switch to Live target mode?</source>
         <translation>In den Live-Scheiben-Modus wechseln?</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1312"/>
+        <location filename="../LoginPage.qml" line="1314"/>
         <source>Simulated shots will be enabled. Demo sessions are intended for testing and cannot be treated as Live target results.
 
 The application must restart before the change takes effect.</source>
@@ -2177,7 +4593,7 @@ The application must restart before the change takes effect.</source>
 Die Anwendung muss neu gestartet werden, damit die Änderung wirksam wird.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1313"/>
+        <location filename="../LoginPage.qml" line="1315"/>
         <source>Simulated shot input will be disabled. The application will expect the physical %1 target connection.
 
 The application must restart before the change takes effect.</source>
@@ -2186,177 +4602,177 @@ The application must restart before the change takes effect.</source>
 Die Anwendung muss neu gestartet werden, damit die Änderung wirksam wird.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1331"/>
+        <location filename="../LoginPage.qml" line="1333"/>
         <source>Restart Later</source>
         <translation>Später neu starten</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1338"/>
+        <location filename="../LoginPage.qml" line="1340"/>
         <source>Restart Now</source>
         <translation>Jetzt neu starten</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1354"/>
+        <location filename="../LoginPage.qml" line="1356"/>
         <source>NETWORK SHARE</source>
         <translation>NETZWERKFREIGABE</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1389"/>
+        <location filename="../LoginPage.qml" line="1391"/>
         <source>Share incomplete</source>
         <translation>Freigabe unvollständig</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1390"/>
+        <location filename="../LoginPage.qml" line="1392"/>
         <source>Share enabled</source>
         <translation>Freigabe aktiviert</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1391"/>
+        <location filename="../LoginPage.qml" line="1393"/>
         <source>Share disabled</source>
         <translation>Freigabe deaktiviert</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1399"/>
+        <location filename="../LoginPage.qml" line="1401"/>
         <source>No folder selected — click to choose</source>
         <translation>Kein Ordner gewählt — zum Wählen klicken</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1477"/>
+        <location filename="../LoginPage.qml" line="1479"/>
         <source>POSITION FLOW   Kneeling → Prone → Standing</source>
         <translation>STELLUNGSFOLGE   Kniend → Liegend → Stehend</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1491"/>
+        <location filename="../LoginPage.qml" line="1493"/>
         <source>DISCIPLINE</source>
         <translation>DISZIPLIN</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1491"/>
+        <location filename="../LoginPage.qml" line="1493"/>
         <source>50m 3 Pos</source>
         <translation>50 m Dreistellung</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1491"/>
+        <location filename="../LoginPage.qml" line="1493"/>
         <source>50m Prone</source>
         <translation>50 m Liegend</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1492"/>
-        <location filename="../LoginPage.qml" line="1524"/>
+        <location filename="../LoginPage.qml" line="1494"/>
+        <location filename="../LoginPage.qml" line="1526"/>
         <source>SHOT PLAN</source>
         <translation>SCHUSSPLAN</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1493"/>
+        <location filename="../LoginPage.qml" line="1495"/>
         <source>SIGHTERS</source>
         <translation>PROBESCHÜSSE</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1493"/>
+        <location filename="../LoginPage.qml" line="1495"/>
         <source>Yes</source>
         <translation>Ja</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1493"/>
+        <location filename="../LoginPage.qml" line="1495"/>
         <source>No</source>
         <translation>Nein</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1494"/>
+        <location filename="../LoginPage.qml" line="1496"/>
         <source>WIND</source>
         <translation>WIND</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1494"/>
+        <location filename="../LoginPage.qml" line="1496"/>
         <source>Manual entry</source>
         <translation>Manuelle Eingabe</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1495"/>
+        <location filename="../LoginPage.qml" line="1497"/>
         <source>POSITIONS</source>
         <translation>STELLUNGEN</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1495"/>
+        <location filename="../LoginPage.qml" line="1497"/>
         <source>K · P · S separate</source>
         <translation>K · L · S getrennt</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1495"/>
+        <location filename="../LoginPage.qml" line="1497"/>
         <source>Single</source>
         <translation>Einzeln</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1496"/>
-        <location filename="../LoginPage.qml" line="1503"/>
-        <location filename="../LoginPage.qml" line="1510"/>
+        <location filename="../LoginPage.qml" line="1498"/>
+        <location filename="../LoginPage.qml" line="1505"/>
+        <location filename="../LoginPage.qml" line="1512"/>
         <source>MODE</source>
         <translation>MODUS</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1496"/>
-        <location filename="../LoginPage.qml" line="1503"/>
-        <location filename="../LoginPage.qml" line="1510"/>
+        <location filename="../LoginPage.qml" line="1498"/>
+        <location filename="../LoginPage.qml" line="1505"/>
+        <location filename="../LoginPage.qml" line="1512"/>
         <source>Live</source>
         <translation>Live</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1496"/>
-        <location filename="../LoginPage.qml" line="1503"/>
-        <location filename="../LoginPage.qml" line="1510"/>
+        <location filename="../LoginPage.qml" line="1498"/>
+        <location filename="../LoginPage.qml" line="1505"/>
+        <location filename="../LoginPage.qml" line="1512"/>
         <source>Demo</source>
         <translation>Demo</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1498"/>
+        <location filename="../LoginPage.qml" line="1500"/>
         <source>SEQUENCE</source>
         <translation>ABFOLGE</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1499"/>
+        <location filename="../LoginPage.qml" line="1501"/>
         <source>VERIFY</source>
         <translation>KONTROLLE</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1499"/>
-        <location filename="../LoginPage.qml" line="1505"/>
+        <location filename="../LoginPage.qml" line="1501"/>
+        <location filename="../LoginPage.qml" line="1507"/>
         <source> / pos</source>
         <translation> / Stlg.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1500"/>
+        <location filename="../LoginPage.qml" line="1502"/>
         <source>REPEATS</source>
         <translation>WIEDERHOLUNGEN</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1501"/>
-        <location filename="../LoginPage.qml" line="1507"/>
-        <location filename="../LoginPage.qml" line="1515"/>
+        <location filename="../LoginPage.qml" line="1503"/>
+        <location filename="../LoginPage.qml" line="1509"/>
+        <location filename="../LoginPage.qml" line="1517"/>
         <source>FOCUS</source>
         <translation>SCHWERPUNKT</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1502"/>
+        <location filename="../LoginPage.qml" line="1504"/>
         <source>CHECKLIST</source>
         <translation>CHECKLISTE</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1502"/>
+        <location filename="../LoginPage.qml" line="1504"/>
         <source>Self</source>
         <translation>Selbst</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1502"/>
+        <location filename="../LoginPage.qml" line="1504"/>
         <source>Coach</source>
         <translation>Trainer</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1502"/>
+        <location filename="../LoginPage.qml" line="1504"/>
         <source>Off</source>
         <translation>Aus</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1505"/>
+        <location filename="../LoginPage.qml" line="1507"/>
         <source>CALLED</source>
         <translation>ANGESAGT</translation>
     </message>
@@ -2366,170 +4782,170 @@ Die Anwendung muss neu gestartet werden, damit die Änderung wirksam wird.</tran
         <translation></translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1506"/>
-        <location filename="../LoginPage.qml" line="1514"/>
+        <location filename="../LoginPage.qml" line="1508"/>
+        <location filename="../LoginPage.qml" line="1516"/>
         <source>TOTAL</source>
         <translation>GESAMT</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1508"/>
+        <location filename="../LoginPage.qml" line="1510"/>
         <source>After each call</source>
         <translation>Nach jeder Ansage</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1509"/>
-        <location filename="../LoginPage.qml" line="1517"/>
+        <location filename="../LoginPage.qml" line="1511"/>
+        <location filename="../LoginPage.qml" line="1519"/>
         <source>EST. TIME</source>
         <translation>GESCH. DAUER</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1512"/>
+        <location filename="../LoginPage.qml" line="1514"/>
         <source>BLOCKS</source>
         <translation>BLÖCKE</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1513"/>
+        <location filename="../LoginPage.qml" line="1515"/>
         <source>SHOTS/BLOCK</source>
         <translation>SCHÜSSE/BLOCK</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1516"/>
+        <location filename="../LoginPage.qml" line="1518"/>
         <source>VISIBILITY</source>
         <translation>SICHTBARKEIT</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1516"/>
+        <location filename="../LoginPage.qml" line="1518"/>
         <source>Full hidden</source>
         <translation>Vollständig verborgen</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1516"/>
+        <location filename="../LoginPage.qml" line="1518"/>
         <source>Group only</source>
         <translation>Nur Streukreis</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1516"/>
+        <location filename="../LoginPage.qml" line="1518"/>
         <source>Impact only</source>
         <translation>Nur Treffer</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1526"/>
+        <location filename="../LoginPage.qml" line="1528"/>
         <source>Free</source>
         <translation>Frei</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1527"/>
+        <location filename="../LoginPage.qml" line="1529"/>
         <source>SCORING</source>
         <translation>WERTUNG</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1528"/>
-        <location filename="../LoginPage.qml" line="1529"/>
+        <location filename="../LoginPage.qml" line="1530"/>
+        <location filename="../LoginPage.qml" line="1531"/>
         <source>Integer</source>
         <translation>Ganzringe</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1528"/>
-        <location filename="../LoginPage.qml" line="1529"/>
+        <location filename="../LoginPage.qml" line="1530"/>
+        <location filename="../LoginPage.qml" line="1531"/>
         <source>Decimal</source>
         <translation>Zehntelringe</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1530"/>
+        <location filename="../LoginPage.qml" line="1532"/>
         <source>PREP</source>
         <translation>VORBEREITUNG</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1532"/>
+        <location filename="../LoginPage.qml" line="1534"/>
         <source>15 min</source>
         <translation>15 min</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1533"/>
+        <location filename="../LoginPage.qml" line="1535"/>
         <source>MATCH</source>
         <translation>WETTKAMPF</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1534"/>
+        <location filename="../LoginPage.qml" line="1536"/>
         <source>DISTANCE</source>
         <translation>ENTFERNUNG</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1535"/>
+        <location filename="../LoginPage.qml" line="1537"/>
         <source>RULES</source>
         <translation>REGELWERK</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1577"/>
+        <location filename="../LoginPage.qml" line="1579"/>
         <source>Choose an event</source>
         <translation>Wettkampf wählen</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1584"/>
+        <location filename="../LoginPage.qml" line="1586"/>
         <source>Match settings are applied automatically.</source>
         <translation>Wettkampfeinstellungen werden automatisch übernommen.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1635"/>
+        <location filename="../LoginPage.qml" line="1637"/>
         <source>Official ISSF course</source>
         <translation>Offizieller ISSF-Wettkampf</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1630"/>
+        <location filename="../LoginPage.qml" line="1632"/>
         <source>Practice - no rule authority</source>
         <translation>Training – keine Regelautorität</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1648"/>
+        <location filename="../LoginPage.qml" line="1650"/>
         <source>CHANGE</source>
         <translation>ÄNDERN</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1963"/>
+        <location filename="../LoginPage.qml" line="1965"/>
         <source>OFFICIAL ISSF MATCH</source>
         <translation>OFFIZIELLER ISSF-WETTKAMPF</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1999"/>
-        <location filename="../LoginPage.qml" line="2025"/>
-        <location filename="../LoginPage.qml" line="2169"/>
+        <location filename="../LoginPage.qml" line="2001"/>
+        <location filename="../LoginPage.qml" line="2027"/>
+        <location filename="../LoginPage.qml" line="2171"/>
         <source>TRAINING LAB</source>
         <translation>TRAININGSLABOR</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2028"/>
+        <location filename="../LoginPage.qml" line="2030"/>
         <source>Structured technical practice and athlete feedback.
 Technical Blocks · Shot calling · Group analysis</source>
         <translation>Strukturiertes Techniktraining mit Rückmeldung für den Sportler.
 Technikblöcke · Schussansage · Streukreisanalyse</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2037"/>
+        <location filename="../LoginPage.qml" line="2039"/>
         <source>PRACTICE</source>
         <translation>TRAINING</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2077"/>
+        <location filename="../LoginPage.qml" line="2079"/>
         <source>OPEN PRACTICE</source>
         <translation>FREIES TRAINING</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2086"/>
+        <location filename="../LoginPage.qml" line="2088"/>
         <source>A flexible shooting session — choose a shot plan</source>
         <translation>Eine flexible Schießsitzung — Schussplan wählen</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2161"/>
+        <location filename="../LoginPage.qml" line="2163"/>
         <source>← Back to events</source>
         <translation>← Zurück zu den Wettkämpfen</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2177"/>
+        <location filename="../LoginPage.qml" line="2179"/>
         <source>ⓘ  Help</source>
         <translation>ⓘ  Hilfe</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2182"/>
+        <location filename="../LoginPage.qml" line="2184"/>
         <source>TECHNICAL BLOCKS
 Shoot several short groups while concentrating on one technical part of your process. After each block, %1 reveals the measured group and lets you record a note before continuing.
 
@@ -2552,116 +4968,116 @@ Kniend, Liegend und Stehend bleiben getrennt: K1 → K2 → P1 → P2 → S1 →
 Trainingsergebnisse dienen ausschließlich der Entwicklung — niemals als offizielles Wettkampfergebnis. Im Demo-Modus ist keine physische Scheibe erforderlich.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2186"/>
+        <location filename="../LoginPage.qml" line="2188"/>
         <source>Structured technical practice and athlete feedback.</source>
         <translation>Strukturiertes Techniktraining mit Rückmeldung für den Sportler.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2209"/>
-        <location filename="../LoginPage.qml" line="2269"/>
-        <location filename="../LoginPage.qml" line="2303"/>
-        <location filename="../LoginPage.qml" line="2333"/>
+        <location filename="../LoginPage.qml" line="2211"/>
+        <location filename="../LoginPage.qml" line="2271"/>
+        <location filename="../LoginPage.qml" line="2305"/>
+        <location filename="../LoginPage.qml" line="2335"/>
         <source>AVAILABLE</source>
         <translation>VERFÜGBAR</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2213"/>
+        <location filename="../LoginPage.qml" line="2215"/>
         <source>Shoot several short groups while concentrating on one technical part of your process.
 After each block, %1 reveals the measured group and lets you record a note.</source>
         <translation>Schießen Sie mehrere kurze Serien und konzentrieren Sie sich dabei auf einen technischen Teil Ihres Ablaufs.
 Nach jedem Block zeigt %1 den gemessenen Streukreis und lässt Sie eine Notiz erfassen.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2273"/>
+        <location filename="../LoginPage.qml" line="2275"/>
         <source>Call each shot before the actual impact is revealed.
 Compare where you believed the shot landed with where it actually landed.</source>
         <translation>Sagen Sie jeden Schuss an, bevor der tatsächliche Treffer gezeigt wird.
 Vergleichen Sie, wo Sie den Schuss vermutet haben, mit der tatsächlichen Lage.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2299"/>
+        <location filename="../LoginPage.qml" line="2301"/>
         <source>POSITION TRANSITION</source>
         <translation>STELLUNGSWECHSEL</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2305"/>
+        <location filename="../LoginPage.qml" line="2307"/>
         <source>Practise changing between Kneeling, Prone and Standing.
 Measure setup time, sighters, first-shot timing and early group repeatability after each transition.</source>
         <translation>Üben Sie den Wechsel zwischen Kniend, Liegend und Stehend.
 Messen Sie Aufbauzeit, Probeschüsse, Zeitpunkt des ersten Schusses und die frühe Wiederholbarkeit des Streukreises nach jedem Wechsel.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2307"/>
+        <location filename="../LoginPage.qml" line="2309"/>
         <source>Default: Kneeling → Prone → Standing · 5 verification shots</source>
         <translation>Voreinstellung: Kniend → Liegend → Stehend · 5 Kontrollschüsse</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2328"/>
+        <location filename="../LoginPage.qml" line="2330"/>
         <source>WIND MAP · BY POSITION</source>
         <translation>WINDKARTE · NACH STELLUNG</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2328"/>
-        <location filename="../LoginPage.qml" line="2845"/>
+        <location filename="../LoginPage.qml" line="2330"/>
+        <location filename="../LoginPage.qml" line="2847"/>
         <source>WIND MAP</source>
         <translation>WINDKARTE</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2336"/>
+        <location filename="../LoginPage.qml" line="2338"/>
         <source>Record the wind you observe while you shoot.
 Each shot keeps the condition that was standing when it was fired, for review afterwards.</source>
         <translation>Erfassen Sie den Wind, den Sie während des Schießens beobachten.
 Jeder Schuss behält die Bedingung, die bei seiner Abgabe herrschte, zur späteren Durchsicht.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2349"/>
+        <location filename="../LoginPage.qml" line="2351"/>
         <source>Wind Map is not available here</source>
         <translation>Die Windkarte ist hier nicht verfügbar</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2358"/>
+        <location filename="../LoginPage.qml" line="2360"/>
         <source>INCLUDED INSIGHTS</source>
         <translation>ENTHALTENE AUSWERTUNGEN</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2398"/>
-        <location filename="../LoginPage.qml" line="2610"/>
-        <location filename="../LoginPage.qml" line="2718"/>
+        <location filename="../LoginPage.qml" line="2400"/>
+        <location filename="../LoginPage.qml" line="2612"/>
+        <location filename="../LoginPage.qml" line="2720"/>
         <source>← Back</source>
         <translation>← Zurück</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2403"/>
+        <location filename="../LoginPage.qml" line="2405"/>
         <source>TECHNICAL BLOCKS SETUP</source>
         <translation>TECHNIKBLÖCKE EINRICHTEN</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2459"/>
+        <location filename="../LoginPage.qml" line="2461"/>
         <source>Blocks per position</source>
         <translation>Blöcke je Stellung</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2459"/>
+        <location filename="../LoginPage.qml" line="2461"/>
         <source>Blocks</source>
         <translation>Blöcke</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2467"/>
+        <location filename="../LoginPage.qml" line="2469"/>
         <source>Shots per block</source>
         <translation>Schüsse je Block</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2472"/>
-        <location filename="../LoginPage.qml" line="2641"/>
+        <location filename="../LoginPage.qml" line="2474"/>
+        <location filename="../LoginPage.qml" line="2643"/>
         <source>Total: </source>
         <translation>Gesamt: </translation>
     </message>
     <message>
         <location filename="../LoginPage.qml" line="510"/>
-        <location filename="../LoginPage.qml" line="1492"/>
-        <location filename="../LoginPage.qml" line="1525"/>
-        <location filename="../LoginPage.qml" line="1526"/>
-        <location filename="../LoginPage.qml" line="2472"/>
+        <location filename="../LoginPage.qml" line="1494"/>
+        <location filename="../LoginPage.qml" line="1527"/>
+        <location filename="../LoginPage.qml" line="1528"/>
+        <location filename="../LoginPage.qml" line="2474"/>
         <source> shots</source>
         <translation> Schüsse</translation>
     </message>
@@ -2681,284 +5097,284 @@ Jeder Schuss behält die Bedingung, die bei seiner Abgabe herrschte, zur später
         <translation>Training</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1632"/>
+        <location filename="../LoginPage.qml" line="1634"/>
         <source>Official %1 course · %2</source>
         <translation>Offizielles %1-Programm · %2</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1919"/>
+        <location filename="../LoginPage.qml" line="1921"/>
         <source>·  10 min</source>
         <translation>·  10 min</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1920"/>
+        <location filename="../LoginPage.qml" line="1922"/>
         <source>·  15 min</source>
         <translation>·  15 min</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1921"/>
+        <location filename="../LoginPage.qml" line="1923"/>
         <source>·  20 min</source>
         <translation>·  20 min</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1922"/>
+        <location filename="../LoginPage.qml" line="1924"/>
         <source>·  30 min</source>
         <translation>·  30 min</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1923"/>
+        <location filename="../LoginPage.qml" line="1925"/>
         <source>·  40 min</source>
         <translation>·  40 min</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1925"/>
-        <location filename="../LoginPage.qml" line="1926"/>
+        <location filename="../LoginPage.qml" line="1927"/>
+        <location filename="../LoginPage.qml" line="1928"/>
         <source>·  75 min</source>
         <translation>·  75 min</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1927"/>
+        <location filename="../LoginPage.qml" line="1929"/>
         <source>·  90 min</source>
         <translation>·  90 min</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1928"/>
+        <location filename="../LoginPage.qml" line="1930"/>
         <source>·  50 min</source>
         <translation>·  50 min</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2203"/>
+        <location filename="../LoginPage.qml" line="2205"/>
         <source>TECHNICAL BLOCKS · BY POSITION</source>
         <translation>TECHNIKBLÖCKE · NACH STELLUNG</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2203"/>
+        <location filename="../LoginPage.qml" line="2205"/>
         <source>TECHNICAL BLOCKS</source>
         <translation>TECHNIKBLÖCKE</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2216"/>
+        <location filename="../LoginPage.qml" line="2218"/>
         <source>Default: 36 shots · Kneeling → Prone → Standing · Configurable</source>
         <translation>Voreinstellung: 36 Schüsse · Kniend → Liegend → Stehend · konfigurierbar</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2217"/>
+        <location filename="../LoginPage.qml" line="2219"/>
         <source>Default: 30 shots · Configurable</source>
         <translation>Voreinstellung: 30 Schüsse · konfigurierbar</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2263"/>
+        <location filename="../LoginPage.qml" line="2265"/>
         <source>CALL &amp; DIAGNOSE · BY POSITION</source>
         <translation>ANSAGE &amp; DIAGNOSE · NACH STELLUNG</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2263"/>
+        <location filename="../LoginPage.qml" line="2265"/>
         <source>CALL &amp; DIAGNOSE</source>
         <translation>ANSAGE &amp; DIAGNOSE</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2276"/>
+        <location filename="../LoginPage.qml" line="2278"/>
         <source>Default: 10 called shots per position · Configurable</source>
         <translation>Voreinstellung: 10 angesagte Schüsse je Stellung · konfigurierbar</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2277"/>
+        <location filename="../LoginPage.qml" line="2279"/>
         <source>Default: 20 called shots · Configurable</source>
         <translation>Voreinstellung: 20 angesagte Schüsse · konfigurierbar</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2339"/>
+        <location filename="../LoginPage.qml" line="2341"/>
         <source>Manual entry · Kneeling, Prone and Standing kept separate</source>
         <translation>Manuelle Eingabe · Kniend, Liegend und Stehend bleiben getrennt</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2340"/>
+        <location filename="../LoginPage.qml" line="2342"/>
         <source>Manual entry · Direction in degrees, speed in m/s, or Calm</source>
         <translation>Manuelle Eingabe · Richtung in Grad, Geschwindigkeit in m/s oder Windstille</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2363"/>
+        <location filename="../LoginPage.qml" line="2365"/>
         <source>· Group Pattern Coach
 · Air Pistol technical checklist</source>
         <translation>· Streukreis-Musteranalyse
 · Technik-Checkliste Luftpistole</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2364"/>
+        <location filename="../LoginPage.qml" line="2366"/>
         <source>· Group Pattern Coach
 · Air Rifle technical checklist</source>
         <translation>· Streukreis-Musteranalyse
 · Technik-Checkliste Luftgewehr</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2365"/>
+        <location filename="../LoginPage.qml" line="2367"/>
         <source>· Position-specific Group Pattern Coach
 · Kneeling checklist · Prone checklist · Standing checklist</source>
         <translation>· Stellungsbezogene Streukreis-Musteranalyse
 · Checkliste Kniend · Checkliste Liegend · Checkliste Stehend</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2366"/>
+        <location filename="../LoginPage.qml" line="2368"/>
         <source>· Group Pattern Coach
 · Prone technical checklist</source>
         <translation>· Streukreis-Musteranalyse
 · Technik-Checkliste Liegend</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2409"/>
+        <location filename="../LoginPage.qml" line="2411"/>
         <source>The programme keeps Kneeling, Prone and Standing separate. Each position gets its own blocks, measurements, notes and comparison — results are never combined into one generic 3P analysis.</source>
         <translation>Das Programm hält Kniend, Liegend und Stehend getrennt. Jede Stellung erhält eigene Blöcke, Messungen, Notizen und Vergleiche — Ergebnisse werden nie zu einer allgemeinen Dreistellungs-Auswertung zusammengefasst.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2410"/>
+        <location filename="../LoginPage.qml" line="2412"/>
         <source>You shoot each block while focusing on one selected area. The block then stops and opens a measured review; after adding a note you continue to the next block. Hidden modes reveal scores and impacts only at the review.</source>
         <translation>Sie schießen jeden Block mit Konzentration auf einen gewählten Bereich. Der Block endet dann und öffnet eine gemessene Auswertung; nach dem Erfassen einer Notiz fahren Sie mit dem nächsten Block fort. In den verborgenen Modi werden Wertungen und Treffer erst bei der Auswertung gezeigt.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2476"/>
-        <location filename="../LoginPage.qml" line="2646"/>
-        <location filename="../LoginPage.qml" line="2784"/>
+        <location filename="../LoginPage.qml" line="2478"/>
+        <location filename="../LoginPage.qml" line="2648"/>
+        <location filename="../LoginPage.qml" line="2786"/>
         <source>Technical focus</source>
         <translation>Technischer Schwerpunkt</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2514"/>
+        <location filename="../LoginPage.qml" line="2516"/>
         <source>Visibility</source>
         <translation>Sichtbarkeit</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2534"/>
+        <location filename="../LoginPage.qml" line="2536"/>
         <source>No score or impact is shown until block review.</source>
         <translation>Bis zur Blockauswertung werden weder Wertung noch Treffer angezeigt.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2548"/>
+        <location filename="../LoginPage.qml" line="2550"/>
         <source>Optional shot calling — coming with Call &amp; Diagnose</source>
         <translation>Optionale Schussansage — kommt mit Ansage &amp; Diagnose</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2564"/>
-        <location filename="../LoginPage.qml" line="2678"/>
-        <location filename="../LoginPage.qml" line="2803"/>
-        <location filename="../LoginPage.qml" line="2902"/>
+        <location filename="../LoginPage.qml" line="2566"/>
+        <location filename="../LoginPage.qml" line="2680"/>
+        <location filename="../LoginPage.qml" line="2805"/>
+        <location filename="../LoginPage.qml" line="2904"/>
         <source>Back</source>
         <translation>Zurück</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2570"/>
-        <location filename="../LoginPage.qml" line="2684"/>
-        <location filename="../LoginPage.qml" line="2806"/>
-        <location filename="../LoginPage.qml" line="2906"/>
+        <location filename="../LoginPage.qml" line="2572"/>
+        <location filename="../LoginPage.qml" line="2686"/>
+        <location filename="../LoginPage.qml" line="2808"/>
+        <location filename="../LoginPage.qml" line="2908"/>
         <source>Confirm setup</source>
         <translation>Einrichtung bestätigen</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2614"/>
+        <location filename="../LoginPage.qml" line="2616"/>
         <source>CALL &amp; DIAGNOSE SETUP</source>
         <translation>ANSAGE &amp; DIAGNOSE EINRICHTEN</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2619"/>
+        <location filename="../LoginPage.qml" line="2621"/>
         <source>After every shot the actual impact stays hidden. Tap the target where you believe the shot landed, confirm your call, then compare it with the measured result. This assesses how accurately you recognise your own shot.</source>
         <translation>Nach jedem Schuss bleibt der tatsächliche Treffer verborgen. Tippen Sie auf der Scheibe dorthin, wo Sie den Schuss vermuten, bestätigen Sie Ihre Ansage und vergleichen Sie sie dann mit dem gemessenen Ergebnis. Das prüft, wie genau Sie Ihren eigenen Schuss erkennen.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2621"/>
+        <location filename="../LoginPage.qml" line="2623"/>
         <source> Kneeling, Prone and Standing are kept separate.</source>
         <translation> Kniend, Liegend und Stehend bleiben getrennt.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2628"/>
+        <location filename="../LoginPage.qml" line="2630"/>
         <source>Called shots / position</source>
         <translation>Angesagte Schüsse / Stellung</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2628"/>
+        <location filename="../LoginPage.qml" line="2630"/>
         <source>Called shots</source>
         <translation>Angesagte Schüsse</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2664"/>
+        <location filename="../LoginPage.qml" line="2666"/>
         <source>Reveal happens immediately after each call is confirmed.</source>
         <translation>Die Anzeige erfolgt unmittelbar nach der Bestätigung jeder Ansage.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2720"/>
+        <location filename="../LoginPage.qml" line="2722"/>
         <source>POSITION TRANSITION SETUP</source>
         <translation>STELLUNGSWECHSEL EINRICHTEN</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2723"/>
+        <location filename="../LoginPage.qml" line="2725"/>
         <source>This programme measures how consistently you rebuild each Three-Position shooting position. You begin a position setup, confirm when the position is ready, fire optional sighters, then a short counted verification block. %1 compares the timing and measured result of each position. This is a Training session and not an official competition result.</source>
         <translation>Dieses Programm misst, wie gleichmäßig Sie jede Stellung des Dreistellungskampfs wieder aufbauen. Sie beginnen einen Stellungsaufbau, bestätigen, wenn die Stellung bereit ist, geben optionale Probeschüsse ab und schießen dann einen kurzen gezählten Kontrollblock. %1 vergleicht Zeitbedarf und gemessenes Ergebnis jeder Stellung. Dies ist eine Trainingssitzung und kein offizielles Wettkampfergebnis.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2727"/>
+        <location filename="../LoginPage.qml" line="2729"/>
         <source>Positions</source>
         <translation>Stellungen</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2745"/>
+        <location filename="../LoginPage.qml" line="2747"/>
         <source>Verification shots</source>
         <translation>Kontrollschüsse</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2757"/>
+        <location filename="../LoginPage.qml" line="2759"/>
         <source>Repeats</source>
         <translation>Wiederholungen</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2769"/>
+        <location filename="../LoginPage.qml" line="2771"/>
         <source>Checklist</source>
         <translation>Checkliste</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2841"/>
+        <location filename="../LoginPage.qml" line="2843"/>
         <source>← Back to Training Lab</source>
         <translation>← Zurück zum Trainingslabor</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2847"/>
+        <location filename="../LoginPage.qml" line="2849"/>
         <source>50 m Rifle 3 Positions · Kneeling, Prone and Standing kept separate</source>
         <translation>50 m Gewehr Dreistellung · Kniend, Liegend und Stehend bleiben getrennt</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2848"/>
+        <location filename="../LoginPage.qml" line="2850"/>
         <source>50 m Rifle Prone</source>
         <translation>50 m Gewehr Liegend</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2851"/>
+        <location filename="../LoginPage.qml" line="2853"/>
         <source>You record the wind you observe. Every shot keeps the condition that was standing when it was fired, so the two can be reviewed together afterwards. Nothing here is scored or corrected.</source>
         <translation>Sie erfassen den Wind, den Sie beobachten. Jeder Schuss behält die Bedingung, die bei seiner Abgabe herrschte, sodass beides anschließend gemeinsam durchgesehen werden kann. Nichts davon wird gewertet oder korrigiert.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2854"/>
+        <location filename="../LoginPage.qml" line="2856"/>
         <source>Planned shots</source>
         <translation>Geplante Schüsse</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2875"/>
+        <location filename="../LoginPage.qml" line="2877"/>
         <source>Sighters</source>
         <translation>Probeschüsse</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2893"/>
+        <location filename="../LoginPage.qml" line="2895"/>
         <source>Sighters are recorded with their conditions but are never counted in the session statistics.</source>
         <translation>Probeschüsse werden mit ihren Bedingungen erfasst, zählen aber nie in die Sitzungsstatistik.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2962"/>
+        <location filename="../LoginPage.qml" line="2964"/>
         <source>READY TO START</source>
         <translation>BEREIT ZUM START</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2963"/>
+        <location filename="../LoginPage.qml" line="2965"/>
         <source>CHECK BEFORE STARTING</source>
         <translation>VOR DEM START PRÜFEN</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2993"/>
+        <location filename="../LoginPage.qml" line="2995"/>
         <source>Load saved session</source>
         <translation>Gespeicherte Sitzung laden</translation>
     </message>
@@ -2973,7 +5389,7 @@ Jeder Schuss behält die Bedingung, die bei seiner Abgabe herrschte, zur später
         <translation>Stellungswechsel kann nicht gestartet werden</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="3049"/>
+        <location filename="../LoginPage.qml" line="3051"/>
         <source>Electronic target control</source>
         <translation>Elektronische Scheibensteuerung</translation>
     </message>
@@ -3000,7 +5416,7 @@ Jeder Schuss behält die Bedingung, die bei seiner Abgabe herrschte, zur später
         <translation>Die Trainingssitzung konnte nicht gestartet werden.</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="2181"/>
+        <location filename="../LoginPage.qml" line="2183"/>
         <source>Training Lab</source>
         <translation>Trainingslabor</translation>
     </message>
@@ -3016,73 +5432,73 @@ Jeder Schuss behält die Bedingung, die bei seiner Abgabe herrschte, zur später
     </message>
     <message>
         <location filename="../LoginPage.qml" line="208"/>
-        <location filename="../LoginPage.qml" line="1820"/>
+        <location filename="../LoginPage.qml" line="1822"/>
         <source>3 POSITIONS</source>
         <translation>3 STELLUNGEN</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="3056"/>
+        <location filename="../LoginPage.qml" line="3058"/>
         <source>Contact us</source>
         <translation>Kontakt</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="3063"/>
+        <location filename="../LoginPage.qml" line="3065"/>
         <source>● Connected</source>
         <translation>● Verbunden</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="3063"/>
+        <location filename="../LoginPage.qml" line="3065"/>
         <source>● Offline</source>
         <translation>● Offline</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="3079"/>
+        <location filename="../LoginPage.qml" line="3081"/>
         <source>☁ Share incomplete</source>
         <translation>☁ Freigabe unvollständig</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="3080"/>
+        <location filename="../LoginPage.qml" line="3082"/>
         <source>☁ Share on</source>
         <translation>☁ Freigabe ein</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="3081"/>
+        <location filename="../LoginPage.qml" line="3083"/>
         <source>☁ Share off</source>
         <translation>☁ Freigabe aus</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="3148"/>
+        <location filename="../LoginPage.qml" line="3150"/>
         <source>Accept</source>
         <translation>Annehmen</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="3166"/>
+        <location filename="../LoginPage.qml" line="3168"/>
         <source>Lincence verification Process</source>
         <translation>Lizenzprüfung</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="3174"/>
+        <location filename="../LoginPage.qml" line="3176"/>
         <source>e-mail id</source>
         <translation>E-Mail-Adresse</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="3184"/>
+        <location filename="../LoginPage.qml" line="3186"/>
         <source>Error</source>
         <translation>Fehler</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="1323"/>
-        <location filename="../LoginPage.qml" line="3203"/>
+        <location filename="../LoginPage.qml" line="1325"/>
+        <location filename="../LoginPage.qml" line="3205"/>
         <source>Cancel</source>
         <translation>Abbrechen</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="3195"/>
+        <location filename="../LoginPage.qml" line="3197"/>
         <source>Please enter Licenced user id</source>
         <translation>Bitte geben Sie die lizenzierte Benutzerkennung ein</translation>
     </message>
     <message>
-        <location filename="../LoginPage.qml" line="3212"/>
+        <location filename="../LoginPage.qml" line="3214"/>
         <source>Validate</source>
         <translation>Prüfen</translation>
     </message>
@@ -3286,10 +5702,50 @@ Jeder Schuss behält die Bedingung, die bei seiner Abgabe herrschte, zur später
         <translation>Name des Sportlers</translation>
     </message>
     <message>
+        <location filename="../MatchReportInfo.qml" line="111"/>
+        <source>Event</source>
+        <translation>Wettkampf</translation>
+    </message>
+    <message>
+        <location filename="../MatchReportInfo.qml" line="131"/>
+        <source>Date</source>
+        <translation>Datum</translation>
+    </message>
+    <message>
+        <location filename="../MatchReportInfo.qml" line="169"/>
+        <source>Total Shots</source>
+        <translation>Schüsse gesamt</translation>
+    </message>
+    <message>
         <location filename="../MatchReportInfo.qml" line="190"/>
         <location filename="../MatchReportInfo.qml" line="392"/>
         <source>Total Score</source>
         <translation>Gesamtwertung</translation>
+    </message>
+    <message>
+        <location filename="../MatchReportInfo.qml" line="221"/>
+        <source>Total Time</source>
+        <translation>Gesamtzeit</translation>
+    </message>
+    <message>
+        <location filename="../MatchReportInfo.qml" line="226"/>
+        <source> Mins</source>
+        <translation> Min.</translation>
+    </message>
+    <message>
+        <location filename="../MatchReportInfo.qml" line="256"/>
+        <source>MPI</source>
+        <translation>MTP</translation>
+    </message>
+    <message>
+        <location filename="../MatchReportInfo.qml" line="297"/>
+        <source>Inner 10 Count</source>
+        <translation>Anzahl Innenzehner</translation>
+    </message>
+    <message>
+        <location filename="../MatchReportInfo.qml" line="317"/>
+        <source>Group</source>
+        <translation>Streukreis</translation>
     </message>
     <message>
         <location filename="../MatchReportInfo.qml" line="322"/>
@@ -3300,6 +5756,16 @@ Jeder Schuss behält die Bedingung, die bei seiner Abgabe herrschte, zur später
         <location filename="../MatchReportInfo.qml" line="373"/>
         <source>SERIES</source>
         <translation>SERIE</translation>
+    </message>
+    <message>
+        <location filename="../MatchReportInfo.qml" line="378"/>
+        <source>: %1 Group: %2 MPI: %3,%4</source>
+        <translation>: %1 Streukreis: %2 MTP: %3,%4</translation>
+    </message>
+    <message>
+        <location filename="../MatchReportInfo.qml" line="459"/>
+        <source>: %1    Group: %2 mm    MPI: %3, %4</source>
+        <translation>: %1    Streukreis: %2 mm    MTP: %3, %4</translation>
     </message>
     <message>
         <location filename="../MatchReportInfo.qml" line="481"/>
@@ -3322,11 +5788,19 @@ Jeder Schuss behält die Bedingung, die bei seiner Abgabe herrschte, zur später
         <translation>Y (mm)</translation>
     </message>
     <message>
+        <location filename="../MatchReportInfo.qml" line="527"/>
+        <location filename="../MatchReportInfo.qml" line="535"/>
+        <source>Series %1</source>
+        <translation>Serie %1</translation>
+    </message>
+    <message>
+        <location filename="../MatchReportInfo.qml" line="277"/>
         <location filename="../MatchReportInfo.qml" line="485"/>
         <source>Teiler</source>
         <translation>Teiler</translation>
     </message>
     <message>
+        <location filename="../MatchReportInfo.qml" line="149"/>
         <location filename="../MatchReportInfo.qml" line="486"/>
         <source>Time</source>
         <translation>Zeit</translation>
@@ -3345,83 +5819,83 @@ Jeder Schuss behält die Bedingung, die bei seiner Abgabe herrschte, zur später
 <context>
     <name>MatchReportView</name>
     <message>
-        <location filename="../MatchReportView.qml" line="147"/>
+        <location filename="../MatchReportView.qml" line="159"/>
         <source>Match Report</source>
         <translation>Wettkampfbericht</translation>
     </message>
     <message>
-        <location filename="../MatchReportView.qml" line="159"/>
+        <location filename="../MatchReportView.qml" line="171"/>
         <source>Executive Summary</source>
         <translation>Zusammenfassung</translation>
     </message>
     <message>
-        <location filename="../MatchReportView.qml" line="154"/>
-        <location filename="../MatchReportView.qml" line="169"/>
+        <location filename="../MatchReportView.qml" line="166"/>
+        <location filename="../MatchReportView.qml" line="181"/>
         <source>Score</source>
         <translation>Wertung</translation>
     </message>
     <message>
-        <location filename="../MatchReportView.qml" line="153"/>
+        <location filename="../MatchReportView.qml" line="165"/>
         <source>Shots</source>
         <translation>Schüsse</translation>
     </message>
     <message>
-        <location filename="../MatchReportView.qml" line="155"/>
+        <location filename="../MatchReportView.qml" line="167"/>
         <source>Total time</source>
         <translation>Gesamtzeit</translation>
     </message>
     <message>
-        <location filename="../MatchReportView.qml" line="155"/>
+        <location filename="../MatchReportView.qml" line="167"/>
         <source> min</source>
         <translation> Min.</translation>
     </message>
     <message>
-        <location filename="../MatchReportView.qml" line="170"/>
+        <location filename="../MatchReportView.qml" line="182"/>
         <source>Integer Score</source>
         <translation>Ringwertung</translation>
     </message>
     <message>
-        <location filename="../MatchReportView.qml" line="171"/>
+        <location filename="../MatchReportView.qml" line="183"/>
         <source>Total Shots</source>
         <translation>Schüsse gesamt</translation>
     </message>
     <message>
-        <location filename="../MatchReportView.qml" line="172"/>
+        <location filename="../MatchReportView.qml" line="184"/>
         <source>Inner 10</source>
         <translation>Innenzehner</translation>
     </message>
     <message>
-        <location filename="../MatchReportView.qml" line="173"/>
+        <location filename="../MatchReportView.qml" line="185"/>
         <source>MPI</source>
         <translation>MTP</translation>
     </message>
     <message>
-        <location filename="../MatchReportView.qml" line="180"/>
+        <location filename="../MatchReportView.qml" line="192"/>
         <source>Group</source>
         <translation>Streukreis</translation>
     </message>
     <message>
-        <location filename="../MatchReportView.qml" line="182"/>
+        <location filename="../MatchReportView.qml" line="194"/>
         <source>Total Time</source>
         <translation>Gesamtzeit</translation>
     </message>
     <message>
-        <location filename="../MatchReportView.qml" line="186"/>
+        <location filename="../MatchReportView.qml" line="198"/>
         <source>Teiler</source>
         <translation>Teiler</translation>
     </message>
     <message>
-        <location filename="../MatchReportView.qml" line="191"/>
+        <location filename="../MatchReportView.qml" line="203"/>
         <source>Overall Target</source>
         <translation>Gesamtscheibe</translation>
     </message>
     <message>
-        <location filename="../MatchReportView.qml" line="295"/>
+        <location filename="../MatchReportView.qml" line="307"/>
         <source>Generated </source>
         <translation>Erstellt </translation>
     </message>
     <message>
-        <location filename="../MatchReportView.qml" line="296"/>
+        <location filename="../MatchReportView.qml" line="308"/>
         <source>Page 1</source>
         <translation>Seite 1</translation>
     </message>
@@ -3659,6 +6133,368 @@ Jeder Schuss behält die Bedingung, die bei seiner Abgabe herrschte, zur später
     </message>
 </context>
 <context>
+    <name>PositionTransitionReportView</name>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="14"/>
+        <source>insufficient</source>
+        <translation>unzureichend</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="15"/>
+        <source>low</source>
+        <translation>gering</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="16"/>
+        <source>moderate</source>
+        <translation>mittel</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="17"/>
+        <source>strong</source>
+        <translation>stark</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="23"/>
+        <source>Kneeling</source>
+        <translation>Kniend</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="24"/>
+        <source>Prone</source>
+        <translation>Liegend</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="25"/>
+        <source>Standing</source>
+        <translation>Stehend</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="60"/>
+        <source>No Position Transition session</source>
+        <translation>Keine Sitzung Stellungswechsel</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="99"/>
+        <source>TRAINING LAB</source>
+        <translation>TRAININGSLABOR</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="101"/>
+        <source>POSITION TRANSITION REPORT</source>
+        <translation>BERICHT STELLUNGSWECHSEL</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="110"/>
+        <location filename="../PositionTransitionReportView.qml" line="154"/>
+        <source>Athlete</source>
+        <translation>Sportler</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="111"/>
+        <source>Discipline</source>
+        <translation>Disziplin</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="111"/>
+        <source>50m Rifle 3 Positions</source>
+        <translation>50 m Gewehr 3 Stellungen</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="112"/>
+        <source>Date</source>
+        <translation>Datum</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="113"/>
+        <source>Session</source>
+        <translation>Sitzung</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="122"/>
+        <source>Not an official competition result</source>
+        <translation>Kein offizielles Wettkampfergebnis</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="137"/>
+        <source>Page %1 of %2</source>
+        <translation>Seite %1 von %2</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="152"/>
+        <source>SESSION OVERVIEW</source>
+        <translation>SITZUNGSÜBERSICHT</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="155"/>
+        <source>Date / time</source>
+        <translation>Datum / Uhrzeit</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="156"/>
+        <source>Session ID</source>
+        <translation>Sitzungs-ID</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="157"/>
+        <source>Operating mode</source>
+        <translation>Betriebsart</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="158"/>
+        <source>Technical focus</source>
+        <translation>Technischer Schwerpunkt</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="159"/>
+        <source>Sequence</source>
+        <translation>Abfolge</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="160"/>
+        <source>Verification shots</source>
+        <translation>Kontrollschüsse</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="160"/>
+        <source>%1 per position</source>
+        <translation>%1 je Stellung</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="161"/>
+        <source>Repeats</source>
+        <translation>Wiederholungen</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="162"/>
+        <source>Positions completed</source>
+        <translation>Abgeschlossene Stellungen</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="163"/>
+        <source>Counted shots</source>
+        <translation>Gezählte Schüsse</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="164"/>
+        <location filename="../PositionTransitionReportView.qml" line="268"/>
+        <source>Sighters</source>
+        <translation>Probeschüsse</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="164"/>
+        <source>%1 (excluded from results)</source>
+        <translation>%1 (nicht in der Auswertung)</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="165"/>
+        <source>Duration</source>
+        <translation>Dauer</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="165"/>
+        <source>%1 min %2 s</source>
+        <translation>%1 min %2 s</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="167"/>
+        <source>WHAT YOU SHOULD TAKE FROM THIS SESSION</source>
+        <translation>WAS SIE AUS DIESER SITZUNG MITNEHMEN SOLLTEN</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="180"/>
+        <source>POSITION COMPARISON</source>
+        <translation>STELLUNGSVERGLEICH</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="182"/>
+        <source>SESSION HIGHLIGHTS</source>
+        <translation>WICHTIGSTES DER SITZUNG</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="188"/>
+        <source>⚡ Fastest setup: %1 (%2)</source>
+        <translation>⚡ Schnellster Aufbau: %1 (%2)</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="189"/>
+        <source>⏳ Slowest setup: %1 (%2)</source>
+        <translation>⏳ Langsamster Aufbau: %1 (%2)</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="190"/>
+        <source>◎ Tightest group: %1 (%2 mm)</source>
+        <translation>◎ Engster Streukreis: %1 (%2 mm)</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="191"/>
+        <source>★ Best average: %1 (%2)</source>
+        <translation>★ Bester Durchschnitt: %1 (%2)</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="192"/>
+        <source>♪ Lowest rhythm variability: %1</source>
+        <translation>♪ Geringste Rhythmusschwankung: %1</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="201"/>
+        <source>POSITION</source>
+        <translation>STELLUNG</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="201"/>
+        <source>SETUP</source>
+        <translation>AUFBAU</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="201"/>
+        <source>SIGHT</source>
+        <translation>PROBE</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="201"/>
+        <source>R→1st</source>
+        <translation>B→1.</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="201"/>
+        <source>1ST</source>
+        <translation>1. SCHUSS</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="201"/>
+        <source>DIA mm</source>
+        <translation>Ø mm</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="201"/>
+        <source>AVG SCORE</source>
+        <translation>Ø WERTUNG</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="206"/>
+        <location filename="../PositionTransitionReportView.qml" line="218"/>
+        <source>%1 R%2</source>
+        <translation>%1 W%2</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="215"/>
+        <source>SHOT RHYTHM</source>
+        <translation>SCHUSSRHYTHMUS</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="224"/>
+        <source>avg shot %1</source>
+        <translation>Ø Schuss %1</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="243"/>
+        <location filename="../PositionTransitionReportView.qml" line="309"/>
+        <source>%1 · Repeat %2</source>
+        <translation>%1 · Wiederholung %2</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="244"/>
+        <source>%1 counted shots · sighters excluded</source>
+        <translation>%1 gezählte Schüsse · Probeschüsse ausgenommen</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="267"/>
+        <source>Setup / transition</source>
+        <translation>Aufbau / Wechsel</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="269"/>
+        <source>Ready → first shot</source>
+        <translation>Bereit → erster Schuss</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="270"/>
+        <source>Verification block</source>
+        <translation>Kontrollblock</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="271"/>
+        <source>First shot</source>
+        <translation>Erster Schuss</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="271"/>
+        <source>%1 mm from MPI</source>
+        <translation>%1 mm vom MTP</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="272"/>
+        <source>Average score</source>
+        <translation>Durchschnittswertung</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="273"/>
+        <source>Group diameter</source>
+        <translation>Streukreisdurchmesser</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="274"/>
+        <source>MPI (X/Y)</source>
+        <translation>MTP (X/Y)</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="275"/>
+        <source>H/V spread</source>
+        <translation>H/V-Streuung</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="276"/>
+        <source>Shot rhythm</source>
+        <translation>Schussrhythmus</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="276"/>
+        <source>avg %1</source>
+        <translation>Ø %1</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="280"/>
+        <source>SETUP CHECKLIST</source>
+        <translation>AUFBAU-CHECKLISTE</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="286"/>
+        <source>GROUP PATTERN INSIGHTS</source>
+        <translation>AUSWERTUNG DES STREUKREISMUSTERS</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="289"/>
+        <source>%1  (%2 evidence)</source>
+        <translation>%1  (Evidenz: %2)</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="291"/>
+        <source>ATHLETE NOTE</source>
+        <translation>NOTIZ DES SPORTLERS</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="303"/>
+        <source>NOTES &amp; OBSERVATIONS</source>
+        <translation>NOTIZEN &amp; BEOBACHTUNGEN</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="304"/>
+        <source>Session note: %1</source>
+        <translation>Notiz zur Sitzung: %1</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="312"/>
+        <source>OVERALL OBSERVED</source>
+        <translation>GESAMTBEOBACHTUNG</translation>
+    </message>
+    <message>
+        <location filename="../PositionTransitionReportView.qml" line="317"/>
+        <source>Measured training data only. This is not an official competition result. Sighters are excluded from all results.</source>
+        <translation>Nur gemessene Trainingsdaten. Dies ist kein offizielles Wettkampfergebnis. Probeschüsse sind von allen Ergebnissen ausgenommen.</translation>
+    </message>
+</context>
+<context>
     <name>PositionTransitionRightPanel</name>
     <message>
         <location filename="../PositionTransitionRightPanel.qml" line="34"/>
@@ -3759,122 +6595,182 @@ Jeder Schuss behält die Bedingung, die bei seiner Abgabe herrschte, zur später
         <translation>Offizieller Wettkampf</translation>
     </message>
     <message>
-        <location filename="../RecoveryDialog.qml" line="87"/>
+        <location filename="../RecoveryDialog.qml" line="64"/>
+        <source>10m Air Rifle</source>
+        <translation>10 m Luftgewehr</translation>
+    </message>
+    <message>
+        <location filename="../RecoveryDialog.qml" line="65"/>
+        <source>10m Air Pistol</source>
+        <translation>10 m Luftpistole</translation>
+    </message>
+    <message>
+        <location filename="../RecoveryDialog.qml" line="66"/>
+        <source>50m Rifle Prone</source>
+        <translation>50 m Gewehr Liegend</translation>
+    </message>
+    <message>
+        <location filename="../RecoveryDialog.qml" line="67"/>
+        <source>50m Rifle 3 Positions</source>
+        <translation>50 m Gewehr 3 Stellungen</translation>
+    </message>
+    <message>
+        <location filename="../RecoveryDialog.qml" line="68"/>
+        <source>50m Rifle 3 Positions Final</source>
+        <translation>Finale 50 m Gewehr 3 Stellungen</translation>
+    </message>
+    <message>
+        <location filename="../RecoveryDialog.qml" line="69"/>
+        <source>10m Air Rifle Final</source>
+        <translation>10-m-Luftgewehr-Finale</translation>
+    </message>
+    <message>
+        <location filename="../RecoveryDialog.qml" line="70"/>
+        <source>10m Air Pistol Final</source>
+        <translation>10-m-Luftpistole-Finale</translation>
+    </message>
+    <message>
+        <location filename="../RecoveryDialog.qml" line="71"/>
+        <source>Training</source>
+        <translation>Training</translation>
+    </message>
+    <message>
+        <location filename="../RecoveryDialog.qml" line="77"/>
+        <source>Clean</source>
+        <translation>Einwandfrei</translation>
+    </message>
+    <message>
+        <location filename="../RecoveryDialog.qml" line="78"/>
+        <source>Recoverable</source>
+        <translation>Wiederherstellbar</translation>
+    </message>
+    <message>
+        <location filename="../RecoveryDialog.qml" line="79"/>
+        <source>Corrupt</source>
+        <translation>Beschädigt</translation>
+    </message>
+    <message>
+        <location filename="../RecoveryDialog.qml" line="80"/>
+        <source>Fatal</source>
+        <translation>Nicht wiederherstellbar</translation>
+    </message>
+    <message>
+        <location filename="../RecoveryDialog.qml" line="121"/>
         <source>Unfinished Training Session</source>
         <translation>Unabgeschlossene Trainingssitzung</translation>
     </message>
     <message>
-        <location filename="../RecoveryDialog.qml" line="88"/>
+        <location filename="../RecoveryDialog.qml" line="122"/>
         <source>Unfinished Match Found</source>
         <translation>Unabgeschlossener Wettkampf gefunden</translation>
     </message>
     <message>
-        <location filename="../RecoveryDialog.qml" line="100"/>
+        <location filename="../RecoveryDialog.qml" line="134"/>
         <source>Type</source>
         <translation>Art</translation>
     </message>
     <message>
-        <location filename="../RecoveryDialog.qml" line="102"/>
+        <location filename="../RecoveryDialog.qml" line="136"/>
         <source>TRAINING SESSION · Technical Blocks</source>
         <translation>TRAININGSSITZUNG · Technikblöcke</translation>
     </message>
     <message>
-        <location filename="../RecoveryDialog.qml" line="104"/>
+        <location filename="../RecoveryDialog.qml" line="138"/>
         <source>  ·  Block %1</source>
         <translation>  ·  Block %1</translation>
     </message>
     <message>
-        <location filename="../RecoveryDialog.qml" line="106"/>
+        <location filename="../RecoveryDialog.qml" line="140"/>
         <source>Discipline</source>
         <translation>Disziplin</translation>
     </message>
     <message>
-        <location filename="../RecoveryDialog.qml" line="109"/>
+        <location filename="../RecoveryDialog.qml" line="143"/>
         <source>Athlete</source>
         <translation>Sportler</translation>
     </message>
     <message>
-        <location filename="../RecoveryDialog.qml" line="115"/>
+        <location filename="../RecoveryDialog.qml" line="149"/>
         <source>Mode</source>
         <translation>Modus</translation>
     </message>
     <message>
-        <location filename="../RecoveryDialog.qml" line="122"/>
+        <location filename="../RecoveryDialog.qml" line="156"/>
         <source>Shots</source>
         <translation>Schüsse</translation>
     </message>
     <message>
-        <location filename="../RecoveryDialog.qml" line="125"/>
+        <location filename="../RecoveryDialog.qml" line="159"/>
         <source>Total</source>
         <translation>Gesamt</translation>
     </message>
     <message>
-        <location filename="../RecoveryDialog.qml" line="128"/>
+        <location filename="../RecoveryDialog.qml" line="162"/>
         <source>Phase</source>
         <translation>Phase</translation>
     </message>
     <message>
-        <location filename="../RecoveryDialog.qml" line="133"/>
+        <location filename="../RecoveryDialog.qml" line="167"/>
         <source>Time left</source>
         <translation>Restzeit</translation>
     </message>
     <message>
-        <location filename="../RecoveryDialog.qml" line="138"/>
+        <location filename="../RecoveryDialog.qml" line="172"/>
         <source>Saved</source>
         <translation>Gespeichert</translation>
     </message>
     <message>
-        <location filename="../RecoveryDialog.qml" line="141"/>
+        <location filename="../RecoveryDialog.qml" line="175"/>
         <source>Journal</source>
         <translation>Journal</translation>
     </message>
     <message>
-        <location filename="../RecoveryDialog.qml" line="151"/>
+        <location filename="../RecoveryDialog.qml" line="185"/>
         <source>This session cannot be resumed cleanly: </source>
         <translation>Diese Sitzung kann nicht sauber fortgesetzt werden: </translation>
     </message>
     <message>
-        <location filename="../RecoveryDialog.qml" line="171"/>
+        <location filename="../RecoveryDialog.qml" line="205"/>
         <source>⚠ Unresolved EST incident</source>
         <translation>⚠ Ungeklärte EST-Störung</translation>
     </message>
     <message>
-        <location filename="../RecoveryDialog.qml" line="178"/>
+        <location filename="../RecoveryDialog.qml" line="212"/>
         <source>Jury decision pending. </source>
         <translation>Jury-Entscheidung ausstehend. </translation>
     </message>
     <message>
-        <location filename="../RecoveryDialog.qml" line="180"/>
+        <location filename="../RecoveryDialog.qml" line="214"/>
         <source>Time credit authorised. </source>
         <translation>Zeitgutschrift genehmigt. </translation>
     </message>
     <message>
-        <location filename="../RecoveryDialog.qml" line="180"/>
+        <location filename="../RecoveryDialog.qml" line="214"/>
         <source>No allowance ruled. </source>
         <translation>Keine Gutschrift entschieden. </translation>
     </message>
     <message>
-        <location filename="../RecoveryDialog.qml" line="181"/>
+        <location filename="../RecoveryDialog.qml" line="215"/>
         <source>Official shots remain blocked after resume until the Jury workflow authorises official resumption.</source>
         <translation>Offizielle Schüsse bleiben nach dem Fortsetzen gesperrt, bis die Jury die offizielle Fortsetzung freigibt.</translation>
     </message>
     <message>
-        <location filename="../RecoveryDialog.qml" line="192"/>
+        <location filename="../RecoveryDialog.qml" line="226"/>
         <source>Discard</source>
         <translation>Verwerfen</translation>
     </message>
     <message>
-        <location filename="../RecoveryDialog.qml" line="208"/>
+        <location filename="../RecoveryDialog.qml" line="242"/>
         <source>Recovery Wizard</source>
         <translation>Wiederherstellungsassistent</translation>
     </message>
     <message>
-        <location filename="../RecoveryDialog.qml" line="210"/>
+        <location filename="../RecoveryDialog.qml" line="244"/>
         <source>Resume Training</source>
         <translation>Training fortsetzen</translation>
     </message>
     <message>
-        <location filename="../RecoveryDialog.qml" line="210"/>
+        <location filename="../RecoveryDialog.qml" line="244"/>
         <source>Resume Match</source>
         <translation>Wettkampf fortsetzen</translation>
     </message>
@@ -4141,6 +7037,11 @@ Jeder Schuss behält die Bedingung, die bei seiner Abgabe herrschte, zur später
 <context>
     <name>ReportHeader</name>
     <message>
+        <location filename="../ReportHeader.qml" line="9"/>
+        <source>Report</source>
+        <translation>Bericht</translation>
+    </message>
+    <message>
         <location filename="../ReportHeader.qml" line="32"/>
         <source>Athlete</source>
         <translation>Sportler</translation>
@@ -4230,7 +7131,7 @@ Jeder Schuss behält die Bedingung, die bei seiner Abgabe herrschte, zur später
         <location filename="../RightPanel.qml" line="572"/>
         <location filename="../RightPanel.qml" line="577"/>
         <source> mm</source>
-        <translation type="unfinished"> mm</translation>
+        <translation> mm</translation>
     </message>
     <message>
         <location filename="../RightPanel.qml" line="824"/>
@@ -4243,63 +7144,63 @@ Jeder Schuss behält die Bedingung, die bei seiner Abgabe herrschte, zur später
         <translation>Gesamtsumme   </translation>
     </message>
     <message>
-        <location filename="../RightPanel.qml" line="1442"/>
+        <location filename="../RightPanel.qml" line="1448"/>
         <source>SERIES</source>
         <translation>SERIE</translation>
     </message>
     <message>
-        <location filename="../RightPanel.qml" line="1456"/>
+        <location filename="../RightPanel.qml" line="1462"/>
         <source>SN</source>
         <translation>Nr.</translation>
     </message>
     <message>
-        <location filename="../RightPanel.qml" line="1467"/>
+        <location filename="../RightPanel.qml" line="1473"/>
         <source>Score</source>
         <translation>Wertung</translation>
     </message>
     <message>
-        <location filename="../RightPanel.qml" line="1478"/>
+        <location filename="../RightPanel.qml" line="1484"/>
         <source>Time (s)</source>
         <translation>Zeit (s)</translation>
     </message>
     <message>
-        <location filename="../RightPanel.qml" line="1501"/>
-        <location filename="../RightPanel.qml" line="1586"/>
+        <location filename="../RightPanel.qml" line="1507"/>
+        <location filename="../RightPanel.qml" line="1592"/>
         <source>TOTAL SCORE</source>
         <translation>GESAMTWERTUNG</translation>
     </message>
     <message>
-        <location filename="../RightPanel.qml" line="1511"/>
+        <location filename="../RightPanel.qml" line="1517"/>
         <source>10s</source>
-        <translation type="unfinished"></translation>
+        <translation>10er</translation>
     </message>
     <message>
-        <location filename="../RightPanel.qml" line="1511"/>
+        <location filename="../RightPanel.qml" line="1517"/>
         <source>9s</source>
-        <translation type="unfinished"></translation>
+        <translation>9er</translation>
     </message>
     <message>
-        <location filename="../RightPanel.qml" line="1512"/>
+        <location filename="../RightPanel.qml" line="1518"/>
         <source>8s</source>
-        <translation type="unfinished"></translation>
+        <translation>8er</translation>
     </message>
     <message>
-        <location filename="../RightPanel.qml" line="1512"/>
+        <location filename="../RightPanel.qml" line="1518"/>
         <source>≤7</source>
-        <translation type="unfinished"></translation>
+        <translation>≤7</translation>
     </message>
     <message>
-        <location filename="../RightPanel.qml" line="1544"/>
+        <location filename="../RightPanel.qml" line="1550"/>
         <source>Time (m)</source>
         <translation>Zeit (min)</translation>
     </message>
     <message>
-        <location filename="../RightPanel.qml" line="1621"/>
+        <location filename="../RightPanel.qml" line="1627"/>
         <source>INNER 10s</source>
         <translation>INNENZEHNER</translation>
     </message>
     <message>
-        <location filename="../RightPanel.qml" line="1634"/>
+        <location filename="../RightPanel.qml" line="1640"/>
         <source>TIME</source>
         <translation>ZEIT</translation>
     </message>
@@ -4473,7 +7374,7 @@ Jeder Schuss behält die Bedingung, die bei seiner Abgabe herrschte, zur später
     <message>
         <location filename="../ModReader/forms/settingsmodbusrtu.ui" line="96"/>
         <source>None</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Keine</translation>
     </message>
     <message>
         <location filename="../ModReader/forms/settingsmodbusrtu.ui" line="101"/>
@@ -4755,7 +7656,7 @@ Die Anwendung muss neu gestartet werden, damit die Änderung wirksam wird.</tran
     </message>
     <message>
         <location filename="../ShootingPage.qml" line="128"/>
-        <location filename="../ShootingPage.qml" line="467"/>
+        <location filename="../ShootingPage.qml" line="485"/>
         <source>PRONE</source>
         <translation>LIEGEND</translation>
     </message>
@@ -4771,13 +7672,13 @@ Die Anwendung muss neu gestartet werden, damit die Änderung wirksam wird.</tran
     </message>
     <message>
         <location filename="../ShootingPage.qml" line="156"/>
-        <location filename="../ShootingPage.qml" line="468"/>
+        <location filename="../ShootingPage.qml" line="486"/>
         <source>SIGHTING</source>
         <translation>PROBESCHIESSEN</translation>
     </message>
     <message>
         <location filename="../ShootingPage.qml" line="156"/>
-        <location filename="../ShootingPage.qml" line="468"/>
+        <location filename="../ShootingPage.qml" line="486"/>
         <source>MATCH</source>
         <translation>WETTKAMPF</translation>
     </message>
@@ -4802,210 +7703,230 @@ Nach dem Beenden können keine weiteren Schüsse erfasst werden.</translation>
         <translation>Abbrechen</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="467"/>
+        <location filename="../ShootingPage.qml" line="330"/>
+        <source>10M AIR RIFLE</source>
+        <translation>10 M LUFTGEWEHR</translation>
+    </message>
+    <message>
+        <location filename="../ShootingPage.qml" line="331"/>
+        <source>10M AIR PISTOL</source>
+        <translation>10 M LUFTPISTOLE</translation>
+    </message>
+    <message>
+        <location filename="../ShootingPage.qml" line="332"/>
+        <source>50 Meter RIFLE</source>
+        <translation>50 Meter GEWEHR</translation>
+    </message>
+    <message>
+        <location filename="../ShootingPage.qml" line="333"/>
+        <source>50 Meter Free PISTOL</source>
+        <translation>50 Meter FREIE PISTOLE</translation>
+    </message>
+    <message>
+        <location filename="../ShootingPage.qml" line="485"/>
         <source>SIGHT</source>
         <translation>PROBE</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="467"/>
+        <location filename="../ShootingPage.qml" line="485"/>
         <source>KNEEL</source>
         <translation>KNIEND</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="467"/>
+        <location filename="../ShootingPage.qml" line="485"/>
         <source>STAND</source>
         <translation>STEHEND</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="521"/>
-        <location filename="../ShootingPage.qml" line="622"/>
+        <location filename="../ShootingPage.qml" line="539"/>
+        <location filename="../ShootingPage.qml" line="640"/>
         <source>SHOTS</source>
         <translation>SCHÜSSE</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="553"/>
+        <location filename="../ShootingPage.qml" line="571"/>
         <source>DEMO</source>
         <translation>DEMO</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="577"/>
+        <location filename="../ShootingPage.qml" line="595"/>
         <source>Wind Map</source>
         <translation>Windkarte</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="578"/>
+        <location filename="../ShootingPage.qml" line="596"/>
         <source>Position Transition</source>
         <translation>Stellungswechsel</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="579"/>
+        <location filename="../ShootingPage.qml" line="597"/>
         <source>Call &amp; Diagnose</source>
         <translation>Ansage &amp; Diagnose</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="580"/>
+        <location filename="../ShootingPage.qml" line="598"/>
         <source>Technical Blocks</source>
         <translation>Technikblöcke</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="591"/>
-        <location filename="../ShootingPage.qml" line="597"/>
-        <location filename="../ShootingPage.qml" line="621"/>
+        <location filename="../ShootingPage.qml" line="609"/>
+        <location filename="../ShootingPage.qml" line="615"/>
+        <location filename="../ShootingPage.qml" line="639"/>
         <source>SIGHTERS</source>
         <translation>PROBESCHÜSSE</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="592"/>
+        <location filename="../ShootingPage.qml" line="610"/>
         <source>COUNTED SHOTS</source>
         <translation>GEZÄHLTE SCHÜSSE</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="596"/>
+        <location filename="../ShootingPage.qml" line="614"/>
         <source>POSITION SETUP</source>
         <translation>STELLUNGSAUFBAU</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="598"/>
+        <location filename="../ShootingPage.qml" line="616"/>
         <source>VERIFICATION</source>
         <translation>KONTROLLE</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="599"/>
+        <location filename="../ShootingPage.qml" line="617"/>
         <source>POSITION REVIEW</source>
         <translation>STELLUNGSAUSWERTUNG</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="600"/>
+        <location filename="../ShootingPage.qml" line="618"/>
         <source>COMPLETE</source>
         <translation>ABGESCHLOSSEN</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="603"/>
-        <location filename="../ShootingPage.qml" line="850"/>
+        <location filename="../ShootingPage.qml" line="621"/>
+        <location filename="../ShootingPage.qml" line="868"/>
         <source>CALL &amp; DIAGNOSE</source>
         <translation>ANSAGE &amp; DIAGNOSE</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="604"/>
+        <location filename="../ShootingPage.qml" line="622"/>
         <source>TECHNICAL BLOCK</source>
         <translation>TECHNIKBLOCK</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="704"/>
+        <location filename="../ShootingPage.qml" line="722"/>
         <source>VIEW REPORT  →</source>
         <translation>BERICHT ANZEIGEN  →</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="706"/>
+        <location filename="../ShootingPage.qml" line="724"/>
         <source>MATCH IN PROGRESS  ·  </source>
         <translation>WETTKAMPF LÄUFT  ·  </translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="706"/>
+        <location filename="../ShootingPage.qml" line="724"/>
         <source>FINISH MATCH</source>
         <translation>WETTKAMPF BEENDEN</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="708"/>
+        <location filename="../ShootingPage.qml" line="726"/>
         <source>START </source>
         <translation>START </translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="709"/>
+        <location filename="../ShootingPage.qml" line="727"/>
         <source>START MATCH  →</source>
         <translation>WETTKAMPF STARTEN  →</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="748"/>
+        <location filename="../ShootingPage.qml" line="766"/>
         <source>Feed paper</source>
         <translation>Papier vorschieben</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="848"/>
+        <location filename="../ShootingPage.qml" line="866"/>
         <source>WIND MAP</source>
         <translation>WINDKARTE</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="849"/>
+        <location filename="../ShootingPage.qml" line="867"/>
         <source>POSITION TRANSITION</source>
         <translation>STELLUNGSWECHSEL</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="851"/>
+        <location filename="../ShootingPage.qml" line="869"/>
         <source>TECHNICAL BLOCKS</source>
         <translation>TECHNIKBLÖCKE</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="1486"/>
+        <location filename="../ShootingPage.qml" line="1511"/>
         <source>Training report saved</source>
         <translation>Trainingsbericht gespeichert</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="1487"/>
-        <location filename="../ShootingPage.qml" line="1524"/>
-        <location filename="../ShootingPage.qml" line="1635"/>
+        <location filename="../ShootingPage.qml" line="1512"/>
+        <location filename="../ShootingPage.qml" line="1549"/>
+        <location filename="../ShootingPage.qml" line="1660"/>
         <source>Saved to:
 %1</source>
         <translation>Gespeichert unter:
 %1</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="1488"/>
-        <location filename="../ShootingPage.qml" line="1525"/>
-        <location filename="../ShootingPage.qml" line="1636"/>
+        <location filename="../ShootingPage.qml" line="1513"/>
+        <location filename="../ShootingPage.qml" line="1550"/>
+        <location filename="../ShootingPage.qml" line="1661"/>
         <source>OK</source>
         <translation>OK</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="1491"/>
-        <location filename="../ShootingPage.qml" line="1527"/>
-        <location filename="../ShootingPage.qml" line="1638"/>
+        <location filename="../ShootingPage.qml" line="1516"/>
+        <location filename="../ShootingPage.qml" line="1552"/>
+        <location filename="../ShootingPage.qml" line="1663"/>
         <source>Export failed</source>
         <translation>Export fehlgeschlagen</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="1523"/>
+        <location filename="../ShootingPage.qml" line="1548"/>
         <source>Call &amp; Diagnose report saved</source>
         <translation>Bericht zu Ansage &amp; Diagnose gespeichert</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="1557"/>
-        <location filename="../ShootingPage.qml" line="1571"/>
+        <location filename="../ShootingPage.qml" line="1582"/>
+        <location filename="../ShootingPage.qml" line="1596"/>
         <source>Call &amp; Diagnose could not be closed safely</source>
         <translation>Ansage &amp; Diagnose konnte nicht sicher geschlossen werden</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="1559"/>
-        <location filename="../ShootingPage.qml" line="1572"/>
-        <location filename="../ShootingPage.qml" line="1665"/>
-        <location filename="../ShootingPage.qml" line="1678"/>
-        <location filename="../ShootingPage.qml" line="1767"/>
-        <location filename="../ShootingPage.qml" line="1780"/>
-        <location filename="../ShootingPage.qml" line="1940"/>
-        <location filename="../ShootingPage.qml" line="1961"/>
+        <location filename="../ShootingPage.qml" line="1584"/>
+        <location filename="../ShootingPage.qml" line="1597"/>
+        <location filename="../ShootingPage.qml" line="1690"/>
+        <location filename="../ShootingPage.qml" line="1703"/>
+        <location filename="../ShootingPage.qml" line="1792"/>
+        <location filename="../ShootingPage.qml" line="1805"/>
+        <location filename="../ShootingPage.qml" line="1965"/>
+        <location filename="../ShootingPage.qml" line="1986"/>
         <source>Your session is preserved and can be recovered. Please try again.</source>
         <translation>Ihre Sitzung ist gesichert und kann wiederhergestellt werden. Bitte versuchen Sie es erneut.</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="1634"/>
+        <location filename="../ShootingPage.qml" line="1659"/>
         <source>Position Transition report saved</source>
         <translation>Bericht zum Stellungswechsel gespeichert</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="1663"/>
-        <location filename="../ShootingPage.qml" line="1677"/>
+        <location filename="../ShootingPage.qml" line="1688"/>
+        <location filename="../ShootingPage.qml" line="1702"/>
         <source>Position Transition could not be closed safely</source>
         <translation>Stellungswechsel konnte nicht sicher geschlossen werden</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="1765"/>
-        <location filename="../ShootingPage.qml" line="1779"/>
+        <location filename="../ShootingPage.qml" line="1790"/>
+        <location filename="../ShootingPage.qml" line="1804"/>
         <source>Wind Map could not be closed safely</source>
         <translation>Windkarte konnte nicht sicher geschlossen werden</translation>
     </message>
     <message>
-        <location filename="../ShootingPage.qml" line="1937"/>
-        <location filename="../ShootingPage.qml" line="1958"/>
+        <location filename="../ShootingPage.qml" line="1962"/>
+        <location filename="../ShootingPage.qml" line="1983"/>
         <source>Training could not be closed safely</source>
         <translation>Training konnte nicht sicher geschlossen werden</translation>
     </message>
@@ -5027,6 +7948,16 @@ Nach dem Beenden können keine weiteren Schüsse erfasst werden.</translation>
         <location filename="../SummaryReportView.qml" line="251"/>
         <source>Inner 10</source>
         <translation>Innenzehner</translation>
+    </message>
+    <message>
+        <location filename="../SummaryReportView.qml" line="63"/>
+        <source>Match Summary</source>
+        <translation>Wettkampfübersicht</translation>
+    </message>
+    <message>
+        <location filename="../SummaryReportView.qml" line="70"/>
+        <source>Executive Summary</source>
+        <translation>Zusammenfassung</translation>
     </message>
     <message>
         <location filename="../SummaryReportView.qml" line="81"/>
@@ -5069,9 +8000,40 @@ Nach dem Beenden können keine weiteren Schüsse erfasst werden.</translation>
         <translation>Zeit je Schuss</translation>
     </message>
     <message>
+        <location filename="../SummaryReportView.qml" line="103"/>
+        <source>Overall Target</source>
+        <translation>Gesamtscheibe</translation>
+    </message>
+    <message>
+        <location filename="../SummaryReportView.qml" line="198"/>
+        <source>Position Breakdown</source>
+        <translation>Aufschlüsselung nach Stellung</translation>
+    </message>
+    <message>
+        <location filename="../SummaryReportView.qml" line="229"/>
+        <source>%1 shots · ★ %2</source>
+        <translation>%1 Schüsse · ★ %2</translation>
+    </message>
+    <message>
+        <location filename="../SummaryReportView.qml" line="237"/>
+        <source>Series Breakdown</source>
+        <translation>Aufschlüsselung nach Serie</translation>
+    </message>
+    <message>
         <location filename="../SummaryReportView.qml" line="262"/>
         <source>Series </source>
         <translation>Serie </translation>
+    </message>
+    <message>
+        <location filename="../SummaryReportView.qml" line="280"/>
+        <source>Generated %1</source>
+        <translation>Erstellt %1</translation>
+    </message>
+    <message>
+        <location filename="../SummaryReportView.qml" line="312"/>
+        <location filename="../SummaryReportView.qml" line="320"/>
+        <source>Series %1</source>
+        <translation>Serie %1</translation>
     </message>
 </context>
 <context>
@@ -5120,82 +8082,82 @@ Nach dem Beenden können keine weiteren Schüsse erfasst werden.</translation>
 <context>
     <name>TargetStatusPanel</name>
     <message>
-        <location filename="../TargetStatusPanel.qml" line="80"/>
+        <location filename="../TargetStatusPanel.qml" line="85"/>
         <source>TARGET ACQUISITION ERROR</source>
         <translation>FEHLER BEI DER SCHUSSERFASSUNG</translation>
     </message>
     <message>
-        <location filename="../TargetStatusPanel.qml" line="81"/>
+        <location filename="../TargetStatusPanel.qml" line="86"/>
         <source>TARGET DISCONNECTED</source>
         <translation>SCHEIBE GETRENNT</translation>
     </message>
     <message>
-        <location filename="../TargetStatusPanel.qml" line="84"/>
+        <location filename="../TargetStatusPanel.qml" line="89"/>
         <source>RECONNECTING…</source>
         <translation>VERBINDUNG WIRD WIEDERHERGESTELLT…</translation>
     </message>
     <message>
-        <location filename="../TargetStatusPanel.qml" line="88"/>
         <location filename="../TargetStatusPanel.qml" line="93"/>
+        <location filename="../TargetStatusPanel.qml" line="98"/>
         <source>SYNCHRONIZING…</source>
         <translation>SYNCHRONISIERUNG…</translation>
     </message>
     <message>
-        <location filename="../TargetStatusPanel.qml" line="85"/>
+        <location filename="../TargetStatusPanel.qml" line="90"/>
         <source>SEARCHING FOR TARGET…</source>
         <translation>SUCHE NACH SCHEIBE…</translation>
     </message>
     <message>
-        <location filename="../TargetStatusPanel.qml" line="87"/>
+        <location filename="../TargetStatusPanel.qml" line="92"/>
         <source>TARGET FOUND</source>
         <translation>SCHEIBE GEFUNDEN</translation>
     </message>
     <message>
-        <location filename="../TargetStatusPanel.qml" line="86"/>
+        <location filename="../TargetStatusPanel.qml" line="91"/>
         <source>SELECT TARGET PORT</source>
         <translation>SCHEIBEN-PORT WÄHLEN</translation>
     </message>
     <message>
-        <location filename="../TargetStatusPanel.qml" line="83"/>
+        <location filename="../TargetStatusPanel.qml" line="88"/>
         <source>NO TARGET</source>
         <translation>KEINE SCHEIBE</translation>
     </message>
     <message>
-        <location filename="../TargetStatusPanel.qml" line="93"/>
+        <location filename="../TargetStatusPanel.qml" line="98"/>
         <source>READY</source>
         <translation>BEREIT</translation>
     </message>
     <message>
-        <location filename="../TargetStatusPanel.qml" line="97"/>
+        <location filename="../TargetStatusPanel.qml" line="102"/>
         <source>CONNECTING…</source>
         <translation>VERBINDE…</translation>
     </message>
     <message>
-        <location filename="../TargetStatusPanel.qml" line="170"/>
+        <location filename="../TargetStatusPanel.qml" line="178"/>
         <source>Target Connection</source>
         <translation>Scheibenverbindung</translation>
     </message>
     <message>
-        <location filename="../TargetStatusPanel.qml" line="218"/>
+        <location filename="../TargetStatusPanel.qml" line="226"/>
         <source>Target and software shot counters are out of synchronization.
 STOP SHOOTING. Check the target connection before continuing.</source>
         <translation>Die Schusszähler von Scheibe und Software sind nicht synchron.
 SCHIESSEN EINSTELLEN. Prüfen Sie die Scheibenverbindung, bevor Sie fortfahren.</translation>
     </message>
     <message>
-        <location filename="../TargetStatusPanel.qml" line="222"/>
+        <location filename="../TargetStatusPanel.qml" line="230"/>
         <source>Connection to the electronic target has been lost.
 Please reconnect the target USB cable.</source>
         <translation>Die Verbindung zur elektronischen Scheibe ist abgebrochen.
 Bitte schließen Sie das USB-Kabel der Scheibe wieder an.</translation>
     </message>
     <message>
-        <location filename="../TargetStatusPanel.qml" line="225"/>
+        <location filename="../TargetStatusPanel.qml" line="233"/>
         <source>Several devices could be the target. Choose the port.</source>
         <translation>Mehrere Geräte kommen als Scheibe infrage. Port wählen.</translation>
     </message>
     <message>
-        <location filename="../TargetStatusPanel.qml" line="227"/>
+        <location filename="../TargetStatusPanel.qml" line="235"/>
         <source>Connect the target USB cable.</source>
         <translation>USB-Kabel der Scheibe anschließen.</translation>
     </message>
@@ -5364,7 +8326,7 @@ Bitte schließen Sie das USB-Kabel der Scheibe wieder an.</translation>
     <message>
         <location filename="../TrainingHud.qml" line="454"/>
         <source> mm</source>
-        <translation type="unfinished"> mm</translation>
+        <translation> mm</translation>
     </message>
     <message>
         <location filename="../TrainingHud.qml" line="460"/>
@@ -5440,6 +8402,324 @@ Bitte schließen Sie das USB-Kabel der Scheibe wieder an.</translation>
         <location filename="../TrainingHud.qml" line="587"/>
         <source>Home</source>
         <translation>Start</translation>
+    </message>
+</context>
+<context>
+    <name>TrainingReportView</name>
+    <message>
+        <location filename="../TrainingReportView.qml" line="21"/>
+        <source>insufficient</source>
+        <translation>unzureichend</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="22"/>
+        <source>low</source>
+        <translation>gering</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="23"/>
+        <source>moderate</source>
+        <translation>mittel</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="24"/>
+        <source>strong</source>
+        <translation>stark</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="30"/>
+        <source>Kneeling</source>
+        <translation>Kniend</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="31"/>
+        <source>Prone</source>
+        <translation>Liegend</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="32"/>
+        <source>Standing</source>
+        <translation>Stehend</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="73"/>
+        <source>No training session</source>
+        <translation>Keine Trainingssitzung</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="131"/>
+        <source>TRAINING LAB</source>
+        <translation>TRAININGSLABOR</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="133"/>
+        <source>TECHNICAL BLOCKS REPORT</source>
+        <translation>BERICHT TECHNIKBLÖCKE</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="142"/>
+        <location filename="../TrainingReportView.qml" line="202"/>
+        <source>Athlete</source>
+        <translation>Sportler</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="143"/>
+        <location filename="../TrainingReportView.qml" line="206"/>
+        <source>Discipline</source>
+        <translation>Disziplin</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="143"/>
+        <source>50m Rifle 3P</source>
+        <translation>50 m Gewehr 3 Stellungen</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="144"/>
+        <location filename="../TrainingReportView.qml" line="206"/>
+        <source>Single position</source>
+        <translation>Einzelstellung</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="145"/>
+        <source>Date</source>
+        <translation>Datum</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="146"/>
+        <source>Session</source>
+        <translation>Sitzung</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="157"/>
+        <source>Not an official competition result</source>
+        <translation>Kein offizielles Wettkampfergebnis</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="179"/>
+        <source>Page %1 of %2</source>
+        <translation>Seite %1 von %2</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="199"/>
+        <source>SESSION ENDED EARLY</source>
+        <translation>SITZUNG VORZEITIG BEENDET</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="199"/>
+        <source>SESSION OVERVIEW</source>
+        <translation>SITZUNGSÜBERSICHT</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="203"/>
+        <source>Date / time</source>
+        <translation>Datum / Uhrzeit</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="204"/>
+        <source>Session ID</source>
+        <translation>Sitzungs-ID</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="205"/>
+        <source>Operating mode</source>
+        <translation>Betriebsart</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="206"/>
+        <source>50m Rifle 3 Positions</source>
+        <translation>50 m Gewehr 3 Stellungen</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="207"/>
+        <source>Technical focus</source>
+        <translation>Technischer Schwerpunkt</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="208"/>
+        <source>Visibility mode</source>
+        <translation>Sichtbarkeitsmodus</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="209"/>
+        <source>Programme</source>
+        <translation>Programm</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="209"/>
+        <source>%1 blocks × %2 shots</source>
+        <translation>%1 Blöcke × %2 Schüsse</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="210"/>
+        <source>Planned shots</source>
+        <translation>Geplante Schüsse</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="211"/>
+        <source>Counted shots</source>
+        <translation>Gezählte Schüsse</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="212"/>
+        <source>Completed blocks</source>
+        <translation>Abgeschlossene Blöcke</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="212"/>
+        <source>%1 of %2</source>
+        <translation>%1 von %2</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="213"/>
+        <source>Session duration</source>
+        <translation>Sitzungsdauer</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="217"/>
+        <source>Sighters</source>
+        <translation>Probeschüsse</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="220"/>
+        <source>Kneeling %1, Prone %2, Standing %3  (total %4)</source>
+        <translation>Kniend %1, Liegend %2, Stehend %3  (gesamt %4)</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="225"/>
+        <source>Sighters are excluded from all Training results below.</source>
+        <translation>Probeschüsse sind von allen folgenden Trainingsergebnissen ausgenommen.</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="236"/>
+        <source>BLOCK COMPARISON</source>
+        <translation>BLOCKVERGLEICH</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="240"/>
+        <source>BLOCK</source>
+        <translation>BLOCK</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="240"/>
+        <source>AVG</source>
+        <translation>Ø</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="240"/>
+        <source>DIA mm</source>
+        <translation>Ø mm</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="240"/>
+        <source>MPI X/Y mm</source>
+        <translation>MTP X/Y mm</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="240"/>
+        <source>SCORE SD</source>
+        <translation>WERTUNG STD.-ABW.</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="240"/>
+        <source>SHOTS</source>
+        <translation>SCHÜSSE</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="250"/>
+        <location filename="../TrainingReportView.qml" line="373"/>
+        <source>Block %1</source>
+        <translation>Block %1</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="259"/>
+        <source>GROUP DIAMETER BY BLOCK</source>
+        <translation>STREUKREISDURCHMESSER JE BLOCK</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="275"/>
+        <location filename="../TrainingReportView.qml" line="339"/>
+        <source>OBSERVED</source>
+        <translation>BEOBACHTET</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="298"/>
+        <source>BLOCK %1</source>
+        <translation>BLOCK %1</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="300"/>
+        <source>%1 counted shots · sighters excluded</source>
+        <translation>%1 gezählte Schüsse · Probeschüsse ausgenommen</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="330"/>
+        <source>Average score</source>
+        <translation>Durchschnittswertung</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="331"/>
+        <source>Group radius</source>
+        <translation>Streukreisradius</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="332"/>
+        <source>Group diameter</source>
+        <translation>Streukreisdurchmesser</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="333"/>
+        <source>MPI (X / Y)</source>
+        <translation>MTP (X / Y)</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="334"/>
+        <source>H / V spread</source>
+        <translation>H / V-Streuung</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="335"/>
+        <source>Score SD</source>
+        <translation>Wertung Std.-Abw.</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="336"/>
+        <source>Avg shot time</source>
+        <translation>Ø Schusszeit</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="345"/>
+        <source>GROUP PATTERN INSIGHTS</source>
+        <translation>AUSWERTUNG DES STREUKREISMUSTERS</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="348"/>
+        <source>%1  (%2 evidence)</source>
+        <translation>%1  (Evidenz: %2)</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="351"/>
+        <source>Coach discussion: %1</source>
+        <translation>Für das Trainergespräch: %1</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="354"/>
+        <source>ATHLETE NOTE</source>
+        <translation>NOTIZ DES SPORTLERS</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="367"/>
+        <source>ATHLETE NOTES</source>
+        <translation>NOTIZEN DES SPORTLERS</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="380"/>
+        <source>OVERALL OBSERVED</source>
+        <translation>GESAMTBEOBACHTUNG</translation>
+    </message>
+    <message>
+        <location filename="../TrainingReportView.qml" line="387"/>
+        <source>Measured training data only. Sighters are excluded from all results. This is not an official competition result and carries no ranking status.</source>
+        <translation>Nur gemessene Trainingsdaten. Probeschüsse sind von allen Ergebnissen ausgenommen. Dies ist kein offizielles Wettkampfergebnis und hat keinen Ranglistenstatus.</translation>
     </message>
 </context>
 <context>
@@ -5637,7 +8917,7 @@ WETTKAMPFERGEBNIS</translation>
     </message>
     <message>
         <location filename="../WindMapAnalysisView.qml" line="225"/>
-        <location filename="../WindMapAnalysisView.qml" line="953"/>
+        <location filename="../WindMapAnalysisView.qml" line="956"/>
         <source>SHOT DETAILS</source>
         <translation>SCHUSSDETAILS</translation>
     </message>
@@ -5657,378 +8937,383 @@ WETTKAMPFERGEBNIS</translation>
         <translation>Ihre Windkarten-Auswertung wird vorbereitet…</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="330"/>
+        <location filename="../WindMapAnalysisView.qml" line="333"/>
         <source>Home</source>
         <translation>Start</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="337"/>
+        <location filename="../WindMapAnalysisView.qml" line="340"/>
         <source>New Wind Map session</source>
         <translation>Neue Windkarten-Sitzung</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="347"/>
+        <location filename="../WindMapAnalysisView.qml" line="350"/>
         <source>PDF — COMING NEXT</source>
         <translation>PDF — FOLGT ALS NÄCHSTES</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="383"/>
+        <location filename="../WindMapAnalysisView.qml" line="386"/>
         <source>WHAT HAPPENED</source>
         <translation>WAS GESCHAH</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="404"/>
+        <location filename="../WindMapAnalysisView.qml" line="407"/>
         <source>No counted shots were recorded in this selection.</source>
         <translation>In dieser Auswahl wurden keine gezählten Schüsse erfasst.</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="433"/>
-        <location filename="../WindMapAnalysisView.qml" line="803"/>
+        <location filename="../WindMapAnalysisView.qml" line="436"/>
+        <location filename="../WindMapAnalysisView.qml" line="806"/>
         <source>%1 shots</source>
         <translation>%1 Schüsse</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="450"/>
+        <location filename="../WindMapAnalysisView.qml" line="453"/>
         <source>WHAT THIS MEANS</source>
         <translation>WAS DAS BEDEUTET</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="457"/>
+        <location filename="../WindMapAnalysisView.qml" line="460"/>
         <source>Record some counted shots to see an analysis.</source>
         <translation>Erfassen Sie einige gezählte Schüsse, um eine Auswertung zu sehen.</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="471"/>
+        <location filename="../WindMapAnalysisView.qml" line="474"/>
         <source>NEXT TRAINING STEP</source>
         <translation>NÄCHSTER TRAININGSSCHRITT</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="477"/>
+        <location filename="../WindMapAnalysisView.qml" line="480"/>
         <source>Record every condition you observe, and repeat a condition often enough to compare it with itself.</source>
         <translation>Erfassen Sie jede Bedingung, die Sie beobachten, und wiederholen Sie eine Bedingung oft genug, um sie mit sich selbst vergleichen zu können.</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="493"/>
+        <location filename="../WindMapAnalysisView.qml" line="496"/>
         <source>COACH DECISION</source>
         <translation>TRAINERENTSCHEIDUNG</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="503"/>
+        <location filename="../WindMapAnalysisView.qml" line="506"/>
         <source>EVIDENCE</source>
         <translation>EVIDENZ</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="510"/>
+        <location filename="../WindMapAnalysisView.qml" line="513"/>
         <source>COUNTED SHOTS</source>
         <translation>GEZÄHLTE SCHÜSSE</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="511"/>
+        <location filename="../WindMapAnalysisView.qml" line="514"/>
         <source>CONDITIONS USED</source>
         <translation>VERWENDETE BEDINGUNGEN</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="512"/>
+        <location filename="../WindMapAnalysisView.qml" line="515"/>
         <source>POSITIONS</source>
         <translation>STELLUNGEN</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="514"/>
+        <location filename="../WindMapAnalysisView.qml" line="517"/>
         <source>DATA QUALITY</source>
         <translation>DATENQUALITÄT</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="515"/>
+        <location filename="../WindMapAnalysisView.qml" line="518"/>
         <source>Complete</source>
         <translation>Vollständig</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="515"/>
+        <location filename="../WindMapAnalysisView.qml" line="518"/>
         <source>Partial</source>
         <translation>Teilweise</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="534"/>
+        <location filename="../WindMapAnalysisView.qml" line="537"/>
         <source>Data quality: </source>
         <translation>Datenqualität: </translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="536"/>
+        <location filename="../WindMapAnalysisView.qml" line="539"/>
         <source>  ·  %1 more shots would allow a comparison.</source>
         <translation>  ·  %1 weitere Schüsse würden einen Vergleich ermöglichen.</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="554"/>
+        <location filename="../WindMapAnalysisView.qml" line="557"/>
         <source>SESSION DETAILS</source>
         <translation>SITZUNGSDETAILS</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="563"/>
+        <location filename="../WindMapAnalysisView.qml" line="566"/>
         <source>Sighters</source>
         <translation>Probeschüsse</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="564"/>
+        <location filename="../WindMapAnalysisView.qml" line="567"/>
         <source>Condition entries</source>
         <translation>Bedingungseinträge</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="565"/>
+        <location filename="../WindMapAnalysisView.qml" line="568"/>
         <source>Shots with a reading</source>
         <translation>Schüsse mit Messwert</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="566"/>
+        <location filename="../WindMapAnalysisView.qml" line="569"/>
         <source>Calm shots</source>
         <translation>Schüsse bei Windstille</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="567"/>
+        <location filename="../WindMapAnalysisView.qml" line="570"/>
         <source>No-reading shots</source>
         <translation>Schüsse ohne Messwert</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="568"/>
+        <location filename="../WindMapAnalysisView.qml" line="571"/>
         <source>Positions recorded</source>
         <translation>Erfasste Stellungen</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="584"/>
+        <location filename="../WindMapAnalysisView.qml" line="587"/>
         <source>VISUAL RESULT</source>
         <translation>VISUELLES ERGEBNIS</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="623"/>
+        <location filename="../WindMapAnalysisView.qml" line="626"/>
         <source>OBSERVED RESULT</source>
         <translation>BEOBACHTETES ERGEBNIS</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="633"/>
+        <location filename="../WindMapAnalysisView.qml" line="636"/>
         <source>No condition recorded</source>
         <translation>Keine Bedingung erfasst</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="639"/>
+        <location filename="../WindMapAnalysisView.qml" line="642"/>
         <source>%1 counted shots</source>
         <translation>%1 gezählte Schüsse</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="642"/>
+        <location filename="../WindMapAnalysisView.qml" line="645"/>
         <source>Group centre:</source>
         <translation>Streukreismitte:</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="648"/>
+        <location filename="../WindMapAnalysisView.qml" line="651"/>
         <source>Group size (widest two shots):</source>
         <translation>Streukreisgröße (die zwei weitesten Schüsse):</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="651"/>
+        <location filename="../WindMapAnalysisView.qml" line="654"/>
         <source> mm</source>
-        <translation type="unfinished"> mm</translation>
+        <translation> mm</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="658"/>
+        <location filename="../WindMapAnalysisView.qml" line="661"/>
         <source>Evidence: </source>
         <translation>Evidenz: </translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="673"/>
+        <location filename="../WindMapAnalysisView.qml" line="676"/>
         <source>LEGEND</source>
         <translation>LEGENDE</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="683"/>
+        <location filename="../WindMapAnalysisView.qml" line="686"/>
         <source>Counted shot — %1  (n=%2)</source>
         <translation>Gezählter Schuss — %1  (n=%2)</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="694"/>
+        <location filename="../WindMapAnalysisView.qml" line="697"/>
         <source>Hollow ring — sighter (not counted)</source>
         <translation>Offener Ring — Probeschuss (nicht gezählt)</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="703"/>
+        <location filename="../WindMapAnalysisView.qml" line="706"/>
         <source>Cross — that condition&apos;s group centre</source>
         <translation>Kreuz — die Streukreismitte dieser Bedingung</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="711"/>
+        <location filename="../WindMapAnalysisView.qml" line="714"/>
         <source>White circle — reference centre (%1)</source>
         <translation>Weißer Kreis — Referenzmitte (%1)</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="721"/>
+        <location filename="../WindMapAnalysisView.qml" line="724"/>
         <source>Faint circle — average distance from the group centre</source>
         <translation>Blasser Kreis — mittlerer Abstand von der Streukreismitte</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="725"/>
+        <location filename="../WindMapAnalysisView.qml" line="728"/>
         <source>Thin rings and the centre cross are target reference only.</source>
         <translation>Dünne Ringe und das Mittelkreuz dienen nur als Scheibenreferenz.</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="733"/>
+        <location filename="../WindMapAnalysisView.qml" line="736"/>
         <source>The plot shows where your shots landed and where each condition&apos;s group centre sat. It is a record, not an aiming instruction.</source>
         <translation>Die Darstellung zeigt, wo Ihre Schüsse lagen und wo die Streukreismitte jeder Bedingung lag. Sie ist eine Aufzeichnung, keine Zielanweisung.</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="766"/>
+        <location filename="../WindMapAnalysisView.qml" line="769"/>
         <source>CONDITIONS RECORDED</source>
         <translation>ERFASSTE BEDINGUNGEN</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="770"/>
+        <location filename="../WindMapAnalysisView.qml" line="773"/>
         <source>Each card describes one condition you recorded. Comparisons are measured from the %1.</source>
         <translation>Jede Karte beschreibt eine von Ihnen erfasste Bedingung. Vergleiche werden ab %1 gemessen.</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="772"/>
+        <location filename="../WindMapAnalysisView.qml" line="775"/>
         <source>reference</source>
         <translation>Referenz</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="817"/>
+        <location filename="../WindMapAnalysisView.qml" line="820"/>
         <source>Average score:  </source>
         <translation>Durchschnittswertung:  </translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="819"/>
+        <location filename="../WindMapAnalysisView.qml" line="822"/>
         <source>Group size:  </source>
         <translation>Streukreisgröße:  </translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="825"/>
+        <location filename="../WindMapAnalysisView.qml" line="828"/>
         <source>Group centre:  </source>
         <translation>Streukreismitte:  </translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="830"/>
+        <location filename="../WindMapAnalysisView.qml" line="833"/>
         <source>Comparison:  this is the reference condition.</source>
         <translation>Vergleich:  dies ist die Referenzbedingung.</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="832"/>
+        <location filename="../WindMapAnalysisView.qml" line="835"/>
         <source>Comparison:  not enough shots — %1 more required.</source>
         <translation>Vergleich:  zu wenige Schüsse — %1 weitere erforderlich.</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="834"/>
+        <location filename="../WindMapAnalysisView.qml" line="837"/>
         <source>Comparison:  centre sat %1 from the reference (%2, %3)</source>
         <translation>Vergleich:  die Mitte lag %1 von der Referenz entfernt (%2, %3)</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="841"/>
+        <location filename="../WindMapAnalysisView.qml" line="844"/>
         <source>Evidence:</source>
         <translation>Evidenz:</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="885"/>
+        <location filename="../WindMapAnalysisView.qml" line="888"/>
         <source>Next: </source>
         <translation>Nächster Schritt: </translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="892"/>
+        <location filename="../WindMapAnalysisView.qml" line="895"/>
         <source>SHOW TECHNICAL MEASUREMENTS</source>
         <translation>TECHNISCHE MESSWERTE ANZEIGEN</translation>
     </message>
     <message>
         <location filename="../WindMapAnalysisView.qml" line="906"/>
+        <source>MPI X / Y</source>
+        <translation>MTP X / Y</translation>
+    </message>
+    <message>
+        <location filename="../WindMapAnalysisView.qml" line="909"/>
         <source>Average centre of the recorded shot group</source>
         <translation>Mittlerer Mittelpunkt des erfassten Streukreises</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="907"/>
+        <location filename="../WindMapAnalysisView.qml" line="910"/>
         <source>Mean radius</source>
         <translation>Mittlerer Radius</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="909"/>
+        <location filename="../WindMapAnalysisView.qml" line="912"/>
         <source>Average distance of each shot from the group centre</source>
         <translation>Mittlerer Abstand jedes Schusses von der Streukreismitte</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="910"/>
+        <location filename="../WindMapAnalysisView.qml" line="913"/>
         <source>Group diameter</source>
         <translation>Streukreisdurchmesser</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="912"/>
+        <location filename="../WindMapAnalysisView.qml" line="915"/>
         <source>Distance between the two widest shots</source>
         <translation>Abstand zwischen den zwei weitesten Schüssen</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="913"/>
+        <location filename="../WindMapAnalysisView.qml" line="916"/>
         <source>Horizontal spread</source>
         <translation>Horizontale Streuung</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="915"/>
+        <location filename="../WindMapAnalysisView.qml" line="918"/>
         <source>Total left-to-right width</source>
         <translation>Gesamtbreite von links nach rechts</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="916"/>
+        <location filename="../WindMapAnalysisView.qml" line="919"/>
         <source>Vertical spread</source>
         <translation>Vertikale Streuung</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="918"/>
+        <location filename="../WindMapAnalysisView.qml" line="921"/>
         <source>Total high-to-low height</source>
         <translation>Gesamthöhe von oben nach unten</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="919"/>
+        <location filename="../WindMapAnalysisView.qml" line="922"/>
         <source>Score standard deviation</source>
         <translation>Standardabweichung der Wertung</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="921"/>
+        <location filename="../WindMapAnalysisView.qml" line="924"/>
         <source>How much the scores varied around their average</source>
         <translation>Wie stark die Wertungen um ihren Mittelwert streuten</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="957"/>
+        <location filename="../WindMapAnalysisView.qml" line="960"/>
         <source>Every recorded shot with the condition that was standing when it was fired. Supporting evidence for the analysis above.</source>
         <translation>Jeder erfasste Schuss mit der Bedingung, die bei seiner Abgabe herrschte. Belegende Evidenz für die Auswertung oben.</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="967"/>
+        <location filename="../WindMapAnalysisView.qml" line="970"/>
         <source>#</source>
-        <translation type="unfinished"></translation>
+        <translation>#</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="968"/>
+        <location filename="../WindMapAnalysisView.qml" line="971"/>
         <source>TYPE</source>
         <translation>ART</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="969"/>
+        <location filename="../WindMapAnalysisView.qml" line="972"/>
         <source>POSITION</source>
         <translation>STELLUNG</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="971"/>
+        <location filename="../WindMapAnalysisView.qml" line="974"/>
         <source>SCORE</source>
         <translation>WERTUNG</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="972"/>
+        <location filename="../WindMapAnalysisView.qml" line="975"/>
         <source>ACROSS / UP</source>
         <translation>QUER / HOCH</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="973"/>
+        <location filename="../WindMapAnalysisView.qml" line="976"/>
         <source>CONDITION WHEN FIRED</source>
         <translation>BEDINGUNG BEI ABGABE</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="1001"/>
+        <location filename="../WindMapAnalysisView.qml" line="1004"/>
         <source>— counted shots begin —</source>
         <translation>— gezählte Schüsse beginnen —</translation>
     </message>
     <message>
-        <location filename="../WindMapAnalysisView.qml" line="1008"/>
+        <location filename="../WindMapAnalysisView.qml" line="1011"/>
         <source>condition changed → </source>
         <translation>Bedingung geändert → </translation>
     </message>
@@ -6211,116 +9496,116 @@ WETTKAMPFERGEBNIS</translation>
     <message>
         <location filename="../WindMapTargetPlot.qml" line="114"/>
         <source> mm</source>
-        <translation type="unfinished"> mm</translation>
+        <translation> mm</translation>
     </message>
 </context>
 <context>
     <name>main</name>
     <message>
-        <location filename="../main.qml" line="340"/>
-        <location filename="../main.qml" line="356"/>
+        <location filename="../main.qml" line="349"/>
+        <location filename="../main.qml" line="365"/>
         <source>Position Transition could not be closed safely</source>
         <translation>Stellungswechsel konnte nicht sicher geschlossen werden</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="315"/>
-        <location filename="../main.qml" line="331"/>
-        <location filename="../main.qml" line="341"/>
-        <location filename="../main.qml" line="357"/>
-        <location filename="../main.qml" line="367"/>
-        <location filename="../main.qml" line="383"/>
-        <location filename="../main.qml" line="396"/>
-        <location filename="../main.qml" line="414"/>
+        <location filename="../main.qml" line="324"/>
+        <location filename="../main.qml" line="340"/>
+        <location filename="../main.qml" line="350"/>
+        <location filename="../main.qml" line="366"/>
+        <location filename="../main.qml" line="376"/>
+        <location filename="../main.qml" line="392"/>
+        <location filename="../main.qml" line="405"/>
+        <location filename="../main.qml" line="423"/>
         <source>Your session is preserved and can be recovered. Please try again.</source>
         <translation>Ihre Sitzung ist gesichert und kann wiederhergestellt werden. Bitte versuchen Sie es erneut.</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="344"/>
+        <location filename="../main.qml" line="353"/>
         <source>Close Position Transition?</source>
         <translation>Stellungswechsel schließen?</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="319"/>
-        <location filename="../main.qml" line="345"/>
-        <location filename="../main.qml" line="371"/>
+        <location filename="../main.qml" line="328"/>
+        <location filename="../main.qml" line="354"/>
+        <location filename="../main.qml" line="380"/>
         <source>Save and close this session, or keep it so you can resume it next time?</source>
         <translation>Diese Sitzung speichern und schließen oder behalten, um sie beim nächsten Mal fortzusetzen?</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="163"/>
+        <location filename="../main.qml" line="172"/>
         <source>is a %1-shot course over %2 positions</source>
         <translation>ist ein Programm mit %1 Schuss über %2 Stellungen</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="314"/>
-        <location filename="../main.qml" line="330"/>
+        <location filename="../main.qml" line="323"/>
+        <location filename="../main.qml" line="339"/>
         <source>Wind Map could not be closed safely</source>
         <translation>Windkarte konnte nicht sicher geschlossen werden</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="318"/>
+        <location filename="../main.qml" line="327"/>
         <source>Close Wind Map?</source>
         <translation>Windkarte schließen?</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="321"/>
-        <location filename="../main.qml" line="347"/>
-        <location filename="../main.qml" line="373"/>
-        <location filename="../main.qml" line="403"/>
-        <location filename="../main.qml" line="425"/>
+        <location filename="../main.qml" line="330"/>
+        <location filename="../main.qml" line="356"/>
+        <location filename="../main.qml" line="382"/>
+        <location filename="../main.qml" line="412"/>
+        <location filename="../main.qml" line="434"/>
         <source>Cancel</source>
         <translation>Abbrechen</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="322"/>
-        <location filename="../main.qml" line="348"/>
-        <location filename="../main.qml" line="374"/>
-        <location filename="../main.qml" line="404"/>
+        <location filename="../main.qml" line="331"/>
+        <location filename="../main.qml" line="357"/>
+        <location filename="../main.qml" line="383"/>
+        <location filename="../main.qml" line="413"/>
         <source>Keep for Recovery</source>
         <translation>Zur Wiederherstellung behalten</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="323"/>
-        <location filename="../main.qml" line="349"/>
-        <location filename="../main.qml" line="375"/>
-        <location filename="../main.qml" line="405"/>
+        <location filename="../main.qml" line="332"/>
+        <location filename="../main.qml" line="358"/>
+        <location filename="../main.qml" line="384"/>
+        <location filename="../main.qml" line="414"/>
         <source>Save and Close</source>
         <translation>Speichern und schließen</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="366"/>
-        <location filename="../main.qml" line="382"/>
+        <location filename="../main.qml" line="375"/>
+        <location filename="../main.qml" line="391"/>
         <source>Call &amp; Diagnose could not be closed safely</source>
         <translation>Ansage &amp; Diagnose konnte nicht sicher geschlossen werden</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="370"/>
+        <location filename="../main.qml" line="379"/>
         <source>Close Call &amp; Diagnose?</source>
         <translation>Ansage &amp; Diagnose schließen?</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="395"/>
-        <location filename="../main.qml" line="413"/>
+        <location filename="../main.qml" line="404"/>
+        <location filename="../main.qml" line="422"/>
         <source>Training could not be closed safely</source>
         <translation>Training konnte nicht sicher geschlossen werden</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="400"/>
+        <location filename="../main.qml" line="409"/>
         <source>Close Training?</source>
         <translation>Training schließen?</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="401"/>
+        <location filename="../main.qml" line="410"/>
         <source>Save and close this training session, or keep it so you can resume it next time?</source>
         <translation>Diese Trainingssitzung speichern und schließen oder behalten, um sie beim nächsten Mal fortzusetzen?</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="422"/>
+        <location filename="../main.qml" line="431"/>
         <source>Save Match?</source>
         <translation>Wettkampf speichern?</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="423"/>
+        <location filename="../main.qml" line="432"/>
         <source>The match is finished.
 
 Do you want to save this match before closing the application?</source>
@@ -6329,115 +9614,115 @@ Do you want to save this match before closing the application?</source>
 Möchten Sie diesen Wettkampf speichern, bevor die Anwendung geschlossen wird?</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="426"/>
+        <location filename="../main.qml" line="435"/>
         <source>Discard</source>
         <translation>Verwerfen</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="427"/>
+        <location filename="../main.qml" line="436"/>
         <source>Save</source>
         <translation>Speichern</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="503"/>
+        <location filename="../main.qml" line="512"/>
         <source>Call &amp; Diagnose Recovery Failed</source>
         <translation>Wiederherstellung von Ansage &amp; Diagnose fehlgeschlagen</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="504"/>
+        <location filename="../main.qml" line="513"/>
         <source>The Call &amp; Diagnose session could not be resumed. Its journal has been left intact.</source>
         <translation>Die Sitzung „Ansage &amp; Diagnose“ konnte nicht fortgesetzt werden. Ihr Journal wurde unverändert gelassen.</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="511"/>
+        <location filename="../main.qml" line="520"/>
         <source>Wind Map Recovery Failed</source>
         <translation>Wiederherstellung der Windkarte fehlgeschlagen</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="512"/>
+        <location filename="../main.qml" line="521"/>
         <source>The Wind Map session could not be resumed. Its journal has been left intact.</source>
         <translation>Die Windkarten-Sitzung konnte nicht fortgesetzt werden. Ihr Journal wurde unverändert gelassen.</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="519"/>
+        <location filename="../main.qml" line="528"/>
         <source>Position Transition Recovery Failed</source>
         <translation>Wiederherstellung des Stellungswechsels fehlgeschlagen</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="520"/>
+        <location filename="../main.qml" line="529"/>
         <source>The Position Transition session could not be resumed. Its journal has been left intact.</source>
         <translation>Die Stellungswechsel-Sitzung konnte nicht fortgesetzt werden. Ihr Journal wurde unverändert gelassen.</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="527"/>
+        <location filename="../main.qml" line="543"/>
         <source>DSB 1.20 Recovery Failed</source>
         <translation>DSB-1.20-Wiederherstellung fehlgeschlagen</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="528"/>
+        <location filename="../main.qml" line="544"/>
         <source>The DSB 1.20 session could not be resumed. Its journal has been left intact.</source>
         <translation>Die DSB-1.20-Sitzung konnte nicht fortgesetzt werden. Ihr Journal ist unverändert erhalten.</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="537"/>
+        <location filename="../main.qml" line="552"/>
         <source>Training Recovery Failed</source>
         <translation>Wiederherstellung des Trainings fehlgeschlagen</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="538"/>
+        <location filename="../main.qml" line="553"/>
         <source>The training session could not be resumed. Its journal has been left intact.</source>
         <translation>Die Trainingssitzung konnte nicht fortgesetzt werden. Ihr Journal wurde unverändert gelassen.</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="561"/>
+        <location filename="../main.qml" line="576"/>
         <source>Recovery Not Supported</source>
         <translation>Wiederherstellung nicht unterstützt</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="562"/>
+        <location filename="../main.qml" line="577"/>
         <source>This session&apos;s discipline (%1) cannot be recovered by this build.</source>
         <translation>Die Disziplin dieser Sitzung (%1) kann von diesem Build nicht wiederhergestellt werden.</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="564"/>
+        <location filename="../main.qml" line="579"/>
         <source>unknown</source>
         <translation>unbekannt</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="602"/>
-        <location filename="../main.qml" line="633"/>
-        <location filename="../main.qml" line="704"/>
+        <location filename="../main.qml" line="617"/>
+        <location filename="../main.qml" line="648"/>
+        <location filename="../main.qml" line="719"/>
         <source>Recovery Failed</source>
         <translation>Wiederherstellung fehlgeschlagen</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="603"/>
-        <location filename="../main.qml" line="705"/>
+        <location filename="../main.qml" line="618"/>
+        <location filename="../main.qml" line="720"/>
         <source>The unfinished match could not be resumed.</source>
         <translation>Der unabgeschlossene Wettkampf konnte nicht fortgesetzt werden.</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="634"/>
+        <location filename="../main.qml" line="649"/>
         <source>The unfinished 10m final could not be resumed.</source>
         <translation>Das unabgeschlossene 10-m-Finale konnte nicht fortgesetzt werden.</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="766"/>
+        <location filename="../main.qml" line="781"/>
         <source>Could not change operating mode</source>
         <translation>Betriebsart konnte nicht geändert werden</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="784"/>
+        <location filename="../main.qml" line="799"/>
         <source>Exporting Report</source>
         <translation>Bericht wird exportiert</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="794"/>
+        <location filename="../main.qml" line="809"/>
         <source>Session Journal Error</source>
         <translation>Fehler im Sitzungsjournal</translation>
     </message>
     <message>
-        <location filename="../main.qml" line="795"/>
+        <location filename="../main.qml" line="810"/>
         <source>The session journal could not be written. Shots continue to be scored, but this session may not be recoverable after a crash.</source>
         <translation>Das Sitzungsjournal konnte nicht geschrieben werden. Schüsse werden weiterhin gewertet, diese Sitzung ist nach einem Absturz aber möglicherweise nicht wiederherstellbar.</translation>
     </message>
