@@ -413,6 +413,19 @@ Item {
                     addIfinRange(temp)
                     // RC2a stage 10: the marker has been added to the series.
                     paneItem.traceStage("qml-marker-added", newShootCount)
+                } else {
+                    // TRAINING-HIDDEN-001: a hidden impact is NOT drawn, but the
+                    // shot must still be REGISTERED. pointAddedToSeries is
+                    // otherwise emitted only by polarSeries.onPointAdded, i.e. by
+                    // drawing — so since 42e91a8 every Full-hidden Technical
+                    // Blocks shot (demo click AND live target) was scored and
+                    // then dropped. Emit the same hand-off, with the same
+                    // values, without touching the series — and WITHOUT
+                    // setting currentScoreValue/Degree: they drive the always-
+                    // visible score dial, which would reveal the hidden shot.
+                    var hiddenPoint = root.mapToValue(paneItem.itemPoint, polarSeries)
+                    pointAddedToSeries(hiddenPoint.x, hiddenPoint.y, calculatedSccore)
+                    paneItem.traceStage("qml-hidden-registered", newShootCount)
                 }
 
                 // SIUS-style: zoom in on where the shot just landed (not while a

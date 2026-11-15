@@ -396,3 +396,13 @@ run found that target clicks in a Technical Blocks block record no shot — the
 same on the WP1 build, so pre-existing and open. The remaining lazy-load
 candidates (four Training Lab right panels, Position Transition HUD, DSB 1.20
 HUD) are smaller views; not measured, not done.
+
+**2026-11-15 — TRAINING-HIDDEN-001 fixed.** Technical Blocks in its default
+"Full hidden" mode recorded NO shots — demo clicks and, because they share the
+QML path, live target shots too. Since `42e91a8` (July) the hidden branch of
+the shot handler skipped the chart append, which was the only route to the
+Training hand-off. The hidden branch now emits the same hand-off without
+drawing and without touching the always-visible score dial. Hand run: 2 × 3
+shots counted, review/summary correct, Technical Blocks PDF exported (5 pages,
+also confirming PERF-004). qml **306 / 0**. **Tech Aim 1.0.0
+(`release/techaim-1.0.0`) has the same defect — port required.**

@@ -296,8 +296,8 @@ Branch `feature/seta-athlete-mode` · 2026-11-08 · Spec:
 | Check | Status | Evidence |
 |---|---|---|
 | Wind Map analysis view exists only while shown (Loader) and still fetches its analysis on creation | PASS (source) · HUMAN VISUAL CHECK REQUIRED (behaviour) | `tst_brandpackage` PERF-003 — reliability **2850 / 0**; no 50 m Wind Map session was run by hand |
-| Technical Blocks / Call & Diagnose / Position Transition PDF renderers built on the first export | PASS (source) · HUMAN VISUAL CHECK REQUIRED (export) | `tst_brandpackage` PERF-004; hand export not reached (see next line) |
+| Technical Blocks / Call & Diagnose / Position Transition PDF renderers built on the first export | PASS (source + Technical Blocks hand export) · Call & Diagnose / Position Transition export NOT hand-run | `tst_brandpackage` PERF-004; hand run 2026-11-15 (isolated data root): Technical Blocks 2×3 → "Training report saved", 5-page PDF |
 | Shot-projecting HUDs and panels still created with the page | PASS | PERF-004 control check; not changed by design |
 | No new QML errors at launch | PASS | launch log: same warning set as the WP1 build |
 | Memory at start-up | PASS — MEASURED | working set 255.1 → 250.7 MB, private 260.2 → 255.8 MB (median of 3); `docs/seta/perf/before-wp2-…json`, `after-wp2-perf003-004-…json` |
-| Demo: target click during a Technical Blocks block records a shot | FAIL — OPEN (pre-existing) | 2026-11-15, isolated data root: block starts, no shot is journalled — **identical on the WP1 build `cd3420b`**, so not caused by WP2; not yet diagnosed |
+| Full-hidden Technical Blocks shots are registered (TRAINING-HIDDEN-001) | PASS (fixed 2026-11-15) | hand run: 2 blocks × 3 demo shots counted, block review and summary correct, score dial stays empty while firing — `docs/seta/evidence/training-hidden-shots-registered-2026-11-15.jpg`; `tests/qml` TRAINING-HIDDEN-001 (7 checks incl. a control reproducing the defect) — qml **306 / 0**. Was: | block starts, no shot is journalled (also on `cd3420b`). Cause: since `42e91a8` the hidden branch skipped `addIfinRange()`, the only path to `pointAddedToSeries` — the same QML path carries LIVE target shots |

@@ -33,6 +33,7 @@
 #include <QQmlEngine>
 #include <QQmlComponent>
 #include <QQmlContext>
+#include <QJSEngine>
 #include <QFile>
 #include <QDirIterator>
 #include <QFileInfo>
@@ -125,11 +126,80 @@ static QString extractFunction(const QString& source, const QString& name)
     return QString();
 }
 
+// TRAINING-HIDDEN-001 — a Full-hidden Technical Blocks shot must still be
+// REGISTERED. Executes the REAL block of CenterPane.qml's shot handler (from
+// `var trainingHidesImpact` to `backEndShootCount = newShootCount`) with stubs
+// for the chart, the dial and the hand-off signal.
+static void testHiddenTrainingHandoff()
+{
+    const QString centre = readAll(QStringLiteral(TECHAIM_SOURCE_DIR "/CenterPane.qml"));
+    const int a = centre.indexOf(QStringLiteral("var trainingHidesImpact"));
+    const int b = a < 0 ? -1 : centre.indexOf(QStringLiteral("backEndShootCount = newShootCount"), a);
+    check(a >= 0 && b > a, "TRAINING-HIDDEN-001: the shot-handler display block is found in CenterPane.qml");
+    if (a < 0 || b <= a) return;
+    const QString block = centre.mid(a, b - a);
+
+    const auto run = [](const QString& code, bool training, bool showImpacts) {
+        const QString js = QStringLiteral(
+            "(function(isTraining, showImpacts) {\n"
+            "  var log = { added: 0, handoff: [], zoom: 0, dial: false };\n"
+            "  var shootingPage = { isTrainingMatch: isTraining };\n"
+            "  var TRAINING = { showImpacts: showImpacts };\n"
+            "  var showShootingAnimation = true;\n"
+            "  var animatorCircle = { width: 10 };\n"
+            "  var itemPoint = { x: 5, y: 7 };\n"
+            "  var paneItem = { itemPoint: itemPoint, traceStage: function() {},\n"
+            "                   triggerAutoZoom: function() { log.zoom++ } };\n"
+            "  Object.defineProperty(paneItem, 'currentScoreValue', { set: function() { log.dial = true } });\n"
+            "  Object.defineProperty(paneItem, 'currentScoreDegree', { set: function() { log.dial = true } });\n"
+            "  var polarSeries = {};\n"
+            "  var root = { mapToValue: function(p, s) { return { x: 123, y: 4 } } };\n"
+            "  var MODREADER = { appendToLogFile: function() {} };\n"
+            "  var newShootCount = 1, calculatedSccore = 9.7;\n"
+            "  function pointAddedToSeries(x, y, s) { log.handoff.push([x, y, s]) }\n"
+            // the real polarSeries.onPointAdded emits the hand-off and sets the dial
+            "  function addIfinRange(t) { log.added++; pointAddedToSeries(t.x, t.y, calculatedSccore);\n"
+            "                             paneItem.currentScoreDegree = t.x; paneItem.currentScoreValue = calculatedSccore }\n"
+            "%1\n"
+            "  return JSON.stringify(log);\n"
+            "})(%2, %3)").arg(code, training ? QStringLiteral("true") : QStringLiteral("false"),
+                               showImpacts ? QStringLiteral("true") : QStringLiteral("false"));
+        QJSEngine eng;
+        const QJSValue r = eng.evaluate(js);
+        return r.isError() ? QStringLiteral("ERROR ") + r.toString() : r.toString();
+    };
+
+    const QString hidden = run(block, true, false);
+    check(hidden.contains(QStringLiteral("\"handoff\":[[123,4,9.7]]")),
+          "TRAINING-HIDDEN-001: a Full-hidden Technical Blocks shot is handed to TRAINING exactly once", hidden);
+    check(hidden.contains(QStringLiteral("\"added\":0")) && hidden.contains(QStringLiteral("\"zoom\":0")),
+          "TRAINING-HIDDEN-001: ... and is still neither drawn nor zoomed to", hidden);
+    check(hidden.contains(QStringLiteral("\"dial\":false")),
+          "TRAINING-HIDDEN-001: ... and the always-visible score dial does not reveal it", hidden);
+
+    const QString shown = run(block, true, true);
+    check(shown.contains(QStringLiteral("\"handoff\":[[123,4,9.7]]")) && shown.contains(QStringLiteral("\"added\":1")),
+          "TRAINING-HIDDEN-001: a visible-impact Training shot is drawn and handed off once (no double hand-off)", shown);
+    const QString match = run(block, false, false);
+    check(match.contains(QStringLiteral("\"handoff\":[[123,4,9.7]]")) && match.contains(QStringLiteral("\"added\":1"))
+          && match.contains(QStringLiteral("\"zoom\":1")),
+          "TRAINING-HIDDEN-001: a competition shot is unchanged - drawn, zoomed, handed off once", match);
+
+    // Control: the same block WITHOUT the hidden-branch hand-off (the 42e91a8
+    // behaviour) must fail the first assertion, so this test can see the bug.
+    QString broken = block;
+    broken.replace(QStringLiteral("pointAddedToSeries(hiddenPoint.x"), QStringLiteral("void(hiddenPoint.x"));
+    const QString was = run(broken, true, false);
+    check(was.contains(QStringLiteral("\"handoff\":[]")),
+          "TRAINING-HIDDEN-001 control: without the fix the hidden shot is dropped (the reported defect)", was);
+}
+
 int main(int argc, char* argv[])
 {
     QCoreApplication app(argc, argv);
     printf("=== QML shot-path tests (QML-SHOT-001 regression) ===\n");
     fflush(stdout);
+    testHiddenTrainingHandoff();
 
     const QString qmlPath = QStringLiteral(TECHAIM_SOURCE_DIR "/CenterPane.qml");
     QFile f(qmlPath);

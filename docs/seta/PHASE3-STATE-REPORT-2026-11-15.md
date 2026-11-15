@@ -195,9 +195,10 @@ Training Lab + 10 m Final reports rendered EN + DE without clipping (3P Final,
 Coach and Match Summary: human visual check). Engine- and controller-supplied
 sentences stay English by design (see `docs/german-translation-review.md`).
 WP2 first increment done: Wind Map analysis + three Training Lab PDF
-renderers created on demand (PERF-003/004), −4.4 MB at start-up; hand check of
-those flows still open, and demo clicks in Technical Blocks record no shot
-(pre-existing, open).
+renderers created on demand (PERF-003/004), −4.4 MB at start-up; Technical
+Blocks export hand-checked, Wind Map analysis not yet. Found and fixed on the
+way: Full-hidden Technical Blocks recorded no shots at all (TRAINING-HIDDEN-001,
+since `42e91a8`; Tech Aim 1.0.0 needs the same fix).
 
 ### P1 — athlete experience
 
